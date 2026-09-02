@@ -99,7 +99,7 @@
 
         .container {
             width: 100%;
-            max-width: 1180px;
+            max-width: 1400px;
             max-height: calc(100vh - 16px);
             background-color: var(--panel-bg);
             border-radius: 14px;
@@ -293,6 +293,7 @@
             padding: 4px;
             box-shadow: inset 0 2px 8px rgba(0,0,0,0.9);
             overflow-x: auto;
+            width: 100%;
         }
 
         #waterfall-canvas {
@@ -309,7 +310,7 @@
             user-select: none;
         }
 
-        /* Compact Keys for 3-Octave Layout */
+        /* 4-Octave Key Formatting */
         .key {
             cursor: pointer;
             border-radius: 0 0 5px 5px;
@@ -324,7 +325,7 @@
         }
 
         .key.white {
-            width: 42px;
+            width: 44px;
             height: 130px;
             background-color: var(--key-white);
             border: 1px solid #cbd5e1;
@@ -339,11 +340,11 @@
         }
 
         .key.black {
-            width: 26px;
+            width: 28px;
             height: 80px;
             background-color: var(--key-black);
-            margin-left: -13px;
-            margin-right: -13px;
+            margin-left: -14px;
+            margin-right: -14px;
             color: #ffffff;
             font-size: 0.62rem;
             padding-bottom: 4px;
@@ -658,7 +659,7 @@
         </div>
 
         <div class="visualizer-wrapper">
-            <canvas id="waterfall-canvas" width="882" height="210"></canvas>
+            <canvas id="waterfall-canvas" width="1232" height="210"></canvas>
             <div class="piano" id="keyboard"></div>
         </div>
 
@@ -1023,7 +1024,7 @@
             }
         };
 
-        // Computer Keyboard Bindings Map - Soundtrap 3-Octave Layout
+        // Computer Keyboard Bindings Map - 4-Octave Layout (C1 to B4)
         const keyboardMap = {
             'z': 'c1', 's': 'c#1', 'x': 'd1', 'd': 'd#1', 'c': 'e1', 'v': 'f1', 'g': 'f#1', 'b': 'g1', 'h': 'g#1', 'n': 'a1', 'j': 'a#1', 'm': 'b1',
             ',': 'c2', 'l': 'c#2', '.': 'd2', '1': 'd#2', 'q': 'e2', 'w': 'f2', '3': 'f#2', 'e': 'g2', '4': 'g#2', 'r': 'a2', '5': 'a#2', 't': 'b2',
@@ -1495,7 +1496,7 @@
             }
         }
 
-        // 3-Octave Piano Layout (C1 to B3) Matching Soundtrap
+        // Expanded 4-Octave Piano Layout (C1 to B4)
         const keyLayout = [
             // Octave 1
             { note: 'c1', type: 'white', label: 'C', hint: 'Z' }, { note: 'c#1', type: 'black', label: 'C#', hint: 'S' },
@@ -1520,7 +1521,15 @@
             { note: 'f3', type: 'white', label: 'F', hint: 'O' }, { note: 'f#3', type: 'black', label: 'F#', hint: '0' },
             { note: 'g3', type: 'white', label: 'G', hint: 'P' }, { note: 'g#3', type: 'black', label: 'G#' },
             { note: 'a3', type: 'white', label: 'A' }, { note: 'a#3', type: 'black', label: 'A#' },
-            { note: 'b3', type: 'white', label: 'B' }
+            { note: 'b3', type: 'white', label: 'B' },
+            // Octave 4
+            { note: 'c4', type: 'white', label: 'C' }, { note: 'c#4', type: 'black', label: 'C#' },
+            { note: 'd4', type: 'white', label: 'D' }, { note: 'd#4', type: 'black', label: 'D#' },
+            { note: 'e4', type: 'white', label: 'E' },
+            { note: 'f4', type: 'white', label: 'F' }, { note: 'f#4', type: 'black', label: 'F#' },
+            { note: 'g4', type: 'white', label: 'G' }, { note: 'g#4', type: 'black', label: 'G#' },
+            { note: 'a4', type: 'white', label: 'A' }, { note: 'a#4', type: 'black', label: 'A#' },
+            { note: 'b4', type: 'white', label: 'B' }
         ];
 
         const noteNames = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
@@ -1553,9 +1562,9 @@
             let minP = Math.min(...pitches);
             let maxP = Math.max(...pitches);
 
-            // 3-Octave Pitch Bounds (c1 = pitch 12, b3 = pitch 47)
+            // 4-Octave Pitch Bounds (c1 = pitch 12, b4 = pitch 59)
             const MIN_PITCH = 12;
-            const MAX_PITCH = 47;
+            const MAX_PITCH = 59;
 
             let octaveShift = 0;
 
