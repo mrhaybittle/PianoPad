@@ -212,7 +212,9 @@
         .btn-teacher:hover { background-color: #9333ea; }
         .btn-midi { background-color: #06b6d4; }
         .btn-midi:hover { background-color: #0891b2; }
-        
+        .btn-settings { background-color: #3b82f6; }
+        .btn-settings:hover { background-color: #2563eb; }
+
         /* High-Visibility Pink Styling for Step Mode Button */
         .btn-step { background-color: #ec4899 !important; color: #ffffff !important; font-weight: 700; }
         .btn-step:hover { background-color: #db2777 !important; }
@@ -222,13 +224,13 @@
 
         .btn-game-active { background-color: var(--game-active) !important; color: #fff; box-shadow: 0 0 12px var(--game-active); }
         .btn-game-active:hover { background-color: #db2777 !important; }
-        
+
         .btn-rec-active {
             background-color: var(--recording-active) !important;
             color: #ffffff !important;
             box-shadow: 0 0 14px rgba(239, 68, 68, 0.8);
         }
-        
+
         .btn-rec-active span {
             animation: textBlink 0.8s infinite ease-in-out;
         }
@@ -426,6 +428,101 @@
             justify-content: center;
             gap: 10px;
         }
+
+        /* 6-Octave Calibration Keyboard Visualizer */
+        .calib-piano-container {
+            width: 100%;
+            overflow-x: auto;
+            background: #000;
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .calib-piano {
+            display: flex;
+            position: relative;
+            user-select: none;
+        }
+
+        .calib-key {
+            border-radius: 0 0 3px 3px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            font-size: 0.55rem;
+            font-weight: bold;
+            padding-bottom: 2px;
+        }
+
+        .calib-key.white {
+            width: 12px;
+            height: 55px;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            color: #0f172a;
+            z-index: 1;
+        }
+
+        .calib-key.black {
+            width: 8px;
+            height: 35px;
+            background: #0f172a;
+            margin-left: -4px;
+            margin-right: -4px;
+            z-index: 2;
+        }
+
+        .calib-key.blue-highlight {
+            background-color: #3b82f6 !important;
+            color: white !important;
+            box-shadow: 0 0 8px #3b82f6;
+        }
+
+        /* Graph Pop-Up Styling */
+        .graph-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .bar-chart-wrapper {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            height: 160px;
+            width: 100px;
+            background: #0b0f19;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 8px;
+            position: relative;
+        }
+
+        .stacked-bar {
+            width: 45px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            height: 100%;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .bar-part-red {
+            background-color: #ef4444;
+            width: 100%;
+            transition: height 0.4s ease;
+        }
+
+        .bar-part-green {
+            background-color: #22c55e;
+            width: 100%;
+            transition: height 0.4s ease;
+        }
     </style>
 </head>
 <body>
@@ -500,6 +597,10 @@
                     Import Code
                 </button>
 
+                <button id="btn-settings" class="btn-settings" title="Settings">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </button>
+
                 <a href="https://pianopadshare.blogspot.com/" target="_blank" rel="noopener noreferrer" class="btn-link btn-secondary">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
                     Get Songs
@@ -541,6 +642,7 @@
         <div class="status-bar" id="status">Connecting to Google Sheet song database...</div>
     </div>
 
+    <!-- Import Modal -->
     <div class="modal-overlay" id="modal">
         <div class="modal">
             <h2>Import PianoPad Song</h2>
@@ -553,6 +655,67 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <h2>Settings</h2>
+            <p style="font-size: 0.85rem; color: #9ca3af;">Configure hardware and MIDI inputs below:</p>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin: 10px 0;">
+                <button id="btn-start-calib" class="btn-midi" style="justify-content: center; padding: 10px;">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20"></path></svg>
+                    Calibrate Piano (Lowest / Highest Keys)
+                </button>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="btn-settings-close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calibration Wizard Modal -->
+    <div class="modal-overlay" id="calib-modal">
+        <div class="modal" style="max-width: 680px;">
+            <h2>MIDI Keyboard Calibration</h2>
+            <p id="calib-instructions" style="font-size: 0.9rem; color: #38bdf8; font-weight: 600;">
+                Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...
+            </p>
+
+            <div class="calib-piano-container">
+                <div class="calib-piano" id="calib-keyboard"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-secondary" id="btn-calib-cancel">Cancel Calibration</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Mode Completion Pop-up Modal with Graph -->
+    <div class="modal-overlay" id="game-results-modal">
+        <div class="modal" style="text-align: center;">
+            <h2>Game Performance Summary</h2>
+            <p id="game-summary-text" style="font-size: 0.95rem; color: #e5e7eb; font-weight: 600;"></p>
+            
+            <div class="graph-container">
+                <div class="bar-chart-wrapper">
+                    <div class="stacked-bar">
+                        <div id="bar-red" class="bar-part-red"></div>
+                        <div id="bar-green" class="bar-part-green"></div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 600;">
+                    <span style="color: #22c55e;">● Correct Notes</span>
+                    <span style="color: #ef4444;">● Wrong / Missed</span>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="justify-content: center; margin-top: 10px;">
+                <button class="btn-success" id="btn-game-results-close">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export / Share Haycode Modal -->
     <div class="modal-overlay" id="export-modal">
         <div class="modal">
             <h2>Recorded Haycode Ready!</h2>
@@ -566,6 +729,7 @@
         </div>
     </div>
 
+    <!-- Teacher Add Song Modal Dialog -->
     <div class="modal-overlay" id="teacher-modal">
         <div class="modal">
             <h2>Add Song (Teacher Access)</h2>
@@ -628,6 +792,14 @@
         let lastRecordNoteTime = 0;
         let generatedHaycode = "";
 
+        // Calibration Variables
+        let isCalibrating = false;
+        let calibStep = 1; // 1 = Lowest C, 2 = Highest C
+        let calibLowestRawMIDI = 36; // Default C2
+        let calibHighestRawMIDI = 96; // Default C7
+        let midiOctaveOffset = 0;
+        let baseOctaveOffset = 0; // Visual Keyboard Shift
+
         // Synchronously unlock browser audio context on user gesture
         function initAudio() {
             if (!audioCtx) {
@@ -667,20 +839,25 @@
             if (channel === 9) return; // Ignore Channel 10 (drums, 0-indexed is 9)
 
             const command = status & 0xF0;
-            const noteNumber = event.data[1];
+            const rawNoteNumber = event.data[1];
             const velocity = event.data.length > 2 ? event.data[2] : 0;
 
             if (command === 144 && velocity > 0) { // Note On
-                const noteStr = midiNoteToName(noteNumber);
-                if (noteStr) {
-                    playManualNote(noteStr);
+                if (isCalibrating) {
+                    processCalibrationNote(rawNoteNumber);
+                } else {
+                    const correctedNoteNumber = rawNoteNumber + midiOctaveOffset;
+                    const noteStr = midiNoteToName(correctedNoteNumber);
+                    if (noteStr) {
+                        playManualNote(noteStr);
+                    }
                 }
             }
         }
 
         function midiNoteToName(midi) {
-            const octave = Math.floor(midi / 12) - 4; // Shift octave scale down to match Soundtrap 3-Octave offset
-            const offset = midi % 12;
+            const octave = Math.floor(midi / 12) - 4 - baseOctaveOffset; 
+            const offset = ((midi % 12) + 12) % 12;
             const name = noteNames[offset];
             return name + octave;
         }
@@ -822,6 +999,19 @@
         const teacherCodeTextarea = document.getElementById('teacher-code');
         const teacherErrorDiv = document.getElementById('teacher-error');
 
+        const settingsModal = document.getElementById('settings-modal');
+        const calibModal = document.getElementById('calib-modal');
+        const gameResultsModal = document.getElementById('game-results-modal');
+
+        document.getElementById('btn-settings').addEventListener('click', () => {
+            initAudio();
+            settingsModal.classList.add('open');
+        });
+        document.getElementById('btn-settings-close').addEventListener('click', () => settingsModal.classList.remove('open'));
+        document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
+        document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
+        document.getElementById('btn-game-results-close').addEventListener('click', () => gameResultsModal.classList.remove('open'));
+
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
             if (isPlaying && !isPaused && !isStepMode) playSong();
@@ -859,6 +1049,90 @@
                 loopStartSlider.value = start;
             }
             loopRangeLabel.textContent = `${start}% - ${end}% Region`;
+        }
+
+        /* CALIBRATION ENGINE & 6-OCTAVE UI */
+        function buildCalibrationKeyboard() {
+            const container = document.getElementById('calib-keyboard');
+            container.innerHTML = '';
+            for (let oct = 1; oct <= 6; oct++) {
+                const octNotes = [
+                    { note: `c${oct}`, type: 'white', label: oct === 1 ? 'C' : '' },
+                    { note: `c#${oct}`, type: 'black' },
+                    { note: `d${oct}`, type: 'white' },
+                    { note: `d#${oct}`, type: 'black' },
+                    { note: `e${oct}`, type: 'white' },
+                    { note: `f${oct}`, type: 'white' },
+                    { note: `f#${oct}`, type: 'black' },
+                    { note: `g${oct}`, type: 'white' },
+                    { note: `g#${oct}`, type: 'black' },
+                    { note: `a${oct}`, type: 'white' },
+                    { note: `a#${oct}`, type: 'black' },
+                    { note: `b${oct}`, type: 'white' }
+                ];
+                octNotes.forEach(k => {
+                    const div = document.createElement('div');
+                    div.className = `calib-key ${k.type}`;
+                    div.dataset.calibNote = k.note;
+                    if (k.label) div.textContent = k.label;
+                    container.appendChild(div);
+                });
+            }
+            // Add top C7
+            const topC = document.createElement('div');
+            topC.className = 'calib-key white';
+            topC.dataset.calibNote = 'c7';
+            topC.textContent = 'C';
+            container.appendChild(topC);
+        }
+
+        function startCalibration() {
+            settingsModal.classList.remove('open');
+            buildCalibrationKeyboard();
+            isCalibrating = true;
+            calibStep = 1;
+            document.getElementById('calib-instructions').textContent = "Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
+            calibModal.classList.add('open');
+        }
+
+        function cancelCalibration() {
+            isCalibrating = false;
+            calibModal.classList.remove('open');
+        }
+
+        function processCalibrationNote(rawMidi) {
+            if (!isCalibrating) return;
+
+            if (calibStep === 1) {
+                calibLowestRawMIDI = rawMidi;
+                // Calculate required offset to standardize this key as standard Lowest C (MIDI 36)
+                midiOctaveOffset = 36 - rawMidi;
+
+                // Highlight lowest C key on 6-octave visualizer
+                const lowCKey = document.querySelector('.calib-key[data-calib-note="c1"]');
+                if (lowCKey) lowCKey.classList.add('blue-highlight');
+
+                calibStep = 2;
+                document.getElementById('calib-instructions').textContent = "Recognized Lowest C! Step 2: Now press the HIGHEST 'C' key on your external MIDI Keyboard...";
+            } else if (calibStep === 2) {
+                calibHighestRawMIDI = rawMidi;
+
+                // Highlight highest C key on calibration visualizer
+                const keys = document.querySelectorAll('.calib-key');
+                if (keys.length > 0) keys[keys.length - 1].classList.add('blue-highlight');
+
+                // Shift main visual representation
+                const correctedLow = calibLowestRawMIDI + midiOctaveOffset;
+                baseOctaveOffset = Math.floor(correctedLow / 12) - 3;
+
+                document.getElementById('calib-instructions').textContent = "Calibration Complete! Keyboard range saved successfully.";
+                setTimeout(() => {
+                    isCalibrating = false;
+                    calibModal.classList.remove('open');
+                    updateKeyPositions();
+                    document.getElementById('status').textContent = "MIDI Keyboard successfully calibrated and shifted!";
+                }, 1000);
+            }
         }
 
         function openTeacherModal() {
@@ -961,6 +1235,25 @@
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
             document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}`;
+        }
+
+        function showGameResultsPopUp() {
+            const correctHits = gameStats.perfect + gameStats.earlyLate;
+            const missedHits = gameStats.miss;
+            const totalHits = correctHits + missedHits;
+
+            const accuracy = totalHits > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
+            
+            document.getElementById('game-summary-text').innerHTML = `Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${correctHits} Correct, ${missedHits} Missed/Wrong out of ${totalHits} notes)</span>`;
+
+            // Calculate stacked bar height percentages
+            const greenPct = totalHits > 0 ? (correctHits / totalHits) * 100 : 0;
+            const redPct = totalHits > 0 ? (missedHits / totalHits) * 100 : 0;
+
+            document.getElementById('bar-green').style.height = `${greenPct}%`;
+            document.getElementById('bar-red').style.height = `${redPct}%`;
+
+            gameResultsModal.classList.add('open');
         }
 
         function toggleLoopMode() {
@@ -1751,9 +2044,7 @@
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                     if (isGameMode) {
-                        const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
-                        const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '0.0';
-                        document.getElementById('status').innerHTML = ` <b>GAME OVER!</b> Score: <b>${accuracy}%</b> |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}`;
+                        showGameResultsPopUp();
                         return;
                     }
 
