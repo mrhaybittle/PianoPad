@@ -718,12 +718,13 @@
     <!-- Export / Share Haycode Modal -->
     <div class="modal-overlay" id="export-modal">
         <div class="modal">
-            <h2>Recorded Haycode Ready!</h2>
-            <p style="font-size: 0.85rem; color: #9ca3af;">Recording complete! Copy your generated Haycode below or email it directly:</p>
+            <h2>Recorded Performance Ready!</h2>
+            <p style="font-size: 0.85rem; color: #9ca3af;">Copy your generated Haycode or export your performance as a WAV audio file below:</p>
             <textarea id="export-text" readonly></textarea>
             <div class="modal-footer">
                 <button class="btn-secondary" id="btn-export-close">Close</button>
                 <button class="btn-secondary" id="btn-copy-haycode">Copy Code</button>
+                <button class="btn-midi" id="btn-export-wav">Export WAV Audio</button>
                 <a id="btn-email-haycode" href="#" target="_blank" class="btn-link btn-share">Email Haycode</a>
             </div>
         </div>
@@ -2132,6 +2133,155 @@
             navigator.clipboard.writeText(exportTextarea.value);
             document.getElementById('status').textContent = 'Haycode copied to clipboard!';
         });
+
+        // WAV Audio Export with Database Duplicate Checking
+        document.getElementById('btn-export-wav').addEventListener('click', () => {
+            initAudio();
+            if (!generatedHaycode) {
+                alert("No recorded HayCode available to export.");
+                return;
+            }
+
+            // Clean up current HayCode for comparison
+            const currentCleanCode = generatedHaycode.replace(/[\r\n\s]+/g, '').toLowerCase();
+
+            // Check against database songs
+            let isDuplicate = false;
+            for (let song of songList) {
+                if (song.code) {
+                    const dbCleanCode = song.code.replace(/[\r\n\s]+/g, '').toLowerCase();
+                    if (dbCleanCode === currentCleanCode) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+            }
+
+            if (isDuplicate) {
+                alert("WAV Export Blocked: This recorded HayCode matches an existing song in the database. Audio export is only allowed for original student recordings.");
+                return;
+            }
+
+            // Synthesize and render performance into a WAV file via OfflineAudioContext
+            exportPerformanceToWAV();
+        });
+
+        function exportPerformanceToWAV() {
+            if (recordedNotes.length === 0) {
+                alert("No recorded note sequence found.");
+                return;
+            }
+
+            document.getElementById('status').textContent = "Generating WAV audio file...";
+
+            // Compute total recording duration in seconds
+            let totalMs = 0;
+            recordedRests.forEach(r => totalMs += r);
+            const totalSeconds = Math.max(1.5, (totalMs + 1000) / 1000);
+
+            const sampleRate = 44100;
+            const offlineCtx = new OfflineAudioContext(1, Math.ceil(sampleRate * totalSeconds), sampleRate);
+
+            let cumulativeTime = 0;
+            for (let i = 0; i < recordedNotes.length; i++) {
+                const noteStr = recordedNotes[i];
+                const restMs = recordedRests[i] || 250;
+                cumulativeTime += (restMs / 1000);
+
+                const freq = getNoteFrequency(noteStr);
+                if (freq) {
+                    const osc = offlineCtx.createOscillator();
+                    const gain = offlineCtx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, cumulativeTime);
+
+                    gain.gain.setValueAtTime(0, cumulativeTime);
+                    gain.gain.linearRampToValueAtTime(0.4, cumulativeTime + 0.01);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, cumulativeTime + 0.4);
+
+                    osc.connect(gain);
+                    gain.connect(offlineCtx.destination);
+
+                    osc.start(cumulativeTime);
+                    osc.stop(cumulativeTime + 0.4);
+                }
+            }
+
+            offlineCtx.startRendering().then(renderedBuffer => {
+                const wavBlob = bufferToWavBlob(renderedBuffer);
+                const url = URL.createObjectURL(wavBlob);
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `PianoPad_Recording_${Date.now()}.wav`;
+                a.click();
+
+                document.getElementById('status').textContent = "WAV Audio exported successfully!";
+            }).catch(err => {
+                console.error("WAV Export Error:", err);
+                document.getElementById('status').textContent = "WAV Export failed.";
+            });
+        }
+
+        // Helper function to encode Web Audio PCM buffer into standard 16-bit PCM WAV Blob
+        function bufferToWavBlob(buffer) {
+            const numOfChan = buffer.numberOfChannels;
+            const length = buffer.length * numOfChan * 2 + 44;
+            const outBuffer = new ArrayBuffer(length);
+            const view = new DataView(outBuffer);
+            const channels = [];
+            let sample = 0;
+            let offset = 0;
+            let pos = 0;
+
+            function writeString(str) {
+                for (let i = 0; i < str.length; i++) {
+                    view.setUint8(pos++, str.charCodeAt(i));
+                }
+            }
+
+            function setUint16(data) {
+                view.setUint16(pos, data, true);
+                pos += 2;
+            }
+
+            function setUint32(data) {
+                view.setUint32(pos, data, true);
+                pos += 4;
+            }
+
+            // RIFF header
+            writeString('RIFF');
+            setUint32(length - 8);
+            writeString('WAVE');
+            writeString('fmt ');
+            setUint32(16);
+            setUint16(1); // PCM
+            setUint16(numOfChan);
+            setUint32(buffer.sampleRate);
+            setUint32(buffer.sampleRate * 2 * numOfChan);
+            setUint16(numOfChan * 2);
+            setUint16(16); // 16-bit
+            writeString('data');
+            setUint32(length - pos - 4);
+
+            for (let i = 0; i < buffer.numberOfChannels; i++) {
+                channels.push(buffer.getChannelData(i));
+            }
+
+            while (offset < buffer.length) {
+                for (let i = 0; i < numOfChan; i++) {
+                    sample = Math.max(-1, Math.min(1, channels[i][offset]));
+                    sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+                    view.setInt16(pos, sample, true);
+                    pos += 2;
+                }
+                offset++;
+            }
+
+            return new Blob([outBuffer], { type: 'audio/wav' });
+        }
 
         // Initialize Web MIDI Hardware Input Device Access
         initMIDIHardware();
