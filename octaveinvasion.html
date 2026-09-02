@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Octave Invasion</title>
+  <title>GalagaBittle</title>
   <style>
     * {
       box-sizing: border-box;
@@ -32,8 +32,34 @@
       flex-direction: column;
       overflow: hidden;
     }
+
+    /* Logo Banner */
+    #logo-banner {
+      height: 48px;
+      background: linear-gradient(180deg, #0d0d1a 0%, #000000 100%);
+      border-bottom: 2px solid #00ffcc;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      z-index: 12;
+      box-shadow: 0 2px 10px rgba(0, 255, 204, 0.2);
+    }
+    .logo-text {
+      font-family: 'Impact', 'Arial Black', sans-serif;
+      font-size: 26px;
+      font-style: italic;
+      letter-spacing: 2px;
+      background: linear-gradient(180deg, #ffffff 0%, #ff0055 50%, #ffcc00 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 10px rgba(255, 0, 85, 0.6);
+      filter: drop-shadow(2px 2px 0px #000000);
+      text-transform: uppercase;
+    }
+
     #ui-bar {
-      height: 40px;
+      height: 36px;
       background: #0d0d15;
       border-bottom: 2px solid #333;
       display: flex;
@@ -170,6 +196,11 @@
 <body>
 
 <div id="game-container">
+  <!-- Dynamic Arcade Logo -->
+  <div id="logo-banner">
+    <div class="logo-text">GalagaBittle</div>
+  </div>
+
   <div id="ui-bar">
     <div class="ui-element">SCORE: <span id="score">0</span></div>
     <div class="ui-element">
@@ -233,20 +264,19 @@
 <script>
   const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
   
-  // Note to Color Mapping
   const NOTE_COLORS = {
-    "C": "#FF0000",   // Red
-    "C#": "#FF0000",  // Red (Sharps match root)
-    "D": "#FF7F00",   // Orange
-    "D#": "#FF7F00",  // Orange
-    "E": "#FFFF00",   // Yellow
-    "F": "#00FF00",   // Green
-    "F#": "#00FF00",  // Green
-    "G": "#008080",   // Teal / Dark Green
-    "G#": "#008080",  // Teal
-    "A": "#4B0082",   // Indigo
-    "A#": "#4B0082",  // Indigo
-    "B": "#FF69B4"    // Pink
+    "C": "#FF0000",
+    "C#": "#FF0000",
+    "D": "#FF7F00",
+    "D#": "#FF7F00",
+    "E": "#FFFF00",
+    "F": "#00FF00",
+    "F#": "#00FF00",
+    "G": "#008080",
+    "G#": "#008080",
+    "A": "#4B0082",
+    "A#": "#4B0082",
+    "B": "#FF69B4"
   };
 
   const CHORDS = {
@@ -281,7 +311,6 @@
   let audioCtx = null;
   let isAudioInit = false;
 
-  // Fanfare Visual Effect Variables
   let fanfareTimer = 0;
   let fanfareText = "";
 
@@ -292,7 +321,7 @@
   function initArmadaSlots() {
     armadaSlots = [];
     const startX = 50;
-    const startY = 60;
+    const startY = 50;
     const spacingX = 38;
     const spacingY = 32;
 
@@ -369,7 +398,7 @@
 
   function playFanfareSound() {
     if (!isAudioInit) return;
-    const notes = [523.25, 659.25, 783.99, 1046.50]; // C Major Arpeggio
+    const notes = [523.25, 659.25, 783.99, 1046.50];
     notes.forEach((freq, idx) => {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
@@ -605,11 +634,10 @@
   }
 
   function triggerFanfare(text) {
-    fanfareTimer = 60; // 1 second @ 60fps
+    fanfareTimer = 60;
     fanfareText = text;
     playFanfareSound();
     
-    // Spawn celebratory fireworks/particles
     for (let i = 0; i < 40; i++) {
       particles.push({
         x: canvas.width / 2,
@@ -635,7 +663,6 @@
         activePowerup = chordName;
         powerupTimer = 350;
         
-        // Restore All Lives
         lives = 5;
         drawLivesUI();
         triggerFanfare(`${chordName.toUpperCase()}! LIVES RESTORED!`);
@@ -898,14 +925,12 @@
     });
   }
 
-  // High-Detail Galaga Player Starship Renderer
   function drawPlayerShip(x, y, w, h) {
     if (player.invulnerable % 10 > 5) return;
 
     ctx.save();
     ctx.translate(x + w / 2, y + h / 2);
 
-    // Animated Thruster Plume
     const thrust = Math.random() * 8 + 8;
     ctx.fillStyle = "#ffaa00";
     ctx.beginPath();
@@ -923,7 +948,6 @@
     ctx.closePath();
     ctx.fill();
 
-    // Outer Main Wings
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
     ctx.moveTo(0, -h / 2);
@@ -935,12 +959,10 @@
     ctx.closePath();
     ctx.fill();
 
-    // Red Wingtips & Accents
     ctx.fillStyle = "#ff0000";
     ctx.fillRect(-w / 2, h / 4, 3, h / 4);
     ctx.fillRect(w / 2 - 3, h / 4, 3, h / 4);
 
-    // Inner Armor Hull
     ctx.fillStyle = "#00ffcc";
     ctx.beginPath();
     ctx.moveTo(0, -h / 2 + 6);
@@ -949,13 +971,11 @@
     ctx.closePath();
     ctx.fill();
 
-    // Cockpit Canopy
     ctx.fillStyle = "#FFFF00";
     ctx.beginPath();
     ctx.ellipse(0, -2, 3, 6, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Dual Plasma Cannon Cannons
     ctx.fillStyle = "#cccccc";
     ctx.fillRect(-w / 2 + 2, -h / 3, 2, h / 3);
     ctx.fillRect(w / 2 - 4, -h / 3, 2, h / 3);
@@ -963,7 +983,6 @@
     ctx.restore();
   }
 
-  // Mini-Ship UI Renderer for Lives Display
   function drawLivesUI() {
     livesCtx.clearRect(0, 0, livesCanvas.width, livesCanvas.height);
     for (let i = 0; i < lives; i++) {
@@ -1012,7 +1031,6 @@
       ctx.fillRect(eb.x, eb.y, eb.width, eb.height);
     });
 
-    // Enemy Render with Exact Key-Color Coding
     enemies.forEach(e => {
       const cleanNote = e.note.replace(/[0-9]/g, '');
       const shipColor = NOTE_COLORS[cleanNote] || '#00ffcc';
@@ -1028,7 +1046,6 @@
       ctx.closePath();
       ctx.fill();
 
-      // Inner Wing Highlight
       ctx.fillStyle = "rgba(255,255,255,0.4)";
       ctx.fillRect(e.x + e.width * 0.35, e.y + e.height * 0.2, e.width * 0.3, e.height * 0.3);
 
@@ -1051,7 +1068,6 @@
       ctx.fillText(`CHORD: ${p.name}`, p.x + p.width / 2, p.y + 16);
     });
 
-    // Visual Fanfare Overlay Banner
     if (fanfareTimer > 0) {
       ctx.save();
       ctx.fillStyle = "rgba(0, 255, 204, 0.25)";
