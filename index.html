@@ -1105,10 +1105,10 @@
 
             if (calibStep === 1) {
                 calibLowestRawMIDI = rawMidi;
-                // Calculate required offset to standardize this key as standard Lowest C (MIDI 36)
+                // Standardize this key as the base low C reference (MIDI 36)
                 midiOctaveOffset = 36 - rawMidi;
 
-                // Highlight lowest C key on 6-octave visualizer
+                // Highlight lowest C key at the very bottom (C1) of the 6-octave visualizer
                 const lowCKey = document.querySelector('.calib-key[data-calib-note="c1"]');
                 if (lowCKey) lowCKey.classList.add('blue-highlight');
 
@@ -1117,21 +1117,26 @@
             } else if (calibStep === 2) {
                 calibHighestRawMIDI = rawMidi;
 
-                // Highlight highest C key on calibration visualizer
-                const keys = document.querySelectorAll('.calib-key');
-                if (keys.length > 0) keys[keys.length - 1].classList.add('blue-highlight');
+                // Calculate exact octave distance between played lowest and highest C
+                const rawDiff = calibHighestRawMIDI - calibLowestRawMIDI;
+                const octaveDistance = Math.round(rawDiff / 12);
+                
+                // Highlight corresponding highest key relative to lowest (C1 + octave distance)
+                const targetOctave = Math.min(7, 1 + octaveDistance);
+                const highCKey = document.querySelector(`.calib-key[data-calib-note="c${targetOctave}"]`);
+                if (highCKey) highCKey.classList.add('blue-highlight');
 
-                // Shift main visual representation
+                // Shift main piano window to set lowest C as the physical starting key
                 const correctedLow = calibLowestRawMIDI + midiOctaveOffset;
                 baseOctaveOffset = Math.floor(correctedLow / 12) - 3;
 
-                document.getElementById('calib-instructions').textContent = "Calibration Complete! Keyboard range saved successfully.";
+                document.getElementById('calib-instructions').textContent = `Calibration Complete! Detected a ${octaveDistance}-Octave Keyboard (${octaveDistance * 12 + 1} keys).`;
                 setTimeout(() => {
                     isCalibrating = false;
                     calibModal.classList.remove('open');
                     updateKeyPositions();
-                    document.getElementById('status').textContent = "MIDI Keyboard successfully calibrated and shifted!";
-                }, 1000);
+                    document.getElementById('status').textContent = `MIDI Keyboard successfully calibrated! Set to ${octaveDistance}-octave range.`;
+                }, 1200);
             }
         }
 
