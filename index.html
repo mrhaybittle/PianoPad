@@ -480,7 +480,7 @@
             box-shadow: 0 0 8px #3b82f6;
         }
 
-        /* Graph Pop-Up Styling */
+        /* Graph Pop-Up & Badge Styling */
         .graph-container {
             display: flex;
             flex-direction: column;
@@ -529,6 +529,23 @@
             width: 100%;
             transition: height 0.4s ease;
         }
+
+        .badge-box {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-top: 6px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+        }
+
+        .badge-gold { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #000; }
+        .badge-silver { background: linear-gradient(135deg, #94a3b8, #cbd5e1); color: #000; }
+        .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
     </style>
 </head>
 <body>
@@ -702,6 +719,8 @@
             <h2>Game Performance Summary</h2>
             <p id="game-summary-text" style="font-size: 0.95rem; color: #e5e7eb; font-weight: 600;"></p>
             
+            <div id="badge-container"></div>
+
             <div class="graph-container">
                 <div class="bar-chart-wrapper">
                     <div class="stacked-bar">
@@ -816,6 +835,39 @@
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
+        }
+
+        // Synthesis of subtle percussive "clack" noise for incorrect note input in Game Mode
+        function playErrorClackSound() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            
+            // Create short burst buffer of white noise
+            const bufferSize = audioCtx.sampleRate * 0.04; // 40ms noise burst
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+
+            // Low-pass filter to make it sound like a woody percussive "clack"
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(320, now);
+
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.35, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            noise.start(now);
+            noise.stop(now + 0.04);
         }
 
         // Web MIDI Input Device Initialization for Hardware Keyboards
@@ -1266,6 +1318,20 @@
             document.getElementById('bar-orange').style.height = `${orangePct}%`;
             document.getElementById('bar-red').style.height = `${redPct}%`;
 
+            // Determine Target Tempo Achievement Badge
+            const currentSpeed = parseInt(speedSlider.value, 10);
+            const badgeContainer = document.getElementById('badge-container');
+            
+            if (currentSpeed >= 100) {
+                badgeContainer.innerHTML = `<div class="badge-box badge-gold">🏆 GOLD BADGE: Full Master Speed (${currentSpeed}%)</div>`;
+            } else if (currentSpeed >= 75) {
+                badgeContainer.innerHTML = `<div class="badge-box badge-silver">🥈 SILVER BADGE: Intermediate Tempo (${currentSpeed}%)</div>`;
+            } else if (currentSpeed >= 50) {
+                badgeContainer.innerHTML = `<div class="badge-box badge-bronze">🥉 BRONZE BADGE: Practice Pace (${currentSpeed}%)</div>`;
+            } else {
+                badgeContainer.innerHTML = `<div style="font-size:0.8rem; color:#9ca3af; margin-top:4px;">Practice Speed: ${currentSpeed}% (Reach 50%+ for Practice Badges)</div>`;
+            }
+
             gameResultsModal.classList.add('open');
         }
 
@@ -1699,6 +1765,8 @@
                     }
                     updateGameStatus();
                 } else {
+                    // Play dynamic percussive error "clack" sound for incorrect key pitch
+                    playErrorClackSound();
                     highlightKey(noteStr, 200, '#ef4444');
                 }
             } else {
