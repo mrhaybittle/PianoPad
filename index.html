@@ -518,6 +518,12 @@
             transition: height 0.4s ease;
         }
 
+        .bar-part-orange {
+            background-color: #f97316;
+            width: 100%;
+            transition: height 0.4s ease;
+        }
+
         .bar-part-green {
             background-color: #22c55e;
             width: 100%;
@@ -700,12 +706,14 @@
                 <div class="bar-chart-wrapper">
                     <div class="stacked-bar">
                         <div id="bar-red" class="bar-part-red"></div>
+                        <div id="bar-orange" class="bar-part-orange"></div>
                         <div id="bar-green" class="bar-part-green"></div>
                     </div>
                 </div>
                 <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 600;">
-                    <span style="color: #22c55e;">● Correct Notes</span>
-                    <span style="color: #ef4444;">● Wrong / Missed</span>
+                    <span style="color: #22c55e;">● Perfect</span>
+                    <span style="color: #f97316;">● Early/Late</span>
+                    <span style="color: #ef4444;">● Missed</span>
                 </div>
             </div>
 
@@ -1240,19 +1248,22 @@
         }
 
         function showGameResultsPopUp() {
-            const correctHits = gameStats.perfect + gameStats.earlyLate;
+            const perfectHits = gameStats.perfect;
+            const earlyLateHits = gameStats.earlyLate;
             const missedHits = gameStats.miss;
-            const totalHits = correctHits + missedHits;
+            const totalHits = perfectHits + earlyLateHits + missedHits;
 
-            const accuracy = totalHits > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
+            const accuracy = totalHits > 0 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
             
-            document.getElementById('game-summary-text').innerHTML = `Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${correctHits} Correct, ${missedHits} Missed/Wrong out of ${totalHits} notes)</span>`;
+            document.getElementById('game-summary-text').innerHTML = `Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
 
             // Calculate stacked bar height percentages
-            const greenPct = totalHits > 0 ? (correctHits / totalHits) * 100 : 0;
+            const greenPct = totalHits > 0 ? (perfectHits / totalHits) * 100 : 0;
+            const orangePct = totalHits > 0 ? (earlyLateHits / totalHits) * 100 : 0;
             const redPct = totalHits > 0 ? (missedHits / totalHits) * 100 : 0;
 
             document.getElementById('bar-green').style.height = `${greenPct}%`;
+            document.getElementById('bar-orange').style.height = `${orangePct}%`;
             document.getElementById('bar-red').style.height = `${redPct}%`;
 
             gameResultsModal.classList.add('open');
@@ -1307,6 +1318,12 @@
             if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') return;
 
             initAudio();
+
+            if (e.code === 'ArrowDown') {
+                e.preventDefault();
+                playSong();
+                return;
+            }
 
             if (e.code === 'Space') {
                 e.preventDefault();
