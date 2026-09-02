@@ -58,7 +58,6 @@
       width: 100%;
       height: 100%;
     }
-    /* Keyboard UI */
     #keyboard-container {
       height: 120px;
       background: #111;
@@ -109,14 +108,13 @@
       color: #000 !important;
       box-shadow: 0 0 10px #00ffcc;
     }
-    /* Overlays & Modals */
     .popup-overlay {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.92);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -128,7 +126,7 @@
       border: 2px solid #00ffcc;
       border-radius: 8px;
       padding: 20px;
-      width: 85%;
+      width: 80%;
       text-align: center;
       box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
     }
@@ -141,16 +139,16 @@
     }
     .popup-card p {
       color: #ccc;
-      font-size: 12px;
-      line-height: 1.5;
+      font-size: 13px;
+      line-height: 1.6;
       margin-bottom: 15px;
-      text-align: left;
+      text-align: center;
     }
     .popup-card button {
       background: #00ffcc;
       color: #000;
       border: none;
-      padding: 10px 20px;
+      padding: 8px 18px;
       font-weight: bold;
       font-family: inherit;
       cursor: pointer;
@@ -184,46 +182,45 @@
     <div class="keyboard" id="visual-keyboard"></div>
   </div>
 
-  <!-- Instructions Modal -->
+  <!-- Concise Instructions Modal -->
   <div id="instructions-modal" class="popup-overlay">
     <div class="popup-card">
-      <h2 style="color: #00ffcc;">Mission Briefing</h2>
-      <p>• <b>MOVE LEFT:</b> Press the <b>HIGHEST B</b> on your keyboard.<br>
-         • <b>MOVE RIGHT:</b> Press the <b>HIGHEST C</b> on your keyboard.<br>
-         • <b>SHOOT:</b> Play any other key corresponding to the attacking alien note.<br>
-         • <b>LIVES:</b> You start with <b>5 Ships</b>! Dodge enemy crashes and red lasers.<br>
-         • <b>CHORD POWER-UPS:</b> Trigger 3-note chords when requested to gain auto-fire.<br>
-         • <b>MALFUNCTION:</b> Hitting >2 keys at once (or >3 during power-up window) will lock your weapons!
+      <h2 style="color: #00ffcc;">Controls</h2>
+      <p>
+        <b>LEFT:</b> High B<br>
+        <b>RIGHT:</b> High C<br>
+        <b>SHOOT:</b> Play Note<br>
+        <b>CHORDS:</b> Power-Up<br>
+        <b>LIVES:</b> 5 Ships
       </p>
-      <button id="instructions-ok-btn">Understood / Calibrate</button>
+      <button id="instructions-ok-btn">OK</button>
     </div>
   </div>
 
   <!-- Calibration Modal -->
   <div id="calibration-modal" class="popup-overlay hidden">
     <div class="popup-card">
-      <h2 style="color: #00ffcc;">MIDI Calibration</h2>
-      <p id="calib-instructions" style="text-align: center;">Press the HIGHEST B on your MIDI keyboard.</p>
-      <div id="calib-progress" style="color: #ffaa00; font-weight: bold; margin-bottom: 15px;">Step 1 / 2</div>
-      <button id="skip-calib-btn">Use Default Calibration</button>
+      <h2 style="color: #00ffcc;">Calibrate</h2>
+      <p id="calib-instructions">Press High B.</p>
+      <div id="calib-progress" style="color: #ffaa00; font-weight: bold; margin-bottom: 15px;">1 / 2</div>
+      <button id="skip-calib-btn">Skip</button>
     </div>
   </div>
 
   <!-- Malfunction Modal -->
   <div id="malfunction-modal" class="popup-overlay hidden">
     <div class="popup-card">
-      <h2 style="text-align: center;">Engine Malfunction!</h2>
-      <p style="text-align: center;">Too many Keys hit! System overheating, weapons disabled temporarily.</p>
+      <h2>Engine Malfunction!</h2>
+      <p>Too Many Keys!</p>
     </div>
   </div>
 
   <!-- Game Over Modal -->
   <div id="gameover-modal" class="popup-overlay hidden">
     <div class="popup-card">
-      <h2 style="text-align: center;">Game Over</h2>
-      <p style="text-align: center;">All 5 ships have been destroyed!</p>
-      <p style="text-align: center;">Final Score: <span id="final-score">0</span></p>
-      <button id="restart-btn">Try Again</button>
+      <h2>Game Over</h2>
+      <p>Final Score: <span id="final-score">0</span></p>
+      <button id="restart-btn">Retry</button>
     </div>
   </div>
 </div>
@@ -261,6 +258,32 @@
   let audioCtx = null;
   let isAudioInit = false;
 
+  // Matrix Armada Setup (10 Cols x 4 Rows)
+  const ARMADA_ROWS = 4;
+  const ARMADA_COLS = 10;
+  let armadaSlots = [];
+
+  function initArmadaSlots() {
+    armadaSlots = [];
+    const startX = 50;
+    const startY = 60;
+    const spacingX = 38;
+    const spacingY = 32;
+
+    for (let r = 0; r < ARMADA_ROWS; r++) {
+      for (let c = 0; c < ARMADA_COLS; c++) {
+        armadaSlots.push({
+          row: r,
+          col: c,
+          homeX: startX + c * spacingX,
+          homeY: startY + r * spacingY,
+          occupied: false,
+          shipRef: null
+        });
+      }
+    }
+  }
+
   function initAudio() {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -280,7 +303,7 @@
     osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.1);
     
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
     
     osc.connect(gain);
@@ -292,7 +315,7 @@
 
   function playExplosionSound() {
     if (!isAudioInit) return;
-    const bufferSize = audioCtx.sampleRate * 0.25;
+    const bufferSize = audioCtx.sampleRate * 0.2;
     const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
@@ -304,12 +327,12 @@
 
     const filter = audioCtx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(900, audioCtx.currentTime);
-    filter.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.25);
+    filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.2);
 
     const gain = audioCtx.createGain();
-    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+    gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
 
     noise.connect(filter);
     filter.connect(gain);
@@ -318,16 +341,15 @@
     noise.start();
   }
 
-  // One Octave Higher Staccato Arcade Loop
+  // +1 Octave Staccato Arcade Loop
   let musicStep = 0;
-  // Doubled frequencies for +1 Octave
   const cMajorHighScale = [523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77, 1046.50];
   const melodyPattern = [0, 2, 4, 7, 4, 2, 0, 4, 1, 3, 5, 7, 5, 3, 1, 5];
 
   function tickArcadeMusic() {
     if (!isAudioInit || !isRunning) return;
     
-    if (frameCount % 4 === 0) {
+    if (frameCount % 5 === 0) {
       const freq = cMajorHighScale[melodyPattern[musicStep % melodyPattern.length]];
       
       const osc = audioCtx.createOscillator();
@@ -336,21 +358,20 @@
       osc.type = 'square';
       osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
       
-      // Extremely short staccato envelope
-      gain.gain.setValueAtTime(0.015, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.025);
+      gain.gain.setValueAtTime(0.012, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.02);
       
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       
       osc.start();
-      osc.stop(audioCtx.currentTime + 0.025);
+      osc.stop(audioCtx.currentTime + 0.02);
       
       musicStep++;
     }
   }
 
-  let player = { x: 0, y: 0, width: 36, height: 42, speed: 6, invulnerable: 0 };
+  let player = { x: 0, y: 0, width: 32, height: 38, speed: 6, invulnerable: 0 };
   let bullets = [];
   let enemyBullets = [];
   let enemies = [];
@@ -359,9 +380,9 @@
   let particles = [];
 
   const STAGE_RULES = {
-    1: { notes: ["C", "G"], speed: 2.2, spawnInterval: 45, powerups: false },
-    2: { notes: ["C", "C#", "G", "D"], speed: 2.8, spawnInterval: 35, powerups: true, chords: ["C Major", "F Major", "G Major"] },
-    3: { notes: ["C", "C#", "D", "D#", "F#", "G", "A#"], speed: 3.4, spawnInterval: 25, powerups: true, chords: ["C Major", "F Major", "G Major", "A Minor", "D Minor", "E Minor"] }
+    1: { notes: ["C", "G"], speed: 0.008, spawnInterval: 40, powerups: false },
+    2: { notes: ["C", "C#", "G", "D"], speed: 0.011, spawnInterval: 30, powerups: true, chords: ["C Major", "F Major", "G Major"] },
+    3: { notes: ["C", "C#", "D", "D#", "F#", "G", "A#"], speed: 0.014, spawnInterval: 22, powerups: true, chords: ["C Major", "F Major", "G Major", "A Minor", "D Minor", "E Minor"] }
   };
 
   function resizeCanvas() {
@@ -369,17 +390,18 @@
     canvas.width = container.clientWidth;
     canvas.height = container.clientHeight;
     player.x = canvas.width / 2 - player.width / 2;
-    player.y = canvas.height - 55;
+    player.y = canvas.height - 50;
+    initArmadaSlots();
   }
 
   function initStars() {
     stars = [];
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0; i < 60; i++) {
       stars.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
         size: Math.random() * 2 + 0.5,
-        speed: Math.random() * 3 + 1
+        speed: Math.random() * 2.5 + 0.5
       });
     }
   }
@@ -474,8 +496,8 @@
     if (calibrationStep === 0) {
       highestBNote = midiNote;
       calibrationStep = 1;
-      instructions.innerText = "Press the HIGHEST C on your MIDI keyboard.";
-      progress.innerText = "Step 2 / 2";
+      instructions.innerText = "Press High C.";
+      progress.innerText = "2 / 2";
     } else if (calibrationStep === 1) {
       highestCNote = midiNote;
       calibrationStep = 2;
@@ -568,15 +590,15 @@
   }
 
   function createExplosion(x, y, color) {
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 12; i++) {
       particles.push({
         x: x,
         y: y,
-        vx: (Math.random() - 0.5) * 8,
-        vy: (Math.random() - 0.5) * 8,
+        vx: (Math.random() - 0.5) * 7,
+        vy: (Math.random() - 0.5) * 7,
         size: Math.random() * 3 + 1,
         color: color,
-        life: 20
+        life: 18
       });
     }
     playExplosionSound();
@@ -591,60 +613,44 @@
     if (lives <= 0) {
       gameOver();
     } else {
-      player.invulnerable = 90; // Invincibility frames (~1.5s)
+      player.invulnerable = 90;
       player.x = canvas.width / 2 - player.width / 2;
     }
   }
 
   let frameCount = 0;
 
-  // Spawning Mechanics with Formations & Fast Descenders
+  // Galaga Formation Entry & Armada Slot Management
   function spawnEnemyGroup() {
+    const openSlots = armadaSlots.filter(s => !s.occupied);
+    if (openSlots.length === 0) return;
+
+    const targetSlot = openSlots[Math.floor(Math.random() * openSlots.length)];
+    targetSlot.occupied = true;
+
     const rules = STAGE_RULES[Math.min(stage, 3)];
     const assignedNote = rules.notes[Math.floor(Math.random() * rules.notes.length)];
     
-    // Randomize Type: 0 = Left Clockwise Loop, 1 = Right Counter-Clockwise Loop, 2 = Fast Straight Diver
-    const formationType = Math.floor(Math.random() * 3);
+    // Side: 0 = Left (Clockwise loop), 1 = Right (Counter-clockwise loop)
+    const side = Math.random() < 0.5 ? 'left' : 'right';
 
-    if (formationType === 0) {
-      // Left Side Spawn -> Clockwise Loop
-      enemies.push({
-        type: 'loop',
-        side: 'left',
-        progress: 0,
-        width: 32,
-        height: 32,
-        note: assignedNote,
-        speed: rules.speed * 0.015,
-        x: 0,
-        y: 0
-      });
-    } else if (formationType === 1) {
-      // Right Side Spawn -> Counter-Clockwise Loop
-      enemies.push({
-        type: 'loop',
-        side: 'right',
-        progress: 0,
-        width: 32,
-        height: 32,
-        note: assignedNote,
-        speed: rules.speed * 0.015,
-        x: 0,
-        y: 0
-      });
-    } else {
-      // Fast Descending Attacker
-      enemies.push({
-        type: 'diver',
-        x: Math.random() * (canvas.width - 40) + 10,
-        y: -40,
-        width: 32,
-        height: 32,
-        note: assignedNote,
-        speed: rules.speed * 2.5,
-        hasShot: false
-      });
-    }
+    const enemyObj = {
+      state: 'entering', // 'entering' -> 'armada' -> 'diving'
+      side: side,
+      progress: 0,
+      width: 28,
+      height: 28,
+      note: assignedNote,
+      speed: rules.speed,
+      targetSlot: targetSlot,
+      x: 0,
+      y: -40,
+      diveTimer: Math.random() * 600 + 300,
+      hasShot: false
+    };
+
+    targetSlot.shipRef = enemyObj;
+    enemies.push(enemyObj);
   }
 
   function spawnPowerupItem() {
@@ -705,17 +711,14 @@
       if (p.life <= 0) particles.splice(i, 1);
     });
 
-    // Player Bullets
     bullets.forEach((b, i) => {
       b.y -= b.speed;
       if (b.y < -15) bullets.splice(i, 1);
     });
 
-    // Enemy Red Lasers
     enemyBullets.forEach((eb, i) => {
       eb.y += eb.speed;
 
-      // Collision with player
       if (
         eb.x < player.x + player.width &&
         eb.x + eb.width > player.x &&
@@ -734,32 +737,52 @@
       if (p.y > canvas.height) powerupItems.splice(i, 1);
     });
 
-    // Galaga Loop Trajectories & Diver Updates
+    // Update Ships Motion & Loop-to-Line Entry
     enemies.forEach((e, ei) => {
-      if (e.type === 'loop') {
+      if (e.state === 'entering') {
         e.progress += e.speed;
         const t = e.progress;
 
-        if (e.side === 'left') {
-          // Clockwise Loop Math Curve
-          e.x = (canvas.width * 0.3) + Math.sin(t * Math.PI * 2) * 120 - Math.cos(t * Math.PI) * 40;
-          e.y = -30 + (t * canvas.height * 1.2) - Math.sin(t * Math.PI * 2) * 80;
+        // Curve Down, Loop in Circle, and Merge into Armada Line
+        if (t < 0.75) {
+          const loopT = t / 0.75;
+          if (e.side === 'left') {
+            e.x = (canvas.width * 0.3) + Math.sin(loopT * Math.PI * 2) * 90 - Math.cos(loopT * Math.PI) * 30;
+            e.y = -20 + (loopT * canvas.height * 0.5) - Math.sin(loopT * Math.PI * 2) * 60;
+          } else {
+            e.x = (canvas.width * 0.7) - Math.sin(loopT * Math.PI * 2) * 90 + Math.cos(loopT * Math.PI) * 30;
+            e.y = -20 + (loopT * canvas.height * 0.5) - Math.sin(loopT * Math.PI * 2) * 60;
+          }
         } else {
-          // Counter-Clockwise Loop Math Curve
-          e.x = (canvas.width * 0.7) - Math.sin(t * Math.PI * 2) * 120 + Math.cos(t * Math.PI) * 40;
-          e.y = -30 + (t * canvas.height * 1.2) - Math.sin(t * Math.PI * 2) * 80;
-        }
+          // Transition into Armada Line Slot
+          const mergeT = (t - 0.75) / 0.25;
+          const endX = e.side === 'left' ? e.x : e.x;
+          e.x = e.x + (e.targetSlot.homeX - e.x) * mergeT;
+          e.y = e.y + (e.targetSlot.homeY - e.y) * mergeT;
 
-        // Clean up when loop exits screen
-        if (t >= 1.2) {
-          enemies.splice(ei, 1);
-          return;
+          if (mergeT >= 1.0) {
+            e.state = 'armada';
+            e.x = e.targetSlot.homeX;
+            e.y = e.targetSlot.homeY;
+          }
         }
-      } else if (e.type === 'diver') {
-        e.y += e.speed;
+      } else if (e.state === 'armada') {
+        // Subtle Armada Swaying
+        e.x = e.targetSlot.homeX + Math.sin(frameCount * 0.03) * 12;
+        e.y = e.targetSlot.homeY;
 
-        // Shoot at player halfway down canvas
-        if (!e.hasShot && e.y > canvas.height * 0.3) {
+        // Randomly trigger Dive Attack
+        e.diveTimer--;
+        if (e.diveTimer <= 0) {
+          e.state = 'diving';
+          e.hasShot = false;
+        }
+      } else if (e.state === 'diving') {
+        // Fast Swoop Dive Attack
+        e.y += 4.5;
+        e.x += Math.sin(e.y * 0.02) * 3;
+
+        if (!e.hasShot && e.y > canvas.height * 0.4) {
           e.hasShot = true;
           enemyBullets.push({
             x: e.x + e.width / 2 - 2,
@@ -770,19 +793,22 @@
           });
         }
 
-        if (e.y > canvas.height + 40) {
-          enemies.splice(ei, 1);
-          return;
+        // Loop back up if missed player
+        if (e.y > canvas.height + 20) {
+          e.y = -30;
+          e.state = 'entering';
+          e.progress = 0.7;
         }
       }
 
-      // Enemy Collision with Player Ship
+      // Collision with Player
       if (
         e.x < player.x + player.width &&
         e.x + e.width > player.x &&
         e.y < player.y + player.height &&
         e.y + e.height > player.y
       ) {
+        if (e.targetSlot) e.targetSlot.occupied = false;
         enemies.splice(ei, 1);
         loseLife();
         return;
@@ -798,6 +824,7 @@
         ) {
           if (b.note === e.note || activePowerup) {
             createExplosion(e.x + e.width / 2, e.y + e.height / 2, e.note.includes('#') ? '#ff0055' : '#00ffcc');
+            if (e.targetSlot) e.targetSlot.occupied = false;
             enemies.splice(ei, 1);
             bullets.splice(bi, 1);
             score += 10;
@@ -811,7 +838,7 @@
   }
 
   function drawPlayerShip(x, y, w, h) {
-    if (player.invulnerable % 10 > 5) return; // Blink effect during invulnerability
+    if (player.invulnerable % 10 > 5) return;
 
     ctx.save();
     ctx.translate(x + w / 2, y + h / 2);
@@ -819,9 +846,9 @@
     const thrustHeight = Math.random() * 8 + 6;
     ctx.fillStyle = "#ffaa00";
     ctx.beginPath();
-    ctx.moveTo(-6, h / 2);
+    ctx.moveTo(-5, h / 2);
     ctx.lineTo(0, h / 2 + thrustHeight);
-    ctx.lineTo(6, h / 2);
+    ctx.lineTo(5, h / 2);
     ctx.closePath();
     ctx.fill();
 
@@ -843,7 +870,7 @@
 
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.arc(0, -4, 4, 0, Math.PI * 2);
+    ctx.arc(0, -4, 3, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
@@ -864,7 +891,6 @@
       ctx.fillRect(p.x, p.y, p.size, p.size);
     });
 
-    // Player Bullets
     bullets.forEach(b => {
       ctx.fillStyle = "#ffcc00";
       ctx.fillRect(b.x, b.y, b.width, b.height);
@@ -873,13 +899,11 @@
       ctx.fillText(b.note, b.x - 2, b.y - 3);
     });
 
-    // Enemy Red Lasers
     enemyBullets.forEach(eb => {
       ctx.fillStyle = "#ff0044";
       ctx.fillRect(eb.x, eb.y, eb.width, eb.height);
     });
 
-    // Enemy Ships
     enemies.forEach(e => {
       const isSharp = e.note.includes('#');
       ctx.fillStyle = isSharp ? '#ff0055' : '#bd00ff';
@@ -894,7 +918,7 @@
       ctx.fill();
 
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 13px Courier New";
+      ctx.font = "bold 12px Courier New";
       ctx.textAlign = "center";
       ctx.fillText(e.note, e.x + e.width / 2, e.y + e.height / 2 + 3);
     });
@@ -933,6 +957,7 @@
     powerupItems = [];
     particles = [];
     activePowerup = null;
+    initArmadaSlots();
     document.getElementById('score').innerText = score;
     document.getElementById('stage').innerText = stage;
     document.getElementById('lives').innerText = lives;
