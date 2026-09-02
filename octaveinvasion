@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Octave Invasion</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body {
+      background-color: #050508;
+      color: #fff;
+      font-family: 'Courier New', Courier, monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    #game-container {
+      position: relative;
+      width: 480px;
+      height: 800px;
+      background-color: #000;
+      border: 4px solid #333;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #ui-bar {
+      height: 40px;
+      background: #111;
+      border-bottom: 2px solid #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 15px;
+      font-weight: bold;
+      font-size: 14px;
+      z-index: 10;
+    }
+    .ui-element {
+      color: #00ffcc;
+    }
+    #canvas-container {
+      position: relative;
+      flex-grow: 1;
+      width: 100%;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    /* Keyboard UI */
+    #keyboard-container {
+      height: 120px;
+      background: #111;
+      border-top: 2px solid #333;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      padding: 5px 0 0 0;
+      z-index: 10;
+    }
+    .keyboard {
+      display: flex;
+      position: relative;
+      height: 100px;
+    }
+    .key {
+      border: 1px solid #000;
+      border-radius: 0 0 4px 4px;
+      cursor: pointer;
+      box-sizing: border-box;
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 5px;
+      font-size: 10px;
+      font-weight: bold;
+    }
+    .key.white {
+      width: 30px;
+      height: 100px;
+      background: #fff;
+      color: #333;
+      z-index: 1;
+    }
+    .key.black {
+      width: 20px;
+      height: 60px;
+      background: #000;
+      color: #fff;
+      margin-left: -10px;
+      margin-right: -10px;
+      z-index: 2;
+      border: 1px solid #444;
+    }
+    .key.active {
+      background: #00ffcc !important;
+      color: #000 !important;
+      box-shadow: 0 0 10px #00ffcc;
+    }
+    /* Overlay / Popups */
+    .popup-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      flex-direction: column;
+    }
+    .popup-card {
+      background: #151520;
+      border: 2px solid #00ffcc;
+      border-radius: 8px;
+      padding: 20px;
+      width: 80%;
+      text-align: center;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+    }
+    .popup-card h2 {
+      color: #ff0055;
+      margin-bottom: 10px;
+      font-size: 18px;
+      text-transform: uppercase;
+    }
+    .popup-card p {
+      color: #ccc;
+      font-size: 13px;
+      line-height: 1.4;
+      margin-bottom: 15px;
+    }
+    .popup-card button {
+      background: #00ffcc;
+      color: #000;
+      border: none;
+      padding: 8px 16px;
+      font-weight: bold;
+      font-family: inherit;
+      cursor: pointer;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .popup-card button:hover {
+      background: #fff;
+    }
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+<div id="game-container">
+  <div id="ui-bar">
+    <div class="ui-element">SCORE: <span id="score">0</span></div>
+    <div class="ui-element">STAGE: <span id="stage">1</span></div>
+    <div class="ui-element">PWR: <span id="powerup-status">NONE</span></div>
+  </div>
+
+  <div id="canvas-container">
+    <canvas id="gameCanvas"></canvas>
+  </div>
+
+  <div id="keyboard-container">
+    <div class="keyboard" id="visual-keyboard"></div>
+  </div>
+
+  <div id="calibration-modal" class="popup-overlay">
+    <div class="popup-card">
+      <h2 style="color: #00ffcc;">MIDI Calibration</h2>
+      <p id="calib-instructions">Press the LOWEST key on your MIDI keyboard.</p>
+      <div id="calib-progress" style="color: #ffaa00; font-weight: bold; margin-bottom: 15px;">Step 1 / 2</div>
+      <button id="skip-calib-btn">Use On-Screen / Default</button>
+    </div>
+  </div>
+
+  <div id="malfunction-modal" class="popup-overlay hidden">
+    <div class="popup-card">
+      <h2>Engine Malfunction!</h2>
+      <p>Too many Keys hit! System overheating, weapons disabled temporarily.</p>
+    </div>
+  </div>
+
+  <div id="gameover-modal" class="popup-overlay hidden">
+    <div class="popup-card">
+      <h2>Game Over</h2>
+      <p>The invaders reached base!</p>
+      <p>Final Score: <span id="final-score">0</span></p>
+      <button id="restart-btn">Try Again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Global Game Settings & State
+  const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  
+  const CHORDS = {
+    "C Major": ["C", "E", "G"],
+    "F Major": ["F", "A", "C"],
+    "G Major": ["G", "B", "D"],
+    "A Minor": ["A", "C", "E"],
+    "D Minor": ["D", "F", "A"],
+    "E Minor": ["E", "G", "B"]
+  };
+
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  
+  let score = 0;
+  let stage = 1;
+  let activePowerup = null; // e.g., "C Major"
+  let powerupTimer = 0;
+  let engineDisabled = false;
+  let activeNotes = new Set();
+  let lowestMidiNote = 36; // Default C2
+  let highestMidiNote = 84; // Default C6
+  let calibrationStep = 0; // 0: low, 1: high, 2: done
+
+  // Entities
+  let player = { x: 0, y: 0, width: 30, height: 30 };
+  let bullets = [];
+  let enemies = [];
+  let powerupItems = [];
+  let stars = [];
+
+  // Stage Configs
+  const STAGE_RULES = {
+    1: { notes: ["C", "G"], speed: 1.2, spawnInterval: 120, powerups: false },
+    2: { notes: ["C", "C#", "G", "D"], speed: 1.6, spawnInterval: 90, powerups: true, chords: ["C Major", "F Major", "G Major"] },
+    3: { notes: ["C", "C#", "D", "D#", "F#", "G", "A#"], speed: 2.0, spawnInterval: 75, powerups: true, chords: ["C Major", "F Major", "G Major", "A Minor", "D Minor", "E Minor"] }
+  };
+
+  // Canvas Sizing
+  function resizeCanvas() {
+    const container = document.getElementById('canvas-container');
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    player.x = canvas.width / 2 - player.width / 2;
+    player.y = canvas.height - 40;
+  }
+
+  // Starfield Setup
+  function initStars() {
+    stars = [];
+    for (let i = 0; i < 60; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 2 + 1,
+        speed: Math.random() * 2 + 0.5
+      });
+    }
+  }
+
+  // Visual Keyboard Generation
+  function initVisualKeyboard() {
+    const keyboardContainer = document.getElementById('visual-keyboard');
+    keyboardContainer.innerHTML = '';
+    
+    // Render 2 full octaves (C3 to B4) visually
+    const octaves = [3, 4];
+    octaves.forEach(octave => {
+      NOTE_NAMES.forEach((note, index) => {
+        const isBlack = note.includes('#');
+        const keyEl = document.createElement('div');
+        keyEl.className = `key ${isBlack ? 'black' : 'white'}`;
+        keyEl.dataset.note = note;
+        keyEl.innerText = isBlack ? '' : note;
+
+        // On-screen click support
+        keyEl.addEventListener('mousedown', () => handleNoteOn(note));
+        keyEl.addEventListener('mouseup', () => handleNoteOff(note));
+        
+        keyboardContainer.appendChild(keyEl);
+      });
+    });
+  }
+
+  function highlightKey(noteName, isActive) {
+    const keys = document.querySelectorAll(`.key[data-note="${noteName}"]`);
+    keys.forEach(key => {
+      if (isActive) key.classList.add('active');
+      else key.classList.remove('active');
+    });
+  }
+
+  // MIDI Setup
+  function initMIDI() {
+    if (navigator.requestMIDIAccess) {
+      navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
+    } else {
+      console.warn("WebMIDI not supported in this browser.");
+    }
+  }
+
+  function onMIDISuccess(midiAccess) {
+    const inputs = midiAccess.inputs.values();
+    for (let input of inputs) {
+      input.onmidimessage = handleMIDIMessage;
+    }
+  }
+
+  function onMIDIFailure() {
+    console.warn("Could not access MIDI devices.");
+  }
+
+  function handleMIDIMessage(event) {
+    const [command, noteNumber, velocity] = event.data;
+    const noteOn = command >= 144 && command <= 159 && velocity > 0;
+    const noteOff = (command >= 128 && command <= 143) || (command >= 144 && command <= 159 && velocity === 0);
+
+    if (calibrationStep < 2) {
+      if (noteOn) processCalibration(noteNumber);
+      return;
+    }
+
+    const noteName = NOTE_NAMES[noteNumber % 12];
+
+    if (noteOn) {
+      activeNotes.add(noteName);
+      highlightKey(noteName, true);
+      processInput();
+    } else if (noteOff) {
+      activeNotes.delete(noteName);
+      highlightKey(noteName, false);
+    }
+  }
+
+  // Calibration Logic
+  function processCalibration(midiNote) {
+    const instructions = document.getElementById('calib-instructions');
+    const progress = document.getElementById('calib-progress');
+
+    if (calibrationStep === 0) {
+      lowestMidiNote = midiNote;
+      calibrationStep = 1;
+      instructions.innerText = "Press the HIGHEST key on your MIDI keyboard.";
+      progress.innerText = "Step 2 / 2";
+    } else if (calibrationStep === 1) {
+      highestMidiNote = midiNote;
+      calibrationStep = 2;
+      document.getElementById('calibration-modal').classList.add('hidden');
+      startGame();
+    }
+  }
+
+  document.getElementById('skip-calib-btn').addEventListener('click', () => {
+    calibrationStep = 2;
+    document.getElementById('calibration-modal').classList.add('hidden');
+    startGame();
+  });
+
+  // Gameplay Input Processing
+  function handleNoteOn(noteName) {
+    if (calibrationStep < 2) return;
+    activeNotes.add(noteName);
+    highlightKey(noteName, true);
+    processInput();
+  }
+
+  function handleNoteOff(noteName) {
+    activeNotes.delete(noteName);
+    highlightKey(noteName, false);
+  }
+
+  function processInput() {
+    if (engineDisabled) return;
+
+    const maxAllowedKeys = activePowerup ? 3 : 2;
+
+    if (activeNotes.size > maxAllowedKeys) {
+      triggerEngineMalfunction();
+      return;
+    }
+
+    // Check for power-up collection via chords
+    if (checkChordTrigger()) return;
+
+    // Fire bullets for active notes
+    activeNotes.forEach(note => {
+      shootBullet(note);
+    });
+  }
+
+  function triggerEngineMalfunction() {
+    engineDisabled = true;
+    const modal = document.getElementById('malfunction-modal');
+    modal.classList.remove('hidden');
+
+    setTimeout(() => {
+      modal.classList.add('hidden');
+      engineDisabled = false;
+      activeNotes.clear();
+      document.querySelectorAll('.key').forEach(k => k.classList.remove('active'));
+    }, 2000);
+  }
+
+  function checkChordTrigger() {
+    const rules = STAGE_RULES[Math.min(stage, 3)];
+    if (!rules.powerups) return false;
+
+    for (let chordName of rules.chords) {
+      const requiredNotes = CHORDS[chordName];
+      const match = requiredNotes.every(n => activeNotes.has(n));
+
+      if (match) {
+        // Activate Power-Up
+        activePowerup = chordName;
+        powerupTimer = 300; // ~5 seconds
+        document.getElementById('powerup-status').innerText = chordName;
+        
+        // Clear matching powerup item if present
+        powerupItems = powerupItems.filter(item => item.name !== chordName);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function shootBullet(noteName) {
+    bullets.push({
+      x: player.x + player.width / 2 - 3,
+      y: player.y,
+      width: 6,
+      height: 12,
+      note: noteName,
+      speed: 8
+    });
+  }
+
+  // Spawning Mechanisms
+  let frameCount = 0;
+
+  function spawnEnemy() {
+    const rules = STAGE_RULES[Math.min(stage, 3)];
+    const assignedNote = rules.notes[Math.floor(Math.random() * rules.notes.length)];
+    
+    enemies.push({
+      x: Math.random() * (canvas.width - 30),
+      y: -30,
+      width: 30,
+      height: 30,
+      note: assignedNote,
+      speed: rules.speed + (Math.random() * 0.5)
+    });
+  }
+
+  function spawnPowerupItem() {
+    const rules = STAGE_RULES[Math.min(stage, 3)];
+    if (!rules.powerups || powerupItems.length > 0) return;
+
+    const chordName = rules.chords[Math.floor(Math.random() * rules.chords.length)];
+    powerupItems.push({
+      x: Math.random() * (canvas.width - 80),
+      y: -40,
+      width: 80,
+      height: 25,
+      name: chordName,
+      speed: 0.8
+    });
+  }
+
+  // Game Loop Functions
+  function update() {
+    frameCount++;
+    const rules = STAGE_RULES[Math.min(stage, 3)];
+
+    // Spawning
+    if (frameCount % rules.spawnInterval === 0) spawnEnemy();
+    if (rules.powerups && frameCount % 400 === 0) spawnPowerupItem();
+
+    // Stage Progression
+    if (score > stage * 150) {
+      stage++;
+      document.getElementById('stage').innerText = stage;
+    }
+
+    // Powerup Timer
+    if (powerupTimer > 0) {
+      powerupTimer--;
+      if (powerupTimer === 0) {
+        activePowerup = null;
+        document.getElementById('powerup-status').innerText = "NONE";
+      }
+    }
+
+    // Stars
+    stars.forEach(s => {
+      s.y += s.speed;
+      if (s.y > canvas.height) s.y = 0;
+    });
+
+    // Bullets
+    bullets.forEach((b, i) => {
+      b.y -= b.speed;
+      if (b.y < -10) bullets.splice(i, 1);
+    });
+
+    // Powerup Floating Banner
+    powerupItems.forEach((p, i) => {
+      p.y += p.speed;
+      if (p.y > canvas.height) powerupItems.splice(i, 1);
+    });
+
+    // Enemies
+    enemies.forEach((e, ei) => {
+      e.y += e.speed;
+
+      // Enemy reaching bottom (Game Over)
+      if (e.y + e.height >= canvas.height) {
+        gameOver();
+      }
+
+      // Bullet Hit Collision
+      bullets.forEach((b, bi) => {
+        if (
+          b.x < e.x + e.width &&
+          b.x + b.width > e.x &&
+          b.y < e.y + e.height &&
+          b.y + b.height > e.y
+        ) {
+          // Check note match
+          if (b.note === e.note || activePowerup) {
+            enemies.splice(ei, 1);
+            bullets.splice(bi, 1);
+            score += 10;
+            document.getElementById('score').innerText = score;
+          } else {
+            // Deflect bullet on wrong note match
+            bullets.splice(bi, 1);
+          }
+        }
+      });
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Stars
+    ctx.fillStyle = "#fff";
+    stars.forEach(s => {
+      ctx.fillRect(s.x, s.y, s.size, s.size);
+    });
+
+    // Player (Galaga Style Ship Concept)
+    ctx.fillStyle = "#00ffcc";
+    ctx.beginPath();
+    ctx.moveTo(player.x + player.width / 2, player.y);
+    ctx.lineTo(player.x + player.width, player.y + player.height);
+    ctx.lineTo(player.x, player.y + player.height);
+    ctx.closePath();
+    ctx.fill();
+
+    // Bullets
+    bullets.forEach(b => {
+      ctx.fillStyle = "#ffaa00";
+      ctx.fillRect(b.x, b.y, b.width, b.height);
+      ctx.fillStyle = "#fff";
+      ctx.font = "9px Courier New";
+      ctx.fillText(b.note, b.x - 2, b.y - 2);
+    });
+
+    // Enemies
+    enemies.forEach(e => {
+      ctx.fillStyle = e.note.includes('#') ? '#ff0055' : '#e600ff';
+      ctx.fillRect(e.x, e.y, e.width, e.height);
+
+      // Alien Details
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 14px Courier New";
+      ctx.textAlign = "center";
+      ctx.fillText(e.note, e.x + e.width / 2, e.y + e.height / 2 + 5);
+    });
+
+    // Powerup Banners
+    powerupItems.forEach(p => {
+      ctx.strokeStyle = "#00ffcc";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(p.x, p.y, p.width, p.height);
+      ctx.fillStyle = "rgba(0,255,204,0.2)";
+      ctx.fillRect(p.x, p.y, p.width, p.height);
+
+      ctx.fillStyle = "#fff";
+      ctx.font = "10px Courier New";
+      ctx.textAlign = "center";
+      ctx.fillText(`PLAY: ${p.name}`, p.x + p.width / 2, p.y + 16);
+    });
+  }
+
+  let animationFrameId;
+  let isRunning = false;
+
+  function gameLoop() {
+    if (!isRunning) return;
+    update();
+    draw();
+    animationFrameId = requestAnimationFrame(gameLoop);
+  }
+
+  function startGame() {
+    score = 0;
+    stage = 1;
+    enemies = [];
+    bullets = [];
+    powerupItems = [];
+    activePowerup = null;
+    document.getElementById('score').innerText = score;
+    document.getElementById('stage').innerText = stage;
+    document.getElementById('powerup-status').innerText = "NONE";
+    document.getElementById('gameover-modal').classList.add('hidden');
+    isRunning = true;
+    gameLoop();
+  }
+
+  function gameOver() {
+    isRunning = false;
+    cancelAnimationFrame(animationFrameId);
+    document.getElementById('final-score').innerText = score;
+    document.getElementById('gameover-modal').classList.remove('hidden');
+  }
+
+  document.getElementById('restart-btn').addEventListener('click', startGame);
+
+  // Initialize Application
+  window.addEventListener('load', () => {
+    resizeCanvas();
+    initStars();
+    initVisualKeyboard();
+    initMIDI();
+  });
+
+  window.addEventListener('resize', resizeCanvas);
+</script>
+</body>
+</html>
