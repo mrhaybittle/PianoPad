@@ -137,6 +137,17 @@
       color: #000 !important;
       box-shadow: 0 0 10px #00ffcc;
     }
+    .key.calib-highlight {
+      background: #ffcc00 !important;
+      color: #000 !important;
+      animation: pulse-key 0.8s infinite alternate;
+    }
+
+    @keyframes pulse-key {
+      0% { box-shadow: 0 0 5px #ffcc00; }
+      100% { box-shadow: 0 0 18px #ff0055; background: #ff0055 !important; color: #fff !important; }
+    }
+
     .popup-overlay {
       position: absolute;
       top: 0;
@@ -234,7 +245,7 @@
     <div class="keyboard" id="visual-keyboard"></div>
   </div>
 
-  <!-- Aesthetically Pleasing Start Menu -->
+  <!-- Opening Menu -->
   <div id="instructions-modal" class="popup-overlay">
     <div class="popup-card">
       <div class="logo-text" style="font-size: 32px; margin-bottom: 15px;">GalagaBittle</div>
@@ -245,17 +256,18 @@
         <div class="control-item"><b>CHORDS</b> Power-Up & Heals</div>
       </div>
       <p style="color: #00ffcc; font-size: 11px; margin-bottom: 18px; font-weight: bold;">
-        ⚡ SUPER MODE UNLOCKS AT 50 KILLS ⚡
+        ⚡ SUPER MODE: 50, 100, 500 & 1000 KILLS ⚡
       </p>
       <button id="instructions-ok-btn">START GAME</button>
     </div>
   </div>
 
-  <!-- Calibration Modal -->
+  <!-- Calibration Modal with Visual Cue Indicator -->
   <div id="calibration-modal" class="popup-overlay hidden">
     <div class="popup-card">
-      <h2 style="color: #00ffcc;">Calibrate</h2>
-      <p id="calib-instructions" style="color: #fff; font-size: 13px; margin-bottom: 10px;">Press High B.</p>
+      <h2 style="color: #00ffcc;">Calibration</h2>
+      <p id="calib-instructions" style="color: #fff; font-size: 14px; margin-bottom: 8px; font-weight: bold;">Press High B.</p>
+      <div id="calib-cue" style="color: #ffcc00; font-size: 11px; margin-bottom: 15px; text-transform: uppercase;">👇 Follow flashing key on keyboard below 👇</div>
       <div id="calib-progress" style="color: #ffaa00; font-weight: bold; margin-bottom: 15px;">1 / 2</div>
       <button id="skip-calib-btn">Skip Calibration</button>
     </div>
@@ -331,6 +343,7 @@
 
   let audioCtx = null;
   let isAudioInit = false;
+  let menuMusicInterval = null;
 
   let fanfareTimer = 0;
   let fanfareText = "";
@@ -368,6 +381,39 @@
       audioCtx.resume();
     }
     isAudioInit = true;
+  }
+
+  // Opening Menu Music
+  let menuStep = 0;
+  function startMenuMusic() {
+    if (menuMusicInterval) return;
+    const menuNotes = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63];
+    menuMusicInterval = setInterval(() => {
+      if (!isAudioInit || isRunning) return;
+      const freq = menuNotes[menuStep % menuNotes.length];
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+      gain.gain.setValueAtTime(0.025, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.15);
+      menuStep++;
+    }, 180);
+  }
+
+  function stopMenuMusic() {
+    if (menuMusicInterval) {
+      clearInterval(menuMusicInterval);
+      menuMusicInterval = null;
+    }
   }
 
   function playLaserSound(isSuper = false) {
@@ -438,16 +484,14 @@
     });
   }
 
-  // Dual Scale Arcade Chiptune System (C Major vs C Minor)
   let musicStep = 0;
   const cMajorHighScale = [523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77, 1046.50];
-  const cMinorHighScale = [523.25, 587.33, 622.25, 698.46, 783.99, 830.61, 987.77, 1046.50]; // C, D, Eb, F, G, Ab, B
+  const cMinorHighScale = [523.25, 587.33, 622.25, 698.46, 783.99, 830.61, 987.77, 1046.50];
   const melodyPattern = [0, 2, 4, 7, 4, 2, 0, 4, 1, 3, 5, 7, 5, 3, 1, 5];
 
   function tickArcadeMusic() {
     if (!isAudioInit || !isRunning) return;
     
-    // 2x Faster tempo during Super Mode (every 2 frames instead of 5)
     const tempoInterval = superModeTimer > 0 ? 2 : 5;
 
     if (frameCount % tempoInterval === 0) {
@@ -518,6 +562,7 @@
         const keyEl = document.createElement('div');
         keyEl.className = `key ${isBlack ? 'black' : 'white'}`;
         keyEl.dataset.note = note;
+        keyEl.dataset.octave = octave;
         keyEl.innerText = isBlack ? '' : note;
 
         keyEl.addEventListener('mousedown', () => handleNoteOn(note));
@@ -526,6 +571,15 @@
         keyboardContainer.appendChild(keyEl);
       });
     });
+  }
+
+  function updateCalibrationVisualCue(targetNote) {
+    document.querySelectorAll('.key').forEach(k => k.classList.remove('calib-highlight'));
+    if (!targetNote) return;
+    const targetKeys = document.querySelectorAll(`.key[data-note="${targetNote}"]`);
+    if (targetKeys.length > 0) {
+      targetKeys[targetKeys.length - 1].classList.add('calib-highlight');
+    }
   }
 
   function highlightKey(noteName, isActive) {
@@ -587,8 +641,11 @@
   }
 
   document.getElementById('instructions-ok-btn').addEventListener('click', () => {
+    initAudio();
+    stopMenuMusic();
     document.getElementById('instructions-modal').classList.add('hidden');
     document.getElementById('calibration-modal').classList.remove('hidden');
+    updateCalibrationVisualCue('B');
   });
 
   function processCalibration(midiNote) {
@@ -600,9 +657,11 @@
       calibrationStep = 1;
       instructions.innerText = "Press High C.";
       progress.innerText = "2 / 2";
+      updateCalibrationVisualCue('C');
     } else if (calibrationStep === 1) {
       highestCNote = midiNote;
       calibrationStep = 2;
+      updateCalibrationVisualCue(null);
       document.getElementById('calibration-modal').classList.add('hidden');
       startGame();
     }
@@ -610,7 +669,9 @@
 
   document.getElementById('skip-calib-btn').addEventListener('click', () => {
     initAudio();
+    stopMenuMusic();
     calibrationStep = 2;
+    updateCalibrationVisualCue(null);
     document.getElementById('calibration-modal').classList.add('hidden');
     startGame();
   });
@@ -973,9 +1034,15 @@
             score += 10;
             totalKills++;
 
-            if (totalKills % 50 === 0) {
+            // Milestone Progression Logic: 50, 100, 500, 1000, 2000, etc.
+            if (
+              totalKills === 50 ||
+              totalKills === 100 ||
+              totalKills === 500 ||
+              (totalKills >= 1000 && totalKills % 1000 === 0)
+            ) {
               superModeTimer = 900;
-              triggerFanfare("SUPER C-MINOR MODE ACTIVATED!");
+              triggerFanfare(`SUPER MODE (${totalKills} KILLS)!`);
             }
 
             document.getElementById('score').innerText = score;
@@ -1170,6 +1237,7 @@
   }
 
   function startGame() {
+    stopMenuMusic();
     score = 0;
     stage = 1;
     lives = 5;
@@ -1203,6 +1271,12 @@
     initAudio();
     startGame();
   });
+
+  // User Interaction Triggers Intro Music
+  window.addEventListener('click', () => {
+    initAudio();
+    if (!isRunning) startMenuMusic();
+  }, { once: true });
 
   window.addEventListener('load', () => {
     resizeCanvas();
