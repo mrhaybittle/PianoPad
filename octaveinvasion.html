@@ -109,18 +109,14 @@
       color: #000 !important;
       box-shadow: 0 0 10px #00ffcc;
     }
-    .key.nav-key {
-      background: #ffcc00 !important;
-      color: #000 !important;
-    }
-    /* Overlay / Popups */
+    /* Overlays & Modals */
     .popup-overlay {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.88);
+      background: rgba(0, 0, 0, 0.9);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -132,13 +128,13 @@
       border: 2px solid #00ffcc;
       border-radius: 8px;
       padding: 20px;
-      width: 82%;
+      width: 85%;
       text-align: center;
       box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
     }
     .popup-card h2 {
       color: #ff0055;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
       font-size: 18px;
       text-transform: uppercase;
       text-shadow: 0 0 8px rgba(255, 0, 85, 0.6);
@@ -148,6 +144,7 @@
       font-size: 12px;
       line-height: 1.5;
       margin-bottom: 15px;
+      text-align: left;
     }
     .popup-card button {
       background: #00ffcc;
@@ -186,34 +183,50 @@
     <div class="keyboard" id="visual-keyboard"></div>
   </div>
 
-  <div id="calibration-modal" class="popup-overlay">
+  <!-- Instructions Modal -->
+  <div id="instructions-modal" class="popup-overlay">
+    <div class="popup-card">
+      <h2 style="color: #00ffcc;">Mission Briefing</h2>
+      <p>• <b>MOVE LEFT:</b> Press the <b>HIGHEST B</b> on your keyboard.<br>
+         • <b>MOVE RIGHT:</b> Press the <b>HIGHEST C</b> on your keyboard.<br>
+         • <b>SHOOT:</b> Play any other key corresponding to the attacking alien note.<br>
+         • <b>CHORD POWER-UPS:</b> Trigger 3-note chords (e.g. C Major) when requested to gain auto-fire.<br>
+         • <b>MALFUNCTION:</b> Hitting >2 keys at once (or >3 during power-up window) will lock your weapons!
+      </p>
+      <button id="instructions-ok-btn">Understood / Calibrate</button>
+    </div>
+  </div>
+
+  <!-- Calibration Modal -->
+  <div id="calibration-modal" class="popup-overlay hidden">
     <div class="popup-card">
       <h2 style="color: #00ffcc;">MIDI Calibration</h2>
-      <p id="calib-instructions">Press the LOWEST key on your MIDI keyboard.</p>
+      <p id="calib-instructions" style="text-align: center;">Press the HIGHEST B on your MIDI keyboard.</p>
       <div id="calib-progress" style="color: #ffaa00; font-weight: bold; margin-bottom: 15px;">Step 1 / 2</div>
       <button id="skip-calib-btn">Use Default Calibration</button>
     </div>
   </div>
 
+  <!-- Malfunction Modal -->
   <div id="malfunction-modal" class="popup-overlay hidden">
     <div class="popup-card">
-      <h2>Engine Malfunction!</h2>
-      <p>Too many Keys hit! System overheating, weapons disabled temporarily.</p>
+      <h2 style="text-align: center;">Engine Malfunction!</h2>
+      <p style="text-align: center;">Too many Keys hit! System overheating, weapons disabled temporarily.</p>
     </div>
   </div>
 
+  <!-- Game Over Modal -->
   <div id="gameover-modal" class="popup-overlay hidden">
     <div class="popup-card">
-      <h2>Game Over</h2>
-      <p>The invaders breached system defenses!</p>
-      <p>Final Score: <span id="final-score">0</span></p>
+      <h2 style="text-align: center;">Game Over</h2>
+      <p style="text-align: center;">The invaders breached system defenses!</p>
+      <p style="text-align: center;">Final Score: <span id="final-score">0</span></p>
       <button id="restart-btn">Try Again</button>
     </div>
   </div>
 </div>
 
 <script>
-  // Game Setup & Constants
   const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
   
   const CHORDS = {
@@ -234,17 +247,14 @@
   let powerupTimer = 0;
   let engineDisabled = false;
   let activeNotes = new Set();
-  let activeMidiNumbers = new Set();
   
-  let lowestMidiNote = 36;  // C2 Default
-  let highestMidiNote = 84; // C6 Default
+  let highestBNote = 83; // Default B5
+  let highestCNote = 84; // Default C6
   let calibrationStep = 0;
 
-  // Steering Controls
   let moveLeft = false;
   let moveRight = false;
 
-  // Audio Context (Web Audio API)
   let audioCtx = null;
   let isAudioInit = false;
 
@@ -258,7 +268,6 @@
     isAudioInit = true;
   }
 
-  // Synthesizer Audio Effects
   function playLaserSound() {
     if (!isAudioInit) return;
     const osc = audioCtx.createOscillator();
@@ -268,7 +277,7 @@
     osc.frequency.setValueAtTime(880, audioCtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.12);
     
-    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
     
     osc.connect(gain);
@@ -296,7 +305,7 @@
     filter.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.25);
 
     const gain = audioCtx.createGain();
-    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
 
     noise.connect(filter);
@@ -306,7 +315,7 @@
     noise.start();
   }
 
-  // C Major Arcade Melody Loop
+  // Fast-paced C Major Music Loop (3x Tempo)
   let musicStep = 0;
   const cMajorScale = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
   const melodyPattern = [0, 2, 4, 7, 4, 2, 0, 4, 1, 3, 5, 7, 5, 3, 1, 5];
@@ -314,7 +323,7 @@
   function tickArcadeMusic() {
     if (!isAudioInit || !isRunning) return;
     
-    if (frameCount % 12 === 0) {
+    if (frameCount % 4 === 0) {
       const freq = cMajorScale[melodyPattern[musicStep % melodyPattern.length]];
       
       const osc = audioCtx.createOscillator();
@@ -323,21 +332,20 @@
       osc.type = 'square';
       osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
       
-      gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
       
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       
       osc.start();
-      osc.stop(audioCtx.currentTime + 0.1);
+      osc.stop(audioCtx.currentTime + 0.06);
       
       musicStep++;
     }
   }
 
-  // Entities & Gameplay Setup
-  let player = { x: 0, y: 0, width: 36, height: 42, speed: 5 };
+  let player = { x: 0, y: 0, width: 36, height: 42, speed: 6 };
   let bullets = [];
   let enemies = [];
   let powerupItems = [];
@@ -345,9 +353,9 @@
   let particles = [];
 
   const STAGE_RULES = {
-    1: { notes: ["C", "G"], speed: 1.3, spawnInterval: 110, powerups: false },
-    2: { notes: ["C", "C#", "G", "D"], speed: 1.7, spawnInterval: 85, powerups: true, chords: ["C Major", "F Major", "G Major"] },
-    3: { notes: ["C", "C#", "D", "D#", "F#", "G", "A#"], speed: 2.1, spawnInterval: 70, powerups: true, chords: ["C Major", "F Major", "G Major", "A Minor", "D Minor", "E Minor"] }
+    1: { notes: ["C", "G"], speed: 1.5, spawnInterval: 90, powerups: false },
+    2: { notes: ["C", "C#", "G", "D"], speed: 2.0, spawnInterval: 70, powerups: true, chords: ["C Major", "F Major", "G Major"] },
+    3: { notes: ["C", "C#", "D", "D#", "F#", "G", "A#"], speed: 2.5, spawnInterval: 50, powerups: true, chords: ["C Major", "F Major", "G Major", "A Minor", "D Minor", "E Minor"] }
   };
 
   function resizeCanvas() {
@@ -365,7 +373,7 @@
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
         size: Math.random() * 2 + 0.5,
-        speed: Math.random() * 2 + 0.5
+        speed: Math.random() * 3 + 1
       });
     }
   }
@@ -398,7 +406,6 @@
     });
   }
 
-  // MIDI Initialization
   function initMIDI() {
     if (navigator.requestMIDIAccess) {
       navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
@@ -430,43 +437,41 @@
     const noteName = NOTE_NAMES[noteNumber % 12];
 
     if (noteOn) {
-      activeMidiNumbers.add(noteNumber);
-      
-      // Left/Right Movement via Highest/Lowest C
-      if (noteNumber === lowestMidiNote) moveLeft = true;
-      if (noteNumber === highestMidiNote) moveRight = true;
+      if (noteNumber === highestBNote) moveLeft = true;
+      if (noteNumber === highestCNote) moveRight = true;
 
-      // Shooting Notes (Exclude Nav Keys)
-      if (noteNumber !== lowestMidiNote && noteNumber !== highestMidiNote) {
+      if (noteNumber !== highestBNote && noteNumber !== highestCNote) {
         activeNotes.add(noteName);
         highlightKey(noteName, true);
         processInput();
       }
     } else if (noteOff) {
-      activeMidiNumbers.delete(noteNumber);
-      
-      if (noteNumber === lowestMidiNote) moveLeft = false;
-      if (noteNumber === highestMidiNote) moveRight = false;
+      if (noteNumber === highestBNote) moveLeft = false;
+      if (noteNumber === highestCNote) moveRight = false;
 
-      if (noteNumber !== lowestMidiNote && noteNumber !== highestMidiNote) {
+      if (noteNumber !== highestBNote && noteNumber !== highestCNote) {
         activeNotes.delete(noteName);
         highlightKey(noteName, false);
       }
     }
   }
 
-  // Calibration System
+  document.getElementById('instructions-ok-btn').addEventListener('click', () => {
+    document.getElementById('instructions-modal').classList.add('hidden');
+    document.getElementById('calibration-modal').classList.remove('hidden');
+  });
+
   function processCalibration(midiNote) {
     const instructions = document.getElementById('calib-instructions');
     const progress = document.getElementById('calib-progress');
 
     if (calibrationStep === 0) {
-      lowestMidiNote = midiNote;
+      highestBNote = midiNote;
       calibrationStep = 1;
       instructions.innerText = "Press the HIGHEST C on your MIDI keyboard.";
       progress.innerText = "Step 2 / 2";
     } else if (calibrationStep === 1) {
-      highestMidiNote = midiNote;
+      highestCNote = midiNote;
       calibrationStep = 2;
       document.getElementById('calibration-modal').classList.add('hidden');
       startGame();
@@ -480,7 +485,6 @@
     startGame();
   });
 
-  // Game Input Logic
   function handleNoteOn(noteName) {
     initAudio();
     if (calibrationStep < 2) return;
@@ -497,7 +501,9 @@
   function processInput() {
     if (engineDisabled) return;
 
-    const maxAllowedKeys = activePowerup ? 3 : 2;
+    const currentRules = STAGE_RULES[Math.min(stage, 3)];
+    const powerupAvailable = currentRules.powerups && powerupItems.length > 0;
+    const maxAllowedKeys = (powerupAvailable || activePowerup) ? 3 : 2;
 
     if (activeNotes.size > maxAllowedKeys) {
       triggerEngineMalfunction();
@@ -550,7 +556,7 @@
       width: 6,
       height: 14,
       note: noteName,
-      speed: 9
+      speed: 10
     });
     playLaserSound();
   }
@@ -560,8 +566,8 @@
       particles.push({
         x: x,
         y: y,
-        vx: (Math.random() - 0.5) * 6,
-        vy: (Math.random() - 0.5) * 6,
+        vx: (Math.random() - 0.5) * 8,
+        vy: (Math.random() - 0.5) * 8,
         size: Math.random() * 3 + 1,
         color: color,
         life: 20
@@ -570,7 +576,6 @@
     playExplosionSound();
   }
 
-  // Spawning Enemies & Items
   let frameCount = 0;
 
   function spawnEnemy() {
@@ -578,12 +583,15 @@
     const assignedNote = rules.notes[Math.floor(Math.random() * rules.notes.length)];
     
     enemies.push({
-      x: Math.random() * (canvas.width - 32),
-      y: -35,
+      startX: Math.random() * (canvas.width - 60) + 30,
+      y: -40,
       width: 32,
       height: 32,
       note: assignedNote,
-      speed: rules.speed + (Math.random() * 0.4)
+      angle: 0,
+      radius: Math.random() * 80 + 40,
+      speed: (rules.speed + Math.random() * 0.5) * 3, // ~3x faster movement
+      x: 0
     });
   }
 
@@ -598,18 +606,16 @@
       width: 80,
       height: 24,
       name: chordName,
-      speed: 0.9
+      speed: 1.2
     });
   }
 
-  // Game Loop Update
   function update() {
     frameCount++;
     const rules = STAGE_RULES[Math.min(stage, 3)];
 
     tickArcadeMusic();
 
-    // Player Steer Movement
     if (moveLeft && player.x > 0) {
       player.x -= player.speed;
     }
@@ -618,7 +624,7 @@
     }
 
     if (frameCount % rules.spawnInterval === 0) spawnEnemy();
-    if (rules.powerups && frameCount % 380 === 0) spawnPowerupItem();
+    if (rules.powerups && frameCount % 350 === 0) spawnPowerupItem();
 
     if (score > stage * 150) {
       stage++;
@@ -633,13 +639,11 @@
       }
     }
 
-    // Update Stars
     stars.forEach(s => {
       s.y += s.speed;
       if (s.y > canvas.height) s.y = 0;
     });
 
-    // Update Particles
     particles.forEach((p, i) => {
       p.x += p.vx;
       p.y += p.vy;
@@ -647,23 +651,27 @@
       if (p.life <= 0) particles.splice(i, 1);
     });
 
-    // Update Bullets
     bullets.forEach((b, i) => {
       b.y -= b.speed;
       if (b.y < -15) bullets.splice(i, 1);
     });
 
-    // Powerup Item Movement
     powerupItems.forEach((p, i) => {
       p.y += p.speed;
       if (p.y > canvas.height) powerupItems.splice(i, 1);
     });
 
-    // Update Enemies & Collisions
+    // Galaga Circular Flight Trajectory
     enemies.forEach((e, ei) => {
+      e.angle += 0.05;
       e.y += e.speed;
+      e.x = e.startX + Math.sin(e.angle) * e.radius;
 
-      if (e.y + e.height >= canvas.height - 20) {
+      // Loop over canvas boundaries (off-screen flight)
+      if (e.x < -40) e.x = canvas.width + 10;
+      if (e.x > canvas.width + 40) e.x = -10;
+
+      if (e.y >= canvas.height - 20) {
         gameOver();
       }
 
@@ -688,12 +696,10 @@
     });
   }
 
-  // Visual Renderer
   function drawPlayerShip(x, y, w, h) {
     ctx.save();
     ctx.translate(x + w / 2, y + h / 2);
 
-    // Engine Thrust Animation
     const thrustHeight = Math.random() * 8 + 6;
     ctx.fillStyle = "#ffaa00";
     ctx.beginPath();
@@ -703,7 +709,6 @@
     ctx.closePath();
     ctx.fill();
 
-    // Outer Hull Wings
     ctx.fillStyle = "#1e3d59";
     ctx.beginPath();
     ctx.moveTo(0, -h / 2);
@@ -712,7 +717,6 @@
     ctx.closePath();
     ctx.fill();
 
-    // Inner Armor Metallic Overlay
     ctx.fillStyle = "#00ffcc";
     ctx.beginPath();
     ctx.moveTo(0, -h / 2 + 4);
@@ -721,7 +725,6 @@
     ctx.closePath();
     ctx.fill();
 
-    // Cockpit
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
     ctx.arc(0, -4, 4, 0, Math.PI * 2);
@@ -733,22 +736,18 @@
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Stars
     ctx.fillStyle = "#ffffff";
     stars.forEach(s => {
       ctx.fillRect(s.x, s.y, s.size, s.size);
     });
 
-    // Player Ship
     drawPlayerShip(player.x, player.y, player.width, player.height);
 
-    // Particles
     particles.forEach(p => {
       ctx.fillStyle = p.color;
       ctx.fillRect(p.x, p.y, p.size, p.size);
     });
 
-    // Bullets
     bullets.forEach(b => {
       ctx.fillStyle = "#ffcc00";
       ctx.fillRect(b.x, b.y, b.width, b.height);
@@ -757,12 +756,10 @@
       ctx.fillText(b.note, b.x - 2, b.y - 3);
     });
 
-    // Alien Ships
     enemies.forEach(e => {
       const isSharp = e.note.includes('#');
       ctx.fillStyle = isSharp ? '#ff0055' : '#bd00ff';
       
-      // Galaga Alien Shape
       ctx.beginPath();
       ctx.moveTo(e.x + e.width / 2, e.y + e.height);
       ctx.lineTo(e.x + e.width, e.y);
@@ -772,14 +769,12 @@
       ctx.closePath();
       ctx.fill();
 
-      // Enemy Note Label
       ctx.fillStyle = "#ffffff";
       ctx.font = "bold 13px Courier New";
       ctx.textAlign = "center";
       ctx.fillText(e.note, e.x + e.width / 2, e.y + e.height / 2 + 3);
     });
 
-    // Power-up Banners
     powerupItems.forEach(p => {
       ctx.strokeStyle = "#00ffcc";
       ctx.lineWidth = 2;
