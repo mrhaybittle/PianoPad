@@ -143,7 +143,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.92);
+      background: rgba(5, 5, 12, 0.95);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -151,42 +151,59 @@
       flex-direction: column;
     }
     .popup-card {
-      background: #12121c;
+      background: radial-gradient(circle, #1a1a2e 0%, #0d0d15 100%);
       border: 2px solid #00ffcc;
-      border-radius: 8px;
-      padding: 20px;
-      width: 80%;
+      border-radius: 12px;
+      padding: 24px;
+      width: 85%;
       text-align: center;
-      box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
+      box-shadow: 0 0 30px rgba(0, 255, 204, 0.3), inset 0 0 15px rgba(0, 255, 204, 0.1);
     }
     .popup-card h2 {
       color: #ff0055;
-      margin-bottom: 12px;
-      font-size: 18px;
-      text-transform: uppercase;
-      text-shadow: 0 0 8px rgba(255, 0, 85, 0.6);
-    }
-    .popup-card p {
-      color: #ccc;
-      font-size: 13px;
-      line-height: 1.6;
       margin-bottom: 15px;
-      text-align: center;
+      font-size: 20px;
+      text-transform: uppercase;
+      text-shadow: 0 0 10px rgba(255, 0, 85, 0.8);
+      letter-spacing: 1px;
+    }
+    .control-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .control-item {
+      background: rgba(0, 255, 204, 0.05);
+      border: 1px solid rgba(0, 255, 204, 0.2);
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 11px;
+    }
+    .control-item b {
+      color: #ffcc00;
+      display: block;
+      margin-bottom: 2px;
     }
     .popup-card button {
-      background: #00ffcc;
+      background: linear-gradient(180deg, #00ffcc 0%, #00b386 100%);
       color: #000;
       border: none;
-      padding: 8px 18px;
+      padding: 10px 24px;
       font-weight: bold;
       font-family: inherit;
+      font-size: 14px;
       cursor: pointer;
-      border-radius: 4px;
+      border-radius: 6px;
       text-transform: uppercase;
-      box-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+      box-shadow: 0 0 15px rgba(0, 255, 204, 0.6);
+      transition: all 0.2s ease;
     }
     .popup-card button:hover {
       background: #fff;
+      box-shadow: 0 0 20px #ffffff;
+      transform: scale(1.05);
     }
     .hidden {
       display: none !important;
@@ -196,7 +213,6 @@
 <body>
 
 <div id="game-container">
-  <!-- Dynamic Arcade Logo -->
   <div id="logo-banner">
     <div class="logo-text">GalagaBittle</div>
   </div>
@@ -218,18 +234,20 @@
     <div class="keyboard" id="visual-keyboard"></div>
   </div>
 
-  <!-- Concise Instructions Modal -->
+  <!-- Aesthetically Pleasing Start Menu -->
   <div id="instructions-modal" class="popup-overlay">
     <div class="popup-card">
-      <h2 style="color: #00ffcc;">Controls</h2>
-      <p>
-        <b>LEFT:</b> High B<br>
-        <b>RIGHT:</b> High C<br>
-        <b>SHOOT:</b> Play Note<br>
-        <b>CHORDS:</b> Power-Up (Restores Lives)<br>
-        <b>SUPER MODE:</b> Unlocks at 50 Kills!
+      <div class="logo-text" style="font-size: 32px; margin-bottom: 15px;">GalagaBittle</div>
+      <div class="control-grid">
+        <div class="control-item"><b>MOVE LEFT</b> High B Key</div>
+        <div class="control-item"><b>MOVE RIGHT</b> High C Key</div>
+        <div class="control-item"><b>SHOOT</b> Match Alien Note</div>
+        <div class="control-item"><b>CHORDS</b> Power-Up & Heals</div>
+      </div>
+      <p style="color: #00ffcc; font-size: 11px; margin-bottom: 18px; font-weight: bold;">
+        ⚡ SUPER MODE UNLOCKS AT 50 KILLS ⚡
       </p>
-      <button id="instructions-ok-btn">OK</button>
+      <button id="instructions-ok-btn">START GAME</button>
     </div>
   </div>
 
@@ -237,9 +255,9 @@
   <div id="calibration-modal" class="popup-overlay hidden">
     <div class="popup-card">
       <h2 style="color: #00ffcc;">Calibrate</h2>
-      <p id="calib-instructions">Press High B.</p>
+      <p id="calib-instructions" style="color: #fff; font-size: 13px; margin-bottom: 10px;">Press High B.</p>
       <div id="calib-progress" style="color: #ffaa00; font-weight: bold; margin-bottom: 15px;">1 / 2</div>
-      <button id="skip-calib-btn">Skip</button>
+      <button id="skip-calib-btn">Skip Calibration</button>
     </div>
   </div>
 
@@ -247,7 +265,7 @@
   <div id="malfunction-modal" class="popup-overlay hidden">
     <div class="popup-card">
       <h2>Engine Malfunction!</h2>
-      <p>Too Many Keys!</p>
+      <p style="color: #ccc; font-size: 12px;">Too Many Keys Pressed At Once!</p>
     </div>
   </div>
 
@@ -255,8 +273,8 @@
   <div id="gameover-modal" class="popup-overlay hidden">
     <div class="popup-card">
       <h2>Game Over</h2>
-      <p>Final Score: <span id="final-score">0</span></p>
-      <button id="restart-btn">Retry</button>
+      <p style="color: #fff; font-size: 14px; margin-bottom: 15px;">Final Score: <span id="final-score" style="color: #00ffcc;">0</span></p>
+      <button id="restart-btn">Play Again</button>
     </div>
   </div>
 </div>
@@ -301,9 +319,8 @@
   let engineDisabled = false;
   let activeNotes = new Set();
   
-  // Super Shooting Mode Variables
   let totalKills = 0;
-  let superModeTimer = 0; // ~900 frames = 15 seconds
+  let superModeTimer = 0;
 
   let highestBNote = 83;
   let highestCNote = 84;
@@ -421,23 +438,29 @@
     });
   }
 
+  // Dual Scale Arcade Chiptune System (C Major vs C Minor)
   let musicStep = 0;
   const cMajorHighScale = [523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77, 1046.50];
+  const cMinorHighScale = [523.25, 587.33, 622.25, 698.46, 783.99, 830.61, 987.77, 1046.50]; // C, D, Eb, F, G, Ab, B
   const melodyPattern = [0, 2, 4, 7, 4, 2, 0, 4, 1, 3, 5, 7, 5, 3, 1, 5];
 
   function tickArcadeMusic() {
     if (!isAudioInit || !isRunning) return;
     
-    if (frameCount % 5 === 0) {
-      const freq = cMajorHighScale[melodyPattern[musicStep % melodyPattern.length]];
+    // 2x Faster tempo during Super Mode (every 2 frames instead of 5)
+    const tempoInterval = superModeTimer > 0 ? 2 : 5;
+
+    if (frameCount % tempoInterval === 0) {
+      const activeScale = superModeTimer > 0 ? cMinorHighScale : cMajorHighScale;
+      const freq = activeScale[melodyPattern[musicStep % melodyPattern.length]];
       
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
-      osc.type = 'square';
+      osc.type = superModeTimer > 0 ? 'sawtooth' : 'square';
       osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
       
-      gain.gain.setValueAtTime(0.012, audioCtx.currentTime);
+      gain.gain.setValueAtTime(superModeTimer > 0 ? 0.02 : 0.012, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.02);
       
       osc.connect(gain);
@@ -679,7 +702,6 @@
     return false;
   }
 
-  // 5-Laser Spread Fire for Super Mode (30°, 60°, 90°, 120°, 150°)
   function shootBullet(noteName) {
     if (superModeTimer > 0) {
       const anglesDeg = [30, 60, 90, 120, 150];
@@ -801,7 +823,6 @@
     if (player.invulnerable > 0) player.invulnerable--;
     if (fanfareTimer > 0) fanfareTimer--;
 
-    // Handle Super Shooting Mode Timer
     if (superModeTimer > 0) {
       superModeTimer--;
     }
@@ -841,7 +862,6 @@
       if (p.life <= 0) particles.splice(i, 1);
     });
 
-    // Bullets with Angular Trajectories
     bullets.forEach((b, i) => {
       b.x += b.vx;
       b.y += b.vy;
@@ -953,10 +973,9 @@
             score += 10;
             totalKills++;
 
-            // Trigger Super Mode every 50 kills
             if (totalKills % 50 === 0) {
-              superModeTimer = 900; // 15 seconds @ 60fps
-              triggerFanfare("SUPER SPREAD MODE ACTIVATED!");
+              superModeTimer = 900;
+              triggerFanfare("SUPER C-MINOR MODE ACTIVATED!");
             }
 
             document.getElementById('score').innerText = score;
@@ -1111,7 +1130,6 @@
       ctx.fillText(`CHORD: ${p.name}`, p.x + p.width / 2, p.y + 16);
     });
 
-    // Active Super Mode Status Overlay
     if (superModeTimer > 0) {
       ctx.save();
       ctx.fillStyle = "#00ffcc";
@@ -1122,7 +1140,6 @@
       ctx.restore();
     }
 
-    // Fanfare Text Overlay Banner
     if (fanfareTimer > 0) {
       ctx.save();
       ctx.fillStyle = "rgba(0, 255, 204, 0.25)";
