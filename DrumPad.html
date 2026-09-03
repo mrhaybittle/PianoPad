@@ -98,7 +98,7 @@
         }
 
         .speed-control input[type="range"] {
-            width: 75px;
+            width: 85px;
             accent-color: #2563eb;
             cursor: pointer;
         }
@@ -120,7 +120,7 @@
             border: 2px solid #f59e0b !important;
             background-color: #fffbeb !important;
             font-weight: 700 !important;
-            max-width: 220px;
+            max-width: 250px;
         }
 
         button, .btn-file-label {
@@ -322,7 +322,6 @@
             stroke: #2563eb; fill: none; stroke-width: 2;
         }
 
-        /* --- STACKED BAR GRAPH SUMMARY --- */
         .bar-chart-wrapper {
             display: flex;
             align-items: flex-end;
@@ -368,12 +367,31 @@
         <header>
             <div class="controls">
                 <select id="song-select">
-                    <option value="">-- Choose a Drum Groove --</option>
+                    <optgroup label="--- BEGINNER SECTION ---">
+                        <option value="Beginner #1 - Individual Kit Parts">Beginner #1 - Individual Kit Parts</option>
+                        <option value="Beginner #2 - 2-Part Combinations">Beginner #2 - 2-Part Combinations</option>
+                        <option value="Beginner #3 - Very Basic Drum Beat">Beginner #3 - Very Basic Drum Beat</option>
+                    </optgroup>
+                    <optgroup label="--- DRUM GROOVES ---">
+                        <option value="1. Standard Money Rock Beat">1. Standard Money Rock Beat</option>
+                        <option value="2. Four-On-The-Floor Disco">2. Four-On-The-Floor Disco</option>
+                        <option value="3. Offbeat Kick Groove">3. Offbeat Kick Groove</option>
+                        <option value="4. Pop Backbeat Syncopation">4. Pop Backbeat Syncopation</option>
+                        <option value="5. Half-Time Heavy Rock Beat">5. Half-Time Heavy Rock Beat</option>
+                        <option value="6. 16th-Note Alternating Hi-Hat">6. 16th-Note Alternating Hi-Hat</option>
+                        <option value="7. Open Hi-Hat Groove">7. Open Hi-Hat Groove</option>
+                        <option value="8. Ride Cymbal Rock Fill">8. Ride Cymbal Rock Fill</option>
+                        <option value="9. Funk Ghost-Note Groove">9. Funk Ghost-Note Groove</option>
+                        <option value="10. Motown Soul Rhythm">10. Motown Soul Rhythm</option>
+                        <option value="11. Four-Bar Rock Drive">11. Four-Bar Rock Drive</option>
+                        <option value="12. Double-Kick Bounce Beat">12. Double-Kick Bounce Beat</option>
+                        <option value="13. Slow Blues Shuffle">13. Slow Blues Shuffle</option>
+                    </optgroup>
                 </select>
 
                 <div class="speed-control">
-                    <label for="speed-slider">Tempo: <span id="speed-label">100%</span></label>
-                    <input type="range" id="speed-slider" min="20" max="200" value="100" step="5">
+                    <label for="speed-slider">Tempo: <span id="speed-label">100 BPM</span></label>
+                    <input type="range" id="speed-slider" min="40" max="240" value="100" step="2">
                 </div>
 
                 <button id="btn-game" class="btn-secondary">Game Mode: OFF</button>
@@ -402,7 +420,7 @@
 
         <div class="drum-kit-display" id="drum-pads-container"></div>
 
-        <div class="status-bar" id="status">Welcome to DrumPad! Choose a groove or strike drums to play.</div>
+        <div class="status-bar" id="status">Welcome to DrumPad! Select a pattern or strike drums to play.</div>
     </div>
 
     <div class="modal-overlay" id="calib-modal">
@@ -461,7 +479,27 @@
             { id: 'hiHatPedal', name: 'Hi-Hat Pedal', color: '#db2777', lineIndex: -1, head: 'crossStem', midi: 44, svg: '<path d="M8 24l16-8v8H8z"/>' }
         ];
 
+        // --- ALL PATTERNS & BEGINNER PROGRESSIONS ---
         const ONE_BAR_PATTERNS = {
+            // --- BEGINNER SECTION ---
+            "Beginner #1 - Individual Kit Parts": [
+                [0, 'kick'], [500, 'snare'], [1000, 'closedHiHat'], [1500, 'openHiHat'],
+                [2000, 'tom1'], [2500, 'tom2'], [3000, 'floorTom'], [3500, 'ride']
+            ],
+            "Beginner #2 - 2-Part Combinations": [
+                [0, 'kick'], [0, 'closedHiHat'],
+                [500, 'closedHiHat'],
+                [1000, 'snare'], [1000, 'closedHiHat'],
+                [1500, 'closedHiHat']
+            ],
+            "Beginner #3 - Very Basic Drum Beat": [
+                [0, 'kick'], [0, 'closedHiHat'],
+                [500, 'closedHiHat'],
+                [1000, 'snare'], [1000, 'closedHiHat'],
+                [1500, 'closedHiHat']
+            ],
+
+            // --- DRUM GROOVES ---
             "1. Standard Money Rock Beat": [
                 [0, 'kick'], [0, 'closedHiHat'], [250, 'closedHiHat'], [500, 'snare'], [500, 'closedHiHat'],
                 [750, 'closedHiHat'], [1000, 'kick'], [1000, 'closedHiHat'], [1250, 'closedHiHat'],
@@ -481,20 +519,69 @@
                 [0, 'kick'], [0, 'closedHiHat'], [250, 'closedHiHat'], [500, 'snare'], [500, 'closedHiHat'],
                 [750, 'closedHiHat'], [1000, 'closedHiHat'], [1250, 'kick'], [1250, 'closedHiHat'],
                 [1500, 'snare'], [1500, 'closedHiHat'], [1750, 'closedHiHat']
+            ],
+            "5. Half-Time Heavy Rock Beat": [
+                [0, 'kick'], [0, 'closedHiHat'], [250, 'closedHiHat'], [500, 'closedHiHat'], [750, 'closedHiHat'],
+                [1000, 'snare'], [1000, 'closedHiHat'], [1250, 'closedHiHat'], [1500, 'kick'], [1500, 'closedHiHat'],
+                [1750, 'closedHiHat']
+            ],
+            "6. 16th-Note Alternating Hi-Hat": [
+                [0, 'kick'], [0, 'closedHiHat'], [125, 'closedHiHat'], [250, 'closedHiHat'], [375, 'closedHiHat'],
+                [500, 'snare'], [500, 'closedHiHat'], [625, 'closedHiHat'], [750, 'closedHiHat'], [875, 'closedHiHat'],
+                [1000, 'kick'], [1000, 'closedHiHat'], [1125, 'closedHiHat'], [1250, 'closedHiHat'], [1375, 'closedHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'], [1625, 'closedHiHat'], [1750, 'closedHiHat'], [1875, 'closedHiHat']
+            ],
+            "7. Open Hi-Hat Groove": [
+                [0, 'kick'], [0, 'closedHiHat'], [250, 'openHiHat'], [500, 'snare'], [500, 'closedHiHat'],
+                [750, 'openHiHat'], [1000, 'kick'], [1000, 'closedHiHat'], [1250, 'openHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'], [1750, 'openHiHat']
+            ],
+            "8. Ride Cymbal Rock Fill": [
+                [0, 'kick'], [0, 'ride'], [250, 'ride'], [500, 'snare'], [500, 'ride'], [750, 'ride'],
+                [1000, 'tom1'], [1250, 'tom2'], [1500, 'floorTom'], [1750, 'kick'], [1750, 'snare']
+            ],
+            "9. Funk Ghost-Note Groove": [
+                [0, 'kick'], [0, 'closedHiHat'], [250, 'closedHiHat'], [375, 'snare'], [500, 'snare'], [500, 'closedHiHat'],
+                [750, 'kick'], [750, 'closedHiHat'], [1000, 'closedHiHat'], [1125, 'kick'], [1250, 'closedHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'], [1750, 'closedHiHat']
+            ],
+            "10. Motown Soul Rhythm": [
+                [0, 'kick'], [0, 'closedHiHat'], [250, 'closedHiHat'], [500, 'snare'], [500, 'closedHiHat'],
+                [750, 'snare'], [750, 'closedHiHat'], [1000, 'kick'], [1000, 'closedHiHat'], [1250, 'closedHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'], [1750, 'snare'], [1750, 'closedHiHat']
+            ],
+            "11. Four-Bar Rock Drive": [
+                [0, 'kick'], [0, 'closedHiHat'], [250, 'kick'], [250, 'closedHiHat'], [500, 'snare'], [500, 'closedHiHat'],
+                [750, 'closedHiHat'], [1000, 'kick'], [1000, 'closedHiHat'], [1250, 'closedHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'], [1750, 'kick'], [1750, 'closedHiHat']
+            ],
+            "12. Double-Kick Bounce Beat": [
+                [0, 'kick'], [0, 'closedHiHat'], [125, 'kick'], [250, 'closedHiHat'], [500, 'snare'], [500, 'closedHiHat'],
+                [750, 'closedHiHat'], [1000, 'kick'], [1000, 'closedHiHat'], [1125, 'kick'], [1250, 'closedHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'], [1750, 'closedHiHat']
+            ],
+            "13. Slow Blues Shuffle": [
+                [0, 'kick'], [0, 'ride'], [166, 'ride'], [333, 'ride'], [500, 'snare'], [500, 'ride'],
+                [666, 'ride'], [833, 'ride'], [1000, 'kick'], [1000, 'ride'], [1166, 'ride'],
+                [1333, 'ride'], [1500, 'snare'], [1500, 'ride'], [1666, 'ride'], [1833, 'ride']
             ]
         };
 
-        function generate16BarPattern(baseOneBar) {
-            const barDuration = 2000;
+        function generate16BarPattern(basePattern) {
             let fullSequence = [];
-            for (let bar = 0; bar < 16; bar++) {
-                const barOffset = bar * barDuration;
-                baseOneBar.forEach(hit => {
+            let patternLengthMs = 2000;
+            if (basePattern === ONE_BAR_PATTERNS["Beginner #1 - Individual Kit Parts"]) patternLengthMs = 4000;
+
+            const repeatCount = Math.ceil(32000 / patternLengthMs);
+
+            for (let rep = 0; rep < repeatCount; rep++) {
+                const repOffset = rep * patternLengthMs;
+                basePattern.forEach(hit => {
                     fullSequence.push({
-                        timeMs: hit[0] + barOffset,
+                        timeMs: hit[0] + repOffset,
                         drumId: hit[1],
                         played: false,
-                        gameStatus: 'pending' // pending, perfect, earlyLate, miss
+                        gameStatus: 'pending'
                     });
                 });
             }
@@ -505,10 +592,12 @@
         let midiMapping = {};
         let activeSongTimeline = [];
         let isPlaying = false, isPaused = false, isStepMode = false, isGameMode = false;
-        let speedFactor = 1.0;
+        let currentBPM = 100;
+        let speedFactor = 1.0; // 100 BPM = 1.0 base speed
         let playbackStartTime = 0, pauseStartTime = 0, accumulatedPauseMs = 0;
         let animationFrameId = null;
         let currentStepIndex = 0;
+        let countInTimer = null;
         
         let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
         let isCalibrating = false;
@@ -517,12 +606,31 @@
         const canvas = document.getElementById('sheet-canvas');
         const ctx = canvas.getContext('2d');
         const speedSlider = document.getElementById('speed-slider');
+        const speedLabel = document.getElementById('speed-label');
         const songSelect = document.getElementById('song-select');
         const statusEl = document.getElementById('status');
 
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        // --- METRONOME COUNT-IN SOUND (WOODBLOCK SYNTHESIS) ---
+        function triggerMetronomeClick(isAccent = false) {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(isAccent ? 1200 : 800, now);
+            osc.frequency.exponentialRampToValueAtTime(100, now + 0.03);
+
+            gain.gain.setValueAtTime(0.6, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(now); osc.stop(now + 0.03);
         }
 
         function playErrorClackSound() {
@@ -642,7 +750,6 @@
             } else if (isGameMode && isPlaying && !isPaused) {
                 const effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
                 
-                // Match note hit within tolerance window
                 const target = activeSongTimeline.find(n => 
                     n.drumId === drumId &&
                     n.gameStatus === 'pending' &&
@@ -652,10 +759,10 @@
                 if (target) {
                     const diff = Math.abs((target.timeMs / speedFactor) - effectiveElapsed);
                     if (diff <= 120) {
-                        target.gameStatus = 'perfect'; // Turns Green on sheet instantly!
+                        target.gameStatus = 'perfect';
                         gameStats.perfect++;
                     } else {
-                        target.gameStatus = 'earlyLate'; // Turns Orange on sheet instantly!
+                        target.gameStatus = 'earlyLate';
                         gameStats.earlyLate++;
                     }
                     updateGameStatus();
@@ -795,7 +902,7 @@
             ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3;
             ctx.beginPath(); ctx.moveTo(hitLineX, centerY - 3.5 * lineSpacing); ctx.lineTo(hitLineX, centerY + 3.5 * lineSpacing); ctx.stroke();
 
-            // 5. Render Notes with INSTANT Sheet Feedback Coloring
+            // 5. Render Notes with Instant Feedback
             activeSongTimeline.forEach(note => {
                 const drum = DRUM_KIT.find(d => d.id === note.drumId);
                 if (!drum) return;
@@ -807,12 +914,11 @@
                     let noteY = centerY - (drum.lineIndex - 2.5) * lineSpacing;
                     if (drum.lineIndex === -1) noteY = centerY + 3 * lineSpacing;
 
-                    // PianoPad Sheet Music Instant Feedback Colors
                     let noteColor = drum.color;
                     if (isGameMode) {
-                        if (note.gameStatus === 'perfect') noteColor = '#22c55e';    // Green
-                        else if (note.gameStatus === 'earlyLate') noteColor = '#f97316'; // Orange
-                        else if (note.gameStatus === 'miss') noteColor = '#ef4444';      // Red
+                        if (note.gameStatus === 'perfect') noteColor = '#22c55e';
+                        else if (note.gameStatus === 'earlyLate') noteColor = '#f97316';
+                        else if (note.gameStatus === 'miss') noteColor = '#ef4444';
                     }
 
                     ctx.strokeStyle = noteColor; ctx.lineWidth = 2;
@@ -833,15 +939,13 @@
                 effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
             }
 
-            // Check Missed Notes (Notes that passed hitline without being struck)
             if (isGameMode) {
                 activeSongTimeline.forEach(n => {
                     if (n.gameStatus === 'pending' && effectiveElapsed > (n.timeMs / speedFactor) + 250) {
-                        n.gameStatus = 'miss'; // Instantly turns RED on the sheet music!
+                        n.gameStatus = 'miss';
                         gameStats.miss++;
                         updateGameStatus();
 
-                        // Flash pad red at bottom when missed
                         const pad = document.getElementById(`pad-${n.drumId}`);
                         if (pad) {
                             pad.classList.add('pad-missed');
@@ -870,10 +974,31 @@
             animationFrameId = requestAnimationFrame(renderLoop);
         }
 
-        function playBeat() {
+        // --- 4-BEAT METRONOME COUNT-IN LOGIC ---
+        function startCountInThenPlay() {
             initAudio();
-            if (activeSongTimeline.length === 0) return;
+            stopBeat();
 
+            const beatIntervalMs = (60 / currentBPM) * 1000;
+            let beatCount = 1;
+
+            statusEl.textContent = `Get Ready! Count-In: ${beatCount}`;
+            triggerMetronomeClick(true); // High accent for Beat 1
+
+            countInTimer = setInterval(() => {
+                beatCount++;
+                if (beatCount <= 4) {
+                    statusEl.textContent = `Get Ready! Count-In: ${beatCount}`;
+                    triggerMetronomeClick(false); // Low accent for Beats 2-4
+                } else {
+                    clearInterval(countInTimer);
+                    countInTimer = null;
+                    startActualPlayback();
+                }
+            }, beatIntervalMs);
+        }
+
+        function startActualPlayback() {
             isPlaying = true; isPaused = false;
             playbackStartTime = performance.now();
             accumulatedPauseMs = 0;
@@ -885,13 +1010,22 @@
             if (isGameMode) {
                 updateGameStatus();
             } else {
-                statusEl.textContent = "Playing 16-Bar Drum Groove...";
+                statusEl.textContent = `Playing Groove at ${currentBPM} BPM...`;
             }
 
             animationFrameId = requestAnimationFrame(renderLoop);
         }
 
+        function playBeat() {
+            if (activeSongTimeline.length === 0) return;
+            startCountInThenPlay();
+        }
+
         function stopBeat() {
+            if (countInTimer) {
+                clearInterval(countInTimer);
+                countInTimer = null;
+            }
             isPlaying = false; isPaused = false;
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
             drawSheetMusic(0);
@@ -904,7 +1038,6 @@
 
             document.getElementById('game-summary-text').innerHTML = `Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#64748b;">(${gameStats.perfect} Perfect, ${gameStats.earlyLate} Early/Late, ${gameStats.miss} Missed)</span>`;
 
-            // Proportional bar graph calculation (PianoPad style)
             const greenPct = totalHits > 0 ? (gameStats.perfect / totalHits) * 100 : 0;
             const orangePct = totalHits > 0 ? (gameStats.earlyLate / totalHits) * 100 : 0;
             const redPct = totalHits > 0 ? (gameStats.miss / totalHits) * 100 : 0;
@@ -927,7 +1060,7 @@
                     isStepMode = false;
                     document.getElementById('btn-step').classList.remove('btn-step-active');
                 }
-                statusEl.textContent = "GAME MODE ACTIVE! Hit falling notes in time.";
+                statusEl.textContent = "GAME MODE ACTIVE! Press Play for Count-In.";
             } else {
                 btn.textContent = 'Game Mode: OFF';
                 btn.classList.remove('btn-game-active');
@@ -963,20 +1096,15 @@
         });
 
         speedSlider.addEventListener('input', () => {
-            speedFactor = parseFloat(speedSlider.value) / 100;
-            document.getElementById('speed-label').textContent = `${speedSlider.value}%`;
-        });
-
-        Object.keys(ONE_BAR_PATTERNS).forEach(title => {
-            const opt = document.createElement('option');
-            opt.value = title; opt.textContent = title;
-            songSelect.appendChild(opt);
+            currentBPM = parseInt(speedSlider.value, 10);
+            speedFactor = currentBPM / 100;
+            speedLabel.textContent = `${currentBPM} BPM`;
         });
 
         songSelect.addEventListener('change', (e) => {
-            const baseOneBar = ONE_BAR_PATTERNS[e.target.value];
-            if (baseOneBar) {
-                activeSongTimeline = generate16BarPattern(baseOneBar);
+            const basePattern = ONE_BAR_PATTERNS[e.target.value];
+            if (basePattern) {
+                activeSongTimeline = generate16BarPattern(basePattern);
                 playBeat();
             }
         });
