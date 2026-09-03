@@ -189,7 +189,7 @@
             height: 100%;
         }
 
-        /* --- REALISTIC DRUM KIT LAYOUT --- */
+        /* --- STAGE LAYOUT --- */
         .drum-kit-layout-wrapper {
             display: flex;
             justify-content: center;
@@ -288,9 +288,9 @@
             color: #f1f5f9;
         }
 
-        /* Drum Layout Positions (Matching Image) */
+        /* Positions */
         #pad-openHiHat   { top: 52%; left: 10%; width: 88px; height: 88px; }
-        #pad-closedHiHat { top: 52%; left: 10%; width: 88px; height: 88px; display: none; } /* Shares position with Open Hi-Hat */
+        #pad-closedHiHat { top: 52%; left: 10%; width: 88px; height: 88px; display: none; }
         #pad-hiHatPedal  { top: 62%; left: 25%; width: 55px; height: 105px; transform: translate(-50%, -50%) rotate(-12deg); }
         #pad-snare        { top: 54%; left: 50%; width: 108px; height: 108px; }
         #pad-kick        { top: 62%; left: 68%; width: 55px; height: 105px; transform: translate(-50%, -50%) rotate(12deg); }
@@ -299,7 +299,6 @@
         #pad-tom2        { top: 28%; left: 62%; width: 82px; height: 82px; }
         #pad-ride        { top: 24%; left: 82%; width: 92px; height: 92px; }
 
-        /* Secondary Hi-Hat Overlay Toggle Box */
         .hihat-toggle-pill {
             position: absolute;
             top: 82%;
@@ -537,15 +536,28 @@
     </div>
 
     <script>
+        /*
+          NOTATION LINE MAPPING INDEXES (From Bottom Line 0 to Top Line 4):
+          - Line 0 (Bottom Line): Kick / Bass Drum
+          - Space 0.5 (Between Line 0 and 1): Floor Tom (Tom 3)
+          - Line 1: [Unused/Spare]
+          - Space 1.5 (Between Line 1 and 2): Snare Drum (3rd space from top / 2nd from bottom)
+          - Line 2: Tom 2
+          - Space 2.5 (Between Line 2 and 3): Tom 1
+          - Line 3: Ride Cymbal (Top Line - Diamond Head)
+          - Space 3.5 (Above Top Line): Hi-Hats
+          - Below Line 0 (-1): Hi-Hat Pedal
+        */
+
         const DRUM_KIT = [
             { id: 'kick', name: 'KICK', color: '#e11d48', lineIndex: 0, head: 'note', midi: 36, isPedal: true, svg: '<ellipse cx="12" cy="12" rx="8" ry="5" fill="none"/>' },
-            { id: 'floorTom', name: 'TOM 3', color: '#ea580c', lineIndex: 1, head: 'note', midi: 43, isPedal: false, svg: '<rect x="6" y="8" width="20" height="16" rx="2" fill="none"/>' },
+            { id: 'floorTom', name: 'TOM 3', color: '#ea580c', lineIndex: 0.5, head: 'note', midi: 43, isPedal: false, svg: '<rect x="6" y="8" width="20" height="16" rx="2" fill="none"/>' },
+            { id: 'snare', name: 'SNARE', color: '#16a34a', lineIndex: 1.5, head: 'note', midi: 38, isPedal: false, isSnare: true, svg: '<rect x="6" y="12" width="20" height="8" rx="1" fill="none"/><path d="M4 16h24"/>' },
             { id: 'tom2', name: 'TOM 2', color: '#d97706', lineIndex: 2, head: 'note', midi: 47, isPedal: false, svg: '<rect x="8" y="10" width="16" height="12" rx="2" fill="none"/>' },
-            { id: 'tom1', name: 'TOM 1', color: '#ca8a04', lineIndex: 3, head: 'note', midi: 48, isPedal: false, svg: '<rect x="10" y="12" width="12" height="10" rx="2" fill="none"/>' },
-            { id: 'snare', name: 'SNARE', color: '#16a34a', lineIndex: 3.5, head: 'note', midi: 38, isPedal: false, isSnare: true, svg: '<rect x="6" y="12" width="20" height="8" rx="1" fill="none"/><path d="M4 16h24"/>' },
-            { id: 'ride', name: 'RIDE', color: '#0284c7', lineIndex: 4, head: 'diamond', midi: 51, isPedal: false, svg: '<ellipse cx="16" cy="16" rx="14" ry="4" fill="none"/>' },
-            { id: 'closedHiHat', name: 'CLOSED HH', color: '#2563eb', lineIndex: 5, head: 'cross', midi: 42, isPedal: false, svg: '<ellipse cx="16" cy="12" rx="10" ry="3" fill="none"/><ellipse cx="16" cy="18" rx="10" ry="3" fill="none"/>' },
-            { id: 'openHiHat', name: 'OPEN HH', color: '#7c3aed', lineIndex: 5, head: 'circleCross', midi: 46, isPedal: false, svg: '<ellipse cx="16" cy="10" rx="10" ry="3" fill="none"/><ellipse cx="16" cy="20" rx="10" ry="3" fill="none"/>' },
+            { id: 'tom1', name: 'TOM 1', color: '#ca8a04', lineIndex: 2.5, head: 'note', midi: 48, isPedal: false, svg: '<rect x="10" y="12" width="12" height="10" rx="2" fill="none"/>' },
+            { id: 'ride', name: 'RIDE', color: '#0284c7', lineIndex: 3, head: 'diamond', midi: 51, isPedal: false, svg: '<ellipse cx="16" cy="16" rx="14" ry="4" fill="none"/>' },
+            { id: 'closedHiHat', name: 'CLOSED HH', color: '#2563eb', lineIndex: 3.5, head: 'cross', midi: 42, isPedal: false, svg: '<ellipse cx="16" cy="12" rx="10" ry="3" fill="none"/><ellipse cx="16" cy="18" rx="10" ry="3" fill="none"/>' },
+            { id: 'openHiHat', name: 'OPEN HH', color: '#7c3aed', lineIndex: 3.5, head: 'circleCross', midi: 46, isPedal: false, svg: '<ellipse cx="16" cy="10" rx="10" ry="3" fill="none"/><ellipse cx="16" cy="20" rx="10" ry="3" fill="none"/>' },
             { id: 'hiHatPedal', name: 'OPEN/CLOSE', color: '#db2777', lineIndex: -1, head: 'crossStem', midi: 44, isPedal: true, svg: '<path d="M8 24l16-8v8H8z"/>' }
         ];
 
@@ -660,8 +672,8 @@
         let animationFrameId = null;
         let currentStepIndex = 0;
         let countInTimer = null;
-        let activeHiHatMode = 'open'; // 'open' or 'closed'
-        
+        let activeHiHatMode = 'open';
+
         let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
         let isCalibrating = false;
         let calibIndex = 0;
@@ -715,6 +727,11 @@
             noise.start(now); noise.stop(now + 0.04);
         }
 
+        /*
+          ENHANCED REALISTIC SYNTHESIS:
+          - Realistic Tom Acoustic Pitch/Decay Body
+          - Short Metallic Ride Cymbal Bell Strike
+        */
         function triggerDrumSound(drumId) {
             initAudio();
             const now = audioCtx.currentTime;
@@ -740,26 +757,68 @@
                 gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
                 noise.connect(gain); gain.connect(audioCtx.destination);
                 noise.start(now);
-            } else if (drumId.includes('Tom')) {
-                const pitchMap = { floorTom: 90, tom2: 120, tom1: 150 };
-                const osc = audioCtx.createOscillator();
+            } else if (drumId === 'tom1' || drumId === 'tom2' || drumId === 'floorTom') {
+                // Dual-Oscillator Acoustic Tom Synthesis with Pitch Drop and Resonant Shell
+                const pitchMap = { tom1: 175, tom2: 135, floorTom: 95 };
+                const baseFreq = pitchMap[drumId] || 120;
+
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                const freq = pitchMap[drumId] || 110;
-                osc.frequency.setValueAtTime(freq, now);
-                osc.frequency.exponentialRampToValueAtTime(freq * 0.5, now + 0.2);
-                gain.gain.setValueAtTime(0.8, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(now); osc.stop(now + 0.2);
+
+                osc1.type = 'sine';
+                osc2.type = 'triangle';
+
+                // Pitch envelope drop simulating head tension impact
+                osc1.frequency.setValueAtTime(baseFreq * 1.5, now);
+                osc1.frequency.exponentialRampToValueAtTime(baseFreq, now + 0.08);
+
+                osc2.frequency.setValueAtTime(baseFreq * 1.4, now);
+                osc2.frequency.exponentialRampToValueAtTime(baseFreq * 0.85, now + 0.18);
+
+                gain.gain.setValueAtTime(0.9, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc1.start(now); osc1.stop(now + 0.28);
+                osc2.start(now); osc2.stop(now + 0.28);
+            } else if (drumId === 'ride') {
+                // Short Metallic Cymbal Bell Strike Synthesis (Inharmonic metallic frequencies)
+                const bellFreqs = [587, 840, 1050, 1420, 2150];
+                const masterGain = audioCtx.createGain();
+                masterGain.gain.setValueAtTime(0.6, now);
+                masterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25); // Short bell sustain
+
+                bellFreqs.forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now);
+
+                    const vol = 0.3 / (idx + 1);
+                    gain.gain.setValueAtTime(vol, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + (0.15 + idx * 0.02));
+
+                    osc.connect(gain);
+                    gain.connect(masterGain);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                });
+
+                masterGain.connect(audioCtx.destination);
             } else {
-                const bufferSize = audioCtx.sampleRate * (drumId === 'openHiHat' || drumId === 'ride' ? 0.35 : 0.08);
+                // Hi-Hats
+                const bufferSize = audioCtx.sampleRate * (drumId === 'openHiHat' ? 0.35 : 0.08);
                 const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
                 const data = buffer.getChannelData(0);
                 for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
                 const noise = audioCtx.createBufferSource();
                 noise.buffer = buffer;
                 const filter = audioCtx.createBiquadFilter();
-                filter.type = 'highpass'; filter.frequency.value = 6000;
+                filter.type = 'highpass'; filter.frequency.value = 6500;
                 const gain = audioCtx.createGain();
                 gain.gain.setValueAtTime(0.5, now);
                 gain.gain.exponentialRampToValueAtTime(0.001, now + bufferSize / audioCtx.sampleRate);
@@ -768,10 +827,8 @@
             }
         }
 
-        // --- RENDER STAGE DRUM SET LAYOUT (MATCHING IMAGE) ---
         function buildDrumPads() {
             const stage = document.getElementById('drum-stage');
-            // Remove existing pads while keeping toggle pill
             stage.querySelectorAll('.pad-node').forEach(p => p.remove());
 
             DRUM_KIT.forEach(drum => {
@@ -793,7 +850,6 @@
                 stage.appendChild(pad);
             });
 
-            // Set default Hi-Hat visibility
             updateHiHatPillDisplay('open');
         }
 
@@ -830,7 +886,6 @@
         function triggerPadHit(drumId) {
             triggerDrumSound(drumId);
 
-            // Auto-swap Hi-Hat visible pad if the other state is hit
             if (drumId === 'closedHiHat') setHiHatActiveMode('closed');
             if (drumId === 'openHiHat') setHiHatActiveMode('open');
 
@@ -976,7 +1031,7 @@
             const lineSpacing = 14;
             const hitLineX = 140;
 
-            // 1. Staff Lines
+            // 1. Staff Lines (5 Lines)
             ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
             for (let i = -2; i <= 2; i++) {
                 const y = centerY + i * lineSpacing;
@@ -1002,7 +1057,7 @@
             ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3;
             ctx.beginPath(); ctx.moveTo(hitLineX, centerY - 3.5 * lineSpacing); ctx.lineTo(hitLineX, centerY + 3.5 * lineSpacing); ctx.stroke();
 
-            // 5. Render Notes with Instant Feedback
+            // 5. Render Notes with Correct Heights
             activeSongTimeline.forEach(note => {
                 const drum = DRUM_KIT.find(d => d.id === note.drumId);
                 if (!drum) return;
@@ -1011,8 +1066,9 @@
                 const noteX = hitLineX + timeDelta * pixelsPerMs;
 
                 if (noteX > 30 && noteX < canvas.width + 20) {
-                    let noteY = centerY - (drum.lineIndex - 2.5) * lineSpacing;
-                    if (drum.lineIndex === -1) noteY = centerY + 3 * lineSpacing;
+                    // Correct Musical Vertical Heights (Line 0 is bottom staff line = centerY + 2 * lineSpacing)
+                    let noteY = centerY - (drum.lineIndex - 2.0) * lineSpacing;
+                    if (drum.lineIndex === -1) noteY = centerY + 3 * lineSpacing; // Below bottom line
 
                     let noteColor = drum.color;
                     if (isGameMode) {
