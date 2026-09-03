@@ -158,6 +158,19 @@
         .btn-step-active { background-color: #be185d !important; box-shadow: 0 0 10px #ec4899; }
         .btn-game-active { background-color: #8b5cf6 !important; box-shadow: 0 0 12px #8b5cf6; font-weight: 700; }
 
+        /* Metronome Button Styling */
+        .btn-metro {
+            background-color: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+        }
+        .btn-metro.btn-metro-active {
+            background-color: #f59e0b !important;
+            color: #ffffff !important;
+            border-color: #d97706 !important;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+        }
+
         .icon {
             width: 14px;
             height: 14px;
@@ -166,6 +179,12 @@
             stroke-width: 2;
             stroke-linecap: round;
             stroke-linejoin: round;
+        }
+
+        .metronome-svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
         }
 
         .visualizer-wrapper {
@@ -511,6 +530,15 @@
                     <input type="range" id="speed-slider" min="40" max="240" value="100" step="2">
                 </div>
 
+                <button id="btn-metro" class="btn-metro" title="Toggle Metronome Click">
+                    <svg class="metronome-svg" viewBox="0 0 24 24">
+                        <path d="M12 2 L19 20 L5 20 Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+                        <line x1="12" y1="18" x2="18" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <polygon points="17,5 20,8 18,10 15,7" fill="currentColor"/>
+                    </svg>
+                    Metro: OFF
+                </button>
+
                 <button id="btn-game" class="btn-secondary">Game Mode: OFF</button>
                 <button id="btn-step" class="btn-step">Step Mode</button>
 
@@ -623,10 +651,6 @@
             { id: 'hiHatPedal', name: 'OPEN/CLOSE', color: '#db2777', lineIndex: -1.0, head: 'crossStem', midi: 44, isPedal: true, svg: '<path d="M8 24l16-8v8H8z"/>' }
         ];
 
-        /*
-          BEGINNER PATTERNS #1 & #2:
-          - Only ONE hit every 4 beats (2000 ms per hit at 100 BPM) to give ample time.
-        */
         const ONE_BAR_PATTERNS = {
             "Beginner #1 - Individual Kit Parts": [
                 [0, 'kick'], [2000, 'snare'], [4000, 'closedHiHat'], [6000, 'openHiHat'],
@@ -734,7 +758,7 @@
         let audioCtx = null;
         let midiMapping = {};
         let activeSongTimeline = [];
-        let isPlaying = false, isPaused = false, isStepMode = false, isGameMode = false;
+        let isPlaying = false, isPaused = false, isStepMode = false, isGameMode = false, isMetronomeEnabled = false;
         let currentBPM = 100;
         let speedFactor = 1.0;
         let playbackStartTime = 0, pauseStartTime = 0, accumulatedPauseMs = 0;
@@ -743,6 +767,7 @@
         let countInTimer = null;
         let activeHiHatMode = 'open';
         let currentBarNumber = 1;
+        let lastMetronomeBeatIndex = -1;
 
         let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
         let isCalibrating = false;
@@ -756,6 +781,7 @@
         const statusEl = document.getElementById('status');
         const barGridEl = document.getElementById('bar-grid');
         const barProgressTextEl = document.getElementById('bar-progress-text');
+        const btnMetro = document.getElementById('btn-metro');
 
         function initBarGrid() {
             barGridEl.innerHTML = '';
@@ -833,11 +859,6 @@
             noise.start(now); noise.stop(now + 0.04);
         }
 
-        /*
-          ENHANCED SYNTHESIS:
-          - Realistic Tom Acoustic Pitch Envelope Drop
-          - Percussive Metallic Ride Bell Ping (Short decay)
-        */
         function triggerDrumSound(drumId) {
             initAudio();
             const now = audioCtx.currentTime;
@@ -890,7 +911,6 @@
                 osc1.start(now); osc1.stop(now + 0.28);
                 osc2.start(now); osc2.stop(now + 0.28);
             } else if (drumId === 'ride') {
-                // Percussive Ride Bell "Ping" (Short metallic decay)
                 const bellFreqs = [820, 1240, 1680, 2450];
                 const masterGain = audioCtx.createGain();
                 masterGain.gain.setValueAtTime(0.7, now);
@@ -914,7 +934,6 @@
 
                 masterGain.connect(audioCtx.destination);
             } else {
-                // Hi-Hats
                 const bufferSize = audioCtx.sampleRate * (drumId === 'openHiHat' ? 0.35 : 0.08);
                 const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
                 const data = buffer.getChannelData(0);
@@ -1135,7 +1154,7 @@
             const lineSpacing = 14;
             const hitLineX = 140;
 
-            // 1. Staff Lines (5 Lines)
+            // 1. Staff Lines
             ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
             for (let i = -2; i <= 2; i++) {
                 const y = centerY + i * lineSpacing;
@@ -1161,7 +1180,7 @@
             ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3;
             ctx.beginPath(); ctx.moveTo(hitLineX, centerY - 3.5 * lineSpacing); ctx.lineTo(hitLineX, centerY + 3.5 * lineSpacing); ctx.stroke();
 
-            // 5. Render Notes with Correct Heights
+            // 5. Render Notes
             activeSongTimeline.forEach(note => {
                 const drum = DRUM_KIT.find(d => d.id === note.drumId);
                 if (!drum) return;
@@ -1170,7 +1189,6 @@
                 const noteX = hitLineX + timeDelta * pixelsPerMs;
 
                 if (noteX > 30 && noteX < canvas.width + 20) {
-                    // Line 0 is bottom staff line = centerY + 2 * lineSpacing
                     let noteY = centerY - (drum.lineIndex - 2.0) * lineSpacing;
                     if (drum.lineIndex === -1) noteY = centerY + 3 * lineSpacing;
 
@@ -1199,8 +1217,18 @@
                 effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
             }
 
-            // Update 16-Bar Grid Progress
             updateBarTimeline(effectiveElapsed);
+
+            // Play Metronome Clicks if Enabled
+            if (isMetronomeEnabled && !isStepMode) {
+                const beatIntervalMs = 500 / speedFactor; // 4 beats per 2000ms bar
+                const currentBeatIndex = Math.floor(effectiveElapsed / beatIntervalMs);
+                if (currentBeatIndex > lastMetronomeBeatIndex) {
+                    lastMetronomeBeatIndex = currentBeatIndex;
+                    const isAccent = (currentBeatIndex % 4 === 0);
+                    triggerMetronomeClick(isAccent);
+                }
+            }
 
             if (isGameMode) {
                 activeSongTimeline.forEach(n => {
@@ -1237,6 +1265,23 @@
             animationFrameId = requestAnimationFrame(renderLoop);
         }
 
+        function setMetronomeState(enabled) {
+            isMetronomeEnabled = enabled;
+            btnMetro.classList.toggle('btn-metro-active', isMetronomeEnabled);
+            btnMetro.innerHTML = `
+                <svg class="metronome-svg" viewBox="0 0 24 24">
+                    <path d="M12 2 L19 20 L5 20 Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+                    <line x1="12" y1="18" x2="18" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <polygon points="17,5 20,8 18,10 15,7" fill="currentColor"/>
+                </svg>
+                Metro: ${isMetronomeEnabled ? 'ON' : 'OFF'}
+            `;
+        }
+
+        btnMetro.addEventListener('click', () => {
+            setMetronomeState(!isMetronomeEnabled);
+        });
+
         function startCountInThenPlay() {
             initAudio();
             stopBeat();
@@ -1265,6 +1310,7 @@
             playbackStartTime = performance.now();
             accumulatedPauseMs = 0;
             currentStepIndex = 0;
+            lastMetronomeBeatIndex = -1;
             gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
 
             activeSongTimeline.forEach(n => { n.played = false; n.gameStatus = 'pending'; });
@@ -1322,6 +1368,7 @@
                     isStepMode = false;
                     document.getElementById('btn-step').classList.remove('btn-step-active');
                 }
+                setMetronomeState(true); // Default ON in Game Mode
                 statusEl.textContent = "GAME MODE ACTIVE! Press Play for Count-In.";
             } else {
                 btn.textContent = 'Game Mode: OFF';
