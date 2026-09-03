@@ -120,7 +120,7 @@
             border: 2px solid #f59e0b !important;
             background-color: #fffbeb !important;
             font-weight: 700 !important;
-            max-width: 250px;
+            max-width: 260px;
         }
 
         button, .btn-file-label {
@@ -261,7 +261,6 @@
             color: #1e40af;
         }
 
-        /* --- BOTTOM AREA WITH ANIMATED METRONOME & DRUM STAGE --- */
         .bottom-section {
             display: flex;
             align-items: center;
@@ -273,14 +272,14 @@
             padding: 8px 16px;
         }
 
-        /* ANIMATED METRONOME CONTAINER */
+        /* ANIMATED METRONOME CONTAINER & COUNT-IN NUMBERS */
         .metro-widget {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             width: 110px;
-            height: 140px;
+            height: 145px;
             background: #ffffff;
             border: 2px solid #cbd5e1;
             border-radius: 12px;
@@ -300,14 +299,24 @@
 
         .metro-svg-container {
             width: 80px;
-            height: 100px;
+            height: 90px;
             position: relative;
         }
 
-        /* Metronome Arm pendulum rotation */
         #metro-arm {
             transform-origin: 40px 80px;
-            transition: transform 0.05s linear;
+            transition: transform 0.04s ease-out;
+        }
+
+        .countin-display {
+            font-size: 0.85rem;
+            font-weight: 900;
+            color: #3b82f6;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: 0.1em;
         }
 
         .drum-kit-layout-wrapper {
@@ -551,20 +560,29 @@
                         <option value="Beginner #2 - 2-Part Combinations">Beginner #2 - 2-Part Combinations</option>
                         <option value="Beginner #3 - Very Basic Drum Beat">Beginner #3 - Very Basic Drum Beat</option>
                     </optgroup>
-                    <optgroup label="--- DRUM GROOVES ---">
-                        <option value="1. Standard Money Rock Beat">1. Standard Money Rock Beat</option>
-                        <option value="2. Four-On-The-Floor Disco">2. Four-On-The-Floor Disco</option>
-                        <option value="3. Offbeat Kick Groove">3. Offbeat Kick Groove</option>
-                        <option value="4. Pop Backbeat Syncopation">4. Pop Backbeat Syncopation</option>
-                        <option value="5. Half-Time Heavy Rock Beat">5. Half-Time Heavy Rock Beat</option>
-                        <option value="6. 16th-Note Alternating Hi-Hat">6. 16th-Note Alternating Hi-Hat</option>
-                        <option value="7. Open Hi-Hat Groove">7. Open Hi-Hat Groove</option>
-                        <option value="8. Ride Cymbal Rock Fill">8. Ride Cymbal Rock Fill</option>
-                        <option value="9. Funk Ghost-Note Groove">9. Funk Ghost-Note Groove</option>
-                        <option value="10. Motown Soul Rhythm">10. Motown Soul Rhythm</option>
-                        <option value="11. Four-Bar Rock Drive">11. Four-Bar Rock Drive</option>
-                        <option value="12. Double-Kick Bounce Beat">12. Double-Kick Bounce Beat</option>
-                        <option value="13. Slow Blues Shuffle">13. Slow Blues Shuffle</option>
+                    <optgroup label="--- 4/4 & 2/4 DRUM GROOVES ---">
+                        <option value="1. Standard Money Rock Beat">1. Standard Money Rock Beat (4/4)</option>
+                        <option value="2. Four-On-The-Floor Disco">2. Four-On-The-Floor Disco (4/4)</option>
+                        <option value="3. Offbeat Kick Groove">3. Offbeat Kick Groove (4/4)</option>
+                        <option value="4. Pop Backbeat Syncopation">4. Pop Backbeat Syncopation (4/4)</option>
+                        <option value="5. Half-Time Heavy Rock Beat">5. Half-Time Heavy Rock Beat (4/4)</option>
+                        <option value="6. 16th-Note Alternating Hi-Hat">6. 16th-Note Alternating Hi-Hat (4/4)</option>
+                        <option value="7. Open Hi-Hat Groove">7. Open Hi-Hat Groove (4/4)</option>
+                        <option value="8. Ride Cymbal Rock Fill">8. Ride Cymbal Rock Fill (4/4)</option>
+                        <option value="9. Funk Ghost-Note Groove">9. Funk Ghost-Note Groove (4/4)</option>
+                        <option value="10. Motown Soul Rhythm">10. Motown Soul Rhythm (4/4)</option>
+                        <option value="11. Four-Bar Rock Drive">11. Four-Bar Rock Drive (4/4)</option>
+                        <option value="12. Double-Kick Bounce Beat">12. Double-Kick Bounce Beat (4/4)</option>
+                        <option value="13. Slow Blues Shuffle">13. Slow Blues Shuffle (4/4)</option>
+                    </optgroup>
+                    <optgroup label="--- 3/4 WALTZ & ODD TIME GROOVES ---">
+                        <option value="14. Classic Rock Waltz">14. Classic Rock Waltz (3/4)</option>
+                        <option value="15. Pop Ballad Waltz">15. Pop Ballad Waltz (3/4)</option>
+                    </optgroup>
+                    <optgroup label="--- 6/8 TIME GROOVES ---">
+                        <option value="16. 6/8 Slow Rock Ballad">16. 6/8 Slow Rock Ballad</option>
+                        <option value="17. 6/8 Blues Groove">17. 6/8 Blues Groove</option>
+                        <option value="18. 6/8 Heavy Metal March">18. 6/8 Heavy Metal March</option>
                     </optgroup>
                 </select>
 
@@ -618,17 +636,18 @@
             <div class="metro-widget">
                 <div class="metro-widget-title">Metronome</div>
                 <div class="metro-svg-container">
-                    <svg viewBox="0 0 80 100" width="80" height="100">
-                        <polygon points="20,10 60,10 72,90 8,90" fill="#0f172a"/>
-                        <polygon points="24,16 56,16 66,82 14,82" fill="#f8fafc"/>
-                        <line x1="40" y1="20" x2="40" y2="80" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="2 2"/>
+                    <svg viewBox="0 0 80 90" width="80" height="90">
+                        <polygon points="20,10 60,10 72,85 8,85" fill="#0f172a"/>
+                        <polygon points="24,16 56,16 66,78 14,78" fill="#f8fafc"/>
+                        <line x1="40" y1="20" x2="40" y2="76" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="2 2"/>
                         <g id="metro-arm">
-                            <line x1="40" y1="80" x2="40" y2="16" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round"/>
+                            <line x1="40" y1="76" x2="40" y2="16" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round"/>
                             <polygon points="40,24 33,38 47,38" fill="#1e293b"/>
                             <polygon points="40,32 35,38 45,38" fill="#f59e0b"/>
                         </g>
                     </svg>
                 </div>
+                <div class="countin-display" id="countin-text"></div>
             </div>
 
             <div class="drum-kit-layout-wrapper">
@@ -700,99 +719,127 @@
             { id: 'hiHatPedal', name: 'OPEN/CLOSE', color: '#db2777', lineIndex: -1.0, head: 'crossStem', midi: 44, isPedal: true, svg: '<path d="M8 24l16-8v8H8z"/>' }
         ];
 
+        /* PATTERNS & TIME SIGNATURE CONFIG:
+           timeSig: [beatsPerBar, beatUnit, barDurationMs, countInBeats]
+        */
         const ONE_BAR_PATTERNS = {
-            "Beginner #1 - Individual Kit Parts": [
+            "Beginner #1 - Individual Kit Parts": { barDurationMs: 16000, beatsPerBar: 8, countInBeats: 4, hits: [
                 [0, 'kick'], [2000, 'snare'], [4000, 'closedHiHat'], [6000, 'openHiHat'],
                 [8000, 'tom1'], [10000, 'tom2'], [12000, 'floorTom'], [14000, 'ride']
-            ],
-            "Beginner #2 - 2-Part Combinations": [
+            ]},
+            "Beginner #2 - 2-Part Combinations": { barDurationMs: 16000, beatsPerBar: 8, countInBeats: 4, hits: [
                 [0, 'kick'], [2000, 'closedHiHat'], [4000, 'snare'], [6000, 'closedHiHat'],
                 [8000, 'kick'], [10000, 'closedHiHat'], [12000, 'snare'], [14000, 'ride']
-            ],
-            "Beginner #3 - Very Basic Drum Beat": [
+            ]},
+            "Beginner #3 - Very Basic Drum Beat": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'closedHiHat'], [500, 'closedHiHat'],
                 [1000, 'snare'], [1000, 'closedHiHat'], [1500, 'closedHiHat']
-            ],
-            "1. Standard Money Rock Beat": [
+            ]},
+            "1. Standard Money Rock Beat": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'closedHiHat'], [250, 'closedHiHat'], [500, 'snare'], [500, 'closedHiHat'],
                 [750, 'closedHiHat'], [1000, 'kick'], [1000, 'closedHiHat'], [1250, 'closedHiHat'],
                 [1500, 'snare'], [1500, 'closedHiHat'], [1750, 'closedHiHat']
-            ],
-            "2. Four-On-The-Floor Disco": [
+            ]},
+            "2. Four-On-The-Floor Disco": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'openHiHat'], [250, 'closedHiHat'], [500, 'kick'], [500, 'snare'], [500, 'openHiHat'],
                 [750, 'closedHiHat'], [1000, 'kick'], [1000, 'openHiHat'], [1250, 'closedHiHat'],
                 [1500, 'kick'], [1500, 'snare'], [1500, 'openHiHat'], [1750, 'closedHiHat']
-            ],
-            "3. Offbeat Kick Groove": [
+            ]},
+            "3. Offbeat Kick Groove": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'closedHiHat'], [250, 'closedHiHat'], [500, 'snare'], [500, 'closedHiHat'],
                 [750, 'kick'], [750, 'closedHiHat'], [1000, 'closedHiHat'], [1250, 'closedHiHat'],
                 [1500, 'snare'], [1500, 'closedHiHat'], [1750, 'closedHiHat']
-            ],
-            "4. Pop Backbeat Syncopation": [
+            ]},
+            "4. Pop Backbeat Syncopation": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'closedHiHat'], [250, 'closedHiHat'], [500, 'snare'], [500, 'closedHiHat'],
                 [750, 'closedHiHat'], [1000, 'closedHiHat'], [1250, 'kick'], [1250, 'closedHiHat'],
                 [1500, 'snare'], [1500, 'closedHiHat'], [1750, 'closedHiHat']
-            ],
-            "5. Half-Time Heavy Rock Beat": [
+            ]},
+            "5. Half-Time Heavy Rock Beat": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'closedHiHat'], [250, 'closedHiHat'], [500, 'closedHiHat'], [750, 'closedHiHat'],
                 [1000, 'snare'], [1000, 'closedHiHat'], [1250, 'closedHiHat'], [1500, 'kick'], [1500, 'closedHiHat'],
                 [1750, 'closedHiHat']
-            ],
-            "6. 16th-Note Alternating Hi-Hat": [
+            ]},
+            "6. 16th-Note Alternating Hi-Hat": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'closedHiHat'], [125, 'closedHiHat'], [250, 'closedHiHat'], [375, 'closedHiHat'],
                 [500, 'snare'], [500, 'closedHiHat'], [625, 'closedHiHat'], [750, 'closedHiHat'], [875, 'closedHiHat'],
                 [1000, 'kick'], [1000, 'closedHiHat'], [1125, 'closedHiHat'], [1250, 'closedHiHat'], [1375, 'closedHiHat'],
                 [1500, 'snare'], [1500, 'closedHiHat'], [1625, 'closedHiHat'], [1750, 'closedHiHat'], [1875, 'closedHiHat']
-            ],
-            "7. Open Hi-Hat Groove": [
+            ]},
+            "7. Open Hi-Hat Groove": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'closedHiHat'], [250, 'openHiHat'], [500, 'snare'], [500, 'closedHiHat'],
                 [750, 'openHiHat'], [1000, 'kick'], [1000, 'closedHiHat'], [1250, 'openHiHat'],
                 [1500, 'snare'], [1500, 'closedHiHat'], [1750, 'openHiHat']
-            ],
-            "8. Ride Cymbal Rock Fill": [
+            ]},
+            "8. Ride Cymbal Rock Fill": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'ride'], [250, 'ride'], [500, 'snare'], [500, 'ride'], [750, 'ride'],
                 [1000, 'tom1'], [1250, 'tom2'], [1500, 'floorTom'], [1750, 'kick'], [1750, 'snare']
-            ],
-            "9. Funk Ghost-Note Groove": [
+            ]},
+            "9. Funk Ghost-Note Groove": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'closedHiHat'], [250, 'closedHiHat'], [375, 'snare'], [500, 'snare'], [500, 'closedHiHat'],
                 [750, 'kick'], [750, 'closedHiHat'], [1000, 'closedHiHat'], [1125, 'kick'], [1250, 'closedHiHat'],
                 [1500, 'snare'], [1500, 'closedHiHat'], [1750, 'closedHiHat']
-            ],
-            "10. Motown Soul Rhythm": [
+            ]},
+            "10. Motown Soul Rhythm": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'closedHiHat'], [250, 'closedHiHat'], [500, 'snare'], [500, 'closedHiHat'],
                 [750, 'snare'], [750, 'closedHiHat'], [1000, 'kick'], [1000, 'closedHiHat'], [1250, 'closedHiHat'],
                 [1500, 'snare'], [1500, 'closedHiHat'], [1750, 'snare'], [1750, 'closedHiHat']
-            ],
-            "11. Four-Bar Rock Drive": [
+            ]},
+            "11. Four-Bar Rock Drive": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'closedHiHat'], [250, 'kick'], [250, 'closedHiHat'], [500, 'snare'], [500, 'closedHiHat'],
                 [750, 'closedHiHat'], [1000, 'kick'], [1000, 'closedHiHat'], [1250, 'closedHiHat'],
                 [1500, 'snare'], [1500, 'closedHiHat'], [1750, 'kick'], [1750, 'closedHiHat']
-            ],
-            "12. Double-Kick Bounce Beat": [
+            ]},
+            "12. Double-Kick Bounce Beat": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'closedHiHat'], [125, 'kick'], [250, 'closedHiHat'], [500, 'snare'], [500, 'closedHiHat'],
                 [750, 'closedHiHat'], [1000, 'kick'], [1000, 'closedHiHat'], [1125, 'kick'], [1250, 'closedHiHat'],
                 [1500, 'snare'], [1500, 'closedHiHat'], [1750, 'closedHiHat']
-            ],
-            "13. Slow Blues Shuffle": [
+            ]},
+            "13. Slow Blues Shuffle": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'ride'], [166, 'ride'], [333, 'ride'], [500, 'snare'], [500, 'ride'],
                 [666, 'ride'], [833, 'ride'], [1000, 'kick'], [1000, 'ride'], [1166, 'ride'],
                 [1333, 'ride'], [1500, 'snare'], [1500, 'ride'], [1666, 'ride'], [1833, 'ride']
-            ]
+            ]},
+
+            // --- 3/4 WALTZ BEATS ---
+            "14. Classic Rock Waltz": { barDurationMs: 1500, beatsPerBar: 3, countInBeats: 3, hits: [
+                [0, 'kick'], [0, 'closedHiHat'],
+                [500, 'snare'], [500, 'closedHiHat'],
+                [1000, 'snare'], [1000, 'closedHiHat']
+            ]},
+            "15. Pop Ballad Waltz": { barDurationMs: 1500, beatsPerBar: 3, countInBeats: 3, hits: [
+                [0, 'kick'], [0, 'ride'], [250, 'ride'],
+                [500, 'snare'], [500, 'ride'], [750, 'ride'],
+                [1000, 'kick'], [1000, 'ride'], [1250, 'ride']
+            ]},
+
+            // --- 6/8 TIME BEATS ---
+            "16. 6/8 Slow Rock Ballad": { barDurationMs: 3000, beatsPerBar: 6, countInBeats: 6, hits: [
+                [0, 'kick'], [0, 'closedHiHat'], [250, 'closedHiHat'], [500, 'closedHiHat'],
+                [750, 'closedHiHat'], [1000, 'closedHiHat'], [1250, 'closedHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'], [1750, 'closedHiHat'], [2000, 'closedHiHat'],
+                [2250, 'closedHiHat'], [2500, 'closedHiHat'], [2750, 'closedHiHat']
+            ]},
+            "17. 6/8 Blues Groove": { barDurationMs: 3000, beatsPerBar: 6, countInBeats: 6, hits: [
+                [0, 'kick'], [0, 'ride'], [500, 'ride'], [1000, 'ride'],
+                [1500, 'snare'], [1500, 'ride'], [2000, 'ride'], [2500, 'ride']
+            ]},
+            "18. 6/8 Heavy Metal March": { barDurationMs: 3000, beatsPerBar: 6, countInBeats: 6, hits: [
+                [0, 'kick'], [0, 'closedHiHat'], [250, 'kick'], [500, 'closedHiHat'],
+                [750, 'kick'], [1000, 'closedHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'], [1750, 'kick'], [2000, 'closedHiHat'],
+                [2250, 'kick'], [2500, 'closedHiHat']
+            ]}
         };
 
-        function generate16BarPattern(basePattern) {
+        function generate16BarPattern(config) {
             let fullSequence = [];
-            let patternLengthMs = 2000;
-            if (basePattern === ONE_BAR_PATTERNS["Beginner #1 - Individual Kit Parts"] || 
-                basePattern === ONE_BAR_PATTERNS["Beginner #2 - 2-Part Combinations"]) {
-                patternLengthMs = 16000;
-            }
-
+            const patternLengthMs = config.barDurationMs;
             const repeatCount = Math.ceil(32000 / patternLengthMs);
 
             for (let rep = 0; rep < repeatCount; rep++) {
                 const repOffset = rep * patternLengthMs;
-                basePattern.forEach(hit => {
+                config.hits.forEach(hit => {
                     fullSequence.push({
                         timeMs: hit[0] + repOffset,
                         drumId: hit[1],
@@ -807,6 +854,7 @@
         let audioCtx = null;
         let midiMapping = {};
         let activeSongTimeline = [];
+        let activeConfig = ONE_BAR_PATTERNS["Beginner #1 - Individual Kit Parts"];
         let isPlaying = false, isPaused = false, isStepMode = false, isGameMode = false, isMetronomeEnabled = false;
         let currentBPM = 100;
         let speedFactor = 1.0;
@@ -832,6 +880,7 @@
         const barProgressTextEl = document.getElementById('bar-progress-text');
         const btnMetro = document.getElementById('btn-metro');
         const metroArmEl = document.getElementById('metro-arm');
+        const countinTextEl = document.getElementById('countin-text');
 
         function initBarGrid() {
             barGridEl.innerHTML = '';
@@ -845,7 +894,7 @@
         }
 
         function updateBarTimeline(elapsedMs) {
-            const barDurationMs = 2000 / speedFactor;
+            const barDurationMs = activeConfig.barDurationMs / speedFactor;
             let barNum = Math.floor(elapsedMs / barDurationMs) + 1;
             barNum = Math.max(1, Math.min(16, barNum));
 
@@ -867,17 +916,27 @@
             }
         }
 
-        /* --- METRONOME PENDULUM ANIMATION UPDATE --- */
+        /* --- METRONOME POSITION CONTROL (ALTERNATES LEFT/RIGHT, STATIC IF OFF) --- */
+        function setMetronomePosition(posIndex) {
+            if (!isMetronomeEnabled) {
+                metroArmEl.style.transform = 'rotate(0deg)'; // Center static position
+                return;
+            }
+            // Odd beat (1, 3, 5...) = Left (-26deg), Even beat (2, 4, 6...) = Right (+26deg)
+            const angle = (posIndex % 2 === 1) ? -26 : 26;
+            metroArmEl.style.transform = `rotate(${angle}deg)`;
+        }
+
         function updateMetronomeVisual(elapsedMs) {
             if (!isMetronomeEnabled) {
-                metroArmEl.style.transform = 'rotate(0deg)'; // Static center if turned OFF
+                metroArmEl.style.transform = 'rotate(0deg)';
                 return;
             }
 
-            const beatPeriodMs = 60000 / currentBPM; // Time per beat
-            // Sine-wave oscillation swinging between -28deg and +28deg
-            const angle = Math.sin((elapsedMs / beatPeriodMs) * Math.PI) * 28;
-            metroArmEl.style.transform = `rotate(${angle}deg)`;
+            // Beat duration according to time signature
+            const beatIntervalMs = (activeConfig.barDurationMs / activeConfig.beatsPerBar) / speedFactor;
+            const currentBeatIndex = Math.floor(elapsedMs / beatIntervalMs) + 1;
+            setMetronomePosition(currentBeatIndex);
         }
 
         function initAudio() {
@@ -1224,11 +1283,12 @@
                 ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
             }
 
-            // 2. Measure Lines
+            // 2. Measure Lines based on time signature length
             const pixelsPerMs = 0.35 * speedFactor;
             ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2;
+            const barMs = activeConfig.barDurationMs;
             for (let bar = 0; bar <= 16; bar++) {
-                const barX = hitLineX + ((bar * 2000) / speedFactor - elapsedMs) * pixelsPerMs;
+                const barX = hitLineX + ((bar * barMs) / speedFactor - elapsedMs) * pixelsPerMs;
                 if (barX > 30 && barX < canvas.width + 50) {
                     ctx.beginPath(); ctx.moveTo(barX, centerY - 2 * lineSpacing); ctx.lineTo(barX, centerY + 2 * lineSpacing); ctx.stroke();
                 }
@@ -1283,13 +1343,13 @@
             updateBarTimeline(effectiveElapsed);
             updateMetronomeVisual(effectiveElapsed);
 
-            // Play Metronome Audio Clicks if Enabled
+            // Audio Metronome Click Sync
             if (isMetronomeEnabled && !isStepMode) {
-                const beatIntervalMs = 500 / speedFactor;
+                const beatIntervalMs = (activeConfig.barDurationMs / activeConfig.beatsPerBar) / speedFactor;
                 const currentBeatIndex = Math.floor(effectiveElapsed / beatIntervalMs);
                 if (currentBeatIndex > lastMetronomeBeatIndex) {
                     lastMetronomeBeatIndex = currentBeatIndex;
-                    const isAccent = (currentBeatIndex % 4 === 0);
+                    const isAccent = (currentBeatIndex % activeConfig.beatsPerBar === 0);
                     triggerMetronomeClick(isAccent);
                 }
             }
@@ -1347,24 +1407,31 @@
             setMetronomeState(!isMetronomeEnabled);
         });
 
+        /* --- COUNT-IN METRONOME WITH ANIMATED METRONOME & ON-SCREEN NUMBERS --- */
         function startCountInThenPlay() {
             initAudio();
             stopBeat();
 
+            const totalCountBeats = activeConfig.countInBeats;
             const beatIntervalMs = (60 / currentBPM) * 1000;
             let beatCount = 1;
 
-            statusEl.textContent = `Get Ready! Count-In: ${beatCount}`;
+            countinTextEl.textContent = beatCount;
+            statusEl.textContent = `Get Ready! Count-In: ${beatCount} of ${totalCountBeats}`;
+            setMetronomePosition(beatCount);
             triggerMetronomeClick(true);
 
             countInTimer = setInterval(() => {
                 beatCount++;
-                if (beatCount <= 4) {
-                    statusEl.textContent = `Get Ready! Count-In: ${beatCount}`;
+                if (beatCount <= totalCountBeats) {
+                    countinTextEl.textContent = beatCount;
+                    statusEl.textContent = `Get Ready! Count-In: ${beatCount} of ${totalCountBeats}`;
+                    setMetronomePosition(beatCount);
                     triggerMetronomeClick(false);
                 } else {
                     clearInterval(countInTimer);
                     countInTimer = null;
+                    countinTextEl.textContent = '';
                     startActualPlayback();
                 }
             }, beatIntervalMs);
@@ -1399,6 +1466,7 @@
                 clearInterval(countInTimer);
                 countInTimer = null;
             }
+            countinTextEl.textContent = '';
             isPlaying = false; isPaused = false;
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
             drawSheetMusic(0);
@@ -1434,7 +1502,7 @@
                     isStepMode = false;
                     document.getElementById('btn-step').classList.remove('btn-step-active');
                 }
-                setMetronomeState(true); // Default ON in Game Mode
+                setMetronomeState(true);
                 statusEl.textContent = "GAME MODE ACTIVE! Press Play for Count-In.";
             } else {
                 btn.textContent = 'Game Mode: OFF';
@@ -1477,9 +1545,10 @@
         });
 
         songSelect.addEventListener('change', (e) => {
-            const basePattern = ONE_BAR_PATTERNS[e.target.value];
-            if (basePattern) {
-                activeSongTimeline = generate16BarPattern(basePattern);
+            const key = e.target.value;
+            if (ONE_BAR_PATTERNS[key]) {
+                activeConfig = ONE_BAR_PATTERNS[key];
+                activeSongTimeline = generate16BarPattern(activeConfig);
                 playBeat();
             }
         });
@@ -1490,7 +1559,8 @@
         initMIDI();
 
         const defaultBeatKey = Object.keys(ONE_BAR_PATTERNS)[0];
-        activeSongTimeline = generate16BarPattern(ONE_BAR_PATTERNS[defaultBeatKey]);
+        activeConfig = ONE_BAR_PATTERNS[defaultBeatKey];
+        activeSongTimeline = generate16BarPattern(activeConfig);
         songSelect.value = defaultBeatKey;
 
         drawSheetMusic(0);
