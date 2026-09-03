@@ -354,10 +354,10 @@
 
   function initArmadaSlots() {
     armadaSlots = [];
-    const startX = 50;
+    const startX = 15;
     const startY = 50;
-    const spacingX = 38;
-    const spacingY = 32;
+    const spacingX = 45;
+    const spacingY = 48;
 
     for (let r = 0; r < ARMADA_ROWS; r++) {
       for (let c = 0; c < ARMADA_COLS; c++) {
@@ -845,8 +845,8 @@
       state: 'entering',
       side: side,
       progress: 0,
-      width: 28,
-      height: 28,
+      width: 56,
+      height: 56,
       note: assignedNote,
       speed: rules.speed,
       targetSlot: targetSlot,
@@ -1034,7 +1034,6 @@
             score += 10;
             totalKills++;
 
-            // Milestone Progression Logic: 50, 100, 500, 1000, 2000, etc.
             if (
               totalKills === 50 ||
               totalKills === 100 ||
@@ -1179,9 +1178,9 @@
       ctx.fillRect(e.x + e.width * 0.35, e.y + e.height * 0.2, e.width * 0.3, e.height * 0.3);
 
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 12px Courier New";
+      ctx.font = "bold 24px Courier New";
       ctx.textAlign = "center";
-      ctx.fillText(e.note, e.x + e.width / 2, e.y + e.height / 2 + 3);
+      ctx.fillText(e.note, e.x + e.width / 2, e.y + e.height / 2 + 7);
     });
 
     powerupItems.forEach(p => {
@@ -1272,7 +1271,6 @@
     startGame();
   });
 
-  // User Interaction Triggers Intro Music
   window.addEventListener('click', () => {
     initAudio();
     if (!isRunning) startMenuMusic();
