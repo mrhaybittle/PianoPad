@@ -189,83 +189,146 @@
             height: 100%;
         }
 
-        .drum-kit-display {
+        /* --- REALISTIC DRUM KIT LAYOUT --- */
+        .drum-kit-layout-wrapper {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 10px;
-            padding: 8px;
+            padding: 10px;
             background-color: #f8fafc;
             border-radius: 12px;
             border: 1px solid #e2e8f0;
-            flex-wrap: wrap;
+            overflow-x: auto;
         }
 
-        .pad {
+        .drum-kit-stage {
+            position: relative;
+            width: 680px;
+            height: 240px;
+            margin: 0 auto;
+        }
+
+        .pad-node {
+            position: absolute;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            width: 105px;
-            height: 85px;
-            border-radius: 10px;
+            border-radius: 50%;
             background: #ffffff;
-            border: 3px solid var(--pad-color);
+            border: 3.5px solid var(--pad-color);
             color: #1e293b;
             cursor: pointer;
             user-select: none;
             transition: all 0.08s ease;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.05);
-            position: relative;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            transform: translate(-50%, -50%);
+            z-index: 2;
         }
 
-        .pad.active {
+        .pad-node.pedal-shape {
+            border-radius: 20px 20px 8px 8px;
+        }
+
+        .pad-node.snare-center {
+            z-index: 3;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+        }
+
+        .pad-node.active {
             background-color: var(--pad-color) !important;
             color: #ffffff !important;
-            transform: scale(0.95);
-            box-shadow: 0 0 15px var(--pad-color);
+            transform: translate(-50%, -50%) scale(0.93);
+            box-shadow: 0 0 18px var(--pad-color);
         }
 
-        .pad.pad-missed {
+        .pad-node.pad-missed {
             background-color: #fee2e2 !important;
             border-color: #ef4444 !important;
-            box-shadow: 0 0 12px #ef4444;
+            box-shadow: 0 0 14px #ef4444;
         }
 
-        .pad.step-target {
+        .pad-node.step-target {
             animation: pulseTarget 0.8s infinite alternate ease-in-out;
-            border-width: 4px;
+            border-width: 4.5px;
         }
 
         @keyframes pulseTarget {
-            0% { transform: scale(1); box-shadow: 0 0 5px var(--pad-color); }
-            100% { transform: scale(1.08); box-shadow: 0 0 20px var(--pad-color); }
+            0% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 6px var(--pad-color); }
+            100% { transform: translate(-50%, -50%) scale(1.08); box-shadow: 0 0 22px var(--pad-color); }
         }
 
-        .pad.active svg {
+        .pad-node.active svg {
             stroke: #ffffff;
             fill: #ffffff;
         }
 
         .pad-svg {
-            width: 28px;
-            height: 28px;
-            margin-bottom: 4px;
+            width: 24px;
+            height: 24px;
             stroke: var(--pad-color);
             fill: none;
             stroke-width: 2;
         }
 
         .pad-title {
-            font-size: 0.72rem;
+            font-size: 0.65rem;
             font-weight: 800;
             text-align: center;
+            line-height: 1.1;
         }
 
         .pad-midi-code {
-            font-size: 0.62rem;
+            font-size: 0.58rem;
             color: #64748b;
-            margin-top: 2px;
+            margin-top: 1px;
+        }
+
+        .pad-node.active .pad-midi-code {
+            color: #f1f5f9;
+        }
+
+        /* Drum Layout Positions (Matching Image) */
+        #pad-openHiHat   { top: 52%; left: 10%; width: 88px; height: 88px; }
+        #pad-closedHiHat { top: 52%; left: 10%; width: 88px; height: 88px; display: none; } /* Shares position with Open Hi-Hat */
+        #pad-hiHatPedal  { top: 62%; left: 25%; width: 55px; height: 105px; transform: translate(-50%, -50%) rotate(-12deg); }
+        #pad-snare        { top: 54%; left: 50%; width: 108px; height: 108px; }
+        #pad-kick        { top: 62%; left: 68%; width: 55px; height: 105px; transform: translate(-50%, -50%) rotate(12deg); }
+        #pad-floorTom    { top: 56%; left: 86%; width: 88px; height: 88px; }
+        #pad-tom1        { top: 28%; left: 38%; width: 82px; height: 82px; }
+        #pad-tom2        { top: 28%; left: 62%; width: 82px; height: 82px; }
+        #pad-ride        { top: 24%; left: 82%; width: 92px; height: 92px; }
+
+        /* Secondary Hi-Hat Overlay Toggle Box */
+        .hihat-toggle-pill {
+            position: absolute;
+            top: 82%;
+            left: 10%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 4px;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            padding: 2px 4px;
+            border-radius: 12px;
+            z-index: 4;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .hihat-pill-btn {
+            font-size: 0.58rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .hihat-pill-btn.active {
+            background: #2563eb;
+            color: #ffffff;
         }
 
         .status-bar {
@@ -418,7 +481,14 @@
             <canvas id="sheet-canvas"></canvas>
         </div>
 
-        <div class="drum-kit-display" id="drum-pads-container"></div>
+        <div class="drum-kit-layout-wrapper">
+            <div class="drum-kit-stage" id="drum-stage">
+                <div class="hihat-toggle-pill">
+                    <button class="hihat-pill-btn active" id="pill-open">OPEN</button>
+                    <button class="hihat-pill-btn" id="pill-closed">CLOSED</button>
+                </div>
+            </div>
+        </div>
 
         <div class="status-bar" id="status">Welcome to DrumPad! Select a pattern or strike drums to play.</div>
     </div>
@@ -468,38 +538,30 @@
 
     <script>
         const DRUM_KIT = [
-            { id: 'kick', name: 'Kick/Bass Drum', color: '#e11d48', lineIndex: 0, head: 'note', midi: 36, svg: '<ellipse cx="16" cy="16" rx="12" ry="8" fill="none"/>' },
-            { id: 'floorTom', name: 'Floor Tom', color: '#ea580c', lineIndex: 1, head: 'note', midi: 43, svg: '<rect x="6" y="8" width="20" height="16" rx="2" fill="none"/>' },
-            { id: 'tom2', name: 'Tom Drum 2', color: '#d97706', lineIndex: 2, head: 'note', midi: 47, svg: '<rect x="8" y="10" width="16" height="12" rx="2" fill="none"/>' },
-            { id: 'tom1', name: 'Tom Drum 1', color: '#ca8a04', lineIndex: 3, head: 'note', midi: 48, svg: '<rect x="10" y="12" width="12" height="10" rx="2" fill="none"/>' },
-            { id: 'snare', name: 'Snare Drum', color: '#16a34a', lineIndex: 3.5, head: 'note', midi: 38, svg: '<rect x="6" y="12" width="20" height="8" rx="1" fill="none"/><path d="M4 16h24"/>' },
-            { id: 'ride', name: 'Ride Cymbal', color: '#0284c7', lineIndex: 4, head: 'diamond', midi: 51, svg: '<ellipse cx="16" cy="16" rx="14" ry="4" fill="none"/>' },
-            { id: 'closedHiHat', name: 'Closed Hi-Hat', color: '#2563eb', lineIndex: 5, head: 'cross', midi: 42, svg: '<ellipse cx="16" cy="12" rx="10" ry="3" fill="none"/><ellipse cx="16" cy="18" rx="10" ry="3" fill="none"/>' },
-            { id: 'openHiHat', name: 'Open Hi-Hat', color: '#7c3aed', lineIndex: 5, head: 'circleCross', midi: 46, svg: '<ellipse cx="16" cy="10" rx="10" ry="3" fill="none"/><ellipse cx="16" cy="20" rx="10" ry="3" fill="none"/>' },
-            { id: 'hiHatPedal', name: 'Hi-Hat Pedal', color: '#db2777', lineIndex: -1, head: 'crossStem', midi: 44, svg: '<path d="M8 24l16-8v8H8z"/>' }
+            { id: 'kick', name: 'KICK', color: '#e11d48', lineIndex: 0, head: 'note', midi: 36, isPedal: true, svg: '<ellipse cx="12" cy="12" rx="8" ry="5" fill="none"/>' },
+            { id: 'floorTom', name: 'TOM 3', color: '#ea580c', lineIndex: 1, head: 'note', midi: 43, isPedal: false, svg: '<rect x="6" y="8" width="20" height="16" rx="2" fill="none"/>' },
+            { id: 'tom2', name: 'TOM 2', color: '#d97706', lineIndex: 2, head: 'note', midi: 47, isPedal: false, svg: '<rect x="8" y="10" width="16" height="12" rx="2" fill="none"/>' },
+            { id: 'tom1', name: 'TOM 1', color: '#ca8a04', lineIndex: 3, head: 'note', midi: 48, isPedal: false, svg: '<rect x="10" y="12" width="12" height="10" rx="2" fill="none"/>' },
+            { id: 'snare', name: 'SNARE', color: '#16a34a', lineIndex: 3.5, head: 'note', midi: 38, isPedal: false, isSnare: true, svg: '<rect x="6" y="12" width="20" height="8" rx="1" fill="none"/><path d="M4 16h24"/>' },
+            { id: 'ride', name: 'RIDE', color: '#0284c7', lineIndex: 4, head: 'diamond', midi: 51, isPedal: false, svg: '<ellipse cx="16" cy="16" rx="14" ry="4" fill="none"/>' },
+            { id: 'closedHiHat', name: 'CLOSED HH', color: '#2563eb', lineIndex: 5, head: 'cross', midi: 42, isPedal: false, svg: '<ellipse cx="16" cy="12" rx="10" ry="3" fill="none"/><ellipse cx="16" cy="18" rx="10" ry="3" fill="none"/>' },
+            { id: 'openHiHat', name: 'OPEN HH', color: '#7c3aed', lineIndex: 5, head: 'circleCross', midi: 46, isPedal: false, svg: '<ellipse cx="16" cy="10" rx="10" ry="3" fill="none"/><ellipse cx="16" cy="20" rx="10" ry="3" fill="none"/>' },
+            { id: 'hiHatPedal', name: 'OPEN/CLOSE', color: '#db2777', lineIndex: -1, head: 'crossStem', midi: 44, isPedal: true, svg: '<path d="M8 24l16-8v8H8z"/>' }
         ];
 
-        // --- ALL PATTERNS & BEGINNER PROGRESSIONS ---
         const ONE_BAR_PATTERNS = {
-            // --- BEGINNER SECTION ---
             "Beginner #1 - Individual Kit Parts": [
                 [0, 'kick'], [500, 'snare'], [1000, 'closedHiHat'], [1500, 'openHiHat'],
                 [2000, 'tom1'], [2500, 'tom2'], [3000, 'floorTom'], [3500, 'ride']
             ],
             "Beginner #2 - 2-Part Combinations": [
-                [0, 'kick'], [0, 'closedHiHat'],
-                [500, 'closedHiHat'],
-                [1000, 'snare'], [1000, 'closedHiHat'],
-                [1500, 'closedHiHat']
+                [0, 'kick'], [0, 'closedHiHat'], [500, 'closedHiHat'],
+                [1000, 'snare'], [1000, 'closedHiHat'], [1500, 'closedHiHat']
             ],
             "Beginner #3 - Very Basic Drum Beat": [
-                [0, 'kick'], [0, 'closedHiHat'],
-                [500, 'closedHiHat'],
-                [1000, 'snare'], [1000, 'closedHiHat'],
-                [1500, 'closedHiHat']
+                [0, 'kick'], [0, 'closedHiHat'], [500, 'closedHiHat'],
+                [1000, 'snare'], [1000, 'closedHiHat'], [1500, 'closedHiHat']
             ],
-
-            // --- DRUM GROOVES ---
             "1. Standard Money Rock Beat": [
                 [0, 'kick'], [0, 'closedHiHat'], [250, 'closedHiHat'], [500, 'snare'], [500, 'closedHiHat'],
                 [750, 'closedHiHat'], [1000, 'kick'], [1000, 'closedHiHat'], [1250, 'closedHiHat'],
@@ -593,11 +655,12 @@
         let activeSongTimeline = [];
         let isPlaying = false, isPaused = false, isStepMode = false, isGameMode = false;
         let currentBPM = 100;
-        let speedFactor = 1.0; // 100 BPM = 1.0 base speed
+        let speedFactor = 1.0;
         let playbackStartTime = 0, pauseStartTime = 0, accumulatedPauseMs = 0;
         let animationFrameId = null;
         let currentStepIndex = 0;
         let countInTimer = null;
+        let activeHiHatMode = 'open'; // 'open' or 'closed'
         
         let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
         let isCalibrating = false;
@@ -615,7 +678,6 @@
             if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        // --- METRONOME COUNT-IN SOUND (WOODBLOCK SYNTHESIS) ---
         function triggerMetronomeClick(isAccent = false) {
             initAudio();
             const now = audioCtx.currentTime;
@@ -706,14 +768,20 @@
             }
         }
 
+        // --- RENDER STAGE DRUM SET LAYOUT (MATCHING IMAGE) ---
         function buildDrumPads() {
-            const container = document.getElementById('drum-pads-container');
-            container.innerHTML = '';
+            const stage = document.getElementById('drum-stage');
+            // Remove existing pads while keeping toggle pill
+            stage.querySelectorAll('.pad-node').forEach(p => p.remove());
+
             DRUM_KIT.forEach(drum => {
                 midiMapping[drum.midi] = drum.id;
 
                 const pad = document.createElement('div');
-                pad.className = 'pad';
+                pad.className = 'pad-node';
+                if (drum.isPedal) pad.classList.add('pedal-shape');
+                if (drum.isSnare) pad.classList.add('snare-center');
+
                 pad.id = `pad-${drum.id}`;
                 pad.style.setProperty('--pad-color', drum.color);
                 pad.innerHTML = `
@@ -722,9 +790,36 @@
                     <div class="pad-midi-code">MIDI ${drum.midi}</div>
                 `;
                 pad.addEventListener('mousedown', () => triggerPadHit(drum.id));
-                container.appendChild(pad);
+                stage.appendChild(pad);
             });
+
+            // Set default Hi-Hat visibility
+            updateHiHatPillDisplay('open');
         }
+
+        function setHiHatActiveMode(mode) {
+            activeHiHatMode = mode;
+            document.getElementById('pill-open').classList.toggle('active', mode === 'open');
+            document.getElementById('pill-closed').classList.toggle('active', mode === 'closed');
+
+            const openPad = document.getElementById('pad-openHiHat');
+            const closedPad = document.getElementById('pad-closedHiHat');
+
+            if (mode === 'open') {
+                if (openPad) openPad.style.display = 'flex';
+                if (closedPad) closedPad.style.display = 'none';
+            } else {
+                if (openPad) openPad.style.display = 'none';
+                if (closedPad) closedPad.style.display = 'flex';
+            }
+        }
+
+        function updateHiHatPillDisplay(mode) {
+            setHiHatActiveMode(mode);
+        }
+
+        document.getElementById('pill-open').addEventListener('click', () => setHiHatActiveMode('open'));
+        document.getElementById('pill-closed').addEventListener('click', () => setHiHatActiveMode('closed'));
 
         function updateGameStatus() {
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
@@ -734,6 +829,11 @@
 
         function triggerPadHit(drumId) {
             triggerDrumSound(drumId);
+
+            // Auto-swap Hi-Hat visible pad if the other state is hit
+            if (drumId === 'closedHiHat') setHiHatActiveMode('closed');
+            if (drumId === 'openHiHat') setHiHatActiveMode('open');
+
             const pad = document.getElementById(`pad-${drumId}`);
             if (pad) {
                 pad.classList.add('active');
@@ -974,7 +1074,6 @@
             animationFrameId = requestAnimationFrame(renderLoop);
         }
 
-        // --- 4-BEAT METRONOME COUNT-IN LOGIC ---
         function startCountInThenPlay() {
             initAudio();
             stopBeat();
@@ -983,13 +1082,13 @@
             let beatCount = 1;
 
             statusEl.textContent = `Get Ready! Count-In: ${beatCount}`;
-            triggerMetronomeClick(true); // High accent for Beat 1
+            triggerMetronomeClick(true);
 
             countInTimer = setInterval(() => {
                 beatCount++;
                 if (beatCount <= 4) {
                     statusEl.textContent = `Get Ready! Count-In: ${beatCount}`;
-                    triggerMetronomeClick(false); // Low accent for Beats 2-4
+                    triggerMetronomeClick(false);
                 } else {
                     clearInterval(countInTimer);
                     countInTimer = null;
@@ -1049,7 +1148,6 @@
             document.getElementById('game-results-modal').classList.add('open');
         }
 
-        // Mode Toggling Controls
         document.getElementById('btn-game').addEventListener('click', () => {
             isGameMode = !isGameMode;
             const btn = document.getElementById('btn-game');
