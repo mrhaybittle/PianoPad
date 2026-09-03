@@ -272,7 +272,6 @@
             padding: 8px 16px;
         }
 
-        /* ANIMATED METRONOME CONTAINER & COUNT-IN NUMBERS */
         .metro-widget {
             display: flex;
             flex-direction: column;
@@ -414,7 +413,6 @@
             color: #f1f5f9;
         }
 
-        /* Pad Positions */
         #pad-openHiHat   { top: 50%; left: 10%; width: 88px; height: 88px; }
         #pad-closedHiHat { top: 50%; left: 10%; width: 88px; height: 88px; display: none; }
         #pad-hiHatPedal  { top: 60%; left: 25%; width: 55px; height: 100px; transform: translate(-50%, -50%) rotate(-12deg); }
@@ -719,9 +717,6 @@
             { id: 'hiHatPedal', name: 'OPEN/CLOSE', color: '#db2777', lineIndex: -1.0, head: 'crossStem', midi: 44, isPedal: true, svg: '<path d="M8 24l16-8v8H8z"/>' }
         ];
 
-        /* PATTERNS & TIME SIGNATURE CONFIG:
-           timeSig: [beatsPerBar, beatUnit, barDurationMs, countInBeats]
-        */
         const ONE_BAR_PATTERNS = {
             "Beginner #1 - Individual Kit Parts": { barDurationMs: 16000, beatsPerBar: 8, countInBeats: 4, hits: [
                 [0, 'kick'], [2000, 'snare'], [4000, 'closedHiHat'], [6000, 'openHiHat'],
@@ -800,8 +795,6 @@
                 [666, 'ride'], [833, 'ride'], [1000, 'kick'], [1000, 'ride'], [1166, 'ride'],
                 [1333, 'ride'], [1500, 'snare'], [1500, 'ride'], [1666, 'ride'], [1833, 'ride']
             ]},
-
-            // --- 3/4 WALTZ BEATS ---
             "14. Classic Rock Waltz": { barDurationMs: 1500, beatsPerBar: 3, countInBeats: 3, hits: [
                 [0, 'kick'], [0, 'closedHiHat'],
                 [500, 'snare'], [500, 'closedHiHat'],
@@ -812,8 +805,6 @@
                 [500, 'snare'], [500, 'ride'], [750, 'ride'],
                 [1000, 'kick'], [1000, 'ride'], [1250, 'ride']
             ]},
-
-            // --- 6/8 TIME BEATS ---
             "16. 6/8 Slow Rock Ballad": { barDurationMs: 3000, beatsPerBar: 6, countInBeats: 6, hits: [
                 [0, 'kick'], [0, 'closedHiHat'], [250, 'closedHiHat'], [500, 'closedHiHat'],
                 [750, 'closedHiHat'], [1000, 'closedHiHat'], [1250, 'closedHiHat'],
@@ -916,13 +907,11 @@
             }
         }
 
-        /* --- METRONOME POSITION CONTROL (ALTERNATES LEFT/RIGHT, STATIC IF OFF) --- */
         function setMetronomePosition(posIndex) {
             if (!isMetronomeEnabled) {
-                metroArmEl.style.transform = 'rotate(0deg)'; // Center static position
+                metroArmEl.style.transform = 'rotate(0deg)';
                 return;
             }
-            // Odd beat (1, 3, 5...) = Left (-26deg), Even beat (2, 4, 6...) = Right (+26deg)
             const angle = (posIndex % 2 === 1) ? -26 : 26;
             metroArmEl.style.transform = `rotate(${angle}deg)`;
         }
@@ -933,7 +922,6 @@
                 return;
             }
 
-            // Beat duration according to time signature
             const beatIntervalMs = (activeConfig.barDurationMs / activeConfig.beatsPerBar) / speedFactor;
             const currentBeatIndex = Math.floor(elapsedMs / beatIntervalMs) + 1;
             setMetronomePosition(currentBeatIndex);
@@ -1128,6 +1116,38 @@
             statusEl.textContent = `Accuracy: ${accuracy}% | Perfect: ${gameStats.perfect} | Early/Late: ${gameStats.earlyLate} | Missed: ${gameStats.miss}`;
         }
 
+        /* --- STEP MODE ADVANCEMENT FIX ---
+           Allow matching hits within a 150ms group window on simultaneous hits,
+           and advance only when the required drum(s) on the step are satisfied.
+        */
+        function advanceStep() {
+            if (currentStepIndex < activeSongTimeline.length) {
+                const currentMs = activeSongTimeline[currentStepIndex].timeMs;
+                // Group notes happening on the exact same beat
+                while (currentStepIndex < activeSongTimeline.length && Math.abs(activeSongTimeline[currentStepIndex].timeMs - currentMs) < 30) {
+                    currentStepIndex++;
+                }
+                updateStepStatusUI();
+            }
+        }
+
+        function updateStepStatusUI() {
+            if (currentStepIndex < activeSongTimeline.length) {
+                const targetNote = activeSongTimeline[currentStepIndex];
+                const drumObj = DRUM_KIT.find(d => d.id === targetNote.drumId);
+                const barNum = Math.floor(targetNote.timeMs / activeConfig.barDurationMs) + 1;
+                statusEl.textContent = `Step ${currentStepIndex + 1}/${activeSongTimeline.length} [Bar ${barNum}/16]: Strike -> [ ${drumObj.name} ] or Press SPACE BAR`;
+
+                // Highlight target drum pad
+                document.querySelectorAll('.pad-node').forEach(p => p.classList.remove('step-target'));
+                const pad = document.getElementById(`pad-${targetNote.drumId}`);
+                if (pad) pad.classList.add('step-target');
+            } else {
+                statusEl.textContent = "16-Bar Step Groove Complete! Great Job!";
+                document.querySelectorAll('.pad-node').forEach(p => p.classList.remove('step-target'));
+            }
+        }
+
         function triggerPadHit(drumId) {
             triggerDrumSound(drumId);
 
@@ -1269,12 +1289,14 @@
             ctx.restore();
         }
 
+        /* --- SHEET MUSIC RENDER (PROMINENT BAR LINES BEFORE BEAT ONE) --- */
         function drawSheetMusic(elapsedMs) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             const centerY = canvas.height / 2;
             const lineSpacing = 14;
             const hitLineX = 140;
+            const pixelsPerMs = 0.35 * speedFactor;
 
             // 1. Staff Lines
             ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
@@ -1283,14 +1305,22 @@
                 ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
             }
 
-            // 2. Measure Lines based on time signature length
-            const pixelsPerMs = 0.35 * speedFactor;
-            ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2;
+            // 2. OBVIOUS BAR LINES OCCURRING BEFORE BEAT 1 (Offset by -120ms prior to Beat 1)
             const barMs = activeConfig.barDurationMs;
+            const barOffsetLeadMs = 120; // Places bar line distinctly before Beat 1
+            
+            ctx.strokeStyle = '#334155'; // Darker prominent color
+            ctx.lineWidth = 3.5;          // Thicker prominent stroke
+
             for (let bar = 0; bar <= 16; bar++) {
-                const barX = hitLineX + ((bar * barMs) / speedFactor - elapsedMs) * pixelsPerMs;
+                const barTimeMs = (bar * barMs) - barOffsetLeadMs;
+                const barX = hitLineX + (barTimeMs / speedFactor - elapsedMs) * pixelsPerMs;
+                
                 if (barX > 30 && barX < canvas.width + 50) {
-                    ctx.beginPath(); ctx.moveTo(barX, centerY - 2 * lineSpacing); ctx.lineTo(barX, centerY + 2 * lineSpacing); ctx.stroke();
+                    ctx.beginPath(); 
+                    ctx.moveTo(barX, centerY - 2.5 * lineSpacing); 
+                    ctx.lineTo(barX, centerY + 2.5 * lineSpacing); 
+                    ctx.stroke();
                 }
             }
 
@@ -1343,7 +1373,7 @@
             updateBarTimeline(effectiveElapsed);
             updateMetronomeVisual(effectiveElapsed);
 
-            // Audio Metronome Click Sync
+            // Audio Metronome Click Sync (Works across all patterns including Beginner #1 & #2)
             if (isMetronomeEnabled && !isStepMode) {
                 const beatIntervalMs = (activeConfig.barDurationMs / activeConfig.beatsPerBar) / speedFactor;
                 const currentBeatIndex = Math.floor(effectiveElapsed / beatIntervalMs);
@@ -1407,7 +1437,6 @@
             setMetronomeState(!isMetronomeEnabled);
         });
 
-        /* --- COUNT-IN METRONOME WITH ANIMATED METRONOME & ON-SCREEN NUMBERS --- */
         function startCountInThenPlay() {
             initAudio();
             stopBeat();
@@ -1447,7 +1476,9 @@
 
             activeSongTimeline.forEach(n => { n.played = false; n.gameStatus = 'pending'; });
 
-            if (isGameMode) {
+            if (isStepMode) {
+                updateStepStatusUI();
+            } else if (isGameMode) {
                 updateGameStatus();
             } else {
                 statusEl.textContent = `Playing Groove at ${currentBPM} BPM...`;
@@ -1469,6 +1500,7 @@
             countinTextEl.textContent = '';
             isPlaying = false; isPaused = false;
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            document.querySelectorAll('.pad-node').forEach(p => p.classList.remove('step-target'));
             drawSheetMusic(0);
             updateBarTimeline(0);
             updateMetronomeVisual(0);
@@ -1491,6 +1523,19 @@
 
             document.getElementById('game-results-modal').classList.add('open');
         }
+
+        // Keyboard Spacebar Step Control
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                initAudio();
+                if (!isPlaying) {
+                    playBeat();
+                } else if (isStepMode) {
+                    advanceStep();
+                }
+            }
+        });
 
         document.getElementById('btn-game').addEventListener('click', () => {
             isGameMode = !isGameMode;
@@ -1521,8 +1566,10 @@
                     document.getElementById('btn-game').textContent = 'Game Mode: OFF';
                     document.getElementById('btn-game').classList.remove('btn-game-active');
                 }
+                if (isPlaying) updateStepStatusUI();
             } else {
                 btn.classList.remove('btn-step-active');
+                document.querySelectorAll('.pad-node').forEach(p => p.classList.remove('step-target'));
             }
         });
 
