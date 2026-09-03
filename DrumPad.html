@@ -1,1 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DrumPad - Rhythm & Notation Trainer</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
 
+        body {
+            background-color: #ffffff;
+            color: #1f2937;
+            height: 100vh;
+            max-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 10px 16px;
+        }
+
+        /* --- LOGO STYLING --- */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+
+        .logo-svg {
+            width: 42px;
+            height: 42px;
+        }
+
+        .logo-title {
+            font-size: 2.2rem;
+            font-weight: 900;
+            letter-spacing: -0.04em;
+            background: linear-gradient(135deg, #1e293b 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1350px;
+            height: calc(100vh - 70px);
+            background-color: #ffffff;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 8px;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background-color: #f8fafc;
+            padding: 5px 10px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .speed-control label {
+            white-space: nowrap;
+            color: #475569;
+        }
+
+        .speed-control input[type="range"] {
+            width: 75px;
+            accent-color: #2563eb;
+            cursor: pointer;
+        }
+
+        select {
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            background-color: #f8fafc;
+            color: #1e293b;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            outline: none;
+        }
+
+        #song-select {
+            color: #d97706 !important;
+            border: 2px solid #f59e0b !important;
+            background-color: #fffbeb !important;
+            font-weight: 700 !important;
+        }
+
+        button, .btn-file-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: none;
+            background-color: #3b82f6;
+            color: white;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        button:hover, .btn-file-label:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        button:active, .btn-file-label:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary { background-color: #64748b; }
+        .btn-warning { background-color: #f59e0b; }
+        .btn-success { background-color: #10b981; }
+        .btn-danger { background-color: #ef4444; }
+        .btn-midi { background-color: #06b6d4; }
+        .btn-calib { background-color: #8b5cf6; }
+
+        .btn-step { background-color: #ec4899 !important; font-weight: 700; }
+        .btn-step-active { background-color: #be185d !important; box-shadow: 0 0 10px #ec4899; }
+        .btn-game-active { background-color: #8b5cf6 !important; box-shadow: 0 0 10px #8b5cf6; }
+
+        .icon {
+            width: 14px;
+            height: 14px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* --- SHEET MUSIC SCROLLING CANVAS WRAPPER --- */
+        .visualizer-wrapper {
+            position: relative;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #ffffff;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.03);
+        }
+
+        #sheet-canvas {
+            background-color: #ffffff;
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- VISUAL DRUM PAD INTERFACE --- */
+        .drum-kit-display {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background-color: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            flex-wrap: wrap;
+        }
+
+        .pad {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 105px;
+            height: 85px;
+            border-radius: 10px;
+            background: #ffffff;
+            border: 3px solid var(--pad-color);
+            color: #1e293b;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.08s ease;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+        }
+
+        .pad.active {
+            background-color: var(--pad-color) !important;
+            color: #ffffff !important;
+            transform: scale(0.95);
+            box-shadow: 0 0 15px var(--pad-color);
+        }
+
+        .pad.active svg {
+            stroke: #ffffff;
+            fill: #ffffff;
+        }
+
+        .pad-svg {
+            width: 28px;
+            height: 28px;
+            margin-bottom: 4px;
+            stroke: var(--pad-color);
+            fill: none;
+            stroke-width: 2;
+        }
+
+        .pad-title {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-align: center;
+        }
+
+        .pad-midi-code {
+            font-size: 0.62rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        /* --- STATUS & MODALS --- */
+        .status-bar {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+            text-align: center;
+            min-height: 1.6rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f1f5f9;
+            border-radius: 6px;
+            padding: 4px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 100; opacity: 0; pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+        .modal {
+            background: #ffffff;
+            border-radius: 16px;
+            width: 90%; max-width: 520px;
+            padding: 24px;
+            display: flex; flex-direction: column; gap: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal h2 { font-size: 1.25rem; color: #0f172a; }
+
+        .calib-step-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 2px dashed #cbd5e1;
+        }
+
+        .calib-step-box svg {
+            width: 60px; height: 60px;
+            stroke: #2563eb; fill: none; stroke-width: 2;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="logo-container">
+        <svg class="logo-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="32" cy="32" r="28" stroke="#2563eb" stroke-width="5" fill="#eff6ff"/>
+            <path d="M18 26L32 18L46 26" stroke="#ec4899" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="22" cy="38" r="6" fill="#f59e0b"/>
+            <circle cx="42" cy="38" r="6" fill="#10b981"/>
+            <path d="M20 20L44 44M44 20L20 44" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <div class="logo-title">DrumPad</div>
+    </div>
+
+    <div class="container">
+        <header>
+            <div class="controls">
+                <select id="song-select">
+                    <option value="">-- Choose a Drum Groove --</option>
+                </select>
+
+                <div class="speed-control">
+                    <label for="speed-slider">Tempo: <span id="speed-label">100%</span></label>
+                    <input type="range" id="speed-slider" min="20" max="200" value="100" step="5">
+                </div>
+
+                <button id="btn-game" class="btn-secondary">Game Mode: OFF</button>
+                <button id="btn-step" class="btn-step">Step Mode</button>
+
+                <button id="btn-calib-start" class="btn-calib">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20"></path></svg>
+                    Calibrate Kit MIDI
+                </button>
+
+                <label class="btn-file-label btn-midi">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                    Import MIDI
+                    <input type="file" id="midi-input" accept=".mid,.midi" style="display: none;">
+                </label>
+
+                <button id="btn-play" class="btn-success">Play</button>
+                <button id="btn-pause" class="btn-warning">Pause</button>
+                <button id="btn-stop" class="btn-danger">Stop</button>
+            </div>
+        </header>
+
+        <div class="visualizer-wrapper">
+            <canvas id="sheet-canvas"></canvas>
+        </div>
+
+        <div class="drum-kit-display" id="drum-pads-container"></div>
+
+        <div class="status-bar" id="status">Welcome to DrumPad! Select a beat or connect a MIDI Drum Kit.</div>
+    </div>
+
+    <div class="modal-overlay" id="calib-modal">
+        <div class="modal">
+            <h2>Calibrate Drum Kit MIDI</h2>
+            <p style="font-size: 0.85rem; color: #64748b;">Strike the corresponding trigger on your electronic drum kit to map its MIDI signal.</p>
+            
+            <div class="calib-step-box">
+                <div id="calib-icon-wrapper"></div>
+                <div id="calib-target-name" style="font-size: 1.2rem; font-weight: 800; color: #1e293b;">Kick Drum</div>
+                <div style="font-size: 0.8rem; color: #0284c7; font-weight: 600;">Waiting for MIDI Input Signal...</div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span id="calib-progress" style="font-size: 0.8rem; font-weight: 700; color: #64748b;">Part 1 of 8</span>
+                <button class="btn-secondary" id="btn-calib-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="game-results-modal">
+        <div class="modal" style="text-align: center;">
+            <h2>Groove Performance Summary</h2>
+            <p id="game-summary-text" style="font-size: 0.95rem; color: #334155; font-weight: 600;"></p>
+            <div style="display: flex; justify-content: center; gap: 10px; margin-top: 10px;">
+                <button class="btn-success" id="btn-game-results-close">Continue Practice</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DRUM KIT DEFINITION & GM MIDI MAP ---
+        const DRUM_KIT = [
+            { id: 'kick', name: 'Kick/Bass Drum', color: '#e11d48', lineIndex: 0, head: 'note', midi: 36, svg: '<ellipse cx="16" cy="16" rx="12" ry="8" fill="none"/>' },
+            { id: 'floorTom', name: 'Floor Tom', color: '#ea580c', lineIndex: 1, head: 'note', midi: 43, svg: '<rect x="6" y="8" width="20" height="16" rx="2" fill="none"/>' },
+            { id: 'tom2', name: 'Tom Drum 2', color: '#d97706', lineIndex: 2, head: 'note', midi: 47, svg: '<rect x="8" y="10" width="16" height="12" rx="2" fill="none"/>' },
+            { id: 'tom1', name: 'Tom Drum 1', color: '#ca8a04', lineIndex: 3, head: 'note', midi: 48, svg: '<rect x="10" y="12" width="12" height="10" rx="2" fill="none"/>' },
+            { id: 'snare', name: 'Snare Drum', color: '#16a34a', lineIndex: 3.5, head: 'note', midi: 38, svg: '<rect x="6" y="12" width="20" height="8" rx="1" fill="none"/><path d="M4 16h24"/>' },
+            { id: 'ride', name: 'Ride Cymbal', color: '#0284c7', lineIndex: 4, head: 'diamond', midi: 51, svg: '<ellipse cx="16" cy="16" rx="14" ry="4" fill="none"/>' },
+            { id: 'closedHiHat', name: 'Closed Hi-Hat', color: '#2563eb', lineIndex: 5, head: 'cross', midi: 42, svg: '<ellipse cx="16" cy="12" rx="10" ry="3" fill="none"/><ellipse cx="16" cy="18" rx="10" ry="3" fill="none"/>' },
+            { id: 'openHiHat', name: 'Open Hi-Hat', color: '#7c3aed', lineIndex: 5, head: 'circleCross', midi: 46, svg: '<ellipse cx="16" cy="10" rx="10" ry="3" fill="none"/><ellipse cx="16" cy="20" rx="10" ry="3" fill="none"/>' },
+            { id: 'hiHatPedal', name: 'Hi-Hat Pedal', color: '#db2777', lineIndex: -1, head: 'crossStem', midi: 44, svg: '<path d="M8 24l16-8v8H8z"/>' }
+        ];
+
+        // Built-in Common Drum Grooves (Format: [timeMs, drumId])
+        const BUILTIN_BEATS = {
+            "Basic 4/4 Rock Beat": [
+                [0, 'kick'], [0, 'closedHiHat'],
+                [250, 'closedHiHat'],
+                [500, 'snare'], [500, 'closedHiHat'],
+                [750, 'closedHiHat'],
+                [1000, 'kick'], [1000, 'closedHiHat'],
+                [1250, 'closedHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'],
+                [1750, 'closedHiHat']
+            ],
+            "Disco Groove": [
+                [0, 'kick'], [0, 'openHiHat'],
+                [250, 'closedHiHat'],
+                [500, 'kick'], [500, 'snare'], [500, 'openHiHat'],
+                [750, 'closedHiHat'],
+                [1000, 'kick'], [1000, 'openHiHat'],
+                [1250, 'closedHiHat'],
+                [1500, 'kick'], [1500, 'snare'], [1500, 'openHiHat'],
+                [1750, 'closedHiHat']
+            ],
+            "Rock Fill Beat": [
+                [0, 'kick'], [0, 'ride'],
+                [250, 'ride'],
+                [500, 'snare'], [500, 'ride'],
+                [750, 'ride'],
+                [1000, 'tom1'],
+                [1250, 'tom2'],
+                [1500, 'floorTom'],
+                [1750, 'kick']
+            ]
+        };
+
+        let audioCtx = null;
+        let midiMapping = {}; // Dynamic mapping: midiNote -> drumId
+        let activeSongTimeline = []; // Transcribed notes sequence
+        let isPlaying = false, isPaused = false, isStepMode = false, isGameMode = false;
+        let speedFactor = 1.0;
+        let playbackStartTime = 0, pauseStartTime = 0, accumulatedPauseMs = 0;
+        let animationFrameId = null;
+        let currentStepIndex = 0;
+        let gameStats = { perfect: 0, miss: 0 };
+
+        // Calibration state
+        let isCalibrating = false;
+        let calibIndex = 0;
+
+        const canvas = document.getElementById('sheet-canvas');
+        const ctx = canvas.getContext('2d');
+        const speedSlider = document.getElementById('speed-slider');
+        const songSelect = document.getElementById('song-select');
+        const statusEl = document.getElementById('status');
+
+        // --- AUDIO SYNTHESIS FOR DRUMS ---
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function triggerDrumSound(drumId) {
+            initAudio();
+            const now = audioCtx.currentTime;
+
+            if (drumId === 'kick') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.frequency.setValueAtTime(130, now);
+                osc.frequency.exponentialRampToValueAtTime(35, now + 0.1);
+                gain.gain.setValueAtTime(1.0, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 0.12);
+            } else if (drumId === 'snare') {
+                // Noise burst for snare snap
+                const bufferSize = audioCtx.sampleRate * 0.15;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(0.7, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                noise.connect(gain); gain.connect(audioCtx.destination);
+                noise.start(now);
+            } else if (drumId.includes('Tom')) {
+                const pitchMap = { floorTom: 90, tom2: 120, tom1: 150 };
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const freq = pitchMap[drumId] || 110;
+                osc.frequency.setValueAtTime(freq, now);
+                osc.frequency.exponentialRampToValueAtTime(freq * 0.5, now + 0.2);
+                gain.gain.setValueAtTime(0.8, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 0.2);
+            } else {
+                // Cymbals & Hi-Hats (Filtered High Frequency Noise)
+                const bufferSize = audioCtx.sampleRate * (drumId === 'openHiHat' || drumId === 'ride' ? 0.35 : 0.08);
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'highpass'; filter.frequency.value = 6000;
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + bufferSize / audioCtx.sampleRate);
+                noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+                noise.start(now);
+            }
+        }
+
+        // --- RENDER VISUAL DRUM PADS ---
+        function buildDrumPads() {
+            const container = document.getElementById('drum-pads-container');
+            container.innerHTML = '';
+            DRUM_KIT.forEach(drum => {
+                midiMapping[drum.midi] = drum.id; // Set default MIDI map
+
+                const pad = document.createElement('div');
+                pad.className = 'pad';
+                pad.id = `pad-${drum.id}`;
+                pad.style.setProperty('--pad-color', drum.color);
+                pad.innerHTML = `
+                    <svg class="pad-svg" viewBox="0 0 32 32">${drum.svg}</svg>
+                    <div class="pad-title">${drum.name}</div>
+                    <div class="pad-midi-code">MIDI ${drum.midi}</div>
+                `;
+                pad.addEventListener('mousedown', () => triggerPadHit(drum.id));
+                container.appendChild(pad);
+            });
+        }
+
+        function triggerPadHit(drumId) {
+            triggerDrumSound(drumId);
+            const pad = document.getElementById(`pad-${drumId}`);
+            if (pad) {
+                pad.classList.add('active');
+                setTimeout(() => pad.classList.remove('active'), 120);
+            }
+
+            if (isCalibrating) return;
+
+            if (isStepMode && isPlaying) {
+                const target = activeSongTimeline[currentStepIndex];
+                if (target && target.drumId === drumId) {
+                    advanceStep();
+                }
+            } else if (isGameMode && isPlaying && !isPaused) {
+                const effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
+                const hitNote = activeSongTimeline.find(n => n.drumId === drumId && !n.hit && Math.abs(n.timeMs / speedFactor - effectiveElapsed) < 180);
+                if (hitNote) {
+                    hitNote.hit = true;
+                    gameStats.perfect++;
+                    statusEl.textContent = `PERFECT HIT! Hits: ${gameStats.perfect}`;
+                }
+            }
+        }
+
+        // --- WEB MIDI ACCESS & HARDWARE HANDLING ---
+        function initMIDI() {
+            if (navigator.requestMIDIAccess) {
+                navigator.requestMIDIAccess().then(access => {
+                    for (let input of access.inputs.values()) {
+                        input.onmidimessage = handleMIDIMessage;
+                    }
+                });
+            }
+        }
+
+        function handleMIDIMessage(e) {
+            const status = e.data[0];
+            const command = status & 0xF0;
+            const channel = status & 0x0F;
+            const note = e.data[1];
+            const velocity = e.data.length > 2 ? e.data[2] : 0;
+
+            if (command === 144 && velocity > 0) { // Note On
+                if (isCalibrating) {
+                    processCalibrationMIDI(note);
+                } else {
+                    const mappedDrumId = midiMapping[note];
+                    if (mappedDrumId) triggerPadHit(mappedDrumId);
+                }
+            }
+        }
+
+        // --- CALIBRATION WIZARD ---
+        function startCalibration() {
+            isCalibrating = true;
+            calibIndex = 0;
+            document.getElementById('calib-modal').classList.add('open');
+            updateCalibStepUI();
+        }
+
+        function updateCalibStepUI() {
+            const drum = DRUM_KIT[calibIndex];
+            document.getElementById('calib-target-name').textContent = drum.name;
+            document.getElementById('calib-target-name').style.color = drum.color;
+            document.getElementById('calib-icon-wrapper').innerHTML = `
+                <svg viewBox="0 0 32 32" style="width:64px; height:64px; stroke:${drum.color}; fill:none; stroke-width:2;">${drum.svg}</svg>
+            `;
+            document.getElementById('calib-progress').textContent = `Part ${calibIndex + 1} of ${DRUM_KIT.length}`;
+        }
+
+        function processCalibrationMIDI(rawMidiNote) {
+            const currentDrum = DRUM_KIT[calibIndex];
+            midiMapping[rawMidiNote] = currentDrum.id;
+            triggerDrumSound(currentDrum.id);
+
+            calibIndex++;
+            if (calibIndex < DRUM_KIT.length) {
+                updateCalibStepUI();
+            } else {
+                isCalibrating = false;
+                document.getElementById('calib-modal').classList.remove('open');
+                statusEl.textContent = "Kit Calibration Complete! All drum parts mapped successfully.";
+            }
+        }
+
+        // --- MIDI FILE DRUM EXTRACTION (CHANNEL 10) ---
+        document.getElementById('midi-input').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const buffer = await file.arrayBuffer();
+                const midi = new Midi(buffer);
+                const drumNotes = [];
+
+                midi.tracks.forEach(track => {
+                    if (track.channel === 9) { // Channel 10 (0-indexed 9)
+                        track.notes.forEach(n => {
+                            const drumObj = DRUM_KIT.find(d => d.midi === n.midi) || DRUM_KIT[0];
+                            drumNotes.push({ timeMs: n.time * 1000, drumId: drumObj.id });
+                        });
+                    }
+                });
+
+                if (drumNotes.length === 0) {
+                    statusEl.textContent = "No Channel 10 drum notes found in this MIDI file.";
+                    return;
+                }
+
+                drumNotes.sort((a, b) => a.timeMs - b.timeMs);
+                activeSongTimeline = drumNotes;
+                songSelect.value = '';
+                statusEl.textContent = `Extracted ${drumNotes.length} drum hits from "${file.name}"!`;
+                playBeat();
+            } catch (err) {
+                statusEl.textContent = "Error parsing MIDI file.";
+            }
+        });
+
+        // --- SHEET MUSIC RENDERING ENGINE (SCROLLS RIGHT TO LEFT) ---
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawNotationHead(ctx, x, y, headType, color) {
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2.5;
+
+            if (headType === 'note') {
+                ctx.beginPath();
+                ctx.ellipse(x, y, 6.5, 5, -0.2, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (headType === 'diamond') { // Diamond head for Ride Cymbal
+                ctx.beginPath();
+                ctx.moveTo(x, y - 6);
+                ctx.lineTo(x + 7, y);
+                ctx.lineTo(x, y + 6);
+                ctx.lineTo(x - 7, y);
+                ctx.closePath();
+                ctx.fill();
+            } else if (headType === 'cross' || headType === 'crossStem') {
+                ctx.beginPath();
+                ctx.moveTo(x - 5, y - 5); ctx.lineTo(x + 5, y + 5);
+                ctx.moveTo(x + 5, y - 5); ctx.lineTo(x - 5, y + 5);
+                ctx.stroke();
+            } else if (headType === 'circleCross') {
+                ctx.beginPath();
+                ctx.arc(x, y, 6, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x - 4, y - 4); ctx.lineTo(x + 4, y + 4);
+                ctx.moveTo(x + 4, y - 4); ctx.lineTo(x - 4, y + 4);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawSheetMusic(elapsedMs) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const centerY = canvas.height / 2;
+            const lineSpacing = 14;
+            const hitLineX = 140; // Fixed hit target line position
+
+            // 1. Draw Standard 5-Line Drum Staff
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1.5;
+            for (let i = -2; i <= 2; i++) {
+                const y = centerY + i * lineSpacing;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // 2. Draw Percussion Clef (Two vertical thick bars)
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(40, centerY - 2 * lineSpacing, 4, lineSpacing * 4);
+            ctx.fillRect(48, centerY - 2 * lineSpacing, 4, lineSpacing * 4);
+
+            // 3. Draw Target Hit Line
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(hitLineX, centerY - 3.5 * lineSpacing);
+            ctx.lineTo(hitLineX, centerY + 3.5 * lineSpacing);
+            ctx.stroke();
+
+            // 4. Render Scrolling Drum Notes (Right to Left)
+            const pixelsPerMs = 0.35 * speedFactor;
+
+            activeSongTimeline.forEach(note => {
+                const drum = DRUM_KIT.find(d => d.id === note.drumId);
+                if (!drum) return;
+
+                const timeDelta = note.timeMs / speedFactor - elapsedMs;
+                const noteX = hitLineX + timeDelta * pixelsPerMs;
+
+                // Only render notes currently visible within canvas bounds
+                if (noteX > 30 && noteX < canvas.width + 20) {
+                    let noteY = centerY - (drum.lineIndex - 2.5) * lineSpacing;
+                    if (drum.lineIndex === -1) noteY = centerY + 3 * lineSpacing;
+
+                    // Note Stem
+                    ctx.strokeStyle = drum.color;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(noteX + 5, noteY);
+                    ctx.lineTo(noteX + 5, noteY - 28);
+                    ctx.stroke();
+
+                    // Custom Notation Head Shape
+                    drawNotationHead(ctx, noteX, noteY, drum.head, drum.color);
+                }
+            });
+        }
+
+        // --- PLAYBACK CONTROL & ANIMATION LOOP ---
+        function renderLoop(now) {
+            if (!isPlaying || isPaused) return;
+
+            let effectiveElapsed = 0;
+            if (isStepMode) {
+                const targetMs = activeSongTimeline[currentStepIndex] ? activeSongTimeline[currentStepIndex].timeMs / speedFactor : 0;
+                effectiveElapsed = targetMs;
+            } else {
+                effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
+            }
+
+            // Audio triggering in auto-play mode
+            if (!isStepMode && !isGameMode) {
+                activeSongTimeline.forEach(n => {
+                    if (!n.played && effectiveElapsed >= n.timeMs / speedFactor) {
+                        n.played = true;
+                        triggerPadHit(n.drumId);
+                    }
+                });
+            }
+
+            drawSheetMusic(effectiveElapsed);
+
+            // End of Beat check
+            const lastNote = activeSongTimeline[activeSongTimeline.length - 1];
+            if (lastNote && effectiveElapsed > (lastNote.timeMs / speedFactor) + 1200) {
+                if (isGameMode) showGameResults();
+                stopBeat();
+                return;
+            }
+
+            animationFrameId = requestAnimationFrame(renderLoop);
+        }
+
+        function playBeat() {
+            initAudio();
+            if (activeSongTimeline.length === 0) return;
+
+            isPlaying = true; isPaused = false;
+            playbackStartTime = performance.now();
+            accumulatedPauseMs = 0;
+            currentStepIndex = 0;
+            gameStats = { perfect: 0, miss: 0 };
+
+            activeSongTimeline.forEach(n => { n.played = false; n.hit = false; });
+            statusEl.textContent = isStepMode ? "STEP MODE: Play the highlighted note." : "Playing Drum Beat...";
+
+            animationFrameId = requestAnimationFrame(renderLoop);
+        }
+
+        function advanceStep() {
+            if (currentStepIndex < activeSongTimeline.length) {
+                currentStepIndex++;
+                if (currentStepIndex < activeSongTimeline.length) {
+                    statusEl.textContent = `Step ${currentStepIndex + 1} of ${activeSongTimeline.length}`;
+                } else {
+                    statusEl.textContent = "Groove Practice Completed!";
+                }
+            }
+        }
+
+        function stopBeat() {
+            isPlaying = false; isPaused = false;
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            drawSheetMusic(0);
+            statusEl.textContent = "Playback stopped.";
+        }
+
+        function showGameResults() {
+            const total = activeSongTimeline.length;
+            const accuracy = total > 0 ? ((gameStats.perfect / total) * 100).toFixed(1) : 0;
+            document.getElementById('game-summary-text').innerHTML = `Rhythm Accuracy: <b>${accuracy}%</b><br>Hits: ${gameStats.perfect} / ${total}`;
+            document.getElementById('game-results-modal').classList.add('open');
+        }
+
+        // --- EVENT LISTENERS ---
+        document.getElementById('btn-play').addEventListener('click', playBeat);
+        document.getElementById('btn-stop').addEventListener('click', stopBeat);
+        document.getElementById('btn-pause').addEventListener('click', () => { isPaused = !isPaused; });
+        document.getElementById('btn-calib-start').addEventListener('click', startCalibration);
+        document.getElementById('btn-calib-cancel').addEventListener('click', () => {
+            isCalibrating = false;
+            document.getElementById('calib-modal').classList.remove('open');
+        });
+        document.getElementById('btn-game-results-close').addEventListener('click', () => {
+            document.getElementById('game-results-modal').classList.remove('open');
+        });
+
+        document.getElementById('btn-step').addEventListener('click', () => {
+            isStepMode = !isStepMode;
+            document.getElementById('btn-step').classList.toggle('btn-step-active', isStepMode);
+            if (isStepMode) isGameMode = false;
+        });
+
+        document.getElementById('btn-game').addEventListener('click', () => {
+            isGameMode = !isGameMode;
+            document.getElementById('btn-game').classList.toggle('btn-game-active', isGameMode);
+            if (isGameMode) isStepMode = false;
+        });
+
+        speedSlider.addEventListener('input', () => {
+            speedFactor = parseFloat(speedSlider.value) / 100;
+            document.getElementById('speed-label').textContent = `${speedSlider.value}%`;
+        });
+
+        // Initialize Common Beats Dropdown
+        Object.keys(BUILTIN_BEATS).forEach(title => {
+            const opt = document.createElement('option');
+            opt.value = title; opt.textContent = title;
+            songSelect.appendChild(opt);
+        });
+
+        songSelect.addEventListener('change', (e) => {
+            const raw = BUILTIN_BEATS[e.target.value];
+            if (raw) {
+                activeSongTimeline = raw.map(item => ({ timeMs: item[0], drumId: item[1] }));
+                playBeat();
+            }
+        });
+
+        // App Startup
+        buildDrumPads();
+        resizeCanvas();
+        initMIDI();
+        drawSheetMusic(0);
+    </script>
+</body>
+</html>
