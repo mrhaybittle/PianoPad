@@ -121,6 +121,7 @@
             border: 2px solid #f59e0b !important;
             background-color: #fffbeb !important;
             font-weight: 700 !important;
+            max-width: 220px;
         }
 
         button, .btn-file-label {
@@ -218,6 +219,7 @@
             user-select: none;
             transition: all 0.08s ease;
             box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+            position: relative;
         }
 
         .pad.active {
@@ -225,6 +227,16 @@
             color: #ffffff !important;
             transform: scale(0.95);
             box-shadow: 0 0 15px var(--pad-color);
+        }
+
+        .pad.step-target {
+            animation: pulseTarget 0.8s infinite alternate ease-in-out;
+            border-width: 4px;
+        }
+
+        @keyframes pulseTarget {
+            0% { transform: scale(1); box-shadow: 0 0 5px var(--pad-color); }
+            100% { transform: scale(1.08); box-shadow: 0 0 20px var(--pad-color); }
         }
 
         .pad.active svg {
@@ -360,7 +372,7 @@
 
         <div class="drum-kit-display" id="drum-pads-container"></div>
 
-        <div class="status-bar" id="status">Welcome to DrumPad! Select a beat or connect a MIDI Drum Kit.</div>
+        <div class="status-bar" id="status">Welcome to DrumPad! Select a groove or connect your MIDI kit. Press SPACE or strike drums to step.</div>
     </div>
 
     <div class="modal-overlay" id="calib-modal">
@@ -375,7 +387,7 @@
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span id="calib-progress" style="font-size: 0.8rem; font-weight: 700; color: #64748b;">Part 1 of 8</span>
+                <span id="calib-progress" style="font-size: 0.8rem; font-weight: 700; color: #64748b;">Part 1 of 9</span>
                 <button class="btn-secondary" id="btn-calib-cancel">Cancel</button>
             </div>
         </div>
@@ -405,9 +417,9 @@
             { id: 'hiHatPedal', name: 'Hi-Hat Pedal', color: '#db2777', lineIndex: -1, head: 'crossStem', midi: 44, svg: '<path d="M8 24l16-8v8H8z"/>' }
         ];
 
-        // Built-in Common Drum Grooves (Format: [timeMs, drumId])
-        const BUILTIN_BEATS = {
-            "Basic 4/4 Rock Beat": [
+        // --- DRUMEO / ESSENTIAL BEGINNER GROOVE PATTERNS (1 Bar = 2000ms base tempo) ---
+        const ONE_BAR_PATTERNS = {
+            "1. Standard Money Rock Beat": [
                 [0, 'kick'], [0, 'closedHiHat'],
                 [250, 'closedHiHat'],
                 [500, 'snare'], [500, 'closedHiHat'],
@@ -417,7 +429,7 @@
                 [1500, 'snare'], [1500, 'closedHiHat'],
                 [1750, 'closedHiHat']
             ],
-            "Disco Groove": [
+            "2. Four-On-The-Floor Disco": [
                 [0, 'kick'], [0, 'openHiHat'],
                 [250, 'closedHiHat'],
                 [500, 'kick'], [500, 'snare'], [500, 'openHiHat'],
@@ -427,7 +439,57 @@
                 [1500, 'kick'], [1500, 'snare'], [1500, 'openHiHat'],
                 [1750, 'closedHiHat']
             ],
-            "Rock Fill Beat": [
+            "3. Offbeat Kick Groove": [
+                [0, 'kick'], [0, 'closedHiHat'],
+                [250, 'closedHiHat'],
+                [500, 'snare'], [500, 'closedHiHat'],
+                [750, 'kick'], [750, 'closedHiHat'],
+                [1000, 'closedHiHat'],
+                [1250, 'closedHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'],
+                [1750, 'closedHiHat']
+            ],
+            "4. Pop Backbeat Syncopation": [
+                [0, 'kick'], [0, 'closedHiHat'],
+                [250, 'closedHiHat'],
+                [500, 'snare'], [500, 'closedHiHat'],
+                [750, 'closedHiHat'],
+                [1000, 'closedHiHat'],
+                [1250, 'kick'], [1250, 'closedHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'],
+                [1750, 'closedHiHat']
+            ],
+            "5. Half-Time Heavy Rock Beat": [
+                [0, 'kick'], [0, 'closedHiHat'],
+                [250, 'closedHiHat'],
+                [500, 'closedHiHat'],
+                [750, 'closedHiHat'],
+                [1000, 'snare'], [1000, 'closedHiHat'],
+                [1250, 'closedHiHat'],
+                [1500, 'kick'], [1500, 'closedHiHat'],
+                [1750, 'closedHiHat']
+            ],
+            "6. 16th-Note Alternating Hi-Hat": [
+                [0, 'kick'], [0, 'closedHiHat'], [125, 'closedHiHat'],
+                [250, 'closedHiHat'], [375, 'closedHiHat'],
+                [500, 'snare'], [500, 'closedHiHat'], [625, 'closedHiHat'],
+                [750, 'closedHiHat'], [875, 'closedHiHat'],
+                [1000, 'kick'], [1000, 'closedHiHat'], [1125, 'closedHiHat'],
+                [1250, 'closedHiHat'], [1375, 'closedHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'], [1625, 'closedHiHat'],
+                [1750, 'closedHiHat'], [1875, 'closedHiHat']
+            ],
+            "7. Open Hi-Hat Groove": [
+                [0, 'kick'], [0, 'closedHiHat'],
+                [250, 'openHiHat'],
+                [500, 'snare'], [500, 'closedHiHat'],
+                [750, 'openHiHat'],
+                [1000, 'kick'], [1000, 'closedHiHat'],
+                [1250, 'openHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'],
+                [1750, 'openHiHat']
+            ],
+            "8. Ride Cymbal Rock Fill": [
                 [0, 'kick'], [0, 'ride'],
                 [250, 'ride'],
                 [500, 'snare'], [500, 'ride'],
@@ -435,13 +497,83 @@
                 [1000, 'tom1'],
                 [1250, 'tom2'],
                 [1500, 'floorTom'],
-                [1750, 'kick']
+                [1750, 'kick'], [1750, 'snare']
+            ],
+            "9. Funk Ghost-Note Groove": [
+                [0, 'kick'], [0, 'closedHiHat'],
+                [250, 'closedHiHat'], [375, 'snare'],
+                [500, 'snare'], [500, 'closedHiHat'],
+                [750, 'kick'], [750, 'closedHiHat'],
+                [1000, 'closedHiHat'], [1125, 'kick'],
+                [1250, 'closedHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'],
+                [1750, 'closedHiHat']
+            ],
+            "10. Motown Soul Rhythm": [
+                [0, 'kick'], [0, 'closedHiHat'],
+                [250, 'closedHiHat'],
+                [500, 'snare'], [500, 'closedHiHat'],
+                [750, 'snare'], [750, 'closedHiHat'],
+                [1000, 'kick'], [1000, 'closedHiHat'],
+                [1250, 'closedHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'],
+                [1750, 'snare'], [1750, 'closedHiHat']
+            ],
+            "11. Four-Bar Rock Drive": [
+                [0, 'kick'], [0, 'closedHiHat'],
+                [250, 'kick'], [250, 'closedHiHat'],
+                [500, 'snare'], [500, 'closedHiHat'],
+                [750, 'closedHiHat'],
+                [1000, 'kick'], [1000, 'closedHiHat'],
+                [1250, 'closedHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'],
+                [1750, 'kick'], [1750, 'closedHiHat']
+            ],
+            "12. Double-Kick Bounce Beat": [
+                [0, 'kick'], [0, 'closedHiHat'],
+                [125, 'kick'], [250, 'closedHiHat'],
+                [500, 'snare'], [500, 'closedHiHat'],
+                [750, 'closedHiHat'],
+                [1000, 'kick'], [1000, 'closedHiHat'],
+                [1125, 'kick'], [1250, 'closedHiHat'],
+                [1500, 'snare'], [1500, 'closedHiHat'],
+                [1750, 'closedHiHat']
+            ],
+            "13. Slow Blues Shuffle": [
+                [0, 'kick'], [0, 'ride'],
+                [166, 'ride'], [333, 'ride'],
+                [500, 'snare'], [500, 'ride'],
+                [666, 'ride'], [833, 'ride'],
+                [1000, 'kick'], [1000, 'ride'],
+                [1166, 'ride'], [1333, 'ride'],
+                [1500, 'snare'], [1500, 'ride'],
+                [1666, 'ride'], [1833, 'ride']
             ]
         };
 
+        // Helper to extend 1-bar pattern into a continuous 16-bar track (32,000 ms duration)
+        function generate16BarPattern(baseOneBar) {
+            const barDuration = 2000; // 2 seconds per bar at 100% tempo
+            const totalBars = 16;
+            let fullSequence = [];
+
+            for (let bar = 0; bar < totalBars; bar++) {
+                const barOffset = bar * barDuration;
+                baseOneBar.forEach(hit => {
+                    fullSequence.push({
+                        timeMs: hit[0] + barOffset,
+                        drumId: itemID(hit[1])
+                    });
+                });
+            }
+            return fullSequence;
+        }
+
+        function itemID(id) { return id; }
+
         let audioCtx = null;
-        let midiMapping = {}; // Dynamic mapping: midiNote -> drumId
-        let activeSongTimeline = []; // Transcribed notes sequence
+        let midiMapping = {};
+        let activeSongTimeline = [];
         let isPlaying = false, isPaused = false, isStepMode = false, isGameMode = false;
         let speedFactor = 1.0;
         let playbackStartTime = 0, pauseStartTime = 0, accumulatedPauseMs = 0;
@@ -449,7 +581,6 @@
         let currentStepIndex = 0;
         let gameStats = { perfect: 0, miss: 0 };
 
-        // Calibration state
         let isCalibrating = false;
         let calibIndex = 0;
 
@@ -473,13 +604,12 @@
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.frequency.setValueAtTime(130, now);
-                osc.frequency.exponentialRampToValueAtTime(35, now + 0.1);
+                osc.frequency.exponentialRampToValueAtTime(35, now + 0.12);
                 gain.gain.setValueAtTime(1.0, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
                 osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(now); osc.stop(now + 0.12);
+                osc.start(now); osc.stop(now + 0.14);
             } else if (drumId === 'snare') {
-                // Noise burst for snare snap
                 const bufferSize = audioCtx.sampleRate * 0.15;
                 const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
                 const data = buffer.getChannelData(0);
@@ -503,7 +633,6 @@
                 osc.connect(gain); gain.connect(audioCtx.destination);
                 osc.start(now); osc.stop(now + 0.2);
             } else {
-                // Cymbals & Hi-Hats (Filtered High Frequency Noise)
                 const bufferSize = audioCtx.sampleRate * (drumId === 'openHiHat' || drumId === 'ride' ? 0.35 : 0.08);
                 const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
                 const data = buffer.getChannelData(0);
@@ -525,7 +654,7 @@
             const container = document.getElementById('drum-pads-container');
             container.innerHTML = '';
             DRUM_KIT.forEach(drum => {
-                midiMapping[drum.midi] = drum.id; // Set default MIDI map
+                midiMapping[drum.midi] = drum.id;
 
                 const pad = document.createElement('div');
                 pad.className = 'pad';
@@ -539,6 +668,19 @@
                 pad.addEventListener('mousedown', () => triggerPadHit(drum.id));
                 container.appendChild(pad);
             });
+        }
+
+        function highlightTargetStepPads() {
+            document.querySelectorAll('.pad').forEach(p => p.classList.remove('step-target'));
+            if (isStepMode && isPlaying && currentStepIndex < activeSongTimeline.length) {
+                const currentSimultaneousTime = activeSongTimeline[currentStepIndex].timeMs;
+                let i = currentStepIndex;
+                while (i < activeSongTimeline.length && Math.abs(activeSongTimeline[i].timeMs - currentSimultaneousTime) < 20) {
+                    const pad = document.getElementById(`pad-${activeSongTimeline[i].drumId}`);
+                    if (pad) pad.classList.add('step-target');
+                    i++;
+                }
+            }
         }
 
         function triggerPadHit(drumId) {
@@ -562,7 +704,7 @@
                 if (hitNote) {
                     hitNote.hit = true;
                     gameStats.perfect++;
-                    statusEl.textContent = `PERFECT HIT! Hits: ${gameStats.perfect}`;
+                    statusEl.textContent = `PERFECT HIT! Score: ${gameStats.perfect}`;
                 }
             }
         }
@@ -581,11 +723,10 @@
         function handleMIDIMessage(e) {
             const status = e.data[0];
             const command = status & 0xF0;
-            const channel = status & 0x0F;
             const note = e.data[1];
             const velocity = e.data.length > 2 ? e.data[2] : 0;
 
-            if (command === 144 && velocity > 0) { // Note On
+            if (command === 144 && velocity > 0) {
                 if (isCalibrating) {
                     processCalibrationMIDI(note);
                 } else {
@@ -628,7 +769,7 @@
             }
         }
 
-        // --- MIDI FILE DRUM EXTRACTION (CHANNEL 10) ---
+        // --- MIDI FILE DRUM EXTRACTION ---
         document.getElementById('midi-input').addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -636,10 +777,10 @@
             try {
                 const buffer = await file.arrayBuffer();
                 const midi = new Midi(buffer);
-                const drumNotes = [];
+                let drumNotes = [];
 
                 midi.tracks.forEach(track => {
-                    if (track.channel === 9) { // Channel 10 (0-indexed 9)
+                    if (track.channel === 9) { // Channel 10 drums
                         track.notes.forEach(n => {
                             const drumObj = DRUM_KIT.find(d => d.midi === n.midi) || DRUM_KIT[0];
                             drumNotes.push({ timeMs: n.time * 1000, drumId: drumObj.id });
@@ -662,7 +803,7 @@
             }
         });
 
-        // --- SHEET MUSIC RENDERING ENGINE (SCROLLS RIGHT TO LEFT) ---
+        // --- SHEET MUSIC RENDERING ENGINE ---
         function resizeCanvas() {
             canvas.width = canvas.parentElement.clientWidth;
             canvas.height = canvas.parentElement.clientHeight;
@@ -679,7 +820,7 @@
                 ctx.beginPath();
                 ctx.ellipse(x, y, 6.5, 5, -0.2, 0, Math.PI * 2);
                 ctx.fill();
-            } else if (headType === 'diamond') { // Diamond head for Ride Cymbal
+            } else if (headType === 'diamond') {
                 ctx.beginPath();
                 ctx.moveTo(x, y - 6);
                 ctx.lineTo(x + 7, y);
@@ -709,9 +850,9 @@
 
             const centerY = canvas.height / 2;
             const lineSpacing = 14;
-            const hitLineX = 140; // Fixed hit target line position
+            const hitLineX = 140;
 
-            // 1. Draw Standard 5-Line Drum Staff
+            // 1. Draw 5-Line Staff
             ctx.strokeStyle = '#94a3b8';
             ctx.lineWidth = 1.5;
             for (let i = -2; i <= 2; i++) {
@@ -722,12 +863,27 @@
                 ctx.stroke();
             }
 
-            // 2. Draw Percussion Clef (Two vertical thick bars)
+            // 2. Bar Lines every 2000ms (16 Bars total)
+            const pixelsPerMs = 0.35 * speedFactor;
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2;
+            for (let bar = 0; bar <= 16; bar++) {
+                const barTimeMs = bar * 2000;
+                const barX = hitLineX + (barTimeMs / speedFactor - elapsedMs) * pixelsPerMs;
+                if (barX > 30 && barX < canvas.width + 50) {
+                    ctx.beginPath();
+                    ctx.moveTo(barX, centerY - 2 * lineSpacing);
+                    ctx.lineTo(barX, centerY + 2 * lineSpacing);
+                    ctx.stroke();
+                }
+            }
+
+            // 3. Percussion Clef
             ctx.fillStyle = '#334155';
             ctx.fillRect(40, centerY - 2 * lineSpacing, 4, lineSpacing * 4);
             ctx.fillRect(48, centerY - 2 * lineSpacing, 4, lineSpacing * 4);
 
-            // 3. Draw Target Hit Line
+            // 4. Target Hit Line
             ctx.strokeStyle = '#ef4444';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -735,9 +891,7 @@
             ctx.lineTo(hitLineX, centerY + 3.5 * lineSpacing);
             ctx.stroke();
 
-            // 4. Render Scrolling Drum Notes (Right to Left)
-            const pixelsPerMs = 0.35 * speedFactor;
-
+            // 5. Render Scrolling Notes
             activeSongTimeline.forEach(note => {
                 const drum = DRUM_KIT.find(d => d.id === note.drumId);
                 if (!drum) return;
@@ -745,12 +899,10 @@
                 const timeDelta = note.timeMs / speedFactor - elapsedMs;
                 const noteX = hitLineX + timeDelta * pixelsPerMs;
 
-                // Only render notes currently visible within canvas bounds
                 if (noteX > 30 && noteX < canvas.width + 20) {
                     let noteY = centerY - (drum.lineIndex - 2.5) * lineSpacing;
                     if (drum.lineIndex === -1) noteY = centerY + 3 * lineSpacing;
 
-                    // Note Stem
                     ctx.strokeStyle = drum.color;
                     ctx.lineWidth = 2;
                     ctx.beginPath();
@@ -758,7 +910,6 @@
                     ctx.lineTo(noteX + 5, noteY - 28);
                     ctx.stroke();
 
-                    // Custom Notation Head Shape
                     drawNotationHead(ctx, noteX, noteY, drum.head, drum.color);
                 }
             });
@@ -776,7 +927,6 @@
                 effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
             }
 
-            // Audio triggering in auto-play mode
             if (!isStepMode && !isGameMode) {
                 activeSongTimeline.forEach(n => {
                     if (!n.played && effectiveElapsed >= n.timeMs / speedFactor) {
@@ -788,7 +938,6 @@
 
             drawSheetMusic(effectiveElapsed);
 
-            // End of Beat check
             const lastNote = activeSongTimeline[activeSongTimeline.length - 1];
             if (lastNote && effectiveElapsed > (lastNote.timeMs / speedFactor) + 1200) {
                 if (isGameMode) showGameResults();
@@ -810,25 +959,47 @@
             gameStats = { perfect: 0, miss: 0 };
 
             activeSongTimeline.forEach(n => { n.played = false; n.hit = false; });
-            statusEl.textContent = isStepMode ? "STEP MODE: Play the highlighted note." : "Playing Drum Beat...";
+
+            if (isStepMode) {
+                highlightTargetStepPads();
+                updateStepStatus();
+            } else {
+                statusEl.textContent = "Playing 16-Bar Drum Groove...";
+            }
 
             animationFrameId = requestAnimationFrame(renderLoop);
         }
 
         function advanceStep() {
             if (currentStepIndex < activeSongTimeline.length) {
-                currentStepIndex++;
-                if (currentStepIndex < activeSongTimeline.length) {
-                    statusEl.textContent = `Step ${currentStepIndex + 1} of ${activeSongTimeline.length}`;
-                } else {
-                    statusEl.textContent = "Groove Practice Completed!";
+                const currentMs = activeSongTimeline[currentStepIndex].timeMs;
+                // Play all notes on the same beat trigger simultaneously
+                while (currentStepIndex < activeSongTimeline.length && Math.abs(activeSongTimeline[currentStepIndex].timeMs - currentMs) < 20) {
+                    triggerDrumSound(activeSongTimeline[currentStepIndex].drumId);
+                    currentStepIndex++;
                 }
+                
+                highlightTargetStepPads();
+                updateStepStatus();
+            }
+        }
+
+        function updateStepStatus() {
+            if (currentStepIndex < activeSongTimeline.length) {
+                const targetNote = activeSongTimeline[currentStepIndex];
+                const drumObj = DRUM_KIT.find(d => d.id === targetNote.drumId);
+                const barNum = Math.floor(targetNote.timeMs / 2000) + 1;
+                statusEl.textContent = `Step ${currentStepIndex + 1}/${activeSongTimeline.length} [Bar ${barNum}/16]: Strike -> [ ${drumObj.name.toUpperCase()} ] or Press SPACE BAR`;
+            } else {
+                statusEl.textContent = "16-Bar Step Groove Complete! Great Job!";
+                document.querySelectorAll('.pad').forEach(p => p.classList.remove('step-target'));
             }
         }
 
         function stopBeat() {
             isPlaying = false; isPaused = false;
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            document.querySelectorAll('.pad').forEach(p => p.classList.remove('step-target'));
             drawSheetMusic(0);
             statusEl.textContent = "Playback stopped.";
         }
@@ -836,9 +1007,22 @@
         function showGameResults() {
             const total = activeSongTimeline.length;
             const accuracy = total > 0 ? ((gameStats.perfect / total) * 100).toFixed(1) : 0;
-            document.getElementById('game-summary-text').innerHTML = `Rhythm Accuracy: <b>${accuracy}%</b><br>Hits: ${gameStats.perfect} / ${total}`;
+            document.getElementById('game-summary-text').innerHTML = `16-Bar Groove Accuracy: <b>${accuracy}%</b><br>Hits: ${gameStats.perfect} / ${total}`;
             document.getElementById('game-results-modal').classList.add('open');
         }
+
+        // --- KEYBOARD LISTENERS ---
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                initAudio();
+                if (!isPlaying) {
+                    playBeat();
+                } else if (isStepMode) {
+                    advanceStep();
+                }
+            }
+        });
 
         // --- EVENT LISTENERS ---
         document.getElementById('btn-play').addEventListener('click', playBeat);
@@ -856,13 +1040,24 @@
         document.getElementById('btn-step').addEventListener('click', () => {
             isStepMode = !isStepMode;
             document.getElementById('btn-step').classList.toggle('btn-step-active', isStepMode);
-            if (isStepMode) isGameMode = false;
+            if (isStepMode) {
+                isGameMode = false;
+                document.getElementById('btn-game').classList.remove('btn-game-active');
+                highlightTargetStepPads();
+                updateStepStatus();
+            } else {
+                document.querySelectorAll('.pad').forEach(p => p.classList.remove('step-target'));
+            }
         });
 
         document.getElementById('btn-game').addEventListener('click', () => {
             isGameMode = !isGameMode;
             document.getElementById('btn-game').classList.toggle('btn-game-active', isGameMode);
-            if (isGameMode) isStepMode = false;
+            if (isGameMode) {
+                isStepMode = false;
+                document.getElementById('btn-step').classList.remove('btn-step-active');
+                document.querySelectorAll('.pad').forEach(p => p.classList.remove('step-target'));
+            }
         });
 
         speedSlider.addEventListener('input', () => {
@@ -870,17 +1065,17 @@
             document.getElementById('speed-label').textContent = `${speedSlider.value}%`;
         });
 
-        // Initialize Common Beats Dropdown
-        Object.keys(BUILTIN_BEATS).forEach(title => {
+        // Populate Drum Beats Dropdown with Drumeo Inspired Grooves
+        Object.keys(ONE_BAR_PATTERNS).forEach(title => {
             const opt = document.createElement('option');
             opt.value = title; opt.textContent = title;
             songSelect.appendChild(opt);
         });
 
         songSelect.addEventListener('change', (e) => {
-            const raw = BUILTIN_BEATS[e.target.value];
-            if (raw) {
-                activeSongTimeline = raw.map(item => ({ timeMs: item[0], drumId: item[1] }));
+            const baseOneBar = ONE_BAR_PATTERNS[e.target.value];
+            if (baseOneBar) {
+                activeSongTimeline = generate16BarPattern(baseOneBar);
                 playBeat();
             }
         });
@@ -889,6 +1084,12 @@
         buildDrumPads();
         resizeCanvas();
         initMIDI();
+
+        // Default Load First Groove Extended to 16 Bars
+        const defaultBeatKey = Object.keys(ONE_BAR_PATTERNS)[0];
+        activeSongTimeline = generate16BarPattern(ONE_BAR_PATTERNS[defaultBeatKey]);
+        songSelect.value = defaultBeatKey;
+
         drawSheetMusic(0);
     </script>
 </body>
