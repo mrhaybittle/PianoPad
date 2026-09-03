@@ -413,20 +413,22 @@
             color: #f1f5f9;
         }
 
-        #pad-openHiHat   { top: 50%; left: 10%; width: 88px; height: 88px; }
-        #pad-closedHiHat { top: 50%; left: 10%; width: 88px; height: 88px; display: none; }
-        #pad-hiHatPedal  { top: 60%; left: 25%; width: 55px; height: 100px; transform: translate(-50%, -50%) rotate(-12deg); }
-        #pad-snare        { top: 52%; left: 50%; width: 104px; height: 104px; }
-        #pad-kick        { top: 60%; left: 68%; width: 55px; height: 100px; transform: translate(-50%, -50%) rotate(12deg); }
-        #pad-floorTom    { top: 54%; left: 86%; width: 88px; height: 88px; }
-        #pad-tom1        { top: 26%; left: 38%; width: 80px; height: 80px; }
-        #pad-tom2        { top: 26%; left: 62%; width: 80px; height: 80px; }
+        /* Pad Positions - Updated to match requested kit layout adjustments */
+        #pad-openHiHat   { top: 52%; left: 8%; width: 84px; height: 84px; }
+        #pad-closedHiHat { top: 52%; left: 8%; width: 84px; height: 84px; display: none; }
+        #pad-hiHatPedal  { top: 62%; left: 23%; width: 55px; height: 100px; transform: translate(-50%, -50%) rotate(-12deg); }
+        #pad-crash       { top: 22%; left: 24%; width: 88px; height: 88px; } /* Crash Cymbal left of Tom 1 & above pedal */
+        #pad-snare        { top: 65%; left: 47%; width: 104px; height: 104px; } /* Snare moved down */
+        #pad-kick        { top: 62%; left: 68%; width: 55px; height: 100px; transform: translate(-50%, -50%) rotate(12deg); }
+        #pad-floorTom    { top: 56%; left: 86%; width: 88px; height: 88px; }
+        #pad-tom1        { top: 26%; left: 45%; width: 80px; height: 80px; } /* Tom 1 moved closer to Tom 2 */
+        #pad-tom2        { top: 26%; left: 58%; width: 80px; height: 80px; }
         #pad-ride        { top: 22%; left: 82%; width: 90px; height: 90px; }
 
         .hihat-toggle-pill {
             position: absolute;
             top: 80%;
-            left: 10%;
+            left: 8%;
             transform: translateX(-50%);
             display: flex;
             gap: 4px;
@@ -673,7 +675,7 @@
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span id="calib-progress" style="font-size: 0.8rem; font-weight: 700; color: #64748b;">Part 1 of 9</span>
+                <span id="calib-progress" style="font-size: 0.8rem; font-weight: 700; color: #64748b;">Part 1 of 10</span>
                 <button class="btn-secondary" id="btn-calib-cancel">Cancel</button>
             </div>
         </div>
@@ -705,6 +707,18 @@
     </div>
 
     <script>
+        /*
+          DRUM KIT DEFINITION (Includes Crash Cymbal & Exact Notation Line Positions)
+          - Space 0.5 (1st Space from Bottom): Kick / Bass Drum
+          - Line 1.0 (1st Line from Bottom): Floor Tom (Tom 3)
+          - Space 1.5 (2nd Space from Bottom): Tom 2
+          - Line 2.0 (2nd Line from Bottom): Tom 1
+          - Space 2.5 (3RD SPACE FROM BOTTOM): SNARE DRUM
+          - Line 4.0 (Top Line 4): Ride Cymbal (Diamond Head)
+          - Space 4.5 (Above Top Line): Hi-Hats & Crash Cymbal
+          - Below Line 0 (-1): Hi-Hat Pedal
+        */
+
         const DRUM_KIT = [
             { id: 'kick', name: 'KICK', color: '#e11d48', lineIndex: 0.5, head: 'note', midi: 36, isPedal: true, svg: '<ellipse cx="12" cy="12" rx="8" ry="5" fill="none"/>' },
             { id: 'floorTom', name: 'TOM 3', color: '#ea580c', lineIndex: 1.0, head: 'note', midi: 43, isPedal: false, svg: '<rect x="6" y="8" width="20" height="16" rx="2" fill="none"/>' },
@@ -712,19 +726,20 @@
             { id: 'tom1', name: 'TOM 1', color: '#ca8a04', lineIndex: 2.0, head: 'note', midi: 48, isPedal: false, svg: '<rect x="10" y="12" width="12" height="10" rx="2" fill="none"/>' },
             { id: 'snare', name: 'SNARE', color: '#16a34a', lineIndex: 2.5, head: 'note', midi: 38, isPedal: false, isSnare: true, svg: '<rect x="6" y="12" width="20" height="8" rx="1" fill="none"/><path d="M4 16h24"/>' },
             { id: 'ride', name: 'RIDE', color: '#0284c7', lineIndex: 4.0, head: 'diamond', midi: 51, isPedal: false, svg: '<ellipse cx="16" cy="16" rx="14" ry="4" fill="none"/>' },
+            { id: 'crash', name: 'CRASH', color: '#06b6d4', lineIndex: 4.5, head: 'cross', midi: 49, isPedal: false, svg: '<ellipse cx="16" cy="16" rx="14" ry="3" fill="none"/>' },
             { id: 'closedHiHat', name: 'CLOSED HH', color: '#2563eb', lineIndex: 4.5, head: 'cross', midi: 42, isPedal: false, svg: '<ellipse cx="16" cy="12" rx="10" ry="3" fill="none"/><ellipse cx="16" cy="18" rx="10" ry="3" fill="none"/>' },
             { id: 'openHiHat', name: 'OPEN HH', color: '#7c3aed', lineIndex: 4.5, head: 'circleCross', midi: 46, isPedal: false, svg: '<ellipse cx="16" cy="10" rx="10" ry="3" fill="none"/><ellipse cx="16" cy="20" rx="10" ry="3" fill="none"/>' },
             { id: 'hiHatPedal', name: 'OPEN/CLOSE', color: '#db2777', lineIndex: -1.0, head: 'crossStem', midi: 44, isPedal: true, svg: '<path d="M8 24l16-8v8H8z"/>' }
         ];
 
         const ONE_BAR_PATTERNS = {
-            "Beginner #1 - Individual Kit Parts": { barDurationMs: 16000, beatsPerBar: 8, countInBeats: 4, hits: [
+            "Beginner #1 - Individual Kit Parts": { barDurationMs: 18000, beatsPerBar: 9, countInBeats: 4, hits: [
                 [0, 'kick'], [2000, 'snare'], [4000, 'closedHiHat'], [6000, 'openHiHat'],
-                [8000, 'tom1'], [10000, 'tom2'], [12000, 'floorTom'], [14000, 'ride']
+                [8000, 'tom1'], [10000, 'tom2'], [12000, 'floorTom'], [14000, 'ride'], [16000, 'crash']
             ]},
             "Beginner #2 - 2-Part Combinations": { barDurationMs: 16000, beatsPerBar: 8, countInBeats: 4, hits: [
                 [0, 'kick'], [2000, 'closedHiHat'], [4000, 'snare'], [6000, 'closedHiHat'],
-                [8000, 'kick'], [10000, 'closedHiHat'], [12000, 'snare'], [14000, 'ride']
+                [8000, 'kick'], [10000, 'closedHiHat'], [12000, 'snare'], [14000, 'crash']
             ]},
             "Beginner #3 - Very Basic Drum Beat": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'closedHiHat'], [500, 'closedHiHat'],
@@ -768,7 +783,7 @@
             ]},
             "8. Ride Cymbal Rock Fill": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'ride'], [250, 'ride'], [500, 'snare'], [500, 'ride'], [750, 'ride'],
-                [1000, 'tom1'], [1250, 'tom2'], [1500, 'floorTom'], [1750, 'kick'], [1750, 'snare']
+                [1000, 'tom1'], [1250, 'tom2'], [1500, 'floorTom'], [1750, 'kick'], [1750, 'crash']
             ]},
             "9. Funk Ghost-Note Groove": { barDurationMs: 2000, beatsPerBar: 4, countInBeats: 4, hits: [
                 [0, 'kick'], [0, 'closedHiHat'], [250, 'closedHiHat'], [375, 'snare'], [500, 'snare'], [500, 'closedHiHat'],
@@ -1043,6 +1058,22 @@
                 });
 
                 masterGain.connect(audioCtx.destination);
+            } else if (drumId === 'crash') {
+                const bufferSize = audioCtx.sampleRate * 0.45;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'highpass'; filter.frequency.value = 4500;
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(0.8, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+                noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+                noise.start(now);
             } else {
                 const bufferSize = audioCtx.sampleRate * (drumId === 'openHiHat' ? 0.35 : 0.08);
                 const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
@@ -1116,14 +1147,9 @@
             statusEl.textContent = `Accuracy: ${accuracy}% | Perfect: ${gameStats.perfect} | Early/Late: ${gameStats.earlyLate} | Missed: ${gameStats.miss}`;
         }
 
-        /* --- STEP MODE ADVANCEMENT FIX ---
-           Allow matching hits within a 150ms group window on simultaneous hits,
-           and advance only when the required drum(s) on the step are satisfied.
-        */
         function advanceStep() {
             if (currentStepIndex < activeSongTimeline.length) {
                 const currentMs = activeSongTimeline[currentStepIndex].timeMs;
-                // Group notes happening on the exact same beat
                 while (currentStepIndex < activeSongTimeline.length && Math.abs(activeSongTimeline[currentStepIndex].timeMs - currentMs) < 30) {
                     currentStepIndex++;
                 }
@@ -1138,7 +1164,6 @@
                 const barNum = Math.floor(targetNote.timeMs / activeConfig.barDurationMs) + 1;
                 statusEl.textContent = `Step ${currentStepIndex + 1}/${activeSongTimeline.length} [Bar ${barNum}/16]: Strike -> [ ${drumObj.name} ] or Press SPACE BAR`;
 
-                // Highlight target drum pad
                 document.querySelectorAll('.pad-node').forEach(p => p.classList.remove('step-target'));
                 const pad = document.getElementById(`pad-${targetNote.drumId}`);
                 if (pad) pad.classList.add('step-target');
@@ -1305,12 +1330,12 @@
                 ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
             }
 
-            // 2. OBVIOUS BAR LINES OCCURRING BEFORE BEAT 1 (Offset by -120ms prior to Beat 1)
+            // 2. OBVIOUS BAR LINES OCCURRING BEFORE BEAT 1 (-120ms lead)
             const barMs = activeConfig.barDurationMs;
-            const barOffsetLeadMs = 120; // Places bar line distinctly before Beat 1
+            const barOffsetLeadMs = 120;
             
-            ctx.strokeStyle = '#334155'; // Darker prominent color
-            ctx.lineWidth = 3.5;          // Thicker prominent stroke
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 3.5;
 
             for (let bar = 0; bar <= 16; bar++) {
                 const barTimeMs = (bar * barMs) - barOffsetLeadMs;
@@ -1373,7 +1398,7 @@
             updateBarTimeline(effectiveElapsed);
             updateMetronomeVisual(effectiveElapsed);
 
-            // Audio Metronome Click Sync (Works across all patterns including Beginner #1 & #2)
+            // Audio Metronome Click Sync
             if (isMetronomeEnabled && !isStepMode) {
                 const beatIntervalMs = (activeConfig.barDurationMs / activeConfig.beatsPerBar) / speedFactor;
                 const currentBeatIndex = Math.floor(effectiveElapsed / beatIntervalMs);
@@ -1524,7 +1549,6 @@
             document.getElementById('game-results-modal').classList.add('open');
         }
 
-        // Keyboard Spacebar Step Control
         window.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
                 e.preventDefault();
