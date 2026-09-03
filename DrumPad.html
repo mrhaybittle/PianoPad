@@ -158,7 +158,6 @@
         .btn-step-active { background-color: #be185d !important; box-shadow: 0 0 10px #ec4899; }
         .btn-game-active { background-color: #8b5cf6 !important; box-shadow: 0 0 12px #8b5cf6; font-weight: 700; }
 
-        /* Metronome Button Styling */
         .btn-metro {
             background-color: #f1f5f9;
             color: #475569;
@@ -208,7 +207,6 @@
             height: 100%;
         }
 
-        /* --- 16-BAR PROGRESS GRID --- */
         .bar-progress-container {
             display: flex;
             flex-direction: column;
@@ -263,15 +261,60 @@
             color: #1e40af;
         }
 
-        /* --- STAGE LAYOUT --- */
-        .drum-kit-layout-wrapper {
+        /* --- BOTTOM AREA WITH ANIMATED METRONOME & DRUM STAGE --- */
+        .bottom-section {
             display: flex;
-            justify-content: center;
             align-items: center;
-            padding: 8px;
+            justify-content: center;
+            gap: 16px;
             background-color: #f8fafc;
             border-radius: 12px;
             border: 1px solid #e2e8f0;
+            padding: 8px 16px;
+        }
+
+        /* ANIMATED METRONOME CONTAINER */
+        .metro-widget {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 110px;
+            height: 140px;
+            background: #ffffff;
+            border: 2px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 6px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+            user-select: none;
+        }
+
+        .metro-widget-title {
+            font-size: 0.62rem;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+            letter-spacing: 0.05em;
+        }
+
+        .metro-svg-container {
+            width: 80px;
+            height: 100px;
+            position: relative;
+        }
+
+        /* Metronome Arm pendulum rotation */
+        #metro-arm {
+            transform-origin: 40px 80px;
+            transition: transform 0.05s linear;
+        }
+
+        .drum-kit-layout-wrapper {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             overflow-x: auto;
         }
 
@@ -530,7 +573,7 @@
                     <input type="range" id="speed-slider" min="40" max="240" value="100" step="2">
                 </div>
 
-                <button id="btn-metro" class="btn-metro" title="Toggle Metronome Click">
+                <button id="btn-metro" class="btn-metro" title="Toggle Metronome Click & Animation">
                     <svg class="metronome-svg" viewBox="0 0 24 24">
                         <path d="M12 2 L19 20 L5 20 Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
                         <line x1="12" y1="18" x2="18" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -571,11 +614,29 @@
             <div class="bar-grid" id="bar-grid"></div>
         </div>
 
-        <div class="drum-kit-layout-wrapper">
-            <div class="drum-kit-stage" id="drum-stage">
-                <div class="hihat-toggle-pill">
-                    <button class="hihat-pill-btn active" id="pill-open">OPEN</button>
-                    <button class="hihat-pill-btn" id="pill-closed">CLOSED</button>
+        <div class="bottom-section">
+            <div class="metro-widget">
+                <div class="metro-widget-title">Metronome</div>
+                <div class="metro-svg-container">
+                    <svg viewBox="0 0 80 100" width="80" height="100">
+                        <polygon points="20,10 60,10 72,90 8,90" fill="#0f172a"/>
+                        <polygon points="24,16 56,16 66,82 14,82" fill="#f8fafc"/>
+                        <line x1="40" y1="20" x2="40" y2="80" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="2 2"/>
+                        <g id="metro-arm">
+                            <line x1="40" y1="80" x2="40" y2="16" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round"/>
+                            <polygon points="40,24 33,38 47,38" fill="#1e293b"/>
+                            <polygon points="40,32 35,38 45,38" fill="#f59e0b"/>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="drum-kit-layout-wrapper">
+                <div class="drum-kit-stage" id="drum-stage">
+                    <div class="hihat-toggle-pill">
+                        <button class="hihat-pill-btn active" id="pill-open">OPEN</button>
+                        <button class="hihat-pill-btn" id="pill-closed">CLOSED</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -627,18 +688,6 @@
     </div>
 
     <script>
-        /*
-          CORRECT NOTATION PLACEMENT (5 Staff Lines, 0=Bottom Line, 4=Top Line):
-          - Space 0.5 (1st Space from Bottom): Kick / Bass Drum
-          - Line 1.0 (1st Line from Bottom): Floor Tom (Tom 3)
-          - Space 1.5 (2nd Space from Bottom): Tom 2
-          - Line 2.0 (2nd Line from Bottom): Tom 1
-          - Space 2.5 (3RD SPACE FROM BOTTOM): SNARE DRUM
-          - Line 4.0 (Top Line 4): Ride Cymbal (Diamond Head)
-          - Space 4.5 (Above Top Line): Hi-Hats
-          - Below Line 0 (-1): Hi-Hat Pedal
-        */
-
         const DRUM_KIT = [
             { id: 'kick', name: 'KICK', color: '#e11d48', lineIndex: 0.5, head: 'note', midi: 36, isPedal: true, svg: '<ellipse cx="12" cy="12" rx="8" ry="5" fill="none"/>' },
             { id: 'floorTom', name: 'TOM 3', color: '#ea580c', lineIndex: 1.0, head: 'note', midi: 43, isPedal: false, svg: '<rect x="6" y="8" width="20" height="16" rx="2" fill="none"/>' },
@@ -782,6 +831,7 @@
         const barGridEl = document.getElementById('bar-grid');
         const barProgressTextEl = document.getElementById('bar-progress-text');
         const btnMetro = document.getElementById('btn-metro');
+        const metroArmEl = document.getElementById('metro-arm');
 
         function initBarGrid() {
             barGridEl.innerHTML = '';
@@ -815,6 +865,19 @@
                     }
                 }
             }
+        }
+
+        /* --- METRONOME PENDULUM ANIMATION UPDATE --- */
+        function updateMetronomeVisual(elapsedMs) {
+            if (!isMetronomeEnabled) {
+                metroArmEl.style.transform = 'rotate(0deg)'; // Static center if turned OFF
+                return;
+            }
+
+            const beatPeriodMs = 60000 / currentBPM; // Time per beat
+            // Sine-wave oscillation swinging between -28deg and +28deg
+            const angle = Math.sin((elapsedMs / beatPeriodMs) * Math.PI) * 28;
+            metroArmEl.style.transform = `rotate(${angle}deg)`;
         }
 
         function initAudio() {
@@ -1218,10 +1281,11 @@
             }
 
             updateBarTimeline(effectiveElapsed);
+            updateMetronomeVisual(effectiveElapsed);
 
-            // Play Metronome Clicks if Enabled
+            // Play Metronome Audio Clicks if Enabled
             if (isMetronomeEnabled && !isStepMode) {
-                const beatIntervalMs = 500 / speedFactor; // 4 beats per 2000ms bar
+                const beatIntervalMs = 500 / speedFactor;
                 const currentBeatIndex = Math.floor(effectiveElapsed / beatIntervalMs);
                 if (currentBeatIndex > lastMetronomeBeatIndex) {
                     lastMetronomeBeatIndex = currentBeatIndex;
@@ -1276,6 +1340,7 @@
                 </svg>
                 Metro: ${isMetronomeEnabled ? 'ON' : 'OFF'}
             `;
+            updateMetronomeVisual(0);
         }
 
         btnMetro.addEventListener('click', () => {
@@ -1338,6 +1403,7 @@
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
             drawSheetMusic(0);
             updateBarTimeline(0);
+            updateMetronomeVisual(0);
             statusEl.textContent = "Playback stopped.";
         }
 
@@ -1429,6 +1495,7 @@
 
         drawSheetMusic(0);
         updateBarTimeline(0);
+        updateMetronomeVisual(0);
     </script>
 </body>
 </html>
