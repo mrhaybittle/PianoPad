@@ -226,6 +226,12 @@
             box-shadow: 0 0 15px var(--pad-color);
         }
 
+        .pad.pad-missed {
+            background-color: #fee2e2 !important;
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 12px #ef4444;
+        }
+
         .pad.step-target {
             animation: pulseTarget 0.8s infinite alternate ease-in-out;
             border-width: 4px;
@@ -316,22 +322,22 @@
             stroke: #2563eb; fill: none; stroke-width: 2;
         }
 
-        /* PianoPad Game Performance Bar Chart */
+        /* --- STACKED BAR GRAPH SUMMARY --- */
         .bar-chart-wrapper {
             display: flex;
             align-items: flex-end;
             justify-content: center;
-            height: 140px;
-            width: 80px;
+            height: 160px;
+            width: 90px;
             background: #f8fafc;
             border: 1px solid #cbd5e1;
             border-radius: 8px;
-            padding: 6px;
-            margin: 0 auto;
+            padding: 8px;
+            margin: 10px auto;
         }
 
         .stacked-bar {
-            width: 40px;
+            width: 45px;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
@@ -340,9 +346,9 @@
             overflow: hidden;
         }
 
-        .bar-part-red { background-color: #ef4444; width: 100%; transition: height 0.4s; }
-        .bar-part-orange { background-color: #f97316; width: 100%; transition: height 0.4s; }
-        .bar-part-green { background-color: #22c55e; width: 100%; transition: height 0.4s; }
+        .bar-part-red { background-color: #ef4444; width: 100%; transition: height 0.4s ease; }
+        .bar-part-orange { background-color: #f97316; width: 100%; transition: height 0.4s ease; }
+        .bar-part-green { background-color: #22c55e; width: 100%; transition: height 0.4s ease; }
     </style>
 </head>
 <body>
@@ -396,7 +402,7 @@
 
         <div class="drum-kit-display" id="drum-pads-container"></div>
 
-        <div class="status-bar" id="status">Welcome to DrumPad! Select a groove or connect your MIDI kit.</div>
+        <div class="status-bar" id="status">Welcome to DrumPad! Choose a groove or strike drums to play.</div>
     </div>
 
     <div class="modal-overlay" id="calib-modal">
@@ -636,7 +642,7 @@
             } else if (isGameMode && isPlaying && !isPaused) {
                 const effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
                 
-                // Find matching note within hitting window
+                // Match note hit within tolerance window
                 const target = activeSongTimeline.find(n => 
                     n.drumId === drumId &&
                     n.gameStatus === 'pending' &&
@@ -646,15 +652,19 @@
                 if (target) {
                     const diff = Math.abs((target.timeMs / speedFactor) - effectiveElapsed);
                     if (diff <= 120) {
-                        target.gameStatus = 'perfect';
+                        target.gameStatus = 'perfect'; // Turns Green on sheet instantly!
                         gameStats.perfect++;
                     } else {
-                        target.gameStatus = 'earlyLate';
+                        target.gameStatus = 'earlyLate'; // Turns Orange on sheet instantly!
                         gameStats.earlyLate++;
                     }
                     updateGameStatus();
                 } else {
                     playErrorClackSound();
+                    if (pad) {
+                        pad.classList.add('pad-missed');
+                        setTimeout(() => pad.classList.remove('pad-missed'), 200);
+                    }
                 }
             }
         }
@@ -785,7 +795,7 @@
             ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3;
             ctx.beginPath(); ctx.moveTo(hitLineX, centerY - 3.5 * lineSpacing); ctx.lineTo(hitLineX, centerY + 3.5 * lineSpacing); ctx.stroke();
 
-            // 5. Render Notes with Game Feedback Coloring
+            // 5. Render Notes with INSTANT Sheet Feedback Coloring
             activeSongTimeline.forEach(note => {
                 const drum = DRUM_KIT.find(d => d.id === note.drumId);
                 if (!drum) return;
@@ -797,12 +807,12 @@
                     let noteY = centerY - (drum.lineIndex - 2.5) * lineSpacing;
                     if (drum.lineIndex === -1) noteY = centerY + 3 * lineSpacing;
 
-                    // PianoPad Feedback Color Map
+                    // PianoPad Sheet Music Instant Feedback Colors
                     let noteColor = drum.color;
                     if (isGameMode) {
-                        if (note.gameStatus === 'perfect') noteColor = '#22c55e';
-                        else if (note.gameStatus === 'earlyLate') noteColor = '#f97316';
-                        else if (note.gameStatus === 'miss') noteColor = '#ef4444';
+                        if (note.gameStatus === 'perfect') noteColor = '#22c55e';    // Green
+                        else if (note.gameStatus === 'earlyLate') noteColor = '#f97316'; // Orange
+                        else if (note.gameStatus === 'miss') noteColor = '#ef4444';      // Red
                     }
 
                     ctx.strokeStyle = noteColor; ctx.lineWidth = 2;
@@ -823,13 +833,20 @@
                 effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
             }
 
-            // Game Mode Miss Checking Logic
+            // Check Missed Notes (Notes that passed hitline without being struck)
             if (isGameMode) {
                 activeSongTimeline.forEach(n => {
                     if (n.gameStatus === 'pending' && effectiveElapsed > (n.timeMs / speedFactor) + 250) {
-                        n.gameStatus = 'miss';
+                        n.gameStatus = 'miss'; // Instantly turns RED on the sheet music!
                         gameStats.miss++;
                         updateGameStatus();
+
+                        // Flash pad red at bottom when missed
+                        const pad = document.getElementById(`pad-${n.drumId}`);
+                        if (pad) {
+                            pad.classList.add('pad-missed');
+                            setTimeout(() => pad.classList.remove('pad-missed'), 180);
+                        }
                     }
                 });
             } else if (!isStepMode) {
@@ -887,6 +904,7 @@
 
             document.getElementById('game-summary-text').innerHTML = `Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#64748b;">(${gameStats.perfect} Perfect, ${gameStats.earlyLate} Early/Late, ${gameStats.miss} Missed)</span>`;
 
+            // Proportional bar graph calculation (PianoPad style)
             const greenPct = totalHits > 0 ? (gameStats.perfect / totalHits) * 100 : 0;
             const orangePct = totalHits > 0 ? (gameStats.earlyLate / totalHits) * 100 : 0;
             const redPct = totalHits > 0 ? (gameStats.miss / totalHits) * 100 : 0;
