@@ -587,7 +587,6 @@
             display: inline-block;
         }
 
-        /* Arcade Hub & Mini-Games Overlay Styling */
         .arcade-hub-overlay {
             display: none;
             flex-direction: column;
@@ -642,11 +641,11 @@
             flex: 1;
         }
 
-        /* Corrected Left-to-Right Runner Track Sprite */
+        /* Right-Facing Runner Sprite Track & Hurdle Obstacles */
         .runner-track-wrapper {
             position: relative;
             width: 100%;
-            height: 48px;
+            height: 52px;
             background: #0b0f19;
             border: 1px solid #374151;
             border-radius: 8px;
@@ -662,7 +661,7 @@
             right: 14px;
             top: 0;
             bottom: 0;
-            width: 10px;
+            width: 12px;
             background: repeating-linear-gradient(0deg, #fff, #fff 8px, #000 8px, #000 16px);
         }
 
@@ -670,9 +669,14 @@
             position: absolute;
             left: 10px;
             font-size: 1.8rem;
-            transition: left 0.2s linear;
+            transition: left 0.2s linear, transform 0.2s ease-out;
             user-select: none;
-            transform: scaleX(1); /* Left-to-right facing */
+            transform: scaleX(-1); /* Corrected Right-Facing Runner Direction */
+            z-index: 5;
+        }
+
+        .runner-avatar.jumping {
+            transform: scaleX(-1) translateY(-16px);
         }
 
         .runner-avatar.sprinting {
@@ -680,8 +684,26 @@
         }
 
         @keyframes runnerBounce {
-            0% { transform: translateY(0) scaleX(1); }
-            100% { transform: translateY(-4px) scaleX(1); }
+            0% { transform: translateY(0) scaleX(-1); }
+            100% { transform: translateY(-4px) scaleX(-1); }
+        }
+
+        .hurdle-obstacle {
+            position: absolute;
+            bottom: 6px;
+            width: 24px;
+            height: 28px;
+            background: #ef4444;
+            border: 2px solid #ffffff;
+            border-radius: 4px 4px 0 0;
+            color: #ffffff;
+            font-weight: 900;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+            z-index: 2;
         }
     </style>
 </head>
@@ -779,13 +801,11 @@
                     Stop
                 </button>
 
-                <!-- Repositioned Mini-Games Hub Button (Far Right) -->
                 <button id="btn-open-arcade" class="btn-arcade">
                     🕹️ MINI-GAMES
                 </button>
             </div>
 
-            <!-- Minimal Arcade Controls Toolbar -->
             <div class="controls" id="arcade-controls-bar" style="display: none;">
                 <button id="btn-home-screen" class="btn-success" style="font-weight: 800;">
                     🏠 Return to Player
@@ -796,7 +816,6 @@
             </div>
         </header>
 
-        <!-- Arcade Hub Dashboard View -->
         <div class="arcade-hub-overlay" id="arcade-hub">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #374151; padding-bottom: 8px;">
                 <h2 style="font-size: 1.2rem; color: #ec4899; display: flex; align-items: center; gap: 8px;">🕹️ PianoPad Arcade Mini-Games</h2>
@@ -806,7 +825,7 @@
             <div class="arcade-grid">
                 <div class="game-card" onclick="startSimonTaps()">
                     <h3>🧠 Simon Taps</h3>
-                    <p>Watch and listen to the stepwise C Major sequence, then tap the pattern back from memory!</p>
+                    <p>Watch the stepwise C Major sequence and climb the multi-colored level staircase step-by-step!</p>
                     <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Simon Taps</button>
                 </div>
 
@@ -830,7 +849,7 @@
 
                 <div class="game-card" onclick="startFingerSprint()">
                     <h3>🏃 Finger Sprint</h3>
-                    <p>Play the 5-note pattern 3 times! Speed your runner across the track left-to-right to beat the clock.</p>
+                    <p>Sprint 6 laps and jump over lettered hurdles by hitting matching high-octave keys!</p>
                     <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Finger Sprint</button>
                 </div>
             </div>
@@ -849,9 +868,10 @@
             </div>
         </div>
 
-        <!-- Left-to-Right Runner Track Bar -->
+        <!-- Right-Facing Runner Track with Dynamic Hurdle Elements -->
         <div class="runner-track-wrapper" id="runner-track" style="display: none;">
             <div class="runner-avatar" id="runner-sprite">🏃</div>
+            <div id="hurdle-container"></div>
             <div class="runner-finish-line"></div>
         </div>
 
@@ -1031,7 +1051,7 @@
         let calibHighestRawMIDI = 96;
         let midiOctaveOffset = 0;
 
-        // Arcade Mini-Game Variables & Tuning
+        // Arcade Mini-Game Variables
         let activeMiniGame = null;
         let simonSequence = [];
         let simonPlayerIndex = 0;
@@ -1046,10 +1066,11 @@
         let sprintSequence = [];
         let sprintIndex = 0;
         let sprintLapsCompleted = 0;
-        const SPRINT_TARGET_LAPS = 3;
+        const SPRINT_TARGET_LAPS = 6; // Increased track distance length
         let sprintStartTime = 0;
+        let activeHurdles = []; // Array of active hurdle obstacles [{letter: 'G', posPct: 35, cleared: false}]
 
-        let miniGameFallSpeedMs = 3800; // Slower fall speed for Drop Dodge
+        let miniGameFallSpeedMs = 3800;
 
         const cMajorScaleNotes = ['c1', 'd1', 'e1', 'f1', 'g1', 'a1', 'b1', 'c2'];
         const arcadeHub = document.getElementById('arcade-hub');
@@ -1058,6 +1079,7 @@
         const timelineBox = document.getElementById('timeline-box');
         const runnerTrack = document.getElementById('runner-track');
         const runnerSprite = document.getElementById('runner-sprite');
+        const hurdleContainer = document.getElementById('hurdle-container');
 
         document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
         document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
@@ -1091,6 +1113,7 @@
             activeMiniGame = null;
             isPlaying = false;
             runnerTrack.style.display = 'none';
+            hurdleContainer.innerHTML = '';
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.querySelectorAll('.key').forEach(k => {
                 k.classList.remove('active');
@@ -1100,7 +1123,7 @@
             document.getElementById('status').textContent = 'Arcade Mini-Game stopped. Select another game or return Home.';
         }
 
-        /* 1. SIMON TAPS MINI-GAME */
+        /* 1. SIMON TAPS MINI-GAME WITH COLORFUL STAIRCASE VISUALIZER */
         function startSimonTaps() {
             initAudio();
             exitActiveMiniGame();
@@ -1110,6 +1133,45 @@
             resetGameStats();
             document.getElementById('status').textContent = '🧠 Simon Taps: Watch and listen to the pattern...';
             nextSimonRound();
+        }
+
+        function drawSimonStaircase(level) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (level <= 0) return;
+
+            const startX = 60;
+            const startY = canvas.height - 25;
+            const stepWidth = Math.min(32, (canvas.width - 120) / Math.max(level, 10));
+            const stepHeight = Math.min(18, (canvas.height - 40) / Math.max(level, 10));
+
+            // Dynamic Step Color Themes every 5 levels
+            const colorPalettes = [
+                ['#22c55e', '#16a34a'], // Levels 1-5: Emerald Green
+                ['#ec4899', '#db2777'], // Levels 6-10: Neon Pink
+                ['#06b6d4', '#0891b2'], // Levels 11-15: Cyber Cyan
+                ['#f59e0b', '#d97706']  // Levels 16+: Golden Amber
+            ];
+
+            for (let i = 0; i < level; i++) {
+                const paletteIdx = Math.min(colorPalettes.length - 1, Math.floor(i / 5));
+                const colors = colorPalettes[paletteIdx];
+
+                const px = startX + i * stepWidth;
+                const py = startY - i * stepHeight;
+
+                ctx.save();
+                ctx.fillStyle = colors[0];
+                ctx.shadowColor = colors[0];
+                ctx.shadowBlur = 8;
+                ctx.fillRect(px, py, stepWidth - 2, stepHeight - 2);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 10px -apple-system, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(i + 1, px + stepWidth / 2 - 1, py + stepHeight / 2 - 1);
+                ctx.restore();
+            }
         }
 
         function nextSimonRound() {
@@ -1127,7 +1189,8 @@
                 simonSequence.push(cMajorScaleNotes[nextIdx]);
             }
 
-            document.getElementById('status').textContent = `🧠 Simon Taps (Length ${simonSequence.length}): Memorize pattern...`;
+            drawSimonStaircase(simonSequence.length);
+            document.getElementById('status').textContent = `🧠 Simon Taps (Level ${simonSequence.length}): Memorize pattern...`;
 
             let step = 0;
             const interval = setInterval(() => {
@@ -1140,7 +1203,7 @@
                 } else {
                     clearInterval(interval);
                     simonIsPrompting = false;
-                    document.getElementById('status').textContent = `🧠 Your Turn! Play back the ${simonSequence.length} notes...`;
+                    document.getElementById('status').textContent = `🧠 Your Turn! Play back Level ${simonSequence.length}...`;
                 }
             }, 600);
         }
@@ -1153,7 +1216,7 @@
                 gameStats.perfect++;
                 simonPlayerIndex++;
                 if (simonPlayerIndex >= simonSequence.length) {
-                    document.getElementById('status').textContent = `🎉 Perfect! Level ${simonSequence.length} Complete! Next sequence coming...`;
+                    document.getElementById('status').textContent = `🎉 Level ${simonSequence.length} Complete! Escalating to Level ${simonSequence.length + 1}...`;
                     setTimeout(nextSimonRound, 1200);
                 }
             } else {
@@ -1223,7 +1286,7 @@
             dodgeDodgedCount = 0;
             resetGameStats();
 
-            miniGameFallSpeedMs = 3800; // Falling much slower
+            miniGameFallSpeedMs = 3800;
             currentSong = [];
             const whiteKeys = keyLayout.filter(k => k.type === 'white').map(k => k.note);
 
@@ -1247,7 +1310,7 @@
             requestAnimationFrame(renderLoop);
         }
 
-        /* 4. TWO-NOTE COMBO STRIKE WITH COLOR FEEDBACK */
+        /* 4. TWO-NOTE COMBO STRIKE */
         function startComboStrike() {
             initAudio();
             exitActiveMiniGame();
@@ -1277,13 +1340,27 @@
             requestAnimationFrame(renderLoop);
         }
 
-        /* 5. FINGER SPRINT WITH CONTINUOUS SPRINT & 3 LAPS */
+        /* 5. FINGER SPRINT WITH HURDLES & HIGH-OCTAVE JUMPING */
+        function renderHurdles() {
+            hurdleContainer.innerHTML = '';
+            activeHurdles.forEach((h, idx) => {
+                const hurdleDiv = document.createElement('div');
+                hurdleDiv.className = 'hurdle-obstacle';
+                hurdleDiv.style.left = `${h.posPct}%`;
+                hurdleDiv.textContent = h.letter;
+                if (h.cleared) {
+                    hurdleDiv.style.opacity = '0.3';
+                    hurdleDiv.style.borderColor = '#22c55e';
+                }
+                hurdleContainer.appendChild(hurdleDiv);
+            });
+        }
+
         function startFingerSprint() {
             initAudio();
             exitActiveMiniGame();
             arcadeHub.classList.remove('open');
             activeMiniGame = 'sprint';
-            resetGameStats();
 
             runnerTrack.style.display = 'flex';
             runnerSprite.style.left = '10px';
@@ -1295,31 +1372,68 @@
             sprintLapsCompleted = 0;
             sprintStartTime = performance.now();
 
+            // Generate Hurdle Obstacles at 30% and 65% track positions
+            activeHurdles = [
+                { letter: 'G', posPct: 30, cleared: false },
+                { letter: 'E', posPct: 65, cleared: false }
+            ];
+            renderHurdles();
+
             const displayStr = sprintSequence.map(n => n.toUpperCase()).join(' - ');
-            document.getElementById('status').textContent = `🏃 FINGER SPRINT (Lap 1 of ${SPRINT_TARGET_LAPS}): Play [ ${displayStr} ]`;
+            document.getElementById('status').textContent = `🏃 FINGER SPRINT: Play [ ${displayStr} ]! Hit High-Octave G/E to Jump Hurdles!`;
 
             highlightKey(sprintSequence[0], 600, '#eab308');
         }
 
         function handleSprintInput(noteStr) {
+            const rawNoteName = noteStr.toLowerCase().trim();
+            const noteMatch = rawNoteName.match(/^([a-g]#?)([0-9]+)$/);
+            
+            if (!noteMatch) return;
+            const letter = noteMatch[1].toUpperCase();
+            const octave = parseInt(noteMatch[2], 10);
+
+            // Calculate current player track progress percentage
+            const totalKeystrokes = sprintSequence.length * SPRINT_TARGET_LAPS;
+            const completedKeystrokes = (sprintLapsCompleted * sprintSequence.length) + sprintIndex;
+            const currentPosPct = (completedKeystrokes / totalKeystrokes) * 85;
+
+            // Check if player is approaching an uncleared hurdle
+            const upcomingHurdle = activeHurdles.find(h => !h.cleared && Math.abs(currentPosPct - h.posPct) <= 18);
+
+            if (upcomingHurdle) {
+                if (letter === upcomingHurdle.letter && octave >= 2) {
+                    // High-Octave Jump over Hurdle!
+                    upcomingHurdle.cleared = true;
+                    gameStats.perfect++;
+                    renderHurdles();
+
+                    runnerSprite.classList.add('jumping');
+                    setTimeout(() => runnerSprite.classList.remove('jumping'), 400);
+
+                    document.getElementById('status').textContent = `🦘 HURDLE CLEARED! High ${letter} Jump Successful!`;
+                    return;
+                } else if (letter === upcomingHurdle.letter && octave === 1) {
+                    playErrorClackSound();
+                    document.getElementById('status').textContent = `⚠️ Too Low! Play a HIGH ${letter} (Octave 2, 3, or 4) to Jump over the Hurdle!`;
+                    return;
+                }
+            }
+
             const expected = sprintSequence[sprintIndex];
-            if (noteStr.toLowerCase().trim() === expected.toLowerCase().trim()) {
+            if (rawNoteName === expected.toLowerCase().trim()) {
                 gameStats.perfect++;
                 sprintIndex++;
 
-                // Calculate continuous progress based on total keystrokes needed across 3 laps
-                const totalKeystrokes = sprintSequence.length * SPRINT_TARGET_LAPS;
-                const completedKeystrokes = (sprintLapsCompleted * sprintSequence.length) + sprintIndex;
-                const progressPct = (completedKeystrokes / totalKeystrokes) * 85;
-
-                runnerSprite.style.left = `calc(10px + ${progressPct}%)`;
+                const newProgressPct = (((sprintLapsCompleted * sprintSequence.length) + sprintIndex) / totalKeystrokes) * 85;
+                runnerSprite.style.left = `calc(10px + ${newProgressPct}%)`;
 
                 if (sprintIndex >= sprintSequence.length) {
                     sprintLapsCompleted++;
                     sprintIndex = 0;
                     if (sprintLapsCompleted < SPRINT_TARGET_LAPS) {
                         const displayStr = sprintSequence.map(n => n.toUpperCase()).join(' - ');
-                        document.getElementById('status').textContent = `🏃 Lap ${sprintLapsCompleted + 1} of ${SPRINT_TARGET_LAPS}: Keep sprinting [ ${displayStr} ]!`;
+                        document.getElementById('status').textContent = `🏃 Sprinting... Lap ${sprintLapsCompleted + 1} of ${SPRINT_TARGET_LAPS}: [ ${displayStr} ]`;
                     } else {
                         const totalTimeSeconds = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
                         runnerSprite.classList.remove('sprinting');
@@ -1568,6 +1682,7 @@
             gameResultsModal.classList.remove('open');
             if (activeMiniGame === 'drop') startDropDodge();
             else if (activeMiniGame === 'combo') startComboStrike();
+            else if (activeMiniGame === 'sprint') startFingerSprint();
             else playSong();
         });
 
@@ -2338,7 +2453,6 @@
                 playTone(freq, 0.4, 1.0);
             }
 
-            // Drop Dodge safe-key check
             if (activeMiniGame === 'drop') {
                 const effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
                 const activeWall = noteTimeline.find(item => item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 600);
@@ -2738,7 +2852,13 @@
                 }
             }
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Draw active Simon Staircase if in Simon Taps mode
+            if (activeMiniGame === 'simon') {
+                drawSimonStaircase(simonSequence.length);
+            } else {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+
             const canvasHeight = canvas.height;
             const currentFallSpeed = activeMiniGame === 'drop' ? miniGameFallSpeedMs : FALL_TIME_MS;
 
