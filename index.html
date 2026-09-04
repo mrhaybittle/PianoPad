@@ -642,7 +642,7 @@
             flex: 1;
         }
 
-        /* Runner Sprite Visual Element for Finger Sprint Game */
+        /* Corrected Left-to-Right Runner Track Sprite */
         .runner-track-wrapper {
             position: relative;
             width: 100%;
@@ -670,8 +670,9 @@
             position: absolute;
             left: 10px;
             font-size: 1.8rem;
-            transition: left 0.15s ease-out;
+            transition: left 0.2s linear;
             user-select: none;
+            transform: scaleX(1); /* Left-to-right facing */
         }
 
         .runner-avatar.sprinting {
@@ -679,8 +680,8 @@
         }
 
         @keyframes runnerBounce {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(-4px); }
+            0% { transform: translateY(0) scaleX(1); }
+            100% { transform: translateY(-4px) scaleX(1); }
         }
     </style>
 </head>
@@ -690,10 +691,6 @@
         <header>
             <h1>PianoPad 26</h1>
             <div class="controls" id="main-controls-bar">
-                <button id="btn-open-arcade" class="btn-arcade">
-                    🕹️ MINI-GAMES
-                </button>
-
                 <select id="song-select">
                     <option value="">Choose a Song</option>
                 </select>
@@ -781,9 +778,14 @@
                     <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
                     Stop
                 </button>
+
+                <!-- Repositioned Mini-Games Hub Button (Far Right) -->
+                <button id="btn-open-arcade" class="btn-arcade">
+                    🕹️ MINI-GAMES
+                </button>
             </div>
 
-            <!-- Dedicated Minimal Arcade Controls -->
+            <!-- Minimal Arcade Controls Toolbar -->
             <div class="controls" id="arcade-controls-bar" style="display: none;">
                 <button id="btn-home-screen" class="btn-success" style="font-weight: 800;">
                     🏠 Return to Player
@@ -816,19 +818,19 @@
 
                 <div class="game-card" onclick="startDropDodge()">
                     <h3>🛡️ Drop Dodge</h3>
-                    <p>Wide walls of blocks fall down the screen! Find and press the safe empty key gap before impact.</p>
+                    <p>Wide walls fall slowly! You have 5 Lives to dodge blocks by hitting the safe empty key gap.</p>
                     <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Drop Dodge</button>
                 </div>
 
                 <div class="game-card" onclick="startComboStrike()">
                     <h3>⚡ Two-Note Combo</h3>
-                    <p>Pairs of notes fall together! Practice hitting clean two-note intervals simultaneously.</p>
+                    <p>Pairs of notes fall together! Hit two-note intervals simultaneously with timing feedback.</p>
                     <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Combo Strike</button>
                 </div>
 
                 <div class="game-card" onclick="startFingerSprint()">
                     <h3>🏃 Finger Sprint</h3>
-                    <p>Random 5-note scale runs flash on screen! Race your avatar across the track with fast keystrokes.</p>
+                    <p>Play the 5-note pattern 3 times! Speed your runner across the track left-to-right to beat the clock.</p>
                     <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Finger Sprint</button>
                 </div>
             </div>
@@ -847,7 +849,7 @@
             </div>
         </div>
 
-        <!-- Sprint Avatar Track Bar (Active during Finger Sprint Game) -->
+        <!-- Left-to-Right Runner Track Bar -->
         <div class="runner-track-wrapper" id="runner-track" style="display: none;">
             <div class="runner-avatar" id="runner-sprite">🏃</div>
             <div class="runner-finish-line"></div>
@@ -938,7 +940,8 @@
 
             <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
                 <a href="leaderboard.html" target="_blank" class="btn-link btn-share">View Entire Leaderboard</a>
-                <button class="btn-warning" id="btn-game-try-again">Try Again</button>
+                <button class="btn-warning" id="btn-game-try-again">Play Again</button>
+                <button class="btn-arcade" id="btn-game-arcade-menu">Mini-Game Menu</button>
                 <button class="btn-success" id="btn-game-results-close">Continue</button>
             </div>
         </div>
@@ -1028,8 +1031,8 @@
         let calibHighestRawMIDI = 96;
         let midiOctaveOffset = 0;
 
-        // Arcade Mini-Game Variables
-        let activeMiniGame = null; // 'simon', 'mystery', 'drop', 'combo', 'sprint'
+        // Arcade Mini-Game Variables & Tuning
+        let activeMiniGame = null;
         let simonSequence = [];
         let simonPlayerIndex = 0;
         let simonIsPrompting = false;
@@ -1037,9 +1040,16 @@
         let mysteryTargetPitch = null;
         let mysteryGuessCount = 0;
 
+        let dodgeLives = 5;
+        let dodgeDodgedCount = 0;
+
         let sprintSequence = [];
         let sprintIndex = 0;
+        let sprintLapsCompleted = 0;
+        const SPRINT_TARGET_LAPS = 3;
         let sprintStartTime = 0;
+
+        let miniGameFallSpeedMs = 3800; // Slower fall speed for Drop Dodge
 
         const cMajorScaleNotes = ['c1', 'd1', 'e1', 'f1', 'g1', 'a1', 'b1', 'c2'];
         const arcadeHub = document.getElementById('arcade-hub');
@@ -1052,6 +1062,10 @@
         document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
         document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
         document.getElementById('btn-stop-arcade').addEventListener('click', exitActiveMiniGame);
+        document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
+            gameResultsModal.classList.remove('open');
+            openArcadeHub();
+        });
 
         function openArcadeHub() {
             initAudio();
@@ -1093,6 +1107,7 @@
             arcadeHub.classList.remove('open');
             activeMiniGame = 'simon';
             simonSequence = [];
+            resetGameStats();
             document.getElementById('status').textContent = '🧠 Simon Taps: Watch and listen to the pattern...';
             nextSimonRound();
         }
@@ -1101,7 +1116,6 @@
             simonPlayerIndex = 0;
             simonIsPrompting = true;
 
-            // Generate stepwise or adjacent note in C Major scale
             if (simonSequence.length === 0) {
                 simonSequence.push('c1');
                 simonSequence.push('d1');
@@ -1136,14 +1150,17 @@
 
             const expected = simonSequence[simonPlayerIndex];
             if (noteStr.toLowerCase().trim() === expected.toLowerCase().trim()) {
+                gameStats.perfect++;
                 simonPlayerIndex++;
                 if (simonPlayerIndex >= simonSequence.length) {
                     document.getElementById('status').textContent = `🎉 Perfect! Level ${simonSequence.length} Complete! Next sequence coming...`;
                     setTimeout(nextSimonRound, 1200);
                 }
             } else {
+                gameStats.miss++;
                 playErrorClackSound();
-                document.getElementById('status').textContent = `❌ Game Over! Reached Sequence Length: ${simonSequence.length - 1}. Click Play to try again!`;
+                currentSongTitle = "Simon Taps";
+                showGameResultsPopUp();
                 activeMiniGame = null;
             }
         }
@@ -1155,9 +1172,9 @@
             arcadeHub.classList.remove('open');
             activeMiniGame = 'mystery';
             mysteryGuessCount = 0;
+            resetGameStats();
 
-            // Pick a secret random note pitch within 4-octave range
-            const randomPitch = Math.floor(Math.random() * 48) + 12; // C1 (12) to B4 (59)
+            const randomPitch = Math.floor(Math.random() * 48) + 12;
             mysteryTargetPitch = pitchToNote(randomPitch);
 
             const freq = getNoteFrequency(mysteryTargetPitch);
@@ -1176,34 +1193,41 @@
             const diff = Math.abs(guessedPitchNum - targetPitchNum);
 
             if (diff === 0) {
+                gameStats.perfect++;
                 highlightKey(noteStr, 500, '#22c55e');
-                document.getElementById('status').textContent = `🎉 GOT IT in ${mysteryGuessCount} guesses! The Secret Note was ${mysteryTargetPitch.toUpperCase()}!`;
+                currentSongTitle = "Mystery Note";
+                showGameResultsPopUp();
                 activeMiniGame = null;
             } else if (diff <= 2) {
+                gameStats.earlyLate++;
                 highlightKey(noteStr, 250, '#ef4444');
                 document.getElementById('status').textContent = `🔥 Sizzle HOT! You are right next to it! (Guesses: ${mysteryGuessCount})`;
             } else if (diff <= 6) {
+                gameStats.earlyLate++;
                 highlightKey(noteStr, 250, '#f97316');
                 document.getElementById('status').textContent = `⚡ Warm... Getting closer! (Guesses: ${mysteryGuessCount})`;
             } else {
+                gameStats.miss++;
                 highlightKey(noteStr, 250, '#38bdf8');
                 document.getElementById('status').textContent = `❄️ Ice COLD! Far away... (Guesses: ${mysteryGuessCount})`;
             }
         }
 
-        /* 3. DROP DODGE MINI-GAME */
+        /* 3. SLOWER DROP DODGE MINI-GAME WITH 5 LIVES */
         function startDropDodge() {
             initAudio();
             exitActiveMiniGame();
             arcadeHub.classList.remove('open');
             activeMiniGame = 'drop';
+            dodgeLives = 5;
+            dodgeDodgedCount = 0;
+            resetGameStats();
 
-            // Generate synthetic waterfall dropping walls with one safe open key
+            miniGameFallSpeedMs = 3800; // Falling much slower
             currentSong = [];
-            let timeAccum = 1500;
             const whiteKeys = keyLayout.filter(k => k.type === 'white').map(k => k.note);
 
-            for (let i = 0; i < 15; i++) {
+            for (let i = 0; i < 20; i++) {
                 const safeKeyIdx = Math.floor(Math.random() * whiteKeys.length);
                 const safeKey = whiteKeys[safeKeyIdx];
                 const wallNotes = whiteKeys.filter(k => k !== safeKey);
@@ -1211,7 +1235,7 @@
                 currentSong.push({
                     notes: wallNotes,
                     safeKey: safeKey,
-                    rest: 1600
+                    rest: 2200
                 });
             }
 
@@ -1219,17 +1243,19 @@
             isPlaying = true;
             playbackStartTime = performance.now();
             lastFrameTime = performance.now();
-            document.getElementById('status').textContent = '🛡️ DROP DODGE ACTIVE! Press the empty safe key gap before the wall hits!';
+            document.getElementById('status').textContent = `🛡️ DROP DODGE ACTIVE! Lives: ❤️ ${dodgeLives} | Dodges: 0`;
             requestAnimationFrame(renderLoop);
         }
 
-        /* 4. TWO-NOTE COMBO STRIKE MINI-GAME */
+        /* 4. TWO-NOTE COMBO STRIKE WITH COLOR FEEDBACK */
         function startComboStrike() {
             initAudio();
             exitActiveMiniGame();
             arcadeHub.classList.remove('open');
             activeMiniGame = 'combo';
+            resetGameStats();
 
+            miniGameFallSpeedMs = 2400;
             const comboPairs = [
                 ['c1', 'g1'], ['c1', 'e1'], ['f1', 'a1'], ['g1', 'b1'], ['c2', 'e2'], ['d1', 'f1']
             ];
@@ -1251,45 +1277,63 @@
             requestAnimationFrame(renderLoop);
         }
 
-        /* 5. FINGER SPRINT MINI-GAME WITH RUNNER SPRITE */
+        /* 5. FINGER SPRINT WITH CONTINUOUS SPRINT & 3 LAPS */
         function startFingerSprint() {
             initAudio();
             exitActiveMiniGame();
             arcadeHub.classList.remove('open');
             activeMiniGame = 'sprint';
+            resetGameStats();
+
             runnerTrack.style.display = 'flex';
             runnerSprite.style.left = '10px';
             runnerSprite.classList.add('sprinting');
 
-            // Generate a random 5-finger pattern in Octave 1
-            const startIdx = Math.floor(Math.random() * 3); // c1, d1, or e1
+            const startIdx = Math.floor(Math.random() * 3);
             sprintSequence = cMajorScaleNotes.slice(startIdx, startIdx + 5);
             sprintIndex = 0;
+            sprintLapsCompleted = 0;
             sprintStartTime = performance.now();
 
             const displayStr = sprintSequence.map(n => n.toUpperCase()).join(' - ');
-            document.getElementById('status').textContent = `🏃 FINGER SPRINT: Play [ ${displayStr} ] as fast as you can!`;
+            document.getElementById('status').textContent = `🏃 FINGER SPRINT (Lap 1 of ${SPRINT_TARGET_LAPS}): Play [ ${displayStr} ]`;
 
-            // Highlight first key target
             highlightKey(sprintSequence[0], 600, '#eab308');
         }
 
         function handleSprintInput(noteStr) {
             const expected = sprintSequence[sprintIndex];
             if (noteStr.toLowerCase().trim() === expected.toLowerCase().trim()) {
+                gameStats.perfect++;
                 sprintIndex++;
-                const progressPct = (sprintIndex / sprintSequence.length) * 85;
+
+                // Calculate continuous progress based on total keystrokes needed across 3 laps
+                const totalKeystrokes = sprintSequence.length * SPRINT_TARGET_LAPS;
+                const completedKeystrokes = (sprintLapsCompleted * sprintSequence.length) + sprintIndex;
+                const progressPct = (completedKeystrokes / totalKeystrokes) * 85;
+
                 runnerSprite.style.left = `calc(10px + ${progressPct}%)`;
 
-                if (sprintIndex < sprintSequence.length) {
-                    highlightKey(sprintSequence[sprintIndex], 400, '#eab308');
-                } else {
-                    const totalTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
-                    runnerSprite.classList.remove('sprinting');
-                    document.getElementById('status').textContent = `🏁 FINISH LINE! Sprint Completed in ${totalTime} seconds!`;
-                    activeMiniGame = null;
+                if (sprintIndex >= sprintSequence.length) {
+                    sprintLapsCompleted++;
+                    sprintIndex = 0;
+                    if (sprintLapsCompleted < SPRINT_TARGET_LAPS) {
+                        const displayStr = sprintSequence.map(n => n.toUpperCase()).join(' - ');
+                        document.getElementById('status').textContent = `🏃 Lap ${sprintLapsCompleted + 1} of ${SPRINT_TARGET_LAPS}: Keep sprinting [ ${displayStr} ]!`;
+                    } else {
+                        const totalTimeSeconds = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
+                        runnerSprite.classList.remove('sprinting');
+                        currentSongTitle = "Finger Sprint";
+                        
+                        document.getElementById('game-summary-text').innerHTML = `Sprint Time: <span style="color:#facc15; font-size:1.2rem;">${totalTimeSeconds} Seconds</span>`;
+                        gameResultsModal.classList.add('open');
+                        activeMiniGame = null;
+                        return;
+                    }
                 }
+                highlightKey(sprintSequence[sprintIndex], 400, '#eab308');
             } else {
+                gameStats.miss++;
                 playErrorClackSound();
             }
         }
@@ -1522,7 +1566,9 @@
 
         document.getElementById('btn-game-try-again').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
-            playSong();
+            if (activeMiniGame === 'drop') startDropDodge();
+            else if (activeMiniGame === 'combo') startComboStrike();
+            else playSong();
         });
 
         speedSlider.addEventListener('input', () => {
@@ -2292,7 +2338,39 @@
                 playTone(freq, 0.4, 1.0);
             }
 
-            // Route keystrokes to active mini-games
+            // Drop Dodge safe-key check
+            if (activeMiniGame === 'drop') {
+                const effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
+                const activeWall = noteTimeline.find(item => item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 600);
+
+                if (activeWall && activeWall.safeKey) {
+                    if (noteStr.toLowerCase().trim() === activeWall.safeKey.toLowerCase().trim()) {
+                        activeWall.gameStatus = 'perfect';
+                        dodgeDodgedCount++;
+                        gameStats.perfect++;
+                        highlightKey(noteStr, 220, '#22c55e');
+                        document.getElementById('status').textContent = `🛡️ Safe Dodge! Total Dodges: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
+                    } else {
+                        activeWall.gameStatus = 'miss';
+                        dodgeLives--;
+                        gameStats.miss++;
+                        playErrorClackSound();
+                        highlightKey(noteStr, 220, '#ef4444');
+                        document.getElementById('status').textContent = `💥 Wall Impact! Lives left: ❤️ ${dodgeLives} | Dodges: ${dodgeDodgedCount}`;
+
+                        if (dodgeLives <= 0) {
+                            isPlaying = false;
+                            currentSongTitle = "Drop Dodge";
+                            showGameResultsPopUp();
+                            activeMiniGame = null;
+                        }
+                    }
+                } else {
+                    highlightKey(noteStr, 200, '#ef4444');
+                }
+                return;
+            }
+
             if (activeMiniGame === 'simon') {
                 handleSimonInput(noteStr);
                 highlightKey(noteStr);
@@ -2317,7 +2395,7 @@
                 }
             }
 
-            if (isGameMode && isPlaying && !isPaused) {
+            if ((isGameMode || activeMiniGame === 'combo') && isPlaying && !isPaused) {
                 let effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
                 
                 const target = noteTimeline.find(item =>
@@ -2337,8 +2415,9 @@
                         gameStats.earlyLate++;
                         highlightKey(noteStr, 220, '#f97316');
                     }
-                    updateGameStatus();
+                    if (isGameMode) updateGameStatus();
                 } else {
+                    gameStats.miss++;
                     playErrorClackSound();
                     highlightKey(noteStr, 200, '#ef4444');
                 }
@@ -2479,8 +2558,9 @@
             noteTimeline = [];
             if (!currentSong || currentSong.length === 0) return;
 
+            const fallSpeed = activeMiniGame === 'drop' ? miniGameFallSpeedMs : FALL_TIME_MS;
             const speedFactor = parseFloat(speedSlider.value) / 100;
-            let cumulativeMs = PRE_FALL_PAUSE + FALL_TIME_MS;
+            let cumulativeMs = PRE_FALL_PAUSE + fallSpeed;
 
             currentSong.forEach((item, index) => {
                 cumulativeMs += (item.rest || 0) / speedFactor;
@@ -2660,6 +2740,7 @@
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const canvasHeight = canvas.height;
+            const currentFallSpeed = activeMiniGame === 'drop' ? miniGameFallSpeedMs : FALL_TIME_MS;
 
             noteTimeline.forEach(item => {
                 const backgroundVol = (isGameMode || activeMiniGame) ? 0.2 : 1.0;
@@ -2689,8 +2770,8 @@
 
                     if (pos) {
                         const timeUntilHit = item.hitTime - effectiveElapsed;
-                        const yBottom = canvasHeight - (timeUntilHit / FALL_TIME_MS) * canvasHeight;
-                        const blockHeight = (item.duration / FALL_TIME_MS) * canvasHeight;
+                        const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * canvasHeight;
+                        const blockHeight = (item.duration / currentFallSpeed) * canvasHeight;
                         const yTop = yBottom - blockHeight;
 
                         if (yBottom > 0 && yTop < canvasHeight) {
@@ -2713,7 +2794,8 @@
                         showGameResultsPopUp();
                         return;
                     } else if (activeMiniGame) {
-                        document.getElementById('status').textContent = `🕹️ Mini-Game Completed! Great job!`;
+                        currentSongTitle = activeMiniGame === 'drop' ? "Drop Dodge" : "Combo Strike";
+                        showGameResultsPopUp();
                         activeMiniGame = null;
                         return;
                     }
