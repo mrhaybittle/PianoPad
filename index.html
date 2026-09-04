@@ -641,7 +641,7 @@
             flex: 1;
         }
 
-        /* Right-Facing Runner Sprite Track & Hurdle Obstacles */
+        /* Right-Facing Runner Track Sprite & Extended Leg Hurdle Jump */
         .runner-track-wrapper {
             position: relative;
             width: 100%;
@@ -669,41 +669,33 @@
             position: absolute;
             left: 10px;
             font-size: 1.8rem;
-            transition: left 0.2s linear, transform 0.2s ease-out;
+            transition: left 0.18s linear, transform 0.25s ease-out;
             user-select: none;
-            transform: scaleX(-1); /* Corrected Right-Facing Runner Direction */
+            transform: scaleX(-1); /* Right-Facing Runner */
             z-index: 5;
         }
 
         .runner-avatar.jumping {
-            transform: scaleX(-1) translateY(-16px);
-        }
-
-        .runner-avatar.sprinting {
-            animation: runnerBounce 0.2s infinite alternate ease-in-out;
-        }
-
-        @keyframes runnerBounce {
-            0% { transform: translateY(0) scaleX(-1); }
-            100% { transform: translateY(-4px) scaleX(-1); }
+            transform: scaleX(-1) translateY(-22px) rotate(-10deg);
         }
 
         .hurdle-obstacle {
             position: absolute;
-            bottom: 6px;
-            width: 24px;
-            height: 28px;
+            bottom: 4px;
+            width: 26px;
+            height: 30px;
             background: #ef4444;
             border: 2px solid #ffffff;
             border-radius: 4px 4px 0 0;
             color: #ffffff;
             font-weight: 900;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             display: flex;
             align-items: center;
             justify-content: center;
             box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
             z-index: 2;
+            transition: opacity 0.3s;
         }
     </style>
 </head>
@@ -849,7 +841,7 @@
 
                 <div class="game-card" onclick="startFingerSprint()">
                     <h3>🏃 Finger Sprint</h3>
-                    <p>Sprint 6 laps and jump over lettered hurdles by hitting matching high-octave keys!</p>
+                    <p>Alternate C1 & D1 to sprint! Jump hurdles when close by playing matching high-octave keys!</p>
                     <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Finger Sprint</button>
                 </div>
             </div>
@@ -1063,12 +1055,13 @@
         let dodgeLives = 5;
         let dodgeDodgedCount = 0;
 
-        let sprintSequence = [];
+        let sprintSequence = ['c1', 'd1']; // Simplified 2-note alternating sprint
         let sprintIndex = 0;
-        let sprintLapsCompleted = 0;
-        const SPRINT_TARGET_LAPS = 6; // Increased track distance length
+        let sprintKeystrokeCount = 0;
+        const SPRINT_TARGET_KEYSTROKES = 32; // Total alternating keys required
         let sprintStartTime = 0;
-        let activeHurdles = []; // Array of active hurdle obstacles [{letter: 'G', posPct: 35, cleared: false}]
+        let activeHurdles = [];
+        let runnerLegToggle = false;
 
         let miniGameFallSpeedMs = 3800;
 
@@ -1144,12 +1137,11 @@
             const stepWidth = Math.min(32, (canvas.width - 120) / Math.max(level, 10));
             const stepHeight = Math.min(18, (canvas.height - 40) / Math.max(level, 10));
 
-            // Dynamic Step Color Themes every 5 levels
             const colorPalettes = [
-                ['#22c55e', '#16a34a'], // Levels 1-5: Emerald Green
-                ['#ec4899', '#db2777'], // Levels 6-10: Neon Pink
-                ['#06b6d4', '#0891b2'], // Levels 11-15: Cyber Cyan
-                ['#f59e0b', '#d97706']  // Levels 16+: Golden Amber
+                ['#22c55e', '#16a34a'],
+                ['#ec4899', '#db2777'],
+                ['#06b6d4', '#0891b2'],
+                ['#f59e0b', '#d97706']
             ];
 
             for (let i = 0; i < level; i++) {
@@ -1213,17 +1205,25 @@
 
             const expected = simonSequence[simonPlayerIndex];
             if (noteStr.toLowerCase().trim() === expected.toLowerCase().trim()) {
-                gameStats.perfect++;
                 simonPlayerIndex++;
                 if (simonPlayerIndex >= simonSequence.length) {
                     document.getElementById('status').textContent = `🎉 Level ${simonSequence.length} Complete! Escalating to Level ${simonSequence.length + 1}...`;
                     setTimeout(nextSimonRound, 1200);
                 }
             } else {
-                gameStats.miss++;
                 playErrorClackSound();
                 currentSongTitle = "Simon Taps";
-                showGameResultsPopUp();
+                
+                // Set score strictly to the maximum level sequence length remembered
+                const maxLevelRemembered = Math.max(1, simonSequence.length - 1);
+                
+                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>Max Level Remembered: <span style="color:#22c55e; font-size:1.3rem;">Level ${maxLevelRemembered}</span>`;
+                document.getElementById('bar-green').style.height = '100%';
+                document.getElementById('bar-orange').style.height = '0%';
+                document.getElementById('bar-red').style.height = '0%';
+
+                gameResultsModal.classList.add('open');
+                postScoreToLeaderboard(maxLevelRemembered);
                 activeMiniGame = null;
             }
         }
@@ -1340,16 +1340,16 @@
             requestAnimationFrame(renderLoop);
         }
 
-        /* 5. FINGER SPRINT WITH HURDLES & HIGH-OCTAVE JUMPING */
+        /* 5. FINGER SPRINT WITH PROXIMITY-BASED HURDLES & ANIMATED RUNNER */
         function renderHurdles() {
             hurdleContainer.innerHTML = '';
-            activeHurdles.forEach((h, idx) => {
+            activeHurdles.forEach((h) => {
                 const hurdleDiv = document.createElement('div');
                 hurdleDiv.className = 'hurdle-obstacle';
                 hurdleDiv.style.left = `${h.posPct}%`;
                 hurdleDiv.textContent = h.letter;
                 if (h.cleared) {
-                    hurdleDiv.style.opacity = '0.3';
+                    hurdleDiv.style.opacity = '0.2';
                     hurdleDiv.style.borderColor = '#22c55e';
                 }
                 hurdleContainer.appendChild(hurdleDiv);
@@ -1364,25 +1364,22 @@
 
             runnerTrack.style.display = 'flex';
             runnerSprite.style.left = '10px';
+            runnerSprite.textContent = '🏃';
             runnerSprite.classList.add('sprinting');
 
-            const startIdx = Math.floor(Math.random() * 3);
-            sprintSequence = cMajorScaleNotes.slice(startIdx, startIdx + 5);
             sprintIndex = 0;
-            sprintLapsCompleted = 0;
+            sprintKeystrokeCount = 0;
             sprintStartTime = performance.now();
 
-            // Generate Hurdle Obstacles at 30% and 65% track positions
+            // Set Hurdles along track with required jump notes
             activeHurdles = [
-                { letter: 'G', posPct: 30, cleared: false },
-                { letter: 'E', posPct: 65, cleared: false }
+                { letter: 'G', posPct: 35, cleared: false },
+                { letter: 'E', posPct: 70, cleared: false }
             ];
             renderHurdles();
 
-            const displayStr = sprintSequence.map(n => n.toUpperCase()).join(' - ');
-            document.getElementById('status').textContent = `🏃 FINGER SPRINT: Play [ ${displayStr} ]! Hit High-Octave G/E to Jump Hurdles!`;
-
-            highlightKey(sprintSequence[0], 600, '#eab308');
+            document.getElementById('status').textContent = `🏃 FINGER SPRINT: Alternate C1 & D1 to sprint! Play High G/E to jump hurdles!`;
+            highlightKey('c1', 600, '#eab308');
         }
 
         function handleSprintInput(noteStr) {
@@ -1393,59 +1390,70 @@
             const letter = noteMatch[1].toUpperCase();
             const octave = parseInt(noteMatch[2], 10);
 
-            // Calculate current player track progress percentage
-            const totalKeystrokes = sprintSequence.length * SPRINT_TARGET_LAPS;
-            const completedKeystrokes = (sprintLapsCompleted * sprintSequence.length) + sprintIndex;
-            const currentPosPct = (completedKeystrokes / totalKeystrokes) * 85;
+            const currentPosPct = (sprintKeystrokeCount / SPRINT_TARGET_KEYSTROKES) * 85;
 
-            // Check if player is approaching an uncleared hurdle
-            const upcomingHurdle = activeHurdles.find(h => !h.cleared && Math.abs(currentPosPct - h.posPct) <= 18);
+            // Find hurdle right in front of the runner (proximity <= 16%)
+            const nearbyHurdle = activeHurdles.find(h => !h.cleared && Math.abs(currentPosPct - h.posPct) <= 16);
 
-            if (upcomingHurdle) {
-                if (letter === upcomingHurdle.letter && octave >= 2) {
-                    // High-Octave Jump over Hurdle!
-                    upcomingHurdle.cleared = true;
+            if (nearbyHurdle) {
+                if (letter === nearbyHurdle.letter && octave >= 2) {
+                    // Execute Hurdle Jump with Extended Legs
+                    nearbyHurdle.cleared = true;
                     gameStats.perfect++;
                     renderHurdles();
 
+                    runnerSprite.textContent = '🤸'; // Extended Leg Hurdle Jump Emoji
                     runnerSprite.classList.add('jumping');
-                    setTimeout(() => runnerSprite.classList.remove('jumping'), 400);
 
-                    document.getElementById('status').textContent = `🦘 HURDLE CLEARED! High ${letter} Jump Successful!`;
+                    setTimeout(() => {
+                        runnerSprite.classList.remove('jumping');
+                        runnerSprite.textContent = runnerLegToggle ? '🏃' : '🏃‍♂️';
+                    }, 450);
+
+                    document.getElementById('status').textContent = `🦘 HURDLE JUMP CLEARED! High ${letter} Jump Successful!`;
                     return;
-                } else if (letter === upcomingHurdle.letter && octave === 1) {
+                } else if (letter === nearbyHurdle.letter && octave === 1) {
                     playErrorClackSound();
-                    document.getElementById('status').textContent = `⚠️ Too Low! Play a HIGH ${letter} (Octave 2, 3, or 4) to Jump over the Hurdle!`;
+                    document.getElementById('status').textContent = `⚠️ Play a HIGH ${letter} (Octave 2, 3, or 4) to Jump over the Hurdle!`;
                     return;
                 }
             }
 
-            const expected = sprintSequence[sprintIndex];
-            if (rawNoteName === expected.toLowerCase().trim()) {
+            // Simple 2-note C1 / D1 alternating sprint
+            const expectedNote = sprintSequence[sprintIndex % 2];
+            if (rawNoteName === expectedNote.toLowerCase().trim()) {
                 gameStats.perfect++;
                 sprintIndex++;
+                sprintKeystrokeCount++;
 
-                const newProgressPct = (((sprintLapsCompleted * sprintSequence.length) + sprintIndex) / totalKeystrokes) * 85;
+                // Toggle running leg animation frames
+                runnerLegToggle = !runnerLegToggle;
+                if (!runnerSprite.classList.contains('jumping')) {
+                    runnerSprite.textContent = runnerLegToggle ? '🏃' : '🏃‍♂️';
+                }
+
+                const newProgressPct = (sprintKeystrokeCount / SPRINT_TARGET_KEYSTROKES) * 85;
                 runnerSprite.style.left = `calc(10px + ${newProgressPct}%)`;
 
-                if (sprintIndex >= sprintSequence.length) {
-                    sprintLapsCompleted++;
-                    sprintIndex = 0;
-                    if (sprintLapsCompleted < SPRINT_TARGET_LAPS) {
-                        const displayStr = sprintSequence.map(n => n.toUpperCase()).join(' - ');
-                        document.getElementById('status').textContent = `🏃 Sprinting... Lap ${sprintLapsCompleted + 1} of ${SPRINT_TARGET_LAPS}: [ ${displayStr} ]`;
-                    } else {
-                        const totalTimeSeconds = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
-                        runnerSprite.classList.remove('sprinting');
-                        currentSongTitle = "Finger Sprint";
-                        
-                        document.getElementById('game-summary-text').innerHTML = `Sprint Time: <span style="color:#facc15; font-size:1.2rem;">${totalTimeSeconds} Seconds</span>`;
-                        gameResultsModal.classList.add('open');
-                        activeMiniGame = null;
-                        return;
-                    }
+                if (sprintKeystrokeCount >= SPRINT_TARGET_KEYSTROKES) {
+                    const totalTimeSeconds = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
+                    runnerSprite.classList.remove('sprinting');
+                    runnerSprite.textContent = '🏃';
+                    currentSongTitle = "Finger Sprint";
+                    
+                    document.getElementById('game-summary-text').innerHTML = `Sprint Time: <span style="color:#facc15; font-size:1.3rem;">${totalTimeSeconds} Seconds</span>`;
+                    document.getElementById('bar-green').style.height = '100%';
+                    document.getElementById('bar-orange').style.height = '0%';
+                    document.getElementById('bar-red').style.height = '0%';
+
+                    gameResultsModal.classList.add('open');
+                    postScoreToLeaderboard(parseFloat(totalTimeSeconds));
+                    activeMiniGame = null;
+                    return;
                 }
-                highlightKey(sprintSequence[sprintIndex], 400, '#eab308');
+
+                const nextExpected = sprintSequence[sprintIndex % 2];
+                highlightKey(nextExpected, 300, '#eab308');
             } else {
                 gameStats.miss++;
                 playErrorClackSound();
@@ -1923,7 +1931,7 @@
                     headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify(payload)
                 });
-                document.getElementById('status').textContent = `Score (${accuracyNum}%) submitted for ${sessionStudentName}!`;
+                document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
             } catch (err) {
                 console.warn("Could not post score to Google Apps Script.", err);
             }
@@ -2852,7 +2860,6 @@
                 }
             }
 
-            // Draw active Simon Staircase if in Simon Taps mode
             if (activeMiniGame === 'simon') {
                 drawSimonStaircase(simonSequence.length);
             } else {
