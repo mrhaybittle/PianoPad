@@ -459,6 +459,13 @@
             padding-top: 4px;
         }
 
+        .version-stamp {
+            font-size: 0.72rem;
+            color: #6b7280;
+            font-weight: 600;
+            font-family: monospace;
+        }
+
         .calib-piano-container {
             width: 100%;
             overflow-x: auto;
@@ -641,7 +648,6 @@
             flex: 1;
         }
 
-        /* Right-Facing Runner Track Sprite & Extended Leg Hurdle Jump */
         .runner-track-wrapper {
             position: relative;
             width: 100%;
@@ -671,7 +677,7 @@
             font-size: 1.8rem;
             transition: left 0.18s linear, transform 0.25s ease-out;
             user-select: none;
-            transform: scaleX(-1); /* Right-Facing Runner */
+            transform: scaleX(-1);
             z-index: 5;
         }
 
@@ -860,7 +866,6 @@
             </div>
         </div>
 
-        <!-- Right-Facing Runner Track with Dynamic Hurdle Elements -->
         <div class="runner-track-wrapper" id="runner-track" style="display: none;">
             <div class="runner-avatar" id="runner-sprite">🏃</div>
             <div id="hurdle-container"></div>
@@ -873,6 +878,8 @@
         </div>
 
         <div class="footer-bar">
+            <!-- Subtle Version & Hardcoded Sydney Timestamp Stamp -->
+            <div class="version-stamp">v26.09.04 | 4-Sep 21:17 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1055,10 +1062,10 @@
         let dodgeLives = 5;
         let dodgeDodgedCount = 0;
 
-        let sprintSequence = ['c1', 'd1']; // Simplified 2-note alternating sprint
+        let sprintSequence = ['c1', 'd1'];
         let sprintIndex = 0;
         let sprintKeystrokeCount = 0;
-        const SPRINT_TARGET_KEYSTROKES = 32; // Total alternating keys required
+        const SPRINT_TARGET_KEYSTROKES = 32;
         let sprintStartTime = 0;
         let activeHurdles = [];
         let runnerLegToggle = false;
@@ -1080,6 +1087,17 @@
         document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
             openArcadeHub();
+        });
+
+        // FIXED TRY AGAIN ROUTING: Restarts the specific mini-game instead of playing Wipeout
+        document.getElementById('btn-game-try-again').addEventListener('click', () => {
+            gameResultsModal.classList.remove('open');
+            if (currentSongTitle === "Mystery Note") startMysteryNote();
+            else if (currentSongTitle === "Simon Taps") startSimonTaps();
+            else if (currentSongTitle === "Drop Dodge") startDropDodge();
+            else if (currentSongTitle === "Combo Strike") startComboStrike();
+            else if (currentSongTitle === "Finger Sprint") startFingerSprint();
+            else playSong();
         });
 
         function openArcadeHub() {
@@ -1214,7 +1232,6 @@
                 playErrorClackSound();
                 currentSongTitle = "Simon Taps";
                 
-                // Set score strictly to the maximum level sequence length remembered
                 const maxLevelRemembered = Math.max(1, simonSequence.length - 1);
                 
                 document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>Max Level Remembered: <span style="color:#22c55e; font-size:1.3rem;">Level ${maxLevelRemembered}</span>`;
@@ -1371,7 +1388,6 @@
             sprintKeystrokeCount = 0;
             sprintStartTime = performance.now();
 
-            // Set Hurdles along track with required jump notes
             activeHurdles = [
                 { letter: 'G', posPct: 35, cleared: false },
                 { letter: 'E', posPct: 70, cleared: false }
@@ -1392,17 +1408,15 @@
 
             const currentPosPct = (sprintKeystrokeCount / SPRINT_TARGET_KEYSTROKES) * 85;
 
-            // Find hurdle right in front of the runner (proximity <= 16%)
             const nearbyHurdle = activeHurdles.find(h => !h.cleared && Math.abs(currentPosPct - h.posPct) <= 16);
 
             if (nearbyHurdle) {
                 if (letter === nearbyHurdle.letter && octave >= 2) {
-                    // Execute Hurdle Jump with Extended Legs
                     nearbyHurdle.cleared = true;
                     gameStats.perfect++;
                     renderHurdles();
 
-                    runnerSprite.textContent = '🤸'; // Extended Leg Hurdle Jump Emoji
+                    runnerSprite.textContent = '🤸';
                     runnerSprite.classList.add('jumping');
 
                     setTimeout(() => {
@@ -1419,14 +1433,12 @@
                 }
             }
 
-            // Simple 2-note C1 / D1 alternating sprint
             const expectedNote = sprintSequence[sprintIndex % 2];
             if (rawNoteName === expectedNote.toLowerCase().trim()) {
                 gameStats.perfect++;
                 sprintIndex++;
                 sprintKeystrokeCount++;
 
-                // Toggle running leg animation frames
                 runnerLegToggle = !runnerLegToggle;
                 if (!runnerSprite.classList.contains('jumping')) {
                     runnerSprite.textContent = runnerLegToggle ? '🏃' : '🏃‍♂️';
@@ -1685,14 +1697,6 @@
         document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
         document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
         document.getElementById('btn-game-results-close').addEventListener('click', () => gameResultsModal.classList.remove('open'));
-
-        document.getElementById('btn-game-try-again').addEventListener('click', () => {
-            gameResultsModal.classList.remove('open');
-            if (activeMiniGame === 'drop') startDropDodge();
-            else if (activeMiniGame === 'combo') startComboStrike();
-            else if (activeMiniGame === 'sprint') startFingerSprint();
-            else playSong();
-        });
 
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
