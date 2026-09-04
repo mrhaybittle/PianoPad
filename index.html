@@ -568,6 +568,18 @@
         .badge-gold { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #000; }
         .badge-silver { background: linear-gradient(135deg, #94a3b8, #cbd5e1); color: #000; }
         .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
+
+        .rank-display-box {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #facc15;
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: #0b0f19;
+            border: 1px solid #eab308;
+            border-radius: 8px;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -741,6 +753,7 @@
             <p id="game-summary-text" style="font-size: 0.95rem; color: #e5e7eb; font-weight: 600;"></p>
             
             <div id="badge-container"></div>
+            <div id="game-rank-text" class="rank-display-box">Calculating Rank...</div>
 
             <div class="graph-container">
                 <div class="bar-chart-wrapper">
@@ -757,7 +770,9 @@
                 </div>
             </div>
 
-            <div class="modal-footer" style="justify-content: center; margin-top: 10px;">
+            <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
+                <a href="leaderboard.html" target="_blank" class="btn-link btn-share">View Entire Leaderboard</a>
+                <button class="btn-warning" id="btn-game-try-again">Try Again</button>
                 <button class="btn-success" id="btn-game-results-close">Continue</button>
             </div>
         </div>
@@ -806,6 +821,9 @@
         // Google Spreadsheet Live CSV Endpoint
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
         
+        // PUBLISHED LEADERBOARD CSV URL FOR DYNAMIC RANK CALCULATIONS
+        const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
+
         // DEPLOYED GOOGLE APPS SCRIPT WEB APP URL FOR AUTOMATED GOOGLE SHEET APPENDING
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyJ6BXOjgbsbv03Xlp3kFVj_6aIfVJ7NM66Y3f_fMzuOeDabH2HzEhE-rLuoZzncXAA6g/exec';
 
@@ -1108,6 +1126,11 @@
         document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
         document.getElementById('btn-game-results-close').addEventListener('click', () => gameResultsModal.classList.remove('open'));
 
+        document.getElementById('btn-game-try-again').addEventListener('click', () => {
+            gameResultsModal.classList.remove('open');
+            playSong();
+        });
+
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
             if (isPlaying && !isPaused && !isStepMode) playSong();
@@ -1266,7 +1289,7 @@
             }
 
             const parsed = parsePianoPad(code);
-            if (parsed.length === 0) {
+            if (parsed.length > 0) {
                 teacherErrorDiv.textContent = "Invalid HayCode format!";
                 teacherErrorDiv.style.display = "block";
                 return;
@@ -1359,6 +1382,73 @@
             }
         }
 
+        async function calculateAndDisplayRank(accuracyNum) {
+            const rankDiv = document.getElementById('game-rank-text');
+            rankDiv.textContent = "Calculating Rank...";
+
+            try {
+                const response = await fetch(LEADERBOARD_CSV_URL);
+                if (!response.ok) throw new Error('Fetch failed');
+
+                const csvText = await response.text();
+                const lines = csvText.split(/\r?\n/);
+                const songScores = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+
+                    const row = [];
+                    let insideQuote = false;
+                    let entry = '';
+
+                    for (let j = 0; j < line.length; j++) {
+                        const char = line[j];
+                        if (char === '"' && line[j + 1] === '"') {
+                            entry += '"';
+                            j++;
+                        } else if (char === '"') {
+                            insideQuote = !insideQuote;
+                        } else if (char === ',' && !insideQuote) {
+                            row.push(entry);
+                            entry = '';
+                        } else {
+                            entry += char;
+                        }
+                    }
+                    row.push(entry);
+
+                    if (row.length >= 4) {
+                        const rowTitle = row[2] ? row[2].trim().replace(/^"|"$/g, '') : '';
+                        if (rowTitle.toLowerCase() === currentSongTitle.toLowerCase()) {
+                            songScores.push({
+                                accuracy: parseFloat(row[3]) || 0,
+                                speed: parseInt(row[4]) || 100
+                            });
+                        }
+                    }
+                }
+
+                // Add current run score
+                const currentSpeedNum = parseInt(speedSlider.value, 10);
+                songScores.push({ accuracy: accuracyNum, speed: currentSpeedNum });
+
+                // Sort: Highest Accuracy, then highest speed
+                songScores.sort((a, b) => {
+                    if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+                    return b.speed - a.speed;
+                });
+
+                const totalEntries = songScores.length;
+                const userRank = songScores.findIndex(s => s.accuracy === accuracyNum && s.speed === currentSpeedNum) + 1;
+
+                rankDiv.textContent = `${currentSongTitle} Rank ${userRank}/${totalEntries}`;
+            } catch (err) {
+                console.warn("Could not calculate live rank:", err);
+                rankDiv.textContent = `${currentSongTitle} Score Logged!`;
+            }
+        }
+
         function showGameResultsPopUp() {
             // Prompt for Student Name if not retained in current session
             if (!sessionStudentName) {
@@ -1405,8 +1495,9 @@
 
             gameResultsModal.classList.add('open');
 
-            // Automatically post score to Google Apps Script Leaderboard
+            // Post score to Google Apps Script and calculate live song rank
             postScoreToLeaderboard(accuracyNum);
+            calculateAndDisplayRank(accuracyNum);
         }
 
         function toggleLoopMode() {
