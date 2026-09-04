@@ -219,7 +219,7 @@
                         <th style="width: 70px;">Rank</th>
                         <th>Student Name</th>
                         <th id="col-header-title">Song Title</th>
-                        <th>Accuracy / Score</th>
+                        <th id="col-header-score">Accuracy</th>
                         <th>Tempo Speed</th>
                         <th>Date</th>
                     </tr>
@@ -246,7 +246,7 @@
         ];
 
         let allScores = [];
-        let viewMode = 'SONGS'; // 'SONGS' or 'GAMES'
+        let viewMode = 'SONGS';
 
         function parseCSV(csvText) {
             const lines = csvText.split(/\r?\n/);
@@ -296,7 +296,6 @@
         function populateSongFilter() {
             const filterSelect = document.getElementById('filter-song');
             
-            // Filter list based on active view mode
             const activePool = allScores.filter(s => viewMode === 'GAMES' ? s.isMiniGame : !s.isMiniGame);
             const uniqueTitles = [...new Set(activePool.map(s => s.song))];
             uniqueTitles.sort();
@@ -315,16 +314,14 @@
         function renderLeaderboard() {
             const filterValue = document.getElementById('filter-song').value;
             const tbody = document.getElementById('leaderboard-body');
+            const scoreColHeader = document.getElementById('col-header-score');
 
-            // 1. Separate Song scores vs Mini-Game scores
             let pool = allScores.filter(s => viewMode === 'GAMES' ? s.isMiniGame : !s.isMiniGame);
 
-            // 2. Apply dropdown filter
             let filtered = filterValue === 'ALL' 
                 ? [...pool] 
                 : pool.filter(s => s.song === filterValue);
 
-            // 3. Sort: Highest Score/Accuracy first, then highest tempo speed
             filtered.sort((a, b) => {
                 if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
                 return b.speed - a.speed;
@@ -345,11 +342,18 @@
                 else if (index === 1) rankBadge = `<span class="rank-badge rank-2">2</span>`;
                 else if (index === 2) rankBadge = `<span class="rank-badge rank-3">3</span>`;
 
+                let scoreFormatted = `${item.accuracy.toFixed(1)}%`;
+                if (item.song.toLowerCase().includes('simon taps')) {
+                    scoreFormatted = `Level ${Math.round(item.accuracy)}`;
+                } else if (item.song.toLowerCase().includes('finger sprint')) {
+                    scoreFormatted = `${item.accuracy.toFixed(2)}s`;
+                }
+
                 tr.innerHTML = `
                     <td>${rankBadge}</td>
                     <td style="font-weight: 600; color: #fff;">${item.name}</td>
                     <td>${item.song}</td>
-                    <td class="score-highlight">${item.accuracy.toFixed(1)}%</td>
+                    <td class="score-highlight">${scoreFormatted}</td>
                     <td>${item.speed}%</td>
                     <td style="font-size: 0.8rem; color: #9ca3af;">${item.timestamp || 'N/A'}</td>
                 `;
@@ -360,18 +364,21 @@
         function toggleViewMode() {
             const toggleBtn = document.getElementById('btn-toggle-mode');
             const titleEl = document.getElementById('leaderboard-title');
-            const colHeaderEl = document.getElementById('col-header-title');
+            const colHeaderTitle = document.getElementById('col-header-title');
+            const colHeaderScore = document.getElementById('col-header-score');
 
             if (viewMode === 'SONGS') {
                 viewMode = 'GAMES';
                 titleEl.textContent = '🕹️ Mini-Game High Scores';
-                colHeaderEl.textContent = 'Mini-Game';
+                colHeaderTitle.textContent = 'Mini-Game';
+                colHeaderScore.textContent = 'Score / Level';
                 toggleBtn.textContent = '🎵 SONG Leaderboard';
                 toggleBtn.className = 'btn btn-song-mode';
             } else {
                 viewMode = 'SONGS';
                 titleEl.textContent = '🏆 PianoPad Song High Scores';
-                colHeaderEl.textContent = 'Song Title';
+                colHeaderTitle.textContent = 'Song Title';
+                colHeaderScore.textContent = 'Accuracy';
                 toggleBtn.textContent = '🎮 MINI-GAME Leaderboard';
                 toggleBtn.className = 'btn btn-arcade';
             }
@@ -400,7 +407,6 @@
         document.getElementById('filter-song').addEventListener('change', renderLeaderboard);
         document.getElementById('btn-toggle-mode').addEventListener('click', toggleViewMode);
 
-        // Fetch scores on page load
         fetchScores();
     </script>
 </body>
