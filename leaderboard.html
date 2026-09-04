@@ -10,6 +10,8 @@
             --panel-bg: #1f1f2e;
             --accent-color: #ec4899;
             --accent-hover: #db2777;
+            --arcade-color: #8b5cf6;
+            --arcade-hover: #7c3aed;
             --text-main: #f3f4f6;
             --gold: #fbbf24;
             --silver: #cbd5e1;
@@ -35,7 +37,7 @@
 
         .container {
             width: 100%;
-            max-width: 900px;
+            max-width: 950px;
             background-color: var(--panel-bg);
             border-radius: 14px;
             box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.6);
@@ -68,6 +70,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            flex-wrap: wrap;
         }
 
         select {
@@ -82,22 +85,45 @@
             cursor: pointer;
         }
 
-        .btn-back {
+        .btn {
             display: inline-flex;
             align-items: center;
             gap: 6px;
             padding: 8px 14px;
             border-radius: 6px;
-            background-color: #4f46e5;
-            color: white;
-            font-weight: 600;
+            font-weight: 700;
             font-size: 0.85rem;
             text-decoration: none;
-            transition: background-color 0.2s;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s, transform 0.1s;
         }
 
-        .btn-back:hover {
-            background-color: #6366f1;
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-back {
+            background-color: #4f46e5;
+            color: white;
+        }
+        .btn-back:hover { background-color: #6366f1; }
+
+        .btn-arcade {
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            color: white;
+            box-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
+        }
+        .btn-arcade:hover {
+            background: linear-gradient(135deg, #7c3aed, #db2777);
+        }
+
+        .btn-song-mode {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+        .btn-song-mode:hover {
+            background: linear-gradient(135deg, #059669, #047857);
         }
 
         .table-wrapper {
@@ -174,12 +200,15 @@
 
     <div class="container">
         <header>
-            <h1>🏆 PianoPad High Scores</h1>
+            <h1 id="leaderboard-title">🏆 PianoPad Song High Scores</h1>
             <div class="controls">
                 <select id="filter-song">
                     <option value="ALL">All Songs</option>
                 </select>
-                <a href="index.html" class="btn-back">← Back to Player</a>
+                <button id="btn-toggle-mode" class="btn btn-arcade">
+                    🎮 MINI-GAME Leaderboard
+                </button>
+                <a href="index.html" class="btn btn-back">← Back to Player</a>
             </div>
         </header>
 
@@ -189,8 +218,8 @@
                     <tr>
                         <th style="width: 70px;">Rank</th>
                         <th>Student Name</th>
-                        <th>Song Title</th>
-                        <th>Accuracy</th>
+                        <th id="col-header-title">Song Title</th>
+                        <th>Accuracy / Score</th>
                         <th>Tempo Speed</th>
                         <th>Date</th>
                     </tr>
@@ -207,7 +236,17 @@
     <script>
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
 
+        const MINI_GAME_TITLES = [
+            'simon taps',
+            'mystery note',
+            'drop dodge',
+            'combo strike',
+            'finger sprint',
+            'two-note combo'
+        ];
+
         let allScores = [];
+        let viewMode = 'SONGS'; // 'SONGS' or 'GAMES'
 
         function parseCSV(csvText) {
             const lines = csvText.split(/\r?\n/);
@@ -237,14 +276,17 @@
                 }
                 row.push(entry);
 
-                // CSV Row Format: [Timestamp, Student Name, Song Title, Accuracy Score, Tempo Speed]
                 if (row.length >= 4) {
+                    const songTitle = row[2] ? row[2].trim().replace(/^"|"$/g, '') : 'Unknown';
+                    const isMiniGame = MINI_GAME_TITLES.some(g => songTitle.toLowerCase().includes(g));
+
                     records.push({
                         timestamp: row[0] ? row[0].trim().replace(/^"|"$/g, '') : '',
                         name: row[1] ? row[1].trim().replace(/^"|"$/g, '') : 'Anonymous',
-                        song: row[2] ? row[2].trim().replace(/^"|"$/g, '') : 'Unknown',
+                        song: songTitle,
                         accuracy: parseFloat(row[3]) || 0,
-                        speed: parseInt(row[4]) || 100
+                        speed: parseInt(row[4]) || 100,
+                        isMiniGame: isMiniGame
                     });
                 }
             }
@@ -253,14 +295,19 @@
 
         function populateSongFilter() {
             const filterSelect = document.getElementById('filter-song');
-            const uniqueSongs = [...new Set(allScores.map(s => s.song))];
-            uniqueSongs.sort();
+            
+            // Filter list based on active view mode
+            const activePool = allScores.filter(s => viewMode === 'GAMES' ? s.isMiniGame : !s.isMiniGame);
+            const uniqueTitles = [...new Set(activePool.map(s => s.song))];
+            uniqueTitles.sort();
 
-            filterSelect.innerHTML = '<option value="ALL">All Songs</option>';
-            uniqueSongs.forEach(song => {
+            const defaultLabel = viewMode === 'GAMES' ? 'All Mini-Games' : 'All Songs';
+            filterSelect.innerHTML = `<option value="ALL">${defaultLabel}</option>`;
+            
+            uniqueTitles.forEach(title => {
                 const opt = document.createElement('option');
-                opt.value = song;
-                opt.textContent = song;
+                opt.value = title;
+                opt.textContent = title;
                 filterSelect.appendChild(opt);
             });
         }
@@ -269,18 +316,23 @@
             const filterValue = document.getElementById('filter-song').value;
             const tbody = document.getElementById('leaderboard-body');
 
-            let filtered = filterValue === 'ALL' 
-                ? [...allScores] 
-                : allScores.filter(s => s.song === filterValue);
+            // 1. Separate Song scores vs Mini-Game scores
+            let pool = allScores.filter(s => viewMode === 'GAMES' ? s.isMiniGame : !s.isMiniGame);
 
-            // Sort: Highest Accuracy first, then highest speed
+            // 2. Apply dropdown filter
+            let filtered = filterValue === 'ALL' 
+                ? [...pool] 
+                : pool.filter(s => s.song === filterValue);
+
+            // 3. Sort: Highest Score/Accuracy first, then highest tempo speed
             filtered.sort((a, b) => {
                 if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
                 return b.speed - a.speed;
             });
 
             if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="status-msg">No high scores found for this song.</td></tr>';
+                const typeText = viewMode === 'GAMES' ? 'mini-game' : 'song';
+                tbody.innerHTML = `<tr><td colspan="6" class="status-msg">No high scores found for this ${typeText}.</td></tr>`;
                 return;
             }
 
@@ -305,6 +357,29 @@
             });
         }
 
+        function toggleViewMode() {
+            const toggleBtn = document.getElementById('btn-toggle-mode');
+            const titleEl = document.getElementById('leaderboard-title');
+            const colHeaderEl = document.getElementById('col-header-title');
+
+            if (viewMode === 'SONGS') {
+                viewMode = 'GAMES';
+                titleEl.textContent = '🕹️ Mini-Game High Scores';
+                colHeaderEl.textContent = 'Mini-Game';
+                toggleBtn.textContent = '🎵 SONG Leaderboard';
+                toggleBtn.className = 'btn btn-song-mode';
+            } else {
+                viewMode = 'SONGS';
+                titleEl.textContent = '🏆 PianoPad Song High Scores';
+                colHeaderEl.textContent = 'Song Title';
+                toggleBtn.textContent = '🎮 MINI-GAME Leaderboard';
+                toggleBtn.className = 'btn btn-arcade';
+            }
+
+            populateSongFilter();
+            renderLeaderboard();
+        }
+
         async function fetchScores() {
             try {
                 const response = await fetch(LEADERBOARD_CSV_URL);
@@ -323,6 +398,7 @@
         }
 
         document.getElementById('filter-song').addEventListener('change', renderLeaderboard);
+        document.getElementById('btn-toggle-mode').addEventListener('click', toggleViewMode);
 
         // Fetch scores on page load
         fetchScores();
