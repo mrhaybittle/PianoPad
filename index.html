@@ -976,18 +976,33 @@
 
                 allNotes.sort((a, b) => a.time - b.time);
 
+                // Group simultaneous notes (within 20ms window) into multi-note chord tokens using '+'
                 const hayNotes = [];
                 const hayRests = [];
 
+                let currentChord = [];
+                let lastTime = 0;
+
                 for (let i = 0; i < allNotes.length; i++) {
-                    hayNotes.push(allNotes[i].note.toUpperCase());
-                    let restTime = 0;
+                    const n = allNotes[i];
                     if (i === 0) {
-                        restTime = 0;
+                        currentChord.push(n.note.toUpperCase());
+                        hayRests.push(0);
+                        lastTime = n.time;
                     } else {
-                        restTime = Math.round((allNotes[i].time - allNotes[i - 1].time) * 1000);
+                        const timeDiff = Math.round((n.time - lastTime) * 1000);
+                        if (timeDiff <= 20) {
+                            currentChord.push(n.note.toUpperCase());
+                        } else {
+                            hayNotes.push(currentChord.join('+'));
+                            currentChord = [n.note.toUpperCase()];
+                            hayRests.push(timeDiff);
+                            lastTime = n.time;
+                        }
                     }
-                    hayRests.push(Math.max(0, restTime));
+                }
+                if (currentChord.length > 0) {
+                    hayNotes.push(currentChord.join('+'));
                 }
 
                 const midiHayCode = `${hayNotes.join(',')},RESTS,${hayRests.join(',')}`;
@@ -1467,11 +1482,11 @@
 
             if (currentStepIndex < noteTimeline.length) {
                 const item = noteTimeline[currentStepIndex];
-                const freq = getNoteFrequency(item.note);
-                if (freq) {
-                    playTone(freq, item.duration / 1000);
-                    highlightKey(item.note, item.duration);
-                }
+                item.notes.forEach(noteStr => {
+                    const freq = getNoteFrequency(noteStr);
+                    if (freq) playTone(freq, item.duration / 1000);
+                    highlightKey(noteStr, item.duration);
+                });
                 item.played = true;
                 currentStepIndex++;
                 updateStepStatus();
@@ -1481,7 +1496,8 @@
         function updateStepStatus() {
             if (currentStepIndex < noteTimeline.length) {
                 const nextItem = noteTimeline[currentStepIndex];
-                document.getElementById('status').textContent = `Step ${currentStepIndex + 1} of ${noteTimeline.length}: Next Note -> [ ${nextItem.note.toUpperCase()} ] (Press SPACE BAR or play on MIDI Keyboard)`;
+                const displayStr = nextItem.notes.join('+').toUpperCase();
+                document.getElementById('status').textContent = `Step ${currentStepIndex + 1} of ${noteTimeline.length}: Next Note -> [ ${displayStr} ] (Press SPACE BAR or play on MIDI Keyboard)`;
             } else {
                 document.getElementById('status').textContent = 'Step Practice Finished!';
                 setTimeout(() => {
@@ -1580,7 +1596,13 @@
         function autoTransposeSong(song) {
             if (!song || song.length === 0) return song;
 
-            let pitches = song.map(item => noteToPitch(item.note)).filter(p => p !== null);
+            let pitches = [];
+            song.forEach(item => {
+                item.notes.forEach(n => {
+                    const p = noteToPitch(n);
+                    if (p !== null) pitches.push(p);
+                });
+            });
             if (pitches.length === 0) return song;
 
             let minP = Math.min(...pitches);
@@ -1596,16 +1618,18 @@
             while (maxP + octaveShift * 12 > MAX_PITCH && minP + octaveShift * 12 > MIN_PITCH) octaveShift--;
 
             return song.map(item => {
-                const p = noteToPitch(item.note);
-                if (p === null) return item;
-                let shiftedP = p + octaveShift * 12;
-                
-                while (shiftedP < MIN_PITCH) shiftedP += 12;
-                while (shiftedP > MAX_PITCH) shiftedP -= 12;
+                const newNotes = item.notes.map(noteStr => {
+                    const p = noteToPitch(noteStr);
+                    if (p === null) return noteStr;
+                    let shiftedP = p + octaveShift * 12;
+                    while (shiftedP < MIN_PITCH) shiftedP += 12;
+                    while (shiftedP > MAX_PITCH) shiftedP -= 12;
+                    return pitchToNote(shiftedP);
+                });
 
                 return {
                     ...item,
-                    note: pitchToNote(shiftedP)
+                    notes: newNotes
                 };
             });
         }
@@ -1771,16 +1795,20 @@
             if (isRecording) {
                 const now = performance.now();
                 let rest = lastRecordNoteTime === 0 ? 0 : Math.round(now - lastRecordNoteTime);
-                recordedNotes.push(noteStr.toUpperCase());
-                recordedRests.push(rest);
-                lastRecordNoteTime = now;
+                if (rest <= 20 && recordedNotes.length > 0) {
+                    recordedNotes[recordedNotes.length - 1] += '+' + noteStr.toUpperCase();
+                } else {
+                    recordedNotes.push(noteStr.toUpperCase());
+                    recordedRests.push(rest);
+                    lastRecordNoteTime = now;
+                }
             }
 
             if (isGameMode && isPlaying && !isPaused) {
                 let effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
                 
                 const target = noteTimeline.find(item =>
-                    item.note.toLowerCase().trim() === noteStr.toLowerCase().trim() &&
+                    item.notes.some(n => n.toLowerCase().trim() === noteStr.toLowerCase().trim()) &&
                     item.gameStatus === 'pending' &&
                     Math.abs(effectiveElapsed - item.hitTime) <= 400
                 );
@@ -1807,8 +1835,8 @@
             }
 
             if (isStepMode) {
-                const targetNote = noteTimeline[currentStepIndex];
-                if (targetNote && targetNote.note.toLowerCase().trim() === noteStr.toLowerCase().trim()) {
+                const targetItem = noteTimeline[currentStepIndex];
+                if (targetItem && targetItem.notes.some(n => n.toLowerCase().trim() === noteStr.toLowerCase().trim())) {
                     advanceStepNote();
                 }
             }
@@ -1821,13 +1849,13 @@
 
             if (parts.length < 2) return [];
 
-            const notes = parts[0].split(',').filter(Boolean);
+            const rawNotes = parts[0].split(',').filter(Boolean);
             const rests = parts[1].split(',').filter(Boolean);
 
             const song = [];
-            for (let i = 0; i < notes.length; i++) {
+            for (let i = 0; i < rawNotes.length; i++) {
                 song.push({
-                    note: notes[i],
+                    notes: rawNotes[i].split('+').filter(Boolean),
                     rest: parseInt(rests[i] || '250', 10)
                 });
             }
@@ -1949,7 +1977,7 @@
                 cumulativeMs += (item.rest || 0) / speedFactor; // Correctly include rest timing
 
                 noteTimeline.push({
-                    note: item.note,
+                    notes: item.notes,
                     hitTime: cumulativeMs,
                     duration: Math.max(140, (item.rest || 250) * 0.85 / speedFactor),
                     played: false,
@@ -2124,16 +2152,15 @@
             const canvasHeight = canvas.height;
 
             noteTimeline.forEach(item => {
-                const normNote = item.note.toLowerCase().trim();
-                const pos = keyPosMap[normNote];
-
                 if (!isStepMode && !isGameMode && effectiveElapsed >= item.hitTime && !item.played) {
                     item.played = true;
-                    const freq = getNoteFrequency(item.note);
-                    if (freq) {
-                        playTone(freq, item.duration / 1000);
-                        highlightKey(item.note, item.duration);
-                    }
+                    item.notes.forEach(noteStr => {
+                        const freq = getNoteFrequency(noteStr);
+                        if (freq) {
+                            playTone(freq, item.duration / 1000);
+                            highlightKey(noteStr, item.duration);
+                        }
+                    });
                 }
 
                 if (isGameMode && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 280)) {
@@ -2142,19 +2169,24 @@
                     updateGameStatus();
                 }
 
-                if (pos) {
-                    const timeUntilHit = item.hitTime - effectiveElapsed;
-                    const yBottom = canvasHeight - (timeUntilHit / FALL_TIME_MS) * canvasHeight;
-                    const blockHeight = (item.duration / FALL_TIME_MS) * canvasHeight;
-                    const yTop = yBottom - blockHeight;
+                item.notes.forEach(noteStr => {
+                    const normNote = noteStr.toLowerCase().trim();
+                    const pos = keyPosMap[normNote];
 
-                    if (yBottom > 0 && yTop < canvasHeight) {
-                        const drawY = Math.max(0, yTop);
-                        const drawH = Math.min(canvasHeight - drawY, yBottom - drawY);
-                        const active = effectiveElapsed >= item.hitTime && effectiveElapsed <= (item.hitTime + item.duration);
-                        drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, item.note, active, item.gameStatus);
+                    if (pos) {
+                        const timeUntilHit = item.hitTime - effectiveElapsed;
+                        const yBottom = canvasHeight - (timeUntilHit / FALL_TIME_MS) * canvasHeight;
+                        const blockHeight = (item.duration / FALL_TIME_MS) * canvasHeight;
+                        const yTop = yBottom - blockHeight;
+
+                        if (yBottom > 0 && yTop < canvasHeight) {
+                            const drawY = Math.max(0, yTop);
+                            const drawH = Math.min(canvasHeight - drawY, yBottom - drawY);
+                            const active = effectiveElapsed >= item.hitTime && effectiveElapsed <= (item.hitTime + item.duration);
+                            drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, noteStr, active, item.gameStatus);
+                        }
                     }
-                }
+                });
             });
 
             if (!isStepMode && !isLooping) {
@@ -2310,28 +2342,31 @@
 
             let cumulativeTime = 0;
             for (let i = 0; i < recordedNotes.length; i++) {
-                const noteStr = recordedNotes[i];
+                const noteToken = recordedNotes[i];
                 const restMs = recordedRests[i] || 250;
                 cumulativeTime += (restMs / 1000);
 
-                const freq = getNoteFrequency(noteStr);
-                if (freq) {
-                    const osc = offlineCtx.createOscillator();
-                    const gain = offlineCtx.createGain();
+                const noteList = noteToken.split('+').filter(Boolean);
+                noteList.forEach(noteStr => {
+                    const freq = getNoteFrequency(noteStr);
+                    if (freq) {
+                        const osc = offlineCtx.createOscillator();
+                        const gain = offlineCtx.createGain();
 
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(freq, cumulativeTime);
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, cumulativeTime);
 
-                    gain.gain.setValueAtTime(0, cumulativeTime);
-                    gain.gain.linearRampToValueAtTime(0.4, cumulativeTime + 0.01);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, cumulativeTime + 0.4);
+                        gain.gain.setValueAtTime(0, cumulativeTime);
+                        gain.gain.linearRampToValueAtTime(0.4, cumulativeTime + 0.01);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, cumulativeTime + 0.4);
 
-                    osc.connect(gain);
-                    gain.connect(offlineCtx.destination);
+                        osc.connect(gain);
+                        gain.connect(offlineCtx.destination);
 
-                    osc.start(cumulativeTime);
-                    osc.stop(cumulativeTime + 0.4);
-                }
+                        osc.start(cumulativeTime);
+                        osc.stop(cumulativeTime + 0.4);
+                    }
+                });
             }
 
             offlineCtx.startRendering().then(renderedBuffer => {
