@@ -19,6 +19,7 @@
             --recording-active: #ef4444;
             --loop-active: #06b6d4;
             --game-active: #ec4899;
+            --arcade-active: #8b5cf6;
             --canvas-bg: #0a0a10;
             --hitline-color: #ef4444;
         }
@@ -88,7 +89,7 @@
             color: var(--text-main);
             height: 100vh;
             max-height: 100vh;
-            overflow: hidden; /* Lock window view */
+            overflow: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -174,7 +175,6 @@
             border-color: var(--accent-color);
         }
 
-        /* Distinct Yellow Highlight for Song Selector Dropdown */
         #song-select {
             color: #facc15 !important;
             border: 2px solid #eab308 !important;
@@ -229,7 +229,16 @@
         .btn-settings { background-color: #3b82f6; }
         .btn-settings:hover { background-color: #2563eb; }
 
-        /* High-Visibility Pink Styling for Step Mode Button */
+        .btn-arcade {
+            background: linear-gradient(135deg, #8b5cf6, #ec4899) !important;
+            color: #ffffff !important;
+            font-weight: 800 !important;
+            box-shadow: 0 0 12px rgba(236, 72, 153, 0.5);
+        }
+        .btn-arcade:hover {
+            background: linear-gradient(135deg, #7c3aed, #db2777) !important;
+        }
+
         .btn-step { background-color: #ec4899 !important; color: #ffffff !important; font-weight: 700; }
         .btn-step:hover { background-color: #db2777 !important; }
 
@@ -324,7 +333,6 @@
             user-select: none;
         }
 
-        /* 4-Octave Key Formatting */
         .key {
             cursor: pointer;
             border-radius: 0 0 5px 5px;
@@ -451,7 +459,6 @@
             padding-top: 4px;
         }
 
-        /* 6-Octave Calibration Keyboard Visualizer */
         .calib-piano-container {
             width: 100%;
             overflow-x: auto;
@@ -502,7 +509,6 @@
             box-shadow: 0 0 8px #3b82f6;
         }
 
-        /* Graph Pop-Up & Badge Styling */
         .graph-container {
             display: flex;
             flex-direction: column;
@@ -580,6 +586,102 @@
             border-radius: 8px;
             display: inline-block;
         }
+
+        /* Arcade Hub & Mini-Games Overlay Styling */
+        .arcade-hub-overlay {
+            display: none;
+            flex-direction: column;
+            gap: 16px;
+            background: #090814;
+            border: 2px solid #8b5cf6;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: inset 0 0 25px rgba(139, 92, 246, 0.3);
+        }
+
+        .arcade-hub-overlay.open {
+            display: flex;
+        }
+
+        .arcade-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+        }
+
+        .game-card {
+            background: #141226;
+            border: 1px solid #374151;
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .game-card:hover {
+            transform: translateY(-4px);
+            border-color: #ec4899;
+            box-shadow: 0 8px 20px rgba(236, 72, 153, 0.3);
+        }
+
+        .game-card h3 {
+            font-size: 1.05rem;
+            color: #f3f4f6;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .game-card p {
+            font-size: 0.78rem;
+            color: #9ca3af;
+            line-height: 1.3;
+            flex: 1;
+        }
+
+        /* Runner Sprite Visual Element for Finger Sprint Game */
+        .runner-track-wrapper {
+            position: relative;
+            width: 100%;
+            height: 48px;
+            background: #0b0f19;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            margin-top: 6px;
+        }
+
+        .runner-finish-line {
+            position: absolute;
+            right: 14px;
+            top: 0;
+            bottom: 0;
+            width: 10px;
+            background: repeating-linear-gradient(0deg, #fff, #fff 8px, #000 8px, #000 16px);
+        }
+
+        .runner-avatar {
+            position: absolute;
+            left: 10px;
+            font-size: 1.8rem;
+            transition: left 0.15s ease-out;
+            user-select: none;
+        }
+
+        .runner-avatar.sprinting {
+            animation: runnerBounce 0.2s infinite alternate ease-in-out;
+        }
+
+        @keyframes runnerBounce {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-4px); }
+        }
     </style>
 </head>
 <body>
@@ -587,7 +689,11 @@
     <div class="container">
         <header>
             <h1>PianoPad 26</h1>
-            <div class="controls">
+            <div class="controls" id="main-controls-bar">
+                <button id="btn-open-arcade" class="btn-arcade">
+                    🕹️ MINI-GAMES
+                </button>
+
                 <select id="song-select">
                     <option value="">Choose a Song</option>
                 </select>
@@ -676,9 +782,59 @@
                     Stop
                 </button>
             </div>
+
+            <!-- Dedicated Minimal Arcade Controls -->
+            <div class="controls" id="arcade-controls-bar" style="display: none;">
+                <button id="btn-home-screen" class="btn-success" style="font-weight: 800;">
+                    🏠 Return to Player
+                </button>
+                <button id="btn-stop-arcade" class="btn-danger">
+                    ⏹️ Exit Active Game
+                </button>
+            </div>
         </header>
 
-        <div class="timeline-container">
+        <!-- Arcade Hub Dashboard View -->
+        <div class="arcade-hub-overlay" id="arcade-hub">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #374151; padding-bottom: 8px;">
+                <h2 style="font-size: 1.2rem; color: #ec4899; display: flex; align-items: center; gap: 8px;">🕹️ PianoPad Arcade Mini-Games</h2>
+                <span style="font-size: 0.8rem; color: #cbd5e1; font-weight: 600;">Choose a Mini-Game to Play!</span>
+            </div>
+
+            <div class="arcade-grid">
+                <div class="game-card" onclick="startSimonTaps()">
+                    <h3>🧠 Simon Taps</h3>
+                    <p>Watch and listen to the stepwise C Major sequence, then tap the pattern back from memory!</p>
+                    <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Simon Taps</button>
+                </div>
+
+                <div class="game-card" onclick="startMysteryNote()">
+                    <h3>🔍 Mystery Note</h3>
+                    <p>Listen to the hidden note! Use Warm/Cold proximity cues to find and hit the secret key.</p>
+                    <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Mystery Note</button>
+                </div>
+
+                <div class="game-card" onclick="startDropDodge()">
+                    <h3>🛡️ Drop Dodge</h3>
+                    <p>Wide walls of blocks fall down the screen! Find and press the safe empty key gap before impact.</p>
+                    <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Drop Dodge</button>
+                </div>
+
+                <div class="game-card" onclick="startComboStrike()">
+                    <h3>⚡ Two-Note Combo</h3>
+                    <p>Pairs of notes fall together! Practice hitting clean two-note intervals simultaneously.</p>
+                    <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Combo Strike</button>
+                </div>
+
+                <div class="game-card" onclick="startFingerSprint()">
+                    <h3>🏃 Finger Sprint</h3>
+                    <p>Random 5-note scale runs flash on screen! Race your avatar across the track with fast keystrokes.</p>
+                    <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Finger Sprint</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="timeline-container" id="timeline-box">
             <div class="timeline-header">
                 <span>Timeline Trim & Loop Region</span>
                 <span id="loop-range-label">0% - 100% (Entire Song)</span>
@@ -689,6 +845,12 @@
                 <label style="font-size: 0.75rem; color: #9ca3af;">End:</label>
                 <input type="range" id="loop-end" min="0" max="100" value="100">
             </div>
+        </div>
+
+        <!-- Sprint Avatar Track Bar (Active during Finger Sprint Game) -->
+        <div class="runner-track-wrapper" id="runner-track" style="display: none;">
+            <div class="runner-avatar" id="runner-sprite">🏃</div>
+            <div class="runner-finish-line"></div>
         </div>
 
         <div class="visualizer-wrapper">
@@ -702,6 +864,7 @@
         </div>
     </div>
 
+    <!-- Import Modal -->
     <div class="modal-overlay" id="modal">
         <div class="modal">
             <h2>Import PianoPad Song</h2>
@@ -714,6 +877,7 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
     <div class="modal-overlay" id="settings-modal">
         <div class="modal">
             <h2>Settings</h2>
@@ -730,6 +894,7 @@
         </div>
     </div>
 
+    <!-- Calibration Wizard Modal -->
     <div class="modal-overlay" id="calib-modal">
         <div class="modal" style="max-width: 680px;">
             <h2>MIDI Keyboard Calibration</h2>
@@ -747,6 +912,7 @@
         </div>
     </div>
 
+    <!-- Game Mode Completion Pop-up Modal with Graph -->
     <div class="modal-overlay" id="game-results-modal">
         <div class="modal" style="text-align: center;">
             <h2>Game Performance Summary</h2>
@@ -778,6 +944,7 @@
         </div>
     </div>
 
+    <!-- Export / Share Haycode Modal -->
     <div class="modal-overlay" id="export-modal">
         <div class="modal">
             <h2>Recorded Performance Ready!</h2>
@@ -792,6 +959,7 @@
         </div>
     </div>
 
+    <!-- Teacher Add Song Modal Dialog -->
     <div class="modal-overlay" id="teacher-modal">
         <div class="modal">
             <h2>Add Song (Teacher Access)</h2>
@@ -818,13 +986,8 @@
     </div>
 
     <script>
-        // Google Spreadsheet Live CSV Endpoint
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
-        
-        // PUBLISHED LEADERBOARD CSV URL FOR DYNAMIC RANK CALCULATIONS
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
-
-        // DEPLOYED GOOGLE APPS SCRIPT WEB APP URL FOR AUTOMATED GOOGLE SHEET APPENDING
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyJ6BXOjgbsbv03Xlp3kFVj_6aIfVJ7NM66Y3f_fMzuOeDabH2HzEhE-rLuoZzncXAA6g/exec';
 
         let audioCtx = null;
@@ -841,7 +1004,7 @@
         let currentTheme = 'default';
 
         let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
-        let sessionStudentName = ""; // Session-retained student name
+        let sessionStudentName = "";
 
         let currentStepIndex = 0;
         let smoothStepElapsed = 0;
@@ -860,12 +1023,277 @@
 
         // Calibration Variables
         let isCalibrating = false;
-        let calibStep = 1; // 1 = Lowest C, 2 = Highest C
-        let calibLowestRawMIDI = 36; // Default C2
-        let calibHighestRawMIDI = 96; // Default C7
+        let calibStep = 1;
+        let calibLowestRawMIDI = 36;
+        let calibHighestRawMIDI = 96;
         let midiOctaveOffset = 0;
 
-        // Synchronously unlock browser audio context on user gesture
+        // Arcade Mini-Game Variables
+        let activeMiniGame = null; // 'simon', 'mystery', 'drop', 'combo', 'sprint'
+        let simonSequence = [];
+        let simonPlayerIndex = 0;
+        let simonIsPrompting = false;
+        
+        let mysteryTargetPitch = null;
+        let mysteryGuessCount = 0;
+
+        let sprintSequence = [];
+        let sprintIndex = 0;
+        let sprintStartTime = 0;
+
+        const cMajorScaleNotes = ['c1', 'd1', 'e1', 'f1', 'g1', 'a1', 'b1', 'c2'];
+        const arcadeHub = document.getElementById('arcade-hub');
+        const mainControlsBar = document.getElementById('main-controls-bar');
+        const arcadeControlsBar = document.getElementById('arcade-controls-bar');
+        const timelineBox = document.getElementById('timeline-box');
+        const runnerTrack = document.getElementById('runner-track');
+        const runnerSprite = document.getElementById('runner-sprite');
+
+        document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
+        document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
+        document.getElementById('btn-stop-arcade').addEventListener('click', exitActiveMiniGame);
+
+        function openArcadeHub() {
+            initAudio();
+            stopSong();
+            mainControlsBar.style.display = 'none';
+            timelineBox.style.display = 'none';
+            arcadeControlsBar.style.display = 'flex';
+            arcadeHub.classList.add('open');
+            document.getElementById('status').textContent = '🕹️ PianoPad Arcade Active! Choose a Mini-Game above.';
+        }
+
+        function returnToPlayerHome() {
+            exitActiveMiniGame();
+            arcadeHub.classList.remove('open');
+            arcadeControlsBar.style.display = 'none';
+            runnerTrack.style.display = 'none';
+            mainControlsBar.style.display = 'flex';
+            timelineBox.style.display = 'flex';
+            document.getElementById('status').textContent = 'Returned to PianoPad Player view.';
+        }
+
+        function exitActiveMiniGame() {
+            activeMiniGame = null;
+            isPlaying = false;
+            runnerTrack.style.display = 'none';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.querySelectorAll('.key').forEach(k => {
+                k.classList.remove('active');
+                k.style.backgroundColor = '';
+                k.style.boxShadow = '';
+            });
+            document.getElementById('status').textContent = 'Arcade Mini-Game stopped. Select another game or return Home.';
+        }
+
+        /* 1. SIMON TAPS MINI-GAME */
+        function startSimonTaps() {
+            initAudio();
+            exitActiveMiniGame();
+            arcadeHub.classList.remove('open');
+            activeMiniGame = 'simon';
+            simonSequence = [];
+            document.getElementById('status').textContent = '🧠 Simon Taps: Watch and listen to the pattern...';
+            nextSimonRound();
+        }
+
+        function nextSimonRound() {
+            simonPlayerIndex = 0;
+            simonIsPrompting = true;
+
+            // Generate stepwise or adjacent note in C Major scale
+            if (simonSequence.length === 0) {
+                simonSequence.push('c1');
+                simonSequence.push('d1');
+            } else {
+                const lastNote = simonSequence[simonSequence.length - 1];
+                const lastIdx = cMajorScaleNotes.indexOf(lastNote);
+                const stepChange = Math.random() > 0.5 ? 1 : -1;
+                let nextIdx = Math.max(0, Math.min(cMajorScaleNotes.length - 1, lastIdx + stepChange));
+                simonSequence.push(cMajorScaleNotes[nextIdx]);
+            }
+
+            document.getElementById('status').textContent = `🧠 Simon Taps (Length ${simonSequence.length}): Memorize pattern...`;
+
+            let step = 0;
+            const interval = setInterval(() => {
+                if (step < simonSequence.length) {
+                    const note = simonSequence[step];
+                    const freq = getNoteFrequency(note);
+                    if (freq) playTone(freq, 0.35, 1.0);
+                    highlightKey(note, 350, '#8b5cf6');
+                    step++;
+                } else {
+                    clearInterval(interval);
+                    simonIsPrompting = false;
+                    document.getElementById('status').textContent = `🧠 Your Turn! Play back the ${simonSequence.length} notes...`;
+                }
+            }, 600);
+        }
+
+        function handleSimonInput(noteStr) {
+            if (simonIsPrompting) return;
+
+            const expected = simonSequence[simonPlayerIndex];
+            if (noteStr.toLowerCase().trim() === expected.toLowerCase().trim()) {
+                simonPlayerIndex++;
+                if (simonPlayerIndex >= simonSequence.length) {
+                    document.getElementById('status').textContent = `🎉 Perfect! Level ${simonSequence.length} Complete! Next sequence coming...`;
+                    setTimeout(nextSimonRound, 1200);
+                }
+            } else {
+                playErrorClackSound();
+                document.getElementById('status').textContent = `❌ Game Over! Reached Sequence Length: ${simonSequence.length - 1}. Click Play to try again!`;
+                activeMiniGame = null;
+            }
+        }
+
+        /* 2. MYSTERY NOTE (HOT/COLD) MINI-GAME */
+        function startMysteryNote() {
+            initAudio();
+            exitActiveMiniGame();
+            arcadeHub.classList.remove('open');
+            activeMiniGame = 'mystery';
+            mysteryGuessCount = 0;
+
+            // Pick a secret random note pitch within 4-octave range
+            const randomPitch = Math.floor(Math.random() * 48) + 12; // C1 (12) to B4 (59)
+            mysteryTargetPitch = pitchToNote(randomPitch);
+
+            const freq = getNoteFrequency(mysteryTargetPitch);
+            if (freq) playTone(freq, 0.6, 1.0);
+
+            document.getElementById('status').textContent = '🔍 Mystery Note chosen! Tap keys to guess... (Listen carefully!)';
+        }
+
+        function handleMysteryInput(noteStr) {
+            mysteryGuessCount++;
+            const guessedPitchNum = noteToPitch(noteStr);
+            const targetPitchNum = noteToPitch(mysteryTargetPitch);
+
+            if (guessedPitchNum === null || targetPitchNum === null) return;
+
+            const diff = Math.abs(guessedPitchNum - targetPitchNum);
+
+            if (diff === 0) {
+                highlightKey(noteStr, 500, '#22c55e');
+                document.getElementById('status').textContent = `🎉 GOT IT in ${mysteryGuessCount} guesses! The Secret Note was ${mysteryTargetPitch.toUpperCase()}!`;
+                activeMiniGame = null;
+            } else if (diff <= 2) {
+                highlightKey(noteStr, 250, '#ef4444');
+                document.getElementById('status').textContent = `🔥 Sizzle HOT! You are right next to it! (Guesses: ${mysteryGuessCount})`;
+            } else if (diff <= 6) {
+                highlightKey(noteStr, 250, '#f97316');
+                document.getElementById('status').textContent = `⚡ Warm... Getting closer! (Guesses: ${mysteryGuessCount})`;
+            } else {
+                highlightKey(noteStr, 250, '#38bdf8');
+                document.getElementById('status').textContent = `❄️ Ice COLD! Far away... (Guesses: ${mysteryGuessCount})`;
+            }
+        }
+
+        /* 3. DROP DODGE MINI-GAME */
+        function startDropDodge() {
+            initAudio();
+            exitActiveMiniGame();
+            arcadeHub.classList.remove('open');
+            activeMiniGame = 'drop';
+
+            // Generate synthetic waterfall dropping walls with one safe open key
+            currentSong = [];
+            let timeAccum = 1500;
+            const whiteKeys = keyLayout.filter(k => k.type === 'white').map(k => k.note);
+
+            for (let i = 0; i < 15; i++) {
+                const safeKeyIdx = Math.floor(Math.random() * whiteKeys.length);
+                const safeKey = whiteKeys[safeKeyIdx];
+                const wallNotes = whiteKeys.filter(k => k !== safeKey);
+
+                currentSong.push({
+                    notes: wallNotes,
+                    safeKey: safeKey,
+                    rest: 1600
+                });
+            }
+
+            buildTimeline();
+            isPlaying = true;
+            playbackStartTime = performance.now();
+            lastFrameTime = performance.now();
+            document.getElementById('status').textContent = '🛡️ DROP DODGE ACTIVE! Press the empty safe key gap before the wall hits!';
+            requestAnimationFrame(renderLoop);
+        }
+
+        /* 4. TWO-NOTE COMBO STRIKE MINI-GAME */
+        function startComboStrike() {
+            initAudio();
+            exitActiveMiniGame();
+            arcadeHub.classList.remove('open');
+            activeMiniGame = 'combo';
+
+            const comboPairs = [
+                ['c1', 'g1'], ['c1', 'e1'], ['f1', 'a1'], ['g1', 'b1'], ['c2', 'e2'], ['d1', 'f1']
+            ];
+
+            currentSong = [];
+            for (let i = 0; i < 12; i++) {
+                const pair = comboPairs[Math.floor(Math.random() * comboPairs.length)];
+                currentSong.push({
+                    notes: pair,
+                    rest: 1800
+                });
+            }
+
+            buildTimeline();
+            isPlaying = true;
+            playbackStartTime = performance.now();
+            lastFrameTime = performance.now();
+            document.getElementById('status').textContent = '⚡ TWO-NOTE COMBO STRIKE! Strike falling note intervals simultaneously!';
+            requestAnimationFrame(renderLoop);
+        }
+
+        /* 5. FINGER SPRINT MINI-GAME WITH RUNNER SPRITE */
+        function startFingerSprint() {
+            initAudio();
+            exitActiveMiniGame();
+            arcadeHub.classList.remove('open');
+            activeMiniGame = 'sprint';
+            runnerTrack.style.display = 'flex';
+            runnerSprite.style.left = '10px';
+            runnerSprite.classList.add('sprinting');
+
+            // Generate a random 5-finger pattern in Octave 1
+            const startIdx = Math.floor(Math.random() * 3); // c1, d1, or e1
+            sprintSequence = cMajorScaleNotes.slice(startIdx, startIdx + 5);
+            sprintIndex = 0;
+            sprintStartTime = performance.now();
+
+            const displayStr = sprintSequence.map(n => n.toUpperCase()).join(' - ');
+            document.getElementById('status').textContent = `🏃 FINGER SPRINT: Play [ ${displayStr} ] as fast as you can!`;
+
+            // Highlight first key target
+            highlightKey(sprintSequence[0], 600, '#eab308');
+        }
+
+        function handleSprintInput(noteStr) {
+            const expected = sprintSequence[sprintIndex];
+            if (noteStr.toLowerCase().trim() === expected.toLowerCase().trim()) {
+                sprintIndex++;
+                const progressPct = (sprintIndex / sprintSequence.length) * 85;
+                runnerSprite.style.left = `calc(10px + ${progressPct}%)`;
+
+                if (sprintIndex < sprintSequence.length) {
+                    highlightKey(sprintSequence[sprintIndex], 400, '#eab308');
+                } else {
+                    const totalTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
+                    runnerSprite.classList.remove('sprinting');
+                    document.getElementById('status').textContent = `🏁 FINISH LINE! Sprint Completed in ${totalTime} seconds!`;
+                    activeMiniGame = null;
+                }
+            } else {
+                playErrorClackSound();
+            }
+        }
+
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -875,13 +1303,11 @@
             }
         }
 
-        // Synthesis of subtle percussive "clack" noise for incorrect note input in Game Mode
         function playErrorClackSound() {
             initAudio();
             const now = audioCtx.currentTime;
             
-            // Create short burst buffer of white noise
-            const bufferSize = audioCtx.sampleRate * 0.04; // 40ms noise burst
+            const bufferSize = audioCtx.sampleRate * 0.04;
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const data = buffer.getChannelData(0);
             for (let i = 0; i < bufferSize; i++) {
@@ -891,7 +1317,6 @@
             const noise = audioCtx.createBufferSource();
             noise.buffer = buffer;
 
-            // Low-pass filter to make it sound like a woody percussive "clack"
             const filter = audioCtx.createBiquadFilter();
             filter.type = 'lowpass';
             filter.frequency.setValueAtTime(320, now);
@@ -908,7 +1333,6 @@
             noise.stop(now + 0.04);
         }
 
-        // Web MIDI Input Device Initialization for Hardware Keyboards
         function initMIDIHardware() {
             if (navigator.requestMIDIAccess) {
                 navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
@@ -934,13 +1358,13 @@
         function handleMIDIMessage(event) {
             const status = event.data[0];
             const channel = status & 0x0F;
-            if (channel === 9) return; // Ignore Channel 10 (drums, 0-indexed is 9)
+            if (channel === 9) return;
 
             const command = status & 0xF0;
             const rawNoteNumber = event.data[1];
             const velocity = event.data.length > 2 ? event.data[2] : 0;
 
-            if (command === 144 && velocity > 0) { // Note On
+            if (command === 144 && velocity > 0) {
                 if (isCalibrating) {
                     processCalibrationNote(rawNoteNumber);
                 } else {
@@ -954,14 +1378,12 @@
         }
 
         function midiNoteToName(midi) {
-            // MIDI Note 36 maps directly to c1 (Lowest key on screen layout)
             const octave = Math.floor(midi / 12) - 2; 
             const offset = ((midi % 12) + 12) % 12;
             const name = noteNames[offset];
             return name + octave;
         }
 
-        // MIDI File Parser & Converter to HayCode
         document.getElementById('midi-input').addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -973,7 +1395,7 @@
 
                 let allNotes = [];
                 midi.tracks.forEach(track => {
-                    if (track.channel === 9) return; // Skip Channel 10 drums
+                    if (track.channel === 9) return;
                     track.notes.forEach(n => {
                         allNotes.push({
                             time: n.time,
@@ -989,7 +1411,6 @@
 
                 allNotes.sort((a, b) => a.time - b.time);
 
-                // Group simultaneous notes (within 20ms window) into multi-note chord tokens using '+'
                 const hayNotes = [];
                 const hayRests = [];
 
@@ -1039,44 +1460,17 @@
                 document.getElementById('status').textContent = 'Failed to parse MIDI file.';
             }
 
-            e.target.value = ''; // Reset input element
+            e.target.value = '';
         });
 
-        // Theme palette config for waterfall canvas rendering
         const themePalettes = {
-            default: {
-                pending: '#38bdf8',
-                normal: '#22c55e',
-                shadowActive: 'rgba(56, 189, 248, 0.6)',
-                shadowNormal: 'rgba(34, 197, 94, 0.4)'
-            },
-            cyberpunk: {
-                pending: '#00f0ff',
-                normal: '#ff007f',
-                shadowActive: 'rgba(0, 240, 255, 0.8)',
-                shadowNormal: 'rgba(255, 0, 127, 0.6)'
-            },
-            synthwave: {
-                pending: '#fcee0a',
-                normal: '#ff7700',
-                shadowActive: 'rgba(252, 238, 10, 0.8)',
-                shadowNormal: 'rgba(255, 119, 0, 0.6)'
-            },
-            matrix: {
-                pending: '#00cc66',
-                normal: '#00ff41',
-                shadowActive: 'rgba(0, 204, 102, 0.8)',
-                shadowNormal: 'rgba(0, 255, 65, 0.6)'
-            },
-            gold: {
-                pending: '#fbbf24',
-                normal: '#eab308',
-                shadowActive: 'rgba(251, 191, 36, 0.8)',
-                shadowNormal: 'rgba(234, 179, 8, 0.6)'
-            }
+            default: { pending: '#38bdf8', normal: '#22c55e', shadowActive: 'rgba(56, 189, 248, 0.6)', shadowNormal: 'rgba(34, 197, 94, 0.4)' },
+            cyberpunk: { pending: '#00f0ff', normal: '#ff007f', shadowActive: 'rgba(0, 240, 255, 0.8)', shadowNormal: 'rgba(255, 0, 127, 0.6)' },
+            synthwave: { pending: '#fcee0a', normal: '#ff7700', shadowActive: 'rgba(252, 238, 10, 0.8)', shadowNormal: 'rgba(255, 119, 0, 0.6)' },
+            matrix: { pending: '#00cc66', normal: '#00ff41', shadowActive: 'rgba(0, 204, 102, 0.8)', shadowNormal: 'rgba(0, 255, 65, 0.6)' },
+            gold: { pending: '#fbbf24', normal: '#eab308', shadowActive: 'rgba(251, 191, 36, 0.8)', shadowNormal: 'rgba(234, 179, 8, 0.6)' }
         };
 
-        // Computer Keyboard Bindings Map - 4-Octave Layout (C1 to B4)
         const keyboardMap = {
             'z': 'c1', 's': 'c#1', 'x': 'd1', 'd': 'd#1', 'c': 'e1', 'v': 'f1', 'g': 'f#1', 'b': 'g1', 'h': 'g#1', 'n': 'a1', 'j': 'a#1', 'm': 'b1',
             ',': 'c2', 'l': 'c#2', '.': 'd2', '1': 'd#2', 'q': 'e2', 'w': 'f2', '3': 'f#2', 'e': 'g2', '4': 'g#2', 'r': 'a2', '5': 'a#2', 't': 'b2',
@@ -1170,7 +1564,6 @@
             loopRangeLabel.textContent = `${start}% - ${end}% Region`;
         }
 
-        /* CALIBRATION ENGINE & 6-OCTAVE UI */
         function buildCalibrationKeyboard() {
             const container = document.getElementById('calib-keyboard');
             container.innerHTML = '';
@@ -1197,7 +1590,6 @@
                     container.appendChild(div);
                 });
             }
-            // Add top C7
             const topC = document.createElement('div');
             topC.className = 'calib-key white';
             topC.dataset.calibNote = 'c7';
@@ -1224,10 +1616,8 @@
 
             if (calibStep === 1) {
                 calibLowestRawMIDI = rawMidi;
-                // Standardize this physical key directly to c1 (MIDI 36, lowest key on main piano screen)
                 midiOctaveOffset = 36 - rawMidi;
 
-                // Highlight lowest C key at C1 on the 6-octave visualizer
                 const lowCKey = document.querySelector('.calib-key[data-calib-note="c1"]');
                 if (lowCKey) lowCKey.classList.add('blue-highlight');
 
@@ -1236,11 +1626,9 @@
             } else if (calibStep === 2) {
                 calibHighestRawMIDI = rawMidi;
 
-                // Calculate exact octave distance between played lowest and highest C
                 const rawDiff = calibHighestRawMIDI - calibLowestRawMIDI;
                 const octaveDistance = Math.round(rawDiff / 12);
                 
-                // Highlight corresponding highest key relative to lowest (C1 + octave distance)
                 const targetOctave = Math.min(7, 1 + octaveDistance);
                 const highCKey = document.querySelector(`.calib-key[data-calib-note="c${targetOctave}"]`);
                 if (highCKey) highCKey.classList.add('blue-highlight');
@@ -1295,7 +1683,6 @@
                 return;
             }
 
-            // Save locally for immediate playback
             songList.push({ title: title, code: code });
             localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
             renderSongSelect();
@@ -1307,7 +1694,6 @@
             teacherModal.classList.remove('open');
             document.getElementById('status').textContent = `Adding "${title}" to PianoPad & Google Sheet...`;
 
-            // Attempt direct POST to Google Apps Script
             if (APPS_SCRIPT_URL) {
                 try {
                     await fetch(APPS_SCRIPT_URL, {
@@ -1429,11 +1815,9 @@
                     }
                 }
 
-                // Add current score BEFORE posting so total count is accurate
                 const currentSpeedNum = parseInt(speedSlider.value, 10);
                 songScores.push({ accuracy: accuracyNum, speed: currentSpeedNum });
 
-                // Sort: Highest Accuracy, then highest speed
                 songScores.sort((a, b) => {
                     if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
                     return b.speed - a.speed;
@@ -1450,7 +1834,6 @@
         }
 
         function showGameResultsPopUp() {
-            // Prompt for Student Name if not retained in current session
             if (!sessionStudentName) {
                 const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
                 if (inputName && inputName.trim()) {
@@ -1470,7 +1853,6 @@
 
             document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
 
-            // Calculate stacked bar height percentages
             const greenPct = totalHits > 0 ? (perfectHits / totalHits) * 100 : 0;
             const orangePct = totalHits > 0 ? (earlyLateHits / totalHits) * 100 : 0;
             const redPct = totalHits > 0 ? (missedHits / totalHits) * 100 : 0;
@@ -1479,7 +1861,6 @@
             document.getElementById('bar-orange').style.height = `${orangePct}%`;
             document.getElementById('bar-red').style.height = `${redPct}%`;
 
-            // Determine Target Tempo Achievement Badge
             const currentSpeed = parseInt(speedSlider.value, 10);
             const badgeContainer = document.getElementById('badge-container');
             
@@ -1495,7 +1876,6 @@
 
             gameResultsModal.classList.add('open');
 
-            // Calculate live song rank first, then post score
             calculateAndDisplayRank(accuracyNum).then(() => {
                 postScoreToLeaderboard(accuracyNum);
             });
@@ -1662,9 +2042,7 @@
             }
         }
 
-        // Expanded 4-Octave Piano Layout (C1 to B4)
         const keyLayout = [
-            // Octave 1
             { note: 'c1', type: 'white', label: 'C', hint: 'Z' }, { note: 'c#1', type: 'black', label: 'C#', hint: 'S' },
             { note: 'd1', type: 'white', label: 'D', hint: 'X' }, { note: 'd#1', type: 'black', label: 'D#', hint: 'D' },
             { note: 'e1', type: 'white', label: 'E', hint: 'C' },
@@ -1672,7 +2050,6 @@
             { note: 'g1', type: 'white', label: 'G', hint: 'B' }, { note: 'g#1', type: 'black', label: 'G#', hint: 'H' },
             { note: 'a1', type: 'white', label: 'A', hint: 'N' }, { note: 'a#1', type: 'black', label: 'A#', hint: 'J' },
             { note: 'b1', type: 'white', label: 'B', hint: 'M' },
-            // Octave 2
             { note: 'c2', type: 'white', label: 'C', hint: ',' }, { note: 'c#2', type: 'black', label: 'C#', hint: 'L' },
             { note: 'd2', type: 'white', label: 'D', hint: '.' }, { note: 'd#2', type: 'black', label: 'D#', hint: '1' },
             { note: 'e2', type: 'white', label: 'E', hint: 'Q' },
@@ -1680,7 +2057,6 @@
             { note: 'g2', type: 'white', label: 'G', hint: 'E' }, { note: 'g#2', type: 'black', label: 'G#', hint: '4' },
             { note: 'a2', type: 'white', label: 'A', hint: 'R' }, { note: 'a#2', type: 'black', label: 'A#', hint: '5' },
             { note: 'b2', type: 'white', label: 'B', hint: 'T' },
-            // Octave 3
             { note: 'c3', type: 'white', label: 'C', hint: 'Y' }, { note: 'c#3', type: 'black', label: 'C#', hint: '7' },
             { note: 'd3', type: 'white', label: 'D', hint: 'U' }, { note: 'd#3', type: 'black', label: 'D#', hint: '8' },
             { note: 'e3', type: 'white', label: 'E', hint: 'I' },
@@ -1688,7 +2064,6 @@
             { note: 'g3', type: 'white', label: 'G', hint: 'P' }, { note: 'g#3', type: 'black', label: 'G#' },
             { note: 'a3', type: 'white', label: 'A' }, { note: 'a#3', type: 'black', label: 'A#' },
             { note: 'b3', type: 'white', label: 'B' },
-            // Octave 4
             { note: 'c4', type: 'white', label: 'C' }, { note: 'c#4', type: 'black', label: 'C#' },
             { note: 'd4', type: 'white', label: 'D' }, { note: 'd#4', type: 'black', label: 'D#' },
             { note: 'e4', type: 'white', label: 'E' },
@@ -1734,7 +2109,6 @@
             let minP = Math.min(...pitches);
             let maxP = Math.max(...pitches);
 
-            // 4-Octave Pitch Bounds (c1 = pitch 12, b4 = pitch 59)
             const MIN_PITCH = 12;
             const MAX_PITCH = 59;
 
@@ -1806,7 +2180,6 @@
             canvas.width = keyboardEl.offsetWidth;
         }
 
-        // Updated playTone with optional volume multiplier for quiet background audio during Game Mode
         function playTone(freq, duration = 0.4, volScale = 1.0) {
             if (!freq) return;
             initAudio();
@@ -1916,7 +2289,20 @@
             initAudio();
             const freq = getNoteFrequency(noteStr);
             if (freq) {
-                playTone(freq, 0.4, 1.0); // Full volume for manual key inputs
+                playTone(freq, 0.4, 1.0);
+            }
+
+            // Route keystrokes to active mini-games
+            if (activeMiniGame === 'simon') {
+                handleSimonInput(noteStr);
+                highlightKey(noteStr);
+                return;
+            } else if (activeMiniGame === 'mystery') {
+                handleMysteryInput(noteStr);
+                return;
+            } else if (activeMiniGame === 'sprint') {
+                handleSprintInput(noteStr);
+                return;
             }
 
             if (isRecording) {
@@ -1953,7 +2339,6 @@
                     }
                     updateGameStatus();
                 } else {
-                    // Play dynamic percussive error "clack" sound for incorrect key pitch
                     playErrorClackSound();
                     highlightKey(noteStr, 200, '#ef4444');
                 }
@@ -1989,7 +2374,6 @@
             return song;
         }
 
-        // CSV Parser for Google Sheet Data
         function parseCSVToSongs(csvText) {
             const songs = [];
             const lines = csvText.split(/\r?\n/);
@@ -2047,7 +2431,6 @@
         }
 
         async function syncSongsWithGoogleSheet() {
-            // 1. Instantly load cached songs from previous sessions if available
             const cachedData = localStorage.getItem('pianopad_sheet_songs');
             if (cachedData) {
                 try {
@@ -2064,7 +2447,6 @@
                 }
             }
 
-            // 2. Fetch fresh live data from Google Sheet
             try {
                 const response = await fetch(SPREADSHEET_CSV_URL);
                 if (!response.ok) throw new Error('Network response failed');
@@ -2101,10 +2483,11 @@
             let cumulativeMs = PRE_FALL_PAUSE + FALL_TIME_MS;
 
             currentSong.forEach((item, index) => {
-                cumulativeMs += (item.rest || 0) / speedFactor; // Correctly include rest timing
+                cumulativeMs += (item.rest || 0) / speedFactor;
 
                 noteTimeline.push({
                     notes: item.notes,
+                    safeKey: item.safeKey || null,
                     hitTime: cumulativeMs,
                     duration: Math.max(140, (item.rest || 250) * 0.85 / speedFactor),
                     played: false,
@@ -2147,7 +2530,7 @@
         }
 
         function playSong() {
-            initAudio(); // Synchronously unlock Web Audio context
+            initAudio();
             stopSong();
             if (currentSong.length === 0) {
                 document.getElementById('status').textContent = 'No song loaded. Select a song or import one.';
@@ -2184,7 +2567,7 @@
             let blockColor = palette.normal;
             let shadowColor = palette.shadowNormal;
 
-            if (isGameMode) {
+            if (isGameMode || activeMiniGame) {
                 if (gameStatus === 'perfect') {
                     blockColor = '#22c55e';
                     shadowColor = 'rgba(34, 197, 94, 0.8)';
@@ -2252,7 +2635,7 @@
                 effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
             }
 
-            if (isLooping && noteTimeline.length > 0 && !isStepMode) {
+            if (isLooping && noteTimeline.length > 0 && !isStepMode && !activeMiniGame) {
                 const firstHit = noteTimeline[0].hitTime;
                 const lastHit = noteTimeline[noteTimeline.length - 1].hitTime + noteTimeline[noteTimeline.length - 1].duration;
                 const totalDuration = lastHit - firstHit;
@@ -2279,8 +2662,7 @@
             const canvasHeight = canvas.height;
 
             noteTimeline.forEach(item => {
-                // In Game Mode, play quiet background audio (20% volume) for aural guidance
-                const backgroundVol = isGameMode ? 0.2 : 1.0;
+                const backgroundVol = (isGameMode || activeMiniGame) ? 0.2 : 1.0;
 
                 if (!isStepMode && effectiveElapsed >= item.hitTime && !item.played) {
                     item.played = true;
@@ -2288,17 +2670,17 @@
                         const freq = getNoteFrequency(noteStr);
                         if (freq) {
                             playTone(freq, item.duration / 1000, backgroundVol);
-                            if (!isGameMode) {
+                            if (!isGameMode && !activeMiniGame) {
                                 highlightKey(noteStr, item.duration);
                             }
                         }
                     });
                 }
 
-                if (isGameMode && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 280)) {
+                if ((isGameMode || activeMiniGame) && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 280)) {
                     item.gameStatus = 'miss';
                     gameStats.miss++;
-                    updateGameStatus();
+                    if (isGameMode) updateGameStatus();
                 }
 
                 item.notes.forEach(noteStr => {
@@ -2329,6 +2711,10 @@
 
                     if (isGameMode) {
                         showGameResultsPopUp();
+                        return;
+                    } else if (activeMiniGame) {
+                        document.getElementById('status').textContent = `🕹️ Mini-Game Completed! Great job!`;
+                        activeMiniGame = null;
                         return;
                     }
 
@@ -2416,7 +2802,6 @@
             document.getElementById('status').textContent = 'Haycode copied to clipboard!';
         });
 
-        // WAV Audio Export with Database Duplicate Checking & Custom Title Prompt
         document.getElementById('btn-export-wav').addEventListener('click', () => {
             initAudio();
             if (!generatedHaycode) {
@@ -2424,10 +2809,8 @@
                 return;
             }
 
-            // Clean up current HayCode for comparison
             const currentCleanCode = generatedHaycode.replace(/[\r\n\s]+/g, '').toLowerCase();
 
-            // Check against database songs
             let isDuplicate = false;
             for (let song of songList) {
                 if (song.code) {
@@ -2444,15 +2827,13 @@
                 return;
             }
 
-            // Prompt user for custom WAV song title
             const defaultTitle = currentSongTitle && currentSongTitle !== 'Wipeout' ? currentSongTitle : 'My_PianoPad_Song';
             const userTitle = prompt("Please enter a title for your recorded WAV audio file:", defaultTitle);
 
-            if (userTitle === null) return; // User cancelled prompt
+            if (userTitle === null) return;
 
             const cleanFileName = userTitle.trim().replace(/[^a-zA-Z0-9_\-\s]/g, '').replace(/\s+/g, '_') || 'PianoPad_Song';
 
-            // Synthesize and render performance into a WAV file via OfflineAudioContext
             exportPerformanceToWAV(cleanFileName);
         });
 
@@ -2464,7 +2845,6 @@
 
             document.getElementById('status').textContent = "Generating WAV audio file...";
 
-            // Compute total recording duration in seconds
             let totalMs = 0;
             recordedRests.forEach(r => totalMs += r);
             const totalSeconds = Math.max(1.5, (totalMs + 1000) / 1000);
@@ -2517,7 +2897,6 @@
             });
         }
 
-        // Helper function to encode Web Audio PCM buffer into standard 16-bit PCM WAV Blob
         function bufferToWavBlob(buffer) {
             const numOfChan = buffer.numberOfChannels;
             const length = buffer.length * numOfChan * 2 + 44;
@@ -2544,18 +2923,17 @@
                 pos += 4;
             }
 
-            // RIFF header
             writeString('RIFF');
             setUint32(length - 8);
             writeString('WAVE');
             writeString('fmt ');
             setUint32(16);
-            setUint16(1); // PCM
+            setUint16(1);
             setUint16(numOfChan);
             setUint32(buffer.sampleRate);
             setUint32(buffer.sampleRate * 2 * numOfChan);
             setUint16(numOfChan * 2);
-            setUint16(16); // 16-bit
+            setUint16(16);
             writeString('data');
             setUint32(length - pos - 4);
 
@@ -2576,10 +2954,7 @@
             return new Blob([outBuffer], { type: 'audio/wav' });
         }
 
-        // Initialize Web MIDI Hardware Input Device Access
         initMIDIHardware();
-
-        // Initialize application and sync with Google Sheet tab
         syncSongsWithGoogleSheet();
         setTimeout(updateKeyPositions, 100);
     </script>
