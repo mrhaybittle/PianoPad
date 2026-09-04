@@ -878,7 +878,6 @@
         </div>
 
         <div class="footer-bar">
-            <!-- Subtle Version & Hardcoded Sydney Timestamp Stamp -->
             <div class="version-stamp">v26.09.04 | 4-Sep 21:17 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
@@ -1089,7 +1088,7 @@
             openArcadeHub();
         });
 
-        // FIXED TRY AGAIN ROUTING: Restarts the specific mini-game instead of playing Wipeout
+        // FIXED TRY AGAIN ROUTING
         document.getElementById('btn-game-try-again').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
             if (currentSongTitle === "Mystery Note") startMysteryNote();
@@ -1245,7 +1244,7 @@
             }
         }
 
-        /* 2. MYSTERY NOTE (HOT/COLD) MINI-GAME */
+        /* 2. MYSTERY NOTE (HOT/COLD) MINI-GAME - SUBMIT GUESSES COUNT AS INTEGER SCORE */
         function startMysteryNote() {
             initAudio();
             exitActiveMiniGame();
@@ -1276,7 +1275,14 @@
                 gameStats.perfect++;
                 highlightKey(noteStr, 500, '#22c55e');
                 currentSongTitle = "Mystery Note";
-                showGameResultsPopUp();
+
+                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>Secret Note Found In: <span style="color:#22c55e; font-size:1.3rem;">${mysteryGuessCount} Guesses</span>`;
+                document.getElementById('bar-green').style.height = '100%';
+                document.getElementById('bar-orange').style.height = '0%';
+                document.getElementById('bar-red').style.height = '0%';
+
+                gameResultsModal.classList.add('open');
+                postScoreToLeaderboard(mysteryGuessCount);
                 activeMiniGame = null;
             } else if (diff <= 2) {
                 gameStats.earlyLate++;
