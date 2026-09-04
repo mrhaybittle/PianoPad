@@ -1289,7 +1289,7 @@
             }
 
             const parsed = parsePianoPad(code);
-            if (parsed.length > 0) {
+            if (parsed.length === 0) {
                 teacherErrorDiv.textContent = "Invalid HayCode format!";
                 teacherErrorDiv.style.display = "block";
                 return;
@@ -1429,7 +1429,7 @@
                     }
                 }
 
-                // Add current run score
+                // Add current score BEFORE posting so total count is accurate
                 const currentSpeedNum = parseInt(speedSlider.value, 10);
                 songScores.push({ accuracy: accuracyNum, speed: currentSpeedNum });
 
@@ -1495,9 +1495,10 @@
 
             gameResultsModal.classList.add('open');
 
-            // Post score to Google Apps Script and calculate live song rank
-            postScoreToLeaderboard(accuracyNum);
-            calculateAndDisplayRank(accuracyNum);
+            // Calculate live song rank first, then post score
+            calculateAndDisplayRank(accuracyNum).then(() => {
+                postScoreToLeaderboard(accuracyNum);
+            });
         }
 
         function toggleLoopMode() {
