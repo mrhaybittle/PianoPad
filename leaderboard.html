@@ -205,8 +205,7 @@
     </div>
 
     <script>
-        // REPLACE WITH YOUR PUBLISHED CSV URL FOR THE 'LEADERBOARD' SHEET TAB (gid)
-        const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=YOUR_LEADERBOARD_GID_HERE';
+        const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
 
         let allScores = [];
 
@@ -238,7 +237,7 @@
                 }
                 row.push(entry);
 
-                // Expected CSV Row Format: [Timestamp, Student Name, Song Title, Accuracy Score, Speed %]
+                // CSV Row Format: [Timestamp, Student Name, Song Title, Accuracy Score, Tempo Speed]
                 if (row.length >= 4) {
                     records.push({
                         timestamp: row[0] ? row[0].trim().replace(/^"|"$/g, '') : '',
