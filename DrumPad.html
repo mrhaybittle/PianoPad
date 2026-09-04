@@ -540,7 +540,6 @@
         .bar-part-orange { background-color: #f97316; width: 100%; transition: height 0.4s ease; }
         .bar-part-green { background-color: #22c55e; width: 100%; transition: height 0.4s ease; }
 
-        /* Floating Drag Ghost for Compose Mode */
         #drag-ghost {
             position: fixed;
             pointer-events: none;
@@ -1420,20 +1419,37 @@
                     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
                 }
 
-                // Bar Lines
+                // Bar Lines (Regular Single Bar Lines for 0..15, Double Bar Line for end of bar 16)
                 const barMs = activeConfig.barDurationMs;
                 const barOffsetLeadMs = 120;
-                ctx.strokeStyle = '#334155'; ctx.lineWidth = 3.5;
+                ctx.strokeStyle = '#334155';
 
                 for (let bar = 0; bar <= 16; bar++) {
                     const barTimeMs = (bar * barMs) - barOffsetLeadMs;
                     const barX = hitLineX + (barTimeMs / speedFactor - elapsedMs) * pixelsPerMs;
                     
                     if (barX > 30 && barX < canvas.width + 50) {
-                        ctx.beginPath(); 
-                        ctx.moveTo(barX, centerY - 2.5 * lineSpacing); 
-                        ctx.lineTo(barX, centerY + 2.5 * lineSpacing); 
-                        ctx.stroke();
+                        if (bar === 16) {
+                            // DOUBLE BAR LINE AT THE END OF ALL 16 BAR PLAY MODES
+                            ctx.lineWidth = 2.5;
+                            ctx.beginPath();
+                            ctx.moveTo(barX - 6, centerY - 2.5 * lineSpacing);
+                            ctx.lineTo(barX - 6, centerY + 2.5 * lineSpacing);
+                            ctx.stroke();
+
+                            ctx.lineWidth = 5.0; // Thick terminal line
+                            ctx.beginPath();
+                            ctx.moveTo(barX, centerY - 2.5 * lineSpacing);
+                            ctx.lineTo(barX, centerY + 2.5 * lineSpacing);
+                            ctx.stroke();
+                        } else {
+                            // Standard prominent bar lines
+                            ctx.lineWidth = 3.5;
+                            ctx.beginPath(); 
+                            ctx.moveTo(barX, centerY - 2.5 * lineSpacing); 
+                            ctx.lineTo(barX, centerY + 2.5 * lineSpacing); 
+                            ctx.stroke();
+                        }
                     }
                 }
 
@@ -1556,7 +1572,7 @@
         });
 
         function renderLoop(now) {
-            if (!isPlaying || isPaused || isComposeMode) return;
+            if (!isPlaying || isPaused) return;
 
             let effectiveElapsed = 0;
             if (isStepMode) {
@@ -1681,8 +1697,17 @@
             animationFrameId = requestAnimationFrame(renderLoop);
         }
 
+        /* --- PLAY BEAT ENHANCEMENT: ALLOWS PLAYBACK IN COMPOSE MODE --- */
         function playBeat() {
             if (activeSongTimeline.length === 0) return;
+            
+            // Turn off Compose mode state upon playing so standard scrolling/playback occurs
+            if (isComposeMode) {
+                isComposeMode = false;
+                btnCompose.textContent = 'Compose';
+                btnCompose.classList.remove('btn-compose-active');
+            }
+
             startCountInThenPlay();
         }
 
