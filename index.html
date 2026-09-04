@@ -720,24 +720,6 @@
         </div>
     </div>
 
-    <!-- Calibration Wizard Modal -->
-    <div class="modal-overlay" id="calib-modal">
-        <div class="modal" style="max-width: 680px;">
-            <h2>MIDI Keyboard Calibration</h2>
-            <p id="calib-instructions" style="font-size: 0.9rem; color: #38bdf8; font-weight: 600;">
-                Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...
-            </p>
-
-            <div class="calib-piano-container">
-                <div class="calib-piano" id="calib-keyboard"></div>
-            </div>
-
-            <div class="modal-footer">
-                <button class="btn-secondary" id="btn-calib-cancel">Cancel Calibration</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Game Mode Completion Pop-up Modal with Graph -->
     <div class="modal-overlay" id="game-results-modal">
         <div class="modal" style="text-align: center;">
@@ -829,6 +811,7 @@
         let currentTheme = 'default';
 
         let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+        let sessionStudentName = ""; // Session-retained student name
 
         let currentStepIndex = 0;
         let smoothStepElapsed = 0;
@@ -1339,15 +1322,51 @@
             document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}`;
         }
 
+        async function postScoreToLeaderboard(accuracyNum) {
+            if (!APPS_SCRIPT_URL) return;
+
+            const speedText = speedSlider.value + '%';
+            const payload = {
+                action: "SCORE_SUBMIT",
+                name: sessionStudentName,
+                title: currentSongTitle,
+                score: accuracyNum,
+                tempo: speedText
+            };
+
+            try {
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payload)
+                });
+                document.getElementById('status').textContent = `Score (${accuracyNum}%) submitted for ${sessionStudentName}!`;
+            } catch (err) {
+                console.warn("Could not post score to Google Apps Script.", err);
+            }
+        }
+
         function showGameResultsPopUp() {
+            // Prompt for Student Name if not retained in current session
+            if (!sessionStudentName) {
+                const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
+                if (inputName && inputName.trim()) {
+                    sessionStudentName = inputName.trim();
+                } else {
+                    sessionStudentName = "Anonymous";
+                }
+            }
+
             const perfectHits = gameStats.perfect;
             const earlyLateHits = gameStats.earlyLate;
             const missedHits = gameStats.miss;
             const totalHits = perfectHits + earlyLateHits + missedHits;
 
             const accuracy = totalHits > 0 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
-            
-            document.getElementById('game-summary-text').innerHTML = `Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
+            const accuracyNum = parseFloat(accuracy);
+
+            document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
 
             // Calculate stacked bar height percentages
             const greenPct = totalHits > 0 ? (perfectHits / totalHits) * 100 : 0;
@@ -1373,6 +1392,9 @@
             }
 
             gameResultsModal.classList.add('open');
+
+            // Automatically post score to Google Apps Script Leaderboard
+            postScoreToLeaderboard(accuracyNum);
         }
 
         function toggleLoopMode() {
