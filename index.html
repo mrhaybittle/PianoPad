@@ -1806,7 +1806,8 @@
             canvas.width = keyboardEl.offsetWidth;
         }
 
-        function playTone(freq, duration = 0.4) {
+        // Updated playTone with optional volume multiplier for quiet background audio during Game Mode
+        function playTone(freq, duration = 0.4, volScale = 1.0) {
             if (!freq) return;
             initAudio();
 
@@ -1820,7 +1821,7 @@
                 osc.frequency.setValueAtTime(freq, now);
 
                 gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(0.4, now + 0.01);
+                gain.gain.linearRampToValueAtTime(0.4 * volScale, now + 0.01);
                 gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.3);
 
                 osc.connect(gain);
@@ -1839,7 +1840,7 @@
                 filter.frequency.setValueAtTime(freq * 3, now);
                 filter.frequency.exponentialRampToValueAtTime(freq, now + duration);
 
-                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.setValueAtTime(0.2 * volScale, now);
                 gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.1);
 
                 osc.connect(filter);
@@ -1854,7 +1855,7 @@
                     osc.type = 'sine';
                     osc.frequency.setValueAtTime(freq * multiplier, now);
 
-                    const vol = 0.2 / multiplier;
+                    const vol = (0.2 / multiplier) * volScale;
                     gain.gain.setValueAtTime(vol, now);
                     gain.gain.linearRampToValueAtTime(vol, now + duration);
                     gain.gain.linearRampToValueAtTime(0.0001, now + duration + 0.05);
@@ -1870,7 +1871,7 @@
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(freq, now);
 
-                gain.gain.setValueAtTime(0.6, now);
+                gain.gain.setValueAtTime(0.6 * volScale, now);
                 gain.gain.exponentialRampToValueAtTime(0.0001, now + Math.min(duration, 0.25));
 
                 osc.connect(gain);
@@ -1883,8 +1884,8 @@
                 osc.type = 'square';
                 osc.frequency.setValueAtTime(freq, now);
 
-                gain.gain.setValueAtTime(0.15, now);
-                gain.gain.linearRampToValueAtTime(0.15, now + duration);
+                gain.gain.setValueAtTime(0.15 * volScale, now);
+                gain.gain.linearRampToValueAtTime(0.15 * volScale, now + duration);
                 gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.02);
 
                 osc.connect(gain);
@@ -1915,7 +1916,7 @@
             initAudio();
             const freq = getNoteFrequency(noteStr);
             if (freq) {
-                playTone(freq);
+                playTone(freq, 0.4, 1.0); // Full volume for manual key inputs
             }
 
             if (isRecording) {
@@ -2278,13 +2279,18 @@
             const canvasHeight = canvas.height;
 
             noteTimeline.forEach(item => {
-                if (!isStepMode && !isGameMode && effectiveElapsed >= item.hitTime && !item.played) {
+                // In Game Mode, play quiet background audio (20% volume) for aural guidance
+                const backgroundVol = isGameMode ? 0.2 : 1.0;
+
+                if (!isStepMode && effectiveElapsed >= item.hitTime && !item.played) {
                     item.played = true;
                     item.notes.forEach(noteStr => {
                         const freq = getNoteFrequency(noteStr);
                         if (freq) {
-                            playTone(freq, item.duration / 1000);
-                            highlightKey(noteStr, item.duration);
+                            playTone(freq, item.duration / 1000, backgroundVol);
+                            if (!isGameMode) {
+                                highlightKey(noteStr, item.duration);
+                            }
                         }
                     });
                 }
