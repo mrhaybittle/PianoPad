@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PianoPad 26 - Global Leaderboard</title>
+    <style>
+        :root {
+            --bg-color: #121218;
+            --panel-bg: #1f1f2e;
+            --accent-color: #ec4899;
+            --accent-hover: #db2777;
+            --text-main: #f3f4f6;
+            --gold: #fbbf24;
+            --silver: #cbd5e1;
+            --bronze: #d97706;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 12px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background-color: var(--panel-bg);
+            border-radius: 14px;
+            box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.6);
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            border-bottom: 1px solid #374151;
+            padding-bottom: 12px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f3f4f6;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        select {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #374151;
+            background-color: #0b0f19;
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 0.85rem;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 6px;
+            background-color: #4f46e5;
+            color: white;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: background-color 0.2s;
+        }
+
+        .btn-back:hover {
+            background-color: #6366f1;
+        }
+
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #374151;
+            background-color: #0b0f19;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background-color: #181f2e;
+            color: #9ca3af;
+            font-weight: 700;
+            padding: 12px 16px;
+            border-bottom: 1px solid #374151;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #1f2937;
+            color: #e5e7eb;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background-color: #131b2e;
+        }
+
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            font-weight: 800;
+            font-size: 0.85rem;
+            color: #000;
+        }
+
+        .rank-1 { background-color: var(--gold); box-shadow: 0 0 8px var(--gold); }
+        .rank-2 { background-color: var(--silver); box-shadow: 0 0 8px var(--silver); }
+        .rank-3 { background-color: var(--bronze); box-shadow: 0 0 8px var(--bronze); color: #fff; }
+        .rank-other { background-color: transparent; color: #9ca3af; }
+
+        .score-highlight {
+            color: #22c55e;
+            font-weight: 700;
+        }
+
+        .status-msg {
+            text-align: center;
+            color: #9ca3af;
+            padding: 20px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>🏆 PianoPad High Scores</h1>
+            <div class="controls">
+                <select id="filter-song">
+                    <option value="ALL">All Songs</option>
+                </select>
+                <a href="index.html" class="btn-back">← Back to Player</a>
+            </div>
+        </header>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 70px;">Rank</th>
+                        <th>Student Name</th>
+                        <th>Song Title</th>
+                        <th>Accuracy</th>
+                        <th>Tempo Speed</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                    <tr>
+                        <td colspan="6" class="status-msg">Loading scores from Google Sheet...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // REPLACE WITH YOUR PUBLISHED CSV URL FOR THE 'LEADERBOARD' SHEET TAB (gid)
+        const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=YOUR_LEADERBOARD_GID_HERE';
+
+        let allScores = [];
+
+        function parseCSV(csvText) {
+            const lines = csvText.split(/\r?\n/);
+            const records = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                const row = [];
+                let insideQuote = false;
+                let entry = '';
+
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"' && line[j + 1] === '"') {
+                        entry += '"';
+                        j++;
+                    } else if (char === '"') {
+                        insideQuote = !insideQuote;
+                    } else if (char === ',' && !insideQuote) {
+                        row.push(entry);
+                        entry = '';
+                    } else {
+                        entry += char;
+                    }
+                }
+                row.push(entry);
+
+                // Expected CSV Row Format: [Timestamp, Student Name, Song Title, Accuracy Score, Speed %]
+                if (row.length >= 4) {
+                    records.push({
+                        timestamp: row[0] ? row[0].trim().replace(/^"|"$/g, '') : '',
+                        name: row[1] ? row[1].trim().replace(/^"|"$/g, '') : 'Anonymous',
+                        song: row[2] ? row[2].trim().replace(/^"|"$/g, '') : 'Unknown',
+                        accuracy: parseFloat(row[3]) || 0,
+                        speed: parseInt(row[4]) || 100
+                    });
+                }
+            }
+            return records;
+        }
+
+        function populateSongFilter() {
+            const filterSelect = document.getElementById('filter-song');
+            const uniqueSongs = [...new Set(allScores.map(s => s.song))];
+            uniqueSongs.sort();
+
+            filterSelect.innerHTML = '<option value="ALL">All Songs</option>';
+            uniqueSongs.forEach(song => {
+                const opt = document.createElement('option');
+                opt.value = song;
+                opt.textContent = song;
+                filterSelect.appendChild(opt);
+            });
+        }
+
+        function renderLeaderboard() {
+            const filterValue = document.getElementById('filter-song').value;
+            const tbody = document.getElementById('leaderboard-body');
+
+            let filtered = filterValue === 'ALL' 
+                ? [...allScores] 
+                : allScores.filter(s => s.song === filterValue);
+
+            // Sort: Highest Accuracy first, then highest speed
+            filtered.sort((a, b) => {
+                if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+                return b.speed - a.speed;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="status-msg">No high scores found for this song.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            filtered.forEach((item, index) => {
+                const tr = document.createElement('tr');
+
+                let rankBadge = `<span class="rank-badge rank-other">${index + 1}</span>`;
+                if (index === 0) rankBadge = `<span class="rank-badge rank-1">1</span>`;
+                else if (index === 1) rankBadge = `<span class="rank-badge rank-2">2</span>`;
+                else if (index === 2) rankBadge = `<span class="rank-badge rank-3">3</span>`;
+
+                tr.innerHTML = `
+                    <td>${rankBadge}</td>
+                    <td style="font-weight: 600; color: #fff;">${item.name}</td>
+                    <td>${item.song}</td>
+                    <td class="score-highlight">${item.accuracy.toFixed(1)}%</td>
+                    <td>${item.speed}%</td>
+                    <td style="font-size: 0.8rem; color: #9ca3af;">${item.timestamp || 'N/A'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function fetchScores() {
+            try {
+                const response = await fetch(LEADERBOARD_CSV_URL);
+                if (!response.ok) throw new Error('Network response error');
+
+                const csvText = await response.text();
+                allScores = parseCSV(csvText);
+
+                populateSongFilter();
+                renderLeaderboard();
+            } catch (err) {
+                console.error(err);
+                document.getElementById('leaderboard-body').innerHTML = 
+                    '<tr><td colspan="6" class="status-msg" style="color:#ef4444;">Failed to load leaderboard data. Please ensure the CSV link is public.</td></tr>';
+            }
+        }
+
+        document.getElementById('filter-song').addEventListener('change', renderLeaderboard);
+
+        // Fetch scores on page load
+        fetchScores();
+    </script>
+</body>
+</html>
