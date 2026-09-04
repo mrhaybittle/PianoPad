@@ -23,7 +23,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            padding: 10px 16px;
+            padding: 8px 14px;
         }
 
         .logo-container {
@@ -31,16 +31,16 @@
             align-items: center;
             justify-content: center;
             gap: 12px;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
         .logo-svg {
-            width: 42px;
-            height: 42px;
+            width: 38px;
+            height: 38px;
         }
 
         .logo-title {
-            font-size: 2.2rem;
+            font-size: 2.1rem;
             font-weight: 900;
             letter-spacing: -0.04em;
             background: linear-gradient(135deg, #1e293b 0%, #3b82f6 100%);
@@ -51,16 +51,16 @@
 
         .container {
             width: 100%;
-            max-width: 1350px;
-            height: calc(100vh - 70px);
+            max-width: 1380px;
+            height: calc(100vh - 58px);
             background-color: #ffffff;
             border: 2px solid #e2e8f0;
             border-radius: 16px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            padding: 12px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
         header {
@@ -68,9 +68,9 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 6px;
             border-bottom: 2px solid #f1f5f9;
-            padding-bottom: 8px;
+            padding-bottom: 6px;
         }
 
         .controls {
@@ -85,10 +85,10 @@
             align-items: center;
             gap: 6px;
             background-color: #f8fafc;
-            padding: 5px 10px;
+            padding: 4px 8px;
             border-radius: 8px;
             border: 1px solid #cbd5e1;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             font-weight: 600;
         }
 
@@ -98,19 +98,19 @@
         }
 
         .speed-control input[type="range"] {
-            width: 85px;
+            width: 75px;
             accent-color: #2563eb;
             cursor: pointer;
         }
 
         select {
-            padding: 6px 10px;
+            padding: 5px 8px;
             border-radius: 8px;
             border: 1px solid #cbd5e1;
             background-color: #f8fafc;
             color: #1e293b;
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             cursor: pointer;
             outline: none;
         }
@@ -120,20 +120,20 @@
             border: 2px solid #f59e0b !important;
             background-color: #fffbeb !important;
             font-weight: 700 !important;
-            max-width: 260px;
+            max-width: 230px;
         }
 
         button, .btn-file-label {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            padding: 6px 12px;
+            gap: 4px;
+            padding: 5px 10px;
             border-radius: 8px;
             border: none;
             background-color: #3b82f6;
             color: white;
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             cursor: pointer;
             transition: all 0.15s ease;
         }
@@ -161,6 +161,9 @@
         .btn-compose { background-color: #f59e0b !important; font-weight: 700; }
         .btn-compose-active { background-color: #d97706 !important; box-shadow: 0 0 10px #f59e0b; font-weight: 700; }
 
+        .btn-mode-toggle { background-color: #0284c7 !important; font-weight: 700; }
+        .btn-mode-toggle-active { background-color: #0369a1 !important; box-shadow: 0 0 10px #0284c7; font-weight: 700; }
+
         .btn-metro {
             background-color: #f1f5f9;
             color: #475569;
@@ -171,6 +174,19 @@
             color: #ffffff !important;
             border-color: #d97706 !important;
             box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+        }
+
+        .token-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background-color: #fef3c7;
+            color: #b45309;
+            border: 1px solid #fde68a;
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 800;
         }
 
         .icon {
@@ -210,6 +226,52 @@
             height: 100%;
         }
 
+        /* --- BOSS BATTLE & HUD OVERLAY --- */
+        .boss-hud-overlay {
+            position: absolute;
+            top: 8px;
+            left: 12px;
+            right: 12px;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .boss-hud-overlay.active {
+            display: flex;
+        }
+
+        .hp-bar-container {
+            width: 200px;
+            height: 18px;
+            background: #e2e8f0;
+            border: 2px solid #475569;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .hp-bar-fill {
+            height: 100%;
+            transition: width 0.2s ease;
+        }
+
+        .hp-fill-player { background: #22c55e; }
+        .hp-fill-boss { background: #ef4444; }
+
+        .hp-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: #0f172a;
+            top: 1px;
+        }
+
+        /* --- 16-BAR PROGRESS GRID --- */
         .bar-progress-container {
             display: flex;
             flex-direction: column;
@@ -488,13 +550,35 @@
         .modal {
             background: #ffffff;
             border-radius: 16px;
-            width: 90%; max-width: 520px;
-            padding: 24px;
-            display: flex; flex-direction: column; gap: 16px;
+            width: 90%; max-width: 540px;
+            padding: 20px 24px;
+            display: flex; flex-direction: column; gap: 14px;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         }
 
         .modal h2 { font-size: 1.25rem; color: #0f172a; }
+
+        .shop-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .shop-item {
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            background: #f8fafc;
+        }
+
+        .shop-item.active-item {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
 
         .calib-step-box {
             display: flex;
@@ -517,7 +601,7 @@
             display: flex;
             align-items: flex-end;
             justify-content: center;
-            height: 160px;
+            height: 140px;
             width: 90px;
             background: #f8fafc;
             border: 1px solid #cbd5e1;
@@ -620,14 +704,17 @@
                 <button id="btn-compose" class="btn-compose">Compose</button>
                 <button id="btn-game" class="btn-secondary">Game Mode: OFF</button>
                 <button id="btn-step" class="btn-step">Step Mode</button>
+                <button id="btn-call-resp" class="btn-mode-toggle">Call & Response</button>
+                <button id="btn-bpm-ramp" class="btn-mode-toggle">BPM Ramp Up</button>
+                <button id="btn-boss" class="btn-danger">Boss Battle</button>
+                <button id="btn-shop" class="btn-warning">Kit Shop</button>
 
-                <button id="btn-calib-start" class="btn-calib">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20"></path></svg>
-                    Calibrate Kit MIDI
-                </button>
+                <div class="token-badge">
+                    <span>🪙</span> <span id="token-count">0</span>
+                </div>
 
+                <button id="btn-calib-start" class="btn-calib">Calibrate Kit</button>
                 <label class="btn-file-label btn-midi">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
                     Import MIDI
                     <input type="file" id="midi-input" accept=".mid,.midi" style="display: none;">
                 </label>
@@ -639,6 +726,28 @@
         </header>
 
         <div class="visualizer-wrapper">
+            <div class="boss-hud-overlay" id="boss-hud">
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                    <span style="font-size: 0.72rem; font-weight: 800; color: #15803d;">PLAYER HP</span>
+                    <div class="hp-bar-container">
+                        <div class="hp-bar-fill hp-fill-player" id="player-hp-bar" style="width: 100%;"></div>
+                        <div class="hp-text" id="player-hp-text">100 / 100</div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; font-weight: 900; color: #ef4444; font-size: 1.1rem;" id="boss-title">
+                    👹 GROOVE MONSTER
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
+                    <span style="font-size: 0.72rem; font-weight: 800; color: #b91c1c;">BOSS HP</span>
+                    <div class="hp-bar-container">
+                        <div class="hp-bar-fill hp-fill-boss" id="boss-hp-bar" style="width: 100%;"></div>
+                        <div class="hp-text" id="boss-hp-text">500 / 500</div>
+                    </div>
+                </div>
+            </div>
+
             <canvas id="sheet-canvas"></canvas>
         </div>
 
@@ -678,7 +787,7 @@
             </div>
         </div>
 
-        <div class="status-bar" id="status">Welcome to DrumPad! Select a pattern or strike drums to play.</div>
+        <div class="status-bar" id="status">Welcome to Drum-a-Bit-tle! Select a pattern or strike drums to play.</div>
     </div>
 
     <div class="modal-overlay" id="calib-modal">
@@ -699,9 +808,38 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="shop-modal">
+        <div class="modal">
+            <h2>🪙 Unlockable Kit Sound Packs & Skins</h2>
+            <p style="font-size: 0.85rem; color: #64748b;">Earn Rhythm Tokens by finishing 16-bar grooves and defeating Bosses!</p>
+            
+            <div class="shop-grid">
+                <div class="shop-item active-item" id="shop-acoustic">
+                    <strong style="font-size:0.85rem;">Acoustic Studio Kit</strong>
+                    <span style="font-size:0.7rem; color:#64748b;">Standard Rock Pack</span>
+                    <button class="btn-secondary" style="font-size:0.7rem;" disabled>EQUIPPED</button>
+                </div>
+                <div class="shop-item" id="shop-808">
+                    <strong style="font-size:0.85rem;">808 Electronic Trap</strong>
+                    <span style="font-size:0.7rem; color:#64748b;">Synth Bass & Snare</span>
+                    <button class="btn-warning" id="btn-buy-808" style="font-size:0.7rem;">Unlock (50 Tokens)</button>
+                </div>
+                <div class="shop-item" id="shop-chiptune">
+                    <strong style="font-size:0.85rem;">Chiptune 8-Bit Kit</strong>
+                    <span style="font-size:0.7rem; color:#64748b;">Retro Game Sounds</span>
+                    <button class="btn-warning" id="btn-buy-chip" style="font-size:0.7rem;">Unlock (100 Tokens)</button>
+                </div>
+            </div>
+
+            <div style="text-align: right; margin-top: 10px;">
+                <button class="btn-secondary" id="btn-shop-close">Close Shop</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="game-results-modal">
         <div class="modal" style="text-align: center;">
-            <h2>Game Performance Summary</h2>
+            <h2 id="modal-result-title">Game Performance Summary</h2>
             <p id="game-summary-text" style="font-size: 0.95rem; color: #334155; font-weight: 600;"></p>
             
             <div class="bar-chart-wrapper">
@@ -871,6 +1009,7 @@
         let activeSongTimeline = [];
         let activeConfig = ONE_BAR_PATTERNS["Beginner #1 - Individual Kit Parts"];
         let isPlaying = false, isPaused = false, isStepMode = false, isGameMode = false, isComposeMode = false, isMetronomeEnabled = false;
+        let isCallResponseMode = false, isBpmRampMode = false, isBossMode = false;
         let currentBPM = 100;
         let speedFactor = 1.0;
         let playbackStartTime = 0, pauseStartTime = 0, accumulatedPauseMs = 0;
@@ -880,6 +1019,15 @@
         let activeHiHatMode = 'open';
         let currentBarNumber = 1;
         let lastMetronomeBeatIndex = -1;
+
+        // Gamification & Shop State
+        let rhythmTokens = 0;
+        let equippedKitSound = 'acoustic'; // 'acoustic', '808', 'chiptune'
+        let unlockedKits = ['acoustic'];
+
+        // Boss Battle Stats
+        let playerHp = 100;
+        let bossHp = 500;
 
         let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
         let isCalibrating = false;
@@ -901,6 +1049,15 @@
         const countinTextEl = document.getElementById('countin-text');
         const btnCompose = document.getElementById('btn-compose');
         const dragGhostEl = document.getElementById('drag-ghost');
+        const tokenCountEl = document.getElementById('token-count');
+
+        // Mode Toggles
+        const btnCallResp = document.getElementById('btn-call-resp');
+        const btnBpmRamp = document.getElementById('btn-bpm-ramp');
+        const btnBoss = document.getElementById('btn-boss');
+        const btnShop = document.getElementById('btn-shop');
+        const shopModal = document.getElementById('shop-modal');
+        const bossHud = document.getElementById('boss-hud');
 
         function initBarGrid() {
             barGridEl.innerHTML = '';
@@ -998,110 +1155,149 @@
             noise.start(now); noise.stop(now + 0.04);
         }
 
+        /* --- MULTI-SOUND PACK SYNTHESIS (ACOUSTIC, 808 TRAP, CHIPTUNE 8-BIT) --- */
         function triggerDrumSound(drumId) {
             initAudio();
             const now = audioCtx.currentTime;
 
-            if (drumId === 'kick') {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.frequency.setValueAtTime(130, now);
-                osc.frequency.exponentialRampToValueAtTime(35, now + 0.12);
-                gain.gain.setValueAtTime(1.0, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(now); osc.stop(now + 0.14);
-            } else if (drumId === 'snare') {
-                const bufferSize = audioCtx.sampleRate * 0.15;
-                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-                const data = buffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-                const noise = audioCtx.createBufferSource();
-                noise.buffer = buffer;
-                const gain = audioCtx.createGain();
-                gain.gain.setValueAtTime(0.7, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-                noise.connect(gain); gain.connect(audioCtx.destination);
-                noise.start(now);
-            } else if (drumId === 'tom1' || drumId === 'tom2' || drumId === 'floorTom') {
-                const pitchMap = { tom1: 175, tom2: 135, floorTom: 95 };
-                const baseFreq = pitchMap[drumId] || 120;
-
-                const osc1 = audioCtx.createOscillator();
-                const osc2 = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-
-                osc1.type = 'sine';
-                osc2.type = 'triangle';
-
-                osc1.frequency.setValueAtTime(baseFreq * 1.5, now);
-                osc1.frequency.exponentialRampToValueAtTime(baseFreq, now + 0.08);
-
-                osc2.frequency.setValueAtTime(baseFreq * 1.4, now);
-                osc2.frequency.exponentialRampToValueAtTime(baseFreq * 0.85, now + 0.18);
-
-                gain.gain.setValueAtTime(0.9, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-
-                osc1.connect(gain);
-                osc2.connect(gain);
-                gain.connect(audioCtx.destination);
-
-                osc1.start(now); osc1.stop(now + 0.28);
-                osc2.start(now); osc2.stop(now + 0.28);
-            } else if (drumId === 'ride') {
-                const bellFreqs = [820, 1240, 1680, 2450];
-                const masterGain = audioCtx.createGain();
-                masterGain.gain.setValueAtTime(0.7, now);
-                masterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-
-                bellFreqs.forEach((freq, idx) => {
+            if (equippedKitSound === '808') {
+                // 808 Trap Sound Pack
+                if (drumId === 'kick') {
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(freq, now);
-
-                    const vol = 0.35 / (idx + 1);
-                    gain.gain.setValueAtTime(vol, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + (0.08 + idx * 0.01));
-
-                    osc.connect(gain);
-                    gain.connect(masterGain);
-                    osc.start(now);
-                    osc.stop(now + 0.25);
-                });
-
-                masterGain.connect(audioCtx.destination);
-            } else if (drumId === 'crash') {
-                const bufferSize = audioCtx.sampleRate * 0.45;
-                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-                const data = buffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-
-                const noise = audioCtx.createBufferSource();
-                noise.buffer = buffer;
-                const filter = audioCtx.createBiquadFilter();
-                filter.type = 'highpass'; filter.frequency.value = 4500;
+                    osc.frequency.setValueAtTime(160, now);
+                    osc.frequency.exponentialRampToValueAtTime(40, now + 0.3);
+                    gain.gain.setValueAtTime(1.0, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(now); osc.stop(now + 0.35);
+                } else if (drumId === 'snare') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(220, now);
+                    gain.gain.setValueAtTime(0.8, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(now); osc.stop(now + 0.18);
+                } else {
+                    const bufferSize = audioCtx.sampleRate * 0.08;
+                    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                    const noise = audioCtx.createBufferSource();
+                    noise.buffer = buffer;
+                    const gain = audioCtx.createGain();
+                    gain.gain.setValueAtTime(0.4, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                    noise.connect(gain); gain.connect(audioCtx.destination);
+                    noise.start(now);
+                }
+            } else if (equippedKitSound === 'chiptune') {
+                // Chiptune 8-Bit Retro Sound Pack
+                const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                gain.gain.setValueAtTime(0.8, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+                osc.type = 'square';
+                
+                const freqMap = { kick: 80, snare: 240, tom1: 300, tom2: 220, floorTom: 150, ride: 600, crash: 800, closedHiHat: 900, openHiHat: 700 };
+                osc.frequency.setValueAtTime(freqMap[drumId] || 200, now);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
 
-                noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
-                noise.start(now);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 0.12);
             } else {
-                const bufferSize = audioCtx.sampleRate * (drumId === 'openHiHat' ? 0.35 : 0.08);
-                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-                const data = buffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-                const noise = audioCtx.createBufferSource();
-                noise.buffer = buffer;
-                const filter = audioCtx.createBiquadFilter();
-                filter.type = 'highpass'; filter.frequency.value = 6500;
-                const gain = audioCtx.createGain();
-                gain.gain.setValueAtTime(0.5, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + bufferSize / audioCtx.sampleRate);
-                noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
-                noise.start(now);
+                // Standard Acoustic Kit
+                if (drumId === 'kick') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.frequency.setValueAtTime(130, now);
+                    osc.frequency.exponentialRampToValueAtTime(35, now + 0.12);
+                    gain.gain.setValueAtTime(1.0, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(now); osc.stop(now + 0.14);
+                } else if (drumId === 'snare') {
+                    const bufferSize = audioCtx.sampleRate * 0.15;
+                    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                    const noise = audioCtx.createBufferSource();
+                    noise.buffer = buffer;
+                    const gain = audioCtx.createGain();
+                    gain.gain.setValueAtTime(0.7, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    noise.connect(gain); gain.connect(audioCtx.destination);
+                    noise.start(now);
+                } else if (drumId === 'tom1' || drumId === 'tom2' || drumId === 'floorTom') {
+                    const pitchMap = { tom1: 175, tom2: 135, floorTom: 95 };
+                    const baseFreq = pitchMap[drumId] || 120;
+
+                    const osc1 = audioCtx.createOscillator();
+                    const osc2 = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+
+                    osc1.type = 'sine'; osc2.type = 'triangle';
+                    osc1.frequency.setValueAtTime(baseFreq * 1.5, now);
+                    osc1.frequency.exponentialRampToValueAtTime(baseFreq, now + 0.08);
+
+                    osc2.frequency.setValueAtTime(baseFreq * 1.4, now);
+                    osc2.frequency.exponentialRampToValueAtTime(baseFreq * 0.85, now + 0.18);
+
+                    gain.gain.setValueAtTime(0.9, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+                    osc1.connect(gain); osc2.connect(gain); gain.connect(audioCtx.destination);
+                    osc1.start(now); osc1.stop(now + 0.28);
+                    osc2.start(now); osc2.stop(now + 0.28);
+                } else if (drumId === 'ride') {
+                    const bellFreqs = [820, 1240, 1680, 2450];
+                    const masterGain = audioCtx.createGain();
+                    masterGain.gain.setValueAtTime(0.7, now);
+                    masterGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+                    bellFreqs.forEach((freq, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now);
+                        const vol = 0.35 / (idx + 1);
+                        gain.gain.setValueAtTime(vol, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + (0.08 + idx * 0.01));
+                        osc.connect(gain); gain.connect(masterGain);
+                        osc.start(now); osc.stop(now + 0.25);
+                    });
+                    masterGain.connect(audioCtx.destination);
+                } else if (drumId === 'crash') {
+                    const bufferSize = audioCtx.sampleRate * 0.45;
+                    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+                    const noise = audioCtx.createBufferSource();
+                    noise.buffer = buffer;
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = 'highpass'; filter.frequency.value = 4500;
+                    const gain = audioCtx.createGain();
+                    gain.gain.setValueAtTime(0.8, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+                    noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+                    noise.start(now);
+                } else {
+                    const bufferSize = audioCtx.sampleRate * (drumId === 'openHiHat' ? 0.35 : 0.08);
+                    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                    const noise = audioCtx.createBufferSource();
+                    noise.buffer = buffer;
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = 'highpass'; filter.frequency.value = 6500;
+                    const gain = audioCtx.createGain();
+                    gain.gain.setValueAtTime(0.5, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + bufferSize / audioCtx.sampleRate);
+                    noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+                    noise.start(now);
+                }
             }
         }
 
@@ -1235,7 +1431,7 @@
                 if (target && target.drumId === drumId) {
                     advanceStep();
                 }
-            } else if (isGameMode && isPlaying && !isPaused) {
+            } else if ((isGameMode || isBossMode) && isPlaying && !isPaused) {
                 const effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
                 
                 const target = activeSongTimeline.find(n => 
@@ -1249,13 +1445,25 @@
                     if (diff <= 120) {
                         target.gameStatus = 'perfect';
                         gameStats.perfect++;
+                        if (isBossMode) {
+                            bossHp = Math.max(0, bossHp - 10);
+                            updateBossHud();
+                        }
                     } else {
                         target.gameStatus = 'earlyLate';
                         gameStats.earlyLate++;
+                        if (isBossMode) {
+                            bossHp = Math.max(0, bossHp - 5);
+                            updateBossHud();
+                        }
                     }
                     updateGameStatus();
                 } else {
                     playErrorClackSound();
+                    if (isBossMode) {
+                        playerHp = Math.max(0, playerHp - 8);
+                        updateBossHud();
+                    }
                     if (pad) {
                         pad.classList.add('pad-missed');
                         setTimeout(() => pad.classList.remove('pad-missed'), 200);
@@ -1368,24 +1576,20 @@
                 const endX = canvas.width - 60;
                 const slotWidth = (endX - startX) / 16;
 
-                // 1. Staff Lines
                 ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
                 for (let i = -2; i <= 2; i++) {
                     const y = centerY + i * lineSpacing;
                     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
                 }
 
-                // 2. Bar Lines
                 ctx.strokeStyle = '#334155'; ctx.lineWidth = 3.5;
                 ctx.beginPath(); ctx.moveTo(startX, centerY - 2.5 * lineSpacing); ctx.lineTo(startX, centerY + 2.5 * lineSpacing); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(endX, centerY - 2.5 * lineSpacing); ctx.lineTo(endX, centerY + 2.5 * lineSpacing); ctx.stroke();
 
-                // 3. Clef
                 ctx.fillStyle = '#334155';
                 ctx.fillRect(40, centerY - 2 * lineSpacing, 4, lineSpacing * 4);
                 ctx.fillRect(48, centerY - 2 * lineSpacing, 4, lineSpacing * 4);
 
-                // 4. Highlight Hover Slot Column
                 if (hoverSlot >= 0 && hoverSlot < 16) {
                     const hX = startX + hoverSlot * slotWidth;
                     ctx.fillStyle = 'rgba(59, 130, 246, 0.15)';
@@ -1394,7 +1598,6 @@
                     ctx.strokeRect(hX, centerY - 3.5 * lineSpacing, slotWidth, lineSpacing * 7);
                 }
 
-                // 5. Draw Composed Notes
                 customComposedHits.forEach((hit) => {
                     const drum = DRUM_KIT.find(d => d.id === hit.drumId);
                     if (!drum) return;
@@ -1412,14 +1615,12 @@
                 const hitLineX = 140;
                 const pixelsPerMs = 0.35 * speedFactor;
 
-                // Staff Lines
                 ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
                 for (let i = -2; i <= 2; i++) {
                     const y = centerY + i * lineSpacing;
                     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
                 }
 
-                // Bar Lines (Regular Single Bar Lines for 0..15, Double Bar Line for end of bar 16)
                 const barMs = activeConfig.barDurationMs;
                 const barOffsetLeadMs = 120;
                 ctx.strokeStyle = '#334155';
@@ -1430,20 +1631,18 @@
                     
                     if (barX > 30 && barX < canvas.width + 50) {
                         if (bar === 16) {
-                            // DOUBLE BAR LINE AT THE END OF ALL 16 BAR PLAY MODES
                             ctx.lineWidth = 2.5;
                             ctx.beginPath();
                             ctx.moveTo(barX - 6, centerY - 2.5 * lineSpacing);
                             ctx.lineTo(barX - 6, centerY + 2.5 * lineSpacing);
                             ctx.stroke();
 
-                            ctx.lineWidth = 5.0; // Thick terminal line
+                            ctx.lineWidth = 5.0;
                             ctx.beginPath();
                             ctx.moveTo(barX, centerY - 2.5 * lineSpacing);
                             ctx.lineTo(barX, centerY + 2.5 * lineSpacing);
                             ctx.stroke();
                         } else {
-                            // Standard prominent bar lines
                             ctx.lineWidth = 3.5;
                             ctx.beginPath(); 
                             ctx.moveTo(barX, centerY - 2.5 * lineSpacing); 
@@ -1453,16 +1652,13 @@
                     }
                 }
 
-                // Clef
                 ctx.fillStyle = '#334155';
                 ctx.fillRect(40, centerY - 2 * lineSpacing, 4, lineSpacing * 4);
                 ctx.fillRect(48, centerY - 2 * lineSpacing, 4, lineSpacing * 4);
 
-                // Hit Line Target
                 ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3;
                 ctx.beginPath(); ctx.moveTo(hitLineX, centerY - 3.5 * lineSpacing); ctx.lineTo(hitLineX, centerY + 3.5 * lineSpacing); ctx.stroke();
 
-                // Notes
                 activeSongTimeline.forEach(note => {
                     const drum = DRUM_KIT.find(d => d.id === note.drumId);
                     if (!drum) return;
@@ -1475,7 +1671,7 @@
                         if (drum.lineIndex === -1) noteY = centerY + 3 * lineSpacing;
 
                         let noteColor = drum.color;
-                        if (isGameMode) {
+                        if (isGameMode || isBossMode) {
                             if (note.gameStatus === 'perfect') noteColor = '#22c55e';
                             else if (note.gameStatus === 'earlyLate') noteColor = '#f97316';
                             else if (note.gameStatus === 'miss') noteColor = '#ef4444';
@@ -1571,8 +1767,9 @@
             drawSheetMusic(0);
         });
 
+        /* --- VIRTUAL DRUMMER CALL & RESPONSE & BOSS LOGIC IN RENDER LOOP --- */
         function renderLoop(now) {
-            if (!isPlaying || isPaused) return;
+            if (!isPlaying || isPaused || isComposeMode) return;
 
             let effectiveElapsed = 0;
             if (isStepMode) {
@@ -1594,11 +1791,26 @@
                 }
             }
 
-            if (isGameMode) {
+            // Call & Response Muting Logic: Even Bars (1,3,5) = CALL (App plays), Odd Bars (2,4,6) = RESPONSE (Student plays)
+            const isResponseBar = (currentBarNumber % 2 === 0);
+
+            if (isCallResponseMode) {
+                if (isResponseBar) {
+                    statusEl.textContent = `RESPONSE BAR ${currentBarNumber}: Your turn to play back the rhythm!`;
+                } else {
+                    statusEl.textContent = `CALL BAR ${currentBarNumber}: Listen to the virtual drummer...`;
+                }
+            }
+
+            if (isGameMode || isBossMode || (isCallResponseMode && isResponseBar)) {
                 activeSongTimeline.forEach(n => {
                     if (n.gameStatus === 'pending' && effectiveElapsed > (n.timeMs / speedFactor) + 250) {
                         n.gameStatus = 'miss';
                         gameStats.miss++;
+                        if (isBossMode) {
+                            playerHp = Math.max(0, playerHp - 12);
+                            updateBossHud();
+                        }
                         updateGameStatus();
 
                         const pad = document.getElementById(`pad-${n.drumId}`);
@@ -1608,11 +1820,18 @@
                         }
                     }
                 });
-            } else if (!isStepMode) {
+            }
+
+            if (!isStepMode && (!isCallResponseMode || !isResponseBar)) {
                 activeSongTimeline.forEach(n => {
                     if (!n.played && effectiveElapsed >= n.timeMs / speedFactor) {
                         n.played = true;
-                        triggerPadHit(n.drumId);
+                        triggerDrumSound(n.drumId);
+                        const pad = document.getElementById(`pad-${n.drumId}`);
+                        if (pad) {
+                            pad.classList.add('active');
+                            setTimeout(() => pad.classList.remove('active'), 120);
+                        }
                     }
                 });
             }
@@ -1621,7 +1840,17 @@
 
             const lastNote = activeSongTimeline[activeSongTimeline.length - 1];
             if (lastNote && effectiveElapsed > (lastNote.timeMs / speedFactor) + 1200) {
-                if (isGameMode) showGameResultsPopUp();
+                if (isGameMode || isBossMode) showGameResultsPopUp();
+                
+                // BPM Ramp Up Auto Progression
+                if (isBpmRampMode && gameStats.miss === 0) {
+                    currentBPM = Math.min(240, currentBPM + 5);
+                    speedSlider.value = currentBPM;
+                    speedFactor = currentBPM / 100;
+                    speedLabel.textContent = `${currentBPM} BPM`;
+                    statusEl.textContent = `GREAT JOB! Ramping BPM up to ${currentBPM}...`;
+                }
+
                 stopBeat();
                 return;
             }
@@ -1697,17 +1926,13 @@
             animationFrameId = requestAnimationFrame(renderLoop);
         }
 
-        /* --- PLAY BEAT ENHANCEMENT: ALLOWS PLAYBACK IN COMPOSE MODE --- */
         function playBeat() {
             if (activeSongTimeline.length === 0) return;
-            
-            // Turn off Compose mode state upon playing so standard scrolling/playback occurs
             if (isComposeMode) {
                 isComposeMode = false;
                 btnCompose.textContent = 'Compose';
                 btnCompose.classList.remove('btn-compose-active');
             }
-
             startCountInThenPlay();
         }
 
@@ -1726,9 +1951,37 @@
             statusEl.textContent = "Playback stopped.";
         }
 
+        function updateBossHud() {
+            document.getElementById('player-hp-bar').style.width = `${playerHp}%`;
+            document.getElementById('player-hp-text').textContent = `${playerHp} / 100`;
+
+            const bossPct = (bossHp / 500) * 100;
+            document.getElementById('boss-hp-bar').style.width = `${bossPct}%`;
+            document.getElementById('boss-hp-text').textContent = `${bossHp} / 500`;
+
+            if (bossHp <= 0) {
+                stopBeat();
+                rhythmTokens += 50;
+                tokenCountEl.textContent = rhythmTokens;
+                document.getElementById('modal-result-title').textContent = "🏆 VICTORY! GROOVE MONSTER DEFEATED!";
+                showGameResultsPopUp();
+            } else if (playerHp <= 0) {
+                stopBeat();
+                document.getElementById('modal-result-title').textContent = "💀 DEFEAT! PLAYER OUT OF HEALTH";
+                showGameResultsPopUp();
+            }
+        }
+
         function showGameResultsPopUp() {
             const totalHits = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = totalHits > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
+
+            // Award Rhythm Tokens for successful performance
+            if (accuracy >= 80) {
+                const earned = Math.round(accuracy / 10);
+                rhythmTokens += earned;
+                tokenCountEl.textContent = rhythmTokens;
+            }
 
             document.getElementById('game-summary-text').innerHTML = `Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#64748b;">(${gameStats.perfect} Perfect, ${gameStats.earlyLate} Early/Late, ${gameStats.miss} Missed)</span>`;
 
@@ -1755,26 +2008,69 @@
             }
         });
 
+        // --- NEW FEATURE BUTTON TOGGLES ---
+        btnCallResp.addEventListener('click', () => {
+            isCallResponseMode = !isCallResponseMode;
+            btnCallResp.classList.toggle('btn-mode-toggle-active', isCallResponseMode);
+            if (isCallResponseMode) statusEl.textContent = "CALL & RESPONSE MODE: Listen bar 1, play bar 2!";
+        });
+
+        btnBpmRamp.addEventListener('click', () => {
+            isBpmRampMode = !isBpmRampMode;
+            btnBpmRamp.classList.toggle('btn-mode-toggle-active', isBpmRampMode);
+            if (isBpmRampMode) statusEl.textContent = "BPM RAMP UP: +5 BPM awarded for clean 16-bar runs!";
+        });
+
+        btnBoss.addEventListener('click', () => {
+            isBossMode = !isBossMode;
+            bossHud.classList.toggle('active', isBossMode);
+            if (isBossMode) {
+                playerHp = 100; bossHp = 500;
+                updateBossHud();
+                setMetronomeState(true);
+                statusEl.textContent = "RHYTHM BOSS BATTLE! Hit notes to damage the Groove Monster!";
+            }
+        });
+
+        btnShop.addEventListener('click', () => shopModal.classList.add('open'));
+        document.getElementById('btn-shop-close').addEventListener('click', () => shopModal.classList.remove('open'));
+
+        document.getElementById('btn-buy-808').addEventListener('click', () => {
+            if (rhythmTokens >= 50 && !unlockedKits.includes('808')) {
+                rhythmTokens -= 50;
+                unlockedKits.push('808');
+                tokenCountEl.textContent = rhythmTokens;
+            }
+            if (unlockedKits.includes('808')) {
+                equippedKitSound = '808';
+                statusEl.textContent = "Equipped 808 Electronic Trap Kit!";
+                shopModal.classList.remove('open');
+            }
+        });
+
+        document.getElementById('btn-buy-chip').addEventListener('click', () => {
+            if (rhythmTokens >= 100 && !unlockedKits.includes('chiptune')) {
+                rhythmTokens -= 100;
+                unlockedKits.push('chiptune');
+                tokenCountEl.textContent = rhythmTokens;
+            }
+            if (unlockedKits.includes('chiptune')) {
+                equippedKitSound = 'chiptune';
+                statusEl.textContent = "Equipped Chiptune 8-Bit Kit!";
+                shopModal.classList.remove('open');
+            }
+        });
+
         btnCompose.addEventListener('click', () => {
             isComposeMode = !isComposeMode;
             if (isComposeMode) {
                 btnCompose.textContent = 'Compose: ON';
                 btnCompose.classList.add('btn-compose-active');
-                
-                if (isGameMode) {
-                    isGameMode = false;
-                    document.getElementById('btn-game').textContent = 'Game Mode: OFF';
-                    document.getElementById('btn-game').classList.remove('btn-game-active');
-                }
-                if (isStepMode) {
-                    isStepMode = false;
-                    document.getElementById('btn-step').classList.remove('btn-step-active');
-                }
+                if (isGameMode) { isGameMode = false; document.getElementById('btn-game').classList.remove('btn-game-active'); }
+                if (isStepMode) { isStepMode = false; document.getElementById('btn-step').classList.remove('btn-step-active'); }
                 stopBeat();
-
                 songSelect.value = "Custom Composed Beat";
                 activeConfig = ONE_BAR_PATTERNS["Custom Composed Beat"];
-
                 statusEl.textContent = "Click and Drag the DRUM parts below to the Sheet Music";
                 drawSheetMusic(0);
             } else {
@@ -1791,15 +2087,8 @@
             if (isGameMode) {
                 btn.textContent = 'Game Mode: ON';
                 btn.classList.add('btn-game-active');
-                if (isStepMode) {
-                    isStepMode = false;
-                    document.getElementById('btn-step').classList.remove('btn-step-active');
-                }
-                if (isComposeMode) {
-                    isComposeMode = false;
-                    btnCompose.textContent = 'Compose';
-                    btnCompose.classList.remove('btn-compose-active');
-                }
+                if (isStepMode) { isStepMode = false; document.getElementById('btn-step').classList.remove('btn-step-active'); }
+                if (isComposeMode) { isComposeMode = false; btnCompose.textContent = 'Compose'; btnCompose.classList.remove('btn-compose-active'); }
                 setMetronomeState(true);
                 statusEl.textContent = "GAME MODE ACTIVE! Press Play for Count-In.";
             } else {
@@ -1814,16 +2103,8 @@
             const btn = document.getElementById('btn-step');
             if (isStepMode) {
                 btn.classList.add('btn-step-active');
-                if (isGameMode) {
-                    isGameMode = false;
-                    document.getElementById('btn-game').textContent = 'Game Mode: OFF';
-                    document.getElementById('btn-game').classList.remove('btn-game-active');
-                }
-                if (isComposeMode) {
-                    isComposeMode = false;
-                    btnCompose.textContent = 'Compose';
-                    btnCompose.classList.remove('btn-compose-active');
-                }
+                if (isGameMode) { isGameMode = false; document.getElementById('btn-game').classList.remove('btn-game-active'); }
+                if (isComposeMode) { isComposeMode = false; btnCompose.textContent = 'Compose'; btnCompose.classList.remove('btn-compose-active'); }
                 if (isPlaying) updateStepStatusUI();
             } else {
                 btn.classList.remove('btn-step-active');
