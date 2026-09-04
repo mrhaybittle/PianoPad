@@ -1066,4 +1066,757 @@
                 const bufferSize = audioCtx.sampleRate * 0.45;
                 const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
                 const data = buffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'highpass'; filter.frequency.value = 4500;
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(0.8, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+                noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+                noise.start(now);
+            } else {
+                const bufferSize = audioCtx.sampleRate * (drumId === 'openHiHat' ? 0.35 : 0.08);
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'highpass'; filter.frequency.value = 6500;
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + bufferSize / audioCtx.sampleRate);
+                noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+                noise.start(now);
+            }
+        }
+
+        function buildDrumPads() {
+            const stage = document.getElementById('drum-stage');
+            stage.querySelectorAll('.pad-node').forEach(p => p.remove());
+
+            DRUM_KIT.forEach(drum => {
+                midiMapping[drum.midi] = drum.id;
+
+                const pad = document.createElement('div');
+                pad.className = 'pad-node';
+                if (drum.isPedal) pad.classList.add('pedal-shape');
+                if (drum.isSnare) pad.classList.add('snare-center');
+
+                pad.id = `pad-${drum.id}`;
+                pad.style.setProperty('--pad-color', drum.color);
+                pad.innerHTML = `
+                    <svg class="pad-svg" viewBox="0 0 32 32">${drum.svg}</svg>
+                    <div class="pad-title">${drum.name}</div>
+                    <div class="pad-midi-code">MIDI ${drum.midi}</div>
+                `;
+
+                // Drag Start from Pad (Compose Mode)
+                pad.addEventListener('mousedown', (e) => {
+                    if (isComposeMode) {
+                        dragSource = { type: 'pad', drumId: drum.id };
+                        triggerDrumSound(drum.id);
+                        e.preventDefault();
+                    } else {
+                        triggerPadHit(drum.id);
+                    }
+                });
+
+                stage.appendChild(pad);
+            });
+
+            updateHiHatPillDisplay('open');
+        }
+
+        function setHiHatActiveMode(mode) {
+            activeHiHatMode = mode;
+            document.getElementById('pill-open').classList.toggle('active', mode === 'open');
+            document.getElementById('pill-closed').classList.toggle('active', mode === 'closed');
+
+            const openPad = document.getElementById('pad-openHiHat');
+            const closedPad = document.getElementById('pad-closedHiHat');
+
+            if (mode === 'open') {
+                if (openPad) openPad.style.display = 'flex';
+                if (closedPad) closedPad.style.display = 'none';
+            } else {
+                if (openPad) openPad.style.display = 'none';
+                if (closedPad) closedPad.style.display = 'flex';
+            }
+        }
+
+        function updateHiHatPillDisplay(mode) {
+            setHiHatActiveMode(mode);
+        }
+
+        document.getElementById('pill-open').addEventListener('click', () => setHiHatActiveMode('open'));
+        document.getElementById('pill-closed').addEventListener('click', () => setHiHatActiveMode('closed'));
+
+        function updateGameStatus() {
+            const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+            const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
+            statusEl.textContent = `Accuracy: ${accuracy}% | Perfect: ${gameStats.perfect} | Early/Late: ${gameStats.earlyLate} | Missed: ${gameStats.miss}`;
+        }
+
+        function advanceStep() {
+            if (currentStepIndex < activeSongTimeline.length) {
+                const currentMs = activeSongTimeline[currentStepIndex].timeMs;
+                while (currentStepIndex < activeSongTimeline.length && Math.abs(activeSongTimeline[currentStepIndex].timeMs - currentMs) < 30) {
+                    currentStepIndex++;
+                }
+                updateStepStatusUI();
+            }
+        }
+
+        function updateStepStatusUI() {
+            if (currentStepIndex < activeSongTimeline.length) {
+                const targetNote = activeSongTimeline[currentStepIndex];
+                const drumObj = DRUM_KIT.find(d => d.id === targetNote.drumId);
+                const barNum = Math.floor(targetNote.timeMs / activeConfig.barDurationMs) + 1;
+                statusEl.textContent = `Step ${currentStepIndex + 1}/${activeSongTimeline.length} [Bar ${barNum}/16]: Strike -> [ ${drumObj.name} ] or Press SPACE BAR`;
+
+                document.querySelectorAll('.pad-node').forEach(p => p.classList.remove('step-target'));
+                const pad = document.getElementById(`pad-${targetNote.drumId}`);
+                if (pad) pad.classList.add('step-target');
+            } else {
+                statusEl.textContent = "16-Bar Step Groove Complete! Great Job!";
+                document.querySelectorAll('.pad-node').forEach(p => p.classList.remove('step-target'));
+            }
+        }
+
+        function triggerPadHit(drumId) {
+            triggerDrumSound(drumId);
+
+            if (drumId === 'closedHiHat') setHiHatActiveMode('closed');
+            if (drumId === 'openHiHat') setHiHatActiveMode('open');
+
+            const pad = document.getElementById(`pad-${drumId}`);
+            if (pad) {
+                pad.classList.add('active');
+                setTimeout(() => pad.classList.remove('active'), 120);
+            }
+
+            if (isCalibrating) return;
+
+            if (isStepMode && isPlaying) {
+                const target = activeSongTimeline[currentStepIndex];
+                if (target && target.drumId === drumId) {
+                    advanceStep();
+                }
+            } else if (isGameMode && isPlaying && !isPaused) {
+                const effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
+                
+                const target = activeSongTimeline.find(n => 
+                    n.drumId === drumId &&
+                    n.gameStatus === 'pending' &&
+                    Math.abs((n.timeMs / speedFactor) - effectiveElapsed) <= 300
+                );
+
+                if (target) {
+                    const diff = Math.abs((target.timeMs / speedFactor) - effectiveElapsed);
+                    if (diff <= 120) {
+                        target.gameStatus = 'perfect';
+                        gameStats.perfect++;
+                    } else {
+                        target.gameStatus = 'earlyLate';
+                        gameStats.earlyLate++;
+                    }
+                    updateGameStatus();
+                } else {
+                    playErrorClackSound();
+                    if (pad) {
+                        pad.classList.add('pad-missed');
+                        setTimeout(() => pad.classList.remove('pad-missed'), 200);
+                    }
+                }
+            }
+        }
+
+        function initMIDI() {
+            if (navigator.requestMIDIAccess) {
+                navigator.requestMIDIAccess().then(access => {
+                    for (let input of access.inputs.values()) {
+                        input.onmidimessage = handleMIDIMessage;
+                    }
+                });
+            }
+        }
+
+        function handleMIDIMessage(e) {
+            const status = e.data[0];
+            const command = status & 0xF0;
+            const note = e.data[1];
+            const velocity = e.data.length > 2 ? e.data[2] : 0;
+
+            if (command === 144 && velocity > 0) {
+                if (isCalibrating) {
+                    processCalibrationMIDI(note);
+                } else {
+                    const mappedDrumId = midiMapping[note];
+                    if (mappedDrumId) triggerPadHit(mappedDrumId);
+                }
+            }
+        }
+
+        function startCalibration() {
+            isCalibrating = true;
+            calibIndex = 0;
+            document.getElementById('calib-modal').classList.add('open');
+            updateCalibStepUI();
+        }
+
+        function updateCalibStepUI() {
+            const drum = DRUM_KIT[calibIndex];
+            document.getElementById('calib-target-name').textContent = drum.name;
+            document.getElementById('calib-target-name').style.color = drum.color;
+            document.getElementById('calib-icon-wrapper').innerHTML = `
+                <svg viewBox="0 0 32 32" style="width:64px; height:64px; stroke:${drum.color}; fill:none; stroke-width:2;">${drum.svg}</svg>
+            `;
+            document.getElementById('calib-progress').textContent = `Part ${calibIndex + 1} of ${DRUM_KIT.length}`;
+        }
+
+        function processCalibrationMIDI(rawMidiNote) {
+            const currentDrum = DRUM_KIT[calibIndex];
+            midiMapping[rawMidiNote] = currentDrum.id;
+            triggerDrumSound(currentDrum.id);
+
+            calibIndex++;
+            if (calibIndex < DRUM_KIT.length) {
+                updateCalibStepUI();
+            } else {
+                isCalibrating = false;
+                document.getElementById('calib-modal').classList.remove('open');
+                statusEl.textContent = "Kit Calibration Complete! All drum parts mapped successfully.";
+            }
+        }
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawNotationHead(ctx, x, y, headType, color) {
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2.5;
+
+            if (headType === 'note') {
+                ctx.beginPath();
+                ctx.ellipse(x, y, 6.5, 5, -0.2, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (headType === 'diamond') {
+                ctx.beginPath();
+                ctx.moveTo(x, y - 6); ctx.lineTo(x + 7, y); ctx.lineTo(x, y + 6); ctx.lineTo(x - 7, y);
+                ctx.closePath(); ctx.fill();
+            } else if (headType === 'cross' || headType === 'crossStem') {
+                ctx.beginPath();
+                ctx.moveTo(x - 5, y - 5); ctx.lineTo(x + 5, y + 5);
+                ctx.moveTo(x + 5, y - 5); ctx.lineTo(x - 5, y + 5);
+                ctx.stroke();
+            } else if (headType === 'circleCross') {
+                ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x - 4, y - 4); ctx.lineTo(x + 4, y + 4);
+                ctx.moveTo(x + 4, y - 4); ctx.lineTo(x - 4, y + 4);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        /* --- SHEET MUSIC & COMPOSE CANVAS RENDERING --- */
+        function drawSheetMusic(elapsedMs) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const centerY = canvas.height / 2;
+            const lineSpacing = 14;
+
+            if (isComposeMode) {
+                // Compose Mode Render: Single static 1-bar staff with 16 slot positions
+                const startX = 140;
+                const endX = canvas.width - 60;
+                const slotWidth = (endX - startX) / 16;
+
+                // 1. Staff Lines
+                ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
+                for (let i = -2; i <= 2; i++) {
+                    const y = centerY + i * lineSpacing;
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+                }
+
+                // 2. Start & End Measure Bar Lines
+                ctx.strokeStyle = '#334155'; ctx.lineWidth = 3.5;
+                ctx.beginPath(); ctx.moveTo(startX, centerY - 2.5 * lineSpacing); ctx.lineTo(startX, centerY + 2.5 * lineSpacing); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(endX, centerY - 2.5 * lineSpacing); ctx.lineTo(endX, centerY + 2.5 * lineSpacing); ctx.stroke();
+
+                // 3. Percussion Clef
+                ctx.fillStyle = '#334155';
+                ctx.fillRect(40, centerY - 2 * lineSpacing, 4, lineSpacing * 4);
+                ctx.fillRect(48, centerY - 2 * lineSpacing, 4, lineSpacing * 4);
+
+                // 4. Highlight Hover Slot Column
+                if (hoverSlot >= 0 && hoverSlot < 16) {
+                    const hX = startX + hoverSlot * slotWidth;
+                    ctx.fillStyle = 'rgba(59, 130, 246, 0.15)';
+                    ctx.fillRect(hX, centerY - 3.5 * lineSpacing, slotWidth, lineSpacing * 7);
+                    ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 1.5;
+                    ctx.strokeRect(hX, centerY - 3.5 * lineSpacing, slotWidth, lineSpacing * 7);
+                }
+
+                // 5. Draw Composed Notes Snapped Vertically to Staff Positions
+                customComposedHits.forEach((hit, idx) => {
+                    const drum = DRUM_KIT.find(d => d.id === hit.drumId);
+                    if (!drum) return;
+
+                    const noteX = startX + hit.slot * slotWidth + slotWidth / 2;
+                    let noteY = centerY - (drum.lineIndex - 2.0) * lineSpacing;
+                    if (drum.lineIndex === -1) noteY = centerY + 3 * lineSpacing;
+
+                    ctx.strokeStyle = drum.color; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(noteX + 5, noteY); ctx.lineTo(noteX + 5, noteY - 28); ctx.stroke();
+
+                    drawNotationHead(ctx, noteX, noteY, drum.head, drum.color);
+                });
+            } else {
+                // Standard Playback / Scrolling Mode
+                const hitLineX = 140;
+                const pixelsPerMs = 0.35 * speedFactor;
+
+                // Staff Lines
+                ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5;
+                for (let i = -2; i <= 2; i++) {
+                    const y = centerY + i * lineSpacing;
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+                }
+
+                // Bar Lines
+                const barMs = activeConfig.barDurationMs;
+                const barOffsetLeadMs = 120;
+                ctx.strokeStyle = '#334155'; ctx.lineWidth = 3.5;
+
+                for (let bar = 0; bar <= 16; bar++) {
+                    const barTimeMs = (bar * barMs) - barOffsetLeadMs;
+                    const barX = hitLineX + (barTimeMs / speedFactor - elapsedMs) * pixelsPerMs;
+                    
+                    if (barX > 30 && barX < canvas.width + 50) {
+                        ctx.beginPath(); 
+                        ctx.moveTo(barX, centerY - 2.5 * lineSpacing); 
+                        ctx.lineTo(barX, centerY + 2.5 * lineSpacing); 
+                        ctx.stroke();
+                    }
+                }
+
+                // Clef
+                ctx.fillStyle = '#334155';
+                ctx.fillRect(40, centerY - 2 * lineSpacing, 4, lineSpacing * 4);
+                ctx.fillRect(48, centerY - 2 * lineSpacing, 4, lineSpacing * 4);
+
+                // Hit Line Target
+                ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.moveTo(hitLineX, centerY - 3.5 * lineSpacing); ctx.lineTo(hitLineX, centerY + 3.5 * lineSpacing); ctx.stroke();
+
+                // Notes
+                activeSongTimeline.forEach(note => {
+                    const drum = DRUM_KIT.find(d => d.id === note.drumId);
+                    if (!drum) return;
+
+                    const timeDelta = note.timeMs / speedFactor - elapsedMs;
+                    const noteX = hitLineX + timeDelta * pixelsPerMs;
+
+                    if (noteX > 30 && noteX < canvas.width + 20) {
+                        let noteY = centerY - (drum.lineIndex - 2.0) * lineSpacing;
+                        if (drum.lineIndex === -1) noteY = centerY + 3 * lineSpacing;
+
+                        let noteColor = drum.color;
+                        if (isGameMode) {
+                            if (note.gameStatus === 'perfect') noteColor = '#22c55e';
+                            else if (note.gameStatus === 'earlyLate') noteColor = '#f97316';
+                            else if (note.gameStatus === 'miss') noteColor = '#ef4444';
+                        }
+
+                        ctx.strokeStyle = noteColor; ctx.lineWidth = 2;
+                        ctx.beginPath(); ctx.moveTo(noteX + 5, noteY); ctx.lineTo(noteX + 5, noteY - 28); ctx.stroke();
+
+                        drawNotationHead(ctx, noteX, noteY, drum.head, noteColor);
+                    }
+                });
+            }
+        }
+
+        /* --- CANVAS INTERACTION & DRAG-AND-DROP COMPOSE LOGIC --- */
+        function getCanvasSlotAndPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const startX = 140;
+            const endX = canvas.width - 60;
+            const slotWidth = (endX - startX) / 16;
+
+            let slot = Math.floor((mouseX - startX) / slotWidth);
+            slot = Math.max(0, Math.min(15, slot));
+
+            return { mouseX, mouseY, slot, slotWidth, startX };
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isComposeMode) return;
+            const { slot } = getCanvasSlotAndPos(e);
+            hoverSlot = slot;
+            drawSheetMusic(0);
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            if (!isComposeMode) return;
+            hoverSlot = -1;
+            drawSheetMusic(0);
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (!isComposeMode) return;
+            const { mouseX, mouseY, slot, slotWidth, startX } = getCanvasSlotAndPos(e);
+
+            // Check if clicking existing note to move/delete
+            const foundIdx = customComposedHits.findIndex(hit => {
+                const noteX = startX + hit.slot * slotWidth + slotWidth / 2;
+                return Math.abs(mouseX - noteX) < slotWidth / 2;
+            });
+
+            if (foundIdx !== -1) {
+                const clickedHit = customComposedHits[foundIdx];
+                dragSource = { type: 'canvas', drumId: clickedHit.drumId, index: foundIdx, startY: mouseY };
+                e.preventDefault();
+            }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if (!isComposeMode || !dragSource) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const { slot, mouseY } = getCanvasSlotAndPos(e);
+
+            // Dragged DOWN past canvas bottom to delete
+            if (dragSource.type === 'canvas' && (e.clientY > rect.bottom || (mouseY - dragSource.startY) > 50)) {
+                customComposedHits.splice(dragSource.index, 1);
+                statusEl.textContent = "Note deleted! Click and Drag DRUM parts to compose.";
+            } else if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                // Drop or relocate on canvas slot
+                if (dragSource.type === 'pad') {
+                    // Remove duplicate drum on same slot if any
+                    customComposedHits = customComposedHits.filter(h => !(h.slot === slot && h.drumId === dragSource.drumId));
+                    customComposedHits.push({ slot: slot, drumId: dragSource.drumId });
+                } else if (dragSource.type === 'canvas') {
+                    customComposedHits[dragSource.index].slot = slot;
+                }
+
+                // Update One Bar Pattern data array
+                ONE_BAR_PATTERNS["Custom Composed Beat"].hits = customComposedHits.map(h => [h.slot * 125, h.drumId]);
+                activeConfig = ONE_BAR_PATTERNS["Custom Composed Beat"];
+                activeSongTimeline = generate16BarPattern(activeConfig);
+            }
+
+            dragSource = null;
+            drawSheetMusic(0);
+        });
+
+        function renderLoop(now) {
+            if (!isPlaying || isPaused || isComposeMode) return;
+
+            let effectiveElapsed = 0;
+            if (isStepMode) {
+                effectiveElapsed = activeSongTimeline[currentStepIndex] ? activeSongTimeline[currentStepIndex].timeMs / speedFactor : 0;
+            } else {
+                effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
+            }
+
+            updateBarTimeline(effectiveElapsed);
+            updateMetronomeVisual(effectiveElapsed);
+
+            if (isMetronomeEnabled && !isStepMode) {
+                const beatIntervalMs = (activeConfig.barDurationMs / activeConfig.beatsPerBar) / speedFactor;
+                const currentBeatIndex = Math.floor(effectiveElapsed / beatIntervalMs);
+                if (currentBeatIndex > lastMetronomeBeatIndex) {
+                    lastMetronomeBeatIndex = currentBeatIndex;
+                    const isAccent = (currentBeatIndex % activeConfig.beatsPerBar === 0);
+                    triggerMetronomeClick(isAccent);
+                }
+            }
+
+            if (isGameMode) {
+                activeSongTimeline.forEach(n => {
+                    if (n.gameStatus === 'pending' && effectiveElapsed > (n.timeMs / speedFactor) + 250) {
+                        n.gameStatus = 'miss';
+                        gameStats.miss++;
+                        updateGameStatus();
+
+                        const pad = document.getElementById(`pad-${n.drumId}`);
+                        if (pad) {
+                            pad.classList.add('pad-missed');
+                            setTimeout(() => pad.classList.remove('pad-missed'), 180);
+                        }
+                    }
+                });
+            } else if (!isStepMode) {
+                activeSongTimeline.forEach(n => {
+                    if (!n.played && effectiveElapsed >= n.timeMs / speedFactor) {
+                        n.played = true;
+                        triggerPadHit(n.drumId);
+                    }
+                });
+            }
+
+            drawSheetMusic(effectiveElapsed);
+
+            const lastNote = activeSongTimeline[activeSongTimeline.length - 1];
+            if (lastNote && effectiveElapsed > (lastNote.timeMs / speedFactor) + 1200) {
+                if (isGameMode) showGameResultsPopUp();
+                stopBeat();
+                return;
+            }
+
+            animationFrameId = requestAnimationFrame(renderLoop);
+        }
+
+        function setMetronomeState(enabled) {
+            isMetronomeEnabled = enabled;
+            btnMetro.classList.toggle('btn-metro-active', isMetronomeEnabled);
+            btnMetro.innerHTML = `
+                <svg class="metronome-svg" viewBox="0 0 24 24">
+                    <path d="M12 2 L19 20 L5 20 Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+                    <line x1="12" y1="18" x2="18" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <polygon points="17,5 20,8 18,10 15,7" fill="currentColor"/>
+                </svg>
+                Metro: ${isMetronomeEnabled ? 'ON' : 'OFF'}
+            `;
+            updateMetronomeVisual(0);
+        }
+
+        btnMetro.addEventListener('click', () => {
+            setMetronomeState(!isMetronomeEnabled);
+        });
+
+        function startCountInThenPlay() {
+            initAudio();
+            stopBeat();
+
+            const totalCountBeats = activeConfig.countInBeats;
+            const beatIntervalMs = (60 / currentBPM) * 1000;
+            let beatCount = 1;
+
+            countinTextEl.textContent = beatCount;
+            statusEl.textContent = `Get Ready! Count-In: ${beatCount} of ${totalCountBeats}`;
+            setMetronomePosition(beatCount);
+            triggerMetronomeClick(true);
+
+            countInTimer = setInterval(() => {
+                beatCount++;
+                if (beatCount <= totalCountBeats) {
+                    countinTextEl.textContent = beatCount;
+                    statusEl.textContent = `Get Ready! Count-In: ${beatCount} of ${totalCountBeats}`;
+                    setMetronomePosition(beatCount);
+                    triggerMetronomeClick(false);
+                } else {
+                    clearInterval(countInTimer);
+                    countInTimer = null;
+                    countinTextEl.textContent = '';
+                    startActualPlayback();
+                }
+            }, beatIntervalMs);
+        }
+
+        function startActualPlayback() {
+            isPlaying = true; isPaused = false;
+            playbackStartTime = performance.now();
+            accumulatedPauseMs = 0;
+            currentStepIndex = 0;
+            lastMetronomeBeatIndex = -1;
+            gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+
+            activeSongTimeline.forEach(n => { n.played = false; n.gameStatus = 'pending'; });
+
+            if (isStepMode) {
+                updateStepStatusUI();
+            } else if (isGameMode) {
+                updateGameStatus();
+            } else {
+                statusEl.textContent = `Playing Groove at ${currentBPM} BPM...`;
+            }
+
+            animationFrameId = requestAnimationFrame(renderLoop);
+        }
+
+        function playBeat() {
+            if (activeSongTimeline.length === 0) return;
+            startCountInThenPlay();
+        }
+
+        function stopBeat() {
+            if (countInTimer) {
+                clearInterval(countInTimer);
+                countInTimer = null;
+            }
+            countinTextEl.textContent = '';
+            isPlaying = false; isPaused = false;
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            document.querySelectorAll('.pad-node').forEach(p => p.classList.remove('step-target'));
+            drawSheetMusic(0);
+            updateBarTimeline(0);
+            updateMetronomeVisual(0);
+            statusEl.textContent = "Playback stopped.";
+        }
+
+        function showGameResultsPopUp() {
+            const totalHits = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+            const accuracy = totalHits > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
+
+            document.getElementById('game-summary-text').innerHTML = `Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#64748b;">(${gameStats.perfect} Perfect, ${gameStats.earlyLate} Early/Late, ${gameStats.miss} Missed)</span>`;
+
+            const greenPct = totalHits > 0 ? (gameStats.perfect / totalHits) * 100 : 0;
+            const orangePct = totalHits > 0 ? (gameStats.earlyLate / totalHits) * 100 : 0;
+            const redPct = totalHits > 0 ? (gameStats.miss / totalHits) * 100 : 0;
+
+            document.getElementById('bar-green').style.height = `${greenPct}%`;
+            document.getElementById('bar-orange').style.height = `${orangePct}%`;
+            document.getElementById('bar-red').style.height = `${redPct}%`;
+
+            document.getElementById('game-results-modal').classList.add('open');
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                initAudio();
+                if (!isPlaying) {
+                    playBeat();
+                } else if (isStepMode) {
+                    advanceStep();
+                }
+            }
+        });
+
+        /* --- COMPOSE MODE TOGGLE & PROMPT --- */
+        btnCompose.addEventListener('click', () => {
+            isComposeMode = !isComposeMode;
+            if (isComposeMode) {
+                btnCompose.textContent = 'Compose: ON';
+                btnCompose.classList.add('btn-compose-active');
+                
+                // Turn off other modes
+                if (isGameMode) {
+                    isGameMode = false;
+                    document.getElementById('btn-game').textContent = 'Game Mode: OFF';
+                    document.getElementById('btn-game').classList.remove('btn-game-active');
+                }
+                if (isStepMode) {
+                    isStepMode = false;
+                    document.getElementById('btn-step').classList.remove('btn-step-active');
+                }
+                stopBeat();
+
+                songSelect.value = "Custom Composed Beat";
+                activeConfig = ONE_BAR_PATTERNS["Custom Composed Beat"];
+
+                statusEl.textContent = "Click and Drag the DRUM parts below to the Sheet Music";
+                drawSheetMusic(0);
+            } else {
+                btnCompose.textContent = 'Compose';
+                btnCompose.classList.remove('btn-compose-active');
+                statusEl.textContent = "Compose Mode OFF.";
+                drawSheetMusic(0);
+            }
+        });
+
+        document.getElementById('btn-game').addEventListener('click', () => {
+            isGameMode = !isGameMode;
+            const btn = document.getElementById('btn-game');
+            if (isGameMode) {
+                btn.textContent = 'Game Mode: ON';
+                btn.classList.add('btn-game-active');
+                if (isStepMode) {
+                    isStepMode = false;
+                    document.getElementById('btn-step').classList.remove('btn-step-active');
+                }
+                if (isComposeMode) {
+                    isComposeMode = false;
+                    btnCompose.textContent = 'Compose';
+                    btnCompose.classList.remove('btn-compose-active');
+                }
+                setMetronomeState(true);
+                statusEl.textContent = "GAME MODE ACTIVE! Press Play for Count-In.";
+            } else {
+                btn.textContent = 'Game Mode: OFF';
+                btn.classList.remove('btn-game-active');
+                statusEl.textContent = "Game Mode OFF.";
+            }
+        });
+
+        document.getElementById('btn-step').addEventListener('click', () => {
+            isStepMode = !isStepMode;
+            const btn = document.getElementById('btn-step');
+            if (isStepMode) {
+                btn.classList.add('btn-step-active');
+                if (isGameMode) {
+                    isGameMode = false;
+                    document.getElementById('btn-game').textContent = 'Game Mode: OFF';
+                    document.getElementById('btn-game').classList.remove('btn-game-active');
+                }
+                if (isComposeMode) {
+                    isComposeMode = false;
+                    btnCompose.textContent = 'Compose';
+                    btnCompose.classList.remove('btn-compose-active');
+                }
+                if (isPlaying) updateStepStatusUI();
+            } else {
+                btn.classList.remove('btn-step-active');
+                document.querySelectorAll('.pad-node').forEach(p => p.classList.remove('step-target'));
+            }
+        });
+
+        document.getElementById('btn-play').addEventListener('click', playBeat);
+        document.getElementById('btn-stop').addEventListener('click', stopBeat);
+        document.getElementById('btn-pause').addEventListener('click', () => { isPaused = !isPaused; });
+        document.getElementById('btn-calib-start').addEventListener('click', startCalibration);
+        document.getElementById('btn-calib-cancel').addEventListener('click', () => {
+            isCalibrating = false;
+            document.getElementById('calib-modal').classList.remove('open');
+        });
+        document.getElementById('btn-game-results-close').addEventListener('click', () => {
+            document.getElementById('game-results-modal').classList.remove('open');
+        });
+
+        speedSlider.addEventListener('input', () => {
+            currentBPM = parseInt(speedSlider.value, 10);
+            speedFactor = currentBPM / 100;
+            speedLabel.textContent = `${currentBPM} BPM`;
+        });
+
+        songSelect.addEventListener('change', (e) => {
+            const key = e.target.value;
+            if (ONE_BAR_PATTERNS[key]) {
+                activeConfig = ONE_BAR_PATTERNS[key];
+                activeSongTimeline = generate16BarPattern(activeConfig);
+                playBeat();
+            }
+        });
+
+        initBarGrid();
+        buildDrumPads();
+        resizeCanvas();
+        initMIDI();
+
+        const defaultBeatKey = Object.keys(ONE_BAR_PATTERNS)[0];
+        activeConfig = ONE_BAR_PATTERNS[defaultBeatKey];
+        activeSongTimeline = generate16BarPattern(activeConfig);
+        songSelect.value = defaultBeatKey;
+
+        drawSheetMusic(0);
+        updateBarTimeline(0);
+        updateMetronomeVisual(0);
+    </script>
+</body>
+</html>
