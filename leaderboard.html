@@ -220,7 +220,7 @@
                         <th>Student Name</th>
                         <th id="col-header-title">Song Title</th>
                         <th id="col-header-score">Accuracy</th>
-                        <th>Tempo Speed</th>
+                        <th id="col-header-tempo">Tempo Speed</th>
                         <th>Date</th>
                     </tr>
                 </thead>
@@ -314,7 +314,6 @@
         function renderLeaderboard() {
             const filterValue = document.getElementById('filter-song').value;
             const tbody = document.getElementById('leaderboard-body');
-            const scoreColHeader = document.getElementById('col-header-score');
 
             let pool = allScores.filter(s => viewMode === 'GAMES' ? s.isMiniGame : !s.isMiniGame);
 
@@ -329,7 +328,8 @@
 
             if (filtered.length === 0) {
                 const typeText = viewMode === 'GAMES' ? 'mini-game' : 'song';
-                tbody.innerHTML = `<tr><td colspan="6" class="status-msg">No high scores found for this ${typeText}.</td></tr>`;
+                const colSpan = viewMode === 'GAMES' ? '5' : '6';
+                tbody.innerHTML = `<tr><td colspan="${colSpan}" class="status-msg">No high scores found for this ${typeText}.</td></tr>`;
                 return;
             }
 
@@ -343,20 +343,34 @@
                 else if (index === 2) rankBadge = `<span class="rank-badge rank-3">3</span>`;
 
                 let scoreFormatted = `${item.accuracy.toFixed(1)}%`;
-                if (item.song.toLowerCase().includes('simon taps')) {
+                const titleLower = item.song.toLowerCase();
+
+                if (titleLower.includes('simon taps')) {
                     scoreFormatted = `Level ${Math.round(item.accuracy)}`;
-                } else if (item.song.toLowerCase().includes('finger sprint')) {
+                } else if (titleLower.includes('mystery note')) {
+                    scoreFormatted = `${Math.round(item.accuracy)} Guesses`;
+                } else if (titleLower.includes('finger sprint')) {
                     scoreFormatted = `${item.accuracy.toFixed(2)}s`;
                 }
 
-                tr.innerHTML = `
-                    <td>${rankBadge}</td>
-                    <td style="font-weight: 600; color: #fff;">${item.name}</td>
-                    <td>${item.song}</td>
-                    <td class="score-highlight">${scoreFormatted}</td>
-                    <td>${item.speed}%</td>
-                    <td style="font-size: 0.8rem; color: #9ca3af;">${item.timestamp || 'N/A'}</td>
-                `;
+                if (viewMode === 'GAMES') {
+                    tr.innerHTML = `
+                        <td>${rankBadge}</td>
+                        <td style="font-weight: 600; color: #fff;">${item.name}</td>
+                        <td>${item.song}</td>
+                        <td class="score-highlight">${scoreFormatted}</td>
+                        <td style="font-size: 0.8rem; color: #9ca3af;">${item.timestamp || 'N/A'}</td>
+                    `;
+                } else {
+                    tr.innerHTML = `
+                        <td>${rankBadge}</td>
+                        <td style="font-weight: 600; color: #fff;">${item.name}</td>
+                        <td>${item.song}</td>
+                        <td class="score-highlight">${scoreFormatted}</td>
+                        <td>${item.speed}%</td>
+                        <td style="font-size: 0.8rem; color: #9ca3af;">${item.timestamp || 'N/A'}</td>
+                    `;
+                }
                 tbody.appendChild(tr);
             });
         }
@@ -366,12 +380,14 @@
             const titleEl = document.getElementById('leaderboard-title');
             const colHeaderTitle = document.getElementById('col-header-title');
             const colHeaderScore = document.getElementById('col-header-score');
+            const colHeaderTempo = document.getElementById('col-header-tempo');
 
             if (viewMode === 'SONGS') {
                 viewMode = 'GAMES';
                 titleEl.textContent = '🕹️ Mini-Game High Scores';
                 colHeaderTitle.textContent = 'Mini-Game';
                 colHeaderScore.textContent = 'Score / Level';
+                colHeaderTempo.style.display = 'none'; // Hides tempo/speed column for mini-games
                 toggleBtn.textContent = '🎵 SONG Leaderboard';
                 toggleBtn.className = 'btn btn-song-mode';
             } else {
@@ -379,6 +395,7 @@
                 titleEl.textContent = '🏆 PianoPad Song High Scores';
                 colHeaderTitle.textContent = 'Song Title';
                 colHeaderScore.textContent = 'Accuracy';
+                colHeaderTempo.style.display = ''; // Shows tempo/speed column for main songs
                 toggleBtn.textContent = '🎮 MINI-GAME Leaderboard';
                 toggleBtn.className = 'btn btn-arcade';
             }
