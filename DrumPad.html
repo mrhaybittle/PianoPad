@@ -158,7 +158,6 @@
         .btn-step-active { background-color: #be185d !important; box-shadow: 0 0 10px #ec4899; }
         .btn-game-active { background-color: #8b5cf6 !important; box-shadow: 0 0 12px #8b5cf6; font-weight: 700; }
 
-        /* Compose Mode Button Styling */
         .btn-compose { background-color: #f59e0b !important; font-weight: 700; }
         .btn-compose-active { background-color: #d97706 !important; box-shadow: 0 0 10px #f59e0b; font-weight: 700; }
 
@@ -540,9 +539,21 @@
         .bar-part-red { background-color: #ef4444; width: 100%; transition: height 0.4s ease; }
         .bar-part-orange { background-color: #f97316; width: 100%; transition: height 0.4s ease; }
         .bar-part-green { background-color: #22c55e; width: 100%; transition: height 0.4s ease; }
+
+        /* Floating Drag Ghost for Compose Mode */
+        #drag-ghost {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+            transform: translate(-50%, -50%);
+            opacity: 0.85;
+        }
     </style>
 </head>
 <body>
+
+    <div id="drag-ghost"></div>
 
     <div class="logo-container">
         <svg class="logo-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -875,9 +886,8 @@
         let isCalibrating = false;
         let calibIndex = 0;
 
-        // Compose Drag State
-        let dragSource = null; // { type: 'pad'|'canvas', drumId: string, index?: number }
-        let hoverSlot = -1; // 0..15
+        let dragSource = null;
+        let hoverSlot = -1;
 
         const canvas = document.getElementById('sheet-canvas');
         const ctx = canvas.getContext('2d');
@@ -891,6 +901,7 @@
         const metroArmEl = document.getElementById('metro-arm');
         const countinTextEl = document.getElementById('countin-text');
         const btnCompose = document.getElementById('btn-compose');
+        const dragGhostEl = document.getElementById('drag-ghost');
 
         function initBarGrid() {
             barGridEl.innerHTML = '';
@@ -1095,6 +1106,24 @@
             }
         }
 
+        function updateGhostElement(drumId, pageX, pageY) {
+            const drum = DRUM_KIT.find(d => d.id === drumId);
+            if (!drum) return;
+
+            dragGhostEl.style.display = 'block';
+            dragGhostEl.style.left = `${pageX}px`;
+            dragGhostEl.style.top = `${pageY}px`;
+            dragGhostEl.innerHTML = `
+                <svg width="32" height="32" viewBox="0 0 32 32">
+                    <circle cx="16" cy="16" r="14" fill="${drum.color}" />
+                </svg>
+            `;
+        }
+
+        function hideGhostElement() {
+            dragGhostEl.style.display = 'none';
+        }
+
         function buildDrumPads() {
             const stage = document.getElementById('drum-stage');
             stage.querySelectorAll('.pad-node').forEach(p => p.remove());
@@ -1115,11 +1144,11 @@
                     <div class="pad-midi-code">MIDI ${drum.midi}</div>
                 `;
 
-                // Drag Start from Pad (Compose Mode)
                 pad.addEventListener('mousedown', (e) => {
+                    triggerDrumSound(drum.id);
                     if (isComposeMode) {
                         dragSource = { type: 'pad', drumId: drum.id };
-                        triggerDrumSound(drum.id);
+                        updateGhostElement(drum.id, e.pageX, e.pageY);
                         e.preventDefault();
                     } else {
                         triggerPadHit(drum.id);
@@ -1329,7 +1358,6 @@
             ctx.restore();
         }
 
-        /* --- SHEET MUSIC & COMPOSE CANVAS RENDERING --- */
         function drawSheetMusic(elapsedMs) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -1337,7 +1365,6 @@
             const lineSpacing = 14;
 
             if (isComposeMode) {
-                // Compose Mode Render: Single static 1-bar staff with 16 slot positions
                 const startX = 140;
                 const endX = canvas.width - 60;
                 const slotWidth = (endX - startX) / 16;
@@ -1349,12 +1376,12 @@
                     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
                 }
 
-                // 2. Start & End Measure Bar Lines
+                // 2. Bar Lines
                 ctx.strokeStyle = '#334155'; ctx.lineWidth = 3.5;
                 ctx.beginPath(); ctx.moveTo(startX, centerY - 2.5 * lineSpacing); ctx.lineTo(startX, centerY + 2.5 * lineSpacing); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(endX, centerY - 2.5 * lineSpacing); ctx.lineTo(endX, centerY + 2.5 * lineSpacing); ctx.stroke();
 
-                // 3. Percussion Clef
+                // 3. Clef
                 ctx.fillStyle = '#334155';
                 ctx.fillRect(40, centerY - 2 * lineSpacing, 4, lineSpacing * 4);
                 ctx.fillRect(48, centerY - 2 * lineSpacing, 4, lineSpacing * 4);
@@ -1368,8 +1395,8 @@
                     ctx.strokeRect(hX, centerY - 3.5 * lineSpacing, slotWidth, lineSpacing * 7);
                 }
 
-                // 5. Draw Composed Notes Snapped Vertically to Staff Positions
-                customComposedHits.forEach((hit, idx) => {
+                // 5. Draw Composed Notes
+                customComposedHits.forEach((hit) => {
                     const drum = DRUM_KIT.find(d => d.id === hit.drumId);
                     if (!drum) return;
 
@@ -1383,7 +1410,6 @@
                     drawNotationHead(ctx, noteX, noteY, drum.head, drum.color);
                 });
             } else {
-                // Standard Playback / Scrolling Mode
                 const hitLineX = 140;
                 const pixelsPerMs = 0.35 * speedFactor;
 
@@ -1448,7 +1474,6 @@
             }
         }
 
-        /* --- CANVAS INTERACTION & DRAG-AND-DROP COMPOSE LOGIC --- */
         function getCanvasSlotAndPos(e) {
             const rect = canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
@@ -1468,6 +1493,9 @@
             if (!isComposeMode) return;
             const { slot } = getCanvasSlotAndPos(e);
             hoverSlot = slot;
+            if (dragSource) {
+                updateGhostElement(dragSource.drumId, e.pageX, e.pageY);
+            }
             drawSheetMusic(0);
         });
 
@@ -1481,7 +1509,6 @@
             if (!isComposeMode) return;
             const { mouseX, mouseY, slot, slotWidth, startX } = getCanvasSlotAndPos(e);
 
-            // Check if clicking existing note to move/delete
             const foundIdx = customComposedHits.findIndex(hit => {
                 const noteX = startX + hit.slot * slotWidth + slotWidth / 2;
                 return Math.abs(mouseX - noteX) < slotWidth / 2;
@@ -1490,31 +1517,35 @@
             if (foundIdx !== -1) {
                 const clickedHit = customComposedHits[foundIdx];
                 dragSource = { type: 'canvas', drumId: clickedHit.drumId, index: foundIdx, startY: mouseY };
+                updateGhostElement(clickedHit.drumId, e.pageX, e.pageY);
                 e.preventDefault();
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isComposeMode && dragSource) {
+                updateGhostElement(dragSource.drumId, e.pageX, e.pageY);
             }
         });
 
         window.addEventListener('mouseup', (e) => {
             if (!isComposeMode || !dragSource) return;
 
+            hideGhostElement();
             const rect = canvas.getBoundingClientRect();
             const { slot, mouseY } = getCanvasSlotAndPos(e);
 
-            // Dragged DOWN past canvas bottom to delete
             if (dragSource.type === 'canvas' && (e.clientY > rect.bottom || (mouseY - dragSource.startY) > 50)) {
                 customComposedHits.splice(dragSource.index, 1);
                 statusEl.textContent = "Note deleted! Click and Drag DRUM parts to compose.";
             } else if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
-                // Drop or relocate on canvas slot
                 if (dragSource.type === 'pad') {
-                    // Remove duplicate drum on same slot if any
                     customComposedHits = customComposedHits.filter(h => !(h.slot === slot && h.drumId === dragSource.drumId));
                     customComposedHits.push({ slot: slot, drumId: dragSource.drumId });
                 } else if (dragSource.type === 'canvas') {
                     customComposedHits[dragSource.index].slot = slot;
                 }
 
-                // Update One Bar Pattern data array
                 ONE_BAR_PATTERNS["Custom Composed Beat"].hits = customComposedHits.map(h => [h.slot * 125, h.drumId]);
                 activeConfig = ONE_BAR_PATTERNS["Custom Composed Beat"];
                 activeSongTimeline = generate16BarPattern(activeConfig);
@@ -1699,14 +1730,12 @@
             }
         });
 
-        /* --- COMPOSE MODE TOGGLE & PROMPT --- */
         btnCompose.addEventListener('click', () => {
             isComposeMode = !isComposeMode;
             if (isComposeMode) {
                 btnCompose.textContent = 'Compose: ON';
                 btnCompose.classList.add('btn-compose-active');
                 
-                // Turn off other modes
                 if (isGameMode) {
                     isGameMode = false;
                     document.getElementById('btn-game').textContent = 'Game Mode: OFF';
