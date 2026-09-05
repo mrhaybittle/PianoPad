@@ -651,58 +651,81 @@
         .runner-track-wrapper {
             position: relative;
             width: 100%;
-            height: 80px;
+            height: 100px;
             background: #0b0f19;
             border: 1px solid #374151;
             border-radius: 8px;
             overflow: hidden;
             display: flex;
-            align-items: flex-end;
-            padding: 0 10px 6px 10px;
+            flex-direction: column;
+            justify-content: space-around;
+            padding: 4px 10px;
             margin-top: 6px;
         }
 
-        .runner-finish-line {
+        .runner-lane {
+            position: relative;
+            width: 100%;
+            height: 44px;
+            background: #131927;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #1f2937;
+        }
+
+        .runner-track-scroll {
             position: absolute;
-            right: 14px;
+            left: 0;
             top: 0;
-            bottom: 0;
-            width: 12px;
-            background: repeating-linear-gradient(0deg, #fff, #fff 8px, #000 8px, #000 16px);
+            height: 100%;
+            width: 100%;
         }
 
         .runner-avatar {
             position: absolute;
-            left: 10px;
+            left: 20px;
             bottom: 4px;
-            font-size: 2.2rem;
-            transition: left 0.12s linear, transform 0.25s ease-out;
+            font-size: 1.6rem;
+            transition: transform 0.2s ease-out;
             user-select: none;
             transform: scaleX(-1);
             z-index: 5;
         }
 
         .runner-avatar.jumping {
-            transform: scaleX(-1) translateY(-48px) rotate(-12deg);
+            transform: scaleX(-1) translateY(-18px) rotate(-10deg);
         }
 
         .hurdle-obstacle {
             position: absolute;
             bottom: 4px;
-            width: 28px;
-            height: 34px;
+            width: 26px;
+            height: 28px;
             background: #ef4444;
             border: 2px solid #ffffff;
             border-radius: 4px 4px 0 0;
             color: #ffffff;
             font-weight: 900;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             display: flex;
             align-items: center;
             justify-content: center;
             box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
             z-index: 2;
             transition: opacity 0.3s;
+        }
+
+        .lane-label {
+            position: absolute;
+            right: 8px;
+            top: 2px;
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: #9ca3af;
+            z-index: 6;
+            background: rgba(0,0,0,0.6);
+            padding: 2px 6px;
+            border-radius: 4px;
         }
     </style>
 </head>
@@ -778,7 +801,7 @@
                     Import Code
                 </button>
 
-                <button type="button" id="btn-settings" class="btn-settings" title="Calibrate Piano">
+                <button type="button" id="btn-settings" class="btn-settings" title="Settings">
                     <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 </button>
 
@@ -835,9 +858,9 @@
                 </div>
 
                 <div class="game-card" onclick="startDropDodge()">
-                    <h3>🌲 Maze Runner</h3>
-                    <p>Navigate obstacles! Play keys to run your character into safe gaps while dodging trees, rocks, and rivers.</p>
-                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Maze Runner</button>
+                    <h3>🛡️ Drop Dodge</h3>
+                    <p>Wide walls fall slowly! You have 5 Lives to dodge blocks by hitting the safe empty key gap.</p>
+                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Drop Dodge</button>
                 </div>
 
                 <div class="game-card" onclick="startComboStrike()">
@@ -848,7 +871,7 @@
 
                 <div class="game-card" onclick="startFingerSprint()">
                     <h3>🏃 Finger Sprint</h3>
-                    <p>Alternate C1 & D1 to sprint! Jump hurdles when close by playing matching high-octave keys!</p>
+                    <p>Alternate C1 & D1 to sprint! Jump 10 hurdles on a long scrolling track vs Robo-Opponent (🤖)!</p>
                     <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Finger Sprint</button>
                 </div>
             </div>
@@ -867,10 +890,24 @@
             </div>
         </div>
 
+        <!-- Multi-Lane Scrolling Sprint Track vs Computer Opponent -->
         <div class="runner-track-wrapper" id="runner-track" style="display: none;">
-            <div class="runner-avatar" id="runner-sprite">🏃</div>
-            <div id="hurdle-container"></div>
-            <div class="runner-finish-line"></div>
+            <!-- Player Lane -->
+            <div class="runner-lane" id="player-lane">
+                <div class="lane-label">YOU (🏃)</div>
+                <div class="runner-avatar" id="runner-sprite">🏃</div>
+                <div class="runner-track-scroll" id="player-track-scroll">
+                    <div id="hurdle-container"></div>
+                </div>
+            </div>
+            <!-- Computer Opponent Lane -->
+            <div class="runner-lane" id="bot-lane">
+                <div class="lane-label">ROBO-OPPONENT (🤖)</div>
+                <div class="runner-avatar" id="bot-sprite">🤖</div>
+                <div class="runner-track-scroll" id="bot-track-scroll">
+                    <div id="bot-hurdle-container"></div>
+                </div>
+            </div>
         </div>
 
         <div class="visualizer-wrapper">
@@ -879,7 +916,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.05 | 5-Sep 17:54 AEST (Sydney)</div>
+            <div class="version-stamp">v26.03.10 | 10-Mar 07:33 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -898,12 +935,29 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <h2>Settings</h2>
+            <p style="font-size: 0.85rem; color: #9ca3af;">Configure hardware and MIDI inputs below:</p>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin: 10px 0;">
+                <button type="button" id="btn-start-calib" class="btn-midi" style="justify-content: center; padding: 10px;">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20"></path></svg>
+                    Calibrate Piano (Lowest / Highest Keys)
+                </button>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="btn-settings-close">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Calibration Wizard Modal -->
     <div class="modal-overlay" id="calib-modal">
         <div class="modal" style="max-width: 680px;">
             <h2>MIDI Keyboard Calibration</h2>
-            <p id="calib-instructions" style="font-size: 0.95rem; color: #38bdf8; font-weight: 700; text-align: left;">
-                Play LOWEST C now
+            <p id="calib-instructions" style="font-size: 0.9rem; color: #38bdf8; font-weight: 600;">
+                Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...
             </p>
 
             <div class="calib-piano-container">
@@ -911,7 +965,7 @@
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" id="btn-calib-cancel">Skip Calibration</button>
+                <button type="button" class="btn-secondary" id="btn-calib-cancel">Cancel Calibration</button>
             </div>
         </div>
     </div>
@@ -940,8 +994,9 @@
                 </div>
             </div>
 
+            <!-- MODAL FOOTER: Explicit type="button" and anchor link -->
             <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
-                <a id="btn-view-leaderboard-link" href="leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">View Entire Leaderboard</a>
+                <a href="leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">View Entire Leaderboard</a>
                 <button type="button" class="btn-warning" id="btn-game-try-again">Play Again</button>
                 <button type="button" class="btn-arcade" id="btn-game-arcade-menu">Mini-Game Menu</button>
                 <button type="button" class="btn-success" id="btn-game-results-close">Continue</button>
@@ -1045,15 +1100,19 @@
         let dodgeLives = 5;
         let dodgeDodgedCount = 0;
 
+        // Expanded 10-Hurdle Finger Sprint Config with Scrolling Track & Bot
         let sprintSequence = ['c1', 'd1'];
         let sprintIndex = 0;
         let sprintKeystrokeCount = 0;
-        const SPRINT_TARGET_KEYSTROKES = 20;
+        const SPRINT_TARGET_KEYSTROKES = 100;
         let sprintStartTime = 0;
         let activeHurdles = [];
+        let botHurdles = [];
         let runnerLegToggle = false;
+        let botProgress = 0;
+        let botInterval = null;
 
-        let miniGameFallSpeedMs = 4500;
+        let miniGameFallSpeedMs = 3800;
 
         const cMajorScaleNotes = ['c1', 'd1', 'e1', 'f1', 'g1', 'a1', 'b1', 'c2'];
         const arcadeHub = document.getElementById('arcade-hub');
@@ -1062,10 +1121,9 @@
         const timelineBox = document.getElementById('timeline-box');
         const runnerTrack = document.getElementById('runner-track');
         const runnerSprite = document.getElementById('runner-sprite');
+        const botSprite = document.getElementById('bot-sprite');
         const hurdleContainer = document.getElementById('hurdle-container');
-
-        let dropCharacterNote = 'c2';
-        let bgAudioTimer = null;
+        const botHurdleContainer = document.getElementById('bot-hurdle-container');
 
         document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
         document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
@@ -1079,36 +1137,15 @@
             gameResultsModal.classList.remove('open');
             if (currentSongTitle === "Mystery Note") startMysteryNote();
             else if (currentSongTitle === "Simon Taps") startSimonTaps();
-            else if (currentSongTitle === "Maze Runner" || currentSongTitle === "Drop Dodge") startDropDodge();
+            else if (currentSongTitle === "Drop Dodge") startDropDodge();
             else if (currentSongTitle === "Combo Strike") startComboStrike();
             else if (currentSongTitle === "Finger Sprint") startFingerSprint();
             else playSong();
         });
 
-        function stopBackgroundMusic() {
-            if (bgAudioTimer) {
-                clearInterval(bgAudioTimer);
-                bgAudioTimer = null;
-            }
-        }
-
-        function startBackgroundMusic() {
-            stopBackgroundMusic();
-            let noteIndex = 0;
-            const bgNotes = [130.81, 146.83, 164.81, 174.61, 196.00, 174.61, 164.81, 146.83];
-            bgAudioTimer = setInterval(() => {
-                if (activeMiniGame === 'drop' && isPlaying && !isPaused) {
-                    const freq = bgNotes[noteIndex % bgNotes.length];
-                    playTone(freq, 0.2, 0.12);
-                    noteIndex++;
-                }
-            }, 300);
-        }
-
         function openArcadeHub() {
             initAudio();
             stopSong();
-            stopBackgroundMusic();
             mainControlsBar.style.display = 'none';
             timelineBox.style.display = 'none';
             arcadeControlsBar.style.display = 'flex';
@@ -1127,11 +1164,12 @@
         }
 
         function exitActiveMiniGame() {
-            stopBackgroundMusic();
+            if (botInterval) clearInterval(botInterval);
             activeMiniGame = null;
             isPlaying = false;
             runnerTrack.style.display = 'none';
             hurdleContainer.innerHTML = '';
+            botHurdleContainer.innerHTML = '';
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.querySelectorAll('.key').forEach(k => {
                 k.classList.remove('active');
@@ -1141,7 +1179,7 @@
             document.getElementById('status').textContent = 'Arcade Mini-Game stopped. Select another game or return Home.';
         }
 
-        /* 1. SIMON TAPS MINI-GAME */
+        /* 1. SIMON TAPS MINI-GAME WITH COLORFUL STAIRCASE VISUALIZER */
         function startSimonTaps() {
             initAudio();
             exitActiveMiniGame();
@@ -1247,12 +1285,13 @@
                 document.getElementById('bar-red').style.height = '0%';
 
                 document.getElementById('game-rank-text').textContent = `Simon Taps Level Logged!`;
-                showGameResultsPopUpCustom(maxLevelRemembered);
+                gameResultsModal.classList.add('open');
+                postScoreToLeaderboard(maxLevelRemembered);
                 activeMiniGame = null;
             }
         }
 
-        /* 2. MYSTERY NOTE MINI-GAME */
+        /* 2. MYSTERY NOTE (HOT/COLD) MINI-GAME */
         function startMysteryNote() {
             initAudio();
             exitActiveMiniGame();
@@ -1293,7 +1332,8 @@
 
                 document.getElementById('game-rank-text').textContent = `Mystery Note Cleared!`;
 
-                showGameResultsPopUpCustom(mysteryGuessCount);
+                gameResultsModal.classList.add('open');
+                postScoreToLeaderboard(mysteryGuessCount);
                 activeMiniGame = null;
             } else if (diff <= 2) {
                 highlightKey(noteStr, 250, '#ef4444');
@@ -1307,7 +1347,7 @@
             }
         }
 
-        /* 3. MAZE RUNNER MINI-GAME */
+        /* 3. SLOWER DROP DODGE MINI-GAME WITH 5 LIVES */
         function startDropDodge() {
             initAudio();
             exitActiveMiniGame();
@@ -1315,39 +1355,21 @@
             activeMiniGame = 'drop';
             dodgeLives = 5;
             dodgeDodgedCount = 0;
-            dropCharacterNote = 'c2';
             resetGameStats();
 
-            miniGameFallSpeedMs = 4500;
+            miniGameFallSpeedMs = 3800;
             currentSong = [];
-            
             const whiteKeys = keyLayout.filter(k => k.type === 'white').map(k => k.note);
-            const obstacleTypes = ['tree', 'rock', 'river'];
 
-            for (let i = 0; i < 30; i++) {
-                let gapCount = 1;
-                if (i < 3) gapCount = 3;
-                else if (i < 6) gapCount = 2;
-
-                const safeKeys = [];
-                const shuffledWhiteKeys = [...whiteKeys].sort(() => 0.5 - Math.random());
-                for (let g = 0; g < gapCount; g++) {
-                    safeKeys.push(shuffledWhiteKeys[g]);
-                }
-
-                const obstacles = [];
-                whiteKeys.forEach(note => {
-                    if (!safeKeys.includes(note)) {
-                        const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
-                        obstacles.push({ note, type });
-                    }
-                });
+            for (let i = 0; i < 20; i++) {
+                const safeKeyIdx = Math.floor(Math.random() * whiteKeys.length);
+                const safeKey = whiteKeys[safeKeyIdx];
+                const wallNotes = whiteKeys.filter(k => k !== safeKey);
 
                 currentSong.push({
-                    notes: obstacles.map(o => o.note),
-                    obstacles: obstacles,
-                    safeKeys: safeKeys,
-                    rest: 2800
+                    notes: wallNotes,
+                    safeKey: safeKey,
+                    rest: 2200
                 });
             }
 
@@ -1355,8 +1377,7 @@
             isPlaying = true;
             playbackStartTime = performance.now();
             lastFrameTime = performance.now();
-            startBackgroundMusic();
-            document.getElementById('status').textContent = `🌲 MAZE RUNNER ACTIVE! Lives: ❤️ ${dodgeLives} | Gaps Cleared: 0`;
+            document.getElementById('status').textContent = `🛡️ DROP DODGE ACTIVE! Lives: ❤️ ${dodgeLives} | Dodges: 0`;
             requestAnimationFrame(renderLoop);
         }
 
@@ -1390,19 +1411,32 @@
             requestAnimationFrame(renderLoop);
         }
 
-        /* 5. FINGER SPRINT */
+        /* 5. FINGER SPRINT WITH SCROLLING TRACK, 10 HURDLES, AND ROBO-OPPONENT */
         function renderHurdles() {
             hurdleContainer.innerHTML = '';
             activeHurdles.forEach((h) => {
                 const hurdleDiv = document.createElement('div');
                 hurdleDiv.className = 'hurdle-obstacle';
-                hurdleDiv.style.left = `${h.posPct}%`;
+                hurdleDiv.style.left = `${h.posPx}px`;
                 hurdleDiv.textContent = h.letter;
                 if (h.cleared) {
                     hurdleDiv.style.opacity = '0.2';
                     hurdleDiv.style.borderColor = '#22c55e';
                 }
                 hurdleContainer.appendChild(hurdleDiv);
+            });
+
+            botHurdleContainer.innerHTML = '';
+            botHurdles.forEach((h) => {
+                const hurdleDiv = document.createElement('div');
+                hurdleDiv.className = 'hurdle-obstacle';
+                hurdleDiv.style.left = `${h.posPx}px`;
+                hurdleDiv.textContent = h.letter;
+                if (h.cleared) {
+                    hurdleDiv.style.opacity = '0.2';
+                    hurdleDiv.style.borderColor = '#22c55e';
+                }
+                botHurdleContainer.appendChild(hurdleDiv);
             });
         }
 
@@ -1413,22 +1447,70 @@
             activeMiniGame = 'sprint';
 
             runnerTrack.style.display = 'flex';
-            runnerSprite.style.left = '10px';
             runnerSprite.textContent = '🏃';
-            runnerSprite.classList.add('sprinting');
+            botSprite.textContent = '🤖';
 
             sprintIndex = 0;
             sprintKeystrokeCount = 0;
+            botProgress = 0;
             sprintStartTime = performance.now();
 
-            activeHurdles = [
-                { letter: 'G', posPct: 35, cleared: false },
-                { letter: 'E', posPct: 70, cleared: false }
-            ];
-            renderHurdles();
+            const hurdleNotes = ['G', 'E', 'C', 'F', 'A', 'D', 'B', 'C', 'E', 'G'];
+            activeHurdles = hurdleNotes.map((note, idx) => ({
+                letter: note,
+                posPx: (idx + 1) * 320,
+                cleared: false
+            }));
+            botHurdles = JSON.parse(JSON.stringify(activeHurdles));
 
-            document.getElementById('status').textContent = `🏃 FINGER SPRINT: Alternate C1 & D1 to sprint! Play High G/E to jump hurdles!`;
+            renderHurdles();
+            updateTrackScroll();
+
+            // Robo-Opponent AI Logic
+            botInterval = setInterval(() => {
+                if (activeMiniGame !== 'sprint') return;
+                botProgress += 1.8 + Math.random() * 0.8;
+                
+                botHurdles.forEach(h => {
+                    if (!h.cleared && Math.abs(botProgress - h.posPx) < 25) {
+                        h.cleared = true;
+                        botSprite.classList.add('jumping');
+                        setTimeout(() => botSprite.classList.remove('jumping'), 400);
+                    }
+                });
+
+                if (botProgress >= 3600) {
+                    finishSprintRace('🤖 ROBO-OPPONENT WINS! Better luck next time!');
+                } else {
+                    renderHurdles();
+                    updateTrackScroll();
+                }
+            }, 120);
+
+            document.getElementById('status').textContent = `🏃 FINGER SPRINT: Alternate C1 & D1! Clear 10 Hurdles across the scrolling track vs Robo-Opponent!`;
             highlightKey('c1', 600, '#eab308');
+        }
+
+        function updateTrackScroll() {
+            const playerPx = sprintKeystrokeCount * 36;
+            document.getElementById('player-track-scroll').style.transform = `translateX(-${playerPx}px)`;
+            document.getElementById('bot-track-scroll').style.transform = `translateX(-${botProgress}px)`;
+        }
+
+        function finishSprintRace(winnerText) {
+            if (botInterval) clearInterval(botInterval);
+            const totalTimeSeconds = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
+            currentSongTitle = "Finger Sprint";
+            
+            document.getElementById('game-summary-text').innerHTML = `${winnerText}<br>Sprint Time: <span style="color:#facc15; font-size:1.3rem;">${totalTimeSeconds} Seconds</span>`;
+            document.getElementById('bar-green').style.height = '100%';
+            document.getElementById('bar-orange').style.height = '0%';
+            document.getElementById('bar-red').style.height = '0%';
+
+            document.getElementById('game-rank-text').textContent = `Finger Sprint Finish!`;
+            gameResultsModal.classList.add('open');
+            postScoreToLeaderboard(parseFloat(totalTimeSeconds));
+            activeMiniGame = null;
         }
 
         function handleSprintInput(noteStr) {
@@ -1439,9 +1521,8 @@
             const letter = noteMatch[1].toUpperCase();
             const octave = parseInt(noteMatch[2], 10);
 
-            const currentPosPct = (sprintKeystrokeCount / SPRINT_TARGET_KEYSTROKES) * 85;
-
-            const nearbyHurdle = activeHurdles.find(h => !h.cleared && Math.abs(currentPosPct - h.posPct) <= 16);
+            const playerPx = sprintKeystrokeCount * 36;
+            const nearbyHurdle = activeHurdles.find(h => !h.cleared && Math.abs(playerPx - h.posPx) <= 45);
 
             if (nearbyHurdle) {
                 if (letter === nearbyHurdle.letter && octave >= 2) {
@@ -1457,25 +1538,13 @@
                         runnerSprite.textContent = runnerLegToggle ? '🏃' : '🏃‍♂️';
                     }, 450);
 
-                    document.getElementById('status').textContent = `🦘 HURDLE JUMP CLEARED! High ${letter} Jump Successful!`;
-                    return;
-                } else if (letter === nearbyHurdle.letter && octave === 1) {
-                    playErrorClackSound();
-                    document.getElementById('status').textContent = `⚠️ Play a HIGH ${letter} (Octave 2, 3, or 4) to Jump over the Hurdle!`;
+                    document.getElementById('status').textContent = `🦘 HURDLE CLEARED! High ${letter} Jump Successful!`;
                     return;
                 }
             }
 
             const expectedNote = sprintSequence[sprintIndex % 2];
             if (rawNoteName === expectedNote.toLowerCase().trim()) {
-                const missedHurdle = activeHurdles.find(h => !h.cleared && (currentPosPct >= h.posPct - 3 && currentPosPct <= h.posPct + 5));
-                if (missedHurdle) {
-                    missedHurdle.cleared = true;
-                    sprintStartTime -= 2000;
-                    playErrorClackSound();
-                    document.getElementById('status').textContent = `💥 HURDLE COLLISION! +2.0s Time Penalty Added!`;
-                }
-
                 gameStats.perfect++;
                 sprintIndex++;
                 sprintKeystrokeCount++;
@@ -1485,23 +1554,10 @@
                     runnerSprite.textContent = runnerLegToggle ? '🏃' : '🏃‍♂️';
                 }
 
-                const newProgressPct = (sprintKeystrokeCount / SPRINT_TARGET_KEYSTROKES) * 85;
-                runnerSprite.style.left = `calc(10px + ${newProgressPct}%)`;
+                updateTrackScroll();
 
-                if (sprintKeystrokeCount >= SPRINT_TARGET_KEYSTROKES) {
-                    const totalTimeSeconds = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
-                    runnerSprite.classList.remove('sprinting');
-                    runnerSprite.textContent = '🏃';
-                    currentSongTitle = "Finger Sprint";
-                    
-                    document.getElementById('game-summary-text').innerHTML = `Sprint Time: <span style="color:#facc15; font-size:1.3rem;">${totalTimeSeconds} Seconds</span>`;
-                    document.getElementById('bar-green').style.height = '100%';
-                    document.getElementById('bar-orange').style.height = '0%';
-                    document.getElementById('bar-red').style.height = '0%';
-
-                    document.getElementById('game-rank-text').textContent = `Finger Sprint Completed!`;
-                    showGameResultsPopUpCustom(parseFloat(totalTimeSeconds));
-                    activeMiniGame = null;
+                if (sprintKeystrokeCount * 36 >= 3600) {
+                    finishSprintRace('🥇 YOU WIN! Fantastic Sprint!');
                     return;
                 }
 
@@ -1726,13 +1782,16 @@
         const teacherCodeTextarea = document.getElementById('teacher-code');
         const teacherErrorDiv = document.getElementById('teacher-error');
 
+        const settingsModal = document.getElementById('settings-modal');
         const calibModal = document.getElementById('calib-modal');
         const gameResultsModal = document.getElementById('game-results-modal');
 
         document.getElementById('btn-settings').addEventListener('click', () => {
             initAudio();
-            startCalibration();
+            settingsModal.classList.add('open');
         });
+        document.getElementById('btn-settings-close').addEventListener('click', () => settingsModal.classList.remove('open'));
+        document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
         document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
         document.getElementById('btn-game-results-close').addEventListener('click', () => gameResultsModal.classList.remove('open'));
 
@@ -1809,14 +1868,11 @@
         }
 
         function startCalibration() {
+            settingsModal.classList.remove('open');
             buildCalibrationKeyboard();
             isCalibrating = true;
             calibStep = 1;
-
-            const instEl = document.getElementById('calib-instructions');
-            instEl.textContent = "Play LOWEST C now";
-            instEl.style.color = "#38bdf8";
-
+            document.getElementById('calib-instructions').textContent = "Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
             calibModal.classList.add('open');
         }
 
@@ -1836,9 +1892,7 @@
                 if (lowCKey) lowCKey.classList.add('blue-highlight');
 
                 calibStep = 2;
-                const instEl = document.getElementById('calib-instructions');
-                instEl.textContent = "Play the HIGHEST C now";
-                instEl.style.color = "#eab308";
+                document.getElementById('calib-instructions').textContent = "Recognized Lowest C! Step 2: Now press the HIGHEST 'C' key on your external MIDI Keyboard...";
             } else if (calibStep === 2) {
                 calibHighestRawMIDI = rawMidi;
 
@@ -1849,16 +1903,13 @@
                 const highCKey = document.querySelector(`.calib-key[data-calib-note="c${targetOctave}"]`);
                 if (highCKey) highCKey.classList.add('blue-highlight');
 
-                const instEl = document.getElementById('calib-instructions');
-                instEl.textContent = `Calibration Complete! Keyboard Configured.`;
-                instEl.style.color = "#22c55e";
-
+                document.getElementById('calib-instructions').textContent = `Calibration Complete! Detected a ${octaveDistance}-Octave Keyboard (${octaveDistance * 12 + 1} keys).`;
                 setTimeout(() => {
                     isCalibrating = false;
                     calibModal.classList.remove('open');
                     updateKeyPositions();
                     document.getElementById('status').textContent = `MIDI Keyboard calibrated! Lowest key now maps directly to C1 on-screen.`;
-                }, 1000);
+                }, 1200);
             }
         }
 
@@ -1992,7 +2043,7 @@
             rankDiv.textContent = "Calculating Rank...";
 
             try {
-                const response = await fetch(LEADERBOARD_CSV_URL + '?t=' + Date.now());
+                const response = await fetch(LEADERBOARD_CSV_URL);
                 if (!response.ok) throw new Error('Fetch failed');
 
                 const csvText = await response.text();
@@ -2052,7 +2103,7 @@
             }
         }
 
-        function showGameResultsPopUpCustom(customScoreVal = null) {
+        function showGameResultsPopUp() {
             if (!sessionStudentName) {
                 const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
                 if (inputName && inputName.trim()) {
@@ -2067,14 +2118,10 @@
             const missedHits = gameStats.miss;
             const totalHits = perfectHits + earlyLateHits + missedHits;
 
-            let scoreNum = 0;
-            if (customScoreVal !== null) {
-                scoreNum = customScoreVal;
-            } else {
-                const accuracy = totalHits > 0 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
-                scoreNum = parseFloat(accuracy);
-                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
-            }
+            const accuracy = totalHits > 0 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
+            const accuracyNum = parseFloat(accuracy);
+
+            document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
 
             const greenPct = totalHits > 0 ? (perfectHits / totalHits) * 100 : 0;
             const orangePct = totalHits > 0 ? (earlyLateHits / totalHits) * 100 : 0;
@@ -2097,25 +2144,11 @@
                 badgeContainer.innerHTML = `<div style="font-size:0.8rem; color:#9ca3af; margin-top:4px;">Practice Speed: ${currentSpeed}% (Reach 50%+ for Practice Badges)</div>`;
             }
 
-            const leaderboardLink = document.getElementById('btn-view-leaderboard-link');
-            if (leaderboardLink) {
-                leaderboardLink.href = `leaderboard.html?t=${Date.now()}`;
-            }
-
             gameResultsModal.classList.add('open');
 
-            calculateAndDisplayRank(scoreNum).then(() => {
-                postScoreToLeaderboard(scoreNum);
+            calculateAndDisplayRank(accuracyNum).then(() => {
+                postScoreToLeaderboard(accuracyNum);
             });
-        }
-
-        function showGameResultsPopUp() {
-            let customVal = null;
-            if (activeMiniGame === 'drop' || currentSongTitle === "Maze Runner" || currentSongTitle === "Drop Dodge") {
-                customVal = dodgeDodgedCount;
-                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>Obstacles Cleared: <span style="color:#22c55e; font-size:1.4rem;">${dodgeDodgedCount} Gaps</span>`;
-            }
-            showGameResultsPopUpCustom(customVal);
         }
 
         function toggleLoopMode() {
@@ -2530,35 +2563,33 @@
             }
 
             if (activeMiniGame === 'drop') {
-                dropCharacterNote = noteStr;
                 const effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
-                const activeWall = noteTimeline.find(item => item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 650);
+                const activeWall = noteTimeline.find(item => item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 600);
 
-                if (activeWall && activeWall.safeKeys) {
-                    if (activeWall.safeKeys.some(sk => sk.toLowerCase().trim() === noteStr.toLowerCase().trim())) {
+                if (activeWall && activeWall.safeKey) {
+                    if (noteStr.toLowerCase().trim() === activeWall.safeKey.toLowerCase().trim()) {
                         activeWall.gameStatus = 'perfect';
                         dodgeDodgedCount++;
                         gameStats.perfect++;
                         highlightKey(noteStr, 220, '#22c55e');
-                        document.getElementById('status').textContent = `🌲 MAZE RUNNER: Safe Gap Cleared! Gaps Cleared: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
+                        document.getElementById('status').textContent = `🛡️ Safe Dodge! Total Dodges: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
                     } else {
                         activeWall.gameStatus = 'miss';
                         dodgeLives--;
                         gameStats.miss++;
                         playErrorClackSound();
                         highlightKey(noteStr, 220, '#ef4444');
-                        document.getElementById('status').textContent = `💥 COLLISION! Hit obstacle! Lives left: ❤️ ${dodgeLives} | Gaps Cleared: ${dodgeDodgedCount}`;
+                        document.getElementById('status').textContent = `💥 Wall Impact! Lives left: ❤️ ${dodgeLives} | Dodges: ${dodgeDodgedCount}`;
 
                         if (dodgeLives <= 0) {
                             isPlaying = false;
-                            stopBackgroundMusic();
-                            currentSongTitle = "Maze Runner";
+                            currentSongTitle = "Drop Dodge";
                             showGameResultsPopUp();
                             activeMiniGame = null;
                         }
                     }
                 } else {
-                    highlightKey(noteStr, 200, '#eab308');
+                    highlightKey(noteStr, 200, '#ef4444');
                 }
                 return;
             }
@@ -2759,8 +2790,7 @@
 
                 noteTimeline.push({
                     notes: item.notes,
-                    obstacles: item.obstacles || null,
-                    safeKeys: item.safeKeys || null,
+                    safeKey: item.safeKey || null,
                     hitTime: cumulativeMs,
                     duration: Math.max(140, (item.rest || 250) * 0.85 / speedFactor),
                     played: false,
@@ -2785,7 +2815,6 @@
         function stopSong() {
             isPlaying = false;
             isPaused = false;
-            stopBackgroundMusic();
             btnPause.textContent = 'Pause';
             btnPause.classList.remove('btn-success');
             btnPause.classList.add('btn-warning');
@@ -2834,21 +2863,9 @@
             requestAnimationFrame(renderLoop);
         }
 
-        function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending', obstacleType = null) {
+        function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending') {
             ctx.save();
-
-            if (activeMiniGame === 'drop' && obstacleType) {
-                ctx.fillStyle = '#ffffff';
-                ctx.font = '16px -apple-system, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-
-                const icon = obstacleType === 'tree' ? '🌲' : (obstacleType === 'rock' ? '🪨' : '🌊');
-                ctx.fillText(icon, x + width / 2, y + height / 2);
-                ctx.restore();
-                return;
-            }
-
+            
             const palette = themePalettes[currentTheme] || themePalettes.default;
             let blockColor = palette.normal;
             let shadowColor = palette.shadowNormal;
@@ -2899,22 +2916,6 @@
                 const label = match ? match[1].toUpperCase() : noteName.toUpperCase();
                 ctx.fillText(label, x + width / 2, y + height / 2);
             }
-            ctx.restore();
-        }
-
-        function drawDropCharacter() {
-            if (activeMiniGame !== 'drop') return;
-            const charPos = keyPosMap[dropCharacterNote.toLowerCase().trim()];
-            if (!charPos) return;
-
-            const charX = charPos.left + charPos.width / 2;
-            const charY = canvas.height - 18;
-
-            ctx.save();
-            ctx.font = '22px -apple-system, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('🏃', charX, charY);
             ctx.restore();
         }
 
@@ -2970,53 +2971,28 @@
             const currentFallSpeed = activeMiniGame === 'drop' ? miniGameFallSpeedMs : FALL_TIME_MS;
 
             noteTimeline.forEach(item => {
-                const backgroundVol = (isGameMode || activeMiniGame) ? 0.0 : 1.0;
+                const backgroundVol = (isGameMode || activeMiniGame) ? 0.2 : 1.0;
 
                 if (!isStepMode && effectiveElapsed >= item.hitTime && !item.played) {
                     item.played = true;
-                    if (activeMiniGame !== 'drop') {
-                        item.notes.forEach(noteStr => {
-                            const freq = getNoteFrequency(noteStr);
-                            if (freq) {
-                                playTone(freq, item.duration / 1000, backgroundVol);
-                                if (!isGameMode && !activeMiniGame) {
-                                    highlightKey(noteStr, item.duration);
-                                }
+                    item.notes.forEach(noteStr => {
+                        const freq = getNoteFrequency(noteStr);
+                        if (freq) {
+                            playTone(freq, item.duration / 1000, backgroundVol);
+                            if (!isGameMode && !activeMiniGame) {
+                                highlightKey(noteStr, item.duration);
                             }
-                        });
-                    }
+                        }
+                    });
                 }
 
                 if ((isGameMode || activeMiniGame) && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 280)) {
-                    if (activeMiniGame === 'drop') {
-                        if (item.safeKeys && item.safeKeys.some(sk => sk.toLowerCase().trim() === dropCharacterNote.toLowerCase().trim())) {
-                            item.gameStatus = 'perfect';
-                            dodgeDodgedCount++;
-                            gameStats.perfect++;
-                            document.getElementById('status').textContent = `🌲 MAZE RUNNER: Safe Gap Cleared! Gaps Cleared: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
-                        } else {
-                            item.gameStatus = 'miss';
-                            dodgeLives--;
-                            gameStats.miss++;
-                            playErrorClackSound();
-                            document.getElementById('status').textContent = `💥 COLLISION! Swallowed by Maze! Lives left: ❤️ ${dodgeLives} | Gaps Cleared: ${dodgeDodgedCount}`;
-
-                            if (dodgeLives <= 0) {
-                                isPlaying = false;
-                                stopBackgroundMusic();
-                                currentSongTitle = "Maze Runner";
-                                showGameResultsPopUp();
-                                activeMiniGame = null;
-                            }
-                        }
-                    } else {
-                        item.gameStatus = 'miss';
-                        gameStats.miss++;
-                        if (isGameMode) updateGameStatus();
-                    }
+                    item.gameStatus = 'miss';
+                    gameStats.miss++;
+                    if (isGameMode) updateGameStatus();
                 }
 
-                item.notes.forEach((noteStr, nIdx) => {
+                item.notes.forEach(noteStr => {
                     const normNote = noteStr.toLowerCase().trim();
                     const pos = keyPosMap[normNote];
 
@@ -3030,30 +3006,23 @@
                             const drawY = Math.max(0, yTop);
                             const drawH = Math.min(canvasHeight - drawY, yBottom - drawY);
                             const active = effectiveElapsed >= item.hitTime && effectiveElapsed <= (item.hitTime + item.duration);
-                            
-                            const obsType = (item.obstacles && item.obstacles[nIdx]) ? item.obstacles[nIdx].type : null;
-                            drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, noteStr, active, item.gameStatus, obsType);
+                            drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, noteStr, active, item.gameStatus);
                         }
                     }
                 });
             });
 
-            if (activeMiniGame === 'drop') {
-                drawDropCharacter();
-            }
-
             if (!isStepMode && !isLooping) {
                 const lastNote = noteTimeline[noteTimeline.length - 1];
                 if (lastNote && effectiveElapsed > lastNote.hitTime + lastNote.duration + 500) {
                     isPlaying = false;
-                    stopBackgroundMusic();
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                     if (isGameMode) {
                         showGameResultsPopUp();
                         return;
                     } else if (activeMiniGame) {
-                        currentSongTitle = activeMiniGame === 'drop' ? "Maze Runner" : "Combo Strike";
+                        currentSongTitle = activeMiniGame === 'drop' ? "Drop Dodge" : "Combo Strike";
                         showGameResultsPopUp();
                         activeMiniGame = null;
                         return;
@@ -3295,13 +3264,9 @@
             return new Blob([outBuffer], { type: 'audio/wav' });
         }
 
-        // Initialize Application & Trigger Immediate Initial Calibration
         initMIDIHardware();
         syncSongsWithGoogleSheet();
-        setTimeout(() => {
-            updateKeyPositions();
-            startCalibration();
-        }, 150);
+        setTimeout(updateKeyPositions, 100);
     </script>
 </body>
 </html>
