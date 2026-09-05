@@ -161,6 +161,8 @@
         .btn-compose { background-color: #f59e0b !important; font-weight: 700; }
         .btn-compose-active { background-color: #d97706 !important; box-shadow: 0 0 10px #f59e0b; font-weight: 700; }
 
+        .btn-export-wav { background-color: #10b981 !important; font-weight: 700; display: none; }
+
         .btn-mode-toggle { background-color: #0284c7 !important; font-weight: 700; }
         .btn-mode-toggle-active { background-color: #0369a1 !important; box-shadow: 0 0 10px #0284c7; font-weight: 700; }
 
@@ -226,7 +228,6 @@
             height: 100%;
         }
 
-        /* --- BOSS BATTLE & HUD OVERLAY --- */
         .boss-hud-overlay {
             position: absolute;
             top: 8px;
@@ -271,7 +272,6 @@
             top: 1px;
         }
 
-        /* --- 16-BAR PROGRESS GRID --- */
         .bar-progress-container {
             display: flex;
             flex-direction: column;
@@ -702,6 +702,7 @@
                 </button>
 
                 <button id="btn-compose" class="btn-compose">Compose</button>
+                <button id="btn-export-wav" class="btn-export-wav">EXPORT WAV</button>
                 <button id="btn-game" class="btn-secondary">Game Mode: OFF</button>
                 <button id="btn-step" class="btn-step">Step Mode</button>
                 <button id="btn-call-resp" class="btn-mode-toggle">Call & Response</button>
@@ -1020,12 +1021,10 @@
         let currentBarNumber = 1;
         let lastMetronomeBeatIndex = -1;
 
-        // Gamification & Shop State
         let rhythmTokens = 0;
-        let equippedKitSound = 'acoustic'; // 'acoustic', '808', 'chiptune'
+        let equippedKitSound = 'acoustic';
         let unlockedKits = ['acoustic'];
 
-        // Boss Battle Stats
         let playerHp = 100;
         let bossHp = 500;
 
@@ -1048,10 +1047,10 @@
         const metroArmEl = document.getElementById('metro-arm');
         const countinTextEl = document.getElementById('countin-text');
         const btnCompose = document.getElementById('btn-compose');
+        const btnExportWav = document.getElementById('btn-export-wav');
         const dragGhostEl = document.getElementById('drag-ghost');
         const tokenCountEl = document.getElementById('token-count');
 
-        // Mode Toggles
         const btnCallResp = document.getElementById('btn-call-resp');
         const btnBpmRamp = document.getElementById('btn-bpm-ramp');
         const btnBoss = document.getElementById('btn-boss');
@@ -1155,13 +1154,11 @@
             noise.start(now); noise.stop(now + 0.04);
         }
 
-        /* --- MULTI-SOUND PACK SYNTHESIS (ACOUSTIC, 808 TRAP, CHIPTUNE 8-BIT) --- */
-        function triggerDrumSound(drumId) {
+        function triggerDrumSound(drumId, targetTime = null) {
             initAudio();
-            const now = audioCtx.currentTime;
+            const now = targetTime !== null ? targetTime : audioCtx.currentTime;
 
             if (equippedKitSound === '808') {
-                // 808 Trap Sound Pack
                 if (drumId === 'kick') {
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
@@ -1194,20 +1191,16 @@
                     noise.start(now);
                 }
             } else if (equippedKitSound === 'chiptune') {
-                // Chiptune 8-Bit Retro Sound Pack
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.type = 'square';
-                
                 const freqMap = { kick: 80, snare: 240, tom1: 300, tom2: 220, floorTom: 150, ride: 600, crash: 800, closedHiHat: 900, openHiHat: 700 };
                 osc.frequency.setValueAtTime(freqMap[drumId] || 200, now);
                 gain.gain.setValueAtTime(0.3, now);
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-
                 osc.connect(gain); gain.connect(audioCtx.destination);
                 osc.start(now); osc.stop(now + 0.12);
             } else {
-                // Standard Acoustic Kit
                 if (drumId === 'kick') {
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
@@ -1298,6 +1291,98 @@
                     noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
                     noise.start(now);
                 }
+            }
+        }
+
+        /* --- EXPORT COMPOSED DRUM BEAT TO WAV FILE --- */
+        function exportComposedBeatWav() {
+            if (customComposedHits.length === 0) return;
+
+            initAudio();
+            const barDurationSec = (60 / currentBPM) * 4; // 1 bar duration in seconds
+            const sampleRate = audioCtx.sampleRate;
+            const offlineCtx = new OfflineAudioContext(2, sampleRate * barDurationSec, sampleRate);
+
+            // Temporarily redirect synthesis output to offline context
+            const originalAudioCtx = audioCtx;
+            audioCtx = offlineCtx;
+
+            customComposedHits.forEach(hit => {
+                const hitTimeSec = (hit.slot * (barDurationSec / 16));
+                triggerDrumSound(hit.drumId, hitTimeSec);
+            });
+
+            audioCtx = originalAudioCtx; // Restore audio context
+
+            offlineCtx.startRendering().then(renderedBuffer => {
+                const wavBlob = bufferToWav(renderedBuffer);
+                const url = URL.createObjectURL(wavBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Composed_Drumbeat - ${currentBPM}BPM.wav`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                statusEl.textContent = `Exported: Composed_Drumbeat - ${currentBPM}BPM.wav`;
+            });
+        }
+
+        function bufferToWav(buffer) {
+            const numChannels = buffer.numberOfChannels;
+            const sampleRate = buffer.sampleRate;
+            const format = 1; // PCM
+            const bitDepth = 16;
+            const bytesPerSample = bitDepth / 8;
+            const blockAlign = numChannels * bytesPerSample;
+            const dataLength = buffer.length * blockAlign;
+            const bufferLength = 44 + dataLength;
+
+            const arrayBuffer = new ArrayBuffer(bufferLength);
+            const view = new DataView(arrayBuffer);
+
+            function writeString(offset, string) {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            }
+
+            writeString(0, 'RIFF');
+            view.setUint32(4, 36 + dataLength, true);
+            writeString(8, 'WAVE');
+            writeString(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, format, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * blockAlign, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitDepth, true);
+            writeString(36, 'data');
+            view.setUint32(40, dataLength, true);
+
+            const channels = [];
+            for (let i = 0; i < numChannels; i++) {
+                channels.push(buffer.getChannelData(i));
+            }
+
+            let offset = 44;
+            for (let i = 0; i < buffer.length; i++) {
+                for (let channel = 0; channel < numChannels; channel++) {
+                    let sample = Math.max(-1, Math.min(1, channels[channel][i]));
+                    sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+                    view.setInt16(offset, sample, true);
+                    offset += 2;
+                }
+            }
+
+            return new Blob([arrayBuffer], { type: 'audio/wav' });
+        }
+
+        function updateExportWavButtonVisibility() {
+            if (isComposeMode && customComposedHits.length > 0) {
+                btnExportWav.style.display = 'inline-flex';
+            } else {
+                btnExportWav.style.display = 'none';
             }
         }
 
@@ -1764,10 +1849,10 @@
             }
 
             dragSource = null;
+            updateExportWavButtonVisibility();
             drawSheetMusic(0);
         });
 
-        /* --- VIRTUAL DRUMMER CALL & RESPONSE & BOSS LOGIC IN RENDER LOOP --- */
         function renderLoop(now) {
             if (!isPlaying || isPaused || isComposeMode) return;
 
@@ -1791,7 +1876,6 @@
                 }
             }
 
-            // Call & Response Muting Logic: Even Bars (1,3,5) = CALL (App plays), Odd Bars (2,4,6) = RESPONSE (Student plays)
             const isResponseBar = (currentBarNumber % 2 === 0);
 
             if (isCallResponseMode) {
@@ -1842,7 +1926,6 @@
             if (lastNote && effectiveElapsed > (lastNote.timeMs / speedFactor) + 1200) {
                 if (isGameMode || isBossMode) showGameResultsPopUp();
                 
-                // BPM Ramp Up Auto Progression
                 if (isBpmRampMode && gameStats.miss === 0) {
                     currentBPM = Math.min(240, currentBPM + 5);
                     speedSlider.value = currentBPM;
@@ -1932,6 +2015,7 @@
                 isComposeMode = false;
                 btnCompose.textContent = 'Compose';
                 btnCompose.classList.remove('btn-compose-active');
+                updateExportWavButtonVisibility();
             }
             startCountInThenPlay();
         }
@@ -1976,7 +2060,6 @@
             const totalHits = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = totalHits > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
 
-            // Award Rhythm Tokens for successful performance
             if (accuracy >= 80) {
                 const earned = Math.round(accuracy / 10);
                 rhythmTokens += earned;
@@ -2008,7 +2091,6 @@
             }
         });
 
-        // --- NEW FEATURE BUTTON TOGGLES ---
         btnCallResp.addEventListener('click', () => {
             isCallResponseMode = !isCallResponseMode;
             btnCallResp.classList.toggle('btn-mode-toggle-active', isCallResponseMode);
@@ -2072,14 +2154,18 @@
                 songSelect.value = "Custom Composed Beat";
                 activeConfig = ONE_BAR_PATTERNS["Custom Composed Beat"];
                 statusEl.textContent = "Click and Drag the DRUM parts below to the Sheet Music";
+                updateExportWavButtonVisibility();
                 drawSheetMusic(0);
             } else {
                 btnCompose.textContent = 'Compose';
                 btnCompose.classList.remove('btn-compose-active');
                 statusEl.textContent = "Compose Mode OFF.";
+                updateExportWavButtonVisibility();
                 drawSheetMusic(0);
             }
         });
+
+        btnExportWav.addEventListener('click', exportComposedBeatWav);
 
         document.getElementById('btn-game').addEventListener('click', () => {
             isGameMode = !isGameMode;
@@ -2088,7 +2174,12 @@
                 btn.textContent = 'Game Mode: ON';
                 btn.classList.add('btn-game-active');
                 if (isStepMode) { isStepMode = false; document.getElementById('btn-step').classList.remove('btn-step-active'); }
-                if (isComposeMode) { isComposeMode = false; btnCompose.textContent = 'Compose'; btnCompose.classList.remove('btn-compose-active'); }
+                if (isComposeMode) { 
+                    isComposeMode = false; 
+                    btnCompose.textContent = 'Compose'; 
+                    btnCompose.classList.remove('btn-compose-active'); 
+                    updateExportWavButtonVisibility();
+                }
                 setMetronomeState(true);
                 statusEl.textContent = "GAME MODE ACTIVE! Press Play for Count-In.";
             } else {
@@ -2104,7 +2195,12 @@
             if (isStepMode) {
                 btn.classList.add('btn-step-active');
                 if (isGameMode) { isGameMode = false; document.getElementById('btn-game').classList.remove('btn-game-active'); }
-                if (isComposeMode) { isComposeMode = false; btnCompose.textContent = 'Compose'; btnCompose.classList.remove('btn-compose-active'); }
+                if (isComposeMode) { 
+                    isComposeMode = false; 
+                    btnCompose.textContent = 'Compose'; 
+                    btnCompose.classList.remove('btn-compose-active'); 
+                    updateExportWavButtonVisibility();
+                }
                 if (isPlaying) updateStepStatusUI();
             } else {
                 btn.classList.remove('btn-step-active');
