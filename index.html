@@ -781,6 +781,28 @@
             align-items: center;
             gap: 8px;
         }
+
+        .race-results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 0.85rem;
+        }
+
+        .race-results-table th {
+            background: #181f2e;
+            color: #9ca3af;
+            padding: 6px 10px;
+            border-bottom: 1px solid #374151;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .race-results-table td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #1f2937;
+            color: #f3f4f6;
+        }
     </style>
 </head>
 <body>
@@ -953,7 +975,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 08:15 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 08:25 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1031,24 +1053,6 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" id="btn-settings-close">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Calibration Wizard Modal -->
-    <div class="modal-overlay" id="calib-modal">
-        <div class="modal" style="max-width: 680px;">
-            <h2>MIDI Keyboard Calibration</h2>
-            <p id="calib-instructions" style="font-size: 0.9rem; color: #38bdf8; font-weight: 600;">
-                Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...
-            </p>
-
-            <div class="calib-piano-container">
-                <div class="calib-piano" id="calib-keyboard"></div>
-            </div>
-
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" id="btn-calib-cancel">Cancel Calibration</button>
             </div>
         </div>
     </div>
@@ -1515,8 +1519,8 @@
             activeMiniGame = 'sprint';
 
             playersList = [
-                { id: 'p1', name: 'YOU', avatar: '🏃', pxProgress: 0, isLocal: true },
-                { id: 'bot', name: 'ROBO-OPPONENT', avatar: '🤖', pxProgress: 0, isBot: true }
+                { id: 'p1', name: 'YOU', avatar: '🏃', pxProgress: 0, finishTime: null, isLocal: true },
+                { id: 'bot', name: 'ROBO-OPPONENT', avatar: '🤖', pxProgress: 0, finishTime: null, isBot: true }
             ];
             localPlayerId = 'p1';
 
@@ -1531,13 +1535,14 @@
                 const botInt = setInterval(() => {
                     if (!raceActive) { clearInterval(botInt); return; }
                     const bot = playersList.find(p => p.id === 'bot');
-                    if (bot) {
+                    if (bot && !bot.finishTime) {
                         bot.pxProgress += 2.2 + Math.random() * 0.8;
                         updateMultiplayerLanesUI();
                         if (bot.pxProgress >= 3600) {
+                            bot.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
                             raceActive = false;
                             clearInterval(botInt);
-                            finishSprintRace("🤖 ROBO-OPPONENT WINS!");
+                            finishSprintRace();
                         }
                     }
                 }, 120);
@@ -1572,7 +1577,7 @@
 
             isSprintHost = true;
             localPlayerId = 'p1';
-            playersList = [{ id: 'p1', name: nameInput, avatar: AVATARS[0], pxProgress: 0, isLocal: true }];
+            playersList = [{ id: 'p1', name: nameInput, avatar: AVATARS[0], pxProgress: 0, finishTime: null, isLocal: true }];
             renderLobbyGrid('lobby-players-grid');
 
             peerInstance = new Peer(roomCode);
@@ -1583,22 +1588,26 @@
                 conn.on('data', (data) => {
                     if (data.type === 'JOIN') {
                         const newPId = 'p' + (playersList.length + 1);
-                        const newP = { id: newPId, name: data.name, avatar: AVATARS[playersList.length], pxProgress: 0, isLocal: false };
+                        const newP = { id: newPId, name: data.name, avatar: AVATARS[playersList.length], pxProgress: 0, finishTime: null, isLocal: false };
                         playersList.push(newP);
 
                         renderLobbyGrid('lobby-players-grid');
-                        // Immediate Lobby Sync to all clients
                         broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList });
                     } else if (data.type === 'PROGRESS') {
                         const player = playersList.find(p => p.id === data.id);
                         if (player) {
                             player.pxProgress = data.pxProgress;
+                            if (data.finishTime && !player.finishTime) {
+                                player.finishTime = data.finishTime;
+                            }
                             broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
                             updateMultiplayerLanesUI();
+
+                            // Check if all players completed or host player finished
                             if (player.pxProgress >= 3600 && raceActive) {
                                 raceActive = false;
-                                broadcastPeerMsg({ type: 'RACE_FINISHED', winnerName: player.name });
-                                finishSprintRace(`🥇 ${player.name} WINS THE RACE!`);
+                                broadcastPeerMsg({ type: 'RACE_FINISHED', players: playersList });
+                                finishSprintRace();
                             }
                         }
                     }
@@ -1656,7 +1665,8 @@
                             updateMultiplayerLanesUI();
                         } else if (data.type === 'RACE_FINISHED') {
                             raceActive = false;
-                            finishSprintRace(`🥇 ${data.winnerName} WINS THE RACE!`);
+                            playersList = data.players;
+                            finishSprintRace();
                         }
                     });
                 });
@@ -1664,7 +1674,6 @@
         }
 
         function triggerHostStartRace() {
-            // Broadcast start signal to peers FIRST before destroying lobby state
             broadcastPeerMsg({ type: 'START_RACE' });
 
             closeSprintOptionModal();
@@ -1758,19 +1767,54 @@
             }, 800);
         }
 
-        function finishSprintRace(winnerText) {
+        function finishSprintRace() {
             raceActive = false;
-            const totalTimeSeconds = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
             currentSongTitle = "Finger Sprint";
-            
-            document.getElementById('game-summary-text').innerHTML = `${winnerText}<br>Sprint Time: <span style="color:#facc15; font-size:1.3rem;">${totalTimeSeconds} Seconds</span>`;
+
+            // Sort all competitors by finish time (or progress if un-finished)
+            const sortedResults = [...playersList].sort((a, b) => {
+                if (a.finishTime && b.finishTime) return parseFloat(a.finishTime) - parseFloat(b.finishTime);
+                if (a.finishTime) return -1;
+                if (b.finishTime) return 1;
+                return b.pxProgress - a.pxProgress;
+            });
+
+            let tableRows = sortedResults.map((p, idx) => {
+                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
+                const timeLabel = p.finishTime ? `${p.finishTime}s` : 'DNF';
+                return `<tr>
+                    <td style="font-weight:800;">${medal}</td>
+                    <td>${p.avatar} ${p.name}</td>
+                    <td style="color:#22c55e; font-weight:700;">${timeLabel}</td>
+                </tr>`;
+            }).join('');
+
+            const resultsHTML = `
+                <div style="margin-bottom:8px; font-weight:800; font-size:1.1rem; color:#facc15;">🏁 Live Race Standings</div>
+                <table class="race-results-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Racer</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            `;
+
+            document.getElementById('game-summary-text').innerHTML = resultsHTML;
             document.getElementById('bar-green').style.height = '100%';
             document.getElementById('bar-orange').style.height = '0%';
             document.getElementById('bar-red').style.height = '0%';
 
             document.getElementById('game-rank-text').textContent = `Finger Sprint Finish!`;
             gameResultsModal.classList.add('open');
-            postScoreToLeaderboard(parseFloat(totalTimeSeconds));
+
+            const localPlayer = playersList.find(p => p.id === localPlayerId);
+            if (localPlayer && localPlayer.finishTime) {
+                postScoreToLeaderboard(parseFloat(localPlayer.finishTime));
+            }
             activeMiniGame = null;
         }
 
@@ -1791,8 +1835,12 @@
                 localPlayer.pxProgress = sprintKeystrokeCount * 36;
                 updateMultiplayerLanesUI();
 
+                if (localPlayer.pxProgress >= 3600 && !localPlayer.finishTime) {
+                    localPlayer.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
+                }
+
                 if (!isSprintHost && peerConnections.length > 0) {
-                    peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: localPlayer.pxProgress });
+                    peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: localPlayer.pxProgress, finishTime: localPlayer.finishTime });
                 } else if (isSprintHost) {
                     broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
                 }
@@ -1800,9 +1848,9 @@
                 if (localPlayer.pxProgress >= 3600) {
                     raceActive = false;
                     if (isSprintHost) {
-                        broadcastPeerMsg({ type: 'RACE_FINISHED', winnerName: localPlayer.name });
+                        broadcastPeerMsg({ type: 'RACE_FINISHED', players: playersList });
                     }
-                    finishSprintRace(`🥇 YOU WIN THE RACE! Fantastic Sprint!`);
+                    finishSprintRace();
                     return;
                 }
 
@@ -2537,7 +2585,7 @@
             if (!isPaused) {
                 isPaused = true;
                 pauseStartTime = performance.now();
-                btnPause.textContent = 'Pause';
+                btnPause.textContent = 'Resume';
                 btnPause.classList.remove('btn-warning');
                 btnPause.classList.add('btn-success');
                 if (animationFrameId !== null) {
