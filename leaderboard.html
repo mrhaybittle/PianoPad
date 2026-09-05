@@ -321,7 +321,22 @@
                 ? [...pool] 
                 : pool.filter(s => s.song === filterValue);
 
+            // CUSTOM SORTING ENGINE BASED ON GAME TYPE
             filtered.sort((a, b) => {
+                const titleA = a.song.toLowerCase();
+                const titleB = b.song.toLowerCase();
+
+                // 1. Mystery Note -> LOWEST guesses first (Ascending)
+                if (titleA.includes('mystery note') || titleB.includes('mystery note')) {
+                    return a.accuracy - b.accuracy;
+                }
+
+                // 2. Finger Sprint -> SHORTEST time in seconds first (Ascending)
+                if (titleA.includes('finger sprint') || titleB.includes('finger sprint')) {
+                    return a.accuracy - b.accuracy;
+                }
+
+                // 3. Simon Taps & Main Songs -> HIGHEST level / score first (Descending)
                 if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
                 return b.speed - a.speed;
             });
