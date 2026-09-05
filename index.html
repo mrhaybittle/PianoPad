@@ -834,9 +834,9 @@
                 </div>
 
                 <div class="game-card" onclick="startDropDodge()">
-                    <h3>🛡️ Drop Dodge</h3>
-                    <p>Wide walls fall slowly! You have 5 Lives to dodge blocks by hitting the safe empty key gap.</p>
-                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Drop Dodge</button>
+                    <h3>🌲 Maze Runner (Drop Dodge)</h3>
+                    <p>Navigate obstacles! Play keys to run your character into safe gaps while dodging trees, rocks, and rivers.</p>
+                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Maze Runner</button>
                 </div>
 
                 <div class="game-card" onclick="startComboStrike()">
@@ -878,7 +878,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.05 | 5-Sep 10:25 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.05 | 5-Sep 10:59 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1070,7 +1070,7 @@
         let activeHurdles = [];
         let runnerLegToggle = false;
 
-        let miniGameFallSpeedMs = 3800;
+        let miniGameFallSpeedMs = 4500;
 
         const cMajorScaleNotes = ['c1', 'd1', 'e1', 'f1', 'g1', 'a1', 'b1', 'c2'];
         const arcadeHub = document.getElementById('arcade-hub');
@@ -1080,6 +1080,10 @@
         const runnerTrack = document.getElementById('runner-track');
         const runnerSprite = document.getElementById('runner-sprite');
         const hurdleContainer = document.getElementById('hurdle-container');
+
+        // Character position for Drop Dodge Maze Navigation
+        let dropCharacterNote = 'c2';
+        let bgAudioTimer = null;
 
         document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
         document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
@@ -1099,9 +1103,30 @@
             else playSong();
         });
 
+        function stopBackgroundMusic() {
+            if (bgAudioTimer) {
+                clearInterval(bgAudioTimer);
+                bgAudioTimer = null;
+            }
+        }
+
+        function startBackgroundMusic() {
+            stopBackgroundMusic();
+            let noteIndex = 0;
+            const bgNotes = [130.81, 146.83, 164.81, 174.61, 196.00, 174.61, 164.81, 146.83]; // C3 Major bassline
+            bgAudioTimer = setInterval(() => {
+                if (activeMiniGame === 'drop' && isPlaying && !isPaused) {
+                    const freq = bgNotes[noteIndex % bgNotes.length];
+                    playTone(freq, 0.2, 0.12); // Soft background synth note
+                    noteIndex++;
+                }
+            }, 300);
+        }
+
         function openArcadeHub() {
             initAudio();
             stopSong();
+            stopBackgroundMusic();
             mainControlsBar.style.display = 'none';
             timelineBox.style.display = 'none';
             arcadeControlsBar.style.display = 'flex';
@@ -1120,6 +1145,7 @@
         }
 
         function exitActiveMiniGame() {
+            stopBackgroundMusic();
             activeMiniGame = null;
             isPlaying = false;
             runnerTrack.style.display = 'none';
@@ -1301,7 +1327,7 @@
             }
         }
 
-        /* 3. SLOWER DROP DODGE MINI-GAME WITH 5 LIVES */
+        /* 3. MAZE RUNNER (DROP DODGE) MINI-GAME */
         function startDropDodge() {
             initAudio();
             exitActiveMiniGame();
@@ -1309,21 +1335,32 @@
             activeMiniGame = 'drop';
             dodgeLives = 5;
             dodgeDodgedCount = 0;
+            dropCharacterNote = 'c2';
             resetGameStats();
 
-            miniGameFallSpeedMs = 3800;
+            miniGameFallSpeedMs = 4500;
             currentSong = [];
-            const whiteKeys = keyLayout.filter(k => k.type === 'white').map(k => k.note);
+            const allKeys = keyLayout.map(k => k.note);
+            const obstacleTypes = ['tree', 'rock', 'river'];
 
-            for (let i = 0; i < 20; i++) {
-                const safeKeyIdx = Math.floor(Math.random() * whiteKeys.length);
-                const safeKey = whiteKeys[safeKeyIdx];
-                const wallNotes = whiteKeys.filter(k => k !== safeKey);
+            for (let i = 0; i < 30; i++) {
+                const safeKeyIdx = Math.floor(Math.random() * (allKeys.length - 2));
+                const safeKey = allKeys[safeKeyIdx];
+                
+                // Block array mapping each obstacle note to a visual obstacle type
+                const obstacles = [];
+                allKeys.forEach(note => {
+                    if (note !== safeKey) {
+                        const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+                        obstacles.push({ note, type });
+                    }
+                });
 
                 currentSong.push({
-                    notes: wallNotes,
+                    notes: obstacles.map(o => o.note),
+                    obstacles: obstacles,
                     safeKey: safeKey,
-                    rest: 2200
+                    rest: 2800
                 });
             }
 
@@ -1331,7 +1368,8 @@
             isPlaying = true;
             playbackStartTime = performance.now();
             lastFrameTime = performance.now();
-            document.getElementById('status').textContent = `🛡️ DROP DODGE ACTIVE! Lives: ❤️ ${dodgeLives} | Dodges: 0`;
+            startBackgroundMusic();
+            document.getElementById('status').textContent = `🌲 MAZE RUNNER ACTIVE! Lives: ❤️ ${dodgeLives} | Gaps Cleared: 0`;
             requestAnimationFrame(renderLoop);
         }
 
@@ -1859,7 +1897,7 @@
             }
 
             const parsed = parsePianoPad(code);
-            if (parsed.length === 0) {
+            if (parsed.length > 0) {
                 teacherErrorDiv.textContent = "Invalid HayCode format!";
                 teacherErrorDiv.style.display = "block";
                 return;
@@ -2030,10 +2068,14 @@
             const missedHits = gameStats.miss;
             const totalHits = perfectHits + earlyLateHits + missedHits;
 
-            const accuracy = totalHits > 0 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
+            const accuracy = activeMiniGame === 'drop' ? dodgeDodgedCount : (totalHits > 0 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalHits) * 100).toFixed(1) : '0.0');
             const accuracyNum = parseFloat(accuracy);
 
-            document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
+            if (currentSongTitle === "Drop Dodge") {
+                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Obstacles Cleared: <span style="color:#22c55e; font-size:1.4rem;">${dodgeDodgedCount} Gaps</span>`;
+            } else {
+                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
+            }
 
             const greenPct = totalHits > 0 ? (perfectHits / totalHits) * 100 : 0;
             const orangePct = totalHits > 0 ? (earlyLateHits / totalHits) * 100 : 0;
@@ -2475,33 +2517,35 @@
             }
 
             if (activeMiniGame === 'drop') {
+                dropCharacterNote = noteStr;
                 const effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
-                const activeWall = noteTimeline.find(item => item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 600);
+                const activeWall = noteTimeline.find(item => item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 650);
 
-                if (activeWall && activeWall.safeKey) {
+                if (activeWall) {
                     if (noteStr.toLowerCase().trim() === activeWall.safeKey.toLowerCase().trim()) {
                         activeWall.gameStatus = 'perfect';
                         dodgeDodgedCount++;
                         gameStats.perfect++;
                         highlightKey(noteStr, 220, '#22c55e');
-                        document.getElementById('status').textContent = `🛡️ Safe Dodge! Total Dodges: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
+                        document.getElementById('status').textContent = `🌲 MAZE RUNNER: Safe Passage! Gaps Cleared: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
                     } else {
                         activeWall.gameStatus = 'miss';
                         dodgeLives--;
                         gameStats.miss++;
                         playErrorClackSound();
                         highlightKey(noteStr, 220, '#ef4444');
-                        document.getElementById('status').textContent = `💥 Wall Impact! Lives left: ❤️ ${dodgeLives} | Dodges: ${dodgeDodgedCount}`;
+                        document.getElementById('status').textContent = `💥 COLLISION! Hit obstacle! Lives left: ❤️ ${dodgeLives} | Gaps Cleared: ${dodgeDodgedCount}`;
 
                         if (dodgeLives <= 0) {
                             isPlaying = false;
+                            stopBackgroundMusic();
                             currentSongTitle = "Drop Dodge";
                             showGameResultsPopUp();
                             activeMiniGame = null;
                         }
                     }
                 } else {
-                    highlightKey(noteStr, 200, '#ef4444');
+                    highlightKey(noteStr, 200, '#eab308');
                 }
                 return;
             }
@@ -2702,6 +2746,7 @@
 
                 noteTimeline.push({
                     notes: item.notes,
+                    obstacles: item.obstacles || null,
                     safeKey: item.safeKey || null,
                     hitTime: cumulativeMs,
                     duration: Math.max(140, (item.rest || 250) * 0.85 / speedFactor),
@@ -2727,6 +2772,7 @@
         function stopSong() {
             isPlaying = false;
             isPaused = false;
+            stopBackgroundMusic();
             btnPause.textContent = 'Pause';
             btnPause.classList.remove('btn-success');
             btnPause.classList.add('btn-warning');
@@ -2775,9 +2821,52 @@
             requestAnimationFrame(renderLoop);
         }
 
-        function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending') {
+        function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending', obstacleType = null) {
             ctx.save();
             
+            if (activeMiniGame === 'drop' && obstacleType) {
+                ctx.beginPath();
+                const radius = Math.min(4, width / 2, height / 2);
+                ctx.moveTo(x + radius, y);
+                ctx.lineTo(x + width - radius, y);
+                ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+                ctx.lineTo(x + width, y + height - radius);
+                ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                ctx.lineTo(x + radius, y + height);
+                ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+                ctx.lineTo(x, y + radius);
+                ctx.quadraticCurveTo(x, y, x + radius, y);
+                ctx.closePath();
+
+                if (obstacleType === 'tree') {
+                    ctx.fillStyle = '#15803d';
+                    ctx.fill();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '12px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🌲', x + width / 2, y + height / 2);
+                } else if (obstacleType === 'rock') {
+                    ctx.fillStyle = '#475569';
+                    ctx.fill();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '12px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🪨', x + width / 2, y + height / 2);
+                } else if (obstacleType === 'river') {
+                    ctx.fillStyle = '#0284c7';
+                    ctx.fill();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '12px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('🌊', x + width / 2, y + height / 2);
+                }
+                ctx.restore();
+                return;
+            }
+
             const palette = themePalettes[currentTheme] || themePalettes.default;
             let blockColor = palette.normal;
             let shadowColor = palette.shadowNormal;
@@ -2828,6 +2917,22 @@
                 const label = match ? match[1].toUpperCase() : noteName.toUpperCase();
                 ctx.fillText(label, x + width / 2, y + height / 2);
             }
+            ctx.restore();
+        }
+
+        function drawDropCharacter() {
+            if (activeMiniGame !== 'drop') return;
+            const charPos = keyPosMap[dropCharacterNote.toLowerCase().trim()];
+            if (!charPos) return;
+
+            const charX = charPos.left + charPos.width / 2;
+            const charY = canvas.height - 18;
+
+            ctx.save();
+            ctx.font = '22px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🏃', charX, charY);
             ctx.restore();
         }
 
@@ -2883,28 +2988,54 @@
             const currentFallSpeed = activeMiniGame === 'drop' ? miniGameFallSpeedMs : FALL_TIME_MS;
 
             noteTimeline.forEach(item => {
-                const backgroundVol = (isGameMode || activeMiniGame) ? 0.2 : 1.0;
+                const backgroundVol = (isGameMode || activeMiniGame) ? 0.0 : 1.0;
 
                 if (!isStepMode && effectiveElapsed >= item.hitTime && !item.played) {
                     item.played = true;
-                    item.notes.forEach(noteStr => {
-                        const freq = getNoteFrequency(noteStr);
-                        if (freq) {
-                            playTone(freq, item.duration / 1000, backgroundVol);
-                            if (!isGameMode && !activeMiniGame) {
-                                highlightKey(noteStr, item.duration);
+                    if (activeMiniGame !== 'drop') {
+                        item.notes.forEach(noteStr => {
+                            const freq = getNoteFrequency(noteStr);
+                            if (freq) {
+                                playTone(freq, item.duration / 1000, backgroundVol);
+                                if (!isGameMode && !activeMiniGame) {
+                                    highlightKey(noteStr, item.duration);
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
                 }
 
                 if ((isGameMode || activeMiniGame) && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 280)) {
-                    item.gameStatus = 'miss';
-                    gameStats.miss++;
-                    if (isGameMode) updateGameStatus();
+                    if (activeMiniGame === 'drop') {
+                        // Check if character note was in the safe gap
+                        if (dropCharacterNote.toLowerCase().trim() === item.safeKey.toLowerCase().trim()) {
+                            item.gameStatus = 'perfect';
+                            dodgeDodgedCount++;
+                            gameStats.perfect++;
+                            document.getElementById('status').textContent = `🌲 MAZE RUNNER: Safe Gap Cleared! Gaps Cleared: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
+                        } else {
+                            item.gameStatus = 'miss';
+                            dodgeLives--;
+                            gameStats.miss++;
+                            playErrorClackSound();
+                            document.getElementById('status').textContent = `💥 COLLISION! Swallowed by Maze! Lives left: ❤️ ${dodgeLives} | Gaps Cleared: ${dodgeDodgedCount}`;
+
+                            if (dodgeLives <= 0) {
+                                isPlaying = false;
+                                stopBackgroundMusic();
+                                currentSongTitle = "Drop Dodge";
+                                showGameResultsPopUp();
+                                activeMiniGame = null;
+                            }
+                        }
+                    } else {
+                        item.gameStatus = 'miss';
+                        gameStats.miss++;
+                        if (isGameMode) updateGameStatus();
+                    }
                 }
 
-                item.notes.forEach(noteStr => {
+                item.notes.forEach((noteStr, nIdx) => {
                     const normNote = noteStr.toLowerCase().trim();
                     const pos = keyPosMap[normNote];
 
@@ -2918,16 +3049,23 @@
                             const drawY = Math.max(0, yTop);
                             const drawH = Math.min(canvasHeight - drawY, yBottom - drawY);
                             const active = effectiveElapsed >= item.hitTime && effectiveElapsed <= (item.hitTime + item.duration);
-                            drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, noteStr, active, item.gameStatus);
+                            
+                            const obsType = (item.obstacles && item.obstacles[nIdx]) ? item.obstacles[nIdx].type : null;
+                            drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, noteStr, active, item.gameStatus, obsType);
                         }
                     }
                 });
             });
 
+            if (activeMiniGame === 'drop') {
+                drawDropCharacter();
+            }
+
             if (!isStepMode && !isLooping) {
                 const lastNote = noteTimeline[noteTimeline.length - 1];
                 if (lastNote && effectiveElapsed > lastNote.hitTime + lastNote.duration + 500) {
                     isPlaying = false;
+                    stopBackgroundMusic();
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                     if (isGameMode) {
