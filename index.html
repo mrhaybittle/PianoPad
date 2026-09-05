@@ -761,6 +761,26 @@
             50% { transform: scale(1.1); opacity: 1; }
             100% { transform: scale(1); opacity: 0.8; }
         }
+
+        .lobby-players-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            margin: 10px 0;
+            text-align: left;
+        }
+
+        .lobby-player-card {
+            background: #0b0f19;
+            border: 1px solid #374151;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
     </style>
 </head>
 <body>
@@ -933,7 +953,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 07:50 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 08:00 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -944,11 +964,12 @@
         <div class="modal" style="text-align: center;">
             <h2>🏃 Finger Sprint Setup</h2>
             <p style="font-size: 0.85rem; color: #9ca3af;">Select your race mode:</p>
-            <div style="display: flex; flex-direction: column; gap: 10px; margin: 10px 0;">
+            <div style="display: flex; flex-direction: column; gap: 10px; margin: 10px 0;" id="sprint-menu-buttons">
                 <button type="button" class="btn-arcade" onclick="initSinglePlayerSprint()">🤖 Challenge Robot Opponent</button>
                 <button type="button" class="btn-success" onclick="showHostSetup()">👑 Host Live Race</button>
                 <button type="button" class="btn-midi" onclick="showJoinSetup()">🎮 Join Live Race</button>
             </div>
+            
             <div id="sprint-form-container" style="display: none; flex-direction: column; gap: 8px; text-align: left;">
                 <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Your First Name & Surname Initial:</label>
                 <input type="text" id="sprint-player-name" placeholder="e.g. Alex M." style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem;">
@@ -960,12 +981,19 @@
 
                 <div id="host-lobby-group" style="display:none; flex-direction:column; gap:4px; text-align:center;">
                     <div style="font-size:1.1rem; color:#facc15; font-weight:800;" id="generated-room-code-display">Room Code: Generating...</div>
-                    <p style="font-size:0.75rem; color:#9ca3af;" id="lobby-count-text">Connected Players: 1 / 8</p>
-                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-center;" onclick="triggerHostStartRace()">🚀 START LIVE RACE FOR ALL PLAYERS</button>
+                    <div class="lobby-players-grid" id="lobby-players-grid"></div>
+                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-content:center;" onclick="triggerHostStartRace()">🚀 START LIVE RACE FOR ALL PLAYERS</button>
                 </div>
 
-                <button type="button" class="btn-success" id="btn-confirm-sprint-action" style="margin-top:6px; justify-content:center;">Confirm & Continue</button>
+                <div id="client-waiting-group" style="display:none; flex-direction:column; gap:6px; text-align:center;">
+                    <p style="font-size:0.85rem; color:#22c55e; font-weight:700;">Connected to Host Room!</p>
+                    <div class="lobby-players-grid" id="client-lobby-grid"></div>
+                    <p style="font-size:0.75rem; color:#9ca3af;">Waiting for race host to press start...</p>
+                </div>
+
+                <button type="button" class="btn-success" id="btn-confirm-sprint-action" style="margin-top:6px; justify-content:center;">Confirm & Join Room</button>
             </div>
+
             <div class="modal-footer" style="justify-content: center;">
                 <button type="button" class="btn-secondary" onclick="closeSprintOptionModal()">Cancel</button>
             </div>
@@ -1471,6 +1499,7 @@
         /* 5. MULTI-PLAYER / BOT SPRINT SYSTEM */
         function openSprintModeSelector() {
             initAudio();
+            document.getElementById('sprint-menu-buttons').style.display = 'flex';
             document.getElementById('sprint-form-container').style.display = 'none';
             document.getElementById('sprint-option-modal').classList.add('open');
         }
@@ -1515,9 +1544,23 @@
             });
         }
 
+        function renderLobbyGrid(gridElementId) {
+            const grid = document.getElementById(gridElementId);
+            if (!grid) return;
+            grid.innerHTML = '';
+            playersList.forEach((player) => {
+                const card = document.createElement('div');
+                card.className = 'lobby-player-card';
+                card.innerHTML = `<span>${player.avatar}</span><span>${player.name}</span>`;
+                grid.appendChild(card);
+            });
+        }
+
         function showHostSetup() {
+            document.getElementById('sprint-menu-buttons').style.display = 'none';
             document.getElementById('sprint-form-container').style.display = 'flex';
             document.getElementById('code-input-group').style.display = 'none';
+            document.getElementById('client-waiting-group').style.display = 'none';
             document.getElementById('host-lobby-group').style.display = 'flex';
             document.getElementById('btn-confirm-sprint-action').style.display = 'none';
 
@@ -1530,6 +1573,7 @@
             isSprintHost = true;
             localPlayerId = 'p1';
             playersList = [{ id: 'p1', name: nameInput, avatar: AVATARS[0], pxProgress: 0, isLocal: true }];
+            renderLobbyGrid('lobby-players-grid');
 
             peerInstance = new Peer(roomCode);
             peerInstance.on('connection', (conn) => {
@@ -1542,9 +1586,8 @@
                         const newP = { id: newPId, name: data.name, avatar: AVATARS[playersList.length], pxProgress: 0, isLocal: false };
                         playersList.push(newP);
 
-                        // Broadcast updated lobby list
+                        renderLobbyGrid('lobby-players-grid');
                         broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList });
-                        document.getElementById('lobby-count-text').textContent = `Connected Players: ${playersList.length} / 8`;
                     } else if (data.type === 'PROGRESS') {
                         const player = playersList.find(p => p.id === data.id);
                         if (player) {
@@ -1563,9 +1606,11 @@
         }
 
         function showJoinSetup() {
+            document.getElementById('sprint-menu-buttons').style.display = 'none';
             document.getElementById('sprint-form-container').style.display = 'flex';
             document.getElementById('code-input-group').style.display = 'flex';
             document.getElementById('host-lobby-group').style.display = 'none';
+            document.getElementById('client-waiting-group').style.display = 'none';
             document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
             
             document.getElementById('btn-confirm-sprint-action').onclick = () => {
@@ -1582,10 +1627,9 @@
 
                     conn.on('open', () => {
                         conn.send({ type: 'JOIN', name: nameInput });
-                        closeSprintOptionModal();
-                        exitActiveMiniGame();
-                        arcadeHub.classList.remove('open');
-                        activeMiniGame = 'sprint';
+                        document.getElementById('code-input-group').style.display = 'none';
+                        document.getElementById('btn-confirm-sprint-action').style.display = 'none';
+                        document.getElementById('client-waiting-group').style.display = 'flex';
                         document.getElementById('status').textContent = `Connected to Race Host (${roomCode})! Waiting for race to start...`;
                     });
 
@@ -1594,8 +1638,12 @@
                             playersList = data.players;
                             const myEntry = playersList.find(p => p.name === sessionStudentName);
                             if (myEntry) localPlayerId = myEntry.id;
-                            renderSprintLanes();
+                            renderLobbyGrid('client-lobby-grid');
                         } else if (data.type === 'START_RACE') {
+                            closeSprintOptionModal();
+                            exitActiveMiniGame();
+                            arcadeHub.classList.remove('open');
+                            activeMiniGame = 'sprint';
                             renderSprintLanes();
                             startCountdown(() => {
                                 raceActive = true;
@@ -2484,7 +2532,7 @@
             if (!isPaused) {
                 isPaused = true;
                 pauseStartTime = performance.now();
-                btnPause.textContent = 'Resume';
+                btnPause.textContent = 'Pause';
                 btnPause.classList.remove('btn-warning');
                 btnPause.classList.add('btn-success');
                 if (animationFrameId !== null) {
