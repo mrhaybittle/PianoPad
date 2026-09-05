@@ -953,7 +953,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 08:00 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 08:15 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1587,6 +1587,7 @@
                         playersList.push(newP);
 
                         renderLobbyGrid('lobby-players-grid');
+                        // Immediate Lobby Sync to all clients
                         broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList });
                     } else if (data.type === 'PROGRESS') {
                         const player = playersList.find(p => p.id === data.id);
@@ -1641,7 +1642,6 @@
                             renderLobbyGrid('client-lobby-grid');
                         } else if (data.type === 'START_RACE') {
                             closeSprintOptionModal();
-                            exitActiveMiniGame();
                             arcadeHub.classList.remove('open');
                             activeMiniGame = 'sprint';
                             renderSprintLanes();
@@ -1664,12 +1664,13 @@
         }
 
         function triggerHostStartRace() {
+            // Broadcast start signal to peers FIRST before destroying lobby state
+            broadcastPeerMsg({ type: 'START_RACE' });
+
             closeSprintOptionModal();
-            exitActiveMiniGame();
             arcadeHub.classList.remove('open');
             activeMiniGame = 'sprint';
 
-            broadcastPeerMsg({ type: 'START_RACE' });
             renderSprintLanes();
             startCountdown(() => {
                 raceActive = true;
@@ -1680,7 +1681,11 @@
         }
 
         function broadcastPeerMsg(msg) {
-            peerConnections.forEach(conn => conn.send(msg));
+            peerConnections.forEach(conn => {
+                if (conn && conn.open) {
+                    conn.send(msg);
+                }
+            });
         }
 
         function renderSprintLanes() {
