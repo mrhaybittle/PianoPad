@@ -878,7 +878,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.05 | 5-Sep 11:05 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.05 | 5-Sep 11:22 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -956,7 +956,6 @@
                 </div>
             </div>
 
-            <!-- UPDATED MODAL FOOTER: Guaranteed new tab navigation link -->
             <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
                 <a href="leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">View Entire Leaderboard</a>
                 <button type="button" class="btn-warning" id="btn-game-try-again">Play Again</button>
@@ -1327,7 +1326,7 @@
             }
         }
 
-        /* 3. MAZE RUNNER (DROP DODGE) MINI-GAME - UPDATED PROGRESSIVE GAP LOGIC */
+        /* 3. MAZE RUNNER (DROP DODGE) MINI-GAME - WHITE-KEY ONLY OBSTACLE SAMPLING FOR ABSOLUTE OPEN GAPS */
         function startDropDodge() {
             initAudio();
             exitActiveMiniGame();
@@ -1340,26 +1339,28 @@
 
             miniGameFallSpeedMs = 4500;
             currentSong = [];
-            const allKeys = keyLayout.map(k => k.note);
+            
+            // Sample sampling domain exclusively from white keys to guarantee clear, visible gaps
+            const whiteKeys = keyLayout.filter(k => k.type === 'white').map(k => k.note);
             const obstacleTypes = ['tree', 'rock', 'river'];
 
             for (let i = 0; i < 30; i++) {
-                // Determine number of safe gaps dynamically:
-                // Sections 1-3: 3 safe gaps
-                // Sections 4-6: 2 safe gaps
-                // Sections 7+: 1 safe gap
+                // Progressive gap schedule:
+                // Sections 1-3 (i = 0, 1, 2): 3 open gaps
+                // Sections 4-6 (i = 3, 4, 5): 2 open gaps
+                // Sections 7+  (i >= 6):     1 open gap
                 let gapCount = 1;
                 if (i < 3) gapCount = 3;
                 else if (i < 6) gapCount = 2;
 
                 const safeKeys = [];
-                const shuffledKeys = [...allKeys].sort(() => 0.5 - Math.random());
+                const shuffledWhiteKeys = [...whiteKeys].sort(() => 0.5 - Math.random());
                 for (let g = 0; g < gapCount; g++) {
-                    safeKeys.push(shuffledKeys[g]);
+                    safeKeys.push(shuffledWhiteKeys[g]);
                 }
 
                 const obstacles = [];
-                allKeys.forEach(note => {
+                whiteKeys.forEach(note => {
                     if (!safeKeys.includes(note)) {
                         const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
                         obstacles.push({ note, type });
@@ -3017,7 +3018,6 @@
 
                 if ((isGameMode || activeMiniGame) && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 280)) {
                     if (activeMiniGame === 'drop') {
-                        // Check if character note lands safely in one of the open gaps
                         if (item.safeKeys && item.safeKeys.some(sk => sk.toLowerCase().trim() === dropCharacterNote.toLowerCase().trim())) {
                             item.gameStatus = 'perfect';
                             dodgeDodgedCount++;
