@@ -258,7 +258,7 @@
                 <select id="filter-song">
                     <option value="ALL">All Songs</option>
                 </select>
-                <button id="btn-toggle-mode" class="btn btn-arcade">
+                <button id="btn-toggle-mode" type="button" class="btn btn-arcade">
                     🎮 MINI-GAME Leaderboard
                 </button>
                 <a href="index.html" class="btn btn-back">← Back to Player</a>
@@ -298,7 +298,7 @@
         const MINI_GAMES = [
             { key: 'simon taps', title: '🧠 Simon Taps', unit: 'Level', sortAsc: false },
             { key: 'mystery note', title: '🔍 Mystery Note', unit: 'Guesses', sortAsc: true },
-            { key: 'drop dodge', title: '🛡️ Drop Dodge', unit: 'Dodges', sortAsc: false },
+            { key: 'maze runner', altKeys: ['maze runner', 'drop dodge'], title: '🌲 Maze Runner', unit: 'Gaps', sortAsc: false },
             { key: 'combo strike', title: '⚡ Combo Strike', unit: 'Score', sortAsc: false },
             { key: 'finger sprint', title: '🏃 Finger Sprint', unit: 'Seconds', sortAsc: true }
         ];
@@ -336,7 +336,13 @@
 
                 if (row.length >= 4) {
                     const songTitle = row[2] ? row[2].trim().replace(/^"|"$/g, '') : 'Unknown';
-                    const isMiniGame = MINI_GAMES.some(g => songTitle.toLowerCase().includes(g.key));
+                    const isMiniGame = MINI_GAMES.some(g => {
+                        const titleLower = songTitle.toLowerCase();
+                        if (g.altKeys) {
+                            return g.altKeys.some(k => titleLower.includes(k));
+                        }
+                        return titleLower.includes(g.key);
+                    });
 
                     records.push({
                         timestamp: row[0] ? row[0].trim().replace(/^"|"$/g, '') : '',
@@ -425,7 +431,13 @@
                 colDiv.appendChild(header);
 
                 // Filter scores for this specific mini-game
-                let gameScores = allScores.filter(s => s.song.toLowerCase().includes(gameConfig.key));
+                let gameScores = allScores.filter(s => {
+                    const titleLower = s.song.toLowerCase();
+                    if (gameConfig.altKeys) {
+                        return gameConfig.altKeys.some(k => titleLower.includes(k));
+                    }
+                    return titleLower.includes(gameConfig.key);
+                });
 
                 // Apply custom game sorting
                 gameScores.sort((a, b) => {
@@ -454,6 +466,7 @@
                         let formattedVal = `${score.accuracy.toFixed(1)}%`;
                         if (gameConfig.key === 'simon taps') formattedVal = `Lvl ${Math.round(score.accuracy)}`;
                         else if (gameConfig.key === 'mystery note') formattedVal = `${Math.round(score.accuracy)} Guesses`;
+                        else if (gameConfig.key === 'maze runner') formattedVal = `${Math.round(score.accuracy)} Gaps`;
                         else if (gameConfig.key === 'finger sprint') formattedVal = `${score.accuracy.toFixed(2)}s`;
 
                         row.innerHTML = `
