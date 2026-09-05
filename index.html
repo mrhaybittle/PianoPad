@@ -834,7 +834,7 @@
                 </div>
 
                 <div class="game-card" onclick="startDropDodge()">
-                    <h3>🌲 Maze Runner (Drop Dodge)</h3>
+                    <h3>🌲 Maze Runner</h3>
                     <p>Navigate obstacles! Play keys to run your character into safe gaps while dodging trees, rocks, and rivers.</p>
                     <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Maze Runner</button>
                 </div>
@@ -878,7 +878,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.05 | 5-Sep 11:22 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.05 | 5-Sep 11:32 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -956,8 +956,9 @@
                 </div>
             </div>
 
+            <!-- MODAL FOOTER: Dynamically cache-busted URL to guarantee real-time fresh score rendering -->
             <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
-                <a href="leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">View Entire Leaderboard</a>
+                <a id="btn-view-leaderboard-link" href="leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">View Entire Leaderboard</a>
                 <button type="button" class="btn-warning" id="btn-game-try-again">Play Again</button>
                 <button type="button" class="btn-arcade" id="btn-game-arcade-menu">Mini-Game Menu</button>
                 <button type="button" class="btn-success" id="btn-game-results-close">Continue</button>
@@ -1096,7 +1097,7 @@
             gameResultsModal.classList.remove('open');
             if (currentSongTitle === "Mystery Note") startMysteryNote();
             else if (currentSongTitle === "Simon Taps") startSimonTaps();
-            else if (currentSongTitle === "Drop Dodge") startDropDodge();
+            else if (currentSongTitle === "Maze Runner" || currentSongTitle === "Drop Dodge") startDropDodge();
             else if (currentSongTitle === "Combo Strike") startComboStrike();
             else if (currentSongTitle === "Finger Sprint") startFingerSprint();
             else playSong();
@@ -1264,8 +1265,7 @@
                 document.getElementById('bar-red').style.height = '0%';
 
                 document.getElementById('game-rank-text').textContent = `Simon Taps Level Logged!`;
-                gameResultsModal.classList.add('open');
-                postScoreToLeaderboard(maxLevelRemembered);
+                showGameResultsPopUpCustom(maxLevelRemembered);
                 activeMiniGame = null;
             }
         }
@@ -1311,8 +1311,7 @@
 
                 document.getElementById('game-rank-text').textContent = `Mystery Note Cleared!`;
 
-                gameResultsModal.classList.add('open');
-                postScoreToLeaderboard(mysteryGuessCount);
+                showGameResultsPopUpCustom(mysteryGuessCount);
                 activeMiniGame = null;
             } else if (diff <= 2) {
                 highlightKey(noteStr, 250, '#ef4444');
@@ -1326,7 +1325,7 @@
             }
         }
 
-        /* 3. MAZE RUNNER (DROP DODGE) MINI-GAME - WHITE-KEY ONLY OBSTACLE SAMPLING FOR ABSOLUTE OPEN GAPS */
+        /* 3. MAZE RUNNER (DROP DODGE) MINI-GAME */
         function startDropDodge() {
             initAudio();
             exitActiveMiniGame();
@@ -1340,15 +1339,10 @@
             miniGameFallSpeedMs = 4500;
             currentSong = [];
             
-            // Sample sampling domain exclusively from white keys to guarantee clear, visible gaps
             const whiteKeys = keyLayout.filter(k => k.type === 'white').map(k => k.note);
             const obstacleTypes = ['tree', 'rock', 'river'];
 
             for (let i = 0; i < 30; i++) {
-                // Progressive gap schedule:
-                // Sections 1-3 (i = 0, 1, 2): 3 open gaps
-                // Sections 4-6 (i = 3, 4, 5): 2 open gaps
-                // Sections 7+  (i >= 6):     1 open gap
                 let gapCount = 1;
                 if (i < 3) gapCount = 3;
                 else if (i < 6) gapCount = 2;
@@ -1516,8 +1510,7 @@
                     document.getElementById('bar-red').style.height = '0%';
 
                     document.getElementById('game-rank-text').textContent = `Finger Sprint Completed!`;
-                    gameResultsModal.classList.add('open');
-                    postScoreToLeaderboard(parseFloat(totalTimeSeconds));
+                    showGameResultsPopUpCustom(parseFloat(totalTimeSeconds));
                     activeMiniGame = null;
                     return;
                 }
@@ -2004,7 +1997,7 @@
             rankDiv.textContent = "Calculating Rank...";
 
             try {
-                const response = await fetch(LEADERBOARD_CSV_URL);
+                const response = await fetch(LEADERBOARD_CSV_URL + '?t=' + Date.now());
                 if (!response.ok) throw new Error('Fetch failed');
 
                 const csvText = await response.text();
@@ -2064,7 +2057,7 @@
             }
         }
 
-        function showGameResultsPopUp() {
+        function showGameResultsPopUpCustom(customScoreVal = null) {
             if (!sessionStudentName) {
                 const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
                 if (inputName && inputName.trim()) {
@@ -2079,12 +2072,12 @@
             const missedHits = gameStats.miss;
             const totalHits = perfectHits + earlyLateHits + missedHits;
 
-            const accuracy = activeMiniGame === 'drop' ? dodgeDodgedCount : (totalHits > 0 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalHits) * 100).toFixed(1) : '0.0');
-            const accuracyNum = parseFloat(accuracy);
-
-            if (currentSongTitle === "Drop Dodge") {
-                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Obstacles Cleared: <span style="color:#22c55e; font-size:1.4rem;">${dodgeDodgedCount} Gaps</span>`;
+            let scoreNum = 0;
+            if (customScoreVal !== null) {
+                scoreNum = customScoreVal;
             } else {
+                const accuracy = totalHits > 0 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
+                scoreNum = parseFloat(accuracy);
                 document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
             }
 
@@ -2109,11 +2102,26 @@
                 badgeContainer.innerHTML = `<div style="font-size:0.8rem; color:#9ca3af; margin-top:4px;">Practice Speed: ${currentSpeed}% (Reach 50%+ for Practice Badges)</div>`;
             }
 
+            // Update leaderboard button link with cache buster query string
+            const leaderboardLink = document.getElementById('btn-view-leaderboard-link');
+            if (leaderboardLink) {
+                leaderboardLink.href = `leaderboard.html?t=${Date.now()}`;
+            }
+
             gameResultsModal.classList.add('open');
 
-            calculateAndDisplayRank(accuracyNum).then(() => {
-                postScoreToLeaderboard(accuracyNum);
+            calculateAndDisplayRank(scoreNum).then(() => {
+                postScoreToLeaderboard(scoreNum);
             });
+        }
+
+        function showGameResultsPopUp() {
+            let customVal = null;
+            if (activeMiniGame === 'drop' || currentSongTitle === "Maze Runner" || currentSongTitle === "Drop Dodge") {
+                customVal = dodgeDodgedCount;
+                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>Obstacles Cleared: <span style="color:#22c55e; font-size:1.4rem;">${dodgeDodgedCount} Gaps</span>`;
+            }
+            showGameResultsPopUpCustom(customVal);
         }
 
         function toggleLoopMode() {
@@ -2550,7 +2558,7 @@
                         if (dodgeLives <= 0) {
                             isPlaying = false;
                             stopBackgroundMusic();
-                            currentSongTitle = "Drop Dodge";
+                            currentSongTitle = "Maze Runner";
                             showGameResultsPopUp();
                             activeMiniGame = null;
                         }
@@ -3033,7 +3041,7 @@
                             if (dodgeLives <= 0) {
                                 isPlaying = false;
                                 stopBackgroundMusic();
-                                currentSongTitle = "Drop Dodge";
+                                currentSongTitle = "Maze Runner";
                                 showGameResultsPopUp();
                                 activeMiniGame = null;
                             }
@@ -3082,7 +3090,7 @@
                         showGameResultsPopUp();
                         return;
                     } else if (activeMiniGame) {
-                        currentSongTitle = activeMiniGame === 'drop' ? "Drop Dodge" : "Combo Strike";
+                        currentSongTitle = activeMiniGame === 'drop' ? "Maze Runner" : "Combo Strike";
                         showGameResultsPopUp();
                         activeMiniGame = null;
                         return;
