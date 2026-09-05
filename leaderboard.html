@@ -3,78 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PianoPad Player - Visualizer & Haycode Creator</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
+    <title>PianoPad 26 - Global Leaderboard</title>
     <style>
         :root {
             --bg-color: #121218;
             --panel-bg: #1f1f2e;
-            --accent-color: #4f46e5;
-            --accent-hover: #6366f1;
+            --accent-color: #ec4899;
+            --accent-hover: #db2777;
+            --arcade-color: #8b5cf6;
+            --arcade-hover: #7c3aed;
             --text-main: #f3f4f6;
-            --key-white: #f8fafc;
-            --key-black: #0f172a;
-            --highlight: #22c55e;
-            --step-active: #eab308;
-            --recording-active: #ef4444;
-            --loop-active: #06b6d4;
-            --game-active: #ec4899;
-            --arcade-active: #8b5cf6;
-            --canvas-bg: #0a0a10;
-            --hitline-color: #ef4444;
-        }
-
-        /* Custom Theme Overrides */
-        body[data-theme="cyberpunk"] {
-            --bg-color: #0c0721;
-            --panel-bg: #180e36;
-            --accent-color: #00f0ff;
-            --accent-hover: #70f3ff;
-            --text-main: #f0f8ff;
-            --key-white: #e0f7fc;
-            --key-black: #09021a;
-            --highlight: #ff007f;
-            --canvas-bg: #050212;
-            --hitline-color: #ff007f;
-        }
-
-        body[data-theme="synthwave"] {
-            --bg-color: #1a0933;
-            --panel-bg: #2b0938;
-            --accent-color: #ff007f;
-            --accent-hover: #ff3399;
-            --text-main: #fce7f3;
-            --key-white: #fdf2f8;
-            --key-black: #120324;
-            --highlight: #ff7700;
-            --canvas-bg: #0f0421;
-            --hitline-color: #ff007f;
-        }
-
-        body[data-theme="matrix"] {
-            --bg-color: #020b02;
-            --panel-bg: #081808;
-            --accent-color: #00ff41;
-            --accent-hover: #33ff67;
-            --text-main: #e6ffe8;
-            --key-white: #edffef;
-            --key-black: #020f03;
-            --highlight: #00ff41;
-            --canvas-bg: #010801;
-            --hitline-color: #00ff41;
-        }
-
-        body[data-theme="gold"] {
-            --bg-color: #14100c;
-            --panel-bg: #241c15;
-            --accent-color: #f59e0b;
-            --accent-hover: #fbbf24;
-            --text-main: #fef3c7;
-            --key-white: #fffbeb;
-            --key-black: #17110a;
-            --highlight: #eab308;
-            --canvas-bg: #0d0a07;
-            --hitline-color: #d97706;
+            --gold: #fbbf24;
+            --silver: #cbd5e1;
+            --bronze: #d97706;
         }
 
         * {
@@ -87,29 +28,23 @@
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
-            height: 100vh;
-            max-height: 100vh;
-            overflow: hidden;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 8px 12px;
-            transition: background-color 0.3s, color 0.3s;
+            padding: 20px 12px;
         }
 
         .container {
             width: 100%;
-            max-width: 1400px;
-            max-height: calc(100vh - 16px);
+            max-width: 950px;
             background-color: var(--panel-bg);
             border-radius: 14px;
             box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.6);
-            padding: 12px 18px;
+            padding: 20px 24px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            transition: background-color 0.3s;
+            gap: 16px;
         }
 
         header {
@@ -117,591 +52,147 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 12px;
             border-bottom: 1px solid #374151;
-            padding-bottom: 8px;
+            padding-bottom: 12px;
         }
 
         h1 {
-            font-size: 1.3rem;
+            font-size: 1.5rem;
             font-weight: 700;
-            letter-spacing: -0.025em;
+            color: #f3f4f6;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .controls {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 10px;
             flex-wrap: wrap;
         }
 
-        .speed-control {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background-color: #0b0f19;
-            padding: 5px 10px;
-            border-radius: 6px;
-            border: 1px solid #374151;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .speed-control label {
-            white-space: nowrap;
-            color: #cbd5e1;
-        }
-
-        .speed-control input[type="range"] {
-            width: 75px;
-            accent-color: var(--accent-color);
-            cursor: pointer;
-        }
-
         select {
-            padding: 6px 10px;
+            padding: 8px 12px;
             border-radius: 6px;
             border: 1px solid #374151;
             background-color: #0b0f19;
             color: var(--text-main);
             font-weight: 600;
-            font-size: 0.8rem;
-            cursor: pointer;
+            font-size: 0.85rem;
             outline: none;
-            max-width: 180px;
+            cursor: pointer;
         }
 
-        select:focus {
-            border-color: var(--accent-color);
-        }
-
-        #song-select {
-            color: #facc15 !important;
-            border: 2px solid #eab308 !important;
-            background-color: #181504 !important;
-            font-weight: 700 !important;
-            box-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
-        }
-
-        #song-select option {
-            background-color: #0b0f19;
-            color: #f3f4f6;
-        }
-
-        button, .btn-link, .btn-file-label {
+        .btn {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            padding: 6px 10px;
+            gap: 6px;
+            padding: 8px 14px;
             border-radius: 6px;
-            border: none;
-            background-color: var(--accent-color);
-            color: white;
-            font-weight: 600;
-            font-size: 0.8rem;
-            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.85rem;
             text-decoration: none;
+            cursor: pointer;
+            border: none;
             transition: background-color 0.2s, transform 0.1s;
         }
 
-        button:hover, .btn-link:hover, .btn-file-label:hover {
-            background-color: var(--accent-hover);
-        }
-
-        button:active, .btn-link:active, .btn-file-label:active {
+        .btn:active {
             transform: scale(0.98);
         }
 
-        .btn-secondary { background-color: #4b5563; }
-        .btn-secondary:hover { background-color: #6b7280; }
-        .btn-warning { background-color: #f59e0b; }
-        .btn-warning:hover { background-color: #d97706; }
-        .btn-success { background-color: #10b981; }
-        .btn-success:hover { background-color: #059669; }
-        .btn-danger { background-color: #ef4444; }
-        .btn-danger:hover { background-color: #dc2626; }
-        .btn-share { background-color: #8b5cf6; }
-        .btn-share:hover { background-color: #7c3aed; }
-        .btn-teacher { background-color: #a855f7; }
-        .btn-teacher:hover { background-color: #9333ea; }
-        .btn-midi { background-color: #06b6d4; }
-        .btn-midi:hover { background-color: #0891b2; }
-        .btn-settings { background-color: #3b82f6; }
-        .btn-settings:hover { background-color: #2563eb; }
+        .btn-back {
+            background-color: #4f46e5;
+            color: white;
+        }
+        .btn-back:hover { background-color: #6366f1; }
 
         .btn-arcade {
-            background: linear-gradient(135deg, #8b5cf6, #ec4899) !important;
-            color: #ffffff !important;
-            font-weight: 800 !important;
-            box-shadow: 0 0 12px rgba(236, 72, 153, 0.5);
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            color: white;
+            box-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
         }
         .btn-arcade:hover {
-            background: linear-gradient(135deg, #7c3aed, #db2777) !important;
+            background: linear-gradient(135deg, #7c3aed, #db2777);
         }
 
-        .btn-step { background-color: #ec4899 !important; color: #ffffff !important; font-weight: 700; }
-        .btn-step:hover { background-color: #db2777 !important; }
-
-        .btn-step-active { background-color: #f43f5e !important; color: #ffffff !important; box-shadow: 0 0 12px #f43f5e; }
-        .btn-step-active:hover { background-color: #e11d48 !important; }
-
-        .btn-game-active { background-color: var(--game-active) !important; color: #fff; box-shadow: 0 0 12px var(--game-active); }
-        .btn-game-active:hover { background-color: #db2777 !important; }
-
-        .btn-rec-active {
-            background-color: var(--recording-active) !important;
-            color: #ffffff !important;
-            box-shadow: 0 0 14px rgba(239, 68, 68, 0.8);
+        .btn-song-mode {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+        .btn-song-mode:hover {
+            background: linear-gradient(135deg, #059669, #047857);
         }
 
-        .btn-rec-active span {
-            animation: textBlink 0.8s infinite ease-in-out;
-        }
-
-        @keyframes textBlink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.2; }
-        }
-
-        .btn-loop-active { background-color: var(--loop-active); color: #000; }
-
-        .icon {
-            width: 14px;
-            height: 14px;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        .timeline-container {
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #374151;
             background-color: #0b0f19;
-            border: 1px solid #374151;
-            border-radius: 8px;
-            padding: 6px 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
         }
 
-        .timeline-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: #cbd5e1;
-        }
-
-        .timeline-sliders {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .timeline-sliders input[type="range"] {
-            flex: 1;
-            accent-color: var(--loop-active);
-            cursor: pointer;
-        }
-
-        .visualizer-wrapper {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #000;
-            border-radius: 10px;
-            padding: 4px;
-            box-shadow: inset 0 2px 8px rgba(0,0,0,0.9);
-            overflow-x: auto;
+        table {
             width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
         }
 
-        #waterfall-canvas {
-            background-color: var(--canvas-bg);
-            border-bottom: 3px solid var(--hitline-color);
-            display: block;
-            transition: background-color 0.3s, border-color 0.3s;
-        }
-
-        .piano {
-            display: flex;
-            position: relative;
-            background-color: #000;
-            user-select: none;
-        }
-
-        .key {
-            cursor: pointer;
-            border-radius: 0 0 5px 5px;
-            transition: background-color 0.08s;
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            padding-bottom: 6px;
-            font-weight: 700;
-            font-size: 0.75rem;
-            position: relative;
-        }
-
-        .key.white {
-            width: 44px;
-            height: 130px;
-            background-color: var(--key-white);
-            border: 1px solid #cbd5e1;
-            color: #0f172a;
-            z-index: 1;
-        }
-
-        .key.white.active {
-            background-color: var(--highlight) !important;
-            color: #ffffff;
-            box-shadow: 0 0 12px var(--highlight);
-        }
-
-        .key.black {
-            width: 28px;
-            height: 80px;
-            background-color: var(--key-black);
-            margin-left: -14px;
-            margin-right: -14px;
-            color: #ffffff;
-            font-size: 0.62rem;
-            padding-bottom: 4px;
-            z-index: 2;
-            border: 1px solid #334155;
-        }
-
-        .key.black.active {
-            background-color: var(--highlight) !important;
-            color: #ffffff;
-            box-shadow: 0 0 12px var(--highlight);
-        }
-
-        .key .bind-hint {
-            position: absolute;
-            top: 5px;
-            font-size: 0.65rem;
-            opacity: 0.65;
-            text-transform: uppercase;
-        }
-
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.75);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
-        }
-
-        .modal-overlay.open {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .modal {
-            background: var(--panel-bg);
-            border-radius: 12px;
-            width: 90%;
-            max-width: 580px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-
-        .modal textarea {
-            width: 100%;
-            height: 110px;
-            background: #0b0f19;
-            border: 1px solid #374151;
-            border-radius: 8px;
-            color: #e5e7eb;
-            padding: 10px;
-            font-family: monospace;
-            font-size: 0.8rem;
-            resize: vertical;
-        }
-
-        .modal-footer {
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .status-bar {
-            font-size: 0.85rem;
+        th {
+            background-color: #181f2e;
             color: #9ca3af;
-            text-align: center;
-            min-height: 1.8rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
+            font-weight: 700;
+            padding: 12px 16px;
+            border-bottom: 1px solid #374151;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
         }
 
-        .footer-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding-top: 4px;
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #1f2937;
+            color: #e5e7eb;
         }
 
-        .version-stamp {
-            font-size: 0.72rem;
-            color: #6b7280;
-            font-weight: 600;
-            font-family: monospace;
+        tr:last-child td {
+            border-bottom: none;
         }
 
-        .calib-piano-container {
-            width: 100%;
-            overflow-x: auto;
-            background: #000;
-            padding: 10px;
-            border-radius: 8px;
-            display: flex;
-            justify-content: center;
+        tr:hover {
+            background-color: #131b2e;
         }
 
-        .calib-piano {
-            display: flex;
-            position: relative;
-            user-select: none;
-        }
-
-        .calib-key {
-            border-radius: 0 0 3px 3px;
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            font-size: 0.55rem;
-            font-weight: bold;
-            padding-bottom: 2px;
-        }
-
-        .calib-key.white {
-            width: 12px;
-            height: 55px;
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            color: #0f172a;
-            z-index: 1;
-        }
-
-        .calib-key.black {
-            width: 8px;
-            height: 35px;
-            background: #0f172a;
-            margin-left: -4px;
-            margin-right: -4px;
-            z-index: 2;
-        }
-
-        .calib-key.blue-highlight {
-            background-color: #3b82f6 !important;
-            color: white !important;
-            box-shadow: 0 0 8px #3b82f6;
-        }
-
-        .graph-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .bar-chart-wrapper {
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            height: 160px;
-            width: 100px;
-            background: #0b0f19;
-            border: 1px solid #374151;
-            border-radius: 8px;
-            padding: 8px;
-            position: relative;
-        }
-
-        .stacked-bar {
-            width: 45px;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            height: 100%;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .bar-part-red {
-            background-color: #ef4444;
-            width: 100%;
-            transition: height 0.4s ease;
-        }
-
-        .bar-part-orange {
-            background-color: #f97316;
-            width: 100%;
-            transition: height 0.4s ease;
-        }
-
-        .bar-part-green {
-            background-color: #22c55e;
-            width: 100%;
-            transition: height 0.4s ease;
-        }
-
-        .badge-box {
+        .rank-badge {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 700;
-            margin-top: 6px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
-        }
-
-        .badge-gold { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #000; }
-        .badge-silver { background: linear-gradient(135deg, #94a3b8, #cbd5e1); color: #000; }
-        .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
-
-        .rank-display-box {
-            font-size: 1.1rem;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
             font-weight: 800;
-            color: #facc15;
-            margin-top: 8px;
-            padding: 6px 12px;
-            background: #0b0f19;
-            border: 1px solid #eab308;
-            border-radius: 8px;
-            display: inline-block;
+            font-size: 0.85rem;
+            color: #000;
         }
 
-        .arcade-hub-overlay {
-            display: none;
-            flex-direction: column;
-            gap: 16px;
-            background: #090814;
-            border: 2px solid #8b5cf6;
-            border-radius: 12px;
-            padding: 16px;
-            box-shadow: inset 0 0 25px rgba(139, 92, 246, 0.3);
+        .rank-1 { background-color: var(--gold); box-shadow: 0 0 8px var(--gold); }
+        .rank-2 { background-color: var(--silver); box-shadow: 0 0 8px var(--silver); }
+        .rank-3 { background-color: var(--bronze); box-shadow: 0 0 8px var(--bronze); color: #fff; }
+        .rank-other { background-color: transparent; color: #9ca3af; }
+
+        .score-highlight {
+            color: #22c55e;
+            font-weight: 700;
         }
 
-        .arcade-hub-overlay.open {
-            display: flex;
-        }
-
-        .arcade-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 14px;
-        }
-
-        .game-card {
-            background: #141226;
-            border: 1px solid #374151;
-            border-radius: 10px;
-            padding: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            cursor: pointer;
-            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
-        }
-
-        .game-card:hover {
-            transform: translateY(-4px);
-            border-color: #ec4899;
-            box-shadow: 0 8px 20px rgba(236, 72, 153, 0.3);
-        }
-
-        .game-card h3 {
-            font-size: 1.05rem;
-            color: #f3f4f6;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .game-card p {
-            font-size: 0.78rem;
+        .status-msg {
+            text-align: center;
             color: #9ca3af;
-            line-height: 1.3;
-            flex: 1;
-        }
-
-        .runner-track-wrapper {
-            position: relative;
-            width: 100%;
-            height: 52px;
-            background: #0b0f19;
-            border: 1px solid #374151;
-            border-radius: 8px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            padding: 0 10px;
-            margin-top: 6px;
-        }
-
-        .runner-finish-line {
-            position: absolute;
-            right: 14px;
-            top: 0;
-            bottom: 0;
-            width: 12px;
-            background: repeating-linear-gradient(0deg, #fff, #fff 8px, #000 8px, #000 16px);
-        }
-
-        .runner-avatar {
-            position: absolute;
-            left: 10px;
-            font-size: 1.8rem;
-            transition: left 0.18s linear, transform 0.25s ease-out;
-            user-select: none;
-            transform: scaleX(-1);
-            z-index: 5;
-        }
-
-        .runner-avatar.jumping {
-            transform: scaleX(-1) translateY(-22px) rotate(-10deg);
-        }
-
-        .hurdle-obstacle {
-            position: absolute;
-            bottom: 4px;
-            width: 26px;
-            height: 30px;
-            background: #ef4444;
-            border: 2px solid #ffffff;
-            border-radius: 4px 4px 0 0;
-            color: #ffffff;
-            font-weight: 900;
-            font-size: 0.8rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
-            z-index: 2;
-            transition: opacity 0.3s;
+            padding: 20px;
+            font-size: 0.9rem;
         }
     </style>
 </head>
@@ -709,1892 +200,58 @@
 
     <div class="container">
         <header>
-            <h1>PianoPad 26</h1>
-            <div class="controls" id="main-controls-bar">
-                <select id="song-select">
-                    <option value="">Choose a Song</option>
+            <h1 id="leaderboard-title">🏆 PianoPad Song High Scores</h1>
+            <div class="controls">
+                <select id="filter-song">
+                    <option value="ALL">All Songs</option>
                 </select>
-
-                <select id="instrument-select">
-                    <option value="piano">Grand Piano</option>
-                    <option value="synth">Synth Lead</option>
-                    <option value="organ">Church Organ</option>
-                    <option value="marimba">Marimba</option>
-                    <option value="chiptune">8-Bit Chiptune</option>
-                </select>
-
-                <select id="theme-select">
-                    <option value="default">Theme: Default Dark</option>
-                    <option value="cyberpunk">Theme: Cyberpunk Neon</option>
-                    <option value="synthwave">Theme: Retro Synthwave</option>
-                    <option value="matrix">Theme: Matrix Green</option>
-                    <option value="gold">Theme: Classic Gold</option>
-                </select>
-
-                <div class="speed-control">
-                    <label for="speed-slider">Speed: <span id="speed-label">100%</span></label>
-                    <input type="range" id="speed-slider" min="10" max="500" value="100" step="5">
-                </div>
-
-                <button id="btn-game" class="btn-secondary">
-                    <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                    Game Mode: OFF
+                <button id="btn-toggle-mode" class="btn btn-arcade">
+                    🎮 MINI-GAME Leaderboard
                 </button>
-
-                <button id="btn-loop" class="btn-secondary">
-                    <svg class="icon" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
-                    Loop: OFF
-                </button>
-
-                <button id="btn-step" class="btn-step">
-                    <svg class="icon" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
-                    Step Mode
-                </button>
-
-                <button id="btn-record" class="btn-secondary">
-                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
-                    <span id="record-btn-text">Record</span>
-                </button>
-
-                <button id="btn-add-teacher-song" class="btn-teacher">
-                    <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    Add SONG (Teacher)
-                </button>
-
-                <button id="btn-share" class="btn-share" style="display: none;">
-                    <svg class="icon" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-                    Share Haycode
-                </button>
-
-                <label class="btn-file-label btn-midi">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-                    Import MIDI
-                    <input type="file" id="midi-input" accept=".mid,.midi" style="display: none;">
-                </label>
-
-                <button id="btn-import">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    Import Code
-                </button>
-
-                <button id="btn-settings" class="btn-settings" title="Settings">
-                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                </button>
-
-                <a href="https://pianopadshare.blogspot.com/" target="_blank" rel="noopener noreferrer" class="btn-link btn-secondary">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-                    Get Songs
-                </a>
-
-                <button id="btn-play" class="btn-success">
-                    <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                    Play
-                </button>
-                <button id="btn-pause" class="btn-warning">
-                    <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
-                    Pause
-                </button>
-                <button id="btn-stop" class="btn-danger">
-                    <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
-                    Stop
-                </button>
-
-                <button id="btn-open-arcade" class="btn-arcade">
-                    🕹️ MINI-GAMES
-                </button>
-            </div>
-
-            <div class="controls" id="arcade-controls-bar" style="display: none;">
-                <button id="btn-home-screen" class="btn-success" style="font-weight: 800;">
-                    🏠 Return to Player
-                </button>
-                <button id="btn-stop-arcade" class="btn-danger">
-                    ⏹️ Exit Active Game
-                </button>
+                <a href="index.html" class="btn btn-back">← Back to Player</a>
             </div>
         </header>
 
-        <div class="arcade-hub-overlay" id="arcade-hub">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #374151; padding-bottom: 8px;">
-                <h2 style="font-size: 1.2rem; color: #ec4899; display: flex; align-items: center; gap: 8px;">🕹️ PianoPad Arcade Mini-Games</h2>
-                <span style="font-size: 0.8rem; color: #cbd5e1; font-weight: 600;">Choose a Mini-Game to Play!</span>
-            </div>
-
-            <div class="arcade-grid">
-                <div class="game-card" onclick="startSimonTaps()">
-                    <h3>🧠 Simon Taps</h3>
-                    <p>Watch the stepwise C Major sequence and climb the multi-colored level staircase step-by-step!</p>
-                    <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Simon Taps</button>
-                </div>
-
-                <div class="game-card" onclick="startMysteryNote()">
-                    <h3>🔍 Mystery Note</h3>
-                    <p>Listen to the hidden note! Use Warm/Cold proximity cues to find and hit the secret key.</p>
-                    <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Mystery Note</button>
-                </div>
-
-                <div class="game-card" onclick="startDropDodge()">
-                    <h3>🛡️ Drop Dodge</h3>
-                    <p>Wide walls fall slowly! You have 5 Lives to dodge blocks by hitting the safe empty key gap.</p>
-                    <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Drop Dodge</button>
-                </div>
-
-                <div class="game-card" onclick="startComboStrike()">
-                    <h3>⚡ Two-Note Combo</h3>
-                    <p>Pairs of notes fall together! Hit two-note intervals simultaneously with timing feedback.</p>
-                    <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Combo Strike</button>
-                </div>
-
-                <div class="game-card" onclick="startFingerSprint()">
-                    <h3>🏃 Finger Sprint</h3>
-                    <p>Alternate C1 & D1 to sprint! Jump hurdles when close by playing matching high-octave keys!</p>
-                    <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Finger Sprint</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="timeline-container" id="timeline-box">
-            <div class="timeline-header">
-                <span>Timeline Trim & Loop Region</span>
-                <span id="loop-range-label">0% - 100% (Entire Song)</span>
-            </div>
-            <div class="timeline-sliders">
-                <label style="font-size: 0.75rem; color: #9ca3af;">Start:</label>
-                <input type="range" id="loop-start" min="0" max="100" value="0">
-                <label style="font-size: 0.75rem; color: #9ca3af;">End:</label>
-                <input type="range" id="loop-end" min="0" max="100" value="100">
-            </div>
-        </div>
-
-        <div class="runner-track-wrapper" id="runner-track" style="display: none;">
-            <div class="runner-avatar" id="runner-sprite">🏃</div>
-            <div id="hurdle-container"></div>
-            <div class="runner-finish-line"></div>
-        </div>
-
-        <div class="visualizer-wrapper">
-            <canvas id="waterfall-canvas" width="1232" height="210"></canvas>
-            <div class="piano" id="keyboard"></div>
-        </div>
-
-        <div class="footer-bar">
-            <div class="version-stamp">v26.09.04 | 4-Sep 21:17 AEST (Sydney)</div>
-            <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
-            <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
-        </div>
-    </div>
-
-    <!-- Import Modal -->
-    <div class="modal-overlay" id="modal">
-        <div class="modal">
-            <h2>Import PianoPad Song</h2>
-            <p style="font-size: 0.85rem; color: #9ca3af;">Paste your PianoPad/Haycode music code below (Note sequence followed by Rests array):</p>
-            <textarea id="import-text" placeholder="Paste your song code here (e.g., G2,E2,g#2...Rests,0,250...)"></textarea>
-            <div class="modal-footer">
-                <button class="btn-secondary" id="btn-cancel">Cancel</button>
-                <button id="btn-load-play">Load & Play</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Settings Modal -->
-    <div class="modal-overlay" id="settings-modal">
-        <div class="modal">
-            <h2>Settings</h2>
-            <p style="font-size: 0.85rem; color: #9ca3af;">Configure hardware and MIDI inputs below:</p>
-            <div style="display: flex; flex-direction: column; gap: 10px; margin: 10px 0;">
-                <button id="btn-start-calib" class="btn-midi" style="justify-content: center; padding: 10px;">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20"></path></svg>
-                    Calibrate Piano (Lowest / Highest Keys)
-                </button>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-secondary" id="btn-settings-close">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Calibration Wizard Modal -->
-    <div class="modal-overlay" id="calib-modal">
-        <div class="modal" style="max-width: 680px;">
-            <h2>MIDI Keyboard Calibration</h2>
-            <p id="calib-instructions" style="font-size: 0.9rem; color: #38bdf8; font-weight: 600;">
-                Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...
-            </p>
-
-            <div class="calib-piano-container">
-                <div class="calib-piano" id="calib-keyboard"></div>
-            </div>
-
-            <div class="modal-footer">
-                <button class="btn-secondary" id="btn-calib-cancel">Cancel Calibration</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Game Mode Completion Pop-up Modal with Graph -->
-    <div class="modal-overlay" id="game-results-modal">
-        <div class="modal" style="text-align: center;">
-            <h2>Game Performance Summary</h2>
-            <p id="game-summary-text" style="font-size: 0.95rem; color: #e5e7eb; font-weight: 600;"></p>
-            
-            <div id="badge-container"></div>
-            <div id="game-rank-text" class="rank-display-box">Calculating Rank...</div>
-
-            <div class="graph-container">
-                <div class="bar-chart-wrapper">
-                    <div class="stacked-bar">
-                        <div id="bar-red" class="bar-part-red"></div>
-                        <div id="bar-orange" class="bar-part-orange"></div>
-                        <div id="bar-green" class="bar-part-green"></div>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 600;">
-                    <span style="color: #22c55e;">● Perfect</span>
-                    <span style="color: #f97316;">● Early/Late</span>
-                    <span style="color: #ef4444;">● Missed</span>
-                </div>
-            </div>
-
-            <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
-                <a href="leaderboard.html" target="_blank" class="btn-link btn-share">View Entire Leaderboard</a>
-                <button class="btn-warning" id="btn-game-try-again">Play Again</button>
-                <button class="btn-arcade" id="btn-game-arcade-menu">Mini-Game Menu</button>
-                <button class="btn-success" id="btn-game-results-close">Continue</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Export / Share Haycode Modal -->
-    <div class="modal-overlay" id="export-modal">
-        <div class="modal">
-            <h2>Recorded Performance Ready!</h2>
-            <p style="font-size: 0.85rem; color: #9ca3af;">Copy your generated Haycode or export your performance as a WAV audio file below:</p>
-            <textarea id="export-text" readonly></textarea>
-            <div class="modal-footer">
-                <button class="btn-secondary" id="btn-export-close">Close</button>
-                <button class="btn-secondary" id="btn-copy-haycode">Copy Code</button>
-                <button class="btn-midi" id="btn-export-wav">Export WAV Audio</button>
-                <a id="btn-email-haycode" href="#" target="_blank" class="btn-link btn-share">Email Haycode</a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Teacher Add Song Modal Dialog -->
-    <div class="modal-overlay" id="teacher-modal">
-        <div class="modal">
-            <h2>Add Song (Teacher Access)</h2>
-            <p style="font-size: 0.85rem; color: #9ca3af;">Enter teacher password to add a new song directly to PianoPad & Google Sheet:</p>
-            
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-                <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">Teacher Password:</label>
-                <input type="password" id="teacher-pass" placeholder="Enter password..." style="width:100%; padding:7px 10px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; outline:none;">
-
-                <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">Song Title / Piece Name:</label>
-                <input type="text" id="teacher-title" placeholder="e.g. Moonlight Sonata" style="width:100%; padding:7px 10px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; outline:none;">
-
-                <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">HayCode String:</label>
-                <textarea id="teacher-code" placeholder="Paste HayCode or record live first..."></textarea>
-            </div>
-
-            <div id="teacher-error" style="color: #ef4444; font-size: 0.8rem; font-weight: 600; display: none;"></div>
-
-            <div class="modal-footer">
-                <button class="btn-secondary" id="btn-teacher-cancel">Cancel</button>
-                <button class="btn-teacher" id="btn-teacher-submit">Add Song Now</button>
-            </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 70px;">Rank</th>
+                        <th>Student Name</th>
+                        <th id="col-header-title">Song Title</th>
+                        <th id="col-header-score">Accuracy</th>
+                        <th id="col-header-tempo">Tempo Speed</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                    <tr>
+                        <td colspan="6" class="status-msg">Loading scores from Google Sheet...</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
     <script>
-        const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyJ6BXOjgbsbv03Xlp3kFVj_6aIfVJ7NM66Y3f_fMzuOeDabH2HzEhE-rLuoZzncXAA6g/exec';
 
-        let audioCtx = null;
-        let songList = [];
-        let currentSong = [];
-        let currentSongTitle = "Wipeout";
-
-        let isPlaying = false;
-        let isPaused = false;
-        let isStepMode = false;
-        let isLooping = false;
-        let isRecording = false;
-        let isGameMode = false;
-        let currentTheme = 'default';
-
-        let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
-        let sessionStudentName = "";
-
-        let currentStepIndex = 0;
-        let smoothStepElapsed = 0;
-
-        let animationFrameId = null;
-        let playbackStartTime = 0;
-        let pauseStartTime = 0;
-        let accumulatedPauseMs = 0;
-        let lastFrameTime = 0;
-        let noteTimeline = [];
-
-        let recordedNotes = [];
-        let recordedRests = [];
-        let lastRecordNoteTime = 0;
-        let generatedHaycode = "";
-
-        // Calibration Variables
-        let isCalibrating = false;
-        let calibStep = 1;
-        let calibLowestRawMIDI = 36;
-        let calibHighestRawMIDI = 96;
-        let midiOctaveOffset = 0;
-
-        // Arcade Mini-Game Variables
-        let activeMiniGame = null;
-        let simonSequence = [];
-        let simonPlayerIndex = 0;
-        let simonIsPrompting = false;
-        
-        let mysteryTargetPitch = null;
-        let mysteryGuessCount = 0;
-
-        let dodgeLives = 5;
-        let dodgeDodgedCount = 0;
-
-        let sprintSequence = ['c1', 'd1'];
-        let sprintIndex = 0;
-        let sprintKeystrokeCount = 0;
-        const SPRINT_TARGET_KEYSTROKES = 32;
-        let sprintStartTime = 0;
-        let activeHurdles = [];
-        let runnerLegToggle = false;
-
-        let miniGameFallSpeedMs = 3800;
-
-        const cMajorScaleNotes = ['c1', 'd1', 'e1', 'f1', 'g1', 'a1', 'b1', 'c2'];
-        const arcadeHub = document.getElementById('arcade-hub');
-        const mainControlsBar = document.getElementById('main-controls-bar');
-        const arcadeControlsBar = document.getElementById('arcade-controls-bar');
-        const timelineBox = document.getElementById('timeline-box');
-        const runnerTrack = document.getElementById('runner-track');
-        const runnerSprite = document.getElementById('runner-sprite');
-        const hurdleContainer = document.getElementById('hurdle-container');
-
-        document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
-        document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
-        document.getElementById('btn-stop-arcade').addEventListener('click', exitActiveMiniGame);
-        document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
-            gameResultsModal.classList.remove('open');
-            openArcadeHub();
-        });
-
-        // FIXED TRY AGAIN ROUTING
-        document.getElementById('btn-game-try-again').addEventListener('click', () => {
-            gameResultsModal.classList.remove('open');
-            if (currentSongTitle === "Mystery Note") startMysteryNote();
-            else if (currentSongTitle === "Simon Taps") startSimonTaps();
-            else if (currentSongTitle === "Drop Dodge") startDropDodge();
-            else if (currentSongTitle === "Combo Strike") startComboStrike();
-            else if (currentSongTitle === "Finger Sprint") startFingerSprint();
-            else playSong();
-        });
-
-        function openArcadeHub() {
-            initAudio();
-            stopSong();
-            mainControlsBar.style.display = 'none';
-            timelineBox.style.display = 'none';
-            arcadeControlsBar.style.display = 'flex';
-            arcadeHub.classList.add('open');
-            document.getElementById('status').textContent = '🕹️ PianoPad Arcade Active! Choose a Mini-Game above.';
-        }
-
-        function returnToPlayerHome() {
-            exitActiveMiniGame();
-            arcadeHub.classList.remove('open');
-            arcadeControlsBar.style.display = 'none';
-            runnerTrack.style.display = 'none';
-            mainControlsBar.style.display = 'flex';
-            timelineBox.style.display = 'flex';
-            document.getElementById('status').textContent = 'Returned to PianoPad Player view.';
-        }
-
-        function exitActiveMiniGame() {
-            activeMiniGame = null;
-            isPlaying = false;
-            runnerTrack.style.display = 'none';
-            hurdleContainer.innerHTML = '';
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            document.querySelectorAll('.key').forEach(k => {
-                k.classList.remove('active');
-                k.style.backgroundColor = '';
-                k.style.boxShadow = '';
-            });
-            document.getElementById('status').textContent = 'Arcade Mini-Game stopped. Select another game or return Home.';
-        }
-
-        /* 1. SIMON TAPS MINI-GAME WITH COLORFUL STAIRCASE VISUALIZER */
-        function startSimonTaps() {
-            initAudio();
-            exitActiveMiniGame();
-            arcadeHub.classList.remove('open');
-            activeMiniGame = 'simon';
-            simonSequence = [];
-            resetGameStats();
-            document.getElementById('status').textContent = '🧠 Simon Taps: Watch and listen to the pattern...';
-            nextSimonRound();
-        }
-
-        function drawSimonStaircase(level) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (level <= 0) return;
-
-            const startX = 60;
-            const startY = canvas.height - 25;
-            const stepWidth = Math.min(32, (canvas.width - 120) / Math.max(level, 10));
-            const stepHeight = Math.min(18, (canvas.height - 40) / Math.max(level, 10));
-
-            const colorPalettes = [
-                ['#22c55e', '#16a34a'],
-                ['#ec4899', '#db2777'],
-                ['#06b6d4', '#0891b2'],
-                ['#f59e0b', '#d97706']
-            ];
-
-            for (let i = 0; i < level; i++) {
-                const paletteIdx = Math.min(colorPalettes.length - 1, Math.floor(i / 5));
-                const colors = colorPalettes[paletteIdx];
-
-                const px = startX + i * stepWidth;
-                const py = startY - i * stepHeight;
-
-                ctx.save();
-                ctx.fillStyle = colors[0];
-                ctx.shadowColor = colors[0];
-                ctx.shadowBlur = 8;
-                ctx.fillRect(px, py, stepWidth - 2, stepHeight - 2);
-
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 10px -apple-system, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(i + 1, px + stepWidth / 2 - 1, py + stepHeight / 2 - 1);
-                ctx.restore();
-            }
-        }
-
-        function nextSimonRound() {
-            simonPlayerIndex = 0;
-            simonIsPrompting = true;
-
-            if (simonSequence.length === 0) {
-                simonSequence.push('c1');
-                simonSequence.push('d1');
-            } else {
-                const lastNote = simonSequence[simonSequence.length - 1];
-                const lastIdx = cMajorScaleNotes.indexOf(lastNote);
-                const stepChange = Math.random() > 0.5 ? 1 : -1;
-                let nextIdx = Math.max(0, Math.min(cMajorScaleNotes.length - 1, lastIdx + stepChange));
-                simonSequence.push(cMajorScaleNotes[nextIdx]);
-            }
-
-            drawSimonStaircase(simonSequence.length);
-            document.getElementById('status').textContent = `🧠 Simon Taps (Level ${simonSequence.length}): Memorize pattern...`;
-
-            let step = 0;
-            const interval = setInterval(() => {
-                if (step < simonSequence.length) {
-                    const note = simonSequence[step];
-                    const freq = getNoteFrequency(note);
-                    if (freq) playTone(freq, 0.35, 1.0);
-                    highlightKey(note, 350, '#8b5cf6');
-                    step++;
-                } else {
-                    clearInterval(interval);
-                    simonIsPrompting = false;
-                    document.getElementById('status').textContent = `🧠 Your Turn! Play back Level ${simonSequence.length}...`;
-                }
-            }, 600);
-        }
-
-        function handleSimonInput(noteStr) {
-            if (simonIsPrompting) return;
-
-            const expected = simonSequence[simonPlayerIndex];
-            if (noteStr.toLowerCase().trim() === expected.toLowerCase().trim()) {
-                simonPlayerIndex++;
-                if (simonPlayerIndex >= simonSequence.length) {
-                    document.getElementById('status').textContent = `🎉 Level ${simonSequence.length} Complete! Escalating to Level ${simonSequence.length + 1}...`;
-                    setTimeout(nextSimonRound, 1200);
-                }
-            } else {
-                playErrorClackSound();
-                currentSongTitle = "Simon Taps";
-                
-                const maxLevelRemembered = Math.max(1, simonSequence.length - 1);
-                
-                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>Max Level Remembered: <span style="color:#22c55e; font-size:1.3rem;">Level ${maxLevelRemembered}</span>`;
-                document.getElementById('bar-green').style.height = '100%';
-                document.getElementById('bar-orange').style.height = '0%';
-                document.getElementById('bar-red').style.height = '0%';
-
-                document.getElementById('game-rank-text').textContent = `Simon Taps Level Logged!`;
-                gameResultsModal.classList.add('open');
-                postScoreToLeaderboard(maxLevelRemembered);
-                activeMiniGame = null;
-            }
-        }
-
-        /* 2. MYSTERY NOTE (HOT/COLD) MINI-GAME - FIXED GUESSES SCORE OVERRIDE */
-        function startMysteryNote() {
-            initAudio();
-            exitActiveMiniGame();
-            arcadeHub.classList.remove('open');
-            activeMiniGame = 'mystery';
-            mysteryGuessCount = 0;
-            resetGameStats();
-
-            const randomPitch = Math.floor(Math.random() * 48) + 12;
-            mysteryTargetPitch = pitchToNote(randomPitch);
-
-            const freq = getNoteFrequency(mysteryTargetPitch);
-            if (freq) playTone(freq, 0.6, 1.0);
-
-            document.getElementById('status').textContent = '🔍 Mystery Note chosen! Tap keys to guess... (Listen carefully!)';
-        }
-
-        function handleMysteryInput(noteStr) {
-            mysteryGuessCount++;
-            const guessedPitchNum = noteToPitch(noteStr);
-            const targetPitchNum = noteToPitch(mysteryTargetPitch);
-
-            if (guessedPitchNum === null || targetPitchNum === null) return;
-
-            const diff = Math.abs(guessedPitchNum - targetPitchNum);
-
-            if (diff === 0) {
-                highlightKey(noteStr, 500, '#22c55e');
-                currentSongTitle = "Mystery Note";
-
-                // Direct override to show integer guess count
-                document.getElementById('game-summary-text').innerHTML = 
-                    `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>` +
-                    `Guesses Taken: <span style="color:#22c55e; font-size:1.4rem; font-weight:800;">${mysteryGuessCount}</span>`;
-
-                document.getElementById('bar-green').style.height = '100%';
-                document.getElementById('bar-orange').style.height = '0%';
-                document.getElementById('bar-red').style.height = '0%';
-
-                document.getElementById('game-rank-text').textContent = `Mystery Note Cleared!`;
-
-                gameResultsModal.classList.add('open');
-                
-                // Submit raw integer guess count
-                postScoreToLeaderboard(mysteryGuessCount);
-                activeMiniGame = null;
-            } else if (diff <= 2) {
-                highlightKey(noteStr, 250, '#ef4444');
-                document.getElementById('status').textContent = `🔥 Sizzle HOT! You are right next to it! (Guesses: ${mysteryGuessCount})`;
-            } else if (diff <= 6) {
-                highlightKey(noteStr, 250, '#f97316');
-                document.getElementById('status').textContent = `⚡ Warm... Getting closer! (Guesses: ${mysteryGuessCount})`;
-            } else {
-                highlightKey(noteStr, 250, '#38bdf8');
-                document.getElementById('status').textContent = `❄️ Ice COLD! Far away... (Guesses: ${mysteryGuessCount})`;
-            }
-        }
-
-        /* 3. SLOWER DROP DODGE MINI-GAME WITH 5 LIVES */
-        function startDropDodge() {
-            initAudio();
-            exitActiveMiniGame();
-            arcadeHub.classList.remove('open');
-            activeMiniGame = 'drop';
-            dodgeLives = 5;
-            dodgeDodgedCount = 0;
-            resetGameStats();
-
-            miniGameFallSpeedMs = 3800;
-            currentSong = [];
-            const whiteKeys = keyLayout.filter(k => k.type === 'white').map(k => k.note);
-
-            for (let i = 0; i < 20; i++) {
-                const safeKeyIdx = Math.floor(Math.random() * whiteKeys.length);
-                const safeKey = whiteKeys[safeKeyIdx];
-                const wallNotes = whiteKeys.filter(k => k !== safeKey);
-
-                currentSong.push({
-                    notes: wallNotes,
-                    safeKey: safeKey,
-                    rest: 2200
-                });
-            }
-
-            buildTimeline();
-            isPlaying = true;
-            playbackStartTime = performance.now();
-            lastFrameTime = performance.now();
-            document.getElementById('status').textContent = `🛡️ DROP DODGE ACTIVE! Lives: ❤️ ${dodgeLives} | Dodges: 0`;
-            requestAnimationFrame(renderLoop);
-        }
-
-        /* 4. TWO-NOTE COMBO STRIKE */
-        function startComboStrike() {
-            initAudio();
-            exitActiveMiniGame();
-            arcadeHub.classList.remove('open');
-            activeMiniGame = 'combo';
-            resetGameStats();
-
-            miniGameFallSpeedMs = 2400;
-            const comboPairs = [
-                ['c1', 'g1'], ['c1', 'e1'], ['f1', 'a1'], ['g1', 'b1'], ['c2', 'e2'], ['d1', 'f1']
-            ];
-
-            currentSong = [];
-            for (let i = 0; i < 12; i++) {
-                const pair = comboPairs[Math.floor(Math.random() * comboPairs.length)];
-                currentSong.push({
-                    notes: pair,
-                    rest: 1800
-                });
-            }
-
-            buildTimeline();
-            isPlaying = true;
-            playbackStartTime = performance.now();
-            lastFrameTime = performance.now();
-            document.getElementById('status').textContent = '⚡ TWO-NOTE COMBO STRIKE! Strike falling note intervals simultaneously!';
-            requestAnimationFrame(renderLoop);
-        }
-
-        /* 5. FINGER SPRINT WITH PROXIMITY-BASED HURDLES & ANIMATED RUNNER */
-        function renderHurdles() {
-            hurdleContainer.innerHTML = '';
-            activeHurdles.forEach((h) => {
-                const hurdleDiv = document.createElement('div');
-                hurdleDiv.className = 'hurdle-obstacle';
-                hurdleDiv.style.left = `${h.posPct}%`;
-                hurdleDiv.textContent = h.letter;
-                if (h.cleared) {
-                    hurdleDiv.style.opacity = '0.2';
-                    hurdleDiv.style.borderColor = '#22c55e';
-                }
-                hurdleContainer.appendChild(hurdleDiv);
-            });
-        }
-
-        function startFingerSprint() {
-            initAudio();
-            exitActiveMiniGame();
-            arcadeHub.classList.remove('open');
-            activeMiniGame = 'sprint';
-
-            runnerTrack.style.display = 'flex';
-            runnerSprite.style.left = '10px';
-            runnerSprite.textContent = '🏃';
-            runnerSprite.classList.add('sprinting');
-
-            sprintIndex = 0;
-            sprintKeystrokeCount = 0;
-            sprintStartTime = performance.now();
-
-            activeHurdles = [
-                { letter: 'G', posPct: 35, cleared: false },
-                { letter: 'E', posPct: 70, cleared: false }
-            ];
-            renderHurdles();
-
-            document.getElementById('status').textContent = `🏃 FINGER SPRINT: Alternate C1 & D1 to sprint! Play High G/E to jump hurdles!`;
-            highlightKey('c1', 600, '#eab308');
-        }
-
-        function handleSprintInput(noteStr) {
-            const rawNoteName = noteStr.toLowerCase().trim();
-            const noteMatch = rawNoteName.match(/^([a-g]#?)([0-9]+)$/);
-            
-            if (!noteMatch) return;
-            const letter = noteMatch[1].toUpperCase();
-            const octave = parseInt(noteMatch[2], 10);
-
-            const currentPosPct = (sprintKeystrokeCount / SPRINT_TARGET_KEYSTROKES) * 85;
-
-            const nearbyHurdle = activeHurdles.find(h => !h.cleared && Math.abs(currentPosPct - h.posPct) <= 16);
-
-            if (nearbyHurdle) {
-                if (letter === nearbyHurdle.letter && octave >= 2) {
-                    nearbyHurdle.cleared = true;
-                    gameStats.perfect++;
-                    renderHurdles();
-
-                    runnerSprite.textContent = '🤸';
-                    runnerSprite.classList.add('jumping');
-
-                    setTimeout(() => {
-                        runnerSprite.classList.remove('jumping');
-                        runnerSprite.textContent = runnerLegToggle ? '🏃' : '🏃‍♂️';
-                    }, 450);
-
-                    document.getElementById('status').textContent = `🦘 HURDLE JUMP CLEARED! High ${letter} Jump Successful!`;
-                    return;
-                } else if (letter === nearbyHurdle.letter && octave === 1) {
-                    playErrorClackSound();
-                    document.getElementById('status').textContent = `⚠️ Play a HIGH ${letter} (Octave 2, 3, or 4) to Jump over the Hurdle!`;
-                    return;
-                }
-            }
-
-            const expectedNote = sprintSequence[sprintIndex % 2];
-            if (rawNoteName === expectedNote.toLowerCase().trim()) {
-                gameStats.perfect++;
-                sprintIndex++;
-                sprintKeystrokeCount++;
-
-                runnerLegToggle = !runnerLegToggle;
-                if (!runnerSprite.classList.contains('jumping')) {
-                    runnerSprite.textContent = runnerLegToggle ? '🏃' : '🏃‍♂️';
-                }
-
-                const newProgressPct = (sprintKeystrokeCount / SPRINT_TARGET_KEYSTROKES) * 85;
-                runnerSprite.style.left = `calc(10px + ${newProgressPct}%)`;
-
-                if (sprintKeystrokeCount >= SPRINT_TARGET_KEYSTROKES) {
-                    const totalTimeSeconds = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
-                    runnerSprite.classList.remove('sprinting');
-                    runnerSprite.textContent = '🏃';
-                    currentSongTitle = "Finger Sprint";
-                    
-                    document.getElementById('game-summary-text').innerHTML = `Sprint Time: <span style="color:#facc15; font-size:1.3rem;">${totalTimeSeconds} Seconds</span>`;
-                    document.getElementById('bar-green').style.height = '100%';
-                    document.getElementById('bar-orange').style.height = '0%';
-                    document.getElementById('bar-red').style.height = '0%';
-
-                    document.getElementById('game-rank-text').textContent = `Finger Sprint Completed!`;
-                    gameResultsModal.classList.add('open');
-                    postScoreToLeaderboard(parseFloat(totalTimeSeconds));
-                    activeMiniGame = null;
-                    return;
-                }
-
-                const nextExpected = sprintSequence[sprintIndex % 2];
-                highlightKey(nextExpected, 300, '#eab308');
-            } else {
-                gameStats.miss++;
-                playErrorClackSound();
-            }
-        }
-
-        function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-        }
-
-        function playErrorClackSound() {
-            initAudio();
-            const now = audioCtx.currentTime;
-            
-            const bufferSize = audioCtx.sampleRate * 0.04;
-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                data[i] = Math.random() * 2 - 1;
-            }
-
-            const noise = audioCtx.createBufferSource();
-            noise.buffer = buffer;
-
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(320, now);
-
-            const gain = audioCtx.createGain();
-            gain.gain.setValueAtTime(0.35, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
-
-            noise.connect(filter);
-            filter.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            noise.start(now);
-            noise.stop(now + 0.04);
-        }
-
-        function initMIDIHardware() {
-            if (navigator.requestMIDIAccess) {
-                navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
-            }
-        }
-
-        function onMIDISuccess(midiAccess) {
-            const inputs = midiAccess.inputs.values();
-            for (let input of inputs) {
-                input.onmidimessage = handleMIDIMessage;
-            }
-            midiAccess.onstatechange = (e) => {
-                if (e.port.type === 'input' && e.port.state === 'connected') {
-                    e.port.onmidimessage = handleMIDIMessage;
-                }
-            };
-        }
-
-        function onMIDIFailure() {
-            console.warn("Web MIDI API access denied or unsupported in this browser.");
-        }
-
-        function handleMIDIMessage(event) {
-            const status = event.data[0];
-            const channel = status & 0x0F;
-            if (channel === 9) return;
-
-            const command = status & 0xF0;
-            const rawNoteNumber = event.data[1];
-            const velocity = event.data.length > 2 ? event.data[2] : 0;
-
-            if (command === 144 && velocity > 0) {
-                if (isCalibrating) {
-                    processCalibrationNote(rawNoteNumber);
-                } else {
-                    const correctedNoteNumber = rawNoteNumber + midiOctaveOffset;
-                    const noteStr = midiNoteToName(correctedNoteNumber);
-                    if (noteStr) {
-                        playManualNote(noteStr);
-                    }
-                }
-            }
-        }
-
-        function midiNoteToName(midi) {
-            const octave = Math.floor(midi / 12) - 2; 
-            const offset = ((midi % 12) + 12) % 12;
-            const name = noteNames[offset];
-            return name + octave;
-        }
-
-        document.getElementById('midi-input').addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            initAudio();
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                const midi = new Midi(arrayBuffer);
-
-                let allNotes = [];
-                midi.tracks.forEach(track => {
-                    if (track.channel === 9) return;
-                    track.notes.forEach(n => {
-                        allNotes.push({
-                            time: n.time,
-                            note: midiNoteToName(n.midi)
-                        });
-                    });
-                });
-
-                if (allNotes.length === 0) {
-                    document.getElementById('status').textContent = 'No playable melody notes found in MIDI file.';
-                    return;
-                }
-
-                allNotes.sort((a, b) => a.time - b.time);
-
-                const hayNotes = [];
-                const hayRests = [];
-
-                let currentChord = [];
-                let lastTime = 0;
-
-                for (let i = 0; i < allNotes.length; i++) {
-                    const n = allNotes[i];
-                    if (i === 0) {
-                        currentChord.push(n.note.toUpperCase());
-                        hayRests.push(0);
-                        lastTime = n.time;
-                    } else {
-                        const timeDiff = Math.round((n.time - lastTime) * 1000);
-                        if (timeDiff <= 20) {
-                            currentChord.push(n.note.toUpperCase());
-                        } else {
-                            hayNotes.push(currentChord.join('+'));
-                            currentChord = [n.note.toUpperCase()];
-                            hayRests.push(timeDiff);
-                            lastTime = n.time;
-                        }
-                    }
-                }
-                if (currentChord.length > 0) {
-                    hayNotes.push(currentChord.join('+'));
-                }
-
-                const midiHayCode = `${hayNotes.join(',')},RESTS,${hayRests.join(',')}`;
-                const fileName = file.name.replace(/\.[^/.]+$/, "");
-
-                currentSongTitle = fileName;
-                const parsed = parsePianoPad(midiHayCode);
-
-                if (parsed.length > 0) {
-                    currentSong = autoTransposeSong(parsed);
-                    generatedHaycode = midiHayCode;
-                    btnShare.style.display = 'inline-flex';
-                    songSelect.value = '';
-                    document.getElementById('status').textContent = `Loaded MIDI: "${fileName}". Converted to HayCode successfully!`;
-                    playSong();
-                } else {
-                    document.getElementById('status').textContent = 'Error parsing converted MIDI sequence.';
-                }
-            } catch (err) {
-                console.error(err);
-                document.getElementById('status').textContent = 'Failed to parse MIDI file.';
-            }
-
-            e.target.value = '';
-        });
-
-        const themePalettes = {
-            default: { pending: '#38bdf8', normal: '#22c55e', shadowActive: 'rgba(56, 189, 248, 0.6)', shadowNormal: 'rgba(34, 197, 94, 0.4)' },
-            cyberpunk: { pending: '#00f0ff', normal: '#ff007f', shadowActive: 'rgba(0, 240, 255, 0.8)', shadowNormal: 'rgba(255, 0, 127, 0.6)' },
-            synthwave: { pending: '#fcee0a', normal: '#ff7700', shadowActive: 'rgba(252, 238, 10, 0.8)', shadowNormal: 'rgba(255, 119, 0, 0.6)' },
-            matrix: { pending: '#00cc66', normal: '#00ff41', shadowActive: 'rgba(0, 204, 102, 0.8)', shadowNormal: 'rgba(0, 255, 65, 0.6)' },
-            gold: { pending: '#fbbf24', normal: '#eab308', shadowActive: 'rgba(251, 191, 36, 0.8)', shadowNormal: 'rgba(234, 179, 8, 0.6)' }
-        };
-
-        const keyboardMap = {
-            'z': 'c1', 's': 'c#1', 'x': 'd1', 'd': 'd#1', 'c': 'e1', 'v': 'f1', 'g': 'f#1', 'b': 'g1', 'h': 'g#1', 'n': 'a1', 'j': 'a#1', 'm': 'b1',
-            ',': 'c2', 'l': 'c#2', '.': 'd2', '1': 'd#2', 'q': 'e2', 'w': 'f2', '3': 'f#2', 'e': 'g2', '4': 'g#2', 'r': 'a2', '5': 'a#2', 't': 'b2',
-            'y': 'c3', '7': 'c#3', 'u': 'd3', '8': 'd#3', 'i': 'e3', 'o': 'f3', '0': 'f#3', 'p': 'g3'
-        };
-
-        const FALL_TIME_MS = 1800;
-        const PRE_FALL_PAUSE = 500;
-
-        const canvas = document.getElementById('waterfall-canvas');
-        const ctx = canvas.getContext('2d');
-
-        const speedSlider = document.getElementById('speed-slider');
-        const speedLabel = document.getElementById('speed-label');
-        const songSelect = document.getElementById('song-select');
-        const instrumentSelect = document.getElementById('instrument-select');
-        const themeSelect = document.getElementById('theme-select');
-        const btnStep = document.getElementById('btn-step');
-        const btnGame = document.getElementById('btn-game');
-        const btnPause = document.getElementById('btn-pause');
-        const btnLoop = document.getElementById('btn-loop');
-        const btnRecord = document.getElementById('btn-record');
-        const btnAddTeacherSong = document.getElementById('btn-add-teacher-song');
-        const recordBtnText = document.getElementById('record-btn-text');
-        const btnShare = document.getElementById('btn-share');
-
-        const loopStartSlider = document.getElementById('loop-start');
-        const loopEndSlider = document.getElementById('loop-end');
-        const loopRangeLabel = document.getElementById('loop-range-label');
-
-        const teacherModal = document.getElementById('teacher-modal');
-        const teacherPassInput = document.getElementById('teacher-pass');
-        const teacherTitleInput = document.getElementById('teacher-title');
-        const teacherCodeTextarea = document.getElementById('teacher-code');
-        const teacherErrorDiv = document.getElementById('teacher-error');
-
-        const settingsModal = document.getElementById('settings-modal');
-        const calibModal = document.getElementById('calib-modal');
-        const gameResultsModal = document.getElementById('game-results-modal');
-
-        document.getElementById('btn-settings').addEventListener('click', () => {
-            initAudio();
-            settingsModal.classList.add('open');
-        });
-        document.getElementById('btn-settings-close').addEventListener('click', () => settingsModal.classList.remove('open'));
-        document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
-        document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
-        document.getElementById('btn-game-results-close').addEventListener('click', () => gameResultsModal.classList.remove('open'));
-
-        speedSlider.addEventListener('input', () => {
-            speedLabel.textContent = `${speedSlider.value}%`;
-            if (isPlaying && !isPaused && !isStepMode) playSong();
-        });
-
-        themeSelect.addEventListener('change', (e) => {
-            currentTheme = e.target.value;
-            if (currentTheme === 'default') {
-                document.body.removeAttribute('data-theme');
-            } else {
-                document.body.setAttribute('data-theme', currentTheme);
-            }
-        });
-
-        btnStep.addEventListener('click', toggleStepMode);
-        btnGame.addEventListener('click', toggleGameMode);
-        btnPause.addEventListener('click', togglePause);
-        btnLoop.addEventListener('click', toggleLoopMode);
-        btnRecord.addEventListener('click', toggleRecording);
-        btnAddTeacherSong.addEventListener('click', openTeacherModal);
-        btnShare.addEventListener('click', shareHaycode);
-
-        document.getElementById('btn-teacher-cancel').addEventListener('click', () => teacherModal.classList.remove('open'));
-        document.getElementById('btn-teacher-submit').addEventListener('click', submitTeacherSong);
-
-        loopStartSlider.addEventListener('input', updateLoopRange);
-        loopEndSlider.addEventListener('input', updateLoopRange);
-
-        function updateLoopRange() {
-            let start = parseInt(loopStartSlider.value, 10);
-            let end = parseInt(loopEndSlider.value, 10);
-
-            if (start >= end) {
-                start = Math.max(0, end - 1);
-                loopStartSlider.value = start;
-            }
-            loopRangeLabel.textContent = `${start}% - ${end}% Region`;
-        }
-
-        function buildCalibrationKeyboard() {
-            const container = document.getElementById('calib-keyboard');
-            container.innerHTML = '';
-            for (let oct = 1; oct <= 6; oct++) {
-                const octNotes = [
-                    { note: `c${oct}`, type: 'white', label: oct === 1 ? 'C' : '' },
-                    { note: `c#${oct}`, type: 'black' },
-                    { note: `d${oct}`, type: 'white' },
-                    { note: `d#${oct}`, type: 'black' },
-                    { note: `e${oct}`, type: 'white' },
-                    { note: `f${oct}`, type: 'white' },
-                    { note: `f#${oct}`, type: 'black' },
-                    { note: `g${oct}`, type: 'white' },
-                    { note: `g#${oct}`, type: 'black' },
-                    { note: `a${oct}`, type: 'white' },
-                    { note: `a#${oct}`, type: 'black' },
-                    { note: `b${oct}`, type: 'white' }
-                ];
-                octNotes.forEach(k => {
-                    const div = document.createElement('div');
-                    div.className = `calib-key ${k.type}`;
-                    div.dataset.calibNote = k.note;
-                    if (k.label) div.textContent = k.label;
-                    container.appendChild(div);
-                });
-            }
-            const topC = document.createElement('div');
-            topC.className = 'calib-key white';
-            topC.dataset.calibNote = 'c7';
-            topC.textContent = 'C';
-            container.appendChild(topC);
-        }
-
-        function startCalibration() {
-            settingsModal.classList.remove('open');
-            buildCalibrationKeyboard();
-            isCalibrating = true;
-            calibStep = 1;
-            document.getElementById('calib-instructions').textContent = "Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
-            calibModal.classList.add('open');
-        }
-
-        function cancelCalibration() {
-            isCalibrating = false;
-            calibModal.classList.remove('open');
-        }
-
-        function processCalibrationNote(rawMidi) {
-            if (!isCalibrating) return;
-
-            if (calibStep === 1) {
-                calibLowestRawMIDI = rawMidi;
-                midiOctaveOffset = 36 - rawMidi;
-
-                const lowCKey = document.querySelector('.calib-key[data-calib-note="c1"]');
-                if (lowCKey) lowCKey.classList.add('blue-highlight');
-
-                calibStep = 2;
-                document.getElementById('calib-instructions').textContent = "Recognized Lowest C! Step 2: Now press the HIGHEST 'C' key on your external MIDI Keyboard...";
-            } else if (calibStep === 2) {
-                calibHighestRawMIDI = rawMidi;
-
-                const rawDiff = calibHighestRawMIDI - calibLowestRawMIDI;
-                const octaveDistance = Math.round(rawDiff / 12);
-                
-                const targetOctave = Math.min(7, 1 + octaveDistance);
-                const highCKey = document.querySelector(`.calib-key[data-calib-note="c${targetOctave}"]`);
-                if (highCKey) highCKey.classList.add('blue-highlight');
-
-                document.getElementById('calib-instructions').textContent = `Calibration Complete! Detected a ${octaveDistance}-Octave Keyboard (${octaveDistance * 12 + 1} keys).`;
-                setTimeout(() => {
-                    isCalibrating = false;
-                    calibModal.classList.remove('open');
-                    updateKeyPositions();
-                    document.getElementById('status').textContent = `MIDI Keyboard calibrated! Lowest key now maps directly to C1 on-screen.`;
-                }, 1200);
-            }
-        }
-
-        function openTeacherModal() {
-            initAudio();
-            teacherPassInput.value = '';
-            teacherTitleInput.value = '';
-            teacherErrorDiv.style.display = 'none';
-            teacherCodeTextarea.value = generatedHaycode ? generatedHaycode : '';
-            teacherModal.classList.add('open');
-            setTimeout(() => teacherPassInput.focus(), 100);
-        }
-
-        async function submitTeacherSong() {
-            const pass = teacherPassInput.value;
-            const title = teacherTitleInput.value.trim();
-            const code = teacherCodeTextarea.value.trim();
-
-            if (pass !== "Rocky") {
-                teacherErrorDiv.textContent = "Incorrect Teacher Password!";
-                teacherErrorDiv.style.display = "block";
-                return;
-            }
-
-            if (!title) {
-                teacherErrorDiv.textContent = "Please enter a Song Title / Piece Name!";
-                teacherErrorDiv.style.display = "block";
-                return;
-            }
-
-            if (!code) {
-                teacherErrorDiv.textContent = "Please enter or record a HayCode string!";
-                teacherErrorDiv.style.display = "block";
-                return;
-            }
-
-            const parsed = parsePianoPad(code);
-            if (parsed.length === 0) {
-                teacherErrorDiv.textContent = "Invalid HayCode format!";
-                teacherErrorDiv.style.display = "block";
-                return;
-            }
-
-            songList.push({ title: title, code: code });
-            localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
-            renderSongSelect();
-            
-            songSelect.value = code;
-            currentSongTitle = title;
-            currentSong = autoTransposeSong(parsed);
-
-            teacherModal.classList.remove('open');
-            document.getElementById('status').textContent = `Adding "${title}" to PianoPad & Google Sheet...`;
-
-            if (APPS_SCRIPT_URL) {
-                try {
-                    await fetch(APPS_SCRIPT_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'text/plain' },
-                        body: JSON.stringify({ action: "ADD_SONG", title: title, code: code })
-                    });
-                    document.getElementById('status').textContent = ` "${title}" successfully added to PianoPad & Google Sheet!`;
-                } catch (e) {
-                    console.warn("Could not post to Apps Script endpoint.", e);
-                    document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
-                }
-            } else {
-                document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
-            }
-            
-            playSong();
-        }
-
-        function toggleGameMode() {
-            initAudio();
-            isGameMode = !isGameMode;
-            if (isGameMode) {
-                btnGame.textContent = 'Game Mode: ON';
-                btnGame.classList.remove('btn-secondary');
-                btnGame.classList.add('btn-game-active');
-
-                if (isStepMode) toggleStepMode();
-                resetGameStats();
-                document.getElementById('status').textContent = ' GAME MODE ACTIVE! Press Play and hit falling notes in time.';
-            } else {
-                btnGame.textContent = 'Game Mode: OFF';
-                btnGame.classList.remove('btn-game-active');
-                btnGame.classList.add('btn-secondary');
-                document.getElementById('status').textContent = 'Game Mode OFF. Normal play active.';
-            }
-        }
-
-        function resetGameStats() {
-            gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
-        }
-
-        function updateGameStatus() {
-            const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
-            const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
-            document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}`;
-        }
-
-        async function postScoreToLeaderboard(accuracyNum) {
-            if (!APPS_SCRIPT_URL) return;
-
-            const speedText = speedSlider.value + '%';
-            const payload = {
-                action: "SCORE_SUBMIT",
-                name: sessionStudentName,
-                title: currentSongTitle,
-                score: accuracyNum,
-                tempo: speedText
-            };
-
-            try {
-                await fetch(APPS_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify(payload)
-                });
-                document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
-            } catch (err) {
-                console.warn("Could not post score to Google Apps Script.", err);
-            }
-        }
-
-        async function calculateAndDisplayRank(accuracyNum) {
-            const rankDiv = document.getElementById('game-rank-text');
-            rankDiv.textContent = "Calculating Rank...";
-
-            try {
-                const response = await fetch(LEADERBOARD_CSV_URL);
-                if (!response.ok) throw new Error('Fetch failed');
-
-                const csvText = await response.text();
-                const lines = csvText.split(/\r?\n/);
-                const songScores = [];
-
-                for (let i = 1; i < lines.length; i++) {
-                    const line = lines[i].trim();
-                    if (!line) continue;
-
-                    const row = [];
-                    let insideQuote = false;
-                    let entry = '';
-
-                    for (let j = 0; j < line.length; j++) {
-                        const char = line[j];
-                        if (char === '"' && line[j + 1] === '"') {
-                            entry += '"';
-                            j++;
-                        } else if (char === '"') {
-                            insideQuote = !insideQuote;
-                        } else if (char === ',' && !insideQuote) {
-                            row.push(entry);
-                            entry = '';
-                        } else {
-                            entry += char;
-                        }
-                    }
-                    row.push(entry);
-
-                    if (row.length >= 4) {
-                        const rowTitle = row[2] ? row[2].trim().replace(/^"|"$/g, '') : '';
-                        if (rowTitle.toLowerCase() === currentSongTitle.toLowerCase()) {
-                            songScores.push({
-                                accuracy: parseFloat(row[3]) || 0,
-                                speed: parseInt(row[4]) || 100
-                            });
-                        }
-                    }
-                }
-
-                const currentSpeedNum = parseInt(speedSlider.value, 10);
-                songScores.push({ accuracy: accuracyNum, speed: currentSpeedNum });
-
-                songScores.sort((a, b) => {
-                    if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
-                    return b.speed - a.speed;
-                });
-
-                const totalEntries = songScores.length;
-                const userRank = songScores.findIndex(s => s.accuracy === accuracyNum && s.speed === currentSpeedNum) + 1;
-
-                rankDiv.textContent = `${currentSongTitle} Rank ${userRank}/${totalEntries}`;
-            } catch (err) {
-                console.warn("Could not calculate live rank:", err);
-                rankDiv.textContent = `${currentSongTitle} Score Logged!`;
-            }
-        }
-
-        function showGameResultsPopUp() {
-            if (!sessionStudentName) {
-                const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
-                if (inputName && inputName.trim()) {
-                    sessionStudentName = inputName.trim();
-                } else {
-                    sessionStudentName = "Anonymous";
-                }
-            }
-
-            const perfectHits = gameStats.perfect;
-            const earlyLateHits = gameStats.earlyLate;
-            const missedHits = gameStats.miss;
-            const totalHits = perfectHits + earlyLateHits + missedHits;
-
-            const accuracy = totalHits > 0 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
-            const accuracyNum = parseFloat(accuracy);
-
-            document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
-
-            const greenPct = totalHits > 0 ? (perfectHits / totalHits) * 100 : 0;
-            const orangePct = totalHits > 0 ? (earlyLateHits / totalHits) * 100 : 0;
-            const redPct = totalHits > 0 ? (missedHits / totalHits) * 100 : 0;
-
-            document.getElementById('bar-green').style.height = `${greenPct}%`;
-            document.getElementById('bar-orange').style.height = `${orangePct}%`;
-            document.getElementById('bar-red').style.height = `${redPct}%`;
-
-            const currentSpeed = parseInt(speedSlider.value, 10);
-            const badgeContainer = document.getElementById('badge-container');
-            
-            if (currentSpeed >= 100) {
-                badgeContainer.innerHTML = `<div class="badge-box badge-gold">🏆 GOLD BADGE: Full Master Speed (${currentSpeed}%)</div>`;
-            } else if (currentSpeed >= 75) {
-                badgeContainer.innerHTML = `<div class="badge-box badge-silver">🥈 SILVER BADGE: Intermediate Tempo (${currentSpeed}%)</div>`;
-            } else if (currentSpeed >= 50) {
-                badgeContainer.innerHTML = `<div class="badge-box badge-bronze">🥉 BRONZE BADGE: Practice Pace (${currentSpeed}%)</div>`;
-            } else {
-                badgeContainer.innerHTML = `<div style="font-size:0.8rem; color:#9ca3af; margin-top:4px;">Practice Speed: ${currentSpeed}% (Reach 50%+ for Practice Badges)</div>`;
-            }
-
-            gameResultsModal.classList.add('open');
-
-            calculateAndDisplayRank(accuracyNum).then(() => {
-                postScoreToLeaderboard(accuracyNum);
-            });
-        }
-
-        function toggleLoopMode() {
-            initAudio();
-            isLooping = !isLooping;
-            if (isLooping) {
-                btnLoop.textContent = 'Loop: ON';
-                btnLoop.classList.remove('btn-secondary');
-                btnLoop.classList.add('btn-loop-active');
-            } else {
-                btnLoop.textContent = 'Loop: OFF';
-                btnLoop.classList.remove('btn-loop-active');
-                btnLoop.classList.add('btn-secondary');
-            }
-        }
-
-        function toggleRecording() {
-            initAudio();
-            isRecording = !isRecording;
-
-            if (isRecording) {
-                recordedNotes = [];
-                recordedRests = [];
-                lastRecordNoteTime = 0;
-                
-                recordBtnText.textContent = '● RECORDING (Click to Stop)';
-                btnRecord.classList.remove('btn-secondary');
-                btnRecord.classList.add('btn-rec-active');
-                btnShare.style.display = 'none';
-                
-                document.getElementById('status').textContent = ' RECORDING ACTIVE... Play notes using your keyboard or mouse!';
-            } else {
-                recordBtnText.textContent = 'Record';
-                btnRecord.classList.remove('btn-rec-active');
-                btnRecord.classList.add('btn-secondary');
-
-                if (recordedNotes.length > 0) {
-                    generatedHaycode = `${recordedNotes.join(',')},RESTS,${recordedRests.join(',')}`;
-                    btnShare.style.display = 'inline-flex';
-                    document.getElementById('status').textContent = ` RECORDING STOPPED! ${recordedNotes.length} notes saved. Click "Share Haycode" or "Add SONG (Teacher)".`;
-                    openExportModal();
-                } else {
-                    document.getElementById('status').textContent = 'Recording stopped. No notes captured.';
-                }
-            }
-        }
-
-        window.addEventListener('keydown', (e) => {
-            if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') return;
-
-            initAudio();
-
-            if (e.code === 'ArrowDown') {
-                e.preventDefault();
-                playSong();
-                return;
-            }
-
-            if (e.code === 'Space') {
-                e.preventDefault();
-                if (!isStepMode) {
-                    toggleStepMode();
-                } else {
-                    advanceStepNote();
-                }
-                return;
-            }
-
-            const keyChar = e.key.toLowerCase();
-            if (keyboardMap[keyChar] && !e.repeat) {
-                const noteStr = keyboardMap[keyChar];
-                playManualNote(noteStr);
-            }
-        });
-
-        function toggleStepMode() {
-            initAudio();
-            isStepMode = !isStepMode;
-            if (isStepMode) {
-                btnStep.textContent = 'Step Mode: ON';
-                btnStep.classList.remove('btn-step');
-                btnStep.classList.add('btn-step-active');
-
-                if (isGameMode) toggleGameMode();
-                
-                if (!isPlaying) {
-                    playSong();
-                } else {
-                    isPaused = false;
-                    btnPause.textContent = 'Pause';
-                    btnPause.classList.remove('btn-success');
-                    btnPause.classList.add('btn-warning');
-                }
-                currentStepIndex = 0;
-                smoothStepElapsed = noteTimeline[0] ? noteTimeline[0].hitTime : 0;
-                updateStepStatus();
-            } else {
-                btnStep.textContent = 'Step Mode: OFF';
-                btnStep.classList.remove('btn-step-active');
-                btnStep.classList.add('btn-step');
-                document.getElementById('status').textContent = 'Step Mode OFF. Normal auto-play active.';
-            }
-        }
-
-        function advanceStepNote() {
-            if (noteTimeline.length === 0) return;
-
-            if (currentStepIndex < noteTimeline.length) {
-                const item = noteTimeline[currentStepIndex];
-                item.notes.forEach(noteStr => {
-                    const freq = getNoteFrequency(noteStr);
-                    if (freq) playTone(freq, item.duration / 1000);
-                    highlightKey(noteStr, item.duration);
-                });
-                item.played = true;
-                currentStepIndex++;
-                updateStepStatus();
-            }
-        }
-
-        function updateStepStatus() {
-            if (currentStepIndex < noteTimeline.length) {
-                const nextItem = noteTimeline[currentStepIndex];
-                const displayStr = nextItem.notes.join('+').toUpperCase();
-                document.getElementById('status').textContent = `Step ${currentStepIndex + 1} of ${noteTimeline.length}: Next Note -> [ ${displayStr} ] (Press SPACE BAR or play on MIDI Keyboard)`;
-            } else {
-                document.getElementById('status').textContent = 'Step Practice Finished!';
-                setTimeout(() => {
-                    const subject = encodeURIComponent("PianoPad wrong notes in song");
-                    const body = encodeURIComponent("Song Title: " + currentSongTitle + "\n\n");
-                    const mailto = `mailto:ghaybittle@erc.nsw.edu.au?subject=${subject}&body=${body}`;
-                    document.getElementById('status').innerHTML = `<a href="${mailto}" target="_blank" class="btn-link btn-danger" style="text-decoration:none;">Wrong Notes? CLICK HERE</a>`;
-                }, 400);
-            }
-        }
-
-        function togglePause() {
-            initAudio();
-            if (!isPlaying || isStepMode) return;
-
-            if (!isPaused) {
-                isPaused = true;
-                pauseStartTime = performance.now();
-                btnPause.textContent = 'Resume';
-                btnPause.classList.remove('btn-warning');
-                btnPause.classList.add('btn-success');
-                if (animationFrameId !== null) {
-                    cancelAnimationFrame(animationFrameId);
-                    animationFrameId = null;
-                }
-                document.getElementById('status').textContent = 'Paused.';
-            } else {
-                isPaused = false;
-                accumulatedPauseMs += (performance.now() - pauseStartTime);
-                lastFrameTime = performance.now();
-                btnPause.textContent = 'Pause';
-                btnPause.classList.remove('btn-success');
-                btnPause.classList.add('btn-warning');
-                document.getElementById('status').textContent = 'Playing...';
-                animationFrameId = requestAnimationFrame(renderLoop);
-            }
-        }
-
-        const keyLayout = [
-            { note: 'c1', type: 'white', label: 'C', hint: 'Z' }, { note: 'c#1', type: 'black', label: 'C#', hint: 'S' },
-            { note: 'd1', type: 'white', label: 'D', hint: 'X' }, { note: 'd#1', type: 'black', label: 'D#', hint: 'D' },
-            { note: 'e1', type: 'white', label: 'E', hint: 'C' },
-            { note: 'f1', type: 'white', label: 'F', hint: 'V' }, { note: 'f#1', type: 'black', label: 'F#', hint: 'G' },
-            { note: 'g1', type: 'white', label: 'G', hint: 'B' }, { note: 'g#1', type: 'black', label: 'G#', hint: 'H' },
-            { note: 'a1', type: 'white', label: 'A', hint: 'N' }, { note: 'a#1', type: 'black', label: 'A#', hint: 'J' },
-            { note: 'b1', type: 'white', label: 'B', hint: 'M' },
-            { note: 'c2', type: 'white', label: 'C', hint: ',' }, { note: 'c#2', type: 'black', label: 'C#', hint: 'L' },
-            { note: 'd2', type: 'white', label: 'D', hint: '.' }, { note: 'd#2', type: 'black', label: 'D#', hint: '1' },
-            { note: 'e2', type: 'white', label: 'E', hint: 'Q' },
-            { note: 'f2', type: 'white', label: 'F', hint: 'W' }, { note: 'f#2', type: 'black', label: 'F#', hint: '3' },
-            { note: 'g2', type: 'white', label: 'G', hint: 'E' }, { note: 'g#2', type: 'black', label: 'G#', hint: '4' },
-            { note: 'a2', type: 'white', label: 'A', hint: 'R' }, { note: 'a#2', type: 'black', label: 'A#', hint: '5' },
-            { note: 'b2', type: 'white', label: 'B', hint: 'T' },
-            { note: 'c3', type: 'white', label: 'C', hint: 'Y' }, { note: 'c#3', type: 'black', label: 'C#', hint: '7' },
-            { note: 'd3', type: 'white', label: 'D', hint: 'U' }, { note: 'd#3', type: 'black', label: 'D#', hint: '8' },
-            { note: 'e3', type: 'white', label: 'E', hint: 'I' },
-            { note: 'f3', type: 'white', label: 'F', hint: 'O' }, { note: 'f#3', type: 'black', label: 'F#', hint: '0' },
-            { note: 'g3', type: 'white', label: 'G', hint: 'P' }, { note: 'g#3', type: 'black', label: 'G#' },
-            { note: 'a3', type: 'white', label: 'A' }, { note: 'a#3', type: 'black', label: 'A#' },
-            { note: 'b3', type: 'white', label: 'B' },
-            { note: 'c4', type: 'white', label: 'C' }, { note: 'c#4', type: 'black', label: 'C#' },
-            { note: 'd4', type: 'white', label: 'D' }, { note: 'd#4', type: 'black', label: 'D#' },
-            { note: 'e4', type: 'white', label: 'E' },
-            { note: 'f4', type: 'white', label: 'F' }, { note: 'f#4', type: 'black', label: 'F#' },
-            { note: 'g4', type: 'white', label: 'G' }, { note: 'g#4', type: 'black', label: 'G#' },
-            { note: 'a4', type: 'white', label: 'A' }, { note: 'a#4', type: 'black', label: 'A#' },
-            { note: 'b4', type: 'white', label: 'B' }
+        const MINI_GAME_TITLES = [
+            'simon taps',
+            'mystery note',
+            'drop dodge',
+            'combo strike',
+            'finger sprint',
+            'two-note combo'
         ];
 
-        const noteNames = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
-        let keyPosMap = {};
+        let allScores = [];
+        let viewMode = 'SONGS';
 
-        function noteToPitch(noteStr) {
-            noteStr = noteStr.trim().toLowerCase();
-            const match = noteStr.match(/^([a-g]#?)([0-9]+)$/);
-            if (!match) return null;
-            const name = match[1];
-            const octave = parseInt(match[2], 10);
-            const offset = noteNames.indexOf(name);
-            if (offset === -1) return null;
-            return octave * 12 + offset;
-        }
-
-        function pitchToNote(pitch) {
-            if (pitch < 0) pitch = 0;
-            const octave = Math.floor(pitch / 12);
-            const offset = pitch % 12;
-            return noteNames[offset] + octave;
-        }
-
-        function autoTransposeSong(song) {
-            if (!song || song.length === 0) return song;
-
-            let pitches = [];
-            song.forEach(item => {
-                item.notes.forEach(n => {
-                    const p = noteToPitch(n);
-                    if (p !== null) pitches.push(p);
-                });
-            });
-            if (pitches.length === 0) return song;
-
-            let minP = Math.min(...pitches);
-            let maxP = Math.max(...pitches);
-
-            const MIN_PITCH = 12;
-            const MAX_PITCH = 59;
-
-            let octaveShift = 0;
-
-            while (minP + octaveShift * 12 < MIN_PITCH) octaveShift++;
-            while (maxP + octaveShift * 12 > MAX_PITCH && minP + octaveShift * 12 > MIN_PITCH) octaveShift--;
-
-            return song.map(item => {
-                const newNotes = item.notes.map(noteStr => {
-                    const p = noteToPitch(noteStr);
-                    if (p === null) return noteStr;
-                    let shiftedP = p + octaveShift * 12;
-                    while (shiftedP < MIN_PITCH) shiftedP += 12;
-                    while (shiftedP > MAX_PITCH) shiftedP -= 12;
-                    return pitchToNote(shiftedP);
-                });
-
-                return {
-                    ...item,
-                    notes: newNotes
-                };
-            });
-        }
-
-        function getNoteFrequency(noteStr) {
-            noteStr = noteStr.trim().toLowerCase();
-            const match = noteStr.match(/^([a-g]#?)([0-9]+)$/);
-            if (!match) return null;
-
-            const name = match[1];
-            const octave = parseInt(match[2], 10);
-            const realOctave = octave + 3;
-            const noteOffsets = { 'c': 0, 'c#': 1, 'd': 2, 'd#': 3, 'e': 4, 'f': 5, 'f#': 6, 'g': 7, 'g#': 8, 'a': 9, 'a#': 10, 'b': 11 };
-
-            if (noteOffsets[name] === undefined) return null;
-            const midiNumber = (realOctave + 1) * 12 + noteOffsets[name];
-            return 440 * Math.pow(2, (midiNumber - 69) / 12);
-        }
-
-        const keyboardEl = document.getElementById('keyboard');
-        keyLayout.forEach(k => {
-            const keyDiv = document.createElement('div');
-            keyDiv.className = `key ${k.type}`;
-            keyDiv.dataset.note = k.note;
-            keyDiv.textContent = k.label;
-
-            if (k.hint) {
-                const hintSpan = document.createElement('span');
-                hintSpan.className = 'bind-hint';
-                hintSpan.textContent = k.hint;
-                keyDiv.appendChild(hintSpan);
-            }
-
-            keyDiv.addEventListener('mousedown', () => playManualNote(k.note));
-            keyboardEl.appendChild(keyDiv);
-        });
-
-        function updateKeyPositions() {
-            keyPosMap = {};
-            const keys = keyboardEl.querySelectorAll('.key');
-            keys.forEach(k => {
-                keyPosMap[k.dataset.note] = {
-                    left: k.offsetLeft,
-                    width: k.offsetWidth,
-                    isBlack: k.classList.contains('black')
-                };
-            });
-            canvas.width = keyboardEl.offsetWidth;
-        }
-
-        function playTone(freq, duration = 0.4, volScale = 1.0) {
-            if (!freq) return;
-            initAudio();
-
-            const inst = instrumentSelect.value;
-            const now = audioCtx.currentTime;
-
-            if (inst === 'piano') {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(freq, now);
-
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(0.4 * volScale, now + 0.01);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.3);
-
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start(now);
-                osc.stop(now + duration + 0.3);
-            } else if (inst === 'synth') {
-                const osc = audioCtx.createOscillator();
-                const filter = audioCtx.createBiquadFilter();
-                const gain = audioCtx.createGain();
-
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(freq, now);
-
-                filter.type = 'lowpass';
-                filter.frequency.setValueAtTime(freq * 3, now);
-                filter.frequency.exponentialRampToValueAtTime(freq, now + duration);
-
-                gain.gain.setValueAtTime(0.2 * volScale, now);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.1);
-
-                osc.connect(filter);
-                filter.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start(now);
-                osc.stop(now + duration + 0.1);
-            } else if (inst === 'organ') {
-                [1, 2, 3].forEach(multiplier => {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(freq * multiplier, now);
-
-                    const vol = (0.2 / multiplier) * volScale;
-                    gain.gain.setValueAtTime(vol, now);
-                    gain.gain.linearRampToValueAtTime(vol, now + duration);
-                    gain.gain.linearRampToValueAtTime(0.0001, now + duration + 0.05);
-
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    osc.start(now);
-                    osc.stop(now + duration + 0.05);
-                });
-            } else if (inst === 'marimba') {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, now);
-
-                gain.gain.setValueAtTime(0.6 * volScale, now);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + Math.min(duration, 0.25));
-
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start(now);
-                osc.stop(now + 0.25);
-            } else if (inst === 'chiptune') {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(freq, now);
-
-                gain.gain.setValueAtTime(0.15 * volScale, now);
-                gain.gain.linearRampToValueAtTime(0.15 * volScale, now + duration);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.02);
-
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start(now);
-                osc.stop(now + duration + 0.02);
-            }
-        }
-
-        function highlightKey(noteStr, duration = 200, color = null) {
-            const normalizedNote = noteStr.trim().toLowerCase();
-            const el = document.querySelector(`.key[data-note="${normalizedNote}"]`);
-            if (el) {
-                el.classList.add('active');
-                if (color) {
-                    el.style.backgroundColor = color;
-                    el.style.boxShadow = `0 0 14px ${color}`;
-                }
-                setTimeout(() => {
-                    el.classList.remove('active');
-                    el.style.backgroundColor = '';
-                    el.style.boxShadow = '';
-                }, duration);
-            }
-        }
-
-        function playManualNote(noteStr) {
-            initAudio();
-            const freq = getNoteFrequency(noteStr);
-            if (freq) {
-                playTone(freq, 0.4, 1.0);
-            }
-
-            if (activeMiniGame === 'drop') {
-                const effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
-                const activeWall = noteTimeline.find(item => item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 600);
-
-                if (activeWall && activeWall.safeKey) {
-                    if (noteStr.toLowerCase().trim() === activeWall.safeKey.toLowerCase().trim()) {
-                        activeWall.gameStatus = 'perfect';
-                        dodgeDodgedCount++;
-                        gameStats.perfect++;
-                        highlightKey(noteStr, 220, '#22c55e');
-                        document.getElementById('status').textContent = `🛡️ Safe Dodge! Total Dodges: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
-                    } else {
-                        activeWall.gameStatus = 'miss';
-                        dodgeLives--;
-                        gameStats.miss++;
-                        playErrorClackSound();
-                        highlightKey(noteStr, 220, '#ef4444');
-                        document.getElementById('status').textContent = `💥 Wall Impact! Lives left: ❤️ ${dodgeLives} | Dodges: ${dodgeDodgedCount}`;
-
-                        if (dodgeLives <= 0) {
-                            isPlaying = false;
-                            currentSongTitle = "Drop Dodge";
-                            showGameResultsPopUp();
-                            activeMiniGame = null;
-                        }
-                    }
-                } else {
-                    highlightKey(noteStr, 200, '#ef4444');
-                }
-                return;
-            }
-
-            if (activeMiniGame === 'simon') {
-                handleSimonInput(noteStr);
-                highlightKey(noteStr);
-                return;
-            } else if (activeMiniGame === 'mystery') {
-                handleMysteryInput(noteStr);
-                return;
-            } else if (activeMiniGame === 'sprint') {
-                handleSprintInput(noteStr);
-                return;
-            }
-
-            if (isRecording) {
-                const now = performance.now();
-                let rest = lastRecordNoteTime === 0 ? 0 : Math.round(now - lastRecordNoteTime);
-                if (rest <= 20 && recordedNotes.length > 0) {
-                    recordedNotes[recordedNotes.length - 1] += '+' + noteStr.toUpperCase();
-                } else {
-                    recordedNotes.push(noteStr.toUpperCase());
-                    recordedRests.push(rest);
-                    lastRecordNoteTime = now;
-                }
-            }
-
-            if ((isGameMode || activeMiniGame === 'combo') && isPlaying && !isPaused) {
-                let effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
-                
-                const target = noteTimeline.find(item =>
-                    item.notes.some(n => n.toLowerCase().trim() === noteStr.toLowerCase().trim()) &&
-                    item.gameStatus === 'pending' &&
-                    Math.abs(effectiveElapsed - item.hitTime) <= 400
-                );
-
-                if (target) {
-                    const diff = Math.abs(effectiveElapsed - target.hitTime);
-                    if (diff <= 140) {
-                        target.gameStatus = 'perfect';
-                        gameStats.perfect++;
-                        highlightKey(noteStr, 220, '#22c55e');
-                    } else {
-                        target.gameStatus = 'earlyLate';
-                        gameStats.earlyLate++;
-                        highlightKey(noteStr, 220, '#f97316');
-                    }
-                    if (isGameMode) updateGameStatus();
-                } else {
-                    gameStats.miss++;
-                    playErrorClackSound();
-                    highlightKey(noteStr, 200, '#ef4444');
-                }
-            } else {
-                highlightKey(noteStr);
-            }
-
-            if (isStepMode) {
-                const targetItem = noteTimeline[currentStepIndex];
-                if (targetItem && targetItem.notes.some(n => n.toLowerCase().trim() === noteStr.toLowerCase().trim())) {
-                    advanceStepNote();
-                }
-            }
-        }
-
-        function parsePianoPad(code) {
-            if (!code || !code.trim()) return [];
-            const cleanCode = code.replace(/[\r\n\s]+/g, '');
-            const parts = cleanCode.split(/,Rests,/i);
-
-            if (parts.length < 2) return [];
-
-            const rawNotes = parts[0].split(',').filter(Boolean);
-            const rests = parts[1].split(',').filter(Boolean);
-
-            const song = [];
-            for (let i = 0; i < rawNotes.length; i++) {
-                song.push({
-                    notes: rawNotes[i].split('+').filter(Boolean),
-                    rest: parseInt(rests[i] || '250', 10)
-                });
-            }
-            return song;
-        }
-
-        function parseCSVToSongs(csvText) {
-            const songs = [];
+        function parseCSV(csvText) {
             const lines = csvText.split(/\r?\n/);
-            
+            const records = [];
+
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
@@ -2619,569 +276,155 @@
                 }
                 row.push(entry);
 
-                if (row.length >= 2 && row[0].trim()) {
-                    songs.push({
-                        title: row[0].trim().replace(/^"|"$/g, ''),
-                        code: row[1].trim().replace(/^"|"$/g, '')
+                if (row.length >= 4) {
+                    const songTitle = row[2] ? row[2].trim().replace(/^"|"$/g, '') : 'Unknown';
+                    const isMiniGame = MINI_GAME_TITLES.some(g => songTitle.toLowerCase().includes(g));
+
+                    records.push({
+                        timestamp: row[0] ? row[0].trim().replace(/^"|"$/g, '') : '',
+                        name: row[1] ? row[1].trim().replace(/^"|"$/g, '') : 'Anonymous',
+                        song: songTitle,
+                        accuracy: parseFloat(row[3]) || 0,
+                        speed: parseInt(row[4]) || 100,
+                        isMiniGame: isMiniGame
                     });
                 }
             }
-            return songs;
+            return records;
         }
 
-        function renderSongSelect() {
-            const uniqueMap = new Map();
-            songList.forEach(s => {
-                const key = s.title.toLowerCase().trim();
-                if (!uniqueMap.has(key)) uniqueMap.set(key, s);
-            });
-            const sortedList = Array.from(uniqueMap.values());
-            sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
-
-            songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
-            sortedList.forEach(song => {
-                const opt = document.createElement('option');
-                opt.value = song.code;
-                opt.textContent = song.title;
-                songSelect.appendChild(opt);
-            });
-        }
-
-        async function syncSongsWithGoogleSheet() {
-            const cachedData = localStorage.getItem('pianopad_sheet_songs');
-            if (cachedData) {
-                try {
-                    songList = JSON.parse(cachedData);
-                    renderSongSelect();
-                    const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
-                    if (defaultObj) {
-                        currentSongTitle = defaultObj.title;
-                        currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
-                    }
-                    document.getElementById('status').textContent = `Loaded ${songList.length} cached songs. Syncing live Google Sheet...`;
-                } catch (e) {
-                    console.warn("Cache parse error");
-                }
-            }
-
-            try {
-                const response = await fetch(SPREADSHEET_CSV_URL);
-                if (!response.ok) throw new Error('Network response failed');
-                
-                const csvText = await response.text();
-                const liveSongs = parseCSVToSongs(csvText);
-
-                if (liveSongs.length > 0) {
-                    songList = liveSongs;
-                    localStorage.setItem('pianopad_sheet_songs', JSON.stringify(liveSongs));
-                    renderSongSelect();
-                    
-                    const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
-                    if (defaultObj) {
-                        currentSongTitle = defaultObj.title;
-                        currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
-                    }
-                    document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
-                }
-            } catch (err) {
-                if (songList.length > 0) {
-                    document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
-                } else {
-                    document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
-                }
-            }
-        }
-
-        function buildTimeline() {
-            noteTimeline = [];
-            if (!currentSong || currentSong.length === 0) return;
-
-            const fallSpeed = activeMiniGame === 'drop' ? miniGameFallSpeedMs : FALL_TIME_MS;
-            const speedFactor = parseFloat(speedSlider.value) / 100;
-            let cumulativeMs = PRE_FALL_PAUSE + fallSpeed;
-
-            currentSong.forEach((item, index) => {
-                cumulativeMs += (item.rest || 0) / speedFactor;
-
-                noteTimeline.push({
-                    notes: item.notes,
-                    safeKey: item.safeKey || null,
-                    hitTime: cumulativeMs,
-                    duration: Math.max(140, (item.rest || 250) * 0.85 / speedFactor),
-                    played: false,
-                    gameStatus: 'pending'
-                });
-            });
-        }
-
-        songSelect.addEventListener('change', (e) => {
-            initAudio();
-            const code = e.target.value;
-            if (!code) return;
-            const opt = songSelect.options[songSelect.selectedIndex];
-            if (opt) currentSongTitle = opt.text;
-            const parsed = parsePianoPad(code);
-            if (parsed.length > 0) {
-                currentSong = autoTransposeSong(parsed);
-                playSong();
-            }
-        });
-
-        function stopSong() {
-            isPlaying = false;
-            isPaused = false;
-            btnPause.textContent = 'Pause';
-            btnPause.classList.remove('btn-success');
-            btnPause.classList.add('btn-warning');
-
-            if (animationFrameId !== null) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
-            document.querySelectorAll('.key').forEach(k => {
-                k.classList.remove('active');
-                k.style.backgroundColor = '';
-                k.style.boxShadow = '';
-            });
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            document.getElementById('status').textContent = 'Playback stopped.';
-        }
-
-        function playSong() {
-            initAudio();
-            stopSong();
-            if (currentSong.length === 0) {
-                document.getElementById('status').textContent = 'No song loaded. Select a song or import one.';
-                return;
-            }
-
-            updateKeyPositions();
-            buildTimeline();
-            resetGameStats();
-
-            isPlaying = true;
-            isPaused = false;
-            accumulatedPauseMs = 0;
-            playbackStartTime = performance.now();
-            lastFrameTime = performance.now();
-
-            if (isStepMode) {
-                currentStepIndex = 0;
-                smoothStepElapsed = noteTimeline[0] ? noteTimeline[0].hitTime : 0;
-                updateStepStatus();
-            } else if (isGameMode) {
-                updateGameStatus();
-            } else {
-                document.getElementById('status').textContent = 'Playing...';
-            }
-
-            requestAnimationFrame(renderLoop);
-        }
-
-        function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending') {
-            ctx.save();
+        function populateSongFilter() {
+            const filterSelect = document.getElementById('filter-song');
             
-            const palette = themePalettes[currentTheme] || themePalettes.default;
-            let blockColor = palette.normal;
-            let shadowColor = palette.shadowNormal;
+            const activePool = allScores.filter(s => viewMode === 'GAMES' ? s.isMiniGame : !s.isMiniGame);
+            const uniqueTitles = [...new Set(activePool.map(s => s.song))];
+            uniqueTitles.sort();
 
-            if (isGameMode || activeMiniGame) {
-                if (gameStatus === 'perfect') {
-                    blockColor = '#22c55e';
-                    shadowColor = 'rgba(34, 197, 94, 0.8)';
-                } else if (gameStatus === 'earlyLate') {
-                    blockColor = '#f97316';
-                    shadowColor = 'rgba(249, 115, 22, 0.8)';
-                } else if (gameStatus === 'miss') {
-                    blockColor = '#ef4444';
-                    shadowColor = 'rgba(239, 68, 68, 0.8)';
+            const defaultLabel = viewMode === 'GAMES' ? 'All Mini-Games' : 'All Songs';
+            filterSelect.innerHTML = `<option value="ALL">${defaultLabel}</option>`;
+            
+            uniqueTitles.forEach(title => {
+                const opt = document.createElement('option');
+                opt.value = title;
+                opt.textContent = title;
+                filterSelect.appendChild(opt);
+            });
+        }
+
+        function renderLeaderboard() {
+            const filterValue = document.getElementById('filter-song').value;
+            const tbody = document.getElementById('leaderboard-body');
+
+            let pool = allScores.filter(s => viewMode === 'GAMES' ? s.isMiniGame : !s.isMiniGame);
+
+            let filtered = filterValue === 'ALL' 
+                ? [...pool] 
+                : pool.filter(s => s.song === filterValue);
+
+            filtered.sort((a, b) => {
+                if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+                return b.speed - a.speed;
+            });
+
+            if (filtered.length === 0) {
+                const typeText = viewMode === 'GAMES' ? 'mini-game' : 'song';
+                const colSpan = viewMode === 'GAMES' ? '5' : '6';
+                tbody.innerHTML = `<tr><td colspan="${colSpan}" class="status-msg">No high scores found for this ${typeText}.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            filtered.forEach((item, index) => {
+                const tr = document.createElement('tr');
+
+                let rankBadge = `<span class="rank-badge rank-other">${index + 1}</span>`;
+                if (index === 0) rankBadge = `<span class="rank-badge rank-1">1</span>`;
+                else if (index === 1) rankBadge = `<span class="rank-badge rank-2">2</span>`;
+                else if (index === 2) rankBadge = `<span class="rank-badge rank-3">3</span>`;
+
+                let scoreFormatted = `${item.accuracy.toFixed(1)}%`;
+                const titleLower = item.song.toLowerCase();
+
+                if (titleLower.includes('simon taps')) {
+                    scoreFormatted = `Level ${Math.round(item.accuracy)}`;
+                } else if (titleLower.includes('mystery note')) {
+                    scoreFormatted = `${Math.round(item.accuracy)} Guesses`;
+                } else if (titleLower.includes('finger sprint')) {
+                    scoreFormatted = `${item.accuracy.toFixed(2)}s`;
+                }
+
+                if (viewMode === 'GAMES') {
+                    tr.innerHTML = `
+                        <td>${rankBadge}</td>
+                        <td style="font-weight: 600; color: #fff;">${item.name}</td>
+                        <td>${item.song}</td>
+                        <td class="score-highlight">${scoreFormatted}</td>
+                        <td style="font-size: 0.8rem; color: #9ca3af;">${item.timestamp || 'N/A'}</td>
+                    `;
                 } else {
-                    blockColor = palette.pending;
-                    shadowColor = palette.shadowActive;
+                    tr.innerHTML = `
+                        <td>${rankBadge}</td>
+                        <td style="font-weight: 600; color: #fff;">${item.name}</td>
+                        <td>${item.song}</td>
+                        <td class="score-highlight">${scoreFormatted}</td>
+                        <td>${item.speed}%</td>
+                        <td style="font-size: 0.8rem; color: #9ca3af;">${item.timestamp || 'N/A'}</td>
+                    `;
                 }
-            } else if (active) {
-                blockColor = palette.pending;
-                shadowColor = palette.shadowActive;
-            }
-
-            ctx.fillStyle = blockColor;
-            ctx.shadowColor = shadowColor;
-            ctx.shadowBlur = 8;
-
-            const radius = Math.min(6, width / 2, height / 2);
-            ctx.beginPath();
-            ctx.moveTo(x + radius, y);
-            ctx.lineTo(x + width - radius, y);
-            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-            ctx.lineTo(x + width, y + height - radius);
-            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-            ctx.lineTo(x + radius, y + height);
-            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-            ctx.lineTo(x, y + radius);
-            ctx.quadraticCurveTo(x, y, x + radius, y);
-            ctx.closePath();
-            ctx.fill();
-
-            if (height >= 18) {
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 11px -apple-system, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                const match = noteName.match(/^([a-g]#?)/i);
-                const label = match ? match[1].toUpperCase() : noteName.toUpperCase();
-                ctx.fillText(label, x + width / 2, y + height / 2);
-            }
-            ctx.restore();
-        }
-
-        function renderLoop(now) {
-            if (!isPlaying || isPaused) return;
-
-            const delta = now - lastFrameTime;
-            lastFrameTime = now;
-
-            let effectiveElapsed = 0;
-
-            if (isStepMode) {
-                const targetStepElapsed = (currentStepIndex < noteTimeline.length)
-                    ? noteTimeline[currentStepIndex].hitTime
-                    : (noteTimeline[noteTimeline.length - 1] ? noteTimeline[noteTimeline.length - 1].hitTime + 500 : 0);
-                
-                smoothStepElapsed += (targetStepElapsed - smoothStepElapsed) * 0.15;
-                effectiveElapsed = smoothStepElapsed;
-            } else {
-                effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
-            }
-
-            if (isLooping && noteTimeline.length > 0 && !isStepMode && !activeMiniGame) {
-                const firstHit = noteTimeline[0].hitTime;
-                const lastHit = noteTimeline[noteTimeline.length - 1].hitTime + noteTimeline[noteTimeline.length - 1].duration;
-                const totalDuration = lastHit - firstHit;
-
-                const startPct = parseInt(loopStartSlider.value, 10) / 100;
-                const endPct = parseInt(loopEndSlider.value, 10) / 100;
-
-                const loopStartMs = firstHit + (totalDuration * startPct);
-                const loopEndMs = firstHit + (totalDuration * endPct);
-
-                if (effectiveElapsed >= loopEndMs) {
-                    playbackStartTime = now - loopStartMs - accumulatedPauseMs;
-                    effectiveElapsed = loopStartMs;
-                    noteTimeline.forEach(n => {
-                        if (n.hitTime >= loopStartMs) {
-                            n.played = false;
-                            n.gameStatus = 'pending';
-                        }
-                    });
-                }
-            }
-
-            if (activeMiniGame === 'simon') {
-                drawSimonStaircase(simonSequence.length);
-            } else {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-            }
-
-            const canvasHeight = canvas.height;
-            const currentFallSpeed = activeMiniGame === 'drop' ? miniGameFallSpeedMs : FALL_TIME_MS;
-
-            noteTimeline.forEach(item => {
-                const backgroundVol = (isGameMode || activeMiniGame) ? 0.2 : 1.0;
-
-                if (!isStepMode && effectiveElapsed >= item.hitTime && !item.played) {
-                    item.played = true;
-                    item.notes.forEach(noteStr => {
-                        const freq = getNoteFrequency(noteStr);
-                        if (freq) {
-                            playTone(freq, item.duration / 1000, backgroundVol);
-                            if (!isGameMode && !activeMiniGame) {
-                                highlightKey(noteStr, item.duration);
-                            }
-                        }
-                    });
-                }
-
-                if ((isGameMode || activeMiniGame) && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 280)) {
-                    item.gameStatus = 'miss';
-                    gameStats.miss++;
-                    if (isGameMode) updateGameStatus();
-                }
-
-                item.notes.forEach(noteStr => {
-                    const normNote = noteStr.toLowerCase().trim();
-                    const pos = keyPosMap[normNote];
-
-                    if (pos) {
-                        const timeUntilHit = item.hitTime - effectiveElapsed;
-                        const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * canvasHeight;
-                        const blockHeight = (item.duration / currentFallSpeed) * canvasHeight;
-                        const yTop = yBottom - blockHeight;
-
-                        if (yBottom > 0 && yTop < canvasHeight) {
-                            const drawY = Math.max(0, yTop);
-                            const drawH = Math.min(canvasHeight - drawY, yBottom - drawY);
-                            const active = effectiveElapsed >= item.hitTime && effectiveElapsed <= (item.hitTime + item.duration);
-                            drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, noteStr, active, item.gameStatus);
-                        }
-                    }
-                });
-            });
-
-            if (!isStepMode && !isLooping) {
-                const lastNote = noteTimeline[noteTimeline.length - 1];
-                if (lastNote && effectiveElapsed > lastNote.hitTime + lastNote.duration + 500) {
-                    isPlaying = false;
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                    if (isGameMode) {
-                        showGameResultsPopUp();
-                        return;
-                    } else if (activeMiniGame) {
-                        currentSongTitle = activeMiniGame === 'drop' ? "Drop Dodge" : "Combo Strike";
-                        showGameResultsPopUp();
-                        activeMiniGame = null;
-                        return;
-                    }
-
-                    const subject = encodeURIComponent("PianoPad wrong notes in song");
-                    const body = encodeURIComponent("Song Title: " + currentSongTitle + "\n\n");
-                    const mailto = `mailto:ghaybittle@erc.nsw.edu.au?subject=${subject}&body=${body}`;
-
-                    document.getElementById('status').innerHTML = `<a href="${mailto}" target="_blank" class="btn-link btn-danger" style="text-decoration:none;">Wrong Notes? CLICK HERE</a>`;
-                    return;
-                }
-            }
-
-            animationFrameId = requestAnimationFrame(renderLoop);
-        }
-
-        const modal = document.getElementById('modal');
-        const exportModal = document.getElementById('export-modal');
-        const importTextarea = document.getElementById('import-text');
-        const exportTextarea = document.getElementById('export-text');
-        const btnEmailHaycode = document.getElementById('btn-email-haycode');
-
-        window.addEventListener('resize', updateKeyPositions);
-
-        document.getElementById('btn-import').addEventListener('click', () => {
-            initAudio();
-            importTextarea.value = '';
-            modal.classList.add('open');
-        });
-
-        document.getElementById('btn-cancel').addEventListener('click', () => modal.classList.remove('open'));
-        document.getElementById('btn-export-close').addEventListener('click', () => exportModal.classList.remove('open'));
-
-        document.getElementById('btn-play').addEventListener('click', playSong);
-        document.getElementById('btn-stop').addEventListener('click', stopSong);
-
-        document.getElementById('btn-load-play').addEventListener('click', () => {
-            initAudio();
-            const code = importTextarea.value;
-            const parsed = parsePianoPad(code);
-            if (parsed.length > 0) {
-                currentSongTitle = 'Custom Imported Song';
-                currentSong = autoTransposeSong(parsed);
-                songSelect.value = '';
-                modal.classList.remove('open');
-                playSong();
-            } else {
-                document.getElementById('status').textContent = 'Invalid code format imported.';
-            }
-        });
-
-        function openExportModal() {
-            if (!generatedHaycode) return;
-            exportTextarea.value = generatedHaycode;
-
-            const subject = encodeURIComponent("HayCode for PianoPad 26");
-            const body = encodeURIComponent("Here is my recorded HayCode for PianoPad 26:\n\n" + generatedHaycode);
-            btnEmailHaycode.href = `mailto:?subject=${subject}&body=${body}`;
-
-            exportModal.classList.add('open');
-        }
-
-        async function shareHaycode() {
-            initAudio();
-            if (!generatedHaycode) return;
-
-            const shareData = {
-                title: 'HayCode for PianoPad 26',
-                text: 'Here is my recorded HayCode for PianoPad 26:\n\n' + generatedHaycode
-            };
-
-            if (navigator.share) {
-                try {
-                    await navigator.share(shareData);
-                } catch (err) {
-                    openExportModal();
-                }
-            } else {
-                openExportModal();
-            }
-        }
-
-        document.getElementById('btn-copy-haycode').addEventListener('click', () => {
-            exportTextarea.select();
-            navigator.clipboard.writeText(exportTextarea.value);
-            document.getElementById('status').textContent = 'Haycode copied to clipboard!';
-        });
-
-        document.getElementById('btn-export-wav').addEventListener('click', () => {
-            initAudio();
-            if (!generatedHaycode) {
-                alert("No recorded HayCode available to export.");
-                return;
-            }
-
-            const currentCleanCode = generatedHaycode.replace(/[\r\n\s]+/g, '').toLowerCase();
-
-            let isDuplicate = false;
-            for (let song of songList) {
-                if (song.code) {
-                    const dbCleanCode = song.code.replace(/[\r\n\s]+/g, '').toLowerCase();
-                    if (dbCleanCode === currentCleanCode) {
-                        isDuplicate = true;
-                        break;
-                    }
-                }
-            }
-
-            if (isDuplicate) {
-                alert("WAV Export Blocked: This recorded HayCode matches an existing song in the database. Audio export is only allowed for original student recordings.");
-                return;
-            }
-
-            const defaultTitle = currentSongTitle && currentSongTitle !== 'Wipeout' ? currentSongTitle : 'My_PianoPad_Song';
-            const userTitle = prompt("Please enter a title for your recorded WAV audio file:", defaultTitle);
-
-            if (userTitle === null) return;
-
-            const cleanFileName = userTitle.trim().replace(/[^a-zA-Z0-9_\-\s]/g, '').replace(/\s+/g, '_') || 'PianoPad_Song';
-
-            exportPerformanceToWAV(cleanFileName);
-        });
-
-        function exportPerformanceToWAV(fileName = 'PianoPad_Song') {
-            if (recordedNotes.length === 0) {
-                alert("No recorded note sequence found.");
-                return;
-            }
-
-            document.getElementById('status').textContent = "Generating WAV audio file...";
-
-            let totalMs = 0;
-            recordedRests.forEach(r => totalMs += r);
-            const totalSeconds = Math.max(1.5, (totalMs + 1000) / 1000);
-
-            const sampleRate = 44100;
-            const offlineCtx = new OfflineAudioContext(1, Math.ceil(sampleRate * totalSeconds), sampleRate);
-
-            let cumulativeTime = 0;
-            for (let i = 0; i < recordedNotes.length; i++) {
-                const noteToken = recordedNotes[i];
-                const restMs = recordedRests[i] || 250;
-                cumulativeTime += (restMs / 1000);
-
-                const noteList = noteToken.split('+').filter(Boolean);
-                noteList.forEach(noteStr => {
-                    const freq = getNoteFrequency(noteStr);
-                    if (freq) {
-                        const osc = offlineCtx.createOscillator();
-                        const gain = offlineCtx.createGain();
-
-                        osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(freq, cumulativeTime);
-
-                        gain.gain.setValueAtTime(0, cumulativeTime);
-                        gain.gain.linearRampToValueAtTime(0.4, cumulativeTime + 0.01);
-                        gain.gain.exponentialRampToValueAtTime(0.0001, cumulativeTime + 0.4);
-
-                        osc.connect(gain);
-                        gain.connect(offlineCtx.destination);
-
-                        osc.start(cumulativeTime);
-                        osc.stop(cumulativeTime + 0.4);
-                    }
-                });
-            }
-
-            offlineCtx.startRendering().then(renderedBuffer => {
-                const wavBlob = bufferToWavBlob(renderedBuffer);
-                const url = URL.createObjectURL(wavBlob);
-
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${fileName}.wav`;
-                a.click();
-
-                document.getElementById('status').textContent = `WAV Audio exported as "${fileName}.wav"!`;
-            }).catch(err => {
-                console.error("WAV Export Error:", err);
-                document.getElementById('status').textContent = "WAV Export failed.";
+                tbody.appendChild(tr);
             });
         }
 
-        function bufferToWavBlob(buffer) {
-            const numOfChan = buffer.numberOfChannels;
-            const length = buffer.length * numOfChan * 2 + 44;
-            const outBuffer = new ArrayBuffer(length);
-            const view = new DataView(outBuffer);
-            const channels = [];
-            let sample = 0;
-            let offset = 0;
-            let pos = 0;
+        function toggleViewMode() {
+            const toggleBtn = document.getElementById('btn-toggle-mode');
+            const titleEl = document.getElementById('leaderboard-title');
+            const colHeaderTitle = document.getElementById('col-header-title');
+            const colHeaderScore = document.getElementById('col-header-score');
+            const colHeaderTempo = document.getElementById('col-header-tempo');
 
-            function writeString(str) {
-                for (let i = 0; i < str.length; i++) {
-                    view.setUint8(pos++, str.charCodeAt(i));
-                }
+            if (viewMode === 'SONGS') {
+                viewMode = 'GAMES';
+                titleEl.textContent = '🕹️ Mini-Game High Scores';
+                colHeaderTitle.textContent = 'Mini-Game';
+                colHeaderScore.textContent = 'Score / Level';
+                colHeaderTempo.style.display = 'none';
+                toggleBtn.textContent = '🎵 SONG Leaderboard';
+                toggleBtn.className = 'btn btn-song-mode';
+            } else {
+                viewMode = 'SONGS';
+                titleEl.textContent = '🏆 PianoPad Song High Scores';
+                colHeaderTitle.textContent = 'Song Title';
+                colHeaderScore.textContent = 'Accuracy';
+                colHeaderTempo.style.display = '';
+                toggleBtn.textContent = '🎮 MINI-GAME Leaderboard';
+                toggleBtn.className = 'btn btn-arcade';
             }
 
-            function setUint16(data) {
-                view.setUint16(pos, data, true);
-                pos += 2;
-            }
-
-            function setUint32(data) {
-                view.setUint32(pos, data, true);
-                pos += 4;
-            }
-
-            writeString('RIFF');
-            setUint32(length - 8);
-            writeString('WAVE');
-            writeString('fmt ');
-            setUint32(16);
-            setUint16(1);
-            setUint16(numOfChan);
-            setUint32(buffer.sampleRate);
-            setUint32(buffer.sampleRate * 2 * numOfChan);
-            setUint16(numOfChan * 2);
-            setUint16(16);
-            writeString('data');
-            setUint32(length - pos - 4);
-
-            for (let i = 0; i < buffer.numberOfChannels; i++) {
-                channels.push(buffer.getChannelData(i));
-            }
-
-            while (offset < buffer.length) {
-                for (let i = 0; i < numOfChan; i++) {
-                    sample = Math.max(-1, Math.min(1, channels[i][offset]));
-                    sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
-                    view.setInt16(pos, sample, true);
-                    pos += 2;
-                }
-                offset++;
-            }
-
-            return new Blob([outBuffer], { type: 'audio/wav' });
+            populateSongFilter();
+            renderLeaderboard();
         }
 
-        initMIDIHardware();
-        syncSongsWithGoogleSheet();
-        setTimeout(updateKeyPositions, 100);
+        async function fetchScores() {
+            try {
+                const response = await fetch(LEADERBOARD_CSV_URL);
+                if (!response.ok) throw new Error('Network response error');
+
+                const csvText = await response.text();
+                allScores = parseCSV(csvText);
+
+                populateSongFilter();
+                renderLeaderboard();
+            } catch (err) {
+                console.error(err);
+                document.getElementById('leaderboard-body').innerHTML = 
+                    '<tr><td colspan="6" class="status-msg" style="color:#ef4444;">Failed to load leaderboard data. Please ensure the CSV link is public.</td></tr>';
+            }
+        }
+
+        document.getElementById('filter-song').addEventListener('change', renderLeaderboard);
+        document.getElementById('btn-toggle-mode').addEventListener('click', toggleViewMode);
+
+        fetchScores();
     </script>
 </body>
 </html>
