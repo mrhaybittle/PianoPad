@@ -975,7 +975,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 08:25 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 08:29 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1053,6 +1053,24 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" id="btn-settings-close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calibration Wizard Modal -->
+    <div class="modal-overlay" id="calib-modal">
+        <div class="modal" style="max-width: 680px;">
+            <h2>MIDI Keyboard Calibration</h2>
+            <p id="calib-instructions" style="font-size: 0.9rem; color: #38bdf8; font-weight: 600;">
+                Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...
+            </p>
+
+            <div class="calib-piano-container">
+                <div class="calib-piano" id="calib-keyboard"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="btn-calib-cancel">Cancel Calibration</button>
             </div>
         </div>
     </div>
@@ -1603,7 +1621,6 @@
                             broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
                             updateMultiplayerLanesUI();
 
-                            // Check if all players completed or host player finished
                             if (player.pxProgress >= 3600 && raceActive) {
                                 raceActive = false;
                                 broadcastPeerMsg({ type: 'RACE_FINISHED', players: playersList });
@@ -1771,7 +1788,6 @@
             raceActive = false;
             currentSongTitle = "Finger Sprint";
 
-            // Sort all competitors by finish time (or progress if un-finished)
             const sortedResults = [...playersList].sort((a, b) => {
                 if (a.finishTime && b.finishTime) return parseFloat(a.finishTime) - parseFloat(b.finishTime);
                 if (a.finishTime) return -1;
