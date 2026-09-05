@@ -162,6 +162,7 @@
         .btn-compose-active { background-color: #d97706 !important; box-shadow: 0 0 10px #f59e0b; font-weight: 700; }
 
         .btn-export-wav { background-color: #10b981 !important; font-weight: 700; display: none; }
+        .btn-export-midi { background-color: #06b6d4 !important; font-weight: 700; display: none; }
 
         .btn-mode-toggle { background-color: #0284c7 !important; font-weight: 700; }
         .btn-mode-toggle-active { background-color: #0369a1 !important; box-shadow: 0 0 10px #0284c7; font-weight: 700; }
@@ -601,7 +602,7 @@
             display: flex;
             align-items: flex-end;
             justify-content: center;
-            height: 140px;
+            height: 160px;
             width: 90px;
             background: #f8fafc;
             border: 1px solid #cbd5e1;
@@ -703,6 +704,7 @@
 
                 <button id="btn-compose" class="btn-compose">Compose</button>
                 <button id="btn-export-wav" class="btn-export-wav">EXPORT WAV</button>
+                <button id="btn-export-midi" class="btn-export-midi">EXPORT MIDI</button>
                 <button id="btn-game" class="btn-secondary">Game Mode: OFF</button>
                 <button id="btn-step" class="btn-step">Step Mode</button>
                 <button id="btn-call-resp" class="btn-mode-toggle">Call & Response</button>
@@ -1048,6 +1050,7 @@
         const countinTextEl = document.getElementById('countin-text');
         const btnCompose = document.getElementById('btn-compose');
         const btnExportWav = document.getElementById('btn-export-wav');
+        const btnExportMidi = document.getElementById('btn-export-midi');
         const dragGhostEl = document.getElementById('drag-ghost');
         const tokenCountEl = document.getElementById('token-count');
 
@@ -1198,6 +1201,7 @@
                 osc.frequency.setValueAtTime(freqMap[drumId] || 200, now);
                 gain.gain.setValueAtTime(0.3, now);
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
                 osc.connect(gain); gain.connect(audioCtx.destination);
                 osc.start(now); osc.stop(now + 0.12);
             } else {
@@ -1299,11 +1303,10 @@
             if (customComposedHits.length === 0) return;
 
             initAudio();
-            const barDurationSec = (60 / currentBPM) * 4; // 1 bar duration in seconds
+            const barDurationSec = (60 / currentBPM) * 4;
             const sampleRate = audioCtx.sampleRate;
             const offlineCtx = new OfflineAudioContext(2, sampleRate * barDurationSec, sampleRate);
 
-            // Temporarily redirect synthesis output to offline context
             const originalAudioCtx = audioCtx;
             audioCtx = offlineCtx;
 
@@ -1312,7 +1315,7 @@
                 triggerDrumSound(hit.drumId, hitTimeSec);
             });
 
-            audioCtx = originalAudioCtx; // Restore audio context
+            audioCtx = originalAudioCtx;
 
             offlineCtx.startRendering().then(renderedBuffer => {
                 const wavBlob = bufferToWav(renderedBuffer);
@@ -1327,10 +1330,49 @@
             });
         }
 
+        /* --- EXPORT COMPOSED DRUM BEAT TO MIDI FILE (CHANNEL 10) --- */
+        function exportComposedBeatMidi() {
+            if (customComposedHits.length === 0) return;
+
+            const midi = new Midi();
+            midi.header.setTempo(currentBPM);
+
+            const track = midi.addTrack();
+            track.channel = 9; // General MIDI Channel 10 (0-indexed 9)
+            track.name = "Drums";
+
+            const barDurationSec = (60 / currentBPM) * 4;
+            const slotDurationSec = barDurationSec / 16;
+
+            customComposedHits.forEach(hit => {
+                const drumObj = DRUM_KIT.find(d => d.id === hit.drumId);
+                if (!drumObj) return;
+
+                const noteTime = hit.slot * slotDurationSec;
+                track.addNote({
+                    midi: drumObj.midi,
+                    time: noteTime,
+                    duration: 0.1,
+                    velocity: 0.8
+                });
+            });
+
+            const midiArray = midi.toArray();
+            const midiBlob = new Blob([midiArray], { type: 'audio/midi' });
+            const url = URL.createObjectURL(midiBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Composed_Drumbeat - ${currentBPM}BPM.mid`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            statusEl.textContent = `Exported: Composed_Drumbeat - ${currentBPM}BPM.mid`;
+        }
+
         function bufferToWav(buffer) {
             const numChannels = buffer.numberOfChannels;
             const sampleRate = buffer.sampleRate;
-            const format = 1; // PCM
+            const format = 1;
             const bitDepth = 16;
             const bytesPerSample = bitDepth / 8;
             const blockAlign = numChannels * bytesPerSample;
@@ -1378,11 +1420,13 @@
             return new Blob([arrayBuffer], { type: 'audio/wav' });
         }
 
-        function updateExportWavButtonVisibility() {
+        function updateExportButtonsVisibility() {
             if (isComposeMode && customComposedHits.length > 0) {
                 btnExportWav.style.display = 'inline-flex';
+                btnExportMidi.style.display = 'inline-flex';
             } else {
                 btnExportWav.style.display = 'none';
+                btnExportMidi.style.display = 'none';
             }
         }
 
@@ -1849,7 +1893,7 @@
             }
 
             dragSource = null;
-            updateExportWavButtonVisibility();
+            updateExportButtonsVisibility();
             drawSheetMusic(0);
         });
 
@@ -2015,7 +2059,7 @@
                 isComposeMode = false;
                 btnCompose.textContent = 'Compose';
                 btnCompose.classList.remove('btn-compose-active');
-                updateExportWavButtonVisibility();
+                updateExportButtonsVisibility();
             }
             startCountInThenPlay();
         }
@@ -2154,18 +2198,19 @@
                 songSelect.value = "Custom Composed Beat";
                 activeConfig = ONE_BAR_PATTERNS["Custom Composed Beat"];
                 statusEl.textContent = "Click and Drag the DRUM parts below to the Sheet Music";
-                updateExportWavButtonVisibility();
+                updateExportButtonsVisibility();
                 drawSheetMusic(0);
             } else {
                 btnCompose.textContent = 'Compose';
                 btnCompose.classList.remove('btn-compose-active');
                 statusEl.textContent = "Compose Mode OFF.";
-                updateExportWavButtonVisibility();
+                updateExportButtonsVisibility();
                 drawSheetMusic(0);
             }
         });
 
         btnExportWav.addEventListener('click', exportComposedBeatWav);
+        btnExportMidi.addEventListener('click', exportComposedBeatMidi);
 
         document.getElementById('btn-game').addEventListener('click', () => {
             isGameMode = !isGameMode;
@@ -2178,7 +2223,7 @@
                     isComposeMode = false; 
                     btnCompose.textContent = 'Compose'; 
                     btnCompose.classList.remove('btn-compose-active'); 
-                    updateExportWavButtonVisibility();
+                    updateExportButtonsVisibility();
                 }
                 setMetronomeState(true);
                 statusEl.textContent = "GAME MODE ACTIVE! Press Play for Count-In.";
@@ -2199,7 +2244,7 @@
                     isComposeMode = false; 
                     btnCompose.textContent = 'Compose'; 
                     btnCompose.classList.remove('btn-compose-active'); 
-                    updateExportWavButtonVisibility();
+                    updateExportButtonsVisibility();
                 }
                 if (isPlaying) updateStepStatusUI();
             } else {
