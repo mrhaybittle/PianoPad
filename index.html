@@ -651,14 +651,14 @@
         .runner-track-wrapper {
             position: relative;
             width: 100%;
-            height: 52px;
+            height: 80px;
             background: #0b0f19;
             border: 1px solid #374151;
             border-radius: 8px;
             overflow: hidden;
             display: flex;
-            align-items: center;
-            padding: 0 10px;
+            align-items: flex-end;
+            padding: 0 10px 6px 10px;
             margin-top: 6px;
         }
 
@@ -674,28 +674,29 @@
         .runner-avatar {
             position: absolute;
             left: 10px;
-            font-size: 1.8rem;
-            transition: left 0.18s linear, transform 0.25s ease-out;
+            bottom: 4px;
+            font-size: 2.2rem;
+            transition: left 0.12s linear, transform 0.25s ease-out;
             user-select: none;
             transform: scaleX(-1);
             z-index: 5;
         }
 
         .runner-avatar.jumping {
-            transform: scaleX(-1) translateY(-22px) rotate(-10deg);
+            transform: scaleX(-1) translateY(-48px) rotate(-12deg);
         }
 
         .hurdle-obstacle {
             position: absolute;
             bottom: 4px;
-            width: 26px;
-            height: 30px;
+            width: 28px;
+            height: 34px;
             background: #ef4444;
             border: 2px solid #ffffff;
             border-radius: 4px 4px 0 0;
             color: #ffffff;
             font-weight: 900;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -878,7 +879,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.05 | 5-Sep 11:32 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.05 | 5-Sep 16:36 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1065,7 +1066,7 @@
         let sprintSequence = ['c1', 'd1'];
         let sprintIndex = 0;
         let sprintKeystrokeCount = 0;
-        const SPRINT_TARGET_KEYSTROKES = 32;
+        const SPRINT_TARGET_KEYSTROKES = 20; // Reduced for faster sprint pacing
         let sprintStartTime = 0;
         let activeHurdles = [];
         let runnerLegToggle = false;
@@ -1325,7 +1326,7 @@
             }
         }
 
-        /* 3. MAZE RUNNER (DROP DODGE) MINI-GAME */
+        /* 3. MAZE RUNNER MINI-GAME */
         function startDropDodge() {
             initAudio();
             exitActiveMiniGame();
@@ -1486,6 +1487,15 @@
 
             const expectedNote = sprintSequence[sprintIndex % 2];
             if (rawNoteName === expectedNote.toLowerCase().trim()) {
+                // Check if running through an uncleared hurdle (Collision Penalty)
+                const missedHurdle = activeHurdles.find(h => !h.cleared && (currentPosPct >= h.posPct - 3 && currentPosPct <= h.posPct + 5));
+                if (missedHurdle) {
+                    missedHurdle.cleared = true; // Mark as passed with penalty
+                    sprintStartTime -= 2000; // 2-second time penalty
+                    playErrorClackSound();
+                    document.getElementById('status').textContent = `💥 HURDLE COLLISION! +2.0s Time Penalty Added!`;
+                }
+
                 gameStats.perfect++;
                 sprintIndex++;
                 sprintKeystrokeCount++;
@@ -2842,46 +2852,16 @@
 
         function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending', obstacleType = null) {
             ctx.save();
-            
-            if (activeMiniGame === 'drop' && obstacleType) {
-                ctx.beginPath();
-                const radius = Math.min(4, width / 2, height / 2);
-                ctx.moveTo(x + radius, y);
-                ctx.lineTo(x + width - radius, y);
-                ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-                ctx.lineTo(x + width, y + height - radius);
-                ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-                ctx.lineTo(x + radius, y + height);
-                ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-                ctx.lineTo(x, y + radius);
-                ctx.quadraticCurveTo(x, y, x + radius, y);
-                ctx.closePath();
 
-                if (obstacleType === 'tree') {
-                    ctx.fillStyle = '#15803d';
-                    ctx.fill();
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = '12px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('🌲', x + width / 2, y + height / 2);
-                } else if (obstacleType === 'rock') {
-                    ctx.fillStyle = '#475569';
-                    ctx.fill();
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = '12px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('🪨', x + width / 2, y + height / 2);
-                } else if (obstacleType === 'river') {
-                    ctx.fillStyle = '#0284c7';
-                    ctx.fill();
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = '12px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('🌊', x + width / 2, y + height / 2);
-                }
+            // Distinct Obstacle Rendering (Draw individual trees, rocks, rivers - not full colored wall fills)
+            if (activeMiniGame === 'drop' && obstacleType) {
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '16px -apple-system, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                const icon = obstacleType === 'tree' ? '🌲' : (obstacleType === 'rock' ? '🪨' : '🌊');
+                ctx.fillText(icon, x + width / 2, y + height / 2);
                 ctx.restore();
                 return;
             }
