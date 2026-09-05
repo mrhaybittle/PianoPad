@@ -467,11 +467,10 @@
         }
 
         .calib-piano-container {
-            position: relative;
             width: 100%;
             overflow-x: auto;
             background: #000;
-            padding: 28px 10px 10px 10px;
+            padding: 10px;
             border-radius: 8px;
             display: flex;
             justify-content: center;
@@ -481,17 +480,6 @@
             display: flex;
             position: relative;
             user-select: none;
-        }
-
-        .calib-arrow {
-            position: absolute;
-            top: 2px;
-            font-size: 1.4rem;
-            color: #38bdf8;
-            transform: translateX(-50%);
-            z-index: 10;
-            transition: left 0.3s ease, color 0.3s ease;
-            pointer-events: none;
         }
 
         .calib-key {
@@ -891,7 +879,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.05 | 5-Sep 17:48 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.05 | 5-Sep 17:54 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -919,7 +907,6 @@
             </p>
 
             <div class="calib-piano-container">
-                <div id="calib-arrow" class="calib-arrow">⬇</div>
                 <div class="calib-piano" id="calib-keyboard"></div>
             </div>
 
@@ -1788,16 +1775,6 @@
             loopRangeLabel.textContent = `${start}% - ${end}% Region`;
         }
 
-        function positionCalibArrow(targetNote) {
-            const arrow = document.getElementById('calib-arrow');
-            const targetKey = document.querySelector(`.calib-key[data-calib-note="${targetNote}"]`);
-            if (arrow && targetKey) {
-                const keyLeft = targetKey.offsetLeft;
-                const keyWidth = targetKey.offsetWidth;
-                arrow.style.left = `${keyLeft + keyWidth / 2}px`;
-            }
-        }
-
         function buildCalibrationKeyboard() {
             const container = document.getElementById('calib-keyboard');
             container.innerHTML = '';
@@ -1840,11 +1817,7 @@
             instEl.textContent = "Play LOWEST C now";
             instEl.style.color = "#38bdf8";
 
-            const arrow = document.getElementById('calib-arrow');
-            if (arrow) arrow.style.color = "#38bdf8";
-
             calibModal.classList.add('open');
-            setTimeout(() => positionCalibArrow('c1'), 50);
         }
 
         function cancelCalibration() {
@@ -1866,11 +1839,6 @@
                 const instEl = document.getElementById('calib-instructions');
                 instEl.textContent = "Play the HIGHEST C now";
                 instEl.style.color = "#eab308";
-
-                const arrow = document.getElementById('calib-arrow');
-                if (arrow) arrow.style.color = "#eab308";
-
-                positionCalibArrow('c7');
             } else if (calibStep === 2) {
                 calibHighestRawMIDI = rawMidi;
 
