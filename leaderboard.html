@@ -45,6 +45,11 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
+            transition: max-width 0.3s ease;
+        }
+
+        .container.wide-mode {
+            max-width: 1400px; /* Expand container width for multi-column arcade dashboard */
         }
 
         header {
@@ -138,14 +143,14 @@
             width: 100%;
             border-collapse: collapse;
             text-align: left;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
         }
 
         th {
             background-color: #181f2e;
             color: #9ca3af;
             font-weight: 700;
-            padding: 12px 16px;
+            padding: 12px 14px;
             border-bottom: 1px solid #374151;
             text-transform: uppercase;
             font-size: 0.75rem;
@@ -153,7 +158,7 @@
         }
 
         td {
-            padding: 12px 16px;
+            padding: 10px 14px;
             border-bottom: 1px solid #1f2937;
             color: #e5e7eb;
         }
@@ -170,11 +175,11 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 28px;
-            height: 28px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
             font-weight: 800;
-            font-size: 0.85rem;
+            font-size: 0.78rem;
             color: #000;
         }
 
@@ -194,11 +199,59 @@
             padding: 20px;
             font-size: 0.9rem;
         }
+
+        /* Arcade Multi-Column Grid Styling */
+        .arcade-dashboard {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            overflow-x: auto;
+        }
+
+        .arcade-column {
+            background: #141226;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 230px;
+        }
+
+        .arcade-column-header {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #facc15;
+            text-align: center;
+            border-bottom: 1px solid #374151;
+            padding-bottom: 8px;
+        }
+
+        .arcade-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 8px;
+            background: #0b0f19;
+            border-radius: 6px;
+            border: 1px solid #1f2937;
+            font-size: 0.82rem;
+        }
+
+        .arcade-row-name {
+            font-weight: 600;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100px;
+        }
     </style>
 </head>
 <body>
 
-    <div class="container">
+    <div class="container" id="main-container">
         <header>
             <h1 id="leaderboard-title">🏆 PianoPad Song High Scores</h1>
             <div class="controls">
@@ -212,37 +265,42 @@
             </div>
         </header>
 
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 70px;">Rank</th>
-                        <th>Student Name</th>
-                        <th id="col-header-title">Song Title</th>
-                        <th id="col-header-score">Accuracy</th>
-                        <th id="col-header-tempo">Tempo Speed</th>
-                        <th>Date</th>
-                    </tr>
-                </thead>
-                <tbody id="leaderboard-body">
-                    <tr>
-                        <td colspan="6" class="status-msg">Loading scores from Google Sheet...</td>
-                    </tr>
-                </tbody>
-            </table>
+        <div id="view-content-area">
+            <!-- Standard Song View Table -->
+            <div class="table-wrapper" id="song-table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 70px;">Rank</th>
+                            <th>Student Name</th>
+                            <th>Song Title</th>
+                            <th>Accuracy</th>
+                            <th>Tempo Speed</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <tr>
+                            <td colspan="6" class="status-msg">Loading scores from Google Sheet...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Arcade 5-Column Grid View (Hidden by Default) -->
+            <div class="arcade-dashboard" id="arcade-dashboard" style="display: none;"></div>
         </div>
     </div>
 
     <script>
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
 
-        const MINI_GAME_TITLES = [
-            'simon taps',
-            'mystery note',
-            'drop dodge',
-            'combo strike',
-            'finger sprint',
-            'two-note combo'
+        const MINI_GAMES = [
+            { key: 'simon taps', title: '🧠 Simon Taps', unit: 'Level', sortAsc: false },
+            { key: 'mystery note', title: '🔍 Mystery Note', unit: 'Guesses', sortAsc: true },
+            { key: 'drop dodge', title: '🛡️ Drop Dodge', unit: 'Dodges', sortAsc: false },
+            { key: 'combo strike', title: '⚡ Combo Strike', unit: 'Score', sortAsc: false },
+            { key: 'finger sprint', title: '🏃 Finger Sprint', unit: 'Seconds', sortAsc: true }
         ];
 
         let allScores = [];
@@ -278,7 +336,7 @@
 
                 if (row.length >= 4) {
                     const songTitle = row[2] ? row[2].trim().replace(/^"|"$/g, '') : 'Unknown';
-                    const isMiniGame = MINI_GAME_TITLES.some(g => songTitle.toLowerCase().includes(g));
+                    const isMiniGame = MINI_GAMES.some(g => songTitle.toLowerCase().includes(g.key));
 
                     records.push({
                         timestamp: row[0] ? row[0].trim().replace(/^"|"$/g, '') : '',
@@ -296,13 +354,17 @@
         function populateSongFilter() {
             const filterSelect = document.getElementById('filter-song');
             
-            const activePool = allScores.filter(s => viewMode === 'GAMES' ? s.isMiniGame : !s.isMiniGame);
+            if (viewMode === 'GAMES') {
+                filterSelect.style.display = 'none'; // Filter not needed for 5-column dashboard
+                return;
+            }
+
+            filterSelect.style.display = '';
+            const activePool = allScores.filter(s => !s.isMiniGame);
             const uniqueTitles = [...new Set(activePool.map(s => s.song))];
             uniqueTitles.sort();
 
-            const defaultLabel = viewMode === 'GAMES' ? 'All Mini-Games' : 'All Songs';
-            filterSelect.innerHTML = `<option value="ALL">${defaultLabel}</option>`;
-            
+            filterSelect.innerHTML = `<option value="ALL">All Songs</option>`;
             uniqueTitles.forEach(title => {
                 const opt = document.createElement('option');
                 opt.value = title;
@@ -311,40 +373,20 @@
             });
         }
 
-        function renderLeaderboard() {
+        function renderSongLeaderboard() {
             const filterValue = document.getElementById('filter-song').value;
             const tbody = document.getElementById('leaderboard-body');
 
-            let pool = allScores.filter(s => viewMode === 'GAMES' ? s.isMiniGame : !s.isMiniGame);
+            let pool = allScores.filter(s => !s.isMiniGame);
+            let filtered = filterValue === 'ALL' ? [...pool] : pool.filter(s => s.song === filterValue);
 
-            let filtered = filterValue === 'ALL' 
-                ? [...pool] 
-                : pool.filter(s => s.song === filterValue);
-
-            // CUSTOM SORTING ENGINE BASED ON GAME TYPE
             filtered.sort((a, b) => {
-                const titleA = a.song.toLowerCase();
-                const titleB = b.song.toLowerCase();
-
-                // 1. Mystery Note -> LOWEST guesses first (Ascending)
-                if (titleA.includes('mystery note') || titleB.includes('mystery note')) {
-                    return a.accuracy - b.accuracy;
-                }
-
-                // 2. Finger Sprint -> SHORTEST time in seconds first (Ascending)
-                if (titleA.includes('finger sprint') || titleB.includes('finger sprint')) {
-                    return a.accuracy - b.accuracy;
-                }
-
-                // 3. Simon Taps & Main Songs -> HIGHEST level / score first (Descending)
                 if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
                 return b.speed - a.speed;
             });
 
             if (filtered.length === 0) {
-                const typeText = viewMode === 'GAMES' ? 'mini-game' : 'song';
-                const colSpan = viewMode === 'GAMES' ? '5' : '6';
-                tbody.innerHTML = `<tr><td colspan="${colSpan}" class="status-msg">No high scores found for this ${typeText}.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="status-msg">No high scores found for this song.</td></tr>`;
                 return;
             }
 
@@ -353,70 +395,110 @@
                 const tr = document.createElement('tr');
 
                 let rankBadge = `<span class="rank-badge rank-other">${index + 1}</span>`;
-                if (index === 0) rankBadge = `<span class="rank-badge rank-1">1</span>`;
-                else if (index === 1) rankBadge = `<span class="rank-badge rank-2">2</span>`;
-                else if (index === 2) rankBadge = `<span class="rank-badge rank-3">3</span>`;
+                if (index === 0) rankBadge = `<span class="rank-badge rank-1">🥇</span>`;
+                else if (index === 1) rankBadge = `<span class="rank-badge rank-2">🥈</span>`;
+                else if (index === 2) rankBadge = `<span class="rank-badge rank-3">🥉</span>`;
 
-                let scoreFormatted = `${item.accuracy.toFixed(1)}%`;
-                const titleLower = item.song.toLowerCase();
-
-                if (titleLower.includes('simon taps')) {
-                    scoreFormatted = `Level ${Math.round(item.accuracy)}`;
-                } else if (titleLower.includes('mystery note')) {
-                    scoreFormatted = `${Math.round(item.accuracy)} Guesses`;
-                } else if (titleLower.includes('finger sprint')) {
-                    scoreFormatted = `${item.accuracy.toFixed(2)}s`;
-                }
-
-                if (viewMode === 'GAMES') {
-                    tr.innerHTML = `
-                        <td>${rankBadge}</td>
-                        <td style="font-weight: 600; color: #fff;">${item.name}</td>
-                        <td>${item.song}</td>
-                        <td class="score-highlight">${scoreFormatted}</td>
-                        <td style="font-size: 0.8rem; color: #9ca3af;">${item.timestamp || 'N/A'}</td>
-                    `;
-                } else {
-                    tr.innerHTML = `
-                        <td>${rankBadge}</td>
-                        <td style="font-weight: 600; color: #fff;">${item.name}</td>
-                        <td>${item.song}</td>
-                        <td class="score-highlight">${scoreFormatted}</td>
-                        <td>${item.speed}%</td>
-                        <td style="font-size: 0.8rem; color: #9ca3af;">${item.timestamp || 'N/A'}</td>
-                    `;
-                }
+                tr.innerHTML = `
+                    <td>${rankBadge}</td>
+                    <td style="font-weight: 600; color: #fff;">${item.name}</td>
+                    <td>${item.song}</td>
+                    <td class="score-highlight">${item.accuracy.toFixed(1)}%</td>
+                    <td>${item.speed}%</td>
+                    <td style="font-size: 0.8rem; color: #9ca3af;">${item.timestamp || 'N/A'}</td>
+                `;
                 tbody.appendChild(tr);
             });
         }
 
+        function renderArcadeDashboard() {
+            const dashboard = document.getElementById('arcade-dashboard');
+            dashboard.innerHTML = '';
+
+            MINI_GAMES.forEach(gameConfig => {
+                const colDiv = document.createElement('div');
+                colDiv.className = 'arcade-column';
+
+                const header = document.createElement('div');
+                header.className = 'arcade-column-header';
+                header.textContent = gameConfig.title;
+                colDiv.appendChild(header);
+
+                // Filter scores for this specific mini-game
+                let gameScores = allScores.filter(s => s.song.toLowerCase().includes(gameConfig.key));
+
+                // Apply custom game sorting
+                gameScores.sort((a, b) => {
+                    return gameConfig.sortAsc ? a.accuracy - b.accuracy : b.accuracy - a.accuracy;
+                });
+
+                // Top 8 Scores per Mini-Game
+                const topScores = gameScores.slice(0, 8);
+
+                if (topScores.length === 0) {
+                    const emptyMsg = document.createElement('div');
+                    emptyMsg.className = 'status-msg';
+                    emptyMsg.style.fontSize = '0.8rem';
+                    emptyMsg.textContent = 'No scores yet!';
+                    colDiv.appendChild(emptyMsg);
+                } else {
+                    topScores.forEach((score, idx) => {
+                        const row = document.createElement('div');
+                        row.className = 'arcade-row';
+
+                        let badge = `<span class="rank-badge rank-other">${idx + 1}</span>`;
+                        if (idx === 0) badge = `<span class="rank-badge rank-1">🥇</span>`;
+                        else if (idx === 1) badge = `<span class="rank-badge rank-2">🥈</span>`;
+                        else if (idx === 2) badge = `<span class="rank-badge rank-3">🥉</span>`;
+
+                        let formattedVal = `${score.accuracy.toFixed(1)}%`;
+                        if (gameConfig.key === 'simon taps') formattedVal = `Lvl ${Math.round(score.accuracy)}`;
+                        else if (gameConfig.key === 'mystery note') formattedVal = `${Math.round(score.accuracy)} Guesses`;
+                        else if (gameConfig.key === 'finger sprint') formattedVal = `${score.accuracy.toFixed(2)}s`;
+
+                        row.innerHTML = `
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                ${badge}
+                                <span class="arcade-row-name">${score.name}</span>
+                            </div>
+                            <span class="score-highlight">${formattedVal}</span>
+                        `;
+                        colDiv.appendChild(row);
+                    });
+                }
+
+                dashboard.appendChild(colDiv);
+            });
+        }
+
         function toggleViewMode() {
+            const container = document.getElementById('main-container');
             const toggleBtn = document.getElementById('btn-toggle-mode');
             const titleEl = document.getElementById('leaderboard-title');
-            const colHeaderTitle = document.getElementById('col-header-title');
-            const colHeaderScore = document.getElementById('col-header-score');
-            const colHeaderTempo = document.getElementById('col-header-tempo');
+            const songTable = document.getElementById('song-table-wrapper');
+            const arcadeDash = document.getElementById('arcade-dashboard');
 
             if (viewMode === 'SONGS') {
                 viewMode = 'GAMES';
-                titleEl.textContent = '🕹️ Mini-Game High Scores';
-                colHeaderTitle.textContent = 'Mini-Game';
-                colHeaderScore.textContent = 'Score / Level';
-                colHeaderTempo.style.display = 'none';
+                container.classList.add('wide-mode');
+                titleEl.textContent = '🕹️ Mini-Game Leaderboard Dashboard';
+                songTable.style.display = 'none';
+                arcadeDash.style.display = 'grid';
                 toggleBtn.textContent = '🎵 SONG Leaderboard';
                 toggleBtn.className = 'btn btn-song-mode';
+                renderArcadeDashboard();
             } else {
                 viewMode = 'SONGS';
+                container.classList.remove('wide-mode');
                 titleEl.textContent = '🏆 PianoPad Song High Scores';
-                colHeaderTitle.textContent = 'Song Title';
-                colHeaderScore.textContent = 'Accuracy';
-                colHeaderTempo.style.display = '';
+                arcadeDash.style.display = 'none';
+                songTable.style.display = '';
                 toggleBtn.textContent = '🎮 MINI-GAME Leaderboard';
                 toggleBtn.className = 'btn btn-arcade';
+                renderSongLeaderboard();
             }
 
             populateSongFilter();
-            renderLeaderboard();
         }
 
         async function fetchScores() {
@@ -428,7 +510,7 @@
                 allScores = parseCSV(csvText);
 
                 populateSongFilter();
-                renderLeaderboard();
+                renderSongLeaderboard();
             } catch (err) {
                 console.error(err);
                 document.getElementById('leaderboard-body').innerHTML = 
@@ -436,7 +518,7 @@
             }
         }
 
-        document.getElementById('filter-song').addEventListener('change', renderLeaderboard);
+        document.getElementById('filter-song').addEventListener('change', renderSongLeaderboard);
         document.getElementById('btn-toggle-mode').addEventListener('click', toggleViewMode);
 
         fetchScores();
