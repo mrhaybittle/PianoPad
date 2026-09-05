@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PianoPad Player - Visualizer & Haycode Creator</title>
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root {
             --bg-color: #121218;
@@ -648,29 +649,37 @@
             flex: 1;
         }
 
+        /* Up to 8 Multi-Lane Scrolling Track */
         .runner-track-wrapper {
             position: relative;
             width: 100%;
-            height: 100px;
+            max-height: 240px;
+            overflow-y: auto;
             background: #0b0f19;
             border: 1px solid #374151;
             border-radius: 8px;
-            overflow: hidden;
             display: flex;
             flex-direction: column;
-            justify-content: space-around;
-            padding: 4px 10px;
+            gap: 4px;
+            padding: 6px;
             margin-top: 6px;
         }
 
         .runner-lane {
             position: relative;
             width: 100%;
-            height: 44px;
+            height: 28px;
             background: #131927;
-            border-radius: 6px;
+            border-radius: 4px;
             overflow: hidden;
             border: 1px solid #1f2937;
+            flex-shrink: 0;
+        }
+
+        .runner-lane.my-lane {
+            border: 2px solid #22c55e !important;
+            background: #0f2318 !important;
+            box-shadow: inset 0 0 10px rgba(34, 197, 94, 0.4);
         }
 
         .runner-track-scroll {
@@ -683,9 +692,9 @@
 
         .runner-avatar {
             position: absolute;
-            left: 20px;
-            bottom: 4px;
-            font-size: 1.6rem;
+            left: 10px;
+            bottom: 0px;
+            font-size: 1.2rem;
             transition: transform 0.2s ease-out;
             user-select: none;
             transform: scaleX(-1);
@@ -693,39 +702,64 @@
         }
 
         .runner-avatar.jumping {
-            transform: scaleX(-1) translateY(-18px) rotate(-10deg);
+            transform: scaleX(-1) translateY(-12px) rotate(-10deg);
         }
 
         .hurdle-obstacle {
             position: absolute;
-            bottom: 4px;
-            width: 26px;
-            height: 28px;
+            bottom: 2px;
+            width: 20px;
+            height: 22px;
             background: #ef4444;
-            border: 2px solid #ffffff;
-            border-radius: 4px 4px 0 0;
+            border: 1px solid #ffffff;
+            border-radius: 3px 3px 0 0;
             color: #ffffff;
             font-weight: 900;
-            font-size: 0.75rem;
+            font-size: 0.65rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+            box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
             z-index: 2;
-            transition: opacity 0.3s;
         }
 
         .lane-label {
             position: absolute;
-            right: 8px;
+            right: 6px;
             top: 2px;
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             font-weight: 800;
-            color: #9ca3af;
+            color: #cbd5e1;
             z-index: 6;
-            background: rgba(0,0,0,0.6);
-            padding: 2px 6px;
-            border-radius: 4px;
+            background: rgba(0,0,0,0.65);
+            padding: 1px 5px;
+            border-radius: 3px;
+        }
+
+        /* Countdown Overlay */
+        .countdown-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+
+        .countdown-number {
+            font-size: 8rem;
+            font-weight: 900;
+            color: #facc15;
+            text-shadow: 0 0 30px #facc15;
+            animation: pulseCount 0.8s ease-in-out infinite;
+        }
+
+        @keyframes pulseCount {
+            0% { transform: scale(0.6); opacity: 0; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
         }
     </style>
 </head>
@@ -869,9 +903,9 @@
                     <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Combo Strike</button>
                 </div>
 
-                <div class="game-card" onclick="startFingerSprint()">
-                    <h3>🏃 Finger Sprint</h3>
-                    <p>Alternate C1 & D1 to sprint! Jump 10 hurdles on a long scrolling track vs Robo-Opponent (🤖)!</p>
+                <div class="game-card" onclick="openSprintModeSelector()">
+                    <h3>🏃 Finger Sprint Race</h3>
+                    <p>Challenge Robo-Opponent (🤖) or Host/Join Live 8-Player Races with custom Room Codes!</p>
                     <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Finger Sprint</button>
                 </div>
             </div>
@@ -890,25 +924,8 @@
             </div>
         </div>
 
-        <!-- Multi-Lane Scrolling Sprint Track vs Computer Opponent -->
-        <div class="runner-track-wrapper" id="runner-track" style="display: none;">
-            <!-- Player Lane -->
-            <div class="runner-lane" id="player-lane">
-                <div class="lane-label">YOU (🏃)</div>
-                <div class="runner-avatar" id="runner-sprite">🏃</div>
-                <div class="runner-track-scroll" id="player-track-scroll">
-                    <div id="hurdle-container"></div>
-                </div>
-            </div>
-            <!-- Computer Opponent Lane -->
-            <div class="runner-lane" id="bot-lane">
-                <div class="lane-label">ROBO-OPPONENT (🤖)</div>
-                <div class="runner-avatar" id="bot-sprite">🤖</div>
-                <div class="runner-track-scroll" id="bot-track-scroll">
-                    <div id="bot-hurdle-container"></div>
-                </div>
-            </div>
-        </div>
+        <!-- Up to 8 Multi-Lane Sprint Track Display -->
+        <div class="runner-track-wrapper" id="runner-track" style="display: none;"></div>
 
         <div class="visualizer-wrapper">
             <canvas id="waterfall-canvas" width="1232" height="210"></canvas>
@@ -916,10 +933,48 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.03.10 | 10-Mar 07:33 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 07:50 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
+    </div>
+
+    <!-- Live Sprint Options Selector Modal -->
+    <div class="modal-overlay" id="sprint-option-modal">
+        <div class="modal" style="text-align: center;">
+            <h2>🏃 Finger Sprint Setup</h2>
+            <p style="font-size: 0.85rem; color: #9ca3af;">Select your race mode:</p>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin: 10px 0;">
+                <button type="button" class="btn-arcade" onclick="initSinglePlayerSprint()">🤖 Challenge Robot Opponent</button>
+                <button type="button" class="btn-success" onclick="showHostSetup()">👑 Host Live Race</button>
+                <button type="button" class="btn-midi" onclick="showJoinSetup()">🎮 Join Live Race</button>
+            </div>
+            <div id="sprint-form-container" style="display: none; flex-direction: column; gap: 8px; text-align: left;">
+                <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Your First Name & Surname Initial:</label>
+                <input type="text" id="sprint-player-name" placeholder="e.g. Alex M." style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem;">
+                
+                <div id="code-input-group" style="display:none; flex-direction:column; gap:4px;">
+                    <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Enter Host Room Code:</label>
+                    <input type="text" id="sprint-room-code" placeholder="e.g. RACE-1234" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; text-transform:uppercase;">
+                </div>
+
+                <div id="host-lobby-group" style="display:none; flex-direction:column; gap:4px; text-align:center;">
+                    <div style="font-size:1.1rem; color:#facc15; font-weight:800;" id="generated-room-code-display">Room Code: Generating...</div>
+                    <p style="font-size:0.75rem; color:#9ca3af;" id="lobby-count-text">Connected Players: 1 / 8</p>
+                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-center;" onclick="triggerHostStartRace()">🚀 START LIVE RACE FOR ALL PLAYERS</button>
+                </div>
+
+                <button type="button" class="btn-success" id="btn-confirm-sprint-action" style="margin-top:6px; justify-content:center;">Confirm & Continue</button>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn-secondary" onclick="closeSprintOptionModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Countdown Overlay -->
+    <div class="countdown-overlay" id="countdown-overlay">
+        <div class="countdown-number" id="countdown-text">3</div>
     </div>
 
     <!-- Import Modal -->
@@ -994,7 +1049,6 @@
                 </div>
             </div>
 
-            <!-- MODAL FOOTER: Explicit type="button" and anchor link -->
             <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
                 <a href="leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">View Entire Leaderboard</a>
                 <button type="button" class="btn-warning" id="btn-game-try-again">Play Again</button>
@@ -1100,17 +1154,20 @@
         let dodgeLives = 5;
         let dodgeDodgedCount = 0;
 
-        // Expanded 10-Hurdle Finger Sprint Config with Scrolling Track & Bot
+        // Up to 8 Players Live PeerJS Config
+        let peerInstance = null;
+        let peerConnections = [];
+        let isSprintHost = false;
+        let localPlayerId = 'p1';
         let sprintSequence = ['c1', 'd1'];
         let sprintIndex = 0;
         let sprintKeystrokeCount = 0;
-        const SPRINT_TARGET_KEYSTROKES = 100;
         let sprintStartTime = 0;
-        let activeHurdles = [];
-        let botHurdles = [];
-        let runnerLegToggle = false;
-        let botProgress = 0;
-        let botInterval = null;
+        let raceActive = false;
+
+        const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄'];
+
+        let playersList = [];
 
         let miniGameFallSpeedMs = 3800;
 
@@ -1120,10 +1177,6 @@
         const arcadeControlsBar = document.getElementById('arcade-controls-bar');
         const timelineBox = document.getElementById('timeline-box');
         const runnerTrack = document.getElementById('runner-track');
-        const runnerSprite = document.getElementById('runner-sprite');
-        const botSprite = document.getElementById('bot-sprite');
-        const hurdleContainer = document.getElementById('hurdle-container');
-        const botHurdleContainer = document.getElementById('bot-hurdle-container');
 
         document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
         document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
@@ -1139,7 +1192,7 @@
             else if (currentSongTitle === "Simon Taps") startSimonTaps();
             else if (currentSongTitle === "Drop Dodge") startDropDodge();
             else if (currentSongTitle === "Combo Strike") startComboStrike();
-            else if (currentSongTitle === "Finger Sprint") startFingerSprint();
+            else if (currentSongTitle === "Finger Sprint") openSprintModeSelector();
             else playSong();
         });
 
@@ -1164,12 +1217,16 @@
         }
 
         function exitActiveMiniGame() {
-            if (botInterval) clearInterval(botInterval);
             activeMiniGame = null;
             isPlaying = false;
+            raceActive = false;
             runnerTrack.style.display = 'none';
-            hurdleContainer.innerHTML = '';
-            botHurdleContainer.innerHTML = '';
+            runnerTrack.innerHTML = '';
+            if (peerInstance) {
+                peerInstance.destroy();
+                peerInstance = null;
+            }
+            peerConnections = [];
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.querySelectorAll('.key').forEach(k => {
                 k.classList.remove('active');
@@ -1179,7 +1236,7 @@
             document.getElementById('status').textContent = 'Arcade Mini-Game stopped. Select another game or return Home.';
         }
 
-        /* 1. SIMON TAPS MINI-GAME WITH COLORFUL STAIRCASE VISUALIZER */
+        /* 1. SIMON TAPS MINI-GAME */
         function startSimonTaps() {
             initAudio();
             exitActiveMiniGame();
@@ -1291,7 +1348,7 @@
             }
         }
 
-        /* 2. MYSTERY NOTE (HOT/COLD) MINI-GAME */
+        /* 2. MYSTERY NOTE */
         function startMysteryNote() {
             initAudio();
             exitActiveMiniGame();
@@ -1306,7 +1363,7 @@
             const freq = getNoteFrequency(mysteryTargetPitch);
             if (freq) playTone(freq, 0.6, 1.0);
 
-            document.getElementById('status').textContent = '🔍 Mystery Note chosen! Tap keys to guess... (Listen carefully!)';
+            document.getElementById('status').textContent = '🔍 Mystery Note chosen! Tap keys to guess...';
         }
 
         function handleMysteryInput(noteStr) {
@@ -1347,7 +1404,7 @@
             }
         }
 
-        /* 3. SLOWER DROP DODGE MINI-GAME WITH 5 LIVES */
+        /* 3. DROP DODGE */
         function startDropDodge() {
             initAudio();
             exitActiveMiniGame();
@@ -1411,94 +1468,245 @@
             requestAnimationFrame(renderLoop);
         }
 
-        /* 5. FINGER SPRINT WITH SCROLLING TRACK, 10 HURDLES, AND ROBO-OPPONENT */
-        function renderHurdles() {
-            hurdleContainer.innerHTML = '';
-            activeHurdles.forEach((h) => {
-                const hurdleDiv = document.createElement('div');
-                hurdleDiv.className = 'hurdle-obstacle';
-                hurdleDiv.style.left = `${h.posPx}px`;
-                hurdleDiv.textContent = h.letter;
-                if (h.cleared) {
-                    hurdleDiv.style.opacity = '0.2';
-                    hurdleDiv.style.borderColor = '#22c55e';
-                }
-                hurdleContainer.appendChild(hurdleDiv);
-            });
-
-            botHurdleContainer.innerHTML = '';
-            botHurdles.forEach((h) => {
-                const hurdleDiv = document.createElement('div');
-                hurdleDiv.className = 'hurdle-obstacle';
-                hurdleDiv.style.left = `${h.posPx}px`;
-                hurdleDiv.textContent = h.letter;
-                if (h.cleared) {
-                    hurdleDiv.style.opacity = '0.2';
-                    hurdleDiv.style.borderColor = '#22c55e';
-                }
-                botHurdleContainer.appendChild(hurdleDiv);
-            });
+        /* 5. MULTI-PLAYER / BOT SPRINT SYSTEM */
+        function openSprintModeSelector() {
+            initAudio();
+            document.getElementById('sprint-form-container').style.display = 'none';
+            document.getElementById('sprint-option-modal').classList.add('open');
         }
 
-        function startFingerSprint() {
-            initAudio();
+        function closeSprintOptionModal() {
+            document.getElementById('sprint-option-modal').classList.remove('open');
+        }
+
+        function initSinglePlayerSprint() {
+            closeSprintOptionModal();
             exitActiveMiniGame();
             arcadeHub.classList.remove('open');
             activeMiniGame = 'sprint';
 
-            runnerTrack.style.display = 'flex';
-            runnerSprite.textContent = '🏃';
-            botSprite.textContent = '🤖';
+            playersList = [
+                { id: 'p1', name: 'YOU', avatar: '🏃', pxProgress: 0, isLocal: true },
+                { id: 'bot', name: 'ROBO-OPPONENT', avatar: '🤖', pxProgress: 0, isBot: true }
+            ];
+            localPlayerId = 'p1';
 
-            sprintIndex = 0;
-            sprintKeystrokeCount = 0;
-            botProgress = 0;
-            sprintStartTime = performance.now();
-
-            const hurdleNotes = ['G', 'E', 'C', 'F', 'A', 'D', 'B', 'C', 'E', 'G'];
-            activeHurdles = hurdleNotes.map((note, idx) => ({
-                letter: note,
-                posPx: (idx + 1) * 320,
-                cleared: false
-            }));
-            botHurdles = JSON.parse(JSON.stringify(activeHurdles));
-
-            renderHurdles();
-            updateTrackScroll();
-
-            // Robo-Opponent AI Logic
-            botInterval = setInterval(() => {
-                if (activeMiniGame !== 'sprint') return;
-                botProgress += 1.8 + Math.random() * 0.8;
+            renderSprintLanes();
+            startCountdown(() => {
+                raceActive = true;
+                sprintStartTime = performance.now();
+                sprintKeystrokeCount = 0;
+                sprintIndex = 0;
                 
-                botHurdles.forEach(h => {
-                    if (!h.cleared && Math.abs(botProgress - h.posPx) < 25) {
-                        h.cleared = true;
-                        botSprite.classList.add('jumping');
-                        setTimeout(() => botSprite.classList.remove('jumping'), 400);
+                // Bot interval
+                const botInt = setInterval(() => {
+                    if (!raceActive) { clearInterval(botInt); return; }
+                    const bot = playersList.find(p => p.id === 'bot');
+                    if (bot) {
+                        bot.pxProgress += 2.2 + Math.random() * 0.8;
+                        updateMultiplayerLanesUI();
+                        if (bot.pxProgress >= 3600) {
+                            raceActive = false;
+                            clearInterval(botInt);
+                            finishSprintRace("🤖 ROBO-OPPONENT WINS!");
+                        }
                     }
-                });
-
-                if (botProgress >= 3600) {
-                    finishSprintRace('🤖 ROBO-OPPONENT WINS! Better luck next time!');
-                } else {
-                    renderHurdles();
-                    updateTrackScroll();
-                }
-            }, 120);
-
-            document.getElementById('status').textContent = `🏃 FINGER SPRINT: Alternate C1 & D1! Clear 10 Hurdles across the scrolling track vs Robo-Opponent!`;
-            highlightKey('c1', 600, '#eab308');
+                }, 120);
+            });
         }
 
-        function updateTrackScroll() {
-            const playerPx = sprintKeystrokeCount * 36;
-            document.getElementById('player-track-scroll').style.transform = `translateX(-${playerPx}px)`;
-            document.getElementById('bot-track-scroll').style.transform = `translateX(-${botProgress}px)`;
+        function showHostSetup() {
+            document.getElementById('sprint-form-container').style.display = 'flex';
+            document.getElementById('code-input-group').style.display = 'none';
+            document.getElementById('host-lobby-group').style.display = 'flex';
+            document.getElementById('btn-confirm-sprint-action').style.display = 'none';
+
+            const nameInput = document.getElementById('sprint-player-name').value.trim() || 'Host Student';
+            sessionStudentName = nameInput;
+
+            const roomCode = 'RACE-' + Math.floor(1000 + Math.random() * 9000);
+            document.getElementById('generated-room-code-display').textContent = `Room Code: ${roomCode}`;
+
+            isSprintHost = true;
+            localPlayerId = 'p1';
+            playersList = [{ id: 'p1', name: nameInput, avatar: AVATARS[0], pxProgress: 0, isLocal: true }];
+
+            peerInstance = new Peer(roomCode);
+            peerInstance.on('connection', (conn) => {
+                if (playersList.length >= 8) return;
+                peerConnections.push(conn);
+
+                conn.on('data', (data) => {
+                    if (data.type === 'JOIN') {
+                        const newPId = 'p' + (playersList.length + 1);
+                        const newP = { id: newPId, name: data.name, avatar: AVATARS[playersList.length], pxProgress: 0, isLocal: false };
+                        playersList.push(newP);
+
+                        // Broadcast updated lobby list
+                        broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList });
+                        document.getElementById('lobby-count-text').textContent = `Connected Players: ${playersList.length} / 8`;
+                    } else if (data.type === 'PROGRESS') {
+                        const player = playersList.find(p => p.id === data.id);
+                        if (player) {
+                            player.pxProgress = data.pxProgress;
+                            broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
+                            updateMultiplayerLanesUI();
+                            if (player.pxProgress >= 3600 && raceActive) {
+                                raceActive = false;
+                                broadcastPeerMsg({ type: 'RACE_FINISHED', winnerName: player.name });
+                                finishSprintRace(`🥇 ${player.name} WINS THE RACE!`);
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        function showJoinSetup() {
+            document.getElementById('sprint-form-container').style.display = 'flex';
+            document.getElementById('code-input-group').style.display = 'flex';
+            document.getElementById('host-lobby-group').style.display = 'none';
+            document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
+            
+            document.getElementById('btn-confirm-sprint-action').onclick = () => {
+                const nameInput = document.getElementById('sprint-player-name').value.trim() || 'Racer';
+                const roomCode = document.getElementById('sprint-room-code').value.trim().toUpperCase();
+                sessionStudentName = nameInput;
+
+                if (!roomCode) return;
+
+                peerInstance = new Peer();
+                peerInstance.on('open', () => {
+                    const conn = peerInstance.connect(roomCode);
+                    peerConnections = [conn];
+
+                    conn.on('open', () => {
+                        conn.send({ type: 'JOIN', name: nameInput });
+                        closeSprintOptionModal();
+                        exitActiveMiniGame();
+                        arcadeHub.classList.remove('open');
+                        activeMiniGame = 'sprint';
+                        document.getElementById('status').textContent = `Connected to Race Host (${roomCode})! Waiting for race to start...`;
+                    });
+
+                    conn.on('data', (data) => {
+                        if (data.type === 'LOBBY_UPDATE') {
+                            playersList = data.players;
+                            const myEntry = playersList.find(p => p.name === sessionStudentName);
+                            if (myEntry) localPlayerId = myEntry.id;
+                            renderSprintLanes();
+                        } else if (data.type === 'START_RACE') {
+                            renderSprintLanes();
+                            startCountdown(() => {
+                                raceActive = true;
+                                sprintStartTime = performance.now();
+                                sprintKeystrokeCount = 0;
+                                sprintIndex = 0;
+                            });
+                        } else if (data.type === 'RACER_UPDATE') {
+                            playersList = data.players;
+                            updateMultiplayerLanesUI();
+                        } else if (data.type === 'RACE_FINISHED') {
+                            raceActive = false;
+                            finishSprintRace(`🥇 ${data.winnerName} WINS THE RACE!`);
+                        }
+                    });
+                });
+            };
+        }
+
+        function triggerHostStartRace() {
+            closeSprintOptionModal();
+            exitActiveMiniGame();
+            arcadeHub.classList.remove('open');
+            activeMiniGame = 'sprint';
+
+            broadcastPeerMsg({ type: 'START_RACE' });
+            renderSprintLanes();
+            startCountdown(() => {
+                raceActive = true;
+                sprintStartTime = performance.now();
+                sprintKeystrokeCount = 0;
+                sprintIndex = 0;
+            });
+        }
+
+        function broadcastPeerMsg(msg) {
+            peerConnections.forEach(conn => conn.send(msg));
+        }
+
+        function renderSprintLanes() {
+            runnerTrack.style.display = 'flex';
+            runnerTrack.innerHTML = '';
+
+            const hurdleNotes = ['G', 'E', 'C', 'F', 'A', 'D', 'B', 'C', 'E', 'G'];
+
+            playersList.forEach((player) => {
+                const laneDiv = document.createElement('div');
+                laneDiv.className = `runner-lane ${player.id === localPlayerId ? 'my-lane' : ''}`;
+                laneDiv.id = `lane-${player.id}`;
+
+                const label = document.createElement('div');
+                label.className = 'lane-label';
+                label.textContent = `${player.name} (${player.avatar})`;
+
+                const avatar = document.createElement('div');
+                avatar.className = 'runner-avatar';
+                avatar.id = `avatar-${player.id}`;
+                avatar.textContent = player.avatar;
+
+                const scrollTrack = document.createElement('div');
+                scrollTrack.className = 'runner-track-scroll';
+                scrollTrack.id = `scroll-${player.id}`;
+
+                hurdleNotes.forEach((note, idx) => {
+                    const hurdleDiv = document.createElement('div');
+                    hurdleDiv.className = 'hurdle-obstacle';
+                    hurdleDiv.style.left = `${(idx + 1) * 320}px`;
+                    hurdleDiv.textContent = note;
+                    scrollTrack.appendChild(hurdleDiv);
+                });
+
+                laneDiv.appendChild(label);
+                laneDiv.appendChild(avatar);
+                laneDiv.appendChild(scrollTrack);
+                runnerTrack.appendChild(laneDiv);
+            });
+        }
+
+        function updateMultiplayerLanesUI() {
+            playersList.forEach((player) => {
+                const scrollTrack = document.getElementById(`scroll-${player.id}`);
+                if (scrollTrack) {
+                    scrollTrack.style.transform = `translateX(-${player.pxProgress}px)`;
+                }
+            });
+        }
+
+        function startCountdown(onComplete) {
+            const overlay = document.getElementById('countdown-overlay');
+            const numText = document.getElementById('countdown-text');
+            overlay.style.display = 'flex';
+
+            let count = 3;
+            numText.textContent = count;
+
+            const interval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    numText.textContent = count;
+                } else if (count === 0) {
+                    numText.textContent = "GO!";
+                } else {
+                    clearInterval(interval);
+                    overlay.style.display = 'none';
+                    if (onComplete) onComplete();
+                }
+            }, 800);
         }
 
         function finishSprintRace(winnerText) {
-            if (botInterval) clearInterval(botInterval);
+            raceActive = false;
             const totalTimeSeconds = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
             currentSongTitle = "Finger Sprint";
             
@@ -1514,34 +1722,12 @@
         }
 
         function handleSprintInput(noteStr) {
+            if (!raceActive) return;
+
             const rawNoteName = noteStr.toLowerCase().trim();
-            const noteMatch = rawNoteName.match(/^([a-g]#?)([0-9]+)$/);
-            
-            if (!noteMatch) return;
-            const letter = noteMatch[1].toUpperCase();
-            const octave = parseInt(noteMatch[2], 10);
+            const localPlayer = playersList.find(p => p.id === localPlayerId);
 
-            const playerPx = sprintKeystrokeCount * 36;
-            const nearbyHurdle = activeHurdles.find(h => !h.cleared && Math.abs(playerPx - h.posPx) <= 45);
-
-            if (nearbyHurdle) {
-                if (letter === nearbyHurdle.letter && octave >= 2) {
-                    nearbyHurdle.cleared = true;
-                    gameStats.perfect++;
-                    renderHurdles();
-
-                    runnerSprite.textContent = '🤸';
-                    runnerSprite.classList.add('jumping');
-
-                    setTimeout(() => {
-                        runnerSprite.classList.remove('jumping');
-                        runnerSprite.textContent = runnerLegToggle ? '🏃' : '🏃‍♂️';
-                    }, 450);
-
-                    document.getElementById('status').textContent = `🦘 HURDLE CLEARED! High ${letter} Jump Successful!`;
-                    return;
-                }
-            }
+            if (!localPlayer) return;
 
             const expectedNote = sprintSequence[sprintIndex % 2];
             if (rawNoteName === expectedNote.toLowerCase().trim()) {
@@ -1549,15 +1735,21 @@
                 sprintIndex++;
                 sprintKeystrokeCount++;
 
-                runnerLegToggle = !runnerLegToggle;
-                if (!runnerSprite.classList.contains('jumping')) {
-                    runnerSprite.textContent = runnerLegToggle ? '🏃' : '🏃‍♂️';
+                localPlayer.pxProgress = sprintKeystrokeCount * 36;
+                updateMultiplayerLanesUI();
+
+                if (!isSprintHost && peerConnections.length > 0) {
+                    peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: localPlayer.pxProgress });
+                } else if (isSprintHost) {
+                    broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
                 }
 
-                updateTrackScroll();
-
-                if (sprintKeystrokeCount * 36 >= 3600) {
-                    finishSprintRace('🥇 YOU WIN! Fantastic Sprint!');
+                if (localPlayer.pxProgress >= 3600) {
+                    raceActive = false;
+                    if (isSprintHost) {
+                        broadcastPeerMsg({ type: 'RACE_FINISHED', winnerName: localPlayer.name });
+                    }
+                    finishSprintRace(`🥇 YOU WIN THE RACE! Fantastic Sprint!`);
                     return;
                 }
 
