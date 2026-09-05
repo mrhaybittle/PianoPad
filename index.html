@@ -736,32 +736,32 @@
                     <input type="range" id="speed-slider" min="10" max="500" value="100" step="5">
                 </div>
 
-                <button id="btn-game" class="btn-secondary">
+                <button type="button" id="btn-game" class="btn-secondary">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                     Game Mode: OFF
                 </button>
 
-                <button id="btn-loop" class="btn-secondary">
+                <button type="button" id="btn-loop" class="btn-secondary">
                     <svg class="icon" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
                     Loop: OFF
                 </button>
 
-                <button id="btn-step" class="btn-step">
+                <button type="button" id="btn-step" class="btn-step">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
                     Step Mode
                 </button>
 
-                <button id="btn-record" class="btn-secondary">
+                <button type="button" id="btn-record" class="btn-secondary">
                     <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
                     <span id="record-btn-text">Record</span>
                 </button>
 
-                <button id="btn-add-teacher-song" class="btn-teacher">
+                <button type="button" id="btn-add-teacher-song" class="btn-teacher">
                     <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     Add SONG (Teacher)
                 </button>
 
-                <button id="btn-share" class="btn-share" style="display: none;">
+                <button type="button" id="btn-share" class="btn-share" style="display: none;">
                     <svg class="icon" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
                     Share Haycode
                 </button>
@@ -772,12 +772,12 @@
                     <input type="file" id="midi-input" accept=".mid,.midi" style="display: none;">
                 </label>
 
-                <button id="btn-import">
+                <button type="button" id="btn-import">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     Import Code
                 </button>
 
-                <button id="btn-settings" class="btn-settings" title="Settings">
+                <button type="button" id="btn-settings" class="btn-settings" title="Settings">
                     <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 </button>
 
@@ -786,29 +786,29 @@
                     Get Songs
                 </a>
 
-                <button id="btn-play" class="btn-success">
+                <button type="button" id="btn-play" class="btn-success">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     Play
                 </button>
-                <button id="btn-pause" class="btn-warning">
+                <button type="button" id="btn-pause" class="btn-warning">
                     <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
                     Pause
                 </button>
-                <button id="btn-stop" class="btn-danger">
+                <button type="button" id="btn-stop" class="btn-danger">
                     <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
                     Stop
                 </button>
 
-                <button id="btn-open-arcade" class="btn-arcade">
+                <button type="button" id="btn-open-arcade" class="btn-arcade">
                     🕹️ MINI-GAMES
                 </button>
             </div>
 
             <div class="controls" id="arcade-controls-bar" style="display: none;">
-                <button id="btn-home-screen" class="btn-success" style="font-weight: 800;">
+                <button type="button" id="btn-home-screen" class="btn-success" style="font-weight: 800;">
                     🏠 Return to Player
                 </button>
-                <button id="btn-stop-arcade" class="btn-danger">
+                <button type="button" id="btn-stop-arcade" class="btn-danger">
                     ⏹️ Exit Active Game
                 </button>
             </div>
@@ -824,31 +824,31 @@
                 <div class="game-card" onclick="startSimonTaps()">
                     <h3>🧠 Simon Taps</h3>
                     <p>Watch the stepwise C Major sequence and climb the multi-colored level staircase step-by-step!</p>
-                    <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Simon Taps</button>
+                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Simon Taps</button>
                 </div>
 
                 <div class="game-card" onclick="startMysteryNote()">
                     <h3>🔍 Mystery Note</h3>
                     <p>Listen to the hidden note! Use Warm/Cold proximity cues to find and hit the secret key.</p>
-                    <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Mystery Note</button>
+                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Mystery Note</button>
                 </div>
 
                 <div class="game-card" onclick="startDropDodge()">
                     <h3>🛡️ Drop Dodge</h3>
                     <p>Wide walls fall slowly! You have 5 Lives to dodge blocks by hitting the safe empty key gap.</p>
-                    <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Drop Dodge</button>
+                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Drop Dodge</button>
                 </div>
 
                 <div class="game-card" onclick="startComboStrike()">
                     <h3>⚡ Two-Note Combo</h3>
                     <p>Pairs of notes fall together! Hit two-note intervals simultaneously with timing feedback.</p>
-                    <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Combo Strike</button>
+                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Combo Strike</button>
                 </div>
 
                 <div class="game-card" onclick="startFingerSprint()">
                     <h3>🏃 Finger Sprint</h3>
                     <p>Alternate C1 & D1 to sprint! Jump hurdles when close by playing matching high-octave keys!</p>
-                    <button class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Finger Sprint</button>
+                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Finger Sprint</button>
                 </div>
             </div>
         </div>
@@ -878,7 +878,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.04 | 4-Sep 21:17 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.05 | 5-Sep 10:25 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -891,8 +891,8 @@
             <p style="font-size: 0.85rem; color: #9ca3af;">Paste your PianoPad/Haycode music code below (Note sequence followed by Rests array):</p>
             <textarea id="import-text" placeholder="Paste your song code here (e.g., G2,E2,g#2...Rests,0,250...)"></textarea>
             <div class="modal-footer">
-                <button class="btn-secondary" id="btn-cancel">Cancel</button>
-                <button id="btn-load-play">Load & Play</button>
+                <button type="button" class="btn-secondary" id="btn-cancel">Cancel</button>
+                <button type="button" id="btn-load-play">Load & Play</button>
             </div>
         </div>
     </div>
@@ -903,13 +903,13 @@
             <h2>Settings</h2>
             <p style="font-size: 0.85rem; color: #9ca3af;">Configure hardware and MIDI inputs below:</p>
             <div style="display: flex; flex-direction: column; gap: 10px; margin: 10px 0;">
-                <button id="btn-start-calib" class="btn-midi" style="justify-content: center; padding: 10px;">
+                <button type="button" id="btn-start-calib" class="btn-midi" style="justify-content: center; padding: 10px;">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20"></path></svg>
                     Calibrate Piano (Lowest / Highest Keys)
                 </button>
             </div>
             <div class="modal-footer">
-                <button class="btn-secondary" id="btn-settings-close">Close</button>
+                <button type="button" class="btn-secondary" id="btn-settings-close">Close</button>
             </div>
         </div>
     </div>
@@ -927,7 +927,7 @@
             </div>
 
             <div class="modal-footer">
-                <button class="btn-secondary" id="btn-calib-cancel">Cancel Calibration</button>
+                <button type="button" class="btn-secondary" id="btn-calib-cancel">Cancel Calibration</button>
             </div>
         </div>
     </div>
@@ -956,11 +956,12 @@
                 </div>
             </div>
 
+            <!-- UPDATED MODAL FOOTER: Guaranteed new tab navigation link -->
             <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
-                <a href="leaderboard.html" target="_blank" class="btn-link btn-share">View Entire Leaderboard</a>
-                <button class="btn-warning" id="btn-game-try-again">Play Again</button>
-                <button class="btn-arcade" id="btn-game-arcade-menu">Mini-Game Menu</button>
-                <button class="btn-success" id="btn-game-results-close">Continue</button>
+                <a href="leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">View Entire Leaderboard</a>
+                <button type="button" class="btn-warning" id="btn-game-try-again">Play Again</button>
+                <button type="button" class="btn-arcade" id="btn-game-arcade-menu">Mini-Game Menu</button>
+                <button type="button" class="btn-success" id="btn-game-results-close">Continue</button>
             </div>
         </div>
     </div>
@@ -972,10 +973,10 @@
             <p style="font-size: 0.85rem; color: #9ca3af;">Copy your generated Haycode or export your performance as a WAV audio file below:</p>
             <textarea id="export-text" readonly></textarea>
             <div class="modal-footer">
-                <button class="btn-secondary" id="btn-export-close">Close</button>
-                <button class="btn-secondary" id="btn-copy-haycode">Copy Code</button>
-                <button class="btn-midi" id="btn-export-wav">Export WAV Audio</button>
-                <a id="btn-email-haycode" href="#" target="_blank" class="btn-link btn-share">Email Haycode</a>
+                <button type="button" class="btn-secondary" id="btn-export-close">Close</button>
+                <button type="button" class="btn-secondary" id="btn-copy-haycode">Copy Code</button>
+                <button type="button" class="btn-midi" id="btn-export-wav">Export WAV Audio</button>
+                <a id="btn-email-haycode" href="#" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">Email Haycode</a>
             </div>
         </div>
     </div>
@@ -1000,8 +1001,8 @@
             <div id="teacher-error" style="color: #ef4444; font-size: 0.8rem; font-weight: 600; display: none;"></div>
 
             <div class="modal-footer">
-                <button class="btn-secondary" id="btn-teacher-cancel">Cancel</button>
-                <button class="btn-teacher" id="btn-teacher-submit">Add Song Now</button>
+                <button type="button" class="btn-secondary" id="btn-teacher-cancel">Cancel</button>
+                <button type="button" class="btn-teacher" id="btn-teacher-submit">Add Song Now</button>
             </div>
         </div>
     </div>
@@ -1088,7 +1089,6 @@
             openArcadeHub();
         });
 
-        // FIXED TRY AGAIN ROUTING
         document.getElementById('btn-game-try-again').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
             if (currentSongTitle === "Mystery Note") startMysteryNote();
@@ -1238,13 +1238,14 @@
                 document.getElementById('bar-orange').style.height = '0%';
                 document.getElementById('bar-red').style.height = '0%';
 
+                document.getElementById('game-rank-text').textContent = `Simon Taps Level Logged!`;
                 gameResultsModal.classList.add('open');
                 postScoreToLeaderboard(maxLevelRemembered);
                 activeMiniGame = null;
             }
         }
 
-        /* 2. MYSTERY NOTE (HOT/COLD) MINI-GAME - SUBMIT GUESSES COUNT AS INTEGER SCORE */
+        /* 2. MYSTERY NOTE (HOT/COLD) MINI-GAME */
         function startMysteryNote() {
             initAudio();
             exitActiveMiniGame();
@@ -1272,28 +1273,29 @@
             const diff = Math.abs(guessedPitchNum - targetPitchNum);
 
             if (diff === 0) {
-                gameStats.perfect++;
                 highlightKey(noteStr, 500, '#22c55e');
                 currentSongTitle = "Mystery Note";
 
-                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>Secret Note Found In: <span style="color:#22c55e; font-size:1.3rem;">${mysteryGuessCount} Guesses</span>`;
+                document.getElementById('game-summary-text').innerHTML = 
+                    `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>` +
+                    `Guesses Taken: <span style="color:#22c55e; font-size:1.4rem; font-weight:800;">${mysteryGuessCount}</span>`;
+
                 document.getElementById('bar-green').style.height = '100%';
                 document.getElementById('bar-orange').style.height = '0%';
                 document.getElementById('bar-red').style.height = '0%';
+
+                document.getElementById('game-rank-text').textContent = `Mystery Note Cleared!`;
 
                 gameResultsModal.classList.add('open');
                 postScoreToLeaderboard(mysteryGuessCount);
                 activeMiniGame = null;
             } else if (diff <= 2) {
-                gameStats.earlyLate++;
                 highlightKey(noteStr, 250, '#ef4444');
                 document.getElementById('status').textContent = `🔥 Sizzle HOT! You are right next to it! (Guesses: ${mysteryGuessCount})`;
             } else if (diff <= 6) {
-                gameStats.earlyLate++;
                 highlightKey(noteStr, 250, '#f97316');
                 document.getElementById('status').textContent = `⚡ Warm... Getting closer! (Guesses: ${mysteryGuessCount})`;
             } else {
-                gameStats.miss++;
                 highlightKey(noteStr, 250, '#38bdf8');
                 document.getElementById('status').textContent = `❄️ Ice COLD! Far away... (Guesses: ${mysteryGuessCount})`;
             }
@@ -1464,6 +1466,7 @@
                     document.getElementById('bar-orange').style.height = '0%';
                     document.getElementById('bar-red').style.height = '0%';
 
+                    document.getElementById('game-rank-text').textContent = `Finger Sprint Completed!`;
                     gameResultsModal.classList.add('open');
                     postScoreToLeaderboard(parseFloat(totalTimeSeconds));
                     activeMiniGame = null;
