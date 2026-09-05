@@ -878,7 +878,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.05 | 5-Sep 10:59 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.05 | 5-Sep 11:05 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1113,11 +1113,11 @@
         function startBackgroundMusic() {
             stopBackgroundMusic();
             let noteIndex = 0;
-            const bgNotes = [130.81, 146.83, 164.81, 174.61, 196.00, 174.61, 164.81, 146.83]; // C3 Major bassline
+            const bgNotes = [130.81, 146.83, 164.81, 174.61, 196.00, 174.61, 164.81, 146.83];
             bgAudioTimer = setInterval(() => {
                 if (activeMiniGame === 'drop' && isPlaying && !isPaused) {
                     const freq = bgNotes[noteIndex % bgNotes.length];
-                    playTone(freq, 0.2, 0.12); // Soft background synth note
+                    playTone(freq, 0.2, 0.12);
                     noteIndex++;
                 }
             }, 300);
@@ -1327,7 +1327,7 @@
             }
         }
 
-        /* 3. MAZE RUNNER (DROP DODGE) MINI-GAME */
+        /* 3. MAZE RUNNER (DROP DODGE) MINI-GAME - UPDATED PROGRESSIVE GAP LOGIC */
         function startDropDodge() {
             initAudio();
             exitActiveMiniGame();
@@ -1344,13 +1344,23 @@
             const obstacleTypes = ['tree', 'rock', 'river'];
 
             for (let i = 0; i < 30; i++) {
-                const safeKeyIdx = Math.floor(Math.random() * (allKeys.length - 2));
-                const safeKey = allKeys[safeKeyIdx];
-                
-                // Block array mapping each obstacle note to a visual obstacle type
+                // Determine number of safe gaps dynamically:
+                // Sections 1-3: 3 safe gaps
+                // Sections 4-6: 2 safe gaps
+                // Sections 7+: 1 safe gap
+                let gapCount = 1;
+                if (i < 3) gapCount = 3;
+                else if (i < 6) gapCount = 2;
+
+                const safeKeys = [];
+                const shuffledKeys = [...allKeys].sort(() => 0.5 - Math.random());
+                for (let g = 0; g < gapCount; g++) {
+                    safeKeys.push(shuffledKeys[g]);
+                }
+
                 const obstacles = [];
                 allKeys.forEach(note => {
-                    if (note !== safeKey) {
+                    if (!safeKeys.includes(note)) {
                         const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
                         obstacles.push({ note, type });
                     }
@@ -1359,7 +1369,7 @@
                 currentSong.push({
                     notes: obstacles.map(o => o.note),
                     obstacles: obstacles,
-                    safeKey: safeKey,
+                    safeKeys: safeKeys,
                     rest: 2800
                 });
             }
@@ -1897,7 +1907,7 @@
             }
 
             const parsed = parsePianoPad(code);
-            if (parsed.length > 0) {
+            if (parsed.length === 0) {
                 teacherErrorDiv.textContent = "Invalid HayCode format!";
                 teacherErrorDiv.style.display = "block";
                 return;
@@ -2521,13 +2531,13 @@
                 const effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
                 const activeWall = noteTimeline.find(item => item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 650);
 
-                if (activeWall) {
-                    if (noteStr.toLowerCase().trim() === activeWall.safeKey.toLowerCase().trim()) {
+                if (activeWall && activeWall.safeKeys) {
+                    if (activeWall.safeKeys.some(sk => sk.toLowerCase().trim() === noteStr.toLowerCase().trim())) {
                         activeWall.gameStatus = 'perfect';
                         dodgeDodgedCount++;
                         gameStats.perfect++;
                         highlightKey(noteStr, 220, '#22c55e');
-                        document.getElementById('status').textContent = `🌲 MAZE RUNNER: Safe Passage! Gaps Cleared: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
+                        document.getElementById('status').textContent = `🌲 MAZE RUNNER: Safe Gap Cleared! Gaps Cleared: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
                     } else {
                         activeWall.gameStatus = 'miss';
                         dodgeLives--;
@@ -2747,7 +2757,7 @@
                 noteTimeline.push({
                     notes: item.notes,
                     obstacles: item.obstacles || null,
-                    safeKey: item.safeKey || null,
+                    safeKeys: item.safeKeys || null,
                     hitTime: cumulativeMs,
                     duration: Math.max(140, (item.rest || 250) * 0.85 / speedFactor),
                     played: false,
@@ -3007,8 +3017,8 @@
 
                 if ((isGameMode || activeMiniGame) && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 280)) {
                     if (activeMiniGame === 'drop') {
-                        // Check if character note was in the safe gap
-                        if (dropCharacterNote.toLowerCase().trim() === item.safeKey.toLowerCase().trim()) {
+                        // Check if character note lands safely in one of the open gaps
+                        if (item.safeKeys && item.safeKeys.some(sk => sk.toLowerCase().trim() === dropCharacterNote.toLowerCase().trim())) {
                             item.gameStatus = 'perfect';
                             dodgeDodgedCount++;
                             gameStats.perfect++;
