@@ -25,7 +25,6 @@
             --hitline-color: #ef4444;
         }
 
-        /* Custom Theme Overrides */
         body[data-theme="cyberpunk"] {
             --bg-color: #0c0721;
             --panel-bg: #180e36;
@@ -238,6 +237,16 @@
         }
         .btn-arcade:hover {
             background: linear-gradient(135deg, #7c3aed, #db2777) !important;
+        }
+
+        .btn-song-battle {
+            background: linear-gradient(135deg, #f59e0b, #ef4444) !important;
+            color: #ffffff !important;
+            font-weight: 800 !important;
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+        }
+        .btn-song-battle:hover {
+            background: linear-gradient(135deg, #d97706, #dc2626) !important;
         }
 
         .btn-step { background-color: #ec4899 !important; color: #ffffff !important; font-weight: 700; }
@@ -538,14 +547,36 @@
             position: relative;
         }
 
+        .multi-bar-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            overflow-x: auto;
+            padding: 10px;
+            background: #0b0f19;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            min-height: 170px;
+        }
+
+        .multi-bar-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
         .stacked-bar {
-            width: 45px;
+            width: 38px;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
-            height: 100%;
+            height: 140px;
             border-radius: 4px;
             overflow: hidden;
+            background: #181f2e;
         }
 
         .bar-part-red {
@@ -649,7 +680,6 @@
             flex: 1;
         }
 
-        /* Up to 8 Multi-Lane Scrolling Track */
         .runner-track-wrapper {
             position: relative;
             width: 100%;
@@ -723,6 +753,16 @@
             z-index: 2;
         }
 
+        .runner-finish-line {
+            position: absolute;
+            left: 3600px;
+            top: 0;
+            bottom: 0;
+            width: 12px;
+            background: repeating-linear-gradient(0deg, #fff, #fff 8px, #000 8px, #000 16px);
+            z-index: 4;
+        }
+
         .lane-label {
             position: absolute;
             right: 6px;
@@ -736,7 +776,6 @@
             border-radius: 3px;
         }
 
-        /* Countdown Overlay */
         .countdown-overlay {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -899,6 +938,10 @@
                     Stop
                 </button>
 
+                <button type="button" id="btn-song-battle" class="btn-song-battle" style="display: none;">
+                    ⚔️ SONG BATTLE
+                </button>
+
                 <button type="button" id="btn-open-arcade" class="btn-arcade">
                     🕹️ MINI-GAMES
                 </button>
@@ -966,7 +1009,6 @@
             </div>
         </div>
 
-        <!-- Up to 8 Multi-Lane Sprint Track Display -->
         <div class="runner-track-wrapper" id="runner-track" style="display: none;"></div>
 
         <div class="visualizer-wrapper">
@@ -975,21 +1017,21 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 10:16 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 10:32 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
     </div>
 
-    <!-- Live Sprint Options Selector Modal -->
+    <!-- Live Sprint & Song Battle Setup Modal -->
     <div class="modal-overlay" id="sprint-option-modal">
         <div class="modal" style="text-align: center;">
-            <h2>🏃 Finger Sprint Setup</h2>
-            <p style="font-size: 0.85rem; color: #9ca3af;">Select your race mode:</p>
+            <h2 id="battle-modal-title">🏃 Setup Mode</h2>
+            <p style="font-size: 0.85rem; color: #9ca3af;" id="battle-modal-subtitle">Select your battle option:</p>
             <div style="display: flex; flex-direction: column; gap: 10px; margin: 10px 0;" id="sprint-menu-buttons">
-                <button type="button" class="btn-arcade" onclick="initSinglePlayerSprint()">🤖 Challenge Robot Opponent</button>
-                <button type="button" class="btn-success" onclick="openHostNamePrompt()">👑 Host Live Race</button>
-                <button type="button" class="btn-midi" onclick="openJoinNamePrompt()">🎮 Join Live Race</button>
+                <button type="button" class="btn-arcade" id="btn-sprint-bot-opt" onclick="initSinglePlayerSprint()">🤖 Challenge Robot Opponent</button>
+                <button type="button" class="btn-success" onclick="openHostNamePrompt()">👑 Host Live Session</button>
+                <button type="button" class="btn-midi" onclick="openJoinNamePrompt()">🎮 Join Live Session</button>
             </div>
             
             <div id="sprint-form-container" style="display: none; flex-direction: column; gap: 8px; text-align: left;">
@@ -999,20 +1041,20 @@
                 <div id="inline-name-error" style="color:#ef4444; font-size:0.75rem; font-weight:700; display:none;">⚠️ Please enter your First Name & Surname Initial before continuing!</div>
 
                 <div id="code-input-group" style="display:none; flex-direction:column; gap:4px;">
-                    <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Enter Host Room Code:</label>
-                    <input type="text" id="sprint-room-code" placeholder="e.g. RACE-1234" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; text-transform:uppercase;">
+                    <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Enter Host Join Code:</label>
+                    <input type="text" id="sprint-room-code" placeholder="e.g. 482" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; text-transform:uppercase;">
                 </div>
 
                 <div id="host-lobby-group" style="display:none; flex-direction:column; gap:4px; text-align:center;">
                     <div style="font-size:1.1rem; color:#facc15; font-weight:800;" id="generated-room-code-display">Room Code: Generating...</div>
                     <div class="lobby-players-grid" id="lobby-players-grid"></div>
-                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-content:center;" onclick="triggerHostStartRace()">🚀 START LIVE RACE FOR ALL PLAYERS</button>
+                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-content:center;" onclick="triggerHostStartRace()">🚀 START LIVE SESSION FOR ALL PLAYERS</button>
                 </div>
 
                 <div id="client-waiting-group" style="display:none; flex-direction:column; gap:6px; text-align:center;">
                     <p style="font-size:0.85rem; color:#22c55e; font-weight:700;">Connected to Host Room!</p>
                     <div class="lobby-players-grid" id="client-lobby-grid"></div>
-                    <p style="font-size:0.75rem; color:#9ca3af;">Waiting for race host to press start...</p>
+                    <p style="font-size:0.75rem; color:#9ca3af;">Waiting for host to press start...</p>
                 </div>
 
                 <button type="button" class="btn-success" id="btn-confirm-sprint-action" style="margin-top:6px; justify-content:center;">Confirm & Continue</button>
@@ -1087,14 +1129,17 @@
             <div id="game-rank-text" class="rank-display-box">Calculating Rank...</div>
 
             <div class="graph-container">
-                <div class="bar-chart-wrapper">
+                <div class="multi-bar-container" id="multi-bar-graph" style="display: none;"></div>
+                
+                <div class="bar-chart-wrapper" id="single-bar-graph">
                     <div class="stacked-bar">
                         <div id="bar-red" class="bar-part-red"></div>
                         <div id="bar-orange" class="bar-part-orange"></div>
                         <div id="bar-green" class="bar-part-green"></div>
                     </div>
                 </div>
-                <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 600;">
+                
+                <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 600; margin-top: 4px;">
                     <span style="color: #22c55e;">● Perfect</span>
                     <span style="color: #f97316;">● Early/Late</span>
                     <span style="color: #ef4444;">● Missed</span>
@@ -1103,6 +1148,7 @@
 
             <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
                 <a href="leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">View Entire Leaderboard</a>
+                <button type="button" class="btn-warning" id="btn-battle-again" style="display: none;" onclick="triggerBattleAgain()">⚔️ Battle Again</button>
                 <button type="button" class="btn-warning" id="btn-game-try-again">Play Again</button>
                 <button type="button" class="btn-arcade" id="btn-game-arcade-menu">Mini-Game Menu</button>
                 <button type="button" class="btn-success" id="btn-game-results-close">Continue</button>
@@ -1206,7 +1252,7 @@
         let dodgeLives = 5;
         let dodgeDodgedCount = 0;
 
-        // Up to 8 Players Live PeerJS Config
+        // Up to 8 Players Live PeerJS & Song Battle Config
         let peerInstance = null;
         let peerConnections = [];
         let isSprintHost = false;
@@ -1216,6 +1262,8 @@
         let sprintKeystrokeCount = 0;
         let sprintStartTime = 0;
         let raceActive = false;
+        let isSongBattle = false;
+        let activeBattleRoomCode = "";
 
         const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄'];
 
@@ -1233,6 +1281,8 @@
         document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
         document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
         document.getElementById('btn-stop-arcade').addEventListener('click', exitActiveMiniGame);
+        document.getElementById('btn-song-battle').addEventListener('click', openSongBattleSelector);
+
         document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
             openArcadeHub();
@@ -1272,6 +1322,7 @@
             activeMiniGame = null;
             isPlaying = false;
             raceActive = false;
+            isSongBattle = false;
             runnerTrack.style.display = 'none';
             runnerTrack.innerHTML = '';
             if (peerInstance) {
@@ -1389,6 +1440,9 @@
                 const maxLevelRemembered = Math.max(1, simonSequence.length - 1);
                 
                 document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>Max Level Remembered: <span style="color:#22c55e; font-size:1.3rem;">Level ${maxLevelRemembered}</span>`;
+                document.getElementById('single-bar-graph').style.display = 'flex';
+                document.getElementById('multi-bar-graph').style.display = 'none';
+                document.getElementById('btn-battle-again').style.display = 'none';
                 document.getElementById('bar-green').style.height = '100%';
                 document.getElementById('bar-orange').style.height = '0%';
                 document.getElementById('bar-red').style.height = '0%';
@@ -1435,6 +1489,9 @@
                     `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>` +
                     `Guesses Taken: <span style="color:#22c55e; font-size:1.4rem; font-weight:800;">${mysteryGuessCount}</span>`;
 
+                document.getElementById('single-bar-graph').style.display = 'flex';
+                document.getElementById('multi-bar-graph').style.display = 'none';
+                document.getElementById('btn-battle-again').style.display = 'none';
                 document.getElementById('bar-green').style.height = '100%';
                 document.getElementById('bar-orange').style.height = '0%';
                 document.getElementById('bar-red').style.height = '0%';
@@ -1520,9 +1577,29 @@
             requestAnimationFrame(renderLoop);
         }
 
-        /* 5. MULTI-PLAYER / BOT SPRINT SYSTEM */
+        /* 5. MULTI-PLAYER / BOT SPRINT & SONG BATTLE SYSTEM */
         function openSprintModeSelector() {
             initAudio();
+            isSongBattle = false;
+            document.getElementById('battle-modal-title').textContent = "🏃 Finger Sprint Setup";
+            document.getElementById('battle-modal-subtitle').textContent = "Select your race mode:";
+            document.getElementById('btn-sprint-bot-opt').style.display = 'inline-flex';
+            document.getElementById('sprint-menu-buttons').style.display = 'flex';
+            document.getElementById('sprint-form-container').style.display = 'none';
+            document.getElementById('inline-name-error').style.display = 'none';
+            document.getElementById('sprint-option-modal').classList.add('open');
+        }
+
+        function openSongBattleSelector() {
+            initAudio();
+            if (!currentSong || currentSong.length === 0) {
+                alert("Please select a song first before starting a Song Battle!");
+                return;
+            }
+            isSongBattle = true;
+            document.getElementById('battle-modal-title').textContent = `⚔️ Song Battle: ${currentSongTitle}`;
+            document.getElementById('battle-modal-subtitle').textContent = "Host or join a live song battle:";
+            document.getElementById('btn-sprint-bot-opt').style.display = 'none';
             document.getElementById('sprint-menu-buttons').style.display = 'flex';
             document.getElementById('sprint-form-container').style.display = 'none';
             document.getElementById('inline-name-error').style.display = 'none';
@@ -1573,7 +1650,7 @@
                 }
 
                 if (!roomCode) {
-                    alert("Please enter a valid Host Room Code!");
+                    alert("Please enter a valid 3-Digit Join Code!");
                     document.getElementById('sprint-room-code').focus();
                     return;
                 }
@@ -1602,19 +1679,19 @@
                 sprintKeystrokeCount = 0;
                 sprintIndex = 0;
                 
-                // Bot interval
+                // Faster Bot interval (Completes track in ~7-9 seconds)
                 const botInt = setInterval(() => {
                     if (!raceActive) { clearInterval(botInt); return; }
                     const bot = playersList.find(p => p.id === 'bot');
                     if (bot && !bot.finishTime) {
-                        bot.pxProgress += 2.2 + Math.random() * 0.8;
+                        bot.pxProgress += 3.8 + Math.random() * 1.4;
                         updateMultiplayerLanesUI();
                         if (bot.pxProgress >= 3600) {
                             bot.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
                             checkAllFinished();
                         }
                     }
-                }, 120);
+                }, 100);
             });
         }
 
@@ -1635,12 +1712,14 @@
             document.getElementById('btn-confirm-sprint-action').style.display = 'none';
             document.getElementById('host-lobby-group').style.display = 'flex';
 
-            const roomCode = 'RACE-' + Math.floor(1000 + Math.random() * 9000);
-            document.getElementById('generated-room-code-display').textContent = `Room Code: ${roomCode}`;
+            // Generate simple 3-Digit Code
+            const roomCode = isSongBattle ? '' + Math.floor(100 + Math.random() * 900) : 'RACE-' + Math.floor(1000 + Math.random() * 9000);
+            activeBattleRoomCode = roomCode;
+            document.getElementById('generated-room-code-display').textContent = `Join Code: ${roomCode}`;
 
             isSprintHost = true;
             localPlayerId = 'p1';
-            playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, isLocal: true }];
+            playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, isLocal: true }];
             renderLobbyGrid('lobby-players-grid');
 
             peerInstance = new Peer(roomCode);
@@ -1651,11 +1730,10 @@
                 conn.on('data', (data) => {
                     if (data.type === 'JOIN') {
                         const newPId = 'p' + (playersList.length + 1);
-                        const newP = { id: newPId, name: data.name, avatar: AVATARS[playersList.length], pxProgress: 0, finishTime: null, isLocal: false };
+                        const newP = { id: newPId, name: data.name, avatar: AVATARS[playersList.length], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, isLocal: false };
                         playersList.push(newP);
 
                         renderLobbyGrid('lobby-players-grid');
-                        // Immediate Lobby Sync with Host Name & Avatar
                         broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList });
                     } else if (data.type === 'PROGRESS') {
                         const player = playersList.find(p => p.id === data.id);
@@ -1664,6 +1742,7 @@
                             if (data.finishTime && !player.finishTime) {
                                 player.finishTime = data.finishTime;
                             }
+                            if (data.stats) player.stats = data.stats;
                             broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
                             updateMultiplayerLanesUI();
                             checkAllFinished();
@@ -1675,6 +1754,7 @@
 
         function showJoinSetup(racerName, roomCode) {
             sessionStudentName = racerName;
+            activeBattleRoomCode = roomCode;
 
             peerInstance = new Peer();
             peerInstance.on('open', () => {
@@ -1686,7 +1766,7 @@
                     document.getElementById('code-input-group').style.display = 'none';
                     document.getElementById('btn-confirm-sprint-action').style.display = 'none';
                     document.getElementById('client-waiting-group').style.display = 'flex';
-                    document.getElementById('status').textContent = `Connected to Race Host (${roomCode})! Waiting for race to start...`;
+                    document.getElementById('status').textContent = `Connected to Host Code (${roomCode})! Waiting for start...`;
                 });
 
                 conn.on('data', (data) => {
@@ -1698,22 +1778,39 @@
                     } else if (data.type === 'START_RACE') {
                         closeSprintOptionModal();
                         arcadeHub.classList.remove('open');
-                        activeMiniGame = 'sprint';
                         resetGameStats();
-                        renderSprintLanes();
-                        startCountdown(() => {
-                            raceActive = true;
-                            sprintStartTime = performance.now();
-                            sprintKeystrokeCount = 0;
-                            sprintIndex = 0;
-                        });
+
+                        if (isSongBattle) {
+                            isGameMode = true;
+                            btnGame.textContent = 'Game Mode: ON';
+                            btnGame.classList.add('btn-game-active');
+                            startCountdown(() => {
+                                playSong();
+                            });
+                        } else {
+                            activeMiniGame = 'sprint';
+                            renderSprintLanes();
+                            startCountdown(() => {
+                                raceActive = true;
+                                sprintStartTime = performance.now();
+                                sprintKeystrokeCount = 0;
+                                sprintIndex = 0;
+                            });
+                        }
                     } else if (data.type === 'RACER_UPDATE') {
                         playersList = data.players;
                         updateMultiplayerLanesUI();
                     } else if (data.type === 'RACE_FINISHED') {
                         raceActive = false;
                         playersList = data.players;
-                        finishSprintRace();
+                        if (isSongBattle) renderSongBattleResults();
+                        else finishSprintRace();
+                    } else if (data.type === 'BATTLE_AGAIN_PROMPT') {
+                        gameResultsModal.classList.remove('open');
+                        const choice = confirm(`Host ${data.hostName} initiated a new Battle! Join Same Battle (${activeBattleRoomCode})?`);
+                        if (choice) {
+                            showJoinSetup(sessionStudentName, activeBattleRoomCode);
+                        }
                     }
                 });
             });
@@ -1724,16 +1821,34 @@
 
             closeSprintOptionModal();
             arcadeHub.classList.remove('open');
-            activeMiniGame = 'sprint';
             resetGameStats();
 
-            renderSprintLanes();
-            startCountdown(() => {
-                raceActive = true;
-                sprintStartTime = performance.now();
-                sprintKeystrokeCount = 0;
-                sprintIndex = 0;
-            });
+            if (isSongBattle) {
+                isGameMode = true;
+                btnGame.textContent = 'Game Mode: ON';
+                btnGame.classList.add('btn-game-active');
+                startCountdown(() => {
+                    playSong();
+                });
+            } else {
+                activeMiniGame = 'sprint';
+                renderSprintLanes();
+                startCountdown(() => {
+                    raceActive = true;
+                    sprintStartTime = performance.now();
+                    sprintKeystrokeCount = 0;
+                    sprintIndex = 0;
+                });
+            }
+        }
+
+        function triggerBattleAgain() {
+            gameResultsModal.classList.remove('open');
+            if (isSprintHost) {
+                broadcastPeerMsg({ type: 'BATTLE_AGAIN_PROMPT', hostName: sessionStudentName });
+                showHostSetup(sessionStudentName);
+                document.getElementById('sprint-option-modal').classList.add('open');
+            }
         }
 
         function broadcastPeerMsg(msg) {
@@ -1775,6 +1890,10 @@
                     hurdleDiv.textContent = note;
                     scrollTrack.appendChild(hurdleDiv);
                 });
+
+                const finishLine = document.createElement('div');
+                finishLine.className = 'runner-finish-line';
+                scrollTrack.appendChild(finishLine);
 
                 laneDiv.appendChild(label);
                 laneDiv.appendChild(avatar);
@@ -1829,6 +1948,12 @@
             raceActive = false;
             currentSongTitle = "Finger Sprint";
 
+            const localPlayer = playersList.find(p => p.id === localPlayerId);
+            const winner = [...playersList].sort((a,b) => parseFloat(a.finishTime || 999) - parseFloat(b.finishTime || 999))[0];
+            const isWinner = winner && winner.id === localPlayerId;
+
+            const popUpHeader = isWinner ? `🎉 YOU WON! (${localPlayer.finishTime}s)` : `❌ YOU LOST! Winner: ${winner ? winner.name : 'Opponent'}`;
+
             const sortedResults = [...playersList].sort((a, b) => {
                 if (a.finishTime && b.finishTime) return parseFloat(a.finishTime) - parseFloat(b.finishTime);
                 if (a.finishTime) return -1;
@@ -1847,7 +1972,7 @@
             }).join('');
 
             const resultsHTML = `
-                <div style="margin-bottom:8px; font-weight:800; font-size:1.1rem; color:#facc15;">🏁 Live Race Standings</div>
+                <div style="margin-bottom:8px; font-weight:900; font-size:1.3rem; color:${isWinner ? '#22c55e' : '#ef4444'};">${popUpHeader}</div>
                 <table class="race-results-table">
                     <thead>
                         <tr>
@@ -1863,6 +1988,10 @@
             document.getElementById('game-summary-text').innerHTML = resultsHTML;
 
             // Render User-Specific Bar Chart (Hits vs Misses/Failed Hurdles)
+            document.getElementById('single-bar-graph').style.display = 'flex';
+            document.getElementById('multi-bar-graph').style.display = 'none';
+            document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
+
             const totalHits = gameStats.perfect + gameStats.miss;
             const greenPct = totalHits > 0 ? (gameStats.perfect / totalHits) * 100 : 100;
             const redPct = totalHits > 0 ? (gameStats.miss / totalHits) * 100 : 0;
@@ -1874,11 +2003,45 @@
             document.getElementById('game-rank-text').textContent = `Finger Sprint Finish!`;
             gameResultsModal.classList.add('open');
 
-            const localPlayer = playersList.find(p => p.id === localPlayerId);
             if (localPlayer && localPlayer.finishTime) {
                 postScoreToLeaderboard(parseFloat(localPlayer.finishTime));
             }
             activeMiniGame = null;
+        }
+
+        function renderSongBattleResults() {
+            // Render multi-column bar graph for all players in Song Battle
+            const multiGraph = document.getElementById('multi-bar-graph');
+            multiGraph.innerHTML = '';
+            multiGraph.style.display = 'flex';
+            document.getElementById('single-bar-graph').style.display = 'none';
+            document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
+
+            playersList.forEach((p) => {
+                const col = document.createElement('div');
+                col.className = 'multi-bar-column';
+
+                const pStats = p.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+                const total = Math.max(1, pStats.perfect + pStats.earlyLate + pStats.miss);
+
+                const gPct = (pStats.perfect / total) * 100;
+                const oPct = (pStats.earlyLate / total) * 100;
+                const rPct = (pStats.miss / total) * 100;
+
+                col.innerHTML = `
+                    <div class="stacked-bar">
+                        <div class="bar-part-red" style="height:${rPct}%;"></div>
+                        <div class="bar-part-orange" style="height:${oPct}%;"></div>
+                        <div class="bar-part-green" style="height:${gPct}%;"></div>
+                    </div>
+                    <span style="font-size:0.7rem; font-weight:700; color:#fff;">${p.avatar} ${p.name}</span>
+                `;
+                multiGraph.appendChild(col);
+            });
+
+            document.getElementById('game-summary-text').innerHTML = `<div style="font-size:1.2rem; font-weight:800; color:#facc15;">⚔️ Song Battle Standings: ${currentSongTitle}</div>`;
+            document.getElementById('game-rank-text').textContent = `Song Battle Logged!`;
+            gameResultsModal.classList.add('open');
         }
 
         function handleSprintInput(noteStr) {
@@ -2076,6 +2239,7 @@
                     currentSong = autoTransposeSong(parsed);
                     generatedHaycode = midiHayCode;
                     btnShare.style.display = 'inline-flex';
+                    document.getElementById('btn-song-battle').style.display = 'inline-flex';
                     songSelect.value = '';
                     document.getElementById('status').textContent = `Loaded MIDI: "${fileName}". Converted to HayCode successfully!`;
                     playSong();
@@ -2475,6 +2639,10 @@
 
             document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
 
+            document.getElementById('single-bar-graph').style.display = 'flex';
+            document.getElementById('multi-bar-graph').style.display = 'none';
+            document.getElementById('btn-battle-again').style.display = 'none';
+
             const greenPct = totalHits > 0 ? (perfectHits / totalHits) * 100 : 0;
             const orangePct = totalHits > 0 ? (earlyLateHits / totalHits) * 100 : 0;
             const redPct = totalHits > 0 ? (missedHits / totalHits) * 100 : 0;
@@ -2498,9 +2666,22 @@
 
             gameResultsModal.classList.add('open');
 
-            calculateAndDisplayRank(accuracyNum).then(() => {
-                postScoreToLeaderboard(accuracyNum);
-            });
+            if (isSongBattle) {
+                const localPlayer = playersList.find(p => p.id === localPlayerId);
+                if (localPlayer) {
+                    localPlayer.stats = { ...gameStats };
+                }
+                if (!isSprintHost && peerConnections.length > 0) {
+                    peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: 3600, stats: gameStats });
+                } else if (isSprintHost) {
+                    renderSongBattleResults();
+                    broadcastPeerMsg({ type: 'RACE_FINISHED', players: playersList });
+                }
+            } else {
+                calculateAndDisplayRank(accuracyNum).then(() => {
+                    postScoreToLeaderboard(accuracyNum);
+                });
+            }
         }
 
         function toggleLoopMode() {
@@ -2540,6 +2721,7 @@
                 if (recordedNotes.length > 0) {
                     generatedHaycode = `${recordedNotes.join(',')},RESTS,${recordedRests.join(',')}`;
                     btnShare.style.display = 'inline-flex';
+                    document.getElementById('btn-song-battle').style.display = 'inline-flex';
                     document.getElementById('status').textContent = ` RECORDING STOPPED! ${recordedNotes.length} notes saved. Click "Share Haycode" or "Add SONG (Teacher)".`;
                     openExportModal();
                 } else {
@@ -3160,6 +3342,7 @@
             const parsed = parsePianoPad(code);
             if (parsed.length > 0) {
                 currentSong = autoTransposeSong(parsed);
+                document.getElementById('btn-song-battle').style.display = 'inline-flex';
                 playSong();
             }
         });
@@ -3420,6 +3603,7 @@
                 currentSongTitle = 'Custom Imported Song';
                 currentSong = autoTransposeSong(parsed);
                 songSelect.value = '';
+                document.getElementById('btn-song-battle').style.display = 'inline-flex';
                 modal.classList.remove('open');
                 playSong();
             } else {
