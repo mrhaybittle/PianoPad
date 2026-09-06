@@ -1029,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | Zscaler HTTPS Relay Active</div>
+            <div class="version-stamp">v26.09.07 | Google Relay Active</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1241,9 +1241,6 @@
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyJ6BXOjgbsbv03Xlp3kFVj_6aIfVJ7NM66Y3f_fMzuOeDabH2HzEhE-rLuoZzncXAA6g/exec';
 
-        // Public HTTPS Endpoint for Zscaler-compliant room communication
-        const DB_URL = "https://pianopad-default-rtdb.firebaseio.com/rooms";
-
         let audioCtx = null;
         let songList = [];
         let currentSong = [];
@@ -1303,7 +1300,7 @@
         let dodgeLives = 5;
         let dodgeDodgedCount = 0;
 
-        // Zscaler-Safe Long Polling State
+        // Google Apps Script Relay Long Polling State
         let httpPollTimer = null;
         let isSprintHost = false;
         let localPlayerId = 'p1';
@@ -1808,7 +1805,7 @@
             requestAnimationFrame(renderLoop);
         }
 
-        /* 5. MULTI-PLAYER / BOT SPRINT & SONG BATTLE SYSTEM (Zscaler HTTPS REST Relay) */
+        /* 5. MULTI-PLAYER / BOT SPRINT & SONG BATTLE SYSTEM (Google Apps Script Relay) */
         function openSprintModeSelector() {
             initAudio();
             isSongBattle = false;
@@ -1976,10 +1973,7 @@
             document.getElementById('host-lobby-group').style.display = 'flex';
             document.getElementById('host-song-selector-group').style.display = 'none';
 
-            if (!activeBattleRoomCode || !isSprintHost) {
-                activeBattleRoomCode = '' + Math.floor(100 + Math.random() * 900);
-            }
-            
+            activeBattleRoomCode = '' + Math.floor(100 + Math.random() * 900);
             document.getElementById('generated-room-code-display').textContent = `Join Code: ${activeBattleRoomCode}`;
 
             isSprintHost = true;
@@ -1987,98 +1981,77 @@
             playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true }];
             renderLobbyGrid('lobby-players-grid');
 
-            // Register Room on Zscaler-safe REST Firebase API
-            const roomData = {
-                status: "lobby",
-                songTitle: currentSongTitle,
-                songCode: songSelect.value,
-                players: playersList,
-                updatedAt: Date.now()
-            };
-
+            // Send CREATE ROOM action to Google Apps Script Relay
             try {
-                await fetch(`${DB_URL}/${activeBattleRoomCode}.json`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(roomData)
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({
+                        action: "CREATE_ROOM",
+                        roomCode: activeBattleRoomCode,
+                        hostName: hostName,
+                        songTitle: currentSongTitle,
+                        songCode: songSelect.value
+                    })
                 });
             } catch(e) {
-                console.warn("HTTPS Sync Error", e);
+                console.warn("Apps Script Room Creation:", e);
             }
 
-            // Start HTTPS Long-Polling for connected players
-            startHTTPSPolling(activeBattleRoomCode, true);
+            startGoogleAppsScriptPolling(activeBattleRoomCode, true);
         }
 
         async function showJoinSetup(racerName, roomCode) {
             sessionStudentName = racerName;
             activeBattleRoomCode = roomCode;
 
+            localPlayerId = 'p' + (Date.now() % 10000);
+            const avatarIdx = Math.floor(Math.random() * AVATARS.length);
+
             try {
-                const res = await fetch(`${DB_URL}/${roomCode}.json?t=${Date.now()}`, { cache: 'no-store' });
-                const roomData = await res.json();
-
-                if (!roomData) {
-                    alert("Room Code not found! Please check the code and try again.");
-                    return;
-                }
-
-                localPlayerId = 'p' + (Date.now() % 10000);
-                const avatarIdx = (roomData.players ? roomData.players.length : 1) % AVATARS.length;
-                
-                const newPlayer = {
-                    id: localPlayerId,
-                    name: racerName,
-                    avatar: AVATARS[avatarIdx],
-                    pxProgress: 0,
-                    finishTime: null,
-                    stats: { perfect:0, earlyLate:0, miss:0 },
-                    finished: false,
-                    isLocal: true
-                };
-
-                let updatedPlayers = roomData.players || [];
-                updatedPlayers.push(newPlayer);
-
-                await fetch(`${DB_URL}/${roomCode}/players.json`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updatedPlayers)
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({
+                        action: "JOIN_ROOM",
+                        roomCode: roomCode,
+                        playerId: localPlayerId,
+                        playerName: racerName,
+                        avatar: AVATARS[avatarIdx]
+                    })
                 });
 
                 document.getElementById('code-input-group').style.display = 'none';
                 document.getElementById('btn-confirm-sprint-action').style.display = 'none';
                 document.getElementById('client-waiting-group').style.display = 'flex';
-                document.getElementById('status').textContent = `Connected to Host Code (${roomCode}) via HTTPS! Waiting for start...`;
+                document.getElementById('status').textContent = `Connected to Host Code (${roomCode})! Waiting for start...`;
 
-                startHTTPSPolling(roomCode, false);
+                startGoogleAppsScriptPolling(roomCode, false);
 
             } catch (err) {
-                console.error("Zscaler Join Error:", err);
-                alert("Failed to connect over HTTPS. Check network settings.");
+                console.error("Google Relay Join Error:", err);
+                alert("Failed to join room. Check code and network.");
             }
         }
 
-        function startHTTPSPolling(roomCode, isHost) {
+        function startGoogleAppsScriptPolling(roomCode, isHost) {
             if (httpPollTimer) clearInterval(httpPollTimer);
 
             httpPollTimer = setInterval(async () => {
                 try {
-                    const cacheBuster = `?t=${Date.now()}`;
-                    const res = await fetch(`${DB_URL}/${roomCode}.json${cacheBuster}`, {
-                        cache: 'no-store'
-                    });
+                    const res = await fetch(`${APPS_SCRIPT_URL}?action=GET_ROOM&roomCode=${roomCode}&t=${Date.now()}`);
+                    if (!res.ok) return;
                     const data = await res.json();
-                    if (!data) return;
+                    if (!data || !data.players) return;
 
-                    if (data.players) {
-                        playersList = data.players;
-                        if (isHost) renderLobbyGrid('lobby-players-grid');
-                        else renderLobbyGrid('client-lobby-grid');
+                    playersList = data.players;
+                    if (isHost) renderLobbyGrid('lobby-players-grid');
+                    else renderLobbyGrid('client-lobby-grid');
 
-                        if (isSongBattle) renderSongBattleResults();
-                        else updateMultiplayerLanesUI();
-                    }
+                    if (isSongBattle) renderSongBattleResults();
+                    else updateMultiplayerLanesUI();
 
                     if (data.songCode && !isHost) {
                         currentSongTitle = data.songTitle;
@@ -2115,39 +2088,48 @@
                         else finishSprintRace();
                     }
                 } catch(e) {
-                    console.warn("Zscaler Poll Retry...", e);
+                    console.warn("Polling Apps Script...", e);
                 }
             }, 1000);
         }
 
-        async function pushHTTPSPlayerState() {
+        async function pushPlayerState() {
             if (!activeBattleRoomCode) return;
+            const localPlayer = playersList.find(p => p.id === localPlayerId);
+            if (!localPlayer) return;
+
             try {
-                await fetch(`${DB_URL}/${activeBattleRoomCode}/players.json`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(playersList)
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({
+                        action: "UPDATE_PLAYER",
+                        roomCode: activeBattleRoomCode,
+                        playerId: localPlayerId,
+                        pxProgress: localPlayer.pxProgress,
+                        finishTime: localPlayer.finishTime,
+                        stats: localPlayer.stats,
+                        finished: localPlayer.finished
+                    })
                 });
-            } catch(e) {
-                console.warn("HTTPS Push Error", e);
-            }
+            } catch(e) {}
         }
 
         async function triggerHostStartRace() {
             if (!activeBattleRoomCode) return;
 
             try {
-                await fetch(`${DB_URL}/${activeBattleRoomCode}.json`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify({
-                        status: "started",
-                        updatedAt: Date.now()
+                        action: "START_ROOM",
+                        roomCode: activeBattleRoomCode
                     })
                 });
-            } catch(e) {
-                console.warn("Host start signal error:", e);
-            }
+            } catch(e) {}
 
             document.getElementById('sprint-option-modal').classList.remove('open');
             arcadeHub.classList.remove('open');
@@ -2157,9 +2139,7 @@
                 isGameMode = true;
                 btnGame.textContent = 'Game Mode: ON';
                 btnGame.classList.add('btn-game-active');
-                startCountdown(() => {
-                    playSong();
-                });
+                startCountdown(() => { playSong(); });
             } else {
                 activeMiniGame = 'sprint';
                 renderSprintLanes();
@@ -2259,13 +2239,6 @@
             if (allFinished) {
                 if (raceActive) {
                     raceActive = false;
-                    if (isSprintHost) {
-                        fetch(`${DB_URL}/${activeBattleRoomCode}/status.json`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify("finished")
-                        });
-                    }
                     finishSprintRace();
                 } else if (isSongBattle) {
                     renderSongBattleResults();
@@ -2422,7 +2395,7 @@
                     localPlayer.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
                 }
 
-                pushHTTPSPlayerState();
+                pushPlayerState();
 
                 if (localPlayer.pxProgress >= 3600) {
                     checkAllFinished();
@@ -3593,7 +3566,7 @@
                         const localPlayer = playersList.find(p => p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
-                            pushHTTPSPlayerState();
+                            pushPlayerState();
                         }
                     }
 
@@ -3607,7 +3580,7 @@
                         const localPlayer = playersList.find(p => p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
-                            pushHTTPSPlayerState();
+                            pushPlayerState();
                         }
                     }
                 }
@@ -3960,7 +3933,7 @@
                         const localPlayer = playersList.find(p => p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
-                            pushHTTPSPlayerState();
+                            pushPlayerState();
                         }
                     }
                     if (isGameMode) updateGameStatus();
@@ -3996,7 +3969,7 @@
                         const localPlayer = playersList.find(p => p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.finished = true;
-                            pushHTTPSPlayerState();
+                            pushPlayerState();
                             checkAllFinished();
                         }
                         return;
