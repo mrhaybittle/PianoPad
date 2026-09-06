@@ -1030,7 +1030,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 18:38 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 18:45 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1970,7 +1970,7 @@
 
             isSprintHost = true;
             localPlayerId = 'p1';
-            playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, isLocal: true }];
+            playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true }];
             renderLobbyGrid('lobby-players-grid');
 
             if (!peerInstance || peerInstance.destroyed) {
@@ -1982,7 +1982,7 @@
                         if (data.type === 'JOIN') {
                             const newPId = 'p' + (playersList.length + 1);
                             const avatarIdx = (playersList.length) % AVATARS.length;
-                            const newP = { id: newPId, name: data.name, avatar: AVATARS[avatarIdx], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, isLocal: false };
+                            const newP = { id: newPId, name: data.name, avatar: AVATARS[avatarIdx], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: false };
                             playersList.push(newP);
 
                             renderLobbyGrid('lobby-players-grid');
@@ -1995,6 +1995,7 @@
                                     player.finishTime = data.finishTime;
                                 }
                                 if (data.stats) player.stats = data.stats;
+                                if (data.finished) player.finished = true;
                                 broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
                                 if (isSongBattle) renderSongBattleResults();
                                 else updateMultiplayerLanesUI();
@@ -2204,13 +2205,17 @@
         }
 
         function checkAllFinished() {
-            const allFinished = playersList.every(p => p.finishTime !== null || p.pxProgress >= 3600);
-            if (allFinished && raceActive) {
-                raceActive = false;
-                if (isSprintHost) {
-                    broadcastPeerMsg({ type: 'RACE_FINISHED', players: playersList });
+            const allFinished = playersList.every(p => p.finished || p.finishTime !== null || p.pxProgress >= 3600);
+            if (allFinished) {
+                if (raceActive) {
+                    raceActive = false;
+                    if (isSprintHost) {
+                        broadcastPeerMsg({ type: 'RACE_FINISHED', players: playersList });
+                    }
+                    finishSprintRace();
+                } else if (isSongBattle) {
+                    renderSongBattleResults();
                 }
-                finishSprintRace();
             }
         }
 
@@ -2280,6 +2285,13 @@
         }
 
         function renderSongBattleResults() {
+            // DEFER UNTIL ALL CONNECTED PLAYERS FINISH
+            const allPlayersFinished = playersList.every(p => p.finished);
+            if (!allPlayersFinished) {
+                document.getElementById('status').textContent = `🏁 Battle finished for you! Waiting for remaining players to complete...`;
+                return;
+            }
+
             const multiGraph = document.getElementById('multi-bar-graph');
             multiGraph.innerHTML = '';
             multiGraph.style.display = 'flex';
@@ -3536,7 +3548,6 @@
                                 peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, stats: gameStats });
                             } else if (isSprintHost) {
                                 broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                                renderSongBattleResults();
                             }
                         }
                     }
@@ -3555,7 +3566,6 @@
                                 peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, stats: gameStats });
                             } else if (isSprintHost) {
                                 broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                                renderSongBattleResults();
                             }
                         }
                     }
@@ -3779,7 +3789,6 @@
             requestAnimationFrame(renderLoop);
         }
 
-        /* FIXED CANVAS BLOCK RENDERING FUNCTION (Clean Rounded Rectangles) */
         function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending') {
             ctx.save();
             
@@ -3914,7 +3923,6 @@
                                 peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, stats: gameStats });
                             } else if (isSprintHost) {
                                 broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                                renderSongBattleResults();
                             }
                         }
                     }
@@ -3948,7 +3956,16 @@
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                     if (isSongBattle) {
-                        renderSongBattleResults();
+                        const localPlayer = playersList.find(p => p.id === localPlayerId);
+                        if (localPlayer) {
+                            localPlayer.finished = true;
+                            if (!isSprintHost && peerConnections.length > 0) {
+                                peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, stats: gameStats, finished: true });
+                            } else if (isSprintHost) {
+                                broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
+                                checkAllFinished();
+                            }
+                        }
                         return;
                     } else if (isGameMode) {
                         showGameResultsPopUp();
