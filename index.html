@@ -305,7 +305,6 @@
             cursor: pointer;
         }
 
-        /* Expanded Vertical Visualizer Canvas Area */
         .visualizer-wrapper {
             position: relative;
             display: flex;
@@ -336,6 +335,8 @@
             background-color: #000;
             user-select: none;
             flex-shrink: 0;
+            width: 100%;
+            justify-content: center;
         }
 
         .key {
@@ -349,6 +350,7 @@
             font-weight: 700;
             font-size: 0.75rem;
             position: relative;
+            flex-shrink: 0;
         }
 
         .key.white {
@@ -952,7 +954,6 @@
                     ⚔️ SONG BATTLE
                 </button>
 
-                <!-- Condensed Inline Timeline Control placed to the right of Arcade/Battle -->
                 <div class="timeline-container-inline" id="timeline-box">
                     <span>Trim:</span>
                     <input type="range" id="loop-start" min="0" max="100" value="0" title="Loop Start %">
@@ -1019,7 +1020,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 14:34 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 14:48 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -2400,7 +2401,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                document.getElementById('status').textContent = 'Error parsing converted MIDI sequence.';
+                document.getElementById('status').textContent = 'Failed to parse MIDI file.';
             }
 
             e.target.value = '';
@@ -3136,15 +3137,23 @@
 
         function updateKeyPositions() {
             keyPosMap = {};
+            const pianoRect = keyboardEl.getBoundingClientRect();
+            const pianoLeft = pianoRect.left;
+            const targetWidth = pianoRect.width;
+
+            if (targetWidth > 0) {
+                canvas.width = targetWidth;
+            }
+
             const keys = keyboardEl.querySelectorAll('.key');
             keys.forEach(k => {
+                const kRect = k.getBoundingClientRect();
                 keyPosMap[k.dataset.note] = {
-                    left: k.offsetLeft,
-                    width: k.offsetWidth,
+                    left: kRect.left - pianoLeft,
+                    width: kRect.width,
                     isBlack: k.classList.contains('black')
                 };
             });
-            canvas.width = keyboardEl.offsetWidth;
         }
 
         function playTone(freq, duration = 0.4, volScale = 1.0) {
