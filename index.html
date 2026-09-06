@@ -975,7 +975,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 08:29 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 08:38 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1004,7 +1004,7 @@
                 <div id="host-lobby-group" style="display:none; flex-direction:column; gap:4px; text-align:center;">
                     <div style="font-size:1.1rem; color:#facc15; font-weight:800;" id="generated-room-code-display">Room Code: Generating...</div>
                     <div class="lobby-players-grid" id="lobby-players-grid"></div>
-                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-content:center;" onclick="triggerHostStartRace()">🚀 START LIVE RACE FOR ALL PLAYERS</button>
+                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-center;" onclick="triggerHostStartRace()">🚀 START LIVE RACE FOR ALL PLAYERS</button>
                 </div>
 
                 <div id="client-waiting-group" style="display:none; flex-direction:column; gap:6px; text-align:center;">
@@ -1013,7 +1013,7 @@
                     <p style="font-size:0.75rem; color:#9ca3af;">Waiting for race host to press start...</p>
                 </div>
 
-                <button type="button" class="btn-success" id="btn-confirm-sprint-action" style="margin-top:6px; justify-content:center;">Confirm & Join Room</button>
+                <button type="button" class="btn-success" id="btn-confirm-sprint-action" style="margin-top:6px; justify-content:center;">Confirm & Continue</button>
             </div>
 
             <div class="modal-footer" style="justify-content: center;">
@@ -1535,6 +1535,7 @@
             exitActiveMiniGame();
             arcadeHub.classList.remove('open');
             activeMiniGame = 'sprint';
+            resetGameStats();
 
             playersList = [
                 { id: 'p1', name: 'YOU', avatar: '🏃', pxProgress: 0, finishTime: null, isLocal: true },
@@ -1558,9 +1559,8 @@
                         updateMultiplayerLanesUI();
                         if (bot.pxProgress >= 3600) {
                             bot.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
-                            raceActive = false;
-                            clearInterval(botInt);
-                            finishSprintRace();
+                            // Keep racing active until local player finishes as well
+                            checkAllFinished();
                         }
                     }
                 }, 120);
@@ -1580,6 +1580,13 @@
         }
 
         function showHostSetup() {
+            const nameInput = document.getElementById('sprint-player-name').value.trim();
+            if (!nameInput) {
+                alert("Please enter your First Name & Surname Initial before hosting a race!");
+                document.getElementById('sprint-player-name').focus();
+                return;
+            }
+
             document.getElementById('sprint-menu-buttons').style.display = 'none';
             document.getElementById('sprint-form-container').style.display = 'flex';
             document.getElementById('code-input-group').style.display = 'none';
@@ -1587,7 +1594,6 @@
             document.getElementById('host-lobby-group').style.display = 'flex';
             document.getElementById('btn-confirm-sprint-action').style.display = 'none';
 
-            const nameInput = document.getElementById('sprint-player-name').value.trim() || 'Host Student';
             sessionStudentName = nameInput;
 
             const roomCode = 'RACE-' + Math.floor(1000 + Math.random() * 9000);
@@ -1610,6 +1616,7 @@
                         playersList.push(newP);
 
                         renderLobbyGrid('lobby-players-grid');
+                        // Immediate Lobby Sync with Host Name & Avatar
                         broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList });
                     } else if (data.type === 'PROGRESS') {
                         const player = playersList.find(p => p.id === data.id);
@@ -1620,12 +1627,7 @@
                             }
                             broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
                             updateMultiplayerLanesUI();
-
-                            if (player.pxProgress >= 3600 && raceActive) {
-                                raceActive = false;
-                                broadcastPeerMsg({ type: 'RACE_FINISHED', players: playersList });
-                                finishSprintRace();
-                            }
+                            checkAllFinished();
                         }
                     }
                 });
@@ -1641,11 +1643,22 @@
             document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
             
             document.getElementById('btn-confirm-sprint-action').onclick = () => {
-                const nameInput = document.getElementById('sprint-player-name').value.trim() || 'Racer';
+                const nameInput = document.getElementById('sprint-player-name').value.trim();
                 const roomCode = document.getElementById('sprint-room-code').value.trim().toUpperCase();
-                sessionStudentName = nameInput;
 
-                if (!roomCode) return;
+                if (!nameInput) {
+                    alert("Please enter your First Name & Surname Initial!");
+                    document.getElementById('sprint-player-name').focus();
+                    return;
+                }
+
+                if (!roomCode) {
+                    alert("Please enter a valid Host Room Code!");
+                    document.getElementById('sprint-room-code').focus();
+                    return;
+                }
+
+                sessionStudentName = nameInput;
 
                 peerInstance = new Peer();
                 peerInstance.on('open', () => {
@@ -1670,6 +1683,7 @@
                             closeSprintOptionModal();
                             arcadeHub.classList.remove('open');
                             activeMiniGame = 'sprint';
+                            resetGameStats();
                             renderSprintLanes();
                             startCountdown(() => {
                                 raceActive = true;
@@ -1696,6 +1710,7 @@
             closeSprintOptionModal();
             arcadeHub.classList.remove('open');
             activeMiniGame = 'sprint';
+            resetGameStats();
 
             renderSprintLanes();
             startCountdown(() => {
@@ -1784,6 +1799,17 @@
             }, 800);
         }
 
+        function checkAllFinished() {
+            const allFinished = playersList.every(p => p.finishTime !== null || p.pxProgress >= 3600);
+            if (allFinished && raceActive) {
+                raceActive = false;
+                if (isSprintHost) {
+                    broadcastPeerMsg({ type: 'RACE_FINISHED', players: playersList });
+                }
+                finishSprintRace();
+            }
+        }
+
         function finishSprintRace() {
             raceActive = false;
             currentSongTitle = "Finger Sprint";
@@ -1820,9 +1846,15 @@
             `;
 
             document.getElementById('game-summary-text').innerHTML = resultsHTML;
-            document.getElementById('bar-green').style.height = '100%';
+
+            // Render User-Specific Bar Chart (Hits vs Misses/Failed Hurdles)
+            const totalHits = gameStats.perfect + gameStats.miss;
+            const greenPct = totalHits > 0 ? (gameStats.perfect / totalHits) * 100 : 100;
+            const redPct = totalHits > 0 ? (gameStats.miss / totalHits) * 100 : 0;
+
+            document.getElementById('bar-green').style.height = `${greenPct}%`;
             document.getElementById('bar-orange').style.height = '0%';
-            document.getElementById('bar-red').style.height = '0%';
+            document.getElementById('bar-red').style.height = `${redPct}%`;
 
             document.getElementById('game-rank-text').textContent = `Finger Sprint Finish!`;
             gameResultsModal.classList.add('open');
@@ -1840,7 +1872,7 @@
             const rawNoteName = noteStr.toLowerCase().trim();
             const localPlayer = playersList.find(p => p.id === localPlayerId);
 
-            if (!localPlayer) return;
+            if (!localPlayer || localPlayer.finishTime) return;
 
             const expectedNote = sprintSequence[sprintIndex % 2];
             if (rawNoteName === expectedNote.toLowerCase().trim()) {
@@ -1862,11 +1894,7 @@
                 }
 
                 if (localPlayer.pxProgress >= 3600) {
-                    raceActive = false;
-                    if (isSprintHost) {
-                        broadcastPeerMsg({ type: 'RACE_FINISHED', players: playersList });
-                    }
-                    finishSprintRace();
+                    checkAllFinished();
                     return;
                 }
 
