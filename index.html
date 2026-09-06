@@ -1030,7 +1030,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 07:09 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 07:15 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1672,7 +1672,7 @@
 
                 document.getElementById('game-rank-text').textContent = `Simon Taps Level Logged!`;
                 gameResultsModal.classList.add('open');
-                postScoreToLeaderboard(maxLevelRemembered);
+                postScoreToLeaderboard(maxLevelRemembered, sessionStudentName);
                 activeMiniGame = null;
             }
         }
@@ -1722,7 +1722,7 @@
                 document.getElementById('game-rank-text').textContent = `Mystery Note Cleared!`;
 
                 gameResultsModal.classList.add('open');
-                postScoreToLeaderboard(mysteryGuessCount);
+                postScoreToLeaderboard(mysteryGuessCount, sessionStudentName);
                 activeMiniGame = null;
             } else if (diff <= 2) {
                 highlightKey(noteStr, 250, '#ef4444');
@@ -2279,7 +2279,7 @@
             gameResultsModal.classList.add('open');
 
             if (localPlayer && localPlayer.finishTime) {
-                postScoreToLeaderboard(parseFloat(localPlayer.finishTime));
+                postScoreToLeaderboard(parseFloat(localPlayer.finishTime), localPlayer.name);
             }
             activeMiniGame = null;
         }
@@ -2299,22 +2299,6 @@
             document.getElementById('single-bar-graph').style.display = 'none';
             document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
 
-            // Post every player's score to the leaderboard
-            playersList.forEach(p => {
-                const pStats = p.stats || { perfect: 0, earlyLate: 0, miss: 0 };
-                const total = pStats.perfect + pStats.earlyLate + pStats.miss;
-                const acc = total > 0 ? (((pStats.perfect * 1.0 + pStats.earlyLate * 0.5) / total) * 100) : 0;
-                const accuracyNum = parseFloat(acc.toFixed(1));
-
-                // Submit to Apps Script for each finished player
-                if (p.name) {
-                    const originalSessionName = sessionStudentName;
-                    sessionStudentName = p.name;
-                    postScoreToLeaderboard(accuracyNum);
-                    sessionStudentName = originalSessionName;
-                }
-            });
-
             const localPlayer = playersList.find(p => p.id === localPlayerId);
             let localAccuracyNum = 0;
 
@@ -2327,6 +2311,19 @@
                     unlockBonusSounds(`Great job! You achieved <strong>${acc.toFixed(1)}%</strong> accuracy in the Song Battle and unlocked 5 bonus instrument sound engines!`);
                 }
             }
+
+            // Record scores for ALL players on their respective local browsers & via host broadcast
+            playersList.forEach(p => {
+                const pStats = p.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+                const total = pStats.perfect + pStats.earlyLate + pStats.miss;
+                const acc = total > 0 ? (((pStats.perfect * 1.0 + pStats.earlyLate * 0.5) / total) * 100) : 0;
+                const accuracyNum = parseFloat(acc.toFixed(1));
+
+                // If host or if local player, trigger score post specifically for p.name
+                if (p.name && (p.id === localPlayerId || isSprintHost)) {
+                    postScoreToLeaderboard(accuracyNum, p.name);
+                }
+            });
 
             const sortedRanked = [...playersList].sort((a, b) => {
                 const aStats = a.stats || { perfect: 0, earlyLate: 0, miss: 0 };
@@ -2857,13 +2854,14 @@
             document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}`;
         }
 
-        async function postScoreToLeaderboard(accuracyNum) {
+        async function postScoreToLeaderboard(accuracyNum, playerNameOverride = null) {
             if (!APPS_SCRIPT_URL) return;
 
+            const targetName = playerNameOverride || sessionStudentName || "Anonymous";
             const speedText = speedSlider.value + '%';
             const payload = {
                 action: "SCORE_SUBMIT",
-                name: sessionStudentName,
+                name: targetName,
                 title: currentSongTitle,
                 score: accuracyNum,
                 tempo: speedText
@@ -2876,7 +2874,7 @@
                     headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify(payload)
                 });
-                document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
+                document.getElementById('status').textContent = `Score (${accuracyNum}%) submitted for ${targetName}!`;
             } catch (err) {
                 console.warn("Could not post score to Google Apps Script.", err);
             }
@@ -2995,7 +2993,7 @@
             gameResultsModal.classList.add('open');
 
             calculateAndDisplayRank(accuracyNum).then(() => {
-                postScoreToLeaderboard(accuracyNum);
+                postScoreToLeaderboard(accuracyNum, sessionStudentName);
             });
         }
 
