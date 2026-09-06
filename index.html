@@ -286,7 +286,6 @@
             stroke-linejoin: round;
         }
 
-        /* Condensed Inline Timeline Control Container */
         .timeline-container-inline {
             background-color: #0b0f19;
             border: 1px solid #374151;
@@ -1052,7 +1051,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 14:05 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 14:12 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1425,7 +1424,6 @@
                 const staveTreble = new Stave(10, -10, canvasWidth - 20);
                 staveTreble.addClef("treble").setContext(vfContext).draw();
 
-                // Convert song notes to VexFlow stave notes with clef placement
                 const staveNotes = [];
 
                 for (let i = 0; i < numNotes; i++) {
@@ -2884,10 +2882,6 @@
             }
 
             document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
-
-            document.getElementById('single-bar-graph').style.display = 'flex';
-            document.getElementById('multi-bar-graph').style.display = 'none';
-            document.getElementById('btn-battle-again').style.display = 'none';
 
             const greenPct = totalHits > 0 ? (perfectHits / totalHits) * 100 : 0;
             const orangePct = totalHits > 0 ? (earlyLateHits / totalHits) * 100 : 0;
