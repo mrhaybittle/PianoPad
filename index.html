@@ -1043,7 +1043,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 15:42 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 15:53 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1401,15 +1401,14 @@
         function getNoteStaffY(noteStr) {
             const pitchNum = noteToPitch(noteStr);
             if (pitchNum === null) return 40;
-            // Base Middle C (C4) on line Y = 50
+            
+            // Base Middle C (C4) on ledger line Y = 58
             const c4Pitch = 48; // C4 MIDI
-            const semiDiff = pitchNum - c4Pitch;
-            // Map semitones to diatonic staff step shifts
             const pitchSteps = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
             const octave = Math.floor(pitchNum / 12) - 4;
             const stepInOct = pitchSteps[pitchNum % 12];
             const totalSteps = octave * 7 + stepInOct;
-            return 50 - (totalSteps * 4); // 4px per staff step
+            return 58 - (totalSteps * 4); // 4px per staff step
         }
 
         function drawTrebleClef(ctx, x, y) {
@@ -1425,7 +1424,7 @@
             staffCanvas.height = 80;
             sCtx.clearRect(0, 0, staffCanvas.width, staffCanvas.height);
 
-            // Draw 5 Staff Lines
+            // Draw 5 Staff Lines (E4, G4, B4, D5, F5)
             sCtx.strokeStyle = '#222222';
             sCtx.lineWidth = 1.5;
             for (let i = 0; i < 5; i++) {
@@ -1436,7 +1435,7 @@
                 sCtx.stroke();
             }
 
-            // Draw Treble Clef, Time Signature (4/4), and 8va indicator for high octave
+            // Draw Treble Clef and Time Signature (4/4)
             drawTrebleClef(sCtx, 12, 10);
 
             sCtx.fillStyle = '#000000';
@@ -1497,18 +1496,6 @@
                         sCtx.moveTo(x + 1, noteY - 18);
                         sCtx.lineTo(x + 6, noteY - 18);
                         sCtx.stroke();
-
-                        // Render Key Binding Hint below note
-                        const match = noteStr.toLowerCase().match(/^([a-g]#?)([0-9]+)$/);
-                        if (match) {
-                            const bindKey = Object.keys(keyboardMap).find(k => keyboardMap[k] === noteStr.toLowerCase());
-                            if (bindKey) {
-                                sCtx.fillStyle = '#4f46e5';
-                                sCtx.font = 'bold 9px monospace';
-                                sCtx.textAlign = 'center';
-                                sCtx.fillText(bindKey, x, 76);
-                            }
-                        }
                     });
                 }
             });
@@ -4195,10 +4182,7 @@
 
         initMIDIHardware();
         syncSongsWithGoogleSheet();
-        setTimeout(() => {
-            updateKeyPositions();
-            checkFirstTimeCalibration();
-        }, 150);
+        setTimeout(updateKeyPositions, 100);
     </script>
 </body>
 </html>
