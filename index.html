@@ -1017,7 +1017,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 10:49 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 10:55 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1672,6 +1672,7 @@
                     const selectedCode = document.getElementById('host-battle-song-select').value;
                     const opt = document.getElementById('host-battle-song-select').selectedOptions[0];
                     if (opt) currentSongTitle = opt.text;
+                    songSelect.value = selectedCode;
                     const parsed = parsePianoPad(selectedCode);
                     if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
                 }
@@ -1763,7 +1764,7 @@
             document.getElementById('host-lobby-group').style.display = 'flex';
             document.getElementById('host-song-selector-group').style.display = 'none';
 
-            // Preserve Same Code if host clicks "Battle Again"
+            // Preserve Same Room Code if host clicks "Battle Again"
             if (!activeBattleRoomCode || !isSprintHost) {
                 activeBattleRoomCode = isSongBattle ? '' + Math.floor(100 + Math.random() * 900) : 'RACE-' + Math.floor(1000 + Math.random() * 9000);
             }
@@ -1788,6 +1789,7 @@
                             playersList.push(newP);
 
                             renderLobbyGrid('lobby-players-grid');
+                            // Broadcast Song Payload with Title + HayCode to Lock All Peers
                             broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList, songTitle: currentSongTitle, songCode: songSelect.value });
                         } else if (data.type === 'PROGRESS') {
                             const player = playersList.find(p => p.id === data.id);
@@ -1843,6 +1845,13 @@
                         arcadeHub.classList.remove('open');
                         resetGameStats();
 
+                        if (data.songCode) {
+                            currentSongTitle = data.songTitle;
+                            songSelect.value = data.songCode;
+                            const parsed = parsePianoPad(data.songCode);
+                            if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
+                        }
+
                         if (isSongBattle) {
                             isGameMode = true;
                             btnGame.textContent = 'Game Mode: ON';
@@ -1881,7 +1890,7 @@
         }
 
         function triggerHostStartRace() {
-            broadcastPeerMsg({ type: 'START_RACE' });
+            broadcastPeerMsg({ type: 'START_RACE', songTitle: currentSongTitle, songCode: songSelect.value });
 
             closeSprintOptionModal();
             arcadeHub.classList.remove('open');
@@ -2889,7 +2898,7 @@
             if (!isPaused) {
                 isPaused = true;
                 pauseStartTime = performance.now();
-                btnPause.textContent = 'Resume';
+                btnPause.textContent = 'Pause';
                 btnPause.classList.remove('btn-warning');
                 btnPause.classList.add('btn-success');
                 if (animationFrameId !== null) {
