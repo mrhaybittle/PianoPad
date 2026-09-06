@@ -305,7 +305,7 @@
             cursor: pointer;
         }
 
-        /* VexFlow Notation Viewer Panel with Light High-Contrast SVG Styles */
+        /* VexFlow Notation Viewer Panel with Explicit Bright High-Contrast Styling */
         .vexflow-wrapper {
             position: relative;
             width: 100%;
@@ -333,6 +333,7 @@
             z-index: 10;
         }
 
+        /* Force VexFlow SVG Path & Line Elements to Render in Bright White */
         #vexflow-canvas svg path, #vexflow-canvas svg rect {
             fill: #f8fafc !important;
             stroke: #f8fafc !important;
@@ -1039,7 +1040,7 @@
 
         <div class="runner-track-wrapper" id="runner-track" style="display: none;"></div>
 
-        <!-- VexFlow Grand Staff Transcription Panel Above Canvas -->
+        <!-- VexFlow Grand Staff Transcription Panel Above Canvas with White SVG Fill Overrides -->
         <div class="vexflow-wrapper" id="vexflow-wrapper">
             <div class="vexflow-label">🎼 Sheet Music Transcription</div>
             <div id="vexflow-canvas"></div>
@@ -1051,7 +1052,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 13:58 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 14:05 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1412,34 +1413,42 @@
 
             try {
                 const { Renderer, Stave, StaveNote, Voice, Formatter } = Vex.Flow;
+                
+                // Expand SVG canvas width based on song note count for scrolling
+                const numNotes = currentSong.length;
+                const canvasWidth = Math.max(1200, numNotes * 85);
+                
                 vfRenderer = new Renderer(container, Renderer.Backends.SVG);
-                vfRenderer.resize(1200, 95);
+                vfRenderer.resize(canvasWidth, 90);
                 vfContext = vfRenderer.getContext();
 
-                const staveTreble = new Stave(10, -5, 1180);
+                const staveTreble = new Stave(10, -10, canvasWidth - 20);
                 staveTreble.addClef("treble").setContext(vfContext).draw();
 
-                // Convert first 12 song notes to VexFlow stave notes
-                const notes = [];
-                const sampleLength = Math.min(12, currentSong.length);
+                // Convert song notes to VexFlow stave notes with clef placement
+                const staveNotes = [];
 
-                for (let i = 0; i < sampleLength; i++) {
+                for (let i = 0; i < numNotes; i++) {
                     const item = currentSong[i];
                     const firstNote = item.notes[0] || 'C4';
                     const pitchNum = noteToPitch(firstNote);
                     const realOctave = pitchNum !== null ? Math.floor(pitchNum / 12) : 4;
                     const letter = firstNote.charAt(0).toLowerCase();
 
-                    notes.push(new StaveNote({
+                    // Clef assignment: treble for octave 4+, bass clef mapping for low octaves
+                    const clefType = realOctave >= 4 ? "treble" : "bass";
+
+                    staveNotes.push(new StaveNote({
+                        clef: clefType,
                         keys: [`${letter}/${realOctave}`],
                         duration: "q"
                     }));
                 }
 
-                if (notes.length > 0) {
-                    const voice = new Voice({ num_beats: sampleLength, beat_value: 4 });
-                    voice.addTickables(notes);
-                    new Formatter().joinVoices([voice]).format([voice], 1100);
+                if (staveNotes.length > 0) {
+                    const voice = new Voice({ num_beats: numNotes, beat_value: 4 });
+                    voice.addTickables(staveNotes);
+                    new Formatter().joinVoices([voice]).format([voice], canvasWidth - 80);
                     voice.draw(vfContext, staveTreble);
                 }
             } catch (err) {
@@ -2870,12 +2879,15 @@
             const accuracy = totalHits > 0 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
             const accuracyNum = parseFloat(accuracy);
 
-            // Check >80% accuracy for unlocking bonus sound engines
             if (accuracyNum >= 80) {
                 unlockBonusSounds(`Great job! You achieved <strong>${accuracy}%</strong> accuracy in Game Mode and unlocked 5 bonus instrument sound engines!`);
             }
 
             document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
+
+            document.getElementById('single-bar-graph').style.display = 'flex';
+            document.getElementById('multi-bar-graph').style.display = 'none';
+            document.getElementById('btn-battle-again').style.display = 'none';
 
             const greenPct = totalHits > 0 ? (perfectHits / totalHits) * 100 : 0;
             const orangePct = totalHits > 0 ? (earlyLateHits / totalHits) * 100 : 0;
@@ -2966,7 +2978,6 @@
         window.addEventListener('keydown', (e) => {
             if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') return;
 
-            // Shortcut Testing Key '}' to unlock bonus sounds
             if (e.key === '}') {
                 unlockBonusSounds("Cheat key activated! You unlocked all 5 bonus instrument sound engines for testing!");
                 return;
@@ -3066,8 +3077,8 @@
                 isPaused = true;
                 pauseStartTime = performance.now();
                 btnPause.textContent = 'Resume';
-                btnPause.classList.remove('btn-success');
-                btnPause.classList.add('btn-warning');
+                btnPause.classList.remove('btn-warning');
+                btnPause.classList.add('btn-success');
                 if (animationFrameId !== null) {
                     cancelAnimationFrame(animationFrameId);
                     animationFrameId = null;
