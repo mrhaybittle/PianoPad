@@ -6,6 +6,7 @@
     <title>PianoPad Player - Visualizer & Haycode Creator</title>
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
     <style>
         :root {
             --bg-color: #121218;
@@ -105,10 +106,10 @@
             background-color: var(--panel-bg);
             border-radius: 14px;
             box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.6);
-            padding: 12px 18px;
+            padding: 10px 16px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
             transition: background-color 0.3s;
         }
 
@@ -119,11 +120,11 @@
             flex-wrap: wrap;
             gap: 8px;
             border-bottom: 1px solid #374151;
-            padding-bottom: 8px;
+            padding-bottom: 6px;
         }
 
         h1 {
-            font-size: 1.3rem;
+            font-size: 1.25rem;
             font-weight: 700;
             letter-spacing: -0.025em;
         }
@@ -140,10 +141,10 @@
             align-items: center;
             gap: 6px;
             background-color: #0b0f19;
-            padding: 5px 10px;
+            padding: 4px 8px;
             border-radius: 6px;
             border: 1px solid #374151;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             font-weight: 600;
         }
 
@@ -153,22 +154,22 @@
         }
 
         .speed-control input[type="range"] {
-            width: 75px;
+            width: 70px;
             accent-color: var(--accent-color);
             cursor: pointer;
         }
 
         select {
-            padding: 6px 10px;
+            padding: 5px 8px;
             border-radius: 6px;
             border: 1px solid #374151;
             background-color: #0b0f19;
             color: var(--text-main);
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             cursor: pointer;
             outline: none;
-            max-width: 180px;
+            max-width: 170px;
         }
 
         select:focus {
@@ -191,14 +192,14 @@
         button, .btn-link, .btn-file-label {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            padding: 6px 10px;
+            gap: 4px;
+            padding: 5px 8px;
             border-radius: 6px;
             border: none;
             background-color: var(--accent-color);
             color: white;
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             cursor: pointer;
             text-decoration: none;
             transition: background-color 0.2s, transform 0.1s;
@@ -233,7 +234,7 @@
             background: linear-gradient(135deg, #8b5cf6, #ec4899) !important;
             color: #ffffff !important;
             font-weight: 800 !important;
-            box-shadow: 0 0 12px rgba(236, 72, 153, 0.5);
+            box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
         }
         .btn-arcade:hover {
             background: linear-gradient(135deg, #7c3aed, #db2777) !important;
@@ -243,7 +244,7 @@
             background: linear-gradient(135deg, #f59e0b, #ef4444) !important;
             color: #ffffff !important;
             font-weight: 800 !important;
-            box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
         }
         .btn-song-battle:hover {
             background: linear-gradient(135deg, #d97706, #dc2626) !important;
@@ -276,8 +277,8 @@
         .btn-loop-active { background-color: var(--loop-active); color: #000; }
 
         .icon {
-            width: 14px;
-            height: 14px;
+            width: 13px;
+            height: 13px;
             fill: none;
             stroke: currentColor;
             stroke-width: 2;
@@ -285,35 +286,43 @@
             stroke-linejoin: round;
         }
 
-        .timeline-container {
+        /* Condensed Inline Timeline Container */
+        .timeline-container-inline {
             background-color: #0b0f19;
             border: 1px solid #374151;
-            border-radius: 8px;
-            padding: 6px 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .timeline-header {
-            display: flex;
-            justify-content: space-between;
+            border-radius: 6px;
+            padding: 3px 8px;
+            display: inline-flex;
             align-items: center;
-            font-size: 0.78rem;
+            gap: 6px;
+            font-size: 0.72rem;
             font-weight: 600;
-            color: #cbd5e1;
         }
 
-        .timeline-sliders {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .timeline-sliders input[type="range"] {
-            flex: 1;
+        .timeline-container-inline input[type="range"] {
+            width: 50px;
             accent-color: var(--loop-active);
             cursor: pointer;
+        }
+
+        /* VexFlow Notation Viewer Container above Waterfall Canvas */
+        .vexflow-wrapper {
+            position: relative;
+            width: 100%;
+            height: 110px;
+            background: #080711;
+            border: 1px solid #2a283c;
+            border-radius: 8px 8px 0 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 2px 10px;
+        }
+
+        #vexflow-canvas {
+            display: block;
         }
 
         .visualizer-wrapper {
@@ -358,7 +367,7 @@
 
         .key.white {
             width: 44px;
-            height: 130px;
+            height: 125px;
             background-color: var(--key-white);
             border: 1px solid #cbd5e1;
             color: #0f172a;
@@ -373,7 +382,7 @@
 
         .key.black {
             width: 28px;
-            height: 80px;
+            height: 76px;
             background-color: var(--key-black);
             margin-left: -14px;
             margin-right: -14px;
@@ -452,10 +461,10 @@
         }
 
         .status-bar {
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             color: #9ca3af;
             text-align: center;
-            min-height: 1.8rem;
+            min-height: 1.6rem;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -948,13 +957,22 @@
                     Stop
                 </button>
 
+                <button type="button" id="btn-open-arcade" class="btn-arcade">
+                    🕹️ MINI-GAMES
+                </button>
+
                 <button type="button" id="btn-song-battle" class="btn-song-battle">
                     ⚔️ SONG BATTLE
                 </button>
 
-                <button type="button" id="btn-open-arcade" class="btn-arcade">
-                    🕹️ MINI-GAMES
-                </button>
+                <!-- Condensed Inline Timeline Control placed to the right of Arcade/Battle -->
+                <div class="timeline-container-inline" id="timeline-box">
+                    <span>Trim:</span>
+                    <input type="range" id="loop-start" min="0" max="100" value="0" title="Loop Start %">
+                    <span>-</span>
+                    <input type="range" id="loop-end" min="0" max="100" value="100" title="Loop End %">
+                    <span id="loop-range-label" style="display:none;">0%-100%</span>
+                </div>
             </div>
 
             <div class="controls" id="arcade-controls-bar" style="display: none;">
@@ -1006,20 +1024,12 @@
             </div>
         </div>
 
-        <div class="timeline-container" id="timeline-box">
-            <div class="timeline-header">
-                <span>Timeline Trim & Loop Region</span>
-                <span id="loop-range-label">0% - 100% (Entire Song)</span>
-            </div>
-            <div class="timeline-sliders">
-                <label style="font-size: 0.75rem; color: #9ca3af;">Start:</label>
-                <input type="range" id="loop-start" min="0" max="100" value="0">
-                <label style="font-size: 0.75rem; color: #9ca3af;">End:</label>
-                <input type="range" id="loop-end" min="0" max="100" value="100">
-            </div>
-        </div>
-
         <div class="runner-track-wrapper" id="runner-track" style="display: none;"></div>
+
+        <!-- VexFlow Grand Staff Transcription Panel Above Canvas -->
+        <div class="vexflow-wrapper" id="vexflow-wrapper">
+            <div id="vexflow-canvas"></div>
+        </div>
 
         <div class="visualizer-wrapper">
             <canvas id="waterfall-canvas" width="1232" height="210"></canvas>
@@ -1027,7 +1037,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 13:40 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 13:48 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1279,6 +1289,10 @@
         let calibHighestRawMIDI = 96;
         let midiOctaveOffset = 0;
 
+        // VexFlow Rendering Variables
+        let vfRenderer = null;
+        let vfContext = null;
+
         // Arcade Mini-Game Variables
         let activeMiniGame = null;
         let simonSequence = [];
@@ -1353,7 +1367,7 @@
             arcadeControlsBar.style.display = 'none';
             runnerTrack.style.display = 'none';
             mainControlsBar.style.display = 'flex';
-            timelineBox.style.display = 'flex';
+            timelineBox.style.display = 'inline-flex';
             document.getElementById('status').textContent = 'Returned to PianoPad Player view.';
         }
 
@@ -1375,6 +1389,49 @@
                 k.style.boxShadow = '';
             });
             document.getElementById('status').textContent = 'Arcade Mini-Game stopped. Select another game or return Home.';
+        }
+
+        function renderVexFlowNotation() {
+            const container = document.getElementById('vexflow-canvas');
+            container.innerHTML = '';
+            if (!window.Vex || !currentSong || currentSong.length === 0) return;
+
+            try {
+                const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental } = Vex.Flow;
+                vfRenderer = new Renderer(container, Renderer.Backends.SVG);
+                vfRenderer.resize(1200, 105);
+                vfContext = vfRenderer.getContext();
+                vfContext.setFont("Arial", 10, "").setBackgroundFillStyle("#080711");
+
+                const staveTreble = new Stave(10, 0, 1180);
+                staveTreble.addClef("treble").setContext(vfContext).draw();
+
+                // Convert first 12 song notes to VexFlow stave notes
+                const notes = [];
+                const sampleLength = Math.min(12, currentSong.length);
+
+                for (let i = 0; i < sampleLength; i++) {
+                    const item = currentSong[i];
+                    const firstNote = item.notes[0] || 'C4';
+                    const pitchNum = noteToPitch(firstNote);
+                    const realOctave = pitchNum !== null ? Math.floor(pitchNum / 12) : 4;
+                    const letter = firstNote.charAt(0).toLowerCase();
+
+                    notes.push(new StaveNote({
+                        keys: [`${letter}/${realOctave}`],
+                        duration: "q"
+                    }));
+                }
+
+                if (notes.length > 0) {
+                    const voice = new Voice({ num_beats: sampleLength, beat_value: 4 });
+                    voice.addTickables(notes);
+                    new Formatter().joinVoices([voice]).format([voice], 1100);
+                    voice.draw(vfContext, staveTreble);
+                }
+            } catch (err) {
+                console.warn("VexFlow Render Warning:", err);
+            }
         }
 
         function checkFirstTimeCalibration() {
@@ -2160,7 +2217,7 @@
                 const tot = localPlayer.stats.perfect + localPlayer.stats.earlyLate + localPlayer.stats.miss;
                 const acc = tot > 0 ? (((localPlayer.stats.perfect * 1.0 + localPlayer.stats.earlyLate * 0.5) / tot) * 100) : 0;
                 if (acc >= 80) {
-                    unlockBonusSounds(`Outstanding accuracy! You scored <strong>${acc.toFixed(1)}%</strong> in the Song Battle and unlocked 5 bonus sound engines!`);
+                    unlockBonusSounds(`Great job! You achieved <strong>${acc.toFixed(1)}%</strong> accuracy in the Song Battle and unlocked 5 bonus instrument sound engines!`);
                 }
             }
 
@@ -2807,10 +2864,6 @@
 
             document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
 
-            document.getElementById('single-bar-graph').style.display = 'flex';
-            document.getElementById('multi-bar-graph').style.display = 'none';
-            document.getElementById('btn-battle-again').style.display = 'none';
-
             const greenPct = totalHits > 0 ? (perfectHits / totalHits) * 100 : 0;
             const orangePct = totalHits > 0 ? (earlyLateHits / totalHits) * 100 : 0;
             const redPct = totalHits > 0 ? (missedHits / totalHits) * 100 : 0;
@@ -2999,7 +3052,7 @@
             if (!isPaused) {
                 isPaused = true;
                 pauseStartTime = performance.now();
-                btnPause.textContent = 'Pause';
+                btnPause.textContent = 'Resume';
                 btnPause.classList.remove('btn-warning');
                 btnPause.classList.add('btn-success');
                 if (animationFrameId !== null) {
@@ -3580,6 +3633,8 @@
                     gameStatus: 'pending'
                 });
             });
+
+            renderVexFlowNotation();
         }
 
         songSelect.addEventListener('change', (e) => {
