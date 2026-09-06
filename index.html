@@ -1030,7 +1030,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 07:51 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 18:45 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1672,7 +1672,7 @@
 
                 document.getElementById('game-rank-text').textContent = `Simon Taps Level Logged!`;
                 gameResultsModal.classList.add('open');
-                postScoreToLeaderboard(maxLevelRemembered, sessionStudentName);
+                postScoreToLeaderboard(maxLevelRemembered);
                 activeMiniGame = null;
             }
         }
@@ -1722,7 +1722,7 @@
                 document.getElementById('game-rank-text').textContent = `Mystery Note Cleared!`;
 
                 gameResultsModal.classList.add('open');
-                postScoreToLeaderboard(mysteryGuessCount, sessionStudentName);
+                postScoreToLeaderboard(mysteryGuessCount);
                 activeMiniGame = null;
             } else if (diff <= 2) {
                 highlightKey(noteStr, 250, '#ef4444');
@@ -1963,95 +1963,66 @@
             document.getElementById('host-song-selector-group').style.display = 'none';
 
             if (!activeBattleRoomCode || !isSprintHost) {
-                activeBattleRoomCode = '' + Math.floor(100 + Math.random() * 900);
+                activeBattleRoomCode = isSongBattle ? '' + Math.floor(100 + Math.random() * 900) : 'RACE-' + Math.floor(1000 + Math.random() * 9000);
             }
             
             document.getElementById('generated-room-code-display').textContent = `Join Code: ${activeBattleRoomCode}`;
-
-            const fullPeerId = `PIANOPAD-BATTLE-${activeBattleRoomCode}`;
 
             isSprintHost = true;
             localPlayerId = 'p1';
             playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true }];
             renderLobbyGrid('lobby-players-grid');
 
-            if (peerInstance && !peerInstance.destroyed) {
-                peerInstance.destroy();
-            }
+            if (!peerInstance || peerInstance.destroyed) {
+                peerInstance = new Peer(activeBattleRoomCode);
+                peerInstance.on('connection', (conn) => {
+                    peerConnections.push(conn);
 
-            peerInstance = new Peer(fullPeerId);
-            peerInstance.on('connection', (conn) => {
-                peerConnections.push(conn);
+                    conn.on('data', (data) => {
+                        if (data.type === 'JOIN') {
+                            const newPId = 'p' + (playersList.length + 1);
+                            const avatarIdx = (playersList.length) % AVATARS.length;
+                            const newP = { id: newPId, name: data.name, avatar: AVATARS[avatarIdx], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: false };
+                            playersList.push(newP);
 
-                conn.on('data', (data) => {
-                    if (data.type === 'JOIN') {
-                        const newPId = 'p' + (playersList.length + 1);
-                        const avatarIdx = (playersList.length) % AVATARS.length;
-                        const newP = { id: newPId, name: data.name, avatar: AVATARS[avatarIdx], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: false };
-                        playersList.push(newP);
-
-                        renderLobbyGrid('lobby-players-grid');
-                        broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList, songTitle: currentSongTitle, songCode: songSelect.value });
-                    } else if (data.type === 'PROGRESS') {
-                        const player = playersList.find(p => p.id === data.id);
-                        if (player) {
-                            player.pxProgress = data.pxProgress;
-                            if (data.finishTime && !player.finishTime) {
-                                player.finishTime = data.finishTime;
+                            renderLobbyGrid('lobby-players-grid');
+                            broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList, songTitle: currentSongTitle, songCode: songSelect.value });
+                        } else if (data.type === 'PROGRESS') {
+                            const player = playersList.find(p => p.id === data.id);
+                            if (player) {
+                                player.pxProgress = data.pxProgress;
+                                if (data.finishTime && !player.finishTime) {
+                                    player.finishTime = data.finishTime;
+                                }
+                                if (data.stats) player.stats = data.stats;
+                                if (data.finished) player.finished = true;
+                                broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
+                                if (isSongBattle) renderSongBattleResults();
+                                else updateMultiplayerLanesUI();
+                                checkAllFinished();
                             }
-                            if (data.stats) player.stats = data.stats;
-                            if (data.finished) player.finished = true;
-                            broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                            if (isSongBattle) renderSongBattleResults();
-                            else updateMultiplayerLanesUI();
-                            checkAllFinished();
                         }
-                    }
+                    });
                 });
-            });
+            } else {
+                broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList, songTitle: currentSongTitle, songCode: songSelect.value });
+            }
         }
 
         function showJoinSetup(racerName, roomCode) {
             sessionStudentName = racerName;
             activeBattleRoomCode = roomCode;
 
-            document.getElementById('code-input-group').style.display = 'none';
-            document.getElementById('btn-confirm-sprint-action').style.display = 'none';
-            document.getElementById('client-waiting-group').style.display = 'flex';
-            document.getElementById('status').textContent = `Connecting to Host (${roomCode})...`;
-
-            if (peerInstance && !peerInstance.destroyed) {
-                peerInstance.destroy();
-            }
-
             peerInstance = new Peer();
-
-            peerInstance.on('error', (err) => {
-                console.error("PeerJS Error:", err);
-                alert(`Connection Error: Unable to connect to host room "${roomCode}". Check the code and try again.`);
-                document.getElementById('code-input-group').style.display = 'flex';
-                document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
-                document.getElementById('client-waiting-group').style.display = 'none';
-            });
-
             peerInstance.on('open', () => {
-                const fullPeerId = `PIANOPAD-BATTLE-${roomCode}`;
-                const conn = peerInstance.connect(fullPeerId);
+                const conn = peerInstance.connect(roomCode);
                 peerConnections = [conn];
 
-                // Extended Timeout to 90 seconds (90000ms) for room code allocation and player joins
-                const connTimeout = setTimeout(() => {
-                    if (!conn.open) {
-                        alert(`Connection Timeout: Host code "${roomCode}" did not respond after 90 seconds.`);
-                        document.getElementById('code-input-group').style.display = 'flex';
-                        document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
-                        document.getElementById('client-waiting-group').style.display = 'none';
-                    }
-                }, 90000);
-
                 conn.on('open', () => {
-                    clearTimeout(connTimeout);
                     conn.send({ type: 'JOIN', name: racerName });
+                    document.getElementById('code-input-group').style.display = 'none';
+                    document.getElementById('btn-confirm-sprint-action').style.display = 'none';
+                    document.getElementById('client-waiting-group').style.display = 'flex';
                     document.getElementById('status').textContent = `Connected to Host Code (${roomCode})! Waiting for start...`;
                 });
 
@@ -2065,10 +2036,7 @@
                             if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
                         }
                         const myEntry = playersList.find(p => p.name === sessionStudentName);
-                        if (myEntry) {
-                            localPlayerId = myEntry.id;
-                            myEntry.isLocal = true;
-                        }
+                        if (myEntry) localPlayerId = myEntry.id;
                         renderLobbyGrid('client-lobby-grid');
                     } else if (data.type === 'START_RACE') {
                         closeSprintOptionModal();
@@ -2170,7 +2138,7 @@
 
             playersList.forEach((player) => {
                 const laneDiv = document.createElement('div');
-                laneDiv.className = `runner-lane ${player.id === localPlayerId || player.isLocal ? 'my-lane' : ''}`;
+                laneDiv.className = `runner-lane ${player.id === localPlayerId ? 'my-lane' : ''}`;
                 laneDiv.id = `lane-${player.id}`;
 
                 const label = document.createElement('div');
@@ -2255,9 +2223,9 @@
             raceActive = false;
             currentSongTitle = "Finger Sprint";
 
-            const localPlayer = playersList.find(p => p.isLocal || p.id === localPlayerId);
+            const localPlayer = playersList.find(p => p.id === localPlayerId);
             const winner = [...playersList].sort((a,b) => parseFloat(a.finishTime || 999) - parseFloat(b.finishTime || 999))[0];
-            const isWinner = winner && (winner.isLocal || winner.id === localPlayerId);
+            const isWinner = winner && winner.id === localPlayerId;
 
             const popUpHeader = isWinner ? `🎉 YOU WON! (${localPlayer ? localPlayer.finishTime : ''}s)` : `❌ YOU LOST! Winner: ${winner ? winner.name : 'Opponent'}`;
 
@@ -2311,7 +2279,7 @@
             gameResultsModal.classList.add('open');
 
             if (localPlayer && localPlayer.finishTime) {
-                postScoreToLeaderboard(parseFloat(localPlayer.finishTime), localPlayer.name);
+                postScoreToLeaderboard(parseFloat(localPlayer.finishTime));
             }
             activeMiniGame = null;
         }
@@ -2324,12 +2292,6 @@
                 return;
             }
 
-            // Sync host/local stats into local player entry
-            const localPlayer = playersList.find(p => p.isLocal || p.id === localPlayerId);
-            if (localPlayer) {
-                localPlayer.stats = { ...gameStats };
-            }
-
             const multiGraph = document.getElementById('multi-bar-graph');
             multiGraph.innerHTML = '';
             multiGraph.style.display = 'flex';
@@ -2337,30 +2299,14 @@
             document.getElementById('single-bar-graph').style.display = 'none';
             document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
 
-            let localAccuracyNum = 0;
-
+            const localPlayer = playersList.find(p => p.id === localPlayerId);
             if (localPlayer && localPlayer.stats) {
                 const tot = localPlayer.stats.perfect + localPlayer.stats.earlyLate + localPlayer.stats.miss;
                 const acc = tot > 0 ? (((localPlayer.stats.perfect * 1.0 + localPlayer.stats.earlyLate * 0.5) / tot) * 100) : 0;
-                localAccuracyNum = parseFloat(acc.toFixed(1));
-
                 if (acc >= 80) {
                     unlockBonusSounds(`Great job! You achieved <strong>${acc.toFixed(1)}%</strong> accuracy in the Song Battle and unlocked 5 bonus instrument sound engines!`);
                 }
             }
-
-            // Explicitly record each player's score to the leaderboard
-            playersList.forEach(p => {
-                const pStats = p.stats || { perfect: 0, earlyLate: 0, miss: 0 };
-                const total = pStats.perfect + pStats.earlyLate + pStats.miss;
-                const acc = total > 0 ? (((pStats.perfect * 1.0 + pStats.earlyLate * 0.5) / total) * 100) : 0;
-                const accuracyNum = parseFloat(acc.toFixed(1));
-
-                // Submit to Apps Script for each player using explicit player name
-                if (p.name) {
-                    postScoreToLeaderboard(accuracyNum, p.name);
-                }
-            });
 
             const sortedRanked = [...playersList].sort((a, b) => {
                 const aStats = a.stats || { perfect: 0, earlyLate: 0, miss: 0 };
@@ -2398,17 +2344,15 @@
             });
 
             document.getElementById('game-summary-text').innerHTML = `<div style="font-size:1.2rem; font-weight:800; color:#facc15;">⚔️ Song Battle Standings: ${currentSongTitle}</div>`;
-            
+            document.getElementById('game-rank-text').textContent = `Song Battle Logged!`;
             gameResultsModal.classList.add('open');
-
-            calculateAndDisplayRank(localAccuracyNum);
         }
 
         function handleSprintInput(noteStr) {
             if (!raceActive) return;
 
             const rawNoteName = noteStr.toLowerCase().trim();
-            const localPlayer = playersList.find(p => p.isLocal || p.id === localPlayerId);
+            const localPlayer = playersList.find(p => p.id === localPlayerId);
 
             if (!localPlayer || localPlayer.finishTime) return;
 
@@ -2891,14 +2835,13 @@
             document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}`;
         }
 
-        async function postScoreToLeaderboard(accuracyNum, playerNameOverride = null) {
+        async function postScoreToLeaderboard(accuracyNum) {
             if (!APPS_SCRIPT_URL) return;
 
-            const targetName = playerNameOverride || sessionStudentName || "Anonymous";
             const speedText = speedSlider.value + '%';
             const payload = {
                 action: "SCORE_SUBMIT",
-                name: targetName,
+                name: sessionStudentName,
                 title: currentSongTitle,
                 score: accuracyNum,
                 tempo: speedText
@@ -2911,7 +2854,7 @@
                     headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify(payload)
                 });
-                document.getElementById('status').textContent = `Score (${accuracyNum}%) submitted for ${targetName}!`;
+                document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
             } catch (err) {
                 console.warn("Could not post score to Google Apps Script.", err);
             }
@@ -3030,7 +2973,7 @@
             gameResultsModal.classList.add('open');
 
             calculateAndDisplayRank(accuracyNum).then(() => {
-                postScoreToLeaderboard(accuracyNum, sessionStudentName);
+                postScoreToLeaderboard(accuracyNum);
             });
         }
 
@@ -3598,7 +3541,7 @@
                     }
 
                     if (isSongBattle) {
-                        const localPlayer = playersList.find(p => p.isLocal || p.id === localPlayerId);
+                        const localPlayer = playersList.find(p => p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
                             if (!isSprintHost && peerConnections.length > 0) {
@@ -3616,7 +3559,7 @@
                     highlightKey(noteStr, 200, '#ef4444');
 
                     if (isSongBattle) {
-                        const localPlayer = playersList.find(p => p.isLocal || p.id === localPlayerId);
+                        const localPlayer = playersList.find(p => p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
                             if (!isSprintHost && peerConnections.length > 0) {
@@ -3883,7 +3826,7 @@
             ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
             ctx.lineTo(x + width, y + height - radius);
             ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-            ctx.lineTo(x + radius, y);
+            ctx.lineTo(x + radius, y + height);
             ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
             ctx.lineTo(x, y + radius);
             ctx.quadraticCurveTo(x, y, x + radius, y);
@@ -3973,7 +3916,7 @@
                     item.gameStatus = 'miss';
                     gameStats.miss++;
                     if (isSongBattle) {
-                        const localPlayer = playersList.find(p => p.isLocal || p.id === localPlayerId);
+                        const localPlayer = playersList.find(p => p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
                             if (!isSprintHost && peerConnections.length > 0) {
@@ -4013,10 +3956,9 @@
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                     if (isSongBattle) {
-                        const localPlayer = playersList.find(p => p.isLocal || p.id === localPlayerId);
+                        const localPlayer = playersList.find(p => p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.finished = true;
-                            localPlayer.stats = { ...gameStats };
                             if (!isSprintHost && peerConnections.length > 0) {
                                 peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, stats: gameStats, finished: true });
                             } else if (isSprintHost) {
