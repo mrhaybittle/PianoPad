@@ -2300,9 +2300,13 @@
             document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
 
             const localPlayer = playersList.find(p => p.id === localPlayerId);
+            let localAccuracyNum = 0;
+
             if (localPlayer && localPlayer.stats) {
                 const tot = localPlayer.stats.perfect + localPlayer.stats.earlyLate + localPlayer.stats.miss;
                 const acc = tot > 0 ? (((localPlayer.stats.perfect * 1.0 + localPlayer.stats.earlyLate * 0.5) / tot) * 100) : 0;
+                localAccuracyNum = parseFloat(acc.toFixed(1));
+
                 if (acc >= 80) {
                     unlockBonusSounds(`Great job! You achieved <strong>${acc.toFixed(1)}%</strong> accuracy in the Song Battle and unlocked 5 bonus instrument sound engines!`);
                 }
@@ -2344,8 +2348,12 @@
             });
 
             document.getElementById('game-summary-text').innerHTML = `<div style="font-size:1.2rem; font-weight:800; color:#facc15;">⚔️ Song Battle Standings: ${currentSongTitle}</div>`;
-            document.getElementById('game-rank-text').textContent = `Song Battle Logged!`;
+            
             gameResultsModal.classList.add('open');
+
+            calculateAndDisplayRank(localAccuracyNum).then(() => {
+                postScoreToLeaderboard(localAccuracyNum);
+            });
         }
 
         function handleSprintInput(noteStr) {
