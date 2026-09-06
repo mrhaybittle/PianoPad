@@ -305,7 +305,6 @@
             cursor: pointer;
         }
 
-        /* Expanded Vertical Visualizer Canvas Area */
         .visualizer-wrapper {
             position: relative;
             display: flex;
@@ -952,7 +951,6 @@
                     ⚔️ SONG BATTLE
                 </button>
 
-                <!-- Condensed Inline Timeline Control placed to the right of Arcade/Battle -->
                 <div class="timeline-container-inline" id="timeline-box">
                     <span>Trim:</span>
                     <input type="range" id="loop-start" min="0" max="100" value="0" title="Loop Start %">
@@ -1019,7 +1017,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 14:34 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 14:41 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -2400,7 +2398,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                document.getElementById('status').textContent = 'Error parsing converted MIDI sequence.';
+                document.getElementById('status').textContent = 'Failed to parse MIDI file.';
             }
 
             e.target.value = '';
@@ -3144,7 +3142,12 @@
                     isBlack: k.classList.contains('black')
                 };
             });
-            canvas.width = keyboardEl.offsetWidth;
+            
+            // DYNAMIC X-AXIS ALIGNMENT: Canvas internal buffer width matches keyboard DOM width exactly
+            const targetWidth = keyboardEl.offsetWidth;
+            if (targetWidth > 0) {
+                canvas.width = targetWidth;
+            }
         }
 
         function playTone(freq, duration = 0.4, volScale = 1.0) {
