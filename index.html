@@ -1030,7 +1030,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 18:45 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 07:09 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -2299,6 +2299,22 @@
             document.getElementById('single-bar-graph').style.display = 'none';
             document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
 
+            // Post every player's score to the leaderboard
+            playersList.forEach(p => {
+                const pStats = p.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+                const total = pStats.perfect + pStats.earlyLate + pStats.miss;
+                const acc = total > 0 ? (((pStats.perfect * 1.0 + pStats.earlyLate * 0.5) / total) * 100) : 0;
+                const accuracyNum = parseFloat(acc.toFixed(1));
+
+                // Submit to Apps Script for each finished player
+                if (p.name) {
+                    const originalSessionName = sessionStudentName;
+                    sessionStudentName = p.name;
+                    postScoreToLeaderboard(accuracyNum);
+                    sessionStudentName = originalSessionName;
+                }
+            });
+
             const localPlayer = playersList.find(p => p.id === localPlayerId);
             let localAccuracyNum = 0;
 
@@ -2351,9 +2367,7 @@
             
             gameResultsModal.classList.add('open');
 
-            calculateAndDisplayRank(localAccuracyNum).then(() => {
-                postScoreToLeaderboard(localAccuracyNum);
-            });
+            calculateAndDisplayRank(localAccuracyNum);
         }
 
         function handleSprintInput(noteStr) {
@@ -3967,6 +3981,7 @@
                         const localPlayer = playersList.find(p => p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.finished = true;
+                            localPlayer.stats = { ...gameStats };
                             if (!isSprintHost && peerConnections.length > 0) {
                                 peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, stats: gameStats, finished: true });
                             } else if (isSprintHost) {
