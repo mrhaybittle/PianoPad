@@ -1027,7 +1027,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 11:09 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 13:40 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1077,6 +1077,27 @@
 
             <div class="modal-footer" style="justify-content: center;">
                 <button type="button" class="btn-secondary" onclick="closeSprintOptionModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bonus Sound Unlock Notification Modal -->
+    <div class="modal-overlay" id="unlock-modal">
+        <div class="modal" style="text-align: center; border: 2px solid #22c55e; box-shadow: 0 0 25px rgba(34, 197, 94, 0.5);">
+            <h2 style="color: #facc15; font-size: 1.5rem;">🎉 BONUS SOUNDS UNLOCKED!</h2>
+            <p id="unlock-modal-text" style="font-size: 0.95rem; color: #e5e7eb; line-height: 1.4;">
+                Outstanding accuracy! You scored <strong>>80%</strong> and unlocked 5 additional instrument sound engines:
+            </p>
+            <div style="background: #0b0f19; border: 1px solid #374151; border-radius: 8px; padding: 10px; margin: 10px 0; text-align: left; font-size: 0.85rem; color: #38bdf8;">
+                ● 🎹 Electric Piano<br>
+                ● 🎼 Harpsichord<br>
+                ● 🎛️ 80s Synth Lead<br>
+                ● 🪵 Xylophone<br>
+                ● 🪗 Accordion
+            </div>
+            <p style="font-size: 0.8rem; color: #9ca3af;">Try them out now in the Instrument selector dropdown at the top bar!</p>
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn-success" onclick="closeUnlockModal()">Awesome, Let's Play!</button>
             </div>
         </div>
     </div>
@@ -1231,6 +1252,7 @@
         let isRecording = false;
         let isGameMode = false;
         let currentTheme = 'default';
+        let bonusSoundsUnlocked = false;
 
         let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
         let sessionStudentName = "";
@@ -1373,6 +1395,36 @@
             localStorage.setItem('pianopad_calib_done', 'true');
             calibModal.classList.remove('open');
             document.getElementById('status').textContent = 'Calibration skipped. Default key map active.';
+        }
+
+        function unlockBonusSounds(reasonText) {
+            if (bonusSoundsUnlocked) return;
+            bonusSoundsUnlocked = true;
+
+            const instSelect = document.getElementById('instrument-select');
+            const bonusOptions = [
+                { val: 'epiano', text: '🎹 Electric Piano' },
+                { val: 'harpsichord', text: '🎼 Harpsichord' },
+                { val: 'synth80s', text: '🎛️ 80s Synth Lead' },
+                { val: 'xylophone', text: '🪵 Xylophone' },
+                { val: 'accordion', text: '🪗 Accordion' }
+            ];
+
+            bonusOptions.forEach(opt => {
+                const optionEl = document.createElement('option');
+                optionEl.value = opt.val;
+                optionEl.textContent = opt.text;
+                instSelect.appendChild(optionEl);
+            });
+
+            if (reasonText) {
+                document.getElementById('unlock-modal-text').innerHTML = reasonText;
+            }
+            document.getElementById('unlock-modal').classList.add('open');
+        }
+
+        function closeUnlockModal() {
+            document.getElementById('unlock-modal').classList.remove('open');
         }
 
         /* 1. SIMON TAPS MINI-GAME */
@@ -2072,7 +2124,7 @@
 
             document.getElementById('game-summary-text').innerHTML = resultsHTML;
 
-            document.getElementById('badge-container').innerHTML = ''; // Hide Speed Badges for Sprint Mode
+            document.getElementById('badge-container').innerHTML = '';
             document.getElementById('single-bar-graph').style.display = 'flex';
             document.getElementById('multi-bar-graph').style.display = 'none';
             document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
@@ -2098,9 +2150,19 @@
             const multiGraph = document.getElementById('multi-bar-graph');
             multiGraph.innerHTML = '';
             multiGraph.style.display = 'flex';
-            document.getElementById('badge-container').innerHTML = ''; // Hide Speed Badge in Battle Results
+            document.getElementById('badge-container').innerHTML = ''; // Hide Speed Badge in Battle Mode
             document.getElementById('single-bar-graph').style.display = 'none';
             document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
+
+            // Check accuracy and prompt Bonus Unlock if >80%
+            const localPlayer = playersList.find(p => p.id === localPlayerId);
+            if (localPlayer && localPlayer.stats) {
+                const tot = localPlayer.stats.perfect + localPlayer.stats.earlyLate + localPlayer.stats.miss;
+                const acc = tot > 0 ? (((localPlayer.stats.perfect * 1.0 + localPlayer.stats.earlyLate * 0.5) / tot) * 100) : 0;
+                if (acc >= 80) {
+                    unlockBonusSounds(`Outstanding accuracy! You scored <strong>${acc.toFixed(1)}%</strong> in the Song Battle and unlocked 5 bonus sound engines!`);
+                }
+            }
 
             // Sort Players by Accuracy Percentage
             const sortedRanked = [...playersList].sort((a, b) => {
@@ -2738,7 +2800,16 @@
             const accuracy = totalHits > 0 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
             const accuracyNum = parseFloat(accuracy);
 
+            // Check >80% accuracy for unlocking bonus sound engines
+            if (accuracyNum >= 80) {
+                unlockBonusSounds(`Great job! You achieved <strong>${accuracy}%</strong> accuracy in Game Mode and unlocked 5 bonus instrument sound engines!`);
+            }
+
             document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
+
+            document.getElementById('single-bar-graph').style.display = 'flex';
+            document.getElementById('multi-bar-graph').style.display = 'none';
+            document.getElementById('btn-battle-again').style.display = 'none';
 
             const greenPct = totalHits > 0 ? (perfectHits / totalHits) * 100 : 0;
             const orangePct = totalHits > 0 ? (earlyLateHits / totalHits) * 100 : 0;
@@ -2828,6 +2899,12 @@
 
         window.addEventListener('keydown', (e) => {
             if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') return;
+
+            // Shortcut Testing Key '}' to unlock bonus sounds
+            if (e.key === '}') {
+                unlockBonusSounds("Cheat key activated! You unlocked all 5 bonus instrument sound engines for testing!");
+                return;
+            }
 
             initAudio();
 
@@ -2922,7 +2999,7 @@
             if (!isPaused) {
                 isPaused = true;
                 pauseStartTime = performance.now();
-                btnPause.textContent = 'Resume';
+                btnPause.textContent = 'Pause';
                 btnPause.classList.remove('btn-warning');
                 btnPause.classList.add('btn-success');
                 if (animationFrameId !== null) {
@@ -2965,7 +3042,7 @@
             { note: 'a3', type: 'white', label: 'A' }, { note: 'a#3', type: 'black', label: 'A#' },
             { note: 'b3', type: 'white', label: 'B' },
             { note: 'c4', type: 'white', label: 'C' }, { note: 'c#4', type: 'black', label: 'C#' },
-            { note: 'd4', type: 'white', label: 'D' }, { note: 'd#4', type: 'black', label: 'D#', hint: '' },
+            { note: 'd4', type: 'white', label: 'D' }, { note: 'd#4', type: 'black', label: 'D#' },
             { note: 'e4', type: 'white', label: 'E' },
             { note: 'f4', type: 'white', label: 'F' }, { note: 'f#4', type: 'black', label: 'F#' },
             { note: 'g4', type: 'white', label: 'G' }, { note: 'g#4', type: 'black', label: 'G#' },
@@ -3165,6 +3242,82 @@
                 gain.connect(audioCtx.destination);
                 osc.start(now);
                 osc.stop(now + duration + 0.02);
+            } else if (inst === 'epiano') {
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc1.type = 'sine';
+                osc2.type = 'triangle';
+                osc1.frequency.setValueAtTime(freq, now);
+                osc2.frequency.setValueAtTime(freq * 2, now);
+
+                gain.gain.setValueAtTime(0.35 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.4);
+
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc1.start(now);
+                osc2.start(now);
+                osc1.stop(now + duration + 0.4);
+                osc2.stop(now + duration + 0.4);
+            } else if (inst === 'harpsichord') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, now);
+
+                gain.gain.setValueAtTime(0.25 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + Math.min(duration, 0.3));
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (inst === 'synth80s') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq, now);
+
+                gain.gain.setValueAtTime(0.2 * volScale, now);
+                gain.gain.linearRampToValueAtTime(0.15 * volScale, now + duration);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.2);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + duration + 0.2);
+            } else if (inst === 'xylophone') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq * 3, now);
+
+                gain.gain.setValueAtTime(0.5 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.18);
+            } else if (inst === 'accordion') {
+                [1, 1.5, 2].forEach(mult => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq * mult, now);
+
+                    gain.gain.setValueAtTime(0.1 * volScale, now);
+                    gain.gain.linearRampToValueAtTime(0.1 * volScale, now + duration);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.1);
+
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + duration + 0.1);
+                });
             }
         }
 
