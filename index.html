@@ -975,7 +975,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 08:38 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 10:16 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -988,14 +988,16 @@
             <p style="font-size: 0.85rem; color: #9ca3af;">Select your race mode:</p>
             <div style="display: flex; flex-direction: column; gap: 10px; margin: 10px 0;" id="sprint-menu-buttons">
                 <button type="button" class="btn-arcade" onclick="initSinglePlayerSprint()">🤖 Challenge Robot Opponent</button>
-                <button type="button" class="btn-success" onclick="showHostSetup()">👑 Host Live Race</button>
-                <button type="button" class="btn-midi" onclick="showJoinSetup()">🎮 Join Live Race</button>
+                <button type="button" class="btn-success" onclick="openHostNamePrompt()">👑 Host Live Race</button>
+                <button type="button" class="btn-midi" onclick="openJoinNamePrompt()">🎮 Join Live Race</button>
             </div>
             
             <div id="sprint-form-container" style="display: none; flex-direction: column; gap: 8px; text-align: left;">
                 <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Your First Name & Surname Initial:</label>
                 <input type="text" id="sprint-player-name" placeholder="e.g. Alex M." style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem;">
                 
+                <div id="inline-name-error" style="color:#ef4444; font-size:0.75rem; font-weight:700; display:none;">⚠️ Please enter your First Name & Surname Initial before continuing!</div>
+
                 <div id="code-input-group" style="display:none; flex-direction:column; gap:4px;">
                     <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Enter Host Room Code:</label>
                     <input type="text" id="sprint-room-code" placeholder="e.g. RACE-1234" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; text-transform:uppercase;">
@@ -1004,7 +1006,7 @@
                 <div id="host-lobby-group" style="display:none; flex-direction:column; gap:4px; text-align:center;">
                     <div style="font-size:1.1rem; color:#facc15; font-weight:800;" id="generated-room-code-display">Room Code: Generating...</div>
                     <div class="lobby-players-grid" id="lobby-players-grid"></div>
-                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-center;" onclick="triggerHostStartRace()">🚀 START LIVE RACE FOR ALL PLAYERS</button>
+                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-content:center;" onclick="triggerHostStartRace()">🚀 START LIVE RACE FOR ALL PLAYERS</button>
                 </div>
 
                 <div id="client-waiting-group" style="display:none; flex-direction:column; gap:6px; text-align:center;">
@@ -1523,11 +1525,61 @@
             initAudio();
             document.getElementById('sprint-menu-buttons').style.display = 'flex';
             document.getElementById('sprint-form-container').style.display = 'none';
+            document.getElementById('inline-name-error').style.display = 'none';
             document.getElementById('sprint-option-modal').classList.add('open');
         }
 
         function closeSprintOptionModal() {
             document.getElementById('sprint-option-modal').classList.remove('open');
+        }
+
+        function openHostNamePrompt() {
+            document.getElementById('sprint-menu-buttons').style.display = 'none';
+            document.getElementById('sprint-form-container').style.display = 'flex';
+            document.getElementById('code-input-group').style.display = 'none';
+            document.getElementById('host-lobby-group').style.display = 'none';
+            document.getElementById('client-waiting-group').style.display = 'none';
+            document.getElementById('inline-name-error').style.display = 'none';
+            document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
+            
+            document.getElementById('btn-confirm-sprint-action').onclick = () => {
+                const nameInput = document.getElementById('sprint-player-name').value.trim();
+                if (!nameInput) {
+                    document.getElementById('inline-name-error').style.display = 'block';
+                    document.getElementById('sprint-player-name').focus();
+                    return;
+                }
+                showHostSetup(nameInput);
+            };
+        }
+
+        function openJoinNamePrompt() {
+            document.getElementById('sprint-menu-buttons').style.display = 'none';
+            document.getElementById('sprint-form-container').style.display = 'flex';
+            document.getElementById('code-input-group').style.display = 'flex';
+            document.getElementById('host-lobby-group').style.display = 'none';
+            document.getElementById('client-waiting-group').style.display = 'none';
+            document.getElementById('inline-name-error').style.display = 'none';
+            document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
+
+            document.getElementById('btn-confirm-sprint-action').onclick = () => {
+                const nameInput = document.getElementById('sprint-player-name').value.trim();
+                const roomCode = document.getElementById('sprint-room-code').value.trim().toUpperCase();
+
+                if (!nameInput) {
+                    document.getElementById('inline-name-error').style.display = 'block';
+                    document.getElementById('sprint-player-name').focus();
+                    return;
+                }
+
+                if (!roomCode) {
+                    alert("Please enter a valid Host Room Code!");
+                    document.getElementById('sprint-room-code').focus();
+                    return;
+                }
+
+                showJoinSetup(nameInput, roomCode);
+            };
         }
 
         function initSinglePlayerSprint() {
@@ -1559,7 +1611,6 @@
                         updateMultiplayerLanesUI();
                         if (bot.pxProgress >= 3600) {
                             bot.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
-                            // Keep racing active until local player finishes as well
                             checkAllFinished();
                         }
                     }
@@ -1579,29 +1630,17 @@
             });
         }
 
-        function showHostSetup() {
-            const nameInput = document.getElementById('sprint-player-name').value.trim();
-            if (!nameInput) {
-                alert("Please enter your First Name & Surname Initial before hosting a race!");
-                document.getElementById('sprint-player-name').focus();
-                return;
-            }
-
-            document.getElementById('sprint-menu-buttons').style.display = 'none';
-            document.getElementById('sprint-form-container').style.display = 'flex';
-            document.getElementById('code-input-group').style.display = 'none';
-            document.getElementById('client-waiting-group').style.display = 'none';
-            document.getElementById('host-lobby-group').style.display = 'flex';
+        function showHostSetup(hostName) {
+            sessionStudentName = hostName;
             document.getElementById('btn-confirm-sprint-action').style.display = 'none';
-
-            sessionStudentName = nameInput;
+            document.getElementById('host-lobby-group').style.display = 'flex';
 
             const roomCode = 'RACE-' + Math.floor(1000 + Math.random() * 9000);
             document.getElementById('generated-room-code-display').textContent = `Room Code: ${roomCode}`;
 
             isSprintHost = true;
             localPlayerId = 'p1';
-            playersList = [{ id: 'p1', name: nameInput, avatar: AVATARS[0], pxProgress: 0, finishTime: null, isLocal: true }];
+            playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, isLocal: true }];
             renderLobbyGrid('lobby-players-grid');
 
             peerInstance = new Peer(roomCode);
@@ -1634,74 +1673,50 @@
             });
         }
 
-        function showJoinSetup() {
-            document.getElementById('sprint-menu-buttons').style.display = 'none';
-            document.getElementById('sprint-form-container').style.display = 'flex';
-            document.getElementById('code-input-group').style.display = 'flex';
-            document.getElementById('host-lobby-group').style.display = 'none';
-            document.getElementById('client-waiting-group').style.display = 'none';
-            document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
-            
-            document.getElementById('btn-confirm-sprint-action').onclick = () => {
-                const nameInput = document.getElementById('sprint-player-name').value.trim();
-                const roomCode = document.getElementById('sprint-room-code').value.trim().toUpperCase();
+        function showJoinSetup(racerName, roomCode) {
+            sessionStudentName = racerName;
 
-                if (!nameInput) {
-                    alert("Please enter your First Name & Surname Initial!");
-                    document.getElementById('sprint-player-name').focus();
-                    return;
-                }
+            peerInstance = new Peer();
+            peerInstance.on('open', () => {
+                const conn = peerInstance.connect(roomCode);
+                peerConnections = [conn];
 
-                if (!roomCode) {
-                    alert("Please enter a valid Host Room Code!");
-                    document.getElementById('sprint-room-code').focus();
-                    return;
-                }
-
-                sessionStudentName = nameInput;
-
-                peerInstance = new Peer();
-                peerInstance.on('open', () => {
-                    const conn = peerInstance.connect(roomCode);
-                    peerConnections = [conn];
-
-                    conn.on('open', () => {
-                        conn.send({ type: 'JOIN', name: nameInput });
-                        document.getElementById('code-input-group').style.display = 'none';
-                        document.getElementById('btn-confirm-sprint-action').style.display = 'none';
-                        document.getElementById('client-waiting-group').style.display = 'flex';
-                        document.getElementById('status').textContent = `Connected to Race Host (${roomCode})! Waiting for race to start...`;
-                    });
-
-                    conn.on('data', (data) => {
-                        if (data.type === 'LOBBY_UPDATE') {
-                            playersList = data.players;
-                            const myEntry = playersList.find(p => p.name === sessionStudentName);
-                            if (myEntry) localPlayerId = myEntry.id;
-                            renderLobbyGrid('client-lobby-grid');
-                        } else if (data.type === 'START_RACE') {
-                            closeSprintOptionModal();
-                            arcadeHub.classList.remove('open');
-                            activeMiniGame = 'sprint';
-                            resetGameStats();
-                            renderSprintLanes();
-                            startCountdown(() => {
-                                raceActive = true;
-                                sprintStartTime = performance.now();
-                                sprintKeystrokeCount = 0;
-                                sprintIndex = 0;
-                            });
-                        } else if (data.type === 'RACER_UPDATE') {
-                            playersList = data.players;
-                            updateMultiplayerLanesUI();
-                        } else if (data.type === 'RACE_FINISHED') {
-                            raceActive = false;
-                            playersList = data.players;
-                            finishSprintRace();
-                        }
-                    });
+                conn.on('open', () => {
+                    conn.send({ type: 'JOIN', name: racerName });
+                    document.getElementById('code-input-group').style.display = 'none';
+                    document.getElementById('btn-confirm-sprint-action').style.display = 'none';
+                    document.getElementById('client-waiting-group').style.display = 'flex';
+                    document.getElementById('status').textContent = `Connected to Race Host (${roomCode})! Waiting for race to start...`;
                 });
-            };
+
+                conn.on('data', (data) => {
+                    if (data.type === 'LOBBY_UPDATE') {
+                        playersList = data.players;
+                        const myEntry = playersList.find(p => p.name === sessionStudentName);
+                        if (myEntry) localPlayerId = myEntry.id;
+                        renderLobbyGrid('client-lobby-grid');
+                    } else if (data.type === 'START_RACE') {
+                        closeSprintOptionModal();
+                        arcadeHub.classList.remove('open');
+                        activeMiniGame = 'sprint';
+                        resetGameStats();
+                        renderSprintLanes();
+                        startCountdown(() => {
+                            raceActive = true;
+                            sprintStartTime = performance.now();
+                            sprintKeystrokeCount = 0;
+                            sprintIndex = 0;
+                        });
+                    } else if (data.type === 'RACER_UPDATE') {
+                        playersList = data.players;
+                        updateMultiplayerLanesUI();
+                    } else if (data.type === 'RACE_FINISHED') {
+                        raceActive = false;
+                        playersList = data.players;
+                        finishSprintRace();
+                    }
+                });
+            });
         }
 
         function triggerHostStartRace() {
