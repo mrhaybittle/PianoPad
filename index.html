@@ -304,7 +304,6 @@
             cursor: pointer;
         }
 
-        /* VexFlow Notation Viewer Panel with Explicit Bright High-Contrast Styling */
         .vexflow-wrapper {
             position: relative;
             width: 100%;
@@ -332,7 +331,6 @@
             z-index: 10;
         }
 
-        /* Force VexFlow SVG Path & Line Elements to Render in Bright White */
         #vexflow-canvas svg path, #vexflow-canvas svg rect {
             fill: #f8fafc !important;
             stroke: #f8fafc !important;
@@ -1051,7 +1049,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 14:12 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 14:21 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1411,7 +1409,7 @@
             if (!window.Vex || !currentSong || currentSong.length === 0) return;
 
             try {
-                const { Renderer, Stave, StaveNote, Voice, Formatter } = Vex.Flow;
+                const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental } = Vex.Flow;
                 
                 // Expand SVG canvas width based on song note count for scrolling
                 const numNotes = currentSong.length;
@@ -1428,23 +1426,36 @@
 
                 for (let i = 0; i < numNotes; i++) {
                     const item = currentSong[i];
-                    const firstNote = item.notes[0] || 'C4';
-                    const pitchNum = noteToPitch(firstNote);
-                    const realOctave = pitchNum !== null ? Math.floor(pitchNum / 12) : 4;
-                    const letter = firstNote.charAt(0).toLowerCase();
+                    const rawFirstNote = item.notes[0] || 'C4';
+                    
+                    // Parse Note Name, Sharp/Flat Accidental, and Octave
+                    const match = rawFirstNote.match(/^([a-gA-G])(#?)([0-9]+)$/);
+                    if (!match) continue;
+
+                    const letter = match[1].toLowerCase();
+                    const hasSharp = match[2] === '#';
+                    const realOctave = parseInt(match[3], 10);
 
                     // Clef assignment: treble for octave 4+, bass clef mapping for low octaves
                     const clefType = realOctave >= 4 ? "treble" : "bass";
+                    const formattedPitch = hasSharp ? `${letter}#/${realOctave}` : `${letter}/${realOctave}`;
 
-                    staveNotes.push(new StaveNote({
+                    const staveNote = new StaveNote({
                         clef: clefType,
-                        keys: [`${letter}/${realOctave}`],
+                        keys: [formattedPitch],
                         duration: "q"
-                    }));
+                    });
+
+                    // Accidental attachment to display sharp signs (#) on the stave
+                    if (hasSharp) {
+                        staveNote.addModifier(new Accidental("#"));
+                    }
+
+                    staveNotes.push(staveNote);
                 }
 
                 if (staveNotes.length > 0) {
-                    const voice = new Voice({ num_beats: numNotes, beat_value: 4 });
+                    const voice = new Voice({ num_beats: staveNotes.length, beat_value: 4 });
                     voice.addTickables(staveNotes);
                     new Formatter().joinVoices([voice]).format([voice], canvasWidth - 80);
                     voice.draw(vfContext, staveTreble);
