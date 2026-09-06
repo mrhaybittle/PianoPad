@@ -305,37 +305,19 @@
             cursor: pointer;
         }
 
-        /* Sheet Music Notation Panel Above Visualizer */
-        .staff-notation-wrapper {
-            position: relative;
-            width: 100%;
-            height: 80px;
-            background-color: #fefdfa;
-            border-radius: 8px 8px 0 0;
-            border-bottom: 2px solid #000;
-            overflow: hidden;
-            flex-shrink: 0;
-        }
-
-        #staff-canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-
         .visualizer-wrapper {
             position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
             background-color: #000;
-            border-radius: 0 0 10px 10px;
+            border-radius: 10px;
             padding: 4px;
             box-shadow: inset 0 2px 8px rgba(0,0,0,0.9);
             overflow-x: auto;
             width: 100%;
             flex: 1;
-            min-height: 300px;
+            min-height: 380px;
         }
 
         #waterfall-canvas {
@@ -1032,18 +1014,13 @@
 
         <div class="runner-track-wrapper" id="runner-track" style="display: none;"></div>
 
-        <!-- Sheet Music Staff Canvas Panel above Visualizer -->
-        <div class="staff-notation-wrapper">
-            <canvas id="staff-canvas"></canvas>
-        </div>
-
         <div class="visualizer-wrapper">
             <canvas id="waterfall-canvas" width="1232" height="380"></canvas>
             <div class="piano" id="keyboard"></div>
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 15:53 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 16:25 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1333,10 +1310,6 @@
         const timelineBox = document.getElementById('timeline-box');
         const runnerTrack = document.getElementById('runner-track');
 
-        // Staff Canvas Variables
-        const staffCanvas = document.getElementById('staff-canvas');
-        const sCtx = staffCanvas.getContext('2d');
-
         document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
         document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
         document.getElementById('btn-stop-arcade').addEventListener('click', exitActiveMiniGame);
@@ -1395,110 +1368,6 @@
                 k.style.boxShadow = '';
             });
             document.getElementById('status').textContent = 'Arcade Mini-Game stopped. Select another game or return Home.';
-        }
-
-        /* DYNAMIC SCROLLING SHEET MUSIC STAFF ENGINE */
-        function getNoteStaffY(noteStr) {
-            const pitchNum = noteToPitch(noteStr);
-            if (pitchNum === null) return 40;
-            
-            // Base Middle C (C4) on ledger line Y = 58
-            const c4Pitch = 48; // C4 MIDI
-            const pitchSteps = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
-            const octave = Math.floor(pitchNum / 12) - 4;
-            const stepInOct = pitchSteps[pitchNum % 12];
-            const totalSteps = octave * 7 + stepInOct;
-            return 58 - (totalSteps * 4); // 4px per staff step
-        }
-
-        function drawTrebleClef(ctx, x, y) {
-            ctx.save();
-            ctx.fillStyle = '#000000';
-            ctx.font = 'bold 36px serif';
-            ctx.fillText('🎼', x, y + 28);
-            ctx.restore();
-        }
-
-        function drawStaffLineCanvas(effectiveElapsed) {
-            staffCanvas.width = staffCanvas.offsetWidth || 1200;
-            staffCanvas.height = 80;
-            sCtx.clearRect(0, 0, staffCanvas.width, staffCanvas.height);
-
-            // Draw 5 Staff Lines (E4, G4, B4, D5, F5)
-            sCtx.strokeStyle = '#222222';
-            sCtx.lineWidth = 1.5;
-            for (let i = 0; i < 5; i++) {
-                const y = 26 + i * 8;
-                sCtx.beginPath();
-                sCtx.moveTo(0, y);
-                sCtx.lineTo(staffCanvas.width, y);
-                sCtx.stroke();
-            }
-
-            // Draw Treble Clef and Time Signature (4/4)
-            drawTrebleClef(sCtx, 12, 10);
-
-            sCtx.fillStyle = '#000000';
-            sCtx.font = 'bold 16px sans-serif';
-            sCtx.fillText('4', 48, 38);
-            sCtx.fillText('4', 48, 54);
-
-            sCtx.font = 'italic bold 11px sans-serif';
-            sCtx.fillText('8va ┐', 80, 15);
-
-            // Approach Hit Line at Left Side (X = 90)
-            const targetX = 90;
-            sCtx.strokeStyle = '#ef4444';
-            sCtx.lineWidth = 2;
-            sCtx.beginPath();
-            sCtx.moveTo(targetX, 10);
-            sCtx.lineTo(targetX, 70);
-            sCtx.stroke();
-
-            if (!currentSong || noteTimeline.length === 0) return;
-
-            const scrollSpeed = 0.25; // Speed multiplier for right-to-left scrolling
-
-            noteTimeline.forEach(item => {
-                const timeDiff = item.hitTime - effectiveElapsed;
-                const x = targetX + (timeDiff * scrollSpeed);
-
-                if (x > 50 && x < staffCanvas.width + 40) {
-                    item.notes.forEach(noteStr => {
-                        const noteY = getNoteStaffY(noteStr);
-
-                        // Draw Ledger Lines if out of 5-line staff bounds
-                        if (noteY < 24 || noteY > 60) {
-                            sCtx.strokeStyle = '#444444';
-                            sCtx.lineWidth = 1;
-                            sCtx.beginPath();
-                            sCtx.moveTo(x - 8, noteY);
-                            sCtx.lineTo(x + 8, noteY);
-                            sCtx.stroke();
-                        }
-
-                        // Draw Coloured Note Oval
-                        sCtx.fillStyle = item.played ? '#9ca3af' : '#22c55e';
-                        sCtx.beginPath();
-                        sCtx.ellipse(x, noteY, 6, 4.5, -Math.PI / 6, 0, Math.PI * 2);
-                        sCtx.fill();
-
-                        // Draw Note Stem
-                        sCtx.strokeStyle = item.played ? '#9ca3af' : '#000000';
-                        sCtx.lineWidth = 1.5;
-                        sCtx.beginPath();
-                        sCtx.moveTo(x + 5, noteY);
-                        sCtx.lineTo(x + 5, noteY - 18);
-                        sCtx.stroke();
-
-                        // Draw Beam connecting 16th notes
-                        sCtx.beginPath();
-                        sCtx.moveTo(x + 1, noteY - 18);
-                        sCtx.lineTo(x + 6, noteY - 18);
-                        sCtx.stroke();
-                    });
-                }
-            });
         }
 
         function checkFirstTimeCalibration() {
@@ -3745,9 +3614,6 @@
             } else {
                 effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
             }
-
-            // Render Sheet Music Staff Bar
-            drawStaffLineCanvas(effectiveElapsed);
 
             if (isLooping && noteTimeline.length > 0 && !isStepMode && !activeMiniGame) {
                 const firstHit = noteTimeline[0].hitTime;
