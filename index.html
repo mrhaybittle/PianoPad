@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PianoPad Player - Visualizer & Haycode Creator</title>
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root {
             --bg-color: #121218;
@@ -25,6 +24,7 @@
             --hitline-color: #ef4444;
         }
 
+        /* Custom Theme Overrides */
         body[data-theme="cyberpunk"] {
             --bg-color: #0c0721;
             --panel-bg: #180e36;
@@ -101,15 +101,14 @@
         .container {
             width: 100%;
             max-width: 1400px;
-            height: calc(100vh - 16px);
             max-height: calc(100vh - 16px);
             background-color: var(--panel-bg);
             border-radius: 14px;
             box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.6);
-            padding: 10px 16px;
+            padding: 12px 18px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
             transition: background-color 0.3s;
         }
 
@@ -120,12 +119,11 @@
             flex-wrap: wrap;
             gap: 8px;
             border-bottom: 1px solid #374151;
-            padding-bottom: 6px;
-            flex-shrink: 0;
+            padding-bottom: 8px;
         }
 
         h1 {
-            font-size: 1.25rem;
+            font-size: 1.3rem;
             font-weight: 700;
             letter-spacing: -0.025em;
         }
@@ -142,10 +140,10 @@
             align-items: center;
             gap: 6px;
             background-color: #0b0f19;
-            padding: 4px 8px;
+            padding: 5px 10px;
             border-radius: 6px;
             border: 1px solid #374151;
-            font-size: 0.78rem;
+            font-size: 0.8rem;
             font-weight: 600;
         }
 
@@ -155,22 +153,22 @@
         }
 
         .speed-control input[type="range"] {
-            width: 70px;
+            width: 75px;
             accent-color: var(--accent-color);
             cursor: pointer;
         }
 
         select {
-            padding: 5px 8px;
+            padding: 6px 10px;
             border-radius: 6px;
             border: 1px solid #374151;
             background-color: #0b0f19;
             color: var(--text-main);
             font-weight: 600;
-            font-size: 0.78rem;
+            font-size: 0.8rem;
             cursor: pointer;
             outline: none;
-            max-width: 170px;
+            max-width: 180px;
         }
 
         select:focus {
@@ -193,14 +191,14 @@
         button, .btn-link, .btn-file-label {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            padding: 5px 8px;
+            gap: 5px;
+            padding: 6px 10px;
             border-radius: 6px;
             border: none;
             background-color: var(--accent-color);
             color: white;
             font-weight: 600;
-            font-size: 0.78rem;
+            font-size: 0.8rem;
             cursor: pointer;
             text-decoration: none;
             transition: background-color 0.2s, transform 0.1s;
@@ -235,20 +233,10 @@
             background: linear-gradient(135deg, #8b5cf6, #ec4899) !important;
             color: #ffffff !important;
             font-weight: 800 !important;
-            box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
+            box-shadow: 0 0 12px rgba(236, 72, 153, 0.5);
         }
         .btn-arcade:hover {
             background: linear-gradient(135deg, #7c3aed, #db2777) !important;
-        }
-
-        .btn-song-battle {
-            background: linear-gradient(135deg, #f59e0b, #ef4444) !important;
-            color: #ffffff !important;
-            font-weight: 800 !important;
-            box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
-        }
-        .btn-song-battle:hover {
-            background: linear-gradient(135deg, #d97706, #dc2626) !important;
         }
 
         .btn-step { background-color: #ec4899 !important; color: #ffffff !important; font-weight: 700; }
@@ -278,8 +266,8 @@
         .btn-loop-active { background-color: var(--loop-active); color: #000; }
 
         .icon {
-            width: 13px;
-            height: 13px;
+            width: 14px;
+            height: 14px;
             fill: none;
             stroke: currentColor;
             stroke-width: 2;
@@ -287,20 +275,33 @@
             stroke-linejoin: round;
         }
 
-        .timeline-container-inline {
+        .timeline-container {
             background-color: #0b0f19;
             border: 1px solid #374151;
-            border-radius: 6px;
-            padding: 3px 8px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.72rem;
-            font-weight: 600;
+            border-radius: 8px;
+            padding: 6px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
 
-        .timeline-container-inline input[type="range"] {
-            width: 50px;
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+
+        .timeline-sliders {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .timeline-sliders input[type="range"] {
+            flex: 1;
             accent-color: var(--loop-active);
             cursor: pointer;
         }
@@ -316,16 +317,12 @@
             box-shadow: inset 0 2px 8px rgba(0,0,0,0.9);
             overflow-x: auto;
             width: 100%;
-            flex: 1;
-            min-height: 380px;
         }
 
         #waterfall-canvas {
             background-color: var(--canvas-bg);
             border-bottom: 3px solid var(--hitline-color);
             display: block;
-            width: 100%;
-            flex: 1;
             transition: background-color 0.3s, border-color 0.3s;
         }
 
@@ -334,9 +331,6 @@
             position: relative;
             background-color: #000;
             user-select: none;
-            flex-shrink: 0;
-            width: 100%;
-            justify-content: center;
         }
 
         .key {
@@ -350,12 +344,11 @@
             font-weight: 700;
             font-size: 0.75rem;
             position: relative;
-            flex-shrink: 0;
         }
 
         .key.white {
             width: 44px;
-            height: 125px;
+            height: 130px;
             background-color: var(--key-white);
             border: 1px solid #cbd5e1;
             color: #0f172a;
@@ -370,7 +363,7 @@
 
         .key.black {
             width: 28px;
-            height: 76px;
+            height: 80px;
             background-color: var(--key-black);
             margin-left: -14px;
             margin-right: -14px;
@@ -420,7 +413,7 @@
             background: var(--panel-bg);
             border-radius: 12px;
             width: 90%;
-            max-width: 620px;
+            max-width: 580px;
             padding: 20px;
             display: flex;
             flex-direction: column;
@@ -449,10 +442,10 @@
         }
 
         .status-bar {
-            font-size: 0.82rem;
+            font-size: 0.85rem;
             color: #9ca3af;
             text-align: center;
-            min-height: 1.6rem;
+            min-height: 1.8rem;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -464,7 +457,6 @@
             align-items: center;
             justify-content: space-between;
             padding-top: 4px;
-            flex-shrink: 0;
         }
 
         .version-stamp {
@@ -530,7 +522,6 @@
             align-items: center;
             gap: 10px;
             margin-top: 10px;
-            width: 100%;
         }
 
         .bar-chart-wrapper {
@@ -546,45 +537,14 @@
             position: relative;
         }
 
-        .multi-bar-container {
-            display: flex;
-            align-items: flex-end;
-            justify-content: flex-start;
-            gap: 16px;
-            width: 100%;
-            max-width: 100%;
-            overflow-x: auto;
-            padding: 12px;
-            background: #0b0f19;
-            border: 1px solid #374151;
-            border-radius: 8px;
-            min-height: 180px;
-        }
-
-        .multi-bar-column {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            flex-shrink: 0;
-            min-width: 58px;
-        }
-
-        .rank-medal-badge {
-            font-size: 0.85rem;
-            font-weight: 800;
-            color: #facc15;
-        }
-
         .stacked-bar {
-            width: 38px;
+            width: 45px;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
-            height: 130px;
+            height: 100%;
             border-radius: 4px;
             overflow: hidden;
-            background: #181f2e;
         }
 
         .bar-part-red {
@@ -691,164 +651,57 @@
         .runner-track-wrapper {
             position: relative;
             width: 100%;
-            max-height: 240px;
-            overflow-y: auto;
+            height: 52px;
             background: #0b0f19;
             border: 1px solid #374151;
             border-radius: 8px;
+            overflow: hidden;
             display: flex;
-            flex-direction: column;
-            gap: 4px;
-            padding: 6px;
+            align-items: center;
+            padding: 0 10px;
             margin-top: 6px;
         }
 
-        .runner-lane {
-            position: relative;
-            width: 100%;
-            height: 28px;
-            background: #131927;
-            border-radius: 4px;
-            overflow: hidden;
-            border: 1px solid #1f2937;
-            flex-shrink: 0;
-        }
-
-        .runner-lane.my-lane {
-            border: 2px solid #22c55e !important;
-            background: #0f2318 !important;
-            box-shadow: inset 0 0 10px rgba(34, 197, 94, 0.4);
-        }
-
-        .runner-track-scroll {
+        .runner-finish-line {
             position: absolute;
-            left: 0;
+            right: 14px;
             top: 0;
-            height: 100%;
-            width: 100%;
+            bottom: 0;
+            width: 12px;
+            background: repeating-linear-gradient(0deg, #fff, #fff 8px, #000 8px, #000 16px);
         }
 
         .runner-avatar {
             position: absolute;
             left: 10px;
-            bottom: 0px;
-            font-size: 1.2rem;
-            transition: transform 0.2s ease-out;
+            font-size: 1.8rem;
+            transition: left 0.18s linear, transform 0.25s ease-out;
             user-select: none;
             transform: scaleX(-1);
             z-index: 5;
         }
 
         .runner-avatar.jumping {
-            transform: scaleX(-1) translateY(-12px) rotate(-10deg);
+            transform: scaleX(-1) translateY(-22px) rotate(-10deg);
         }
 
         .hurdle-obstacle {
             position: absolute;
-            bottom: 2px;
-            width: 20px;
-            height: 22px;
+            bottom: 4px;
+            width: 26px;
+            height: 30px;
             background: #ef4444;
-            border: 1px solid #ffffff;
-            border-radius: 3px 3px 0 0;
+            border: 2px solid #ffffff;
+            border-radius: 4px 4px 0 0;
             color: #ffffff;
             font-weight: 900;
-            font-size: 0.65rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
-            z-index: 2;
-        }
-
-        .runner-finish-line {
-            position: absolute;
-            left: 3600px;
-            top: 0;
-            bottom: 0;
-            width: 12px;
-            background: repeating-linear-gradient(0deg, #fff, #fff 8px, #000 8px, #000 16px);
-            z-index: 4;
-        }
-
-        .lane-label {
-            position: absolute;
-            right: 6px;
-            top: 2px;
-            font-size: 0.6rem;
-            font-weight: 800;
-            color: #cbd5e1;
-            z-index: 6;
-            background: rgba(0,0,0,0.65);
-            padding: 1px 5px;
-            border-radius: 3px;
-        }
-
-        .countdown-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.85);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 200;
-        }
-
-        .countdown-number {
-            font-size: 8rem;
-            font-weight: 900;
-            color: #facc15;
-            text-shadow: 0 0 30px #facc15;
-            animation: pulseCount 0.8s ease-in-out infinite;
-        }
-
-        @keyframes pulseCount {
-            0% { transform: scale(0.6); opacity: 0; }
-            50% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); opacity: 0.8; }
-        }
-
-        .lobby-players-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 6px;
-            margin: 10px 0;
-            text-align: left;
-        }
-
-        .lobby-player-card {
-            background: #0b0f19;
-            border: 1px solid #374151;
-            border-radius: 6px;
-            padding: 6px 10px;
             font-size: 0.8rem;
-            font-weight: 700;
             display: flex;
             align-items: center;
-            gap: 8px;
-        }
-
-        .race-results-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            font-size: 0.85rem;
-        }
-
-        .race-results-table th {
-            background: #181f2e;
-            color: #9ca3af;
-            padding: 6px 10px;
-            border-bottom: 1px solid #374151;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-        }
-
-        .race-results-table td {
-            padding: 6px 10px;
-            border-bottom: 1px solid #1f2937;
-            color: #f3f4f6;
+            justify-content: center;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+            z-index: 2;
+            transition: opacity 0.3s;
         }
     </style>
 </head>
@@ -949,18 +802,6 @@
                 <button type="button" id="btn-open-arcade" class="btn-arcade">
                     🕹️ MINI-GAMES
                 </button>
-
-                <button type="button" id="btn-song-battle" class="btn-song-battle">
-                    ⚔️ SONG BATTLE
-                </button>
-
-                <div class="timeline-container-inline" id="timeline-box">
-                    <span>Trim:</span>
-                    <input type="range" id="loop-start" min="0" max="100" value="0" title="Loop Start %">
-                    <span>-</span>
-                    <input type="range" id="loop-end" min="0" max="100" value="100" title="Loop End %">
-                    <span id="loop-range-label" style="display:none;">0%-100%</span>
-                </div>
             </div>
 
             <div class="controls" id="arcade-controls-bar" style="display: none;">
@@ -1004,100 +845,43 @@
                     <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Combo Strike</button>
                 </div>
 
-                <div class="game-card" onclick="openSprintModeSelector()">
-                    <h3>🏃 Finger Sprint Race</h3>
-                    <p>Challenge Robo-Opponent (🤖) or Host/Join Live Multi-Player Races with custom Room Codes!</p>
+                <div class="game-card" onclick="startFingerSprint()">
+                    <h3>🏃 Finger Sprint</h3>
+                    <p>Alternate C1 & D1 to sprint! Jump hurdles when close by playing matching high-octave keys!</p>
                     <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Finger Sprint</button>
                 </div>
             </div>
         </div>
 
-        <div class="runner-track-wrapper" id="runner-track" style="display: none;"></div>
+        <div class="timeline-container" id="timeline-box">
+            <div class="timeline-header">
+                <span>Timeline Trim & Loop Region</span>
+                <span id="loop-range-label">0% - 100% (Entire Song)</span>
+            </div>
+            <div class="timeline-sliders">
+                <label style="font-size: 0.75rem; color: #9ca3af;">Start:</label>
+                <input type="range" id="loop-start" min="0" max="100" value="0">
+                <label style="font-size: 0.75rem; color: #9ca3af;">End:</label>
+                <input type="range" id="loop-end" min="0" max="100" value="100">
+            </div>
+        </div>
+
+        <div class="runner-track-wrapper" id="runner-track" style="display: none;">
+            <div class="runner-avatar" id="runner-sprite">🏃</div>
+            <div id="hurdle-container"></div>
+            <div class="runner-finish-line"></div>
+        </div>
 
         <div class="visualizer-wrapper">
-            <canvas id="waterfall-canvas" width="1232" height="380"></canvas>
+            <canvas id="waterfall-canvas" width="1232" height="210"></canvas>
             <div class="piano" id="keyboard"></div>
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 16:25 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 16:37 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
-    </div>
-
-    <!-- Live Sprint & Song Battle Setup Modal -->
-    <div class="modal-overlay" id="sprint-option-modal">
-        <div class="modal" style="text-align: center;">
-            <h2 id="battle-modal-title">🏃 Setup Mode</h2>
-            <p style="font-size: 0.85rem; color: #9ca3af;" id="battle-modal-subtitle">Select your battle option:</p>
-            <div style="display: flex; flex-direction: column; gap: 10px; margin: 10px 0;" id="sprint-menu-buttons">
-                <button type="button" class="btn-arcade" id="btn-sprint-bot-opt" onclick="initSinglePlayerSprint()">🤖 Challenge Robot Opponent</button>
-                <button type="button" class="btn-success" onclick="openHostNamePrompt()">👑 Host Live Session</button>
-                <button type="button" class="btn-midi" onclick="openJoinNamePrompt()">🎮 Join Live Session</button>
-            </div>
-            
-            <div id="sprint-form-container" style="display: none; flex-direction: column; gap: 8px; text-align: left;">
-                <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Your First Name & Surname Initial:</label>
-                <input type="text" id="sprint-player-name" placeholder="e.g. Alex M." style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem;">
-                
-                <div id="host-song-selector-group" style="display:none; flex-direction:column; gap:4px; margin-top:4px;">
-                    <label style="font-size:0.75rem; color:#facc15; font-weight:700;">Select Battle Song:</label>
-                    <select id="host-battle-song-select" style="width:100%; max-width:100%;"></select>
-                </div>
-
-                <div id="inline-name-error" style="color:#ef4444; font-size:0.75rem; font-weight:700; display:none;">⚠️ Please enter your First Name & Surname Initial before continuing!</div>
-
-                <div id="code-input-group" style="display:none; flex-direction:column; gap:4px;">
-                    <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Enter Host Join Code:</label>
-                    <input type="text" id="sprint-room-code" placeholder="e.g. 482" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; text-transform:uppercase;">
-                </div>
-
-                <div id="host-lobby-group" style="display:none; flex-direction:column; gap:4px; text-align:center;">
-                    <div style="font-size:1.1rem; color:#facc15; font-weight:800;" id="generated-room-code-display">Room Code: Generating...</div>
-                    <div class="lobby-players-grid" id="lobby-players-grid"></div>
-                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-center;" onclick="triggerHostStartRace()">🚀 START LIVE SESSION FOR ALL PLAYERS</button>
-                </div>
-
-                <div id="client-waiting-group" style="display:none; flex-direction:column; gap:6px; text-align:center;">
-                    <p style="font-size:0.85rem; color:#22c55e; font-weight:700;">Connected to Host Room!</p>
-                    <div class="lobby-players-grid" id="client-lobby-grid"></div>
-                    <p style="font-size:0.75rem; color:#9ca3af;">Waiting for host to press start...</p>
-                </div>
-
-                <button type="button" class="btn-success" id="btn-confirm-sprint-action" style="margin-top:6px; justify-content:center;">Confirm & Continue</button>
-            </div>
-
-            <div class="modal-footer" style="justify-content: center;">
-                <button type="button" class="btn-secondary" onclick="closeSprintOptionModal()">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Bonus Sound Unlock Notification Modal -->
-    <div class="modal-overlay" id="unlock-modal">
-        <div class="modal" style="text-align: center; border: 2px solid #22c55e; box-shadow: 0 0 25px rgba(34, 197, 94, 0.5);">
-            <h2 style="color: #facc15; font-size: 1.5rem;">🎉 BONUS SOUNDS UNLOCKED!</h2>
-            <p id="unlock-modal-text" style="font-size: 0.95rem; color: #e5e7eb; line-height: 1.4;">
-                Outstanding accuracy! You scored <strong>>80%</strong> and unlocked 5 additional instrument sound engines:
-            </p>
-            <div style="background: #0b0f19; border: 1px solid #374151; border-radius: 8px; padding: 10px; margin: 10px 0; text-align: left; font-size: 0.85rem; color: #38bdf8;">
-                ● 🎹 Electric Piano<br>
-                ● 🎼 Harpsichord<br>
-                ● 🎛️ 80s Synth Lead<br>
-                ● 🪵 Xylophone<br>
-                ● 🪗 Accordion
-            </div>
-            <p style="font-size: 0.8rem; color: #9ca3af;">Try them out now in the Instrument selector dropdown at the top bar!</p>
-            <div class="modal-footer" style="justify-content: center;">
-                <button type="button" class="btn-success" onclick="closeUnlockModal()">Awesome, Let's Play!</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Countdown Overlay -->
-    <div class="countdown-overlay" id="countdown-overlay">
-        <div class="countdown-number" id="countdown-text">3</div>
     </div>
 
     <!-- Import Modal -->
@@ -1130,7 +914,7 @@
         </div>
     </div>
 
-    <!-- Calibration Wizard Modal (Auto-Prompted First Time) -->
+    <!-- Calibration Wizard Modal -->
     <div class="modal-overlay" id="calib-modal">
         <div class="modal" style="max-width: 680px;">
             <h2>MIDI Keyboard Calibration</h2>
@@ -1143,7 +927,7 @@
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" id="btn-calib-skip" onclick="skipCalibration()">Skip Calibration</button>
+                <button type="button" class="btn-secondary" id="btn-calib-skip">Skip Calibration</button>
                 <button type="button" class="btn-secondary" id="btn-calib-cancel" style="display:none;">Cancel Calibration</button>
             </div>
         </div>
@@ -1159,27 +943,23 @@
             <div id="game-rank-text" class="rank-display-box">Calculating Rank...</div>
 
             <div class="graph-container">
-                <!-- Unlimited Horizontal Scroll for Song Battle Multi-Player Charts -->
-                <div class="multi-bar-container" id="multi-bar-graph" style="display: none;"></div>
-                
-                <div class="bar-chart-wrapper" id="single-bar-graph">
+                <div class="bar-chart-wrapper">
                     <div class="stacked-bar">
                         <div id="bar-red" class="bar-part-red"></div>
                         <div id="bar-orange" class="bar-part-orange"></div>
                         <div id="bar-green" class="bar-part-green"></div>
                     </div>
                 </div>
-                
-                <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 600; margin-top: 4px;">
+                <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 600;">
                     <span style="color: #22c55e;">● Perfect</span>
                     <span style="color: #f97316;">● Early/Late</span>
                     <span style="color: #ef4444;">● Missed</span>
                 </div>
             </div>
 
+            <!-- UPDATED MODAL FOOTER: Guaranteed new tab navigation link -->
             <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
                 <a href="leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">View Entire Leaderboard</a>
-                <button type="button" class="btn-warning" id="btn-battle-again" style="display: none;" onclick="triggerBattleAgain()">⚔️ Battle Again</button>
                 <button type="button" class="btn-warning" id="btn-game-try-again">Play Again</button>
                 <button type="button" class="btn-arcade" id="btn-game-arcade-menu">Mini-Game Menu</button>
                 <button type="button" class="btn-success" id="btn-game-results-close">Continue</button>
@@ -1245,7 +1025,6 @@
         let isRecording = false;
         let isGameMode = false;
         let currentTheme = 'default';
-        let bonusSoundsUnlocked = false;
 
         let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
         let sessionStudentName = "";
@@ -1284,22 +1063,13 @@
         let dodgeLives = 5;
         let dodgeDodgedCount = 0;
 
-        // Unlimited Multi-Player Live PeerJS & Song Battle Config
-        let peerInstance = null;
-        let peerConnections = [];
-        let isSprintHost = false;
-        let localPlayerId = 'p1';
         let sprintSequence = ['c1', 'd1'];
         let sprintIndex = 0;
         let sprintKeystrokeCount = 0;
+        const SPRINT_TARGET_KEYSTROKES = 32;
         let sprintStartTime = 0;
-        let raceActive = false;
-        let isSongBattle = false;
-        let activeBattleRoomCode = "";
-
-        const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄'];
-
-        let playersList = [];
+        let activeHurdles = [];
+        let runnerLegToggle = false;
 
         let miniGameFallSpeedMs = 3800;
 
@@ -1309,12 +1079,12 @@
         const arcadeControlsBar = document.getElementById('arcade-controls-bar');
         const timelineBox = document.getElementById('timeline-box');
         const runnerTrack = document.getElementById('runner-track');
+        const runnerSprite = document.getElementById('runner-sprite');
+        const hurdleContainer = document.getElementById('hurdle-container');
 
         document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
         document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
         document.getElementById('btn-stop-arcade').addEventListener('click', exitActiveMiniGame);
-        document.getElementById('btn-song-battle').addEventListener('click', openSongBattleSelector);
-
         document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
             openArcadeHub();
@@ -1326,7 +1096,7 @@
             else if (currentSongTitle === "Simon Taps") startSimonTaps();
             else if (currentSongTitle === "Drop Dodge") startDropDodge();
             else if (currentSongTitle === "Combo Strike") startComboStrike();
-            else if (currentSongTitle === "Finger Sprint") openSprintModeSelector();
+            else if (currentSongTitle === "Finger Sprint") startFingerSprint();
             else playSong();
         });
 
@@ -1346,21 +1116,15 @@
             arcadeControlsBar.style.display = 'none';
             runnerTrack.style.display = 'none';
             mainControlsBar.style.display = 'flex';
-            timelineBox.style.display = 'inline-flex';
+            timelineBox.style.display = 'flex';
             document.getElementById('status').textContent = 'Returned to PianoPad Player view.';
         }
 
         function exitActiveMiniGame() {
             activeMiniGame = null;
             isPlaying = false;
-            raceActive = false;
-            isSongBattle = false;
             runnerTrack.style.display = 'none';
-            runnerTrack.innerHTML = '';
-            if (peerInstance && !isSprintHost) {
-                peerInstance.destroy();
-                peerInstance = null;
-            }
+            hurdleContainer.innerHTML = '';
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.querySelectorAll('.key').forEach(k => {
                 k.classList.remove('active');
@@ -1390,37 +1154,7 @@
             document.getElementById('status').textContent = 'Calibration skipped. Default key map active.';
         }
 
-        function unlockBonusSounds(reasonText) {
-            if (bonusSoundsUnlocked) return;
-            bonusSoundsUnlocked = true;
-
-            const instSelect = document.getElementById('instrument-select');
-            const bonusOptions = [
-                { val: 'epiano', text: '🎹 Electric Piano' },
-                { val: 'harpsichord', text: '🎼 Harpsichord' },
-                { val: 'synth80s', text: '🎛️ 80s Synth Lead' },
-                { val: 'xylophone', text: '🪵 Xylophone' },
-                { val: 'accordion', text: '🪗 Accordion' }
-            ];
-
-            bonusOptions.forEach(opt => {
-                const optionEl = document.createElement('option');
-                optionEl.value = opt.val;
-                optionEl.textContent = opt.text;
-                instSelect.appendChild(optionEl);
-            });
-
-            if (reasonText) {
-                document.getElementById('unlock-modal-text').innerHTML = reasonText;
-            }
-            document.getElementById('unlock-modal').classList.add('open');
-        }
-
-        function closeUnlockModal() {
-            document.getElementById('unlock-modal').classList.remove('open');
-        }
-
-        /* 1. SIMON TAPS MINI-GAME */
+        /* 1. SIMON TAPS MINI-GAME WITH COLORFUL STAIRCASE VISUALIZER */
         function startSimonTaps() {
             initAudio();
             exitActiveMiniGame();
@@ -1521,9 +1255,6 @@
                 const maxLevelRemembered = Math.max(1, simonSequence.length - 1);
                 
                 document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>Max Level Remembered: <span style="color:#22c55e; font-size:1.3rem;">Level ${maxLevelRemembered}</span>`;
-                document.getElementById('single-bar-graph').style.display = 'flex';
-                document.getElementById('multi-bar-graph').style.display = 'none';
-                document.getElementById('btn-battle-again').style.display = 'none';
                 document.getElementById('bar-green').style.height = '100%';
                 document.getElementById('bar-orange').style.height = '0%';
                 document.getElementById('bar-red').style.height = '0%';
@@ -1535,7 +1266,7 @@
             }
         }
 
-        /* 2. MYSTERY NOTE */
+        /* 2. MYSTERY NOTE (HOT/COLD) MINI-GAME */
         function startMysteryNote() {
             initAudio();
             exitActiveMiniGame();
@@ -1550,7 +1281,7 @@
             const freq = getNoteFrequency(mysteryTargetPitch);
             if (freq) playTone(freq, 0.6, 1.0);
 
-            document.getElementById('status').textContent = '🔍 Mystery Note chosen! Tap keys to guess...';
+            document.getElementById('status').textContent = '🔍 Mystery Note chosen! Tap keys to guess... (Listen carefully!)';
         }
 
         function handleMysteryInput(noteStr) {
@@ -1570,9 +1301,6 @@
                     `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>` +
                     `Guesses Taken: <span style="color:#22c55e; font-size:1.4rem; font-weight:800;">${mysteryGuessCount}</span>`;
 
-                document.getElementById('single-bar-graph').style.display = 'flex';
-                document.getElementById('multi-bar-graph').style.display = 'none';
-                document.getElementById('btn-battle-again').style.display = 'none';
                 document.getElementById('bar-green').style.height = '100%';
                 document.getElementById('bar-orange').style.height = '0%';
                 document.getElementById('bar-red').style.height = '0%';
@@ -1594,7 +1322,7 @@
             }
         }
 
-        /* 3. DROP DODGE */
+        /* 3. SLOWER DROP DODGE MINI-GAME WITH 5 LIVES */
         function startDropDodge() {
             initAudio();
             exitActiveMiniGame();
@@ -1658,553 +1386,81 @@
             requestAnimationFrame(renderLoop);
         }
 
-        /* 5. MULTI-PLAYER / BOT SPRINT & SONG BATTLE SYSTEM */
-        function openSprintModeSelector() {
-            initAudio();
-            isSongBattle = false;
-            document.getElementById('battle-modal-title').textContent = "🏃 Finger Sprint Setup";
-            document.getElementById('battle-modal-subtitle').textContent = "Select your race mode:";
-            document.getElementById('btn-sprint-bot-opt').style.display = 'inline-flex';
-            document.getElementById('host-song-selector-group').style.display = 'none';
-            document.getElementById('sprint-menu-buttons').style.display = 'flex';
-            document.getElementById('sprint-form-container').style.display = 'none';
-            document.getElementById('inline-name-error').style.display = 'none';
-            document.getElementById('sprint-option-modal').classList.add('open');
-        }
-
-        function populateHostSongSelector() {
-            const hostSelect = document.getElementById('host-battle-song-select');
-            hostSelect.innerHTML = '';
-            songList.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.code;
-                opt.textContent = s.title;
-                if (s.title === currentSongTitle) opt.selected = true;
-                hostSelect.appendChild(opt);
+        /* 5. FINGER SPRINT WITH PROXIMITY-BASED HURDLES & ANIMATED RUNNER */
+        function renderHurdles() {
+            hurdleContainer.innerHTML = '';
+            activeHurdles.forEach((h) => {
+                const hurdleDiv = document.createElement('div');
+                hurdleDiv.className = 'hurdle-obstacle';
+                hurdleDiv.style.left = `${h.posPct}%`;
+                hurdleDiv.textContent = h.letter;
+                if (h.cleared) {
+                    hurdleDiv.style.opacity = '0.2';
+                    hurdleDiv.style.borderColor = '#22c55e';
+                }
+                hurdleContainer.appendChild(hurdleDiv);
             });
         }
 
-        function openSongBattleSelector() {
+        function startFingerSprint() {
             initAudio();
-            isSongBattle = true;
-            document.getElementById('battle-modal-title').textContent = `⚔️ Song Battle Setup`;
-            document.getElementById('battle-modal-subtitle').textContent = "Host or join a live song battle:";
-            document.getElementById('btn-sprint-bot-opt').style.display = 'none';
-            document.getElementById('sprint-menu-buttons').style.display = 'flex';
-            document.getElementById('sprint-form-container').style.display = 'none';
-            document.getElementById('inline-name-error').style.display = 'none';
-            document.getElementById('sprint-option-modal').classList.add('open');
-        }
-
-        function closeSprintOptionModal() {
-            document.getElementById('sprint-option-modal').classList.remove('open');
-        }
-
-        function openHostNamePrompt() {
-            document.getElementById('sprint-menu-buttons').style.display = 'none';
-            document.getElementById('sprint-form-container').style.display = 'flex';
-            document.getElementById('code-input-group').style.display = 'none';
-            document.getElementById('host-lobby-group').style.display = 'none';
-            document.getElementById('client-waiting-group').style.display = 'none';
-            document.getElementById('inline-name-error').style.display = 'none';
-            document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
-
-            if (isSongBattle) {
-                populateHostSongSelector();
-                document.getElementById('host-song-selector-group').style.display = 'flex';
-            } else {
-                document.getElementById('host-song-selector-group').style.display = 'none';
-            }
-            
-            document.getElementById('btn-confirm-sprint-action').onclick = () => {
-                const nameInput = document.getElementById('sprint-player-name').value.trim();
-                if (!nameInput) {
-                    document.getElementById('inline-name-error').style.display = 'block';
-                    document.getElementById('sprint-player-name').focus();
-                    return;
-                }
-
-                if (isSongBattle) {
-                    const selectedCode = document.getElementById('host-battle-song-select').value;
-                    const opt = document.getElementById('host-battle-song-select').selectedOptions[0];
-                    if (opt) currentSongTitle = opt.text;
-                    songSelect.value = selectedCode;
-                    const parsed = parsePianoPad(selectedCode);
-                    if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
-                }
-
-                showHostSetup(nameInput);
-            };
-        }
-
-        function openJoinNamePrompt() {
-            document.getElementById('sprint-menu-buttons').style.display = 'none';
-            document.getElementById('sprint-form-container').style.display = 'flex';
-            document.getElementById('code-input-group').style.display = 'flex';
-            document.getElementById('host-song-selector-group').style.display = 'none';
-            document.getElementById('host-lobby-group').style.display = 'none';
-            document.getElementById('client-waiting-group').style.display = 'none';
-            document.getElementById('inline-name-error').style.display = 'none';
-            document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
-
-            document.getElementById('btn-confirm-sprint-action').onclick = () => {
-                const nameInput = document.getElementById('sprint-player-name').value.trim();
-                const roomCode = document.getElementById('sprint-room-code').value.trim().toUpperCase();
-
-                if (!nameInput) {
-                    document.getElementById('inline-name-error').style.display = 'block';
-                    document.getElementById('sprint-player-name').focus();
-                    return;
-                }
-
-                if (!roomCode) {
-                    alert("Please enter a valid Host Join Code!");
-                    document.getElementById('sprint-room-code').focus();
-                    return;
-                }
-
-                showJoinSetup(nameInput, roomCode);
-            };
-        }
-
-        function initSinglePlayerSprint() {
-            closeSprintOptionModal();
             exitActiveMiniGame();
             arcadeHub.classList.remove('open');
             activeMiniGame = 'sprint';
-            resetGameStats();
 
-            playersList = [
-                { id: 'p1', name: 'YOU', avatar: '🏃', pxProgress: 0, finishTime: null, isLocal: true },
-                { id: 'bot', name: 'ROBO-OPPONENT', avatar: '🤖', pxProgress: 0, finishTime: null, isBot: true }
-            ];
-            localPlayerId = 'p1';
-
-            renderSprintLanes();
-            startCountdown(() => {
-                raceActive = true;
-                sprintStartTime = performance.now();
-                sprintKeystrokeCount = 0;
-                sprintIndex = 0;
-
-                const botInt = setInterval(() => {
-                    if (!raceActive) { clearInterval(botInt); return; }
-                    const bot = playersList.find(p => p.id === 'bot');
-                    if (bot && !bot.finishTime) {
-                        bot.pxProgress += 3.8 + Math.random() * 1.4;
-                        updateMultiplayerLanesUI();
-                        if (bot.pxProgress >= 3600) {
-                            bot.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
-                            checkAllFinished();
-                        }
-                    }
-                }, 100);
-            });
-        }
-
-        function renderLobbyGrid(gridElementId) {
-            const grid = document.getElementById(gridElementId);
-            if (!grid) return;
-            grid.innerHTML = '';
-            playersList.forEach((player) => {
-                const card = document.createElement('div');
-                card.className = 'lobby-player-card';
-                card.innerHTML = `<span>${player.avatar}</span><span>${player.name}</span>`;
-                grid.appendChild(card);
-            });
-        }
-
-        function showHostSetup(hostName) {
-            sessionStudentName = hostName;
-            document.getElementById('btn-confirm-sprint-action').style.display = 'none';
-            document.getElementById('host-lobby-group').style.display = 'flex';
-            document.getElementById('host-song-selector-group').style.display = 'none';
-
-            // Preserve Same Room Code if host clicks "Battle Again"
-            if (!activeBattleRoomCode || !isSprintHost) {
-                activeBattleRoomCode = isSongBattle ? '' + Math.floor(100 + Math.random() * 900) : 'RACE-' + Math.floor(1000 + Math.random() * 9000);
-            }
-            
-            document.getElementById('generated-room-code-display').textContent = `Join Code: ${activeBattleRoomCode}`;
-
-            isSprintHost = true;
-            localPlayerId = 'p1';
-            playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, isLocal: true }];
-            renderLobbyGrid('lobby-players-grid');
-
-            if (!peerInstance || peerInstance.destroyed) {
-                peerInstance = new Peer(activeBattleRoomCode);
-                peerInstance.on('connection', (conn) => {
-                    peerConnections.push(conn);
-
-                    conn.on('data', (data) => {
-                        if (data.type === 'JOIN') {
-                            const newPId = 'p' + (playersList.length + 1);
-                            const avatarIdx = (playersList.length) % AVATARS.length;
-                            const newP = { id: newPId, name: data.name, avatar: AVATARS[avatarIdx], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, isLocal: false };
-                            playersList.push(newP);
-
-                            renderLobbyGrid('lobby-players-grid');
-                            // Broadcast Song Payload with Title + HayCode to Lock All Peers
-                            broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList, songTitle: currentSongTitle, songCode: songSelect.value });
-                        } else if (data.type === 'PROGRESS') {
-                            const player = playersList.find(p => p.id === data.id);
-                            if (player) {
-                                player.pxProgress = data.pxProgress;
-                                if (data.finishTime && !player.finishTime) {
-                                    player.finishTime = data.finishTime;
-                                }
-                                if (data.stats) player.stats = data.stats;
-                                broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                                if (isSongBattle) renderSongBattleResults();
-                                else updateMultiplayerLanesUI();
-                                checkAllFinished();
-                            }
-                        }
-                    });
-                });
-            } else {
-                broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList, songTitle: currentSongTitle, songCode: songSelect.value });
-            }
-        }
-
-        function showJoinSetup(racerName, roomCode) {
-            sessionStudentName = racerName;
-            activeBattleRoomCode = roomCode;
-
-            peerInstance = new Peer();
-            peerInstance.on('open', () => {
-                const conn = peerInstance.connect(roomCode);
-                peerConnections = [conn];
-
-                conn.on('open', () => {
-                    conn.send({ type: 'JOIN', name: racerName });
-                    document.getElementById('code-input-group').style.display = 'none';
-                    document.getElementById('btn-confirm-sprint-action').style.display = 'none';
-                    document.getElementById('client-waiting-group').style.display = 'flex';
-                    document.getElementById('status').textContent = `Connected to Host Code (${roomCode})! Waiting for start...`;
-                });
-
-                conn.on('data', (data) => {
-                    if (data.type === 'LOBBY_UPDATE') {
-                        playersList = data.players;
-                        if (data.songCode) {
-                            currentSongTitle = data.songTitle;
-                            songSelect.value = data.songCode;
-                            const parsed = parsePianoPad(data.songCode);
-                            if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
-                        }
-                        const myEntry = playersList.find(p => p.name === sessionStudentName);
-                        if (myEntry) localPlayerId = myEntry.id;
-                        renderLobbyGrid('client-lobby-grid');
-                    } else if (data.type === 'START_RACE') {
-                        closeSprintOptionModal();
-                        arcadeHub.classList.remove('open');
-                        resetGameStats();
-
-                        if (data.songCode) {
-                            currentSongTitle = data.songTitle;
-                            songSelect.value = data.songCode;
-                            const parsed = parsePianoPad(data.songCode);
-                            if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
-                        }
-
-                        if (isSongBattle) {
-                            isGameMode = true;
-                            btnGame.textContent = 'Game Mode: ON';
-                            btnGame.classList.add('btn-game-active');
-                            startCountdown(() => {
-                                playSong();
-                            });
-                        } else {
-                            activeMiniGame = 'sprint';
-                            renderSprintLanes();
-                            startCountdown(() => {
-                                raceActive = true;
-                                sprintStartTime = performance.now();
-                                sprintKeystrokeCount = 0;
-                                sprintIndex = 0;
-                            });
-                        }
-                    } else if (data.type === 'RACER_UPDATE') {
-                        playersList = data.players;
-                        if (isSongBattle) renderSongBattleResults();
-                        else updateMultiplayerLanesUI();
-                    } else if (data.type === 'RACE_FINISHED') {
-                        raceActive = false;
-                        playersList = data.players;
-                        if (isSongBattle) renderSongBattleResults();
-                        else finishSprintRace();
-                    } else if (data.type === 'BATTLE_AGAIN_PROMPT') {
-                        gameResultsModal.classList.remove('open');
-                        const choice = confirm(`Host ${data.hostName} initiated a new Battle! Join Same Battle (${activeBattleRoomCode})?`);
-                        if (choice) {
-                            showJoinSetup(sessionStudentName, activeBattleRoomCode);
-                        }
-                    }
-                });
-            });
-        }
-
-        function triggerHostStartRace() {
-            broadcastPeerMsg({ type: 'START_RACE', songTitle: currentSongTitle, songCode: songSelect.value });
-
-            closeSprintOptionModal();
-            arcadeHub.classList.remove('open');
-            resetGameStats();
-
-            if (isSongBattle) {
-                isGameMode = true;
-                btnGame.textContent = 'Game Mode: ON';
-                btnGame.classList.add('btn-game-active');
-                startCountdown(() => {
-                    playSong();
-                });
-            } else {
-                activeMiniGame = 'sprint';
-                renderSprintLanes();
-                startCountdown(() => {
-                    raceActive = true;
-                    sprintStartTime = performance.now();
-                    sprintKeystrokeCount = 0;
-                    sprintIndex = 0;
-                });
-            }
-        }
-
-        function triggerBattleAgain() {
-            gameResultsModal.classList.remove('open');
-            if (isSprintHost) {
-                broadcastPeerMsg({ type: 'BATTLE_AGAIN_PROMPT', hostName: sessionStudentName });
-                showHostSetup(sessionStudentName);
-                document.getElementById('sprint-option-modal').classList.add('open');
-            }
-        }
-
-        function broadcastPeerMsg(msg) {
-            peerConnections.forEach(conn => {
-                if (conn && conn.open) {
-                    conn.send(msg);
-                }
-            });
-        }
-
-        function renderSprintLanes() {
             runnerTrack.style.display = 'flex';
-            runnerTrack.innerHTML = '';
+            runnerSprite.style.left = '10px';
+            runnerSprite.textContent = '🏃';
+            runnerSprite.classList.add('sprinting');
 
-            const hurdleNotes = ['G', 'E', 'C', 'F', 'A', 'D', 'B', 'C', 'E', 'G'];
+            sprintIndex = 0;
+            sprintKeystrokeCount = 0;
+            sprintStartTime = performance.now();
 
-            playersList.forEach((player) => {
-                const laneDiv = document.createElement('div');
-                laneDiv.className = `runner-lane ${player.id === localPlayerId ? 'my-lane' : ''}`;
-                laneDiv.id = `lane-${player.id}`;
+            activeHurdles = [
+                { letter: 'G', posPct: 35, cleared: false },
+                { letter: 'E', posPct: 70, cleared: false }
+            ];
+            renderHurdles();
 
-                const label = document.createElement('div');
-                label.className = 'lane-label';
-                label.textContent = `${player.name} (${player.avatar})`;
-
-                const avatar = document.createElement('div');
-                avatar.className = 'runner-avatar';
-                avatar.id = `avatar-${player.id}`;
-                avatar.textContent = player.avatar;
-
-                const scrollTrack = document.createElement('div');
-                scrollTrack.className = 'runner-track-scroll';
-                scrollTrack.id = `scroll-${player.id}`;
-
-                hurdleNotes.forEach((note, idx) => {
-                    const hurdleDiv = document.createElement('div');
-                    hurdleDiv.className = 'hurdle-obstacle';
-                    hurdleDiv.style.left = `${(idx + 1) * 320}px`;
-                    hurdleDiv.textContent = note;
-                    scrollTrack.appendChild(hurdleDiv);
-                });
-
-                const finishLine = document.createElement('div');
-                finishLine.className = 'runner-finish-line';
-                scrollTrack.appendChild(finishLine);
-
-                laneDiv.appendChild(label);
-                laneDiv.appendChild(avatar);
-                laneDiv.appendChild(scrollTrack);
-                runnerTrack.appendChild(laneDiv);
-            });
-        }
-
-        function updateMultiplayerLanesUI() {
-            playersList.forEach((player) => {
-                const scrollTrack = document.getElementById(`scroll-${player.id}`);
-                if (scrollTrack) {
-                    scrollTrack.style.transform = `translateX(-${player.pxProgress}px)`;
-                }
-            });
-        }
-
-        function startCountdown(onComplete) {
-            const overlay = document.getElementById('countdown-overlay');
-            const numText = document.getElementById('countdown-text');
-            overlay.style.display = 'flex';
-
-            let count = 3;
-            numText.textContent = count;
-
-            const interval = setInterval(() => {
-                count--;
-                if (count > 0) {
-                    numText.textContent = count;
-                } else if (count === 0) {
-                    numText.textContent = "GO!";
-                } else {
-                    clearInterval(interval);
-                    overlay.style.display = 'none';
-                    if (onComplete) onComplete();
-                }
-            }, 800);
-        }
-
-        function checkAllFinished() {
-            const allFinished = playersList.every(p => p.finishTime !== null || p.pxProgress >= 3600);
-            if (allFinished && raceActive) {
-                raceActive = false;
-                if (isSprintHost) {
-                    broadcastPeerMsg({ type: 'RACE_FINISHED', players: playersList });
-                }
-                finishSprintRace();
-            }
-        }
-
-        function finishSprintRace() {
-            raceActive = false;
-            currentSongTitle = "Finger Sprint";
-
-            const localPlayer = playersList.find(p => p.id === localPlayerId);
-            const winner = [...playersList].sort((a,b) => parseFloat(a.finishTime || 999) - parseFloat(b.finishTime || 999))[0];
-            const isWinner = winner && winner.id === localPlayerId;
-
-            const popUpHeader = isWinner ? `🎉 YOU WON! (${localPlayer ? localPlayer.finishTime : ''}s)` : `❌ YOU LOST! Winner: ${winner ? winner.name : 'Opponent'}`;
-
-            const sortedResults = [...playersList].sort((a, b) => {
-                if (a.finishTime && b.finishTime) return parseFloat(a.finishTime) - parseFloat(b.finishTime);
-                if (a.finishTime) return -1;
-                if (b.finishTime) return 1;
-                return b.pxProgress - a.pxProgress;
-            });
-
-            let tableRows = sortedResults.map((p, idx) => {
-                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
-                const timeLabel = p.finishTime ? `${p.finishTime}s` : 'DNF';
-                return `<tr>
-                    <td style="font-weight:800;">${medal}</td>
-                    <td>${p.avatar} ${p.name}</td>
-                    <td style="color:#22c55e; font-weight:700;">${timeLabel}</td>
-                </tr>`;
-            }).join('');
-
-            const resultsHTML = `
-                <div style="margin-bottom:8px; font-weight:900; font-size:1.3rem; color:${isWinner ? '#22c55e' : '#ef4444'};">${popUpHeader}</div>
-                <table class="race-results-table">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Racer</th>
-                            <th>Time</th>
-                        </tr>
-                    </thead>
-                    <tbody>${tableRows}</tbody>
-                </table>
-            `;
-
-            document.getElementById('game-summary-text').innerHTML = resultsHTML;
-
-            document.getElementById('badge-container').innerHTML = '';
-            document.getElementById('single-bar-graph').style.display = 'flex';
-            document.getElementById('multi-bar-graph').style.display = 'none';
-            document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
-
-            const totalHits = gameStats.perfect + gameStats.miss;
-            const greenPct = totalHits > 0 ? (gameStats.perfect / totalHits) * 100 : 100;
-            const redPct = totalHits > 0 ? (gameStats.miss / totalHits) * 100 : 0;
-
-            document.getElementById('bar-green').style.height = `${greenPct}%`;
-            document.getElementById('bar-orange').style.height = '0%';
-            document.getElementById('bar-red').style.height = `${redPct}%`;
-
-            document.getElementById('game-rank-text').textContent = `Finger Sprint Finish!`;
-            gameResultsModal.classList.add('open');
-
-            if (localPlayer && localPlayer.finishTime) {
-                postScoreToLeaderboard(parseFloat(localPlayer.finishTime));
-            }
-            activeMiniGame = null;
-        }
-
-        function renderSongBattleResults() {
-            const multiGraph = document.getElementById('multi-bar-graph');
-            multiGraph.innerHTML = '';
-            multiGraph.style.display = 'flex';
-            document.getElementById('badge-container').innerHTML = ''; // Hide Speed Badge in Battle Mode
-            document.getElementById('single-bar-graph').style.display = 'none';
-            document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
-
-            // Check accuracy and prompt Bonus Unlock if >80%
-            const localPlayer = playersList.find(p => p.id === localPlayerId);
-            if (localPlayer && localPlayer.stats) {
-                const tot = localPlayer.stats.perfect + localPlayer.stats.earlyLate + localPlayer.stats.miss;
-                const acc = tot > 0 ? (((localPlayer.stats.perfect * 1.0 + localPlayer.stats.earlyLate * 0.5) / tot) * 100) : 0;
-                if (acc >= 80) {
-                    unlockBonusSounds(`Great job! You achieved <strong>${acc.toFixed(1)}%</strong> accuracy in the Song Battle and unlocked 5 bonus instrument sound engines!`);
-                }
-            }
-
-            // Sort Players by Accuracy Percentage
-            const sortedRanked = [...playersList].sort((a, b) => {
-                const aStats = a.stats || { perfect: 0, earlyLate: 0, miss: 0 };
-                const bStats = b.stats || { perfect: 0, earlyLate: 0, miss: 0 };
-                const aTot = Math.max(1, aStats.perfect + aStats.earlyLate + aStats.miss);
-                const bTot = Math.max(1, bStats.perfect + bStats.earlyLate + bStats.miss);
-                const aAcc = ((aStats.perfect * 1.0 + aStats.earlyLate * 0.5) / aTot) * 100;
-                const bAcc = ((bStats.perfect * 1.0 + bStats.earlyLate * 0.5) / bTot) * 100;
-                return bAcc - aAcc;
-            });
-
-            sortedRanked.forEach((p, idx) => {
-                const col = document.createElement('div');
-                col.className = 'multi-bar-column';
-
-                const pStats = p.stats || { perfect: 0, earlyLate: 0, miss: 0 };
-                const total = Math.max(1, pStats.perfect + pStats.earlyLate + pStats.miss);
-
-                const gPct = (pStats.perfect / total) * 100;
-                const oPct = (pStats.earlyLate / total) * 100;
-                const rPct = (pStats.miss / total) * 100;
-
-                const medal = idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `${idx + 1}th`;
-
-                col.innerHTML = `
-                    <div class="rank-medal-badge">${medal}</div>
-                    <div class="stacked-bar">
-                        <div class="bar-part-red" style="height:${rPct}%;"></div>
-                        <div class="bar-part-orange" style="height:${oPct}%;"></div>
-                        <div class="bar-part-green" style="height:${gPct}%;"></div>
-                    </div>
-                    <span style="font-size:0.75rem; font-weight:700; color:#fff;">${p.avatar} ${p.name}</span>
-                `;
-                multiGraph.appendChild(col);
-            });
-
-            document.getElementById('game-summary-text').innerHTML = `<div style="font-size:1.2rem; font-weight:800; color:#facc15;">⚔️ Song Battle Standings: ${currentSongTitle}</div>`;
-            document.getElementById('game-rank-text').textContent = `Song Battle Logged!`;
-            gameResultsModal.classList.add('open');
+            document.getElementById('status').textContent = `🏃 FINGER SPRINT: Alternate C1 & D1 to sprint! Play High G/E to jump hurdles!`;
+            highlightKey('c1', 600, '#eab308');
         }
 
         function handleSprintInput(noteStr) {
-            if (!raceActive) return;
-
             const rawNoteName = noteStr.toLowerCase().trim();
-            const localPlayer = playersList.find(p => p.id === localPlayerId);
+            const noteMatch = rawNoteName.match(/^([a-g]#?)([0-9]+)$/);
+            
+            if (!noteMatch) return;
+            const letter = noteMatch[1].toUpperCase();
+            const octave = parseInt(noteMatch[2], 10);
 
-            if (!localPlayer || localPlayer.finishTime) return;
+            const currentPosPct = (sprintKeystrokeCount / SPRINT_TARGET_KEYSTROKES) * 85;
+
+            const nearbyHurdle = activeHurdles.find(h => !h.cleared && Math.abs(currentPosPct - h.posPct) <= 16);
+
+            if (nearbyHurdle) {
+                if (letter === nearbyHurdle.letter && octave >= 2) {
+                    nearbyHurdle.cleared = true;
+                    gameStats.perfect++;
+                    renderHurdles();
+
+                    runnerSprite.textContent = '🤸';
+                    runnerSprite.classList.add('jumping');
+
+                    setTimeout(() => {
+                        runnerSprite.classList.remove('jumping');
+                        runnerSprite.textContent = runnerLegToggle ? '🏃' : '🏃‍♂️';
+                    }, 450);
+
+                    document.getElementById('status').textContent = `🦘 HURDLE JUMP CLEARED! High ${letter} Jump Successful!`;
+                    return;
+                } else if (letter === nearbyHurdle.letter && octave === 1) {
+                    playErrorClackSound();
+                    document.getElementById('status').textContent = `⚠️ Play a HIGH ${letter} (Octave 2, 3, or 4) to Jump over the Hurdle!`;
+                    return;
+                }
+            }
 
             const expectedNote = sprintSequence[sprintIndex % 2];
             if (rawNoteName === expectedNote.toLowerCase().trim()) {
@@ -2212,21 +1468,29 @@
                 sprintIndex++;
                 sprintKeystrokeCount++;
 
-                localPlayer.pxProgress = sprintKeystrokeCount * 36;
-                updateMultiplayerLanesUI();
-
-                if (localPlayer.pxProgress >= 3600 && !localPlayer.finishTime) {
-                    localPlayer.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
+                runnerLegToggle = !runnerLegToggle;
+                if (!runnerSprite.classList.contains('jumping')) {
+                    runnerSprite.textContent = runnerLegToggle ? '🏃' : '🏃‍♂️';
                 }
 
-                if (!isSprintHost && peerConnections.length > 0) {
-                    peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: localPlayer.pxProgress, finishTime: localPlayer.finishTime });
-                } else if (isSprintHost) {
-                    broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                }
+                const newProgressPct = (sprintKeystrokeCount / SPRINT_TARGET_KEYSTROKES) * 85;
+                runnerSprite.style.left = `calc(10px + ${newProgressPct}%)`;
 
-                if (localPlayer.pxProgress >= 3600) {
-                    checkAllFinished();
+                if (sprintKeystrokeCount >= SPRINT_TARGET_KEYSTROKES) {
+                    const totalTimeSeconds = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
+                    runnerSprite.classList.remove('sprinting');
+                    runnerSprite.textContent = '🏃';
+                    currentSongTitle = "Finger Sprint";
+                    
+                    document.getElementById('game-summary-text').innerHTML = `Sprint Time: <span style="color:#facc15; font-size:1.3rem;">${totalTimeSeconds} Seconds</span>`;
+                    document.getElementById('bar-green').style.height = '100%';
+                    document.getElementById('bar-orange').style.height = '0%';
+                    document.getElementById('bar-red').style.height = '0%';
+
+                    document.getElementById('game-rank-text').textContent = `Finger Sprint Completed!`;
+                    gameResultsModal.classList.add('open');
+                    postScoreToLeaderboard(parseFloat(totalTimeSeconds));
+                    activeMiniGame = null;
                     return;
                 }
 
@@ -2461,6 +1725,7 @@
         });
         document.getElementById('btn-settings-close').addEventListener('click', () => settingsModal.classList.remove('open'));
         document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
+        document.getElementById('btn-calib-skip').addEventListener('click', skipCalibration);
         document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
         document.getElementById('btn-game-results-close').addEventListener('click', () => gameResultsModal.classList.remove('open'));
 
@@ -2541,6 +1806,8 @@
             buildCalibrationKeyboard();
             isCalibrating = true;
             calibStep = 1;
+            document.getElementById('btn-calib-skip').style.display = 'none';
+            document.getElementById('btn-calib-cancel').style.display = 'inline-flex';
             document.getElementById('calib-instructions').textContent = "Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
             calibModal.classList.add('open');
         }
@@ -2575,6 +1842,7 @@
                 document.getElementById('calib-instructions').textContent = `Calibration Complete! Detected a ${octaveDistance}-Octave Keyboard (${octaveDistance * 12 + 1} keys).`;
                 setTimeout(() => {
                     isCalibrating = false;
+                    localStorage.setItem('pianopad_calib_done', 'true');
                     calibModal.classList.remove('open');
                     updateKeyPositions();
                     document.getElementById('status').textContent = `MIDI Keyboard calibrated! Lowest key now maps directly to C1 on-screen.`;
@@ -3108,23 +2376,15 @@
 
         function updateKeyPositions() {
             keyPosMap = {};
-            const pianoRect = keyboardEl.getBoundingClientRect();
-            const pianoLeft = pianoRect.left;
-            const targetWidth = pianoRect.width;
-
-            if (targetWidth > 0) {
-                canvas.width = targetWidth;
-            }
-
             const keys = keyboardEl.querySelectorAll('.key');
             keys.forEach(k => {
-                const kRect = k.getBoundingClientRect();
                 keyPosMap[k.dataset.note] = {
-                    left: kRect.left - pianoLeft,
-                    width: kRect.width,
+                    left: k.offsetLeft,
+                    width: k.offsetWidth,
                     isBlack: k.classList.contains('black')
                 };
             });
+            canvas.width = keyboardEl.offsetWidth;
         }
 
         function playTone(freq, duration = 0.4, volScale = 1.0) {
@@ -3941,9 +3201,12 @@
             return new Blob([outBuffer], { type: 'audio/wav' });
         }
 
-        initMIDIHardware();
-        syncSongsWithGoogleSheet();
-        setTimeout(updateKeyPositions, 100);
+        document.addEventListener('DOMContentLoaded', () => {
+            initMIDIHardware();
+            syncSongsWithGoogleSheet();
+            setTimeout(updateKeyPositions, 100);
+            checkFirstTimeCalibration();
+        });
     </script>
 </body>
 </html>
