@@ -1030,7 +1030,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 07:15 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 07:25 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -2036,7 +2036,10 @@
                             if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
                         }
                         const myEntry = playersList.find(p => p.name === sessionStudentName);
-                        if (myEntry) localPlayerId = myEntry.id;
+                        if (myEntry) {
+                            localPlayerId = myEntry.id;
+                            myEntry.isLocal = true;
+                        }
                         renderLobbyGrid('client-lobby-grid');
                     } else if (data.type === 'START_RACE') {
                         closeSprintOptionModal();
@@ -2138,7 +2141,7 @@
 
             playersList.forEach((player) => {
                 const laneDiv = document.createElement('div');
-                laneDiv.className = `runner-lane ${player.id === localPlayerId ? 'my-lane' : ''}`;
+                laneDiv.className = `runner-lane ${player.id === localPlayerId || player.isLocal ? 'my-lane' : ''}`;
                 laneDiv.id = `lane-${player.id}`;
 
                 const label = document.createElement('div');
@@ -2223,9 +2226,9 @@
             raceActive = false;
             currentSongTitle = "Finger Sprint";
 
-            const localPlayer = playersList.find(p => p.id === localPlayerId);
+            const localPlayer = playersList.find(p => p.isLocal || p.id === localPlayerId);
             const winner = [...playersList].sort((a,b) => parseFloat(a.finishTime || 999) - parseFloat(b.finishTime || 999))[0];
-            const isWinner = winner && winner.id === localPlayerId;
+            const isWinner = winner && (winner.isLocal || winner.id === localPlayerId);
 
             const popUpHeader = isWinner ? `🎉 YOU WON! (${localPlayer ? localPlayer.finishTime : ''}s)` : `❌ YOU LOST! Winner: ${winner ? winner.name : 'Opponent'}`;
 
@@ -2292,6 +2295,12 @@
                 return;
             }
 
+            // Sync host/local stats into local player entry
+            const localPlayer = playersList.find(p => p.isLocal || p.id === localPlayerId);
+            if (localPlayer) {
+                localPlayer.stats = { ...gameStats };
+            }
+
             const multiGraph = document.getElementById('multi-bar-graph');
             multiGraph.innerHTML = '';
             multiGraph.style.display = 'flex';
@@ -2299,7 +2308,6 @@
             document.getElementById('single-bar-graph').style.display = 'none';
             document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
 
-            const localPlayer = playersList.find(p => p.id === localPlayerId);
             let localAccuracyNum = 0;
 
             if (localPlayer && localPlayer.stats) {
@@ -2312,15 +2320,15 @@
                 }
             }
 
-            // Record scores for ALL players on their respective local browsers & via host broadcast
+            // Explicitly record each player's score to the leaderboard
             playersList.forEach(p => {
                 const pStats = p.stats || { perfect: 0, earlyLate: 0, miss: 0 };
                 const total = pStats.perfect + pStats.earlyLate + pStats.miss;
                 const acc = total > 0 ? (((pStats.perfect * 1.0 + pStats.earlyLate * 0.5) / total) * 100) : 0;
                 const accuracyNum = parseFloat(acc.toFixed(1));
 
-                // If host or if local player, trigger score post specifically for p.name
-                if (p.name && (p.id === localPlayerId || isSprintHost)) {
+                // Submit to Apps Script for each player using explicit player name
+                if (p.name) {
                     postScoreToLeaderboard(accuracyNum, p.name);
                 }
             });
@@ -2371,7 +2379,7 @@
             if (!raceActive) return;
 
             const rawNoteName = noteStr.toLowerCase().trim();
-            const localPlayer = playersList.find(p => p.id === localPlayerId);
+            const localPlayer = playersList.find(p => p.isLocal || p.id === localPlayerId);
 
             if (!localPlayer || localPlayer.finishTime) return;
 
@@ -3561,7 +3569,7 @@
                     }
 
                     if (isSongBattle) {
-                        const localPlayer = playersList.find(p => p.id === localPlayerId);
+                        const localPlayer = playersList.find(p => p.isLocal || p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
                             if (!isSprintHost && peerConnections.length > 0) {
@@ -3579,7 +3587,7 @@
                     highlightKey(noteStr, 200, '#ef4444');
 
                     if (isSongBattle) {
-                        const localPlayer = playersList.find(p => p.id === localPlayerId);
+                        const localPlayer = playersList.find(p => p.isLocal || p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
                             if (!isSprintHost && peerConnections.length > 0) {
@@ -3936,7 +3944,7 @@
                     item.gameStatus = 'miss';
                     gameStats.miss++;
                     if (isSongBattle) {
-                        const localPlayer = playersList.find(p => p.id === localPlayerId);
+                        const localPlayer = playersList.find(p => p.isLocal || p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
                             if (!isSprintHost && peerConnections.length > 0) {
@@ -3976,7 +3984,7 @@
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                     if (isSongBattle) {
-                        const localPlayer = playersList.find(p => p.id === localPlayerId);
+                        const localPlayer = playersList.find(p => p.isLocal || p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.finished = true;
                             localPlayer.stats = { ...gameStats };
