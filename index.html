@@ -101,6 +101,7 @@
         .container {
             width: 100%;
             max-width: 1400px;
+            height: calc(100vh - 16px);
             max-height: calc(100vh - 16px);
             background-color: var(--panel-bg);
             border-radius: 14px;
@@ -120,6 +121,7 @@
             gap: 8px;
             border-bottom: 1px solid #374151;
             padding-bottom: 6px;
+            flex-shrink: 0;
         }
 
         h1 {
@@ -303,6 +305,7 @@
             cursor: pointer;
         }
 
+        /* Expanded Vertical Visualizer Canvas Area */
         .visualizer-wrapper {
             position: relative;
             display: flex;
@@ -314,12 +317,16 @@
             box-shadow: inset 0 2px 8px rgba(0,0,0,0.9);
             overflow-x: auto;
             width: 100%;
+            flex: 1;
+            min-height: 380px;
         }
 
         #waterfall-canvas {
             background-color: var(--canvas-bg);
             border-bottom: 3px solid var(--hitline-color);
             display: block;
+            width: 100%;
+            flex: 1;
             transition: background-color 0.3s, border-color 0.3s;
         }
 
@@ -328,6 +335,7 @@
             position: relative;
             background-color: #000;
             user-select: none;
+            flex-shrink: 0;
         }
 
         .key {
@@ -454,6 +462,7 @@
             align-items: center;
             justify-content: space-between;
             padding-top: 4px;
+            flex-shrink: 0;
         }
 
         .version-stamp {
@@ -1005,12 +1014,12 @@
         <div class="runner-track-wrapper" id="runner-track" style="display: none;"></div>
 
         <div class="visualizer-wrapper">
-            <canvas id="waterfall-canvas" width="1232" height="210"></canvas>
+            <canvas id="waterfall-canvas" width="1232" height="380"></canvas>
             <div class="piano" id="keyboard"></div>
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 14:28 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 14:34 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -2391,7 +2400,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                document.getElementById('status').textContent = 'Failed to parse MIDI file.';
+                document.getElementById('status').textContent = 'Error parsing converted MIDI sequence.';
             }
 
             e.target.value = '';
@@ -4030,10 +4039,7 @@
 
         initMIDIHardware();
         syncSongsWithGoogleSheet();
-        setTimeout(() => {
-            updateKeyPositions();
-            checkFirstTimeCalibration();
-        }, 150);
+        setTimeout(updateKeyPositions, 100);
     </script>
 </body>
 </html>
