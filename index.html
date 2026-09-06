@@ -286,7 +286,7 @@
             stroke-linejoin: round;
         }
 
-        /* Condensed Inline Timeline Container */
+        /* Condensed Inline Timeline Control Container */
         .timeline-container-inline {
             background-color: #0b0f19;
             border: 1px solid #374151;
@@ -305,12 +305,12 @@
             cursor: pointer;
         }
 
-        /* VexFlow Notation Viewer Container above Waterfall Canvas */
+        /* VexFlow Notation Viewer Panel with Light High-Contrast SVG Styles */
         .vexflow-wrapper {
             position: relative;
             width: 100%;
-            height: 110px;
-            background: #080711;
+            height: 100px;
+            background: #090a12;
             border: 1px solid #2a283c;
             border-radius: 8px 8px 0 0;
             overflow-x: auto;
@@ -318,11 +318,24 @@
             display: flex;
             align-items: center;
             justify-content: flex-start;
-            padding: 2px 10px;
+            padding: 2px 8px;
         }
 
-        #vexflow-canvas {
-            display: block;
+        .vexflow-label {
+            position: absolute;
+            top: 4px;
+            left: 10px;
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: #38bdf8;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            z-index: 10;
+        }
+
+        #vexflow-canvas svg path, #vexflow-canvas svg rect {
+            fill: #f8fafc !important;
+            stroke: #f8fafc !important;
         }
 
         .visualizer-wrapper {
@@ -1028,6 +1041,7 @@
 
         <!-- VexFlow Grand Staff Transcription Panel Above Canvas -->
         <div class="vexflow-wrapper" id="vexflow-wrapper">
+            <div class="vexflow-label">🎼 Sheet Music Transcription</div>
             <div id="vexflow-canvas"></div>
         </div>
 
@@ -1037,7 +1051,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 13:48 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 13:58 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1397,13 +1411,12 @@
             if (!window.Vex || !currentSong || currentSong.length === 0) return;
 
             try {
-                const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental } = Vex.Flow;
+                const { Renderer, Stave, StaveNote, Voice, Formatter } = Vex.Flow;
                 vfRenderer = new Renderer(container, Renderer.Backends.SVG);
-                vfRenderer.resize(1200, 105);
+                vfRenderer.resize(1200, 95);
                 vfContext = vfRenderer.getContext();
-                vfContext.setFont("Arial", 10, "").setBackgroundFillStyle("#080711");
 
-                const staveTreble = new Stave(10, 0, 1180);
+                const staveTreble = new Stave(10, -5, 1180);
                 staveTreble.addClef("treble").setContext(vfContext).draw();
 
                 // Convert first 12 song notes to VexFlow stave notes
@@ -3053,8 +3066,8 @@
                 isPaused = true;
                 pauseStartTime = performance.now();
                 btnPause.textContent = 'Resume';
-                btnPause.classList.remove('btn-warning');
-                btnPause.classList.add('btn-success');
+                btnPause.classList.remove('btn-success');
+                btnPause.classList.add('btn-warning');
                 if (animationFrameId !== null) {
                     cancelAnimationFrame(animationFrameId);
                     animationFrameId = null;
