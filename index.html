@@ -6,7 +6,6 @@
     <title>PianoPad Player - Visualizer & Haycode Creator</title>
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
     <style>
         :root {
             --bg-color: #121218;
@@ -302,38 +301,6 @@
             width: 50px;
             accent-color: var(--loop-active);
             cursor: pointer;
-        }
-
-        .vexflow-wrapper {
-            position: relative;
-            width: 100%;
-            height: 100px;
-            background: #090a12;
-            border: 1px solid #2a283c;
-            border-radius: 8px 8px 0 0;
-            overflow-x: auto;
-            overflow-y: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            padding: 2px 8px;
-        }
-
-        .vexflow-label {
-            position: absolute;
-            top: 4px;
-            left: 10px;
-            font-size: 0.65rem;
-            font-weight: 800;
-            color: #38bdf8;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            z-index: 10;
-        }
-
-        #vexflow-canvas svg path, #vexflow-canvas svg rect {
-            fill: #f8fafc !important;
-            stroke: #f8fafc !important;
         }
 
         .visualizer-wrapper {
@@ -1037,19 +1004,13 @@
 
         <div class="runner-track-wrapper" id="runner-track" style="display: none;"></div>
 
-        <!-- VexFlow Grand Staff Transcription Panel Above Canvas with White SVG Fill Overrides -->
-        <div class="vexflow-wrapper" id="vexflow-wrapper">
-            <div class="vexflow-label">🎼 Sheet Music Transcription</div>
-            <div id="vexflow-canvas"></div>
-        </div>
-
         <div class="visualizer-wrapper">
             <canvas id="waterfall-canvas" width="1232" height="210"></canvas>
             <div class="piano" id="keyboard"></div>
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 14:21 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 14:28 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1301,10 +1262,6 @@
         let calibHighestRawMIDI = 96;
         let midiOctaveOffset = 0;
 
-        // VexFlow Rendering Variables
-        let vfRenderer = null;
-        let vfContext = null;
-
         // Arcade Mini-Game Variables
         let activeMiniGame = null;
         let simonSequence = [];
@@ -1401,68 +1358,6 @@
                 k.style.boxShadow = '';
             });
             document.getElementById('status').textContent = 'Arcade Mini-Game stopped. Select another game or return Home.';
-        }
-
-        function renderVexFlowNotation() {
-            const container = document.getElementById('vexflow-canvas');
-            container.innerHTML = '';
-            if (!window.Vex || !currentSong || currentSong.length === 0) return;
-
-            try {
-                const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental } = Vex.Flow;
-                
-                // Expand SVG canvas width based on song note count for scrolling
-                const numNotes = currentSong.length;
-                const canvasWidth = Math.max(1200, numNotes * 85);
-                
-                vfRenderer = new Renderer(container, Renderer.Backends.SVG);
-                vfRenderer.resize(canvasWidth, 90);
-                vfContext = vfRenderer.getContext();
-
-                const staveTreble = new Stave(10, -10, canvasWidth - 20);
-                staveTreble.addClef("treble").setContext(vfContext).draw();
-
-                const staveNotes = [];
-
-                for (let i = 0; i < numNotes; i++) {
-                    const item = currentSong[i];
-                    const rawFirstNote = item.notes[0] || 'C4';
-                    
-                    // Parse Note Name, Sharp/Flat Accidental, and Octave
-                    const match = rawFirstNote.match(/^([a-gA-G])(#?)([0-9]+)$/);
-                    if (!match) continue;
-
-                    const letter = match[1].toLowerCase();
-                    const hasSharp = match[2] === '#';
-                    const realOctave = parseInt(match[3], 10);
-
-                    // Clef assignment: treble for octave 4+, bass clef mapping for low octaves
-                    const clefType = realOctave >= 4 ? "treble" : "bass";
-                    const formattedPitch = hasSharp ? `${letter}#/${realOctave}` : `${letter}/${realOctave}`;
-
-                    const staveNote = new StaveNote({
-                        clef: clefType,
-                        keys: [formattedPitch],
-                        duration: "q"
-                    });
-
-                    // Accidental attachment to display sharp signs (#) on the stave
-                    if (hasSharp) {
-                        staveNote.addModifier(new Accidental("#"));
-                    }
-
-                    staveNotes.push(staveNote);
-                }
-
-                if (staveNotes.length > 0) {
-                    const voice = new Voice({ num_beats: staveNotes.length, beat_value: 4 });
-                    voice.addTickables(staveNotes);
-                    new Formatter().joinVoices([voice]).format([voice], canvasWidth - 80);
-                    voice.draw(vfContext, staveTreble);
-                }
-            } catch (err) {
-                console.warn("VexFlow Render Warning:", err);
-            }
         }
 
         function checkFirstTimeCalibration() {
@@ -2894,6 +2789,10 @@
 
             document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
 
+            document.getElementById('single-bar-graph').style.display = 'flex';
+            document.getElementById('multi-bar-graph').style.display = 'none';
+            document.getElementById('btn-battle-again').style.display = 'none';
+
             const greenPct = totalHits > 0 ? (perfectHits / totalHits) * 100 : 0;
             const orangePct = totalHits > 0 ? (earlyLateHits / totalHits) * 100 : 0;
             const redPct = totalHits > 0 ? (missedHits / totalHits) * 100 : 0;
@@ -3662,8 +3561,6 @@
                     gameStatus: 'pending'
                 });
             });
-
-            renderVexFlowNotation();
         }
 
         songSelect.addEventListener('change', (e) => {
