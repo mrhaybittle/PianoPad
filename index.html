@@ -1029,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 09:30 AEST</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 09:42 AEST</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1300,7 +1300,7 @@
         let dodgeLives = 5;
         let dodgeDodgedCount = 0;
 
-        // Google Apps Script Relay Long Polling State
+        // JSONP Relay State
         let httpPollTimer = null;
         let isSprintHost = false;
         let localPlayerId = 'p1';
@@ -1352,6 +1352,29 @@
             const firstName = parts[0];
             const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
             return `${firstName} ${lastInitial}`;
+        }
+
+        // Bypasses CORS completely using dynamic JSONP script Injection
+        function sendJSONP(url, callbackName) {
+            return new Promise((resolve) => {
+                const script = document.createElement('script');
+                const cbName = callbackName || 'jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+                
+                window[cbName] = function(data) {
+                    delete window[cbName];
+                    document.body.removeChild(script);
+                    resolve(data);
+                };
+
+                const del = url.includes('?') ? '&' : '?';
+                script.src = `${url}${del}callback=${cbName}`;
+                script.onerror = function() {
+                    delete window[cbName];
+                    if (document.body.contains(script)) document.body.removeChild(script);
+                    resolve({ error: "SCRIPT_LOAD_ERROR" });
+                };
+                document.body.appendChild(script);
+            });
         }
 
         /* --- Audio Pitch Detection Implementation --- */
@@ -1805,7 +1828,7 @@
             requestAnimationFrame(renderLoop);
         }
 
-        /* 5. MULTI-PLAYER / BOT SPRINT & SONG BATTLE SYSTEM (Google Apps Script Relay GET) */
+        /* 5. MULTI-PLAYER / BOT SPRINT & SONG BATTLE SYSTEM (Google Apps Script JSONP) */
         function openSprintModeSelector() {
             initAudio();
             isSongBattle = false;
@@ -1981,13 +2004,9 @@
             playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true }];
             renderLobbyGrid('lobby-players-grid');
 
-            // Reliable GET-based Room Creation
-            try {
-                const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(hostName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
-                await fetch(url);
-            } catch(e) {
-                console.warn("Apps Script Room Creation:", e);
-            }
+            // Send CREATE_ROOM via JSONP dynamic script insertion
+            const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(hostName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
+            await sendJSONP(url);
 
             startGoogleAppsScriptPolling(activeBattleRoomCode, true);
         }
@@ -1999,77 +2018,70 @@
             localPlayerId = 'p' + (Date.now() % 10000);
             const avatarIdx = Math.floor(Math.random() * AVATARS.length);
 
-            try {
-                // Reliable GET-based Room Joining
-                const url = `${APPS_SCRIPT_URL}?action=JOIN_ROOM&roomCode=${roomCode}&playerId=${localPlayerId}&playerName=${encodeURIComponent(racerName)}&avatar=${encodeURIComponent(AVATARS[avatarIdx])}&t=${Date.now()}`;
-                await fetch(url);
+            // Send JOIN_ROOM via JSONP dynamic script insertion
+            const url = `${APPS_SCRIPT_URL}?action=JOIN_ROOM&roomCode=${roomCode}&playerId=${localPlayerId}&playerName=${encodeURIComponent(racerName)}&avatar=${encodeURIComponent(AVATARS[avatarIdx])}&t=${Date.now()}`;
+            const res = await sendJSONP(url);
 
-                document.getElementById('code-input-group').style.display = 'none';
-                document.getElementById('btn-confirm-sprint-action').style.display = 'none';
-                document.getElementById('client-waiting-group').style.display = 'flex';
-                document.getElementById('status').textContent = `Connected to Host Code (${roomCode})! Waiting for start...`;
-
-                startGoogleAppsScriptPolling(roomCode, false);
-
-            } catch (err) {
-                console.error("Google Relay Join Error:", err);
-                alert("Failed to join room. Check code and network.");
+            if (res && res.error) {
+                alert("Room not found! Check code and try again.");
+                return;
             }
+
+            document.getElementById('code-input-group').style.display = 'none';
+            document.getElementById('btn-confirm-sprint-action').style.display = 'none';
+            document.getElementById('client-waiting-group').style.display = 'flex';
+            document.getElementById('status').textContent = `Connected to Host Code (${roomCode})! Waiting for start...`;
+
+            startGoogleAppsScriptPolling(roomCode, false);
         }
 
         function startGoogleAppsScriptPolling(roomCode, isHost) {
             if (httpPollTimer) clearInterval(httpPollTimer);
 
             httpPollTimer = setInterval(async () => {
-                try {
-                    const res = await fetch(`${APPS_SCRIPT_URL}?action=GET_ROOM&roomCode=${roomCode}&t=${Date.now()}`);
-                    if (!res.ok) return;
-                    const data = await res.json();
-                    if (!data || !data.players) return;
+                const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_ROOM&roomCode=${roomCode}&t=${Date.now()}`);
+                if (!res || !res.players) return;
 
-                    playersList = data.players;
-                    if (isHost) renderLobbyGrid('lobby-players-grid');
-                    else renderLobbyGrid('client-lobby-grid');
+                playersList = res.players;
+                if (isHost) renderLobbyGrid('lobby-players-grid');
+                else renderLobbyGrid('client-lobby-grid');
 
+                if (isSongBattle) renderSongBattleResults();
+                else updateMultiplayerLanesUI();
+
+                if (res.songCode && !isHost) {
+                    currentSongTitle = res.songTitle;
+                    songSelect.value = res.songCode;
+                    const parsed = parsePianoPad(res.songCode);
+                    if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
+                }
+
+                if (res.status === "started" && !raceActive && !isPlaying) {
+                    document.getElementById('sprint-option-modal').classList.remove('open');
+                    arcadeHub.classList.remove('open');
+                    resetGameStats();
+
+                    if (isSongBattle) {
+                        isGameMode = true;
+                        btnGame.textContent = 'Game Mode: ON';
+                        btnGame.classList.add('btn-game-active');
+                        startCountdown(() => { playSong(); });
+                    } else {
+                        activeMiniGame = 'sprint';
+                        renderSprintLanes();
+                        startCountdown(() => {
+                            raceActive = true;
+                            sprintStartTime = performance.now();
+                            sprintKeystrokeCount = 0;
+                            sprintIndex = 0;
+                        });
+                    }
+                }
+
+                if (res.status === "finished" && raceActive) {
+                    raceActive = false;
                     if (isSongBattle) renderSongBattleResults();
-                    else updateMultiplayerLanesUI();
-
-                    if (data.songCode && !isHost) {
-                        currentSongTitle = data.songTitle;
-                        songSelect.value = data.songCode;
-                        const parsed = parsePianoPad(data.songCode);
-                        if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
-                    }
-
-                    if (data.status === "started" && !raceActive && !isPlaying) {
-                        document.getElementById('sprint-option-modal').classList.remove('open');
-                        arcadeHub.classList.remove('open');
-                        resetGameStats();
-
-                        if (isSongBattle) {
-                            isGameMode = true;
-                            btnGame.textContent = 'Game Mode: ON';
-                            btnGame.classList.add('btn-game-active');
-                            startCountdown(() => { playSong(); });
-                        } else {
-                            activeMiniGame = 'sprint';
-                            renderSprintLanes();
-                            startCountdown(() => {
-                                raceActive = true;
-                                sprintStartTime = performance.now();
-                                sprintKeystrokeCount = 0;
-                                sprintIndex = 0;
-                            });
-                        }
-                    }
-
-                    if (data.status === "finished" && raceActive) {
-                        raceActive = false;
-                        if (isSongBattle) renderSongBattleResults();
-                        else finishSprintRace();
-                    }
-                } catch(e) {
-                    console.warn("Polling Apps Script...", e);
+                    else finishSprintRace();
                 }
             }, 1000);
         }
@@ -2079,19 +2091,15 @@
             const localPlayer = playersList.find(p => p.id === localPlayerId);
             if (!localPlayer) return;
 
-            try {
-                const url = `${APPS_SCRIPT_URL}?action=UPDATE_PLAYER&roomCode=${activeBattleRoomCode}&playerId=${localPlayerId}&pxProgress=${localPlayer.pxProgress}&finishTime=${localPlayer.finishTime || ''}&finished=${localPlayer.finished}&t=${Date.now()}`;
-                await fetch(url);
-            } catch(e) {}
+            const url = `${APPS_SCRIPT_URL}?action=UPDATE_PLAYER&roomCode=${activeBattleRoomCode}&playerId=${localPlayerId}&pxProgress=${localPlayer.pxProgress}&finishTime=${localPlayer.finishTime || ''}&finished=${localPlayer.finished}&t=${Date.now()}`;
+            await sendJSONP(url);
         }
 
         async function triggerHostStartRace() {
             if (!activeBattleRoomCode) return;
 
-            try {
-                const url = `${APPS_SCRIPT_URL}?action=START_ROOM&roomCode=${activeBattleRoomCode}&t=${Date.now()}`;
-                await fetch(url);
-            } catch(e) {}
+            const url = `${APPS_SCRIPT_URL}?action=START_ROOM&roomCode=${activeBattleRoomCode}&t=${Date.now()}`;
+            await sendJSONP(url);
 
             document.getElementById('sprint-option-modal').classList.remove('open');
             arcadeHub.classList.remove('open');
