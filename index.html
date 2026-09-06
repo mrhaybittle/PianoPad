@@ -1029,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | Google Relay Active</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 09:24 AEST</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1981,7 +1981,6 @@
             playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true }];
             renderLobbyGrid('lobby-players-grid');
 
-            // Send CREATE ROOM action to Google Apps Script Relay
             try {
                 await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
