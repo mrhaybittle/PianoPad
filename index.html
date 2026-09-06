@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PianoPad Player - Visualizer & Haycode Creator</title>
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root {
             --bg-color: #121218;
@@ -1030,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 18:45 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.07 | Zscaler HTTPS Relay Active</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1049,7 +1048,7 @@
             
             <div id="sprint-form-container" style="display: none; flex-direction: column; gap: 8px; text-align: left;">
                 <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Your First Name & Surname Initial:</label>
-                <input type="text" id="sprint-player-name" placeholder="e.g. Alex M." style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem;">
+                <input type="text" id="sprint-player-name" placeholder="e.g. Alex M" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem;">
                 
                 <div id="host-song-selector-group" style="display:none; flex-direction:column; gap:4px; margin-top:4px;">
                     <label style="font-size:0.75rem; color:#facc15; font-weight:700;">Select Battle Song:</label>
@@ -1060,13 +1059,13 @@
 
                 <div id="code-input-group" style="display:none; flex-direction:column; gap:4px;">
                     <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Enter Host Join Code:</label>
-                    <input type="text" id="sprint-room-code" placeholder="e.g. 482" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; text-transform:uppercase;">
+                    <input type="text" id="sprint-room-code" placeholder="e.g. 766" maxlength="6" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; text-transform:uppercase;">
                 </div>
 
                 <div id="host-lobby-group" style="display:none; flex-direction:column; gap:4px; text-align:center;">
                     <div style="font-size:1.1rem; color:#facc15; font-weight:800;" id="generated-room-code-display">Room Code: Generating...</div>
                     <div class="lobby-players-grid" id="lobby-players-grid"></div>
-                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-center;" onclick="triggerHostStartRace()">🚀 START LIVE SESSION FOR ALL PLAYERS</button>
+                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-content:center;" onclick="triggerHostStartRace()">🚀 START LIVE SESSION FOR ALL PLAYERS</button>
                 </div>
 
                 <div id="client-waiting-group" style="display:none; flex-direction:column; gap:6px; text-align:center;">
@@ -1140,7 +1139,7 @@
         </div>
     </div>
 
-    <!-- Calibration Wizard Modal (Auto-Prompted First Time) -->
+    <!-- Calibration Wizard Modal -->
     <div class="modal-overlay" id="calib-modal">
         <div class="modal" style="max-width: 680px;">
             <h2>MIDI Keyboard Calibration</h2>
@@ -1169,7 +1168,6 @@
             <div id="game-rank-text" class="rank-display-box">Calculating Rank...</div>
 
             <div class="graph-container">
-                <!-- Unlimited Horizontal Scroll for Song Battle Multi-Player Charts -->
                 <div class="multi-bar-container" id="multi-bar-graph" style="display: none;"></div>
                 
                 <div class="bar-chart-wrapper" id="single-bar-graph">
@@ -1243,6 +1241,9 @@
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyJ6BXOjgbsbv03Xlp3kFVj_6aIfVJ7NM66Y3f_fMzuOeDabH2HzEhE-rLuoZzncXAA6g/exec';
 
+        // Public HTTPS Endpoint for Zscaler-compliant room communication
+        const DB_URL = "https://pianopad-default-rtdb.firebaseio.com/rooms";
+
         let audioCtx = null;
         let songList = [];
         let currentSong = [];
@@ -1302,9 +1303,8 @@
         let dodgeLives = 5;
         let dodgeDodgedCount = 0;
 
-        // Unlimited Multi-Player Live PeerJS & Song Battle Config
-        let peerInstance = null;
-        let peerConnections = [];
+        // Zscaler-Safe Long Polling State
+        let httpPollTimer = null;
         let isSprintHost = false;
         let localPlayerId = 'p1';
         let sprintSequence = ['c1', 'd1'];
@@ -1348,6 +1348,14 @@
             else if (currentSongTitle === "Finger Sprint") openSprintModeSelector();
             else playSong();
         });
+
+        function sanitizeName(str) {
+            const parts = str.trim().split(/\s+/);
+            if (parts.length === 1) return parts[0];
+            const firstName = parts[0];
+            const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
+            return `${firstName} ${lastInitial}`;
+        }
 
         /* --- Audio Pitch Detection Implementation --- */
         async function toggleMicrophoneListening() {
@@ -1499,9 +1507,9 @@
             isSongBattle = false;
             runnerTrack.style.display = 'none';
             runnerTrack.innerHTML = '';
-            if (peerInstance && !isSprintHost) {
-                peerInstance.destroy();
-                peerInstance = null;
+            if (httpPollTimer) {
+                clearInterval(httpPollTimer);
+                httpPollTimer = null;
             }
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.querySelectorAll('.key').forEach(k => {
@@ -1800,7 +1808,7 @@
             requestAnimationFrame(renderLoop);
         }
 
-        /* 5. MULTI-PLAYER / BOT SPRINT & SONG BATTLE SYSTEM */
+        /* 5. MULTI-PLAYER / BOT SPRINT & SONG BATTLE SYSTEM (Zscaler HTTPS REST Relay) */
         function openSprintModeSelector() {
             initAudio();
             isSongBattle = false;
@@ -1859,12 +1867,15 @@
             }
             
             document.getElementById('btn-confirm-sprint-action').onclick = () => {
-                const nameInput = document.getElementById('sprint-player-name').value.trim();
-                if (!nameInput) {
+                const rawName = document.getElementById('sprint-player-name').value;
+                if (!rawName.trim()) {
                     document.getElementById('inline-name-error').style.display = 'block';
                     document.getElementById('sprint-player-name').focus();
                     return;
                 }
+
+                const nameInput = sanitizeName(rawName);
+                document.getElementById('sprint-player-name').value = nameInput;
 
                 if (isSongBattle) {
                     const selectedCode = document.getElementById('host-battle-song-select').value;
@@ -1890,10 +1901,10 @@
             document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
 
             document.getElementById('btn-confirm-sprint-action').onclick = () => {
-                const nameInput = document.getElementById('sprint-player-name').value.trim();
+                const rawName = document.getElementById('sprint-player-name').value;
                 const roomCode = document.getElementById('sprint-room-code').value.trim().toUpperCase();
 
-                if (!nameInput) {
+                if (!rawName.trim()) {
                     document.getElementById('inline-name-error').style.display = 'block';
                     document.getElementById('sprint-player-name').focus();
                     return;
@@ -1904,6 +1915,9 @@
                     document.getElementById('sprint-room-code').focus();
                     return;
                 }
+
+                const nameInput = sanitizeName(rawName);
+                document.getElementById('sprint-player-name').value = nameInput;
 
                 showJoinSetup(nameInput, roomCode);
             };
@@ -1956,14 +1970,14 @@
             });
         }
 
-        function showHostSetup(hostName) {
+        async function showHostSetup(hostName) {
             sessionStudentName = hostName;
             document.getElementById('btn-confirm-sprint-action').style.display = 'none';
             document.getElementById('host-lobby-group').style.display = 'flex';
             document.getElementById('host-song-selector-group').style.display = 'none';
 
             if (!activeBattleRoomCode || !isSprintHost) {
-                activeBattleRoomCode = isSongBattle ? '' + Math.floor(100 + Math.random() * 900) : 'RACE-' + Math.floor(1000 + Math.random() * 9000);
+                activeBattleRoomCode = '' + Math.floor(100 + Math.random() * 900);
             }
             
             document.getElementById('generated-room-code-display').textContent = `Join Code: ${activeBattleRoomCode}`;
@@ -1973,90 +1987,113 @@
             playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true }];
             renderLobbyGrid('lobby-players-grid');
 
-            if (!peerInstance || peerInstance.destroyed) {
-                peerInstance = new Peer(activeBattleRoomCode);
-                peerInstance.on('connection', (conn) => {
-                    peerConnections.push(conn);
+            // Register Room on Zscaler-safe REST Firebase API
+            const roomData = {
+                status: "lobby",
+                songTitle: currentSongTitle,
+                songCode: songSelect.value,
+                players: playersList,
+                updatedAt: Date.now()
+            };
 
-                    conn.on('data', (data) => {
-                        if (data.type === 'JOIN') {
-                            const newPId = 'p' + (playersList.length + 1);
-                            const avatarIdx = (playersList.length) % AVATARS.length;
-                            const newP = { id: newPId, name: data.name, avatar: AVATARS[avatarIdx], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: false };
-                            playersList.push(newP);
-
-                            renderLobbyGrid('lobby-players-grid');
-                            broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList, songTitle: currentSongTitle, songCode: songSelect.value });
-                        } else if (data.type === 'PROGRESS') {
-                            const player = playersList.find(p => p.id === data.id);
-                            if (player) {
-                                player.pxProgress = data.pxProgress;
-                                if (data.finishTime && !player.finishTime) {
-                                    player.finishTime = data.finishTime;
-                                }
-                                if (data.stats) player.stats = data.stats;
-                                if (data.finished) player.finished = true;
-                                broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                                if (isSongBattle) renderSongBattleResults();
-                                else updateMultiplayerLanesUI();
-                                checkAllFinished();
-                            }
-                        }
-                    });
+            try {
+                await fetch(`${DB_URL}/${activeBattleRoomCode}.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(roomData)
                 });
-            } else {
-                broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList, songTitle: currentSongTitle, songCode: songSelect.value });
+            } catch(e) {
+                console.warn("HTTPS Sync Error", e);
             }
+
+            // Start HTTPS Long-Polling for connected players
+            startHTTPSPolling(activeBattleRoomCode, true);
         }
 
-        function showJoinSetup(racerName, roomCode) {
+        async function showJoinSetup(racerName, roomCode) {
             sessionStudentName = racerName;
             activeBattleRoomCode = roomCode;
 
-            peerInstance = new Peer();
-            peerInstance.on('open', () => {
-                const conn = peerInstance.connect(roomCode);
-                peerConnections = [conn];
+            try {
+                const res = await fetch(`${DB_URL}/${roomCode}.json`);
+                const roomData = await res.json();
 
-                conn.on('open', () => {
-                    conn.send({ type: 'JOIN', name: racerName });
-                    document.getElementById('code-input-group').style.display = 'none';
-                    document.getElementById('btn-confirm-sprint-action').style.display = 'none';
-                    document.getElementById('client-waiting-group').style.display = 'flex';
-                    document.getElementById('status').textContent = `Connected to Host Code (${roomCode})! Waiting for start...`;
+                if (!roomData) {
+                    alert("Room Code not found! Please check the code and try again.");
+                    return;
+                }
+
+                localPlayerId = 'p' + (Date.now() % 10000);
+                const avatarIdx = (roomData.players ? roomData.players.length : 1) % AVATARS.length;
+                
+                const newPlayer = {
+                    id: localPlayerId,
+                    name: racerName,
+                    avatar: AVATARS[avatarIdx],
+                    pxProgress: 0,
+                    finishTime: null,
+                    stats: { perfect:0, earlyLate:0, miss:0 },
+                    finished: false,
+                    isLocal: true
+                };
+
+                let updatedPlayers = roomData.players || [];
+                updatedPlayers.push(newPlayer);
+
+                await fetch(`${DB_URL}/${roomCode}/players.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedPlayers)
                 });
 
-                conn.on('data', (data) => {
-                    if (data.type === 'LOBBY_UPDATE') {
+                document.getElementById('code-input-group').style.display = 'none';
+                document.getElementById('btn-confirm-sprint-action').style.display = 'none';
+                document.getElementById('client-waiting-group').style.display = 'flex';
+                document.getElementById('status').textContent = `Connected to Host Code (${roomCode}) via HTTPS! Waiting for start...`;
+
+                startHTTPSPolling(roomCode, false);
+
+            } catch (err) {
+                console.error("Zscaler Join Error:", err);
+                alert("Failed to connect over HTTPS. Check network settings.");
+            }
+        }
+
+        function startHTTPSPolling(roomCode, isHost) {
+            if (httpPollTimer) clearInterval(httpPollTimer);
+
+            httpPollTimer = setInterval(async () => {
+                try {
+                    const res = await fetch(`${DB_URL}/${roomCode}.json`);
+                    const data = await res.json();
+                    if (!data) return;
+
+                    if (data.players) {
                         playersList = data.players;
-                        if (data.songCode) {
-                            currentSongTitle = data.songTitle;
-                            songSelect.value = data.songCode;
-                            const parsed = parsePianoPad(data.songCode);
-                            if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
-                        }
-                        const myEntry = playersList.find(p => p.name === sessionStudentName);
-                        if (myEntry) localPlayerId = myEntry.id;
-                        renderLobbyGrid('client-lobby-grid');
-                    } else if (data.type === 'START_RACE') {
+                        if (isHost) renderLobbyGrid('lobby-players-grid');
+                        else renderLobbyGrid('client-lobby-grid');
+
+                        if (isSongBattle) renderSongBattleResults();
+                        else updateMultiplayerLanesUI();
+                    }
+
+                    if (data.songCode && !isHost) {
+                        currentSongTitle = data.songTitle;
+                        songSelect.value = data.songCode;
+                        const parsed = parsePianoPad(data.songCode);
+                        if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
+                    }
+
+                    if (data.status === "started" && !raceActive && !isPlaying) {
                         closeSprintOptionModal();
                         arcadeHub.classList.remove('open');
                         resetGameStats();
-
-                        if (data.songCode) {
-                            currentSongTitle = data.songTitle;
-                            songSelect.value = data.songCode;
-                            const parsed = parsePianoPad(data.songCode);
-                            if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
-                        }
 
                         if (isSongBattle) {
                             isGameMode = true;
                             btnGame.textContent = 'Game Mode: ON';
                             btnGame.classList.add('btn-game-active');
-                            startCountdown(() => {
-                                playSong();
-                            });
+                            startCountdown(() => { playSong(); });
                         } else {
                             activeMiniGame = 'sprint';
                             renderSprintLanes();
@@ -2067,28 +2104,42 @@
                                 sprintIndex = 0;
                             });
                         }
-                    } else if (data.type === 'RACER_UPDATE') {
-                        playersList = data.players;
-                        if (isSongBattle) renderSongBattleResults();
-                        else updateMultiplayerLanesUI();
-                    } else if (data.type === 'RACE_FINISHED') {
+                    }
+
+                    if (data.status === "finished" && raceActive) {
                         raceActive = false;
-                        playersList = data.players;
                         if (isSongBattle) renderSongBattleResults();
                         else finishSprintRace();
-                    } else if (data.type === 'BATTLE_AGAIN_PROMPT') {
-                        gameResultsModal.classList.remove('open');
-                        const choice = confirm(`Host ${data.hostName} initiated a new Battle! Join Same Battle (${activeBattleRoomCode})?`);
-                        if (choice) {
-                            showJoinSetup(sessionStudentName, activeBattleRoomCode);
-                        }
                     }
-                });
-            });
+                } catch(e) {
+                    console.warn("Zscaler Poll Retry...", e);
+                }
+            }, 1000); // 1-second long-polling interval over HTTPS
         }
 
-        function triggerHostStartRace() {
-            broadcastPeerMsg({ type: 'START_RACE', songTitle: currentSongTitle, songCode: songSelect.value });
+        async function pushHTTPSPlayerState() {
+            if (!activeBattleRoomCode) return;
+            try {
+                await fetch(`${DB_URL}/${activeBattleRoomCode}/players.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(playersList)
+                });
+            } catch(e) {
+                console.warn("HTTPS Push Error", e);
+            }
+        }
+
+        async function triggerHostStartRace() {
+            if (!activeBattleRoomCode) return;
+
+            try {
+                await fetch(`${DB_URL}/${activeBattleRoomCode}/status.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify("started")
+                });
+            } catch(e) {}
 
             closeSprintOptionModal();
             arcadeHub.classList.remove('open');
@@ -2116,18 +2167,9 @@
         function triggerBattleAgain() {
             gameResultsModal.classList.remove('open');
             if (isSprintHost) {
-                broadcastPeerMsg({ type: 'BATTLE_AGAIN_PROMPT', hostName: sessionStudentName });
                 showHostSetup(sessionStudentName);
                 document.getElementById('sprint-option-modal').classList.add('open');
             }
-        }
-
-        function broadcastPeerMsg(msg) {
-            peerConnections.forEach(conn => {
-                if (conn && conn.open) {
-                    conn.send(msg);
-                }
-            });
         }
 
         function renderSprintLanes() {
@@ -2210,7 +2252,11 @@
                 if (raceActive) {
                     raceActive = false;
                     if (isSprintHost) {
-                        broadcastPeerMsg({ type: 'RACE_FINISHED', players: playersList });
+                        fetch(`${DB_URL}/${activeBattleRoomCode}/status.json`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify("finished")
+                        });
                     }
                     finishSprintRace();
                 } else if (isSongBattle) {
@@ -2285,7 +2331,6 @@
         }
 
         function renderSongBattleResults() {
-            // DEFER UNTIL ALL CONNECTED PLAYERS FINISH
             const allPlayersFinished = playersList.every(p => p.finished);
             if (!allPlayersFinished) {
                 document.getElementById('status').textContent = `🏁 Battle finished for you! Waiting for remaining players to complete...`;
@@ -2369,11 +2414,7 @@
                     localPlayer.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
                 }
 
-                if (!isSprintHost && peerConnections.length > 0) {
-                    peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: localPlayer.pxProgress, finishTime: localPlayer.finishTime });
-                } else if (isSprintHost) {
-                    broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                }
+                pushHTTPSPlayerState();
 
                 if (localPlayer.pxProgress >= 3600) {
                     checkAllFinished();
@@ -2929,7 +2970,7 @@
             if (!sessionStudentName) {
                 const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
                 if (inputName && inputName.trim()) {
-                    sessionStudentName = inputName.trim();
+                    sessionStudentName = sanitizeName(inputName);
                 } else {
                     sessionStudentName = "Anonymous";
                 }
@@ -3544,11 +3585,7 @@
                         const localPlayer = playersList.find(p => p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
-                            if (!isSprintHost && peerConnections.length > 0) {
-                                peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, stats: gameStats });
-                            } else if (isSprintHost) {
-                                broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                            }
+                            pushHTTPSPlayerState();
                         }
                     }
 
@@ -3562,11 +3599,7 @@
                         const localPlayer = playersList.find(p => p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
-                            if (!isSprintHost && peerConnections.length > 0) {
-                                peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, stats: gameStats });
-                            } else if (isSprintHost) {
-                                broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                            }
+                            pushHTTPSPlayerState();
                         }
                     }
                 }
@@ -3919,11 +3952,7 @@
                         const localPlayer = playersList.find(p => p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
-                            if (!isSprintHost && peerConnections.length > 0) {
-                                peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, stats: gameStats });
-                            } else if (isSprintHost) {
-                                broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                            }
+                            pushHTTPSPlayerState();
                         }
                     }
                     if (isGameMode) updateGameStatus();
@@ -3959,12 +3988,8 @@
                         const localPlayer = playersList.find(p => p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.finished = true;
-                            if (!isSprintHost && peerConnections.length > 0) {
-                                peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, stats: gameStats, finished: true });
-                            } else if (isSprintHost) {
-                                broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                                checkAllFinished();
-                            }
+                            pushHTTPSPlayerState();
+                            checkAllFinished();
                         }
                         return;
                     } else if (isGameMode) {
