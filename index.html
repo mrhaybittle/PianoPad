@@ -938,7 +938,7 @@
                     Stop
                 </button>
 
-                <button type="button" id="btn-song-battle" class="btn-song-battle" style="display: none;">
+                <button type="button" id="btn-song-battle" class="btn-song-battle">
                     ⚔️ SONG BATTLE
                 </button>
 
@@ -1017,7 +1017,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 10:32 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 10:43 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1038,6 +1038,11 @@
                 <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Your First Name & Surname Initial:</label>
                 <input type="text" id="sprint-player-name" placeholder="e.g. Alex M." style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem;">
                 
+                <div id="host-song-selector-group" style="display:none; flex-direction:column; gap:4px; margin-top:4px;">
+                    <label style="font-size:0.75rem; color:#facc15; font-weight:700;">Select Battle Song:</label>
+                    <select id="host-battle-song-select" style="width:100%; max-width:100%;"></select>
+                </div>
+
                 <div id="inline-name-error" style="color:#ef4444; font-size:0.75rem; font-weight:700; display:none;">⚠️ Please enter your First Name & Surname Initial before continuing!</div>
 
                 <div id="code-input-group" style="display:none; flex-direction:column; gap:4px;">
@@ -1048,7 +1053,7 @@
                 <div id="host-lobby-group" style="display:none; flex-direction:column; gap:4px; text-align:center;">
                     <div style="font-size:1.1rem; color:#facc15; font-weight:800;" id="generated-room-code-display">Room Code: Generating...</div>
                     <div class="lobby-players-grid" id="lobby-players-grid"></div>
-                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-content:center;" onclick="triggerHostStartRace()">🚀 START LIVE SESSION FOR ALL PLAYERS</button>
+                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-center;" onclick="triggerHostStartRace()">🚀 START LIVE SESSION FOR ALL PLAYERS</button>
                 </div>
 
                 <div id="client-waiting-group" style="display:none; flex-direction:column; gap:6px; text-align:center;">
@@ -1101,7 +1106,7 @@
         </div>
     </div>
 
-    <!-- Calibration Wizard Modal -->
+    <!-- Calibration Wizard Modal (Auto-Prompted First Time) -->
     <div class="modal-overlay" id="calib-modal">
         <div class="modal" style="max-width: 680px;">
             <h2>MIDI Keyboard Calibration</h2>
@@ -1114,7 +1119,8 @@
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn-secondary" id="btn-calib-cancel">Cancel Calibration</button>
+                <button type="button" class="btn-secondary" id="btn-calib-skip" onclick="skipCalibration()">Skip Calibration</button>
+                <button type="button" class="btn-secondary" id="btn-calib-cancel" style="display:none;">Cancel Calibration</button>
             </div>
         </div>
     </div>
@@ -1325,11 +1331,10 @@
             isSongBattle = false;
             runnerTrack.style.display = 'none';
             runnerTrack.innerHTML = '';
-            if (peerInstance) {
+            if (peerInstance && !isSprintHost) {
                 peerInstance.destroy();
                 peerInstance = null;
             }
-            peerConnections = [];
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.querySelectorAll('.key').forEach(k => {
                 k.classList.remove('active');
@@ -1337,6 +1342,26 @@
                 k.style.boxShadow = '';
             });
             document.getElementById('status').textContent = 'Arcade Mini-Game stopped. Select another game or return Home.';
+        }
+
+        function checkFirstTimeCalibration() {
+            const calibDone = localStorage.getItem('pianopad_calib_done');
+            if (!calibDone) {
+                buildCalibrationKeyboard();
+                isCalibrating = true;
+                calibStep = 1;
+                document.getElementById('btn-calib-skip').style.display = 'inline-flex';
+                document.getElementById('btn-calib-cancel').style.display = 'none';
+                document.getElementById('calib-instructions').textContent = "Welcome! Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
+                calibModal.classList.add('open');
+            }
+        }
+
+        function skipCalibration() {
+            isCalibrating = false;
+            localStorage.setItem('pianopad_calib_done', 'true');
+            calibModal.classList.remove('open');
+            document.getElementById('status').textContent = 'Calibration skipped. Default key map active.';
         }
 
         /* 1. SIMON TAPS MINI-GAME */
@@ -1584,20 +1609,29 @@
             document.getElementById('battle-modal-title').textContent = "🏃 Finger Sprint Setup";
             document.getElementById('battle-modal-subtitle').textContent = "Select your race mode:";
             document.getElementById('btn-sprint-bot-opt').style.display = 'inline-flex';
+            document.getElementById('host-song-selector-group').style.display = 'none';
             document.getElementById('sprint-menu-buttons').style.display = 'flex';
             document.getElementById('sprint-form-container').style.display = 'none';
             document.getElementById('inline-name-error').style.display = 'none';
             document.getElementById('sprint-option-modal').classList.add('open');
         }
 
+        function populateHostSongSelector() {
+            const hostSelect = document.getElementById('host-battle-song-select');
+            hostSelect.innerHTML = '';
+            songList.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.code;
+                opt.textContent = s.title;
+                if (s.title === currentSongTitle) opt.selected = true;
+                hostSelect.appendChild(opt);
+            });
+        }
+
         function openSongBattleSelector() {
             initAudio();
-            if (!currentSong || currentSong.length === 0) {
-                alert("Please select a song first before starting a Song Battle!");
-                return;
-            }
             isSongBattle = true;
-            document.getElementById('battle-modal-title').textContent = `⚔️ Song Battle: ${currentSongTitle}`;
+            document.getElementById('battle-modal-title').textContent = `⚔️ Song Battle Setup`;
             document.getElementById('battle-modal-subtitle').textContent = "Host or join a live song battle:";
             document.getElementById('btn-sprint-bot-opt').style.display = 'none';
             document.getElementById('sprint-menu-buttons').style.display = 'flex';
@@ -1618,6 +1652,13 @@
             document.getElementById('client-waiting-group').style.display = 'none';
             document.getElementById('inline-name-error').style.display = 'none';
             document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
+
+            if (isSongBattle) {
+                populateHostSongSelector();
+                document.getElementById('host-song-selector-group').style.display = 'flex';
+            } else {
+                document.getElementById('host-song-selector-group').style.display = 'none';
+            }
             
             document.getElementById('btn-confirm-sprint-action').onclick = () => {
                 const nameInput = document.getElementById('sprint-player-name').value.trim();
@@ -1626,6 +1667,15 @@
                     document.getElementById('sprint-player-name').focus();
                     return;
                 }
+
+                if (isSongBattle) {
+                    const selectedCode = document.getElementById('host-battle-song-select').value;
+                    const opt = document.getElementById('host-battle-song-select').selectedOptions[0];
+                    if (opt) currentSongTitle = opt.text;
+                    const parsed = parsePianoPad(selectedCode);
+                    if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
+                }
+
                 showHostSetup(nameInput);
             };
         }
@@ -1634,6 +1684,7 @@
             document.getElementById('sprint-menu-buttons').style.display = 'none';
             document.getElementById('sprint-form-container').style.display = 'flex';
             document.getElementById('code-input-group').style.display = 'flex';
+            document.getElementById('host-song-selector-group').style.display = 'none';
             document.getElementById('host-lobby-group').style.display = 'none';
             document.getElementById('client-waiting-group').style.display = 'none';
             document.getElementById('inline-name-error').style.display = 'none';
@@ -1650,7 +1701,7 @@
                 }
 
                 if (!roomCode) {
-                    alert("Please enter a valid 3-Digit Join Code!");
+                    alert("Please enter a valid Host Join Code!");
                     document.getElementById('sprint-room-code').focus();
                     return;
                 }
@@ -1678,8 +1729,7 @@
                 sprintStartTime = performance.now();
                 sprintKeystrokeCount = 0;
                 sprintIndex = 0;
-                
-                // Faster Bot interval (Completes track in ~7-9 seconds)
+
                 const botInt = setInterval(() => {
                     if (!raceActive) { clearInterval(botInt); return; }
                     const bot = playersList.find(p => p.id === 'bot');
@@ -1711,45 +1761,52 @@
             sessionStudentName = hostName;
             document.getElementById('btn-confirm-sprint-action').style.display = 'none';
             document.getElementById('host-lobby-group').style.display = 'flex';
+            document.getElementById('host-song-selector-group').style.display = 'none';
 
-            // Generate simple 3-Digit Code
-            const roomCode = isSongBattle ? '' + Math.floor(100 + Math.random() * 900) : 'RACE-' + Math.floor(1000 + Math.random() * 9000);
-            activeBattleRoomCode = roomCode;
-            document.getElementById('generated-room-code-display').textContent = `Join Code: ${roomCode}`;
+            // Preserve Same Code if host clicks "Battle Again"
+            if (!activeBattleRoomCode || !isSprintHost) {
+                activeBattleRoomCode = isSongBattle ? '' + Math.floor(100 + Math.random() * 900) : 'RACE-' + Math.floor(1000 + Math.random() * 9000);
+            }
+            
+            document.getElementById('generated-room-code-display').textContent = `Join Code: ${activeBattleRoomCode}`;
 
             isSprintHost = true;
             localPlayerId = 'p1';
             playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, isLocal: true }];
             renderLobbyGrid('lobby-players-grid');
 
-            peerInstance = new Peer(roomCode);
-            peerInstance.on('connection', (conn) => {
-                if (playersList.length >= 8) return;
-                peerConnections.push(conn);
+            if (!peerInstance || peerInstance.destroyed) {
+                peerInstance = new Peer(activeBattleRoomCode);
+                peerInstance.on('connection', (conn) => {
+                    if (playersList.length >= 8) return;
+                    peerConnections.push(conn);
 
-                conn.on('data', (data) => {
-                    if (data.type === 'JOIN') {
-                        const newPId = 'p' + (playersList.length + 1);
-                        const newP = { id: newPId, name: data.name, avatar: AVATARS[playersList.length], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, isLocal: false };
-                        playersList.push(newP);
+                    conn.on('data', (data) => {
+                        if (data.type === 'JOIN') {
+                            const newPId = 'p' + (playersList.length + 1);
+                            const newP = { id: newPId, name: data.name, avatar: AVATARS[playersList.length], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, isLocal: false };
+                            playersList.push(newP);
 
-                        renderLobbyGrid('lobby-players-grid');
-                        broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList });
-                    } else if (data.type === 'PROGRESS') {
-                        const player = playersList.find(p => p.id === data.id);
-                        if (player) {
-                            player.pxProgress = data.pxProgress;
-                            if (data.finishTime && !player.finishTime) {
-                                player.finishTime = data.finishTime;
+                            renderLobbyGrid('lobby-players-grid');
+                            broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList, songTitle: currentSongTitle, songCode: songSelect.value });
+                        } else if (data.type === 'PROGRESS') {
+                            const player = playersList.find(p => p.id === data.id);
+                            if (player) {
+                                player.pxProgress = data.pxProgress;
+                                if (data.finishTime && !player.finishTime) {
+                                    player.finishTime = data.finishTime;
+                                }
+                                if (data.stats) player.stats = data.stats;
+                                broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
+                                updateMultiplayerLanesUI();
+                                checkAllFinished();
                             }
-                            if (data.stats) player.stats = data.stats;
-                            broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                            updateMultiplayerLanesUI();
-                            checkAllFinished();
                         }
-                    }
+                    });
                 });
-            });
+            } else {
+                broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList, songTitle: currentSongTitle, songCode: songSelect.value });
+            }
         }
 
         function showJoinSetup(racerName, roomCode) {
@@ -1772,6 +1829,12 @@
                 conn.on('data', (data) => {
                     if (data.type === 'LOBBY_UPDATE') {
                         playersList = data.players;
+                        if (data.songCode) {
+                            currentSongTitle = data.songTitle;
+                            songSelect.value = data.songCode;
+                            const parsed = parsePianoPad(data.songCode);
+                            if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
+                        }
                         const myEntry = playersList.find(p => p.name === sessionStudentName);
                         if (myEntry) localPlayerId = myEntry.id;
                         renderLobbyGrid('client-lobby-grid');
@@ -1799,7 +1862,8 @@
                         }
                     } else if (data.type === 'RACER_UPDATE') {
                         playersList = data.players;
-                        updateMultiplayerLanesUI();
+                        if (isSongBattle) renderSongBattleResults();
+                        else updateMultiplayerLanesUI();
                     } else if (data.type === 'RACE_FINISHED') {
                         raceActive = false;
                         playersList = data.players;
@@ -1952,7 +2016,7 @@
             const winner = [...playersList].sort((a,b) => parseFloat(a.finishTime || 999) - parseFloat(b.finishTime || 999))[0];
             const isWinner = winner && winner.id === localPlayerId;
 
-            const popUpHeader = isWinner ? `🎉 YOU WON! (${localPlayer.finishTime}s)` : `❌ YOU LOST! Winner: ${winner ? winner.name : 'Opponent'}`;
+            const popUpHeader = isWinner ? `🎉 YOU WON! (${localPlayer ? localPlayer.finishTime : ''}s)` : `❌ YOU LOST! Winner: ${winner ? winner.name : 'Opponent'}`;
 
             const sortedResults = [...playersList].sort((a, b) => {
                 if (a.finishTime && b.finishTime) return parseFloat(a.finishTime) - parseFloat(b.finishTime);
@@ -1987,7 +2051,6 @@
 
             document.getElementById('game-summary-text').innerHTML = resultsHTML;
 
-            // Render User-Specific Bar Chart (Hits vs Misses/Failed Hurdles)
             document.getElementById('single-bar-graph').style.display = 'flex';
             document.getElementById('multi-bar-graph').style.display = 'none';
             document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
@@ -2010,7 +2073,6 @@
         }
 
         function renderSongBattleResults() {
-            // Render multi-column bar graph for all players in Song Battle
             const multiGraph = document.getElementById('multi-bar-graph');
             multiGraph.innerHTML = '';
             multiGraph.style.display = 'flex';
@@ -2304,6 +2366,8 @@
 
         document.getElementById('btn-settings').addEventListener('click', () => {
             initAudio();
+            document.getElementById('btn-calib-skip').style.display = 'none';
+            document.getElementById('btn-calib-cancel').style.display = 'inline-flex';
             settingsModal.classList.add('open');
         });
         document.getElementById('btn-settings-close').addEventListener('click', () => settingsModal.classList.remove('open'));
@@ -2422,6 +2486,7 @@
                 document.getElementById('calib-instructions').textContent = `Calibration Complete! Detected a ${octaveDistance}-Octave Keyboard (${octaveDistance * 12 + 1} keys).`;
                 setTimeout(() => {
                     isCalibrating = false;
+                    localStorage.setItem('pianopad_calib_done', 'true');
                     calibModal.classList.remove('open');
                     updateKeyPositions();
                     document.getElementById('status').textContent = `MIDI Keyboard calibrated! Lowest key now maps directly to C1 on-screen.`;
@@ -2721,7 +2786,6 @@
                 if (recordedNotes.length > 0) {
                     generatedHaycode = `${recordedNotes.join(',')},RESTS,${recordedRests.join(',')}`;
                     btnShare.style.display = 'inline-flex';
-                    document.getElementById('btn-song-battle').style.display = 'inline-flex';
                     document.getElementById('status').textContent = ` RECORDING STOPPED! ${recordedNotes.length} notes saved. Click "Share Haycode" or "Add SONG (Teacher)".`;
                     openExportModal();
                 } else {
@@ -3342,7 +3406,6 @@
             const parsed = parsePianoPad(code);
             if (parsed.length > 0) {
                 currentSong = autoTransposeSong(parsed);
-                document.getElementById('btn-song-battle').style.display = 'inline-flex';
                 playSong();
             }
         });
@@ -3603,7 +3666,6 @@
                 currentSongTitle = 'Custom Imported Song';
                 currentSong = autoTransposeSong(parsed);
                 songSelect.value = '';
-                document.getElementById('btn-song-battle').style.display = 'inline-flex';
                 modal.classList.remove('open');
                 playSong();
             } else {
@@ -3802,7 +3864,10 @@
 
         initMIDIHardware();
         syncSongsWithGoogleSheet();
-        setTimeout(updateKeyPositions, 100);
+        setTimeout(() => {
+            updateKeyPositions();
+            checkFirstTimeCalibration();
+        }, 150);
     </script>
 </body>
 </html>
