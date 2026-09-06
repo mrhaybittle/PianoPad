@@ -1030,7 +1030,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 07:45 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 07:51 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -2039,15 +2039,15 @@
                 const conn = peerInstance.connect(fullPeerId);
                 peerConnections = [conn];
 
-                // Increased Timeout to 15 seconds for network latency
+                // Extended Timeout to 90 seconds (90000ms) for room code allocation and player joins
                 const connTimeout = setTimeout(() => {
                     if (!conn.open) {
-                        alert(`Connection Timeout: Host code "${roomCode}" did not respond after 15 seconds.`);
+                        alert(`Connection Timeout: Host code "${roomCode}" did not respond after 90 seconds.`);
                         document.getElementById('code-input-group').style.display = 'flex';
                         document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
                         document.getElementById('client-waiting-group').style.display = 'none';
                     }
-                }, 15000);
+                }, 90000);
 
                 conn.on('open', () => {
                     clearTimeout(connTimeout);
@@ -3883,7 +3883,7 @@
             ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
             ctx.lineTo(x + width, y + height - radius);
             ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-            ctx.lineTo(x + radius, y + height);
+            ctx.lineTo(x + radius, y);
             ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
             ctx.lineTo(x, y + radius);
             ctx.quadraticCurveTo(x, y, x + radius, y);
