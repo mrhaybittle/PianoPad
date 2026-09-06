@@ -1030,7 +1030,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 07:38 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 07:45 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1963,57 +1963,58 @@
             document.getElementById('host-song-selector-group').style.display = 'none';
 
             if (!activeBattleRoomCode || !isSprintHost) {
-                activeBattleRoomCode = isSongBattle ? '' + Math.floor(100 + Math.random() * 900) : 'RACE-' + Math.floor(1000 + Math.random() * 9000);
+                activeBattleRoomCode = '' + Math.floor(100 + Math.random() * 900);
             }
             
             document.getElementById('generated-room-code-display').textContent = `Join Code: ${activeBattleRoomCode}`;
+
+            const fullPeerId = `PIANOPAD-BATTLE-${activeBattleRoomCode}`;
 
             isSprintHost = true;
             localPlayerId = 'p1';
             playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true }];
             renderLobbyGrid('lobby-players-grid');
 
-            if (!peerInstance || peerInstance.destroyed) {
-                peerInstance = new Peer(activeBattleRoomCode);
-                peerInstance.on('connection', (conn) => {
-                    peerConnections.push(conn);
-
-                    conn.on('data', (data) => {
-                        if (data.type === 'JOIN') {
-                            const newPId = 'p' + (playersList.length + 1);
-                            const avatarIdx = (playersList.length) % AVATARS.length;
-                            const newP = { id: newPId, name: data.name, avatar: AVATARS[avatarIdx], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: false };
-                            playersList.push(newP);
-
-                            renderLobbyGrid('lobby-players-grid');
-                            broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList, songTitle: currentSongTitle, songCode: songSelect.value });
-                        } else if (data.type === 'PROGRESS') {
-                            const player = playersList.find(p => p.id === data.id);
-                            if (player) {
-                                player.pxProgress = data.pxProgress;
-                                if (data.finishTime && !player.finishTime) {
-                                    player.finishTime = data.finishTime;
-                                }
-                                if (data.stats) player.stats = data.stats;
-                                if (data.finished) player.finished = true;
-                                broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                                if (isSongBattle) renderSongBattleResults();
-                                else updateMultiplayerLanesUI();
-                                checkAllFinished();
-                            }
-                        }
-                    });
-                });
-            } else {
-                broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList, songTitle: currentSongTitle, songCode: songSelect.value });
+            if (peerInstance && !peerInstance.destroyed) {
+                peerInstance.destroy();
             }
+
+            peerInstance = new Peer(fullPeerId);
+            peerInstance.on('connection', (conn) => {
+                peerConnections.push(conn);
+
+                conn.on('data', (data) => {
+                    if (data.type === 'JOIN') {
+                        const newPId = 'p' + (playersList.length + 1);
+                        const avatarIdx = (playersList.length) % AVATARS.length;
+                        const newP = { id: newPId, name: data.name, avatar: AVATARS[avatarIdx], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: false };
+                        playersList.push(newP);
+
+                        renderLobbyGrid('lobby-players-grid');
+                        broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList, songTitle: currentSongTitle, songCode: songSelect.value });
+                    } else if (data.type === 'PROGRESS') {
+                        const player = playersList.find(p => p.id === data.id);
+                        if (player) {
+                            player.pxProgress = data.pxProgress;
+                            if (data.finishTime && !player.finishTime) {
+                                player.finishTime = data.finishTime;
+                            }
+                            if (data.stats) player.stats = data.stats;
+                            if (data.finished) player.finished = true;
+                            broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
+                            if (isSongBattle) renderSongBattleResults();
+                            else updateMultiplayerLanesUI();
+                            checkAllFinished();
+                        }
+                    }
+                });
+            });
         }
 
         function showJoinSetup(racerName, roomCode) {
             sessionStudentName = racerName;
             activeBattleRoomCode = roomCode;
 
-            // Immediate Feedback: show waiting view immediately
             document.getElementById('code-input-group').style.display = 'none';
             document.getElementById('btn-confirm-sprint-action').style.display = 'none';
             document.getElementById('client-waiting-group').style.display = 'flex';
@@ -2034,18 +2035,19 @@
             });
 
             peerInstance.on('open', () => {
-                const conn = peerInstance.connect(roomCode);
+                const fullPeerId = `PIANOPAD-BATTLE-${roomCode}`;
+                const conn = peerInstance.connect(fullPeerId);
                 peerConnections = [conn];
 
-                // Connection Timeout Handling
+                // Increased Timeout to 15 seconds for network latency
                 const connTimeout = setTimeout(() => {
                     if (!conn.open) {
-                        alert(`Connection Timeout: Host code "${roomCode}" did not respond.`);
+                        alert(`Connection Timeout: Host code "${roomCode}" did not respond after 15 seconds.`);
                         document.getElementById('code-input-group').style.display = 'flex';
                         document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
                         document.getElementById('client-waiting-group').style.display = 'none';
                     }
-                }, 7000);
+                }, 15000);
 
                 conn.on('open', () => {
                     clearTimeout(connTimeout);
