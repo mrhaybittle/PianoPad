@@ -1030,7 +1030,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 18:31 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 18:38 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1400,7 +1400,7 @@
                 rms += val * val;
             }
             rms = Math.sqrt(rms / SIZE);
-            if (rms < 0.015) return -1; // Volume threshold filter for acoustic clarity
+            if (rms < 0.015) return -1;
 
             let r1 = 0, r2 = SIZE - 1, thres = 0.2;
             for (let i = 0; i < SIZE / 2; i++) {
@@ -1439,7 +1439,7 @@
         }
 
         function frequencyToNoteName(freq) {
-            if (freq < 50 || freq > 2000) return null; // Piano range restriction
+            if (freq < 50 || freq > 2000) return null;
             let midi = Math.round(69 + 12 * Math.log2(freq / 440));
             return midiNoteToName(midi);
         }
@@ -1456,7 +1456,7 @@
                 if (note) {
                     if (note === lastDetectedNote) {
                         noteHoldCounter++;
-                        if (noteHoldCounter === 3) { // Trigger note once stabilized over 3 frames
+                        if (noteHoldCounter === 3) {
                             playManualNote(note);
                         }
                     } else {
@@ -3779,6 +3779,7 @@
             requestAnimationFrame(renderLoop);
         }
 
+        /* FIXED CANVAS BLOCK RENDERING FUNCTION (Clean Rounded Rectangles) */
         function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending') {
             ctx.save();
             
@@ -3816,7 +3817,7 @@
             ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
             ctx.lineTo(x + width, y + height - radius);
             ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-            ctx.lineTo(x + radius, y);
+            ctx.lineTo(x + radius, y + height);
             ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
             ctx.lineTo(x, y + radius);
             ctx.quadraticCurveTo(x, y, x + radius, y);
