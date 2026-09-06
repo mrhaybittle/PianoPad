@@ -548,7 +548,6 @@
             position: relative;
         }
 
-        /* Unlimited Horizontal Scroll for Multi-Player Graph */
         .multi-bar-container {
             display: flex;
             align-items: flex-end;
@@ -568,9 +567,15 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             flex-shrink: 0;
-            min-width: 50px;
+            min-width: 58px;
+        }
+
+        .rank-medal-badge {
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: #facc15;
         }
 
         .stacked-bar {
@@ -578,7 +583,7 @@
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
-            height: 140px;
+            height: 130px;
             border-radius: 4px;
             overflow: hidden;
             background: #181f2e;
@@ -1022,7 +1027,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 11:01 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 11:09 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1785,7 +1790,6 @@
             if (!peerInstance || peerInstance.destroyed) {
                 peerInstance = new Peer(activeBattleRoomCode);
                 peerInstance.on('connection', (conn) => {
-                    // REMOVED 8-player cap limit for unlimited participant connections
                     peerConnections.push(conn);
 
                     conn.on('data', (data) => {
@@ -2068,6 +2072,7 @@
 
             document.getElementById('game-summary-text').innerHTML = resultsHTML;
 
+            document.getElementById('badge-container').innerHTML = ''; // Hide Speed Badges for Sprint Mode
             document.getElementById('single-bar-graph').style.display = 'flex';
             document.getElementById('multi-bar-graph').style.display = 'none';
             document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
@@ -2093,10 +2098,22 @@
             const multiGraph = document.getElementById('multi-bar-graph');
             multiGraph.innerHTML = '';
             multiGraph.style.display = 'flex';
+            document.getElementById('badge-container').innerHTML = ''; // Hide Speed Badge in Battle Results
             document.getElementById('single-bar-graph').style.display = 'none';
             document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
 
-            playersList.forEach((p) => {
+            // Sort Players by Accuracy Percentage
+            const sortedRanked = [...playersList].sort((a, b) => {
+                const aStats = a.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+                const bStats = b.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+                const aTot = Math.max(1, aStats.perfect + aStats.earlyLate + aStats.miss);
+                const bTot = Math.max(1, bStats.perfect + bStats.earlyLate + bStats.miss);
+                const aAcc = ((aStats.perfect * 1.0 + aStats.earlyLate * 0.5) / aTot) * 100;
+                const bAcc = ((bStats.perfect * 1.0 + bStats.earlyLate * 0.5) / bTot) * 100;
+                return bAcc - aAcc;
+            });
+
+            sortedRanked.forEach((p, idx) => {
                 const col = document.createElement('div');
                 col.className = 'multi-bar-column';
 
@@ -2107,13 +2124,16 @@
                 const oPct = (pStats.earlyLate / total) * 100;
                 const rPct = (pStats.miss / total) * 100;
 
+                const medal = idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `${idx + 1}th`;
+
                 col.innerHTML = `
+                    <div class="rank-medal-badge">${medal}</div>
                     <div class="stacked-bar">
                         <div class="bar-part-red" style="height:${rPct}%;"></div>
                         <div class="bar-part-orange" style="height:${oPct}%;"></div>
                         <div class="bar-part-green" style="height:${gPct}%;"></div>
                     </div>
-                    <span style="font-size:0.7rem; font-weight:700; color:#fff;">${p.avatar} ${p.name}</span>
+                    <span style="font-size:0.75rem; font-weight:700; color:#fff;">${p.avatar} ${p.name}</span>
                 `;
                 multiGraph.appendChild(col);
             });
@@ -2720,10 +2740,6 @@
 
             document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
 
-            document.getElementById('single-bar-graph').style.display = 'flex';
-            document.getElementById('multi-bar-graph').style.display = 'none';
-            document.getElementById('btn-battle-again').style.display = 'none';
-
             const greenPct = totalHits > 0 ? (perfectHits / totalHits) * 100 : 0;
             const orangePct = totalHits > 0 ? (earlyLateHits / totalHits) * 100 : 0;
             const redPct = totalHits > 0 ? (missedHits / totalHits) * 100 : 0;
@@ -2949,7 +2965,7 @@
             { note: 'a3', type: 'white', label: 'A' }, { note: 'a#3', type: 'black', label: 'A#' },
             { note: 'b3', type: 'white', label: 'B' },
             { note: 'c4', type: 'white', label: 'C' }, { note: 'c#4', type: 'black', label: 'C#' },
-            { note: 'd4', type: 'white', label: 'D' }, { note: 'd#4', type: 'black', label: 'D#' },
+            { note: 'd4', type: 'white', label: 'D' }, { note: 'd#4', type: 'black', label: 'D#', hint: '' },
             { note: 'e4', type: 'white', label: 'E' },
             { note: 'f4', type: 'white', label: 'F' }, { note: 'f#4', type: 'black', label: 'F#' },
             { note: 'g4', type: 'white', label: 'G' }, { note: 'g#4', type: 'black', label: 'G#' },
