@@ -423,7 +423,7 @@
             background: var(--panel-bg);
             border-radius: 12px;
             width: 90%;
-            max-width: 580px;
+            max-width: 620px;
             padding: 20px;
             display: flex;
             flex-direction: column;
@@ -532,6 +532,7 @@
             align-items: center;
             gap: 10px;
             margin-top: 10px;
+            width: 100%;
         }
 
         .bar-chart-wrapper {
@@ -547,18 +548,20 @@
             position: relative;
         }
 
+        /* Unlimited Horizontal Scroll for Multi-Player Graph */
         .multi-bar-container {
             display: flex;
             align-items: flex-end;
-            justify-content: center;
-            gap: 12px;
+            justify-content: flex-start;
+            gap: 16px;
             width: 100%;
+            max-width: 100%;
             overflow-x: auto;
-            padding: 10px;
+            padding: 12px;
             background: #0b0f19;
             border: 1px solid #374151;
             border-radius: 8px;
-            min-height: 170px;
+            min-height: 180px;
         }
 
         .multi-bar-column {
@@ -566,6 +569,8 @@
             flex-direction: column;
             align-items: center;
             gap: 6px;
+            flex-shrink: 0;
+            min-width: 50px;
         }
 
         .stacked-bar {
@@ -990,7 +995,7 @@
 
                 <div class="game-card" onclick="openSprintModeSelector()">
                     <h3>🏃 Finger Sprint Race</h3>
-                    <p>Challenge Robo-Opponent (🤖) or Host/Join Live 8-Player Races with custom Room Codes!</p>
+                    <p>Challenge Robo-Opponent (🤖) or Host/Join Live Multi-Player Races with custom Room Codes!</p>
                     <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Finger Sprint</button>
                 </div>
             </div>
@@ -1017,7 +1022,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.06 | 6-Sep 10:55 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.06 | 6-Sep 11:01 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1135,6 +1140,7 @@
             <div id="game-rank-text" class="rank-display-box">Calculating Rank...</div>
 
             <div class="graph-container">
+                <!-- Unlimited Horizontal Scroll for Song Battle Multi-Player Charts -->
                 <div class="multi-bar-container" id="multi-bar-graph" style="display: none;"></div>
                 
                 <div class="bar-chart-wrapper" id="single-bar-graph">
@@ -1258,7 +1264,7 @@
         let dodgeLives = 5;
         let dodgeDodgedCount = 0;
 
-        // Up to 8 Players Live PeerJS & Song Battle Config
+        // Unlimited Multi-Player Live PeerJS & Song Battle Config
         let peerInstance = null;
         let peerConnections = [];
         let isSprintHost = false;
@@ -1779,13 +1785,14 @@
             if (!peerInstance || peerInstance.destroyed) {
                 peerInstance = new Peer(activeBattleRoomCode);
                 peerInstance.on('connection', (conn) => {
-                    if (playersList.length >= 8) return;
+                    // REMOVED 8-player cap limit for unlimited participant connections
                     peerConnections.push(conn);
 
                     conn.on('data', (data) => {
                         if (data.type === 'JOIN') {
                             const newPId = 'p' + (playersList.length + 1);
-                            const newP = { id: newPId, name: data.name, avatar: AVATARS[playersList.length], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, isLocal: false };
+                            const avatarIdx = (playersList.length) % AVATARS.length;
+                            const newP = { id: newPId, name: data.name, avatar: AVATARS[avatarIdx], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, isLocal: false };
                             playersList.push(newP);
 
                             renderLobbyGrid('lobby-players-grid');
@@ -1800,7 +1807,8 @@
                                 }
                                 if (data.stats) player.stats = data.stats;
                                 broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                                updateMultiplayerLanesUI();
+                                if (isSongBattle) renderSongBattleResults();
+                                else updateMultiplayerLanesUI();
                                 checkAllFinished();
                             }
                         }
@@ -2898,7 +2906,7 @@
             if (!isPaused) {
                 isPaused = true;
                 pauseStartTime = performance.now();
-                btnPause.textContent = 'Pause';
+                btnPause.textContent = 'Resume';
                 btnPause.classList.remove('btn-warning');
                 btnPause.classList.add('btn-success');
                 if (animationFrameId !== null) {
