@@ -1029,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 12:32 PM AEST</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 12:38 PM AEST</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1311,8 +1311,8 @@
         let raceActive = false;
         let isSongBattle = false;
         let activeBattleRoomCode = "";
-        let hasBattleStarted = false; // Flag to prevent infinite countdown loops
-        let battleResultsShown = false; // Flag to prevent results popup loop
+        let hasBattleStarted = false;
+        let battleResultsShown = false;
 
         const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄'];
 
@@ -1342,6 +1342,11 @@
                 httpPollTimer = null;
             }
         }
+
+        document.getElementById('btn-game-results-close').addEventListener('click', () => {
+            gameResultsModal.classList.remove('open');
+            stopBattlePolling();
+        });
 
         document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
