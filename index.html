@@ -2308,28 +2308,70 @@
             activeMiniGame = null;
         }
 
-        function renderSongBattleResults() {
-            const allPlayersFinished = playersList.every(p => p.finished);
-            if (!allPlayersFinished) {
-                document.getElementById('status').textContent = `🏁 Battle finished for you! Waiting for remaining players to complete...`;
-                return;
-            }
+function renderSongBattleResults() {
+    // Coerce p.finished to handle both string ("true") and boolean (true) values
+    const allPlayersFinished = playersList.every(p => p.finished === true || p.finished === "true");
+    
+    if (!allPlayersFinished) {
+        document.getElementById('status').textContent = `🏁 Battle finished for you! Waiting for remaining players to complete...`;
+        return;
+    }
 
-            const multiGraph = document.getElementById('multi-bar-graph');
-            multiGraph.innerHTML = '';
-            multiGraph.style.display = 'flex';
-            document.getElementById('badge-container').innerHTML = '';
-            document.getElementById('single-bar-graph').style.display = 'none';
-            document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
+    const multiGraph = document.getElementById('multi-bar-graph');
+    multiGraph.innerHTML = '';
+    multiGraph.style.display = 'flex';
+    document.getElementById('badge-container').innerHTML = '';
+    document.getElementById('single-bar-graph').style.display = 'none';
+    document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
 
-            const localPlayer = playersList.find(p => p.id === localPlayerId);
-            if (localPlayer && localPlayer.stats) {
-                const tot = localPlayer.stats.perfect + localPlayer.stats.earlyLate + localPlayer.stats.miss;
-                const acc = tot > 0 ? (((localPlayer.stats.perfect * 1.0 + localPlayer.stats.earlyLate * 0.5) / tot) * 100) : 0;
-                if (acc >= 80) {
-                    unlockBonusSounds(`Great job! You achieved <strong>${acc.toFixed(1)}%</strong> accuracy in the Song Battle and unlocked 5 bonus instrument sound engines!`);
-                }
-            }
+    const localPlayer = playersList.find(p => p.id === localPlayerId);
+    if (localPlayer && localPlayer.stats) {
+        const tot = localPlayer.stats.perfect + localPlayer.stats.earlyLate + localPlayer.stats.miss;
+        const acc = tot > 0 ? (((localPlayer.stats.perfect * 1.0 + localPlayer.stats.earlyLate * 0.5) / tot) * 100) : 0;
+        if (acc >= 80) {
+            unlockBonusSounds(`Great job! You achieved <strong>${acc.toFixed(1)}%</strong> accuracy in the Song Battle and unlocked 5 bonus instrument sound engines!`);
+        }
+    }
+
+    const sortedRanked = [...playersList].sort((a, b) => {
+        const aStats = a.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+        const bStats = b.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+        const aTot = Math.max(1, aStats.perfect + aStats.earlyLate + aStats.miss);
+        const bTot = Math.max(1, bStats.perfect + bStats.earlyLate + bStats.miss);
+        const aAcc = ((aStats.perfect * 1.0 + aStats.earlyLate * 0.5) / aTot) * 100;
+        const bAcc = ((bStats.perfect * 1.0 + bStats.earlyLate * 0.5) / bTot) * 100;
+        return bAcc - aAcc;
+    });
+
+    sortedRanked.forEach((p, idx) => {
+        const col = document.createElement('div');
+        col.className = 'multi-bar-column';
+
+        const pStats = p.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+        const total = Math.max(1, pStats.perfect + pStats.earlyLate + pStats.miss);
+
+        const gPct = (pStats.perfect / total) * 100;
+        const oPct = (pStats.earlyLate / total) * 100;
+        const rPct = (pStats.miss / total) * 100;
+
+        const medal = idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `${idx + 1}th`;
+
+        col.innerHTML = `
+            <div class="rank-medal-badge">${medal}</div>
+            <div class="stacked-bar">
+                <div class="bar-part-red" style="height:${rPct}%;"></div>
+                <div class="bar-part-orange" style="height:${oPct}%;"></div>
+                <div class="bar-part-green" style="height:${gPct}%;"></div>
+            </div>
+            <span style="font-size:0.75rem; font-weight:700; color:#fff;">${p.avatar} ${p.name}</span>
+        `;
+        multiGraph.appendChild(col);
+    });
+
+    document.getElementById('game-summary-text').innerHTML = `<div style="font-size:1.2rem; font-weight:800; color:#facc15;">⚔️ Song Battle Standings: ${currentSongTitle}</div>`;
+    document.getElementById('game-rank-text').textContent = `Song Battle Logged!`;
+    gameResultsModal.classList.add('open');
+}
 
             const sortedRanked = [...playersList].sort((a, b) => {
                 const aStats = a.stats || { perfect: 0, earlyLate: 0, miss: 0 };
