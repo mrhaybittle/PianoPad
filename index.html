@@ -287,6 +287,15 @@
             stroke-linejoin: round;
         }
 
+        .btn-icon-only {
+            padding: 4px 6px;
+        }
+        
+        .btn-icon-only .icon {
+            width: 16px;
+            height: 16px;
+        }
+
         .timeline-container-inline {
             background-color: #0b0f19;
             border: 1px solid #374151;
@@ -465,6 +474,13 @@
             justify-content: space-between;
             padding-top: 4px;
             flex-shrink: 0;
+            gap: 12px;
+        }
+
+        .footer-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .version-stamp {
@@ -856,7 +872,7 @@
 
     <div class="container">
         <header>
-            <h1>PianoPad 26</h1>
+            <h1>PianoPad - by Haybittle</h1>
             <div class="controls" id="main-controls-bar">
                 <select id="song-select">
                     <option value="">Choose a Song</option>
@@ -1020,7 +1036,15 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 18:28 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.08 | 8-Sep 06:54 AEST (Sydney)</div>
+            <div class="footer-controls">
+                <button type="button" id="btn-footer-play" class="btn-success btn-icon-only" title="Play">
+                    <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                </button>
+                <button type="button" id="btn-footer-stop" class="btn-danger btn-icon-only" title="Stop">
+                    <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
+                </button>
+            </div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -3728,6 +3752,8 @@
 
         document.getElementById('btn-play').addEventListener('click', playSong);
         document.getElementById('btn-stop').addEventListener('click', stopSong);
+        document.getElementById('btn-footer-play').addEventListener('click', playSong);
+        document.getElementById('btn-footer-stop').addEventListener('click', stopSong);
 
         document.getElementById('btn-load-play').addEventListener('click', () => {
             initAudio();
