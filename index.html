@@ -1065,7 +1065,7 @@
                 <div id="host-lobby-group" style="display:none; flex-direction:column; gap:4px; text-align:center;">
                     <div style="font-size:1.1rem; color:#facc15; font-weight:800;" id="generated-room-code-display">Room Code: Generating...</div>
                     <div class="lobby-players-grid" id="lobby-players-grid"></div>
-                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-center;" onclick="triggerHostStartRace()">🚀 START LIVE SESSION FOR ALL PLAYERS</button>
+                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-content:center;" onclick="triggerHostStartRace()">🚀 START LIVE SESSION FOR ALL PLAYERS</button>
                 </div>
 
                 <div id="client-waiting-group" style="display:none; flex-direction:column; gap:6px; text-align:center;">
@@ -2042,7 +2042,15 @@
                 const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_ROOM&roomCode=${roomCode}&t=${Date.now()}`);
                 if (!res || !res.players) return;
 
-                playersList = res.players;
+                playersList = res.players.map(remotePlayer => {
+                    const localMatch = playersList.find(p => p.id === remotePlayer.id);
+                    return {
+                        ...remotePlayer,
+                        isLocal: remotePlayer.id === localPlayerId,
+                        stats: remotePlayer.stats || { perfect: 0, earlyLate: 0, miss: 0 }
+                    };
+                });
+
                 if (isHost) renderLobbyGrid('lobby-players-grid');
                 else renderLobbyGrid('client-lobby-grid');
 
@@ -2091,7 +2099,8 @@
             const localPlayer = playersList.find(p => p.id === localPlayerId);
             if (!localPlayer) return;
 
-            const url = `${APPS_SCRIPT_URL}?action=UPDATE_PLAYER&roomCode=${activeBattleRoomCode}&playerId=${localPlayerId}&pxProgress=${localPlayer.pxProgress}&finishTime=${localPlayer.finishTime || ''}&finished=${localPlayer.finished}&t=${Date.now()}`;
+            const stats = localPlayer.stats || gameStats;
+            const url = `${APPS_SCRIPT_URL}?action=UPDATE_PLAYER&roomCode=${activeBattleRoomCode}&playerId=${localPlayerId}&pxProgress=${localPlayer.pxProgress}&finishTime=${localPlayer.finishTime || ''}&finished=${localPlayer.finished}&perfect=${stats.perfect}&earlyLate=${stats.earlyLate}&miss=${stats.miss}&t=${Date.now()}`;
             await sendJSONP(url);
         }
 
