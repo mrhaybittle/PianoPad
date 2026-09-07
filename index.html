@@ -1311,6 +1311,7 @@
         let raceActive = false;
         let isSongBattle = false;
         let activeBattleRoomCode = "";
+        let hasBattleStarted = false; // Flag to prevent infinite countdown loops
 
         const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄'];
 
@@ -1525,6 +1526,7 @@
             isPlaying = false;
             raceActive = false;
             isSongBattle = false;
+            hasBattleStarted = false; // Reset trigger flag
             runnerTrack.style.display = 'none';
             runnerTrack.innerHTML = '';
             if (httpPollTimer) {
@@ -2045,13 +2047,13 @@
 
         function startGoogleAppsScriptPolling(roomCode, isHost) {
             if (httpPollTimer) clearInterval(httpPollTimer);
+            hasBattleStarted = false; // Reset on polling init
 
             httpPollTimer = setInterval(async () => {
                 const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_ROOM&roomCode=${roomCode}&t=${Date.now()}`);
                 if (!res || !res.players) return;
 
                 playersList = res.players.map(remotePlayer => {
-                    const localMatch = playersList.find(p => p.id === remotePlayer.id);
                     return {
                         ...remotePlayer,
                         isLocal: remotePlayer.id === localPlayerId,
@@ -2072,7 +2074,9 @@
                     if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
                 }
 
-                if (res.status === "started" && !raceActive && !isPlaying) {
+                // TRIGGER GAME ONLY ONCE USING hasBattleStarted FLAG
+                if (res.status === "started" && !hasBattleStarted) {
+                    hasBattleStarted = true; // Block repeated countdowns
                     document.getElementById('sprint-option-modal').classList.remove('open');
                     arcadeHub.classList.remove('open');
                     resetGameStats();
@@ -2139,19 +2143,19 @@
             }
         }
 
-   async function triggerBattleAgain() {
-    gameResultsModal.classList.remove('open');
-    hasBattleStarted = false; // Reset local trigger flag
+        async function triggerBattleAgain() {
+            gameResultsModal.classList.remove('open');
+            hasBattleStarted = false; // Reset local trigger flag
 
-    if (isSprintHost) {
-        // Reset server status back to lobby
-        const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(sessionStudentName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
-        await sendJSONP(url);
+            if (isSprintHost) {
+                // Reset server status back to lobby
+                const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(sessionStudentName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
+                await sendJSONP(url);
 
-        showHostSetup(sessionStudentName);
-        document.getElementById('sprint-option-modal').classList.add('open');
-    }
-}
+                showHostSetup(sessionStudentName);
+                document.getElementById('sprint-option-modal').classList.add('open');
+            }
+        }
 
         function renderSprintLanes() {
             runnerTrack.style.display = 'flex';
