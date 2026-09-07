@@ -1029,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 11:25 AEST</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 12:00 AEST</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1334,11 +1334,21 @@
 
         document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
+            isSongBattle = false;
+            if (httpPollTimer) {
+                clearInterval(httpPollTimer);
+                httpPollTimer = null;
+            }
             openArcadeHub();
         });
 
         document.getElementById('btn-game-try-again').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
+            isSongBattle = false;
+            if (httpPollTimer) {
+                clearInterval(httpPollTimer);
+                httpPollTimer = null;
+            }
             if (currentSongTitle === "Mystery Note") startMysteryNote();
             else if (currentSongTitle === "Simon Taps") startSimonTaps();
             else if (currentSongTitle === "Drop Dodge") startDropDodge();
@@ -2159,6 +2169,12 @@
         async function triggerBattleAgain() {
             gameResultsModal.classList.remove('open');
             hasBattleStarted = false; // Reset local trigger flag
+            isSongBattle = false;
+
+            if (httpPollTimer) {
+                clearInterval(httpPollTimer);
+                httpPollTimer = null;
+            }
 
             if (isSprintHost) {
                 // Reset server status back to lobby
@@ -2646,7 +2662,14 @@
         document.getElementById('btn-settings-close').addEventListener('click', () => settingsModal.classList.remove('open'));
         document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
         document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
-        document.getElementById('btn-game-results-close').addEventListener('click', () => gameResultsModal.classList.remove('open'));
+        document.getElementById('btn-game-results-close').addEventListener('click', () => {
+            gameResultsModal.classList.remove('open');
+            isSongBattle = false;
+            if (httpPollTimer) {
+                clearInterval(httpPollTimer);
+                httpPollTimer = null;
+            }
+        });
 
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
