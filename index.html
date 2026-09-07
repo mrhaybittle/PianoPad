@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PianoPad Player - Visualizer & Haycode Creator</title>
+    <title>PianoPad - by Haybittle</title>
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
     <style>
         :root {
@@ -554,7 +554,7 @@
         .multi-bar-container {
             display: flex;
             align-items: flex-end;
-            justify-content: flex-start;
+            justify-content: center;
             gap: 16px;
             width: 100%;
             max-width: 100%;
@@ -1029,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 18:30 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.08 | 8-Sep 08:42 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1872,6 +1872,15 @@
             initAudio();
             isSongBattle = true;
             battleResultsShown = false;
+            
+            // Force disable Step Mode in Song Battle
+            if (isStepMode) {
+                isStepMode = false;
+                btnStep.textContent = 'Step Mode';
+                btnStep.classList.remove('btn-step-active');
+                btnStep.classList.add('btn-step');
+            }
+
             document.getElementById('battle-modal-title').textContent = `⚔️ Song Battle Setup`;
             document.getElementById('battle-modal-subtitle').textContent = "Host or join a live song battle:";
             document.getElementById('btn-sprint-bot-opt').style.display = 'none';
@@ -2105,6 +2114,12 @@
                     resetGameStats();
 
                     if (isSongBattle) {
+                        // Ensure Step Mode is OFF when Song Battle starts
+                        isStepMode = false;
+                        btnStep.textContent = 'Step Mode';
+                        btnStep.classList.remove('btn-step-active');
+                        btnStep.classList.add('btn-step');
+
                         isGameMode = true;
                         btnGame.textContent = 'Game Mode: ON';
                         btnGame.classList.add('btn-game-active');
@@ -2150,6 +2165,12 @@
             resetGameStats();
 
             if (isSongBattle) {
+                // Ensure Step Mode is OFF when Song Battle starts
+                isStepMode = false;
+                btnStep.textContent = 'Step Mode';
+                btnStep.classList.remove('btn-step-active');
+                btnStep.classList.add('btn-step');
+
                 isGameMode = true;
                 btnGame.textContent = 'Game Mode: ON';
                 btnGame.classList.add('btn-game-active');
@@ -2409,7 +2430,7 @@
                         <div class="bar-part-orange" style="height:${oPct}%;"></div>
                         <div class="bar-part-green" style="height:${gPct}%;"></div>
                     </div>
-                    <span style="font-size:0.75rem; font-weight:700; color:#fff;">${p.avatar} ${p.name}</span>
+                    <span style="font-size:0.75rem; font-weight:700; color:#fff;">${p.avatar || '🏃'} ${p.name}</span>
                 `;
                 multiGraph.appendChild(col);
             });
@@ -2845,7 +2866,6 @@
                 return;
             }
 
-            // Push locally first so it immediately appears
             songList.push({ title: title, code: code });
             localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
             renderSongSelect();
@@ -3107,6 +3127,13 @@
 
         function toggleStepMode() {
             initAudio();
+            
+            // STRICT RULE: Step mode is forbidden inside Song Battles
+            if (isSongBattle) {
+                document.getElementById('status').textContent = '⚠️ Step Mode is NOT permitted during Song Battles!';
+                return;
+            }
+
             isStepMode = !isStepMode;
             if (isStepMode) {
                 btnStep.textContent = 'Step Mode: ON';
@@ -3742,7 +3769,6 @@
             }
 
             if (remoteSongs.length > 0) {
-                // Merge remote songs with local/imported cache to prevent imported songs from disappearing
                 const songMap = new Map();
                 remoteSongs.forEach(s => songMap.set(s.title.toLowerCase().trim(), s));
                 localCache.forEach(s => {
