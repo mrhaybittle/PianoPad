@@ -1239,7 +1239,7 @@
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyJ6BXOjgbsbv03Xlp3kFVj_6aIfVJ7NM66Y3f_fMzuOeDabH2HzEhE-rLuoZzncXAA6g/exec';
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRVI-zuNfTZvcxcsG7mNk1iL_r11kCj-or6hKfLsilP0Vf9WSk0MeVxEog-RzXFIIjNA/exec';
 
         let audioCtx = null;
         let songList = [];
@@ -2018,9 +2018,17 @@
             localPlayerId = 'p' + (Date.now() % 10000);
             const avatarIdx = Math.floor(Math.random() * AVATARS.length);
 
-            // Send JOIN_ROOM via JSONP dynamic script insertion
-            const url = `${APPS_SCRIPT_URL}?action=JOIN_ROOM&roomCode=${roomCode}&playerId=${localPlayerId}&playerName=${encodeURIComponent(racerName)}&avatar=${encodeURIComponent(AVATARS[avatarIdx])}&t=${Date.now()}`;
-            const res = await sendJSONP(url);
+            document.getElementById('status').textContent = `Connecting to room ${roomCode}...`;
+
+            let res = null;
+            // Retry up to 3 times to account for cache propagation
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                const url = `${APPS_SCRIPT_URL}?action=JOIN_ROOM&roomCode=${roomCode}&playerId=${localPlayerId}&playerName=${encodeURIComponent(racerName)}&avatar=${encodeURIComponent(AVATARS[avatarIdx])}&t=${Date.now()}`;
+                res = await sendJSONP(url);
+                
+                if (res && !res.error) break;
+                await new Promise(r => setTimeout(r, 1000));
+            }
 
             if (res && res.error) {
                 alert("Room not found! Check code and try again.");
