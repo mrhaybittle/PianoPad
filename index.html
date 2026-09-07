@@ -1029,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 18:09 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 18:15 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -2845,6 +2845,7 @@
                 return;
             }
 
+            // Push locally first so it immediately appears
             songList.push({ title: title, code: code });
             localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
             renderSongSelect();
@@ -2858,7 +2859,6 @@
 
             if (APPS_SCRIPT_URL) {
                 try {
-                    // Send ADD_SONG via sendJSONP to bypass CORS and write directly to Google Sheets PIANOPAD tab
                     const addUrl = `${APPS_SCRIPT_URL}?action=ADD_SONG&title=${encodeURIComponent(title)}&code=${encodeURIComponent(code)}&t=${Date.now()}`;
                     await sendJSONP(addUrl);
                     document.getElementById('status').textContent = ` "${title}" successfully added to PianoPad & Google Sheet!`;
@@ -3706,10 +3706,12 @@
         }
 
         async function syncSongsWithGoogleSheet() {
+            let localCache = [];
             const cachedData = localStorage.getItem('pianopad_sheet_songs');
             if (cachedData) {
                 try {
-                    songList = JSON.parse(cachedData);
+                    localCache = JSON.parse(cachedData);
+                    songList = [...localCache];
                     renderSongSelect();
                     const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
                     if (defaultObj) {
@@ -3722,51 +3724,55 @@
                 }
             }
 
+            let remoteSongs = [];
+
             try {
                 const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_SONGS&t=${Date.now()}`);
 
                 if (res && res.songs && res.songs.length > 0) {
-                    songList = res.songs;
-                    localStorage.setItem('pianopad_sheet_songs', JSON.stringify(res.songs));
-                    renderSongSelect();
-                    
-                    const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
-                    if (defaultObj) {
-                        currentSongTitle = defaultObj.title;
-                        currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
-                    }
-                    document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
-                    return;
+                    remoteSongs = res.songs;
+                } else {
+                    throw new Error(res ? res.error : "No songs returned from JSONP");
                 }
             } catch (err) {
-                console.warn("Apps Script fetch error, falling back to direct CSV...", err);
+                console.warn("Apps Script fetch error, trying CSV fallback...", err);
+                try {
+                    const response = await fetch(SPREADSHEET_CSV_URL);
+                    if (response.ok) {
+                        const csvText = await response.text();
+                        remoteSongs = parseCSVToSongs(csvText);
+                    }
+                } catch (csvErr) {
+                    console.warn("CSV Fallback error:", csvErr);
+                }
             }
 
-            try {
-                const response = await fetch(SPREADSHEET_CSV_URL);
-                if (!response.ok) throw new Error('CSV network response failed');
-                
-                const csvText = await response.text();
-                const liveSongs = parseCSVToSongs(csvText);
-
-                if (liveSongs.length > 0) {
-                    songList = liveSongs;
-                    localStorage.setItem('pianopad_sheet_songs', JSON.stringify(liveSongs));
-                    renderSongSelect();
-                    
-                    const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
-                    if (defaultObj) {
-                        currentSongTitle = defaultObj.title;
-                        currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
+            if (remoteSongs.length > 0) {
+                // Merge remote songs with local/imported cache to prevent imported songs from disappearing
+                const songMap = new Map();
+                remoteSongs.forEach(s => songMap.set(s.title.toLowerCase().trim(), s));
+                localCache.forEach(s => {
+                    const key = s.title.toLowerCase().trim();
+                    if (!songMap.has(key)) {
+                        songMap.set(key, s);
                     }
-                    document.getElementById('status').textContent = `Synced live via CSV! Loaded ${songList.length} songs from Google Sheet.`;
+                });
+
+                songList = Array.from(songMap.values());
+                localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
+                renderSongSelect();
+
+                const defaultObj = songList.find(s => s.title === currentSongTitle) || songList.find(s => s.title === 'Wipeout') || songList[0];
+                if (defaultObj) {
+                    currentSongTitle = defaultObj.title;
+                    songSelect.value = defaultObj.code;
+                    currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
                 }
-            } catch (err) {
-                if (songList.length > 0) {
-                    document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
-                } else {
-                    document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
-                }
+                document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
+            } else if (songList.length > 0) {
+                document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
+            } else {
+                document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
             }
         }
 
@@ -4275,7 +4281,6 @@
             if (!APPS_SCRIPT_URL) return;
 
             try {
-                // Post battle payload using sendJSONP to bypass CORS and append to the Google Sheet Battles tab
                 const url = `${APPS_SCRIPT_URL}?action=SUBMIT_BATTLE&players=${encodeURIComponent(JSON.stringify(battlePayload))}&t=${Date.now()}`;
                 await sendJSONP(url);
                 document.getElementById('status').textContent = `Song Battle results saved to Google Sheet!`;
