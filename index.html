@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PianoPad - by Haybittle</title>
+    <title>PianoPad Player - Visualizer & Haycode Creator</title>
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -266,7 +266,7 @@
             box-shadow: 0 0 14px rgba(239, 68, 68, 0.8);
         }
 
-        .btn-rec-active span, .btn-rec-active .record-dot-icon {
+        .btn-rec-active span {
             animation: textBlink 0.8s infinite ease-in-out;
         }
 
@@ -285,23 +285,6 @@
             stroke-width: 2;
             stroke-linecap: round;
             stroke-linejoin: round;
-        }
-
-        .btn-icon-only {
-            padding: 4px 6px;
-        }
-        
-        .btn-icon-only .icon {
-            width: 16px;
-            height: 16px;
-        }
-
-        .record-dot-icon {
-            width: 14px;
-            height: 14px;
-            background-color: #ef4444;
-            border-radius: 50%;
-            display: inline-block;
         }
 
         .timeline-container-inline {
@@ -482,13 +465,6 @@
             justify-content: space-between;
             padding-top: 4px;
             flex-shrink: 0;
-            gap: 12px;
-        }
-
-        .footer-controls {
-            display: flex;
-            align-items: center;
-            gap: 6px;
         }
 
         .version-stamp {
@@ -880,7 +856,7 @@
 
     <div class="container">
         <header>
-            <h1>PianoPad - by Haybittle</h1>
+            <h1>PianoPad 26</h1>
             <div class="controls" id="main-controls-bar">
                 <select id="song-select">
                     <option value="">Choose a Song</option>
@@ -1044,18 +1020,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.08 | 8-Sep 07:30 AEST (Sydney)</div>
-            <div class="footer-controls">
-                <button type="button" id="btn-footer-record" class="btn-secondary btn-icon-only" title="Record">
-                    <span class="record-dot-icon"></span>
-                </button>
-                <button type="button" id="btn-footer-play" class="btn-success btn-icon-only" title="Play">
-                    <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                </button>
-                <button type="button" id="btn-footer-stop" class="btn-danger btn-icon-only" title="Stop">
-                    <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
-                </button>
-            </div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 18:28 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1886,7 +1851,8 @@
                                 }
                                 if (data.stats) player.stats = data.stats;
                                 broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                                if (!isSongBattle) updateMultiplayerLanesUI();
+                                if (isSongBattle) renderSongBattleResults();
+                                else updateMultiplayerLanesUI();
                                 checkAllFinished();
                             }
                         }
@@ -1957,7 +1923,8 @@
                         }
                     } else if (data.type === 'RACER_UPDATE') {
                         playersList = data.players;
-                        if (!isSongBattle) updateMultiplayerLanesUI();
+                        if (isSongBattle) renderSongBattleResults();
+                        else updateMultiplayerLanesUI();
                     } else if (data.type === 'RACE_FINISHED') {
                         raceActive = false;
                         playersList = data.players;
@@ -2246,9 +2213,8 @@
                 }
 
                 if (!isSprintHost && peerConnections.length > 0) {
-                    peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: localPlayer.pxProgress, finishTime: localPlayer.finishTime, stats: gameStats });
+                    peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: localPlayer.pxProgress, finishTime: localPlayer.finishTime });
                 } else if (isSprintHost) {
-                    localPlayer.stats = gameStats;
                     broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
                 }
 
@@ -2261,12 +2227,6 @@
                 highlightKey(nextExpected, 300, '#eab308');
             } else {
                 gameStats.miss++;
-                if (!isSprintHost && peerConnections.length > 0) {
-                    peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: localPlayer.pxProgress, finishTime: localPlayer.finishTime, stats: gameStats });
-                } else if (isSprintHost) {
-                    localPlayer.stats = gameStats;
-                    broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                }
                 playErrorClackSound();
             }
         }
@@ -2814,11 +2774,6 @@
                 }
             }
 
-            if (isSongBattle) {
-                const myLocalRacer = playersList.find(p => p.id === localPlayerId);
-                if (myLocalRacer) myLocalRacer.stats = gameStats;
-            }
-
             const perfectHits = gameStats.perfect;
             const earlyLateHits = gameStats.earlyLate;
             const missedHits = gameStats.miss;
@@ -2826,16 +2781,6 @@
 
             const accuracy = totalHits > 0 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
             const accuracyNum = parseFloat(accuracy);
-
-            if (isSongBattle) {
-                renderSongBattleResults();
-                postScoreToLeaderboard(accuracyNum);
-                return;
-            }
-
-            document.getElementById('single-bar-graph').style.display = 'flex';
-            document.getElementById('multi-bar-graph').style.display = 'none';
-            document.getElementById('btn-battle-again').style.display = 'none';
 
             document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
 
@@ -2885,8 +2830,6 @@
             initAudio();
             isRecording = !isRecording;
 
-            const footerRecBtn = document.getElementById('btn-footer-record');
-
             if (isRecording) {
                 recordedNotes = [];
                 recordedRests = [];
@@ -2895,23 +2838,13 @@
                 recordBtnText.textContent = '● RECORDING (Click to Stop)';
                 btnRecord.classList.remove('btn-secondary');
                 btnRecord.classList.add('btn-rec-active');
-                
-                if (footerRecBtn) {
-                    footerRecBtn.classList.remove('btn-secondary');
-                    footerRecBtn.classList.add('btn-rec-active');
-                }
-
                 btnShare.style.display = 'none';
+                
                 document.getElementById('status').textContent = ' RECORDING ACTIVE... Play notes using your keyboard or mouse!';
             } else {
                 recordBtnText.textContent = 'Record';
                 btnRecord.classList.remove('btn-rec-active');
                 btnRecord.classList.add('btn-secondary');
-
-                if (footerRecBtn) {
-                    footerRecBtn.classList.remove('btn-rec-active');
-                    footerRecBtn.classList.add('btn-secondary');
-                }
 
                 if (recordedNotes.length > 0) {
                     generatedHaycode = `${recordedNotes.join(',')},RESTS,${recordedRests.join(',')}`;
@@ -3380,17 +3313,6 @@
                     playErrorClackSound();
                     highlightKey(noteStr, 200, '#ef4444');
                 }
-                if (isSongBattle) {
-                    const localP = playersList.find(p => p.id === localPlayerId);
-                    if (localP) {
-                        localP.stats = gameStats;
-                        if (!isSprintHost && peerConnections.length > 0) {
-                            peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: localP.pxProgress, finishTime: localP.finishTime, stats: gameStats });
-                        } else if (isSprintHost) {
-                            broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                        }
-                    }
-                }
             } else {
                 highlightKey(noteStr);
             }
@@ -3566,10 +3488,6 @@
             btnPause.classList.remove('btn-success');
             btnPause.classList.add('btn-warning');
 
-            if (isRecording) {
-                toggleRecording();
-            }
-
             if (animationFrameId !== null) {
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = null;
@@ -3741,17 +3659,6 @@
                     item.gameStatus = 'miss';
                     gameStats.miss++;
                     if (isGameMode) updateGameStatus();
-                    if (isSongBattle) {
-                        const localP = playersList.find(p => p.id === localPlayerId);
-                        if (localP) {
-                            localP.stats = gameStats;
-                            if (!isSprintHost && peerConnections.length > 0) {
-                                peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: localP.pxProgress, finishTime: localP.finishTime, stats: gameStats });
-                            } else if (isSprintHost) {
-                                broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                            }
-                        }
-                    }
                 }
 
                 item.notes.forEach(noteStr => {
@@ -3821,19 +3728,6 @@
 
         document.getElementById('btn-play').addEventListener('click', playSong);
         document.getElementById('btn-stop').addEventListener('click', stopSong);
-        document.getElementById('btn-footer-play').addEventListener('click', playSong);
-        document.getElementById('btn-footer-stop').addEventListener('click', stopSong);
-        document.getElementById('btn-footer-record').addEventListener('click', toggleRecording);
-
-        // Bind Continue button on results modal
-        document.getElementById('btn-game-results-close').addEventListener('click', () => {
-            gameResultsModal.classList.remove('open');
-            isGameMode = false;
-            btnGame.textContent = 'Game Mode: OFF';
-            btnGame.classList.remove('btn-game-active');
-            btnGame.classList.add('btn-secondary');
-            document.getElementById('status').textContent = 'Returned to PianoPad Visualizer.';
-        });
 
         document.getElementById('btn-load-play').addEventListener('click', () => {
             initAudio();
