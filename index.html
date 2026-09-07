@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PianoPad an app from HayGames</title>
+    <title>PianoPad by Haybittle</title>
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
     <style>
         :root {
@@ -1029,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 17:21 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 17:31 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1300,7 +1300,7 @@
         let dodgeLives = 5;
         let dodgeDodgedCount = 0;
 
-        // JSONP Relay State
+        // Multi-Player Relay State
         let httpPollTimer = null;
         let isSprintHost = false;
         let localPlayerId = 'p1';
@@ -2335,7 +2335,7 @@
             if (!APPS_SCRIPT_URL) return;
 
             try {
-                // Post battle accuracy results directly using fetch with mode: 'no-cors'
+                // Submit battle payload via fetch with no-cors to prevent browser blockages
                 const url = `${APPS_SCRIPT_URL}?action=SUBMIT_BATTLE&players=${encodeURIComponent(JSON.stringify(battlePayload))}&t=${Date.now()}`;
                 await fetch(url, {
                     method: 'POST',
@@ -4289,6 +4289,103 @@
             }
 
             return new Blob([outBuffer], { type: 'audio/wav' });
+        }
+
+        async function postBattleToSpreadsheet(battlePayload) {
+            if (!APPS_SCRIPT_URL) return;
+
+            try {
+                // Post battle payload using fetch with mode: 'no-cors' so data reaches Google Sheets cleanly
+                const url = `${APPS_SCRIPT_URL}?action=SUBMIT_BATTLE&players=${encodeURIComponent(JSON.stringify(battlePayload))}&t=${Date.now()}`;
+                await fetch(url, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' }
+                });
+                document.getElementById('status').textContent = `Song Battle results saved to Google Sheet!`;
+            } catch (err) {
+                console.warn("Could not post battle to Google Sheet:", err);
+            }
+        }
+
+        function renderSongBattleResults() {
+            if (battleResultsShown) return;
+
+            const allPlayersFinished = playersList.every(p => p.finished === true || p.finished === "true");
+            
+            if (!allPlayersFinished) {
+                document.getElementById('status').textContent = `🏁 Battle finished for you! Waiting for remaining players to complete...`;
+                return;
+            }
+
+            battleResultsShown = true;
+            const multiGraph = document.getElementById('multi-bar-graph');
+            multiGraph.innerHTML = '';
+            multiGraph.style.display = 'flex';
+            document.getElementById('badge-container').innerHTML = '';
+            document.getElementById('single-bar-graph').style.display = 'none';
+            document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
+
+            const localPlayer = playersList.find(p => p.id === localPlayerId);
+            if (localPlayer && localPlayer.stats) {
+                const tot = localPlayer.stats.perfect + localPlayer.stats.earlyLate + localPlayer.stats.miss;
+                const acc = tot > 0 ? (((localPlayer.stats.perfect * 1.0 + localPlayer.stats.earlyLate * 0.5) / tot) * 100) : 0;
+                if (acc >= 80) {
+                    unlockBonusSounds(`Great job! You achieved <strong>${acc.toFixed(1)}%</strong> accuracy in the Song Battle and unlocked 5 bonus instrument sound engines!`);
+                }
+            }
+
+            const sortedRanked = [...playersList].sort((a, b) => {
+                const aStats = a.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+                const bStats = b.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+                const aTot = Math.max(1, aStats.perfect + aStats.earlyLate + aStats.miss);
+                const bTot = Math.max(1, bStats.perfect + bStats.earlyLate + bStats.miss);
+                const aAcc = ((aStats.perfect * 1.0 + aStats.earlyLate * 0.5) / aTot) * 100;
+                const bAcc = ((bStats.perfect * 1.0 + bStats.earlyLate * 0.5) / bTot) * 100;
+                return bAcc - aAcc;
+            });
+
+            const battlePayload = [];
+
+            sortedRanked.forEach((p, idx) => {
+                const col = document.createElement('div');
+                col.className = 'multi-bar-column';
+
+                const pStats = p.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+                const total = Math.max(1, pStats.perfect + pStats.earlyLate + pStats.miss);
+
+                const accuracyPct = ((pStats.perfect * 1.0 + pStats.earlyLate * 0.5) / total) * 100;
+
+                battlePayload.push({
+                    name: p.name,
+                    score: accuracyPct.toFixed(1)
+                });
+
+                const gPct = (pStats.perfect / total) * 100;
+                const oPct = (pStats.earlyLate / total) * 100;
+                const rPct = (pStats.miss / total) * 100;
+
+                const medal = idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `${idx + 1}th`;
+
+                col.innerHTML = `
+                    <div class="rank-medal-badge">${medal}</div>
+                    <div class="stacked-bar">
+                        <div class="bar-part-red" style="height:${rPct}%;"></div>
+                        <div class="bar-part-orange" style="height:${oPct}%;"></div>
+                        <div class="bar-part-green" style="height:${gPct}%;"></div>
+                    </div>
+                    <span style="font-size:0.75rem; font-weight:700; color:#fff;">${p.avatar} ${p.name}</span>
+                `;
+                multiGraph.appendChild(col);
+            });
+
+            if (isSprintHost) {
+                postBattleToSpreadsheet(battlePayload);
+            }
+
+            document.getElementById('game-summary-text').innerHTML = `<div style="font-size:1.2rem; font-weight:800; color:#facc15;">⚔️ Song Battle Standings: ${currentSongTitle}</div>`;
+            document.getElementById('game-rank-text').textContent = `Song Battle Logged!`;
+            gameResultsModal.classList.add('open');
         }
 
         document.addEventListener('DOMContentLoaded', () => {
