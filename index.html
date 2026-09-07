@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PianoPad Player - Visualizer & Haycode Creator</title>
+    <title>PianoPad an app from HayGames</title>
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
     <style>
         :root {
@@ -1029,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 17:14 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 17:21 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -2335,8 +2335,13 @@
             if (!APPS_SCRIPT_URL) return;
 
             try {
+                // Post battle accuracy results directly using fetch with mode: 'no-cors'
                 const url = `${APPS_SCRIPT_URL}?action=SUBMIT_BATTLE&players=${encodeURIComponent(JSON.stringify(battlePayload))}&t=${Date.now()}`;
-                await sendJSONP(url);
+                await fetch(url, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' }
+                });
                 document.getElementById('status').textContent = `Song Battle results saved to Google Sheet!`;
             } catch (err) {
                 console.warn("Could not post battle to Google Sheet:", err);
@@ -2488,7 +2493,7 @@
 
             const gain = audioCtx.createGain();
             gain.gain.setValueAtTime(0.35, now);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
 
             noise.connect(filter);
             filter.connect(gain);
@@ -3738,8 +3743,28 @@
             }
 
             try {
+                const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_SONGS&t=${Date.now()}`);
+
+                if (res && res.songs && res.songs.length > 0) {
+                    songList = res.songs;
+                    localStorage.setItem('pianopad_sheet_songs', JSON.stringify(res.songs));
+                    renderSongSelect();
+                    
+                    const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
+                    if (defaultObj) {
+                        currentSongTitle = defaultObj.title;
+                        currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
+                    }
+                    document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
+                    return;
+                }
+            } catch (err) {
+                console.warn("Apps Script fetch error, falling back to direct CSV...", err);
+            }
+
+            try {
                 const response = await fetch(SPREADSHEET_CSV_URL);
-                if (!response.ok) throw new Error('Network response failed');
+                if (!response.ok) throw new Error('CSV network response failed');
                 
                 const csvText = await response.text();
                 const liveSongs = parseCSVToSongs(csvText);
@@ -3754,7 +3779,7 @@
                         currentSongTitle = defaultObj.title;
                         currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
                     }
-                    document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
+                    document.getElementById('status').textContent = `Synced live via CSV! Loaded ${songList.length} songs from Google Sheet.`;
                 }
             } catch (err) {
                 if (songList.length > 0) {
