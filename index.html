@@ -1029,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 16:20 AEST</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 16:50 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -2331,6 +2331,18 @@
             activeMiniGame = null;
         }
 
+        async function postBattleToSpreadsheet(battlePayload) {
+            if (!APPS_SCRIPT_URL) return;
+
+            try {
+                const url = `${APPS_SCRIPT_URL}?action=SUBMIT_BATTLE&players=${encodeURIComponent(JSON.stringify(battlePayload))}&t=${Date.now()}`;
+                await sendJSONP(url);
+                document.getElementById('status').textContent = `Song Battle results saved to Google Sheet!`;
+            } catch (err) {
+                console.warn("Could not post battle to Google Sheet:", err);
+            }
+        }
+
         function renderSongBattleResults() {
             if (battleResultsShown) return;
 
@@ -2368,12 +2380,21 @@
                 return bAcc - aAcc;
             });
 
+            const battlePayload = [];
+
             sortedRanked.forEach((p, idx) => {
                 const col = document.createElement('div');
                 col.className = 'multi-bar-column';
 
                 const pStats = p.stats || { perfect: 0, earlyLate: 0, miss: 0 };
                 const total = Math.max(1, pStats.perfect + pStats.earlyLate + pStats.miss);
+
+                const accuracyPct = ((pStats.perfect * 1.0 + pStats.earlyLate * 0.5) / total) * 100;
+
+                battlePayload.push({
+                    name: p.name,
+                    score: accuracyPct.toFixed(1)
+                });
 
                 const gPct = (pStats.perfect / total) * 100;
                 const oPct = (pStats.earlyLate / total) * 100;
@@ -2392,6 +2413,11 @@
                 `;
                 multiGraph.appendChild(col);
             });
+
+            // If this client is the host, post the final battle results to Google Sheets Battles tab
+            if (isSprintHost) {
+                postBattleToSpreadsheet(battlePayload);
+            }
 
             document.getElementById('game-summary-text').innerHTML = `<div style="font-size:1.2rem; font-weight:800; color:#facc15;">⚔️ Song Battle Standings: ${currentSongTitle}</div>`;
             document.getElementById('game-rank-text').textContent = `Song Battle Logged!`;
@@ -3639,44 +3665,6 @@
             return song;
         }
 
-        function parseCSVToSongs(csvText) {
-            const songs = [];
-            const lines = csvText.split(/\r?\n/);
-            
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-
-                const row = [];
-                let insideQuote = false;
-                let entry = '';
-
-                for (let j = 0; j < line.length; j++) {
-                    const char = line[j];
-                    if (char === '"' && line[j + 1] === '"') {
-                        entry += '"';
-                        j++;
-                    } else if (char === '"') {
-                        insideQuote = !insideQuote;
-                    } else if (char === ',' && !insideQuote) {
-                        row.push(entry);
-                        entry = '';
-                    } else {
-                        entry += char;
-                    }
-                }
-                row.push(entry);
-
-                if (row.length >= 2 && row[0].trim()) {
-                    songs.push({
-                        title: row[0].trim().replace(/^"|"$/g, ''),
-                        code: row[1].trim().replace(/^"|"$/g, '')
-                    });
-                }
-            }
-            return songs;
-        }
-
         function renderSongSelect() {
             const uniqueMap = new Map();
             songList.forEach(s => {
@@ -3726,32 +3714,11 @@
                         currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
                     }
                     document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
-                    return;
+                } else {
+                    throw new Error(res ? res.error : "No songs returned");
                 }
             } catch (err) {
-                console.warn("Apps Script fetch error, falling back to direct CSV...", err);
-            }
-
-            try {
-                const response = await fetch(SPREADSHEET_CSV_URL);
-                if (!response.ok) throw new Error('CSV network response failed');
-                
-                const csvText = await response.text();
-                const liveSongs = parseCSVToSongs(csvText);
-
-                if (liveSongs.length > 0) {
-                    songList = liveSongs;
-                    localStorage.setItem('pianopad_sheet_songs', JSON.stringify(liveSongs));
-                    renderSongSelect();
-                    
-                    const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
-                    if (defaultObj) {
-                        currentSongTitle = defaultObj.title;
-                        currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
-                    }
-                    document.getElementById('status').textContent = `Synced live via CSV! Loaded ${songList.length} songs from Google Sheet.`;
-                }
-            } catch (err) {
+                console.warn("Sheet fetch error:", err);
                 if (songList.length > 0) {
                     document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
                 } else {
