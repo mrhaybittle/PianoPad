@@ -3656,49 +3656,49 @@
         }
 
         async function syncSongsWithGoogleSheet() {
-            const cachedData = localStorage.getItem('pianopad_sheet_songs');
-            if (cachedData) {
-                try {
-                    songList = JSON.parse(cachedData);
-                    renderSongSelect();
-                    const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
-                    if (defaultObj) {
-                        currentSongTitle = defaultObj.title;
-                        currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
-                    }
-                    document.getElementById('status').textContent = `Loaded ${songList.length} cached songs. Syncing live Google Sheet...`;
-                } catch (e) {
-                    console.warn("Cache parse error");
-                }
+    const cachedData = localStorage.getItem('pianopad_sheet_songs');
+    if (cachedData) {
+        try {
+            songList = JSON.parse(cachedData);
+            renderSongSelect();
+            const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
+            if (defaultObj) {
+                currentSongTitle = defaultObj.title;
+                currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
             }
-
-            try {
-                // Route request via JSONP Relay to bypass browser CORS blocks completely
-                const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_SONGS&t=${Date.now()}`);
-
-                if (res && res.songs && res.songs.length > 0) {
-                    songList = res.songs;
-                    localStorage.setItem('pianopad_sheet_songs', JSON.stringify(res.songs));
-                    renderSongSelect();
-                    
-                    const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
-                    if (defaultObj) {
-                        currentSongTitle = defaultObj.title;
-                        currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
-                    }
-                    document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
-                } else {
-                    throw new Error("No songs returned from script relay");
-                }
-            } catch (err) {
-                console.warn("Sheet fetch error:", err);
-                if (songList.length > 0) {
-                    document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
-                } else {
-                    document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or script permissions.`;
-                }
-            }
+            document.getElementById('status').textContent = `Loaded ${songList.length} cached songs. Syncing live Google Sheet...`;
+        } catch (e) {
+            console.warn("Cache parse error");
         }
+    }
+
+    try {
+        // Send request through your JSONP script relay to bypass browser CORS blocks
+        const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_SONGS&t=${Date.now()}`);
+
+        if (res && res.songs && res.songs.length > 0) {
+            songList = res.songs;
+            localStorage.setItem('pianopad_sheet_songs', JSON.stringify(res.songs));
+            renderSongSelect();
+            
+            const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
+            if (defaultObj) {
+                currentSongTitle = defaultObj.title;
+                currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
+            }
+            document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
+        } else {
+            throw new Error(res ? res.error : "No songs returned");
+        }
+    } catch (err) {
+        console.warn("Sheet fetch error:", err);
+        if (songList.length > 0) {
+            document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
+        } else {
+            document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or script permissions.`;
+        }
+    }
+}
 
         function buildTimeline() {
             noteTimeline = [];
