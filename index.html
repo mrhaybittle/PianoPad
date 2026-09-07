@@ -1029,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 09:42 AEST</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 11:25 AEST</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -2047,16 +2047,22 @@
 
         function startGoogleAppsScriptPolling(roomCode, isHost) {
             if (httpPollTimer) clearInterval(httpPollTimer);
-            hasBattleStarted = false; // Reset on polling init
+            hasBattleStarted = false;
 
             httpPollTimer = setInterval(async () => {
                 const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_ROOM&roomCode=${roomCode}&t=${Date.now()}`);
                 if (!res || !res.players) return;
 
+                // Merge remote state while making sure local finished state isn't temporarily reverted by stale cache
                 playersList = res.players.map(remotePlayer => {
+                    const localMatch = playersList.find(p => p.id === remotePlayer.id);
+                    const isLocal = remotePlayer.id === localPlayerId;
+                    const finished = isLocal ? (localMatch ? (localMatch.finished || remotePlayer.finished) : remotePlayer.finished) : remotePlayer.finished;
+
                     return {
                         ...remotePlayer,
-                        isLocal: remotePlayer.id === localPlayerId,
+                        isLocal: isLocal,
+                        finished: finished === true || finished === "true",
                         stats: remotePlayer.stats || { perfect: 0, earlyLate: 0, miss: 0 }
                     };
                 });
@@ -2064,8 +2070,16 @@
                 if (isHost) renderLobbyGrid('lobby-players-grid');
                 else renderLobbyGrid('client-lobby-grid');
 
-                if (isSongBattle) renderSongBattleResults();
-                else updateMultiplayerLanesUI();
+                if (isSongBattle) {
+                    // Always re-broadcast local finished status if waiting for others
+                    const localPlayer = playersList.find(p => p.id === localPlayerId);
+                    if (localPlayer && localPlayer.finished) {
+                        pushPlayerState();
+                    }
+                    renderSongBattleResults();
+                } else {
+                    updateMultiplayerLanesUI();
+                }
 
                 if (res.songCode && !isHost) {
                     currentSongTitle = res.songTitle;
@@ -2074,9 +2088,8 @@
                     if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
                 }
 
-                // TRIGGER GAME ONLY ONCE USING hasBattleStarted FLAG
                 if (res.status === "started" && !hasBattleStarted) {
-                    hasBattleStarted = true; // Block repeated countdowns
+                    hasBattleStarted = true;
                     document.getElementById('sprint-option-modal').classList.remove('open');
                     arcadeHub.classList.remove('open');
                     resetGameStats();
@@ -2232,7 +2245,7 @@
         }
 
         function checkAllFinished() {
-            const allFinished = playersList.every(p => p.finished || p.finishTime !== null || p.pxProgress >= 3600);
+            const allFinished = playersList.every(p => p.finished === true || p.finished === "true" || p.finishTime !== null || p.pxProgress >= 3600);
             if (allFinished) {
                 if (raceActive) {
                     raceActive = false;
@@ -3930,8 +3943,10 @@
                         const localPlayer = playersList.find(p => p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.finished = true;
-                            pushPlayerState();
-                            checkAllFinished();
+                            // Push finished state immediately and force an immediate server re-check
+                            pushPlayerState().then(() => {
+                                checkAllFinished();
+                            });
                         }
                         return;
                     } else if (isGameMode) {
