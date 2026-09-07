@@ -1044,7 +1044,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.08 | 8-Sep 07:18 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.08 | 8-Sep 07:23 AEST (Sydney)</div>
             <div class="footer-controls">
                 <button type="button" id="btn-footer-record" class="btn-secondary btn-icon-only" title="Record">
                     <span class="record-dot-icon"></span>
@@ -1886,8 +1886,7 @@
                                 }
                                 if (data.stats) player.stats = data.stats;
                                 broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
-                                if (isSongBattle) renderSongBattleResults();
-                                else updateMultiplayerLanesUI();
+                                if (!isSongBattle) updateMultiplayerLanesUI();
                                 checkAllFinished();
                             }
                         }
@@ -1958,8 +1957,7 @@
                         }
                     } else if (data.type === 'RACER_UPDATE') {
                         playersList = data.players;
-                        if (isSongBattle) renderSongBattleResults();
-                        else updateMultiplayerLanesUI();
+                        if (!isSongBattle) updateMultiplayerLanesUI();
                     } else if (data.type === 'RACE_FINISHED') {
                         raceActive = false;
                         playersList = data.players;
@@ -2814,11 +2812,6 @@
                 } else {
                     sessionStudentName = "Anonymous";
                 }
-            }
-
-            if (isSongBattle) {
-                const myLocalRacer = playersList.find(p => p.id === localPlayerId);
-                if (myLocalRacer) myLocalRacer.stats = gameStats;
             }
 
             const perfectHits = gameStats.perfect;
