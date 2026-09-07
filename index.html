@@ -1029,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 17:05 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 17:14 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -2488,7 +2488,7 @@
 
             const gain = audioCtx.createGain();
             gain.gain.setValueAtTime(0.35, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
 
             noise.connect(filter);
             filter.connect(gain);
@@ -3738,29 +3738,8 @@
             }
 
             try {
-                const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_SONGS&t=${Date.now()}`);
-
-                if (res && res.songs && res.songs.length > 0) {
-                    songList = res.songs;
-                    localStorage.setItem('pianopad_sheet_songs', JSON.stringify(res.songs));
-                    renderSongSelect();
-                    
-                    const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
-                    if (defaultObj) {
-                        currentSongTitle = defaultObj.title;
-                        currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
-                    }
-                    document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
-                } else {
-                    throw new Error(res ? res.error : "No songs returned");
-                }
-            } catch (err) {
-                console.warn("Apps Script fetch error, falling back to direct CSV...", err);
-            }
-
-            try {
                 const response = await fetch(SPREADSHEET_CSV_URL);
-                if (!response.ok) throw new Error('CSV network response failed');
+                if (!response.ok) throw new Error('Network response failed');
                 
                 const csvText = await response.text();
                 const liveSongs = parseCSVToSongs(csvText);
@@ -3775,13 +3754,13 @@
                         currentSongTitle = defaultObj.title;
                         currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
                     }
-                    document.getElementById('status').textContent = `Synced live via CSV! Loaded ${songList.length} songs from Google Sheet.`;
+                    document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
                 }
             } catch (err) {
                 if (songList.length > 0) {
                     document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
                 } else {
-                    document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or script permissions.`;
+                    document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
                 }
             }
         }
@@ -4038,9 +4017,7 @@
                         const localPlayer = playersList.find(p => p.id === localPlayerId);
                         if (localPlayer) {
                             localPlayer.finished = true;
-                            pushPlayerState().then(() => {
-                                checkAllFinished();
-                            });
+                            pushPlayerState();
                         }
                         return;
                     } else if (isGameMode) {
