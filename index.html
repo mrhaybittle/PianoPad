@@ -1029,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 12:00 AEST</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 12:12 AEST</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1312,6 +1312,7 @@
         let isSongBattle = false;
         let activeBattleRoomCode = "";
         let hasBattleStarted = false; // Flag to prevent infinite countdown loops
+        let battleResultsShown = false; // Flag to prevent results popup loop
 
         const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄'];
 
@@ -1332,23 +1333,25 @@
         document.getElementById('btn-song-battle').addEventListener('click', openSongBattleSelector);
         document.getElementById('btn-mic-toggle').addEventListener('click', toggleMicrophoneListening);
 
-        document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
-            gameResultsModal.classList.remove('open');
+        function stopBattlePolling() {
             isSongBattle = false;
+            activeBattleRoomCode = "";
+            battleResultsShown = false;
             if (httpPollTimer) {
                 clearInterval(httpPollTimer);
                 httpPollTimer = null;
             }
+        }
+
+        document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
+            gameResultsModal.classList.remove('open');
+            stopBattlePolling();
             openArcadeHub();
         });
 
         document.getElementById('btn-game-try-again').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
-            isSongBattle = false;
-            if (httpPollTimer) {
-                clearInterval(httpPollTimer);
-                httpPollTimer = null;
-            }
+            stopBattlePolling();
             if (currentSongTitle === "Mystery Note") startMysteryNote();
             else if (currentSongTitle === "Simon Taps") startSimonTaps();
             else if (currentSongTitle === "Drop Dodge") startDropDodge();
@@ -1535,14 +1538,9 @@
             activeMiniGame = null;
             isPlaying = false;
             raceActive = false;
-            isSongBattle = false;
-            hasBattleStarted = false; // Reset trigger flag
+            stopBattlePolling();
             runnerTrack.style.display = 'none';
             runnerTrack.innerHTML = '';
-            if (httpPollTimer) {
-                clearInterval(httpPollTimer);
-                httpPollTimer = null;
-            }
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.querySelectorAll('.key').forEach(k => {
                 k.classList.remove('active');
@@ -1869,6 +1867,7 @@
         function openSongBattleSelector() {
             initAudio();
             isSongBattle = true;
+            battleResultsShown = false;
             document.getElementById('battle-modal-title').textContent = `⚔️ Song Battle Setup`;
             document.getElementById('battle-modal-subtitle').textContent = "Host or join a live song battle:";
             document.getElementById('btn-sprint-bot-opt').style.display = 'none';
@@ -2060,10 +2059,10 @@
             hasBattleStarted = false;
 
             httpPollTimer = setInterval(async () => {
+                if (!activeBattleRoomCode) return; // Exit if polling was stopped
                 const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_ROOM&roomCode=${roomCode}&t=${Date.now()}`);
                 if (!res || !res.players) return;
 
-                // Merge remote state while making sure local finished state isn't temporarily reverted by stale cache
                 playersList = res.players.map(remotePlayer => {
                     const localMatch = playersList.find(p => p.id === remotePlayer.id);
                     const isLocal = remotePlayer.id === localPlayerId;
@@ -2081,7 +2080,6 @@
                 else renderLobbyGrid('client-lobby-grid');
 
                 if (isSongBattle) {
-                    // Always re-broadcast local finished status if waiting for others
                     const localPlayer = playersList.find(p => p.id === localPlayerId);
                     if (localPlayer && localPlayer.finished) {
                         pushPlayerState();
@@ -2168,16 +2166,10 @@
 
         async function triggerBattleAgain() {
             gameResultsModal.classList.remove('open');
-            hasBattleStarted = false; // Reset local trigger flag
-            isSongBattle = false;
-
-            if (httpPollTimer) {
-                clearInterval(httpPollTimer);
-                httpPollTimer = null;
-            }
+            hasBattleStarted = false;
+            battleResultsShown = false;
 
             if (isSprintHost) {
-                // Reset server status back to lobby
                 const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(sessionStudentName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
                 await sendJSONP(url);
 
@@ -2338,7 +2330,8 @@
         }
 
         function renderSongBattleResults() {
-            // Coerce p.finished to handle both string ("true") and boolean (true) values
+            if (battleResultsShown) return; // Prevent loop if already presented
+
             const allPlayersFinished = playersList.every(p => p.finished === true || p.finished === "true");
             
             if (!allPlayersFinished) {
@@ -2346,6 +2339,7 @@
                 return;
             }
 
+            battleResultsShown = true; // Lock so modal stays open until manually closed
             const multiGraph = document.getElementById('multi-bar-graph');
             multiGraph.innerHTML = '';
             multiGraph.style.display = 'flex';
@@ -2662,14 +2656,6 @@
         document.getElementById('btn-settings-close').addEventListener('click', () => settingsModal.classList.remove('open'));
         document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
         document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
-        document.getElementById('btn-game-results-close').addEventListener('click', () => {
-            gameResultsModal.classList.remove('open');
-            isSongBattle = false;
-            if (httpPollTimer) {
-                clearInterval(httpPollTimer);
-                httpPollTimer = null;
-            }
-        });
 
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
