@@ -1044,7 +1044,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.08 | 8-Sep 07:23 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.08 | 8-Sep 07:30 AEST (Sydney)</div>
             <div class="footer-controls">
                 <button type="button" id="btn-footer-record" class="btn-secondary btn-icon-only" title="Record">
                     <span class="record-dot-icon"></span>
@@ -2814,6 +2814,11 @@
                 }
             }
 
+            if (isSongBattle) {
+                const myLocalRacer = playersList.find(p => p.id === localPlayerId);
+                if (myLocalRacer) myLocalRacer.stats = gameStats;
+            }
+
             const perfectHits = gameStats.perfect;
             const earlyLateHits = gameStats.earlyLate;
             const missedHits = gameStats.miss;
@@ -3819,6 +3824,16 @@
         document.getElementById('btn-footer-play').addEventListener('click', playSong);
         document.getElementById('btn-footer-stop').addEventListener('click', stopSong);
         document.getElementById('btn-footer-record').addEventListener('click', toggleRecording);
+
+        // Bind Continue button on results modal
+        document.getElementById('btn-game-results-close').addEventListener('click', () => {
+            gameResultsModal.classList.remove('open');
+            isGameMode = false;
+            btnGame.textContent = 'Game Mode: OFF';
+            btnGame.classList.remove('btn-game-active');
+            btnGame.classList.add('btn-secondary');
+            document.getElementById('status').textContent = 'Returned to PianoPad Visualizer.';
+        });
 
         document.getElementById('btn-load-play').addEventListener('click', () => {
             initAudio();
