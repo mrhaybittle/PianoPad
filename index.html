@@ -296,6 +296,15 @@
             height: 16px;
         }
 
+        /* Footer Red Circle Record Button styling */
+        .record-dot-icon {
+            width: 14px;
+            height: 14px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
         .timeline-container-inline {
             background-color: #0b0f19;
             border: 1px solid #374151;
@@ -1036,8 +1045,11 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.08 | 8-Sep 06:54 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.08 | 8-Sep 06:59 AEST (Sydney)</div>
             <div class="footer-controls">
+                <button type="button" id="btn-footer-record" class="btn-secondary btn-icon-only" title="Record">
+                    <span class="record-dot-icon"></span>
+                </button>
                 <button type="button" id="btn-footer-play" class="btn-success btn-icon-only" title="Play">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </button>
@@ -2862,13 +2874,25 @@
                 recordBtnText.textContent = '● RECORDING (Click to Stop)';
                 btnRecord.classList.remove('btn-secondary');
                 btnRecord.classList.add('btn-rec-active');
-                btnShare.style.display = 'none';
                 
+                const footerRecBtn = document.getElementById('btn-footer-record');
+                if (footerRecBtn) {
+                    footerRecBtn.classList.remove('btn-secondary');
+                    footerRecBtn.classList.add('btn-rec-active');
+                }
+
+                btnShare.style.display = 'none';
                 document.getElementById('status').textContent = ' RECORDING ACTIVE... Play notes using your keyboard or mouse!';
             } else {
                 recordBtnText.textContent = 'Record';
                 btnRecord.classList.remove('btn-rec-active');
                 btnRecord.classList.add('btn-secondary');
+
+                const footerRecBtn = document.getElementById('btn-footer-record');
+                if (footerRecBtn) {
+                    footerRecBtn.classList.remove('btn-rec-active');
+                    footerRecBtn.classList.add('btn-secondary');
+                }
 
                 if (recordedNotes.length > 0) {
                     generatedHaycode = `${recordedNotes.join(',')},RESTS,${recordedRests.join(',')}`;
@@ -3754,6 +3778,7 @@
         document.getElementById('btn-stop').addEventListener('click', stopSong);
         document.getElementById('btn-footer-play').addEventListener('click', playSong);
         document.getElementById('btn-footer-stop').addEventListener('click', stopSong);
+        document.getElementById('btn-footer-record').addEventListener('click', toggleRecording);
 
         document.getElementById('btn-load-play').addEventListener('click', () => {
             initAudio();
