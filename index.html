@@ -266,7 +266,7 @@
             box-shadow: 0 0 14px rgba(239, 68, 68, 0.8);
         }
 
-        .btn-rec-active span {
+        .btn-rec-active span, .btn-rec-active .record-dot-icon {
             animation: textBlink 0.8s infinite ease-in-out;
         }
 
@@ -296,7 +296,6 @@
             height: 16px;
         }
 
-        /* Footer Red Circle Record Button styling */
         .record-dot-icon {
             width: 14px;
             height: 14px;
@@ -1045,7 +1044,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.08 | 8-Sep 06:59 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.08 | 8-Sep 07:18 AEST (Sydney)</div>
             <div class="footer-controls">
                 <button type="button" id="btn-footer-record" class="btn-secondary btn-icon-only" title="Record">
                     <span class="record-dot-icon"></span>
@@ -2249,8 +2248,9 @@
                 }
 
                 if (!isSprintHost && peerConnections.length > 0) {
-                    peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: localPlayer.pxProgress, finishTime: localPlayer.finishTime });
+                    peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: localPlayer.pxProgress, finishTime: localPlayer.finishTime, stats: gameStats });
                 } else if (isSprintHost) {
+                    localPlayer.stats = gameStats;
                     broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
                 }
 
@@ -2263,6 +2263,12 @@
                 highlightKey(nextExpected, 300, '#eab308');
             } else {
                 gameStats.miss++;
+                if (!isSprintHost && peerConnections.length > 0) {
+                    peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: localPlayer.pxProgress, finishTime: localPlayer.finishTime, stats: gameStats });
+                } else if (isSprintHost) {
+                    localPlayer.stats = gameStats;
+                    broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
+                }
                 playErrorClackSound();
             }
         }
@@ -2810,6 +2816,11 @@
                 }
             }
 
+            if (isSongBattle) {
+                const myLocalRacer = playersList.find(p => p.id === localPlayerId);
+                if (myLocalRacer) myLocalRacer.stats = gameStats;
+            }
+
             const perfectHits = gameStats.perfect;
             const earlyLateHits = gameStats.earlyLate;
             const missedHits = gameStats.miss;
@@ -2817,6 +2828,16 @@
 
             const accuracy = totalHits > 0 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
             const accuracyNum = parseFloat(accuracy);
+
+            if (isSongBattle) {
+                renderSongBattleResults();
+                postScoreToLeaderboard(accuracyNum);
+                return;
+            }
+
+            document.getElementById('single-bar-graph').style.display = 'flex';
+            document.getElementById('multi-bar-graph').style.display = 'none';
+            document.getElementById('btn-battle-again').style.display = 'none';
 
             document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
 
@@ -2866,6 +2887,8 @@
             initAudio();
             isRecording = !isRecording;
 
+            const footerRecBtn = document.getElementById('btn-footer-record');
+
             if (isRecording) {
                 recordedNotes = [];
                 recordedRests = [];
@@ -2875,7 +2898,6 @@
                 btnRecord.classList.remove('btn-secondary');
                 btnRecord.classList.add('btn-rec-active');
                 
-                const footerRecBtn = document.getElementById('btn-footer-record');
                 if (footerRecBtn) {
                     footerRecBtn.classList.remove('btn-secondary');
                     footerRecBtn.classList.add('btn-rec-active');
@@ -2888,7 +2910,6 @@
                 btnRecord.classList.remove('btn-rec-active');
                 btnRecord.classList.add('btn-secondary');
 
-                const footerRecBtn = document.getElementById('btn-footer-record');
                 if (footerRecBtn) {
                     footerRecBtn.classList.remove('btn-rec-active');
                     footerRecBtn.classList.add('btn-secondary');
@@ -3361,6 +3382,17 @@
                     playErrorClackSound();
                     highlightKey(noteStr, 200, '#ef4444');
                 }
+                if (isSongBattle) {
+                    const localP = playersList.find(p => p.id === localPlayerId);
+                    if (localP) {
+                        localP.stats = gameStats;
+                        if (!isSprintHost && peerConnections.length > 0) {
+                            peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: localP.pxProgress, finishTime: localP.finishTime, stats: gameStats });
+                        } else if (isSprintHost) {
+                            broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
+                        }
+                    }
+                }
             } else {
                 highlightKey(noteStr);
             }
@@ -3536,6 +3568,10 @@
             btnPause.classList.remove('btn-success');
             btnPause.classList.add('btn-warning');
 
+            if (isRecording) {
+                toggleRecording();
+            }
+
             if (animationFrameId !== null) {
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = null;
@@ -3707,6 +3743,17 @@
                     item.gameStatus = 'miss';
                     gameStats.miss++;
                     if (isGameMode) updateGameStatus();
+                    if (isSongBattle) {
+                        const localP = playersList.find(p => p.id === localPlayerId);
+                        if (localP) {
+                            localP.stats = gameStats;
+                            if (!isSprintHost && peerConnections.length > 0) {
+                                peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: localP.pxProgress, finishTime: localP.finishTime, stats: gameStats });
+                            } else if (isSprintHost) {
+                                broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
+                            }
+                        }
+                    }
                 }
 
                 item.notes.forEach(noteStr => {
