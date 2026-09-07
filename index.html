@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PianoPad Player - Visualizer & Haycode Creator</title>
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root {
             --bg-color: #121218;
@@ -229,12 +230,6 @@
         .btn-midi:hover { background-color: #0891b2; }
         .btn-settings { background-color: #3b82f6; }
         .btn-settings:hover { background-color: #2563eb; }
-
-        .btn-mic-active {
-            background-color: #10b981 !important;
-            color: #ffffff !important;
-            box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
-        }
 
         .btn-arcade {
             background: linear-gradient(135deg, #8b5cf6, #ec4899) !important;
@@ -888,10 +883,6 @@
                     <input type="range" id="speed-slider" min="10" max="500" value="100" step="5">
                 </div>
 
-                <button type="button" id="btn-mic-toggle" class="btn-secondary" title="Listen for Acoustic Piano Notes">
-                    🎙️ MIC INPUT: OFF
-                </button>
-
                 <button type="button" id="btn-game" class="btn-secondary">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                     Game Mode: OFF
@@ -1029,7 +1020,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.07 | 7-Sep 18:15 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.07 | 7-Sep 18:28 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1048,7 +1039,7 @@
             
             <div id="sprint-form-container" style="display: none; flex-direction: column; gap: 8px; text-align: left;">
                 <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Your First Name & Surname Initial:</label>
-                <input type="text" id="sprint-player-name" placeholder="e.g. Alex M" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem;">
+                <input type="text" id="sprint-player-name" placeholder="e.g. Alex M." style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem;">
                 
                 <div id="host-song-selector-group" style="display:none; flex-direction:column; gap:4px; margin-top:4px;">
                     <label style="font-size:0.75rem; color:#facc15; font-weight:700;">Select Battle Song:</label>
@@ -1059,13 +1050,13 @@
 
                 <div id="code-input-group" style="display:none; flex-direction:column; gap:4px;">
                     <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Enter Host Join Code:</label>
-                    <input type="text" id="sprint-room-code" placeholder="e.g. 766" maxlength="6" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; text-transform:uppercase;">
+                    <input type="text" id="sprint-room-code" placeholder="e.g. 482" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; text-transform:uppercase;">
                 </div>
 
                 <div id="host-lobby-group" style="display:none; flex-direction:column; gap:4px; text-align:center;">
                     <div style="font-size:1.1rem; color:#facc15; font-weight:800;" id="generated-room-code-display">Room Code: Generating...</div>
                     <div class="lobby-players-grid" id="lobby-players-grid"></div>
-                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-content:center;" onclick="triggerHostStartRace()">🚀 START LIVE SESSION FOR ALL PLAYERS</button>
+                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-center;" onclick="triggerHostStartRace()">🚀 START LIVE SESSION FOR ALL PLAYERS</button>
                 </div>
 
                 <div id="client-waiting-group" style="display:none; flex-direction:column; gap:6px; text-align:center;">
@@ -1139,7 +1130,7 @@
         </div>
     </div>
 
-    <!-- Calibration Wizard Modal -->
+    <!-- Calibration Wizard Modal (Auto-Prompted First Time) -->
     <div class="modal-overlay" id="calib-modal">
         <div class="modal" style="max-width: 680px;">
             <h2>MIDI Keyboard Calibration</h2>
@@ -1153,7 +1144,7 @@
 
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" id="btn-calib-skip" onclick="skipCalibration()">Skip Calibration</button>
-                <button type="button" class="btn-secondary" id="btn-calib-cancel" style="display:none;">Cancel Calibration</button>
+                <button type="button" class="btn-secondary" id="btn-calib-cancel" style="display:none;" onclick="cancelCalibration()">Cancel Calibration</button>
             </div>
         </div>
     </div>
@@ -1239,7 +1230,7 @@
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRVI-zuNfTZvcxcsG7mNk1iL_r11kCj-or6hKfLsilP0Vf9WSk0MeVxEog-RzXFIIjNA/exec';
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyJ6BXOjgbsbv03Xlp3kFVj_6aIfVJ7NM66Y3f_fMzuOeDabH2HzEhE-rLuoZzncXAA6g/exec';
 
         let audioCtx = null;
         let songList = [];
@@ -1254,14 +1245,6 @@
         let isGameMode = false;
         let currentTheme = 'default';
         let bonusSoundsUnlocked = false;
-
-        // Microphone Pitch Detection Variables
-        let micStream = null;
-        let micAnalyser = null;
-        let isMicListening = false;
-        let pitchDetectionFrameId = null;
-        let lastDetectedNote = null;
-        let noteHoldCounter = 0;
 
         let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
         let sessionStudentName = "";
@@ -1300,8 +1283,9 @@
         let dodgeLives = 5;
         let dodgeDodgedCount = 0;
 
-        // Multi-Player Relay State
-        let httpPollTimer = null;
+        // Multi-Player Config
+        let peerInstance = null;
+        let peerConnections = [];
         let isSprintHost = false;
         let localPlayerId = 'p1';
         let sprintSequence = ['c1', 'd1'];
@@ -1311,13 +1295,9 @@
         let raceActive = false;
         let isSongBattle = false;
         let activeBattleRoomCode = "";
-        let hasBattleStarted = false;
-        let battleResultsShown = false;
 
         const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄'];
-
         let playersList = [];
-
         let miniGameFallSpeedMs = 3800;
 
         const cMajorScaleNotes = ['c1', 'd1', 'e1', 'f1', 'g1', 'a1', 'b1', 'c2'];
@@ -1331,32 +1311,14 @@
         document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
         document.getElementById('btn-stop-arcade').addEventListener('click', exitActiveMiniGame);
         document.getElementById('btn-song-battle').addEventListener('click', openSongBattleSelector);
-        document.getElementById('btn-mic-toggle').addEventListener('click', toggleMicrophoneListening);
-
-        function stopBattlePolling() {
-            isSongBattle = false;
-            activeBattleRoomCode = "";
-            battleResultsShown = false;
-            if (httpPollTimer) {
-                clearInterval(httpPollTimer);
-                httpPollTimer = null;
-            }
-        }
-
-        document.getElementById('btn-game-results-close').addEventListener('click', () => {
-            gameResultsModal.classList.remove('open');
-            stopBattlePolling();
-        });
 
         document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
-            stopBattlePolling();
             openArcadeHub();
         });
 
         document.getElementById('btn-game-try-again').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
-            stopBattlePolling();
             if (currentSongTitle === "Mystery Note") startMysteryNote();
             else if (currentSongTitle === "Simon Taps") startSimonTaps();
             else if (currentSongTitle === "Drop Dodge") startDropDodge();
@@ -1364,159 +1326,6 @@
             else if (currentSongTitle === "Finger Sprint") openSprintModeSelector();
             else playSong();
         });
-
-        function sanitizeName(str) {
-            const parts = str.trim().split(/\s+/);
-            if (parts.length === 1) return parts[0];
-            const firstName = parts[0];
-            const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
-            return `${firstName} ${lastInitial}`;
-        }
-
-        function sendJSONP(url, callbackName) {
-            return new Promise((resolve) => {
-                const script = document.createElement('script');
-                const cbName = callbackName || 'jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-                
-                window[cbName] = function(data) {
-                    delete window[cbName];
-                    if (document.body.contains(script)) document.body.removeChild(script);
-                    resolve(data);
-                };
-
-                const del = url.includes('?') ? '&' : '?';
-                script.src = `${url}${del}callback=${cbName}`;
-                script.onerror = function() {
-                    delete window[cbName];
-                    if (document.body.contains(script)) document.body.removeChild(script);
-                    resolve({ error: "SCRIPT_LOAD_ERROR" });
-                };
-                document.body.appendChild(script);
-            });
-        }
-
-        /* --- Audio Pitch Detection Implementation --- */
-        async function toggleMicrophoneListening() {
-            initAudio();
-            const btn = document.getElementById('btn-mic-toggle');
-
-            if (isMicListening) {
-                stopMicrophoneListening();
-                btn.textContent = '🎙️ MIC INPUT: OFF';
-                btn.classList.remove('btn-mic-active');
-                btn.classList.add('btn-secondary');
-                document.getElementById('status').textContent = 'Microphone Pitch Detection stopped.';
-            } else {
-                try {
-                    micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                    const micSource = audioCtx.createMediaStreamSource(micStream);
-                    micAnalyser = audioCtx.createAnalyser();
-                    micAnalyser.fftSize = 2048;
-                    micSource.connect(micAnalyser);
-
-                    isMicListening = true;
-                    btn.textContent = '🎙️ MIC INPUT: ON';
-                    btn.classList.remove('btn-secondary');
-                    btn.classList.add('btn-mic-active');
-                    document.getElementById('status').textContent = '🎙️ Listening to acoustic piano notes... Play near your computer microphone!';
-
-                    processMicrophonePitch();
-                } catch (err) {
-                    console.error("Microphone access error:", err);
-                    alert("Unable to access microphone. Please allow microphone permissions in your browser.");
-                }
-            }
-        }
-
-        function stopMicrophoneListening() {
-            isMicListening = false;
-            if (pitchDetectionFrameId) cancelAnimationFrame(pitchDetectionFrameId);
-            if (micStream) {
-                micStream.getTracks().forEach(track => track.stop());
-                micStream = null;
-            }
-        }
-
-        function autoCorrelate(buf, sampleRate) {
-            let SIZE = buf.length;
-            let rms = 0;
-
-            for (let i = 0; i < SIZE; i++) {
-                let val = buf[i];
-                rms += val * val;
-            }
-            rms = Math.sqrt(rms / SIZE);
-            if (rms < 0.015) return -1;
-
-            let r1 = 0, r2 = SIZE - 1, thres = 0.2;
-            for (let i = 0; i < SIZE / 2; i++) {
-                if (Math.abs(buf[i]) < thres) { r1 = i; break; }
-            }
-            for (let i = 1; i < SIZE / 2; i++) {
-                if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
-            }
-
-            buf = buf.slice(r1, r2);
-            SIZE = buf.length;
-
-            let c = new Array(SIZE).fill(0);
-            for (let i = 0; i < SIZE; i++) {
-                for (let j = 0; j < SIZE - i; j++) {
-                    c[i] = c[i] + buf[j] * buf[j + i];
-                }
-            }
-
-            let d = 0; while (c[d] > c[d + 1]) d++;
-            let maxval = -1, maxpos = -1;
-            for (let i = d; i < SIZE; i++) {
-                if (c[i] > maxval) {
-                    maxval = c[i];
-                    maxpos = i;
-                }
-            }
-            let T0 = maxpos;
-
-            let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
-            let a = (x1 + x3 - 2 * x2) / 2;
-            let b = (x3 - x1) / 2;
-            if (a) T0 = T0 - b / (2 * a);
-
-            return sampleRate / T0;
-        }
-
-        function frequencyToNoteName(freq) {
-            if (freq < 50 || freq > 2000) return null;
-            let midi = Math.round(69 + 12 * Math.log2(freq / 440));
-            return midiNoteToName(midi);
-        }
-
-        function processMicrophonePitch() {
-            if (!isMicListening || !micAnalyser) return;
-
-            let buf = new Float32Array(micAnalyser.fftSize);
-            micAnalyser.getFloatTimeDomainData(buf);
-            let freq = autoCorrelate(buf, audioCtx.sampleRate);
-
-            if (freq !== -1) {
-                let note = frequencyToNoteName(freq);
-                if (note) {
-                    if (note === lastDetectedNote) {
-                        noteHoldCounter++;
-                        if (noteHoldCounter === 3) {
-                            playManualNote(note);
-                        }
-                    } else {
-                        lastDetectedNote = note;
-                        noteHoldCounter = 0;
-                    }
-                }
-            } else {
-                lastDetectedNote = null;
-                noteHoldCounter = 0;
-            }
-
-            pitchDetectionFrameId = requestAnimationFrame(processMicrophonePitch);
-        }
 
         function openArcadeHub() {
             initAudio();
@@ -1542,9 +1351,13 @@
             activeMiniGame = null;
             isPlaying = false;
             raceActive = false;
-            stopBattlePolling();
+            isSongBattle = false;
             runnerTrack.style.display = 'none';
             runnerTrack.innerHTML = '';
+            if (peerInstance && !isSprintHost) {
+                peerInstance.destroy();
+                peerInstance = null;
+            }
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.querySelectorAll('.key').forEach(k => {
                 k.classList.remove('active');
@@ -1871,7 +1684,6 @@
         function openSongBattleSelector() {
             initAudio();
             isSongBattle = true;
-            battleResultsShown = false;
             document.getElementById('battle-modal-title').textContent = `⚔️ Song Battle Setup`;
             document.getElementById('battle-modal-subtitle').textContent = "Host or join a live song battle:";
             document.getElementById('btn-sprint-bot-opt').style.display = 'none';
@@ -1902,15 +1714,12 @@
             }
             
             document.getElementById('btn-confirm-sprint-action').onclick = () => {
-                const rawName = document.getElementById('sprint-player-name').value;
-                if (!rawName.trim()) {
+                const nameInput = document.getElementById('sprint-player-name').value.trim();
+                if (!nameInput) {
                     document.getElementById('inline-name-error').style.display = 'block';
                     document.getElementById('sprint-player-name').focus();
                     return;
                 }
-
-                const nameInput = sanitizeName(rawName);
-                document.getElementById('sprint-player-name').value = nameInput;
 
                 if (isSongBattle) {
                     const selectedCode = document.getElementById('host-battle-song-select').value;
@@ -1936,10 +1745,10 @@
             document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
 
             document.getElementById('btn-confirm-sprint-action').onclick = () => {
-                const rawName = document.getElementById('sprint-player-name').value;
+                const nameInput = document.getElementById('sprint-player-name').value.trim();
                 const roomCode = document.getElementById('sprint-room-code').value.trim().toUpperCase();
 
-                if (!rawName.trim()) {
+                if (!nameInput) {
                     document.getElementById('inline-name-error').style.display = 'block';
                     document.getElementById('sprint-player-name').focus();
                     return;
@@ -1950,9 +1759,6 @@
                     document.getElementById('sprint-room-code').focus();
                     return;
                 }
-
-                const nameInput = sanitizeName(rawName);
-                document.getElementById('sprint-player-name').value = nameInput;
 
                 showJoinSetup(nameInput, roomCode);
             };
@@ -2005,147 +1811,140 @@
             });
         }
 
-        async function showHostSetup(hostName) {
+        function showHostSetup(hostName) {
             sessionStudentName = hostName;
             document.getElementById('btn-confirm-sprint-action').style.display = 'none';
             document.getElementById('host-lobby-group').style.display = 'flex';
             document.getElementById('host-song-selector-group').style.display = 'none';
 
-            activeBattleRoomCode = '' + Math.floor(100 + Math.random() * 900);
+            if (!activeBattleRoomCode || !isSprintHost) {
+                activeBattleRoomCode = isSongBattle ? '' + Math.floor(100 + Math.random() * 900) : 'RACE-' + Math.floor(1000 + Math.random() * 9000);
+            }
+            
             document.getElementById('generated-room-code-display').textContent = `Join Code: ${activeBattleRoomCode}`;
 
             isSprintHost = true;
             localPlayerId = 'p1';
-            playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true }];
+            playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, isLocal: true }];
             renderLobbyGrid('lobby-players-grid');
 
-            const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(hostName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
-            await sendJSONP(url);
+            if (!peerInstance || peerInstance.destroyed) {
+                peerInstance = new Peer(activeBattleRoomCode);
+                peerInstance.on('connection', (conn) => {
+                    peerConnections.push(conn);
 
-            startGoogleAppsScriptPolling(activeBattleRoomCode, true);
+                    conn.on('data', (data) => {
+                        if (data.type === 'JOIN') {
+                            const newPId = 'p' + (playersList.length + 1);
+                            const avatarIdx = (playersList.length) % AVATARS.length;
+                            const newP = { id: newPId, name: data.name, avatar: AVATARS[avatarIdx], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, isLocal: false };
+                            playersList.push(newP);
+
+                            renderLobbyGrid('lobby-players-grid');
+                            broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList, songTitle: currentSongTitle, songCode: songSelect.value });
+                        } else if (data.type === 'PROGRESS') {
+                            const player = playersList.find(p => p.id === data.id);
+                            if (player) {
+                                player.pxProgress = data.pxProgress;
+                                if (data.finishTime && !player.finishTime) {
+                                    player.finishTime = data.finishTime;
+                                }
+                                if (data.stats) player.stats = data.stats;
+                                broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
+                                if (isSongBattle) renderSongBattleResults();
+                                else updateMultiplayerLanesUI();
+                                checkAllFinished();
+                            }
+                        }
+                    });
+                });
+            } else {
+                broadcastPeerMsg({ type: 'LOBBY_UPDATE', players: playersList, songTitle: currentSongTitle, songCode: songSelect.value });
+            }
         }
 
-        async function showJoinSetup(racerName, roomCode) {
+        function showJoinSetup(racerName, roomCode) {
             sessionStudentName = racerName;
             activeBattleRoomCode = roomCode;
 
-            localPlayerId = 'p' + (Date.now() % 10000);
-            const avatarIdx = Math.floor(Math.random() * AVATARS.length);
+            peerInstance = new Peer();
+            peerInstance.on('open', () => {
+                const conn = peerInstance.connect(roomCode);
+                peerConnections = [conn];
 
-            document.getElementById('status').textContent = `Connecting to room ${roomCode}...`;
-
-            let res = null;
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                const url = `${APPS_SCRIPT_URL}?action=JOIN_ROOM&roomCode=${roomCode}&playerId=${localPlayerId}&playerName=${encodeURIComponent(racerName)}&avatar=${encodeURIComponent(AVATARS[avatarIdx])}&t=${Date.now()}`;
-                res = await sendJSONP(url);
-                
-                if (res && !res.error) break;
-                await new Promise(r => setTimeout(r, 1000));
-            }
-
-            if (res && res.error) {
-                alert("Room not found! Check code and try again.");
-                return;
-            }
-
-            document.getElementById('code-input-group').style.display = 'none';
-            document.getElementById('btn-confirm-sprint-action').style.display = 'none';
-            document.getElementById('client-waiting-group').style.display = 'flex';
-            document.getElementById('status').textContent = `Connected to Host Code (${roomCode})! Waiting for start...`;
-
-            startGoogleAppsScriptPolling(roomCode, false);
-        }
-
-        function startGoogleAppsScriptPolling(roomCode, isHost) {
-            if (httpPollTimer) clearInterval(httpPollTimer);
-            hasBattleStarted = false;
-
-            httpPollTimer = setInterval(async () => {
-                if (!activeBattleRoomCode) return;
-                const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_ROOM&roomCode=${roomCode}&t=${Date.now()}`);
-                if (!res || !res.players) return;
-
-                playersList = res.players.map(remotePlayer => {
-                    const localMatch = playersList.find(p => p.id === remotePlayer.id);
-                    const isLocal = remotePlayer.id === localPlayerId;
-                    const finished = isLocal ? (localMatch ? (localMatch.finished || remotePlayer.finished) : remotePlayer.finished) : remotePlayer.finished;
-
-                    return {
-                        ...remotePlayer,
-                        isLocal: isLocal,
-                        finished: finished === true || finished === "true",
-                        stats: remotePlayer.stats || { perfect: 0, earlyLate: 0, miss: 0 }
-                    };
+                conn.on('open', () => {
+                    conn.send({ type: 'JOIN', name: racerName });
+                    document.getElementById('code-input-group').style.display = 'none';
+                    document.getElementById('btn-confirm-sprint-action').style.display = 'none';
+                    document.getElementById('client-waiting-group').style.display = 'flex';
+                    document.getElementById('status').textContent = `Connected to Host Code (${roomCode})! Waiting for start...`;
                 });
 
-                if (isHost) renderLobbyGrid('lobby-players-grid');
-                else renderLobbyGrid('client-lobby-grid');
+                conn.on('data', (data) => {
+                    if (data.type === 'LOBBY_UPDATE') {
+                        playersList = data.players;
+                        if (data.songCode) {
+                            currentSongTitle = data.songTitle;
+                            songSelect.value = data.songCode;
+                            const parsed = parsePianoPad(data.songCode);
+                            if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
+                        }
+                        const myEntry = playersList.find(p => p.name === sessionStudentName);
+                        if (myEntry) localPlayerId = myEntry.id;
+                        renderLobbyGrid('client-lobby-grid');
+                    } else if (data.type === 'START_RACE') {
+                        closeSprintOptionModal();
+                        arcadeHub.classList.remove('open');
+                        resetGameStats();
 
-                if (isSongBattle) {
-                    const localPlayer = playersList.find(p => p.id === localPlayerId);
-                    if (localPlayer && localPlayer.finished) {
-                        pushPlayerState();
+                        if (data.songCode) {
+                            currentSongTitle = data.songTitle;
+                            songSelect.value = data.songCode;
+                            const parsed = parsePianoPad(data.songCode);
+                            if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
+                        }
+
+                        if (isSongBattle) {
+                            isGameMode = true;
+                            btnGame.textContent = 'Game Mode: ON';
+                            btnGame.classList.add('btn-game-active');
+                            startCountdown(() => {
+                                playSong();
+                            });
+                        } else {
+                            activeMiniGame = 'sprint';
+                            renderSprintLanes();
+                            startCountdown(() => {
+                                raceActive = true;
+                                sprintStartTime = performance.now();
+                                sprintKeystrokeCount = 0;
+                                sprintIndex = 0;
+                            });
+                        }
+                    } else if (data.type === 'RACER_UPDATE') {
+                        playersList = data.players;
+                        if (isSongBattle) renderSongBattleResults();
+                        else updateMultiplayerLanesUI();
+                    } else if (data.type === 'RACE_FINISHED') {
+                        raceActive = false;
+                        playersList = data.players;
+                        if (isSongBattle) renderSongBattleResults();
+                        else finishSprintRace();
+                    } else if (data.type === 'BATTLE_AGAIN_PROMPT') {
+                        gameResultsModal.classList.remove('open');
+                        const choice = confirm(`Host ${data.hostName} initiated a new Battle! Join Same Battle (${activeBattleRoomCode})?`);
+                        if (choice) {
+                            showJoinSetup(sessionStudentName, activeBattleRoomCode);
+                        }
                     }
-                    renderSongBattleResults();
-                } else {
-                    updateMultiplayerLanesUI();
-                }
-
-                if (res.songCode && !isHost) {
-                    currentSongTitle = res.songTitle;
-                    songSelect.value = res.songCode;
-                    const parsed = parsePianoPad(res.songCode);
-                    if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
-                }
-
-                if (res.status === "started" && !hasBattleStarted) {
-                    hasBattleStarted = true;
-                    document.getElementById('sprint-option-modal').classList.remove('open');
-                    arcadeHub.classList.remove('open');
-                    resetGameStats();
-
-                    if (isSongBattle) {
-                        isGameMode = true;
-                        btnGame.textContent = 'Game Mode: ON';
-                        btnGame.classList.add('btn-game-active');
-                        startCountdown(() => { playSong(); });
-                    } else {
-                        activeMiniGame = 'sprint';
-                        renderSprintLanes();
-                        startCountdown(() => {
-                            raceActive = true;
-                            sprintStartTime = performance.now();
-                            sprintKeystrokeCount = 0;
-                            sprintIndex = 0;
-                        });
-                    }
-                }
-
-                if (res.status === "finished" && raceActive) {
-                    raceActive = false;
-                    if (isSongBattle) renderSongBattleResults();
-                    else finishSprintRace();
-                }
-            }, 1000);
+                });
+            });
         }
 
-        async function pushPlayerState() {
-            if (!activeBattleRoomCode) return;
-            const localPlayer = playersList.find(p => p.id === localPlayerId);
-            if (!localPlayer) return;
+        function triggerHostStartRace() {
+            broadcastPeerMsg({ type: 'START_RACE', songTitle: currentSongTitle, songCode: songSelect.value });
 
-            const stats = localPlayer.stats || gameStats;
-            const url = `${APPS_SCRIPT_URL}?action=UPDATE_PLAYER&roomCode=${activeBattleRoomCode}&playerId=${localPlayerId}&pxProgress=${localPlayer.pxProgress}&finishTime=${localPlayer.finishTime || ''}&finished=${localPlayer.finished}&perfect=${stats.perfect}&earlyLate=${stats.earlyLate}&miss=${stats.miss}&t=${Date.now()}`;
-            await sendJSONP(url);
-        }
-
-        async function triggerHostStartRace() {
-            if (!activeBattleRoomCode) return;
-
-            const url = `${APPS_SCRIPT_URL}?action=START_ROOM&roomCode=${activeBattleRoomCode}&t=${Date.now()}`;
-            await sendJSONP(url);
-
-            document.getElementById('sprint-option-modal').classList.remove('open');
+            closeSprintOptionModal();
             arcadeHub.classList.remove('open');
             resetGameStats();
 
@@ -2153,7 +1952,9 @@
                 isGameMode = true;
                 btnGame.textContent = 'Game Mode: ON';
                 btnGame.classList.add('btn-game-active');
-                startCountdown(() => { playSong(); });
+                startCountdown(() => {
+                    playSong();
+                });
             } else {
                 activeMiniGame = 'sprint';
                 renderSprintLanes();
@@ -2166,18 +1967,21 @@
             }
         }
 
-        async function triggerBattleAgain() {
+        function triggerBattleAgain() {
             gameResultsModal.classList.remove('open');
-            hasBattleStarted = false;
-            battleResultsShown = false;
-
             if (isSprintHost) {
-                const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(sessionStudentName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
-                await sendJSONP(url);
-
+                broadcastPeerMsg({ type: 'BATTLE_AGAIN_PROMPT', hostName: sessionStudentName });
                 showHostSetup(sessionStudentName);
                 document.getElementById('sprint-option-modal').classList.add('open');
             }
+        }
+
+        function broadcastPeerMsg(msg) {
+            peerConnections.forEach(conn => {
+                if (conn && conn.open) {
+                    conn.send(msg);
+                }
+            });
         }
 
         function renderSprintLanes() {
@@ -2255,14 +2059,13 @@
         }
 
         function checkAllFinished() {
-            const allFinished = playersList.every(p => p.finished === true || p.finished === "true" || p.finishTime !== null || p.pxProgress >= 3600);
-            if (allFinished) {
-                if (raceActive) {
-                    raceActive = false;
-                    finishSprintRace();
-                } else if (isSongBattle) {
-                    renderSongBattleResults();
+            const allFinished = playersList.every(p => p.finishTime !== null || p.pxProgress >= 3600);
+            if (allFinished && raceActive) {
+                raceActive = false;
+                if (isSprintHost) {
+                    broadcastPeerMsg({ type: 'RACE_FINISHED', players: playersList });
                 }
+                finishSprintRace();
             }
         }
 
@@ -2331,29 +2134,7 @@
             activeMiniGame = null;
         }
 
-        async function postBattleToSpreadsheet(battlePayload) {
-            if (!APPS_SCRIPT_URL) return;
-
-            try {
-                const url = `${APPS_SCRIPT_URL}?action=SUBMIT_BATTLE&players=${encodeURIComponent(JSON.stringify(battlePayload))}&t=${Date.now()}`;
-                await sendJSONP(url);
-                document.getElementById('status').textContent = `Song Battle results saved to Google Sheet!`;
-            } catch (err) {
-                console.warn("Could not post battle to Google Sheet:", err);
-            }
-        }
-
         function renderSongBattleResults() {
-            if (battleResultsShown) return;
-
-            const allPlayersFinished = playersList.every(p => p.finished === true || p.finished === "true");
-            
-            if (!allPlayersFinished) {
-                document.getElementById('status').textContent = `🏁 Battle finished for you! Waiting for remaining players to complete...`;
-                return;
-            }
-
-            battleResultsShown = true;
             const multiGraph = document.getElementById('multi-bar-graph');
             multiGraph.innerHTML = '';
             multiGraph.style.display = 'flex';
@@ -2380,21 +2161,12 @@
                 return bAcc - aAcc;
             });
 
-            const battlePayload = [];
-
             sortedRanked.forEach((p, idx) => {
                 const col = document.createElement('div');
                 col.className = 'multi-bar-column';
 
                 const pStats = p.stats || { perfect: 0, earlyLate: 0, miss: 0 };
                 const total = Math.max(1, pStats.perfect + pStats.earlyLate + pStats.miss);
-
-                const accuracyPct = ((pStats.perfect * 1.0 + pStats.earlyLate * 0.5) / total) * 100;
-
-                battlePayload.push({
-                    name: p.name,
-                    score: accuracyPct.toFixed(1)
-                });
 
                 const gPct = (pStats.perfect / total) * 100;
                 const oPct = (pStats.earlyLate / total) * 100;
@@ -2413,10 +2185,6 @@
                 `;
                 multiGraph.appendChild(col);
             });
-
-            if (isSprintHost) {
-                postBattleToSpreadsheet(battlePayload);
-            }
 
             document.getElementById('game-summary-text').innerHTML = `<div style="font-size:1.2rem; font-weight:800; color:#facc15;">⚔️ Song Battle Standings: ${currentSongTitle}</div>`;
             document.getElementById('game-rank-text').textContent = `Song Battle Logged!`;
@@ -2444,7 +2212,11 @@
                     localPlayer.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
                 }
 
-                pushPlayerState();
+                if (!isSprintHost && peerConnections.length > 0) {
+                    peerConnections[0].send({ type: 'PROGRESS', id: localPlayerId, pxProgress: localPlayer.pxProgress, finishTime: localPlayer.finishTime });
+                } else if (isSprintHost) {
+                    broadcastPeerMsg({ type: 'RACER_UPDATE', players: playersList });
+                }
 
                 if (localPlayer.pxProgress >= 3600) {
                     checkAllFinished();
@@ -2682,7 +2454,6 @@
         });
         document.getElementById('btn-settings-close').addEventListener('click', () => settingsModal.classList.remove('open'));
         document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
-        document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
 
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
@@ -2839,38 +2610,40 @@
             }
 
             const parsed = parsePianoPad(code);
-            if (parsed.length === 0) {
-                teacherErrorDiv.textContent = "Invalid HayCode format!";
-                teacherErrorDiv.style.display = "block";
-                return;
-            }
+            if (parsed.length > 0) {
+                const newSong = { title: title, code: code };
+                songList.push(newSong);
+                localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
+                renderSongSelect();
+                
+                songSelect.value = code;
+                currentSongTitle = title;
+                currentSong = autoTransposeSong(parsed);
+                teacherModal.classList.remove('open');
+                document.getElementById('status').textContent = `Adding "${title}" to PianoPad & Google Sheet...`;
 
-            // Push locally first so it immediately appears
-            songList.push({ title: title, code: code });
-            localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
-            renderSongSelect();
-            
-            songSelect.value = code;
-            currentSongTitle = title;
-            currentSong = autoTransposeSong(parsed);
-
-            teacherModal.classList.remove('open');
-            document.getElementById('status').textContent = `Adding "${title}" to PianoPad & Google Sheet...`;
-
-            if (APPS_SCRIPT_URL) {
                 try {
-                    const addUrl = `${APPS_SCRIPT_URL}?action=ADD_SONG&title=${encodeURIComponent(title)}&code=${encodeURIComponent(code)}&t=${Date.now()}`;
-                    await sendJSONP(addUrl);
-                    document.getElementById('status').textContent = ` "${title}" successfully added to PianoPad & Google Sheet!`;
+                    const formData = new URLSearchParams();
+                    formData.append('action', 'ADD_SONG');
+                    formData.append('title', title);
+                    formData.append('code', code);
+
+                    await fetch(APPS_SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: formData.toString()
+                    });
+                    document.getElementById('status').textContent = `"${title}" successfully added to PianoPad & Google Sheet!`;
                 } catch (e) {
                     console.warn("Could not post to Apps Script endpoint.", e);
-                    document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
+                    document.getElementById('status').textContent = `"${title}" loaded into PianoPad!`;
                 }
+                playSong();
             } else {
-                document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
+                teacherErrorDiv.textContent = "Invalid HayCode format!";
+                teacherErrorDiv.style.display = "block";
             }
-            
-            playSong();
         }
 
         function toggleGameMode() {
@@ -2906,9 +2679,20 @@
             if (!APPS_SCRIPT_URL) return;
 
             const speedText = speedSlider.value + '%';
+            const formData = new URLSearchParams();
+            formData.append('action', 'SCORE_SUBMIT');
+            formData.append('name', sessionStudentName);
+            formData.append('title', currentSongTitle);
+            formData.append('score', accuracyNum);
+            formData.append('tempo', speedText);
+
             try {
-                const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&t=${Date.now()}`;
-                await sendJSONP(url);
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData.toString()
+                });
                 document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
             } catch (err) {
                 console.warn("Could not post score to Google Apps Script.", err);
@@ -2984,7 +2768,7 @@
             if (!sessionStudentName) {
                 const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
                 if (inputName && inputName.trim()) {
-                    sessionStudentName = sanitizeName(inputName);
+                    sessionStudentName = inputName.trim();
                 } else {
                     sessionStudentName = "Anonymous";
                 }
@@ -3019,10 +2803,6 @@
                 badgeContainer.innerHTML = `<div class="badge-box badge-bronze">🥉 BRONZE BADGE: Practice Pace (${currentSpeed}%)</div>`;
             } else {
                 badgeContainer.innerHTML = `<div style="font-size:0.8rem; color:#9ca3af; margin-top:4px;">Practice Speed: ${currentSpeed}% (Reach 50%+ for Practice Badges)</div>`;
-            }
-
-            if (accuracyNum >= 80) {
-                unlockBonusSounds(`Awesome performance! You achieved <strong>${accuracyNum}%</strong> accuracy on ${currentSongTitle} and unlocked 5 bonus instrument sound engines!`);
             }
 
             gameResultsModal.classList.add('open');
@@ -3424,73 +3204,6 @@
                 gain.connect(audioCtx.destination);
                 osc.start(now);
                 osc.stop(now + duration + 0.02);
-            } else if (inst === 'epiano') {
-                const osc1 = audioCtx.createOscillator();
-                const osc2 = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc1.type = 'sine';
-                osc2.type = 'triangle';
-                osc1.frequency.setValueAtTime(freq, now);
-                osc2.frequency.setValueAtTime(freq * 2, now);
-
-                gain.gain.setValueAtTime(0.35 * volScale, now);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.4);
-
-                osc1.connect(gain); osc2.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc1.start(now); osc2.start(now);
-                osc1.stop(now + duration + 0.4); osc2.stop(now + duration + 0.4);
-            } else if (inst === 'harpsichord') {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(freq, now);
-
-                gain.gain.setValueAtTime(0.25 * volScale, now);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.15);
-
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(now); osc.stop(now + duration + 0.15);
-            } else if (inst === 'synth80s') {
-                const osc = audioCtx.createOscillator();
-                const filter = audioCtx.createBiquadFilter();
-                const gain = audioCtx.createGain();
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(freq, now);
-
-                filter.type = 'lowpass';
-                filter.frequency.setValueAtTime(freq * 4, now);
-
-                gain.gain.setValueAtTime(0.2 * volScale, now);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.2);
-
-                osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(now); osc.stop(now + duration + 0.2);
-            } else if (inst === 'xylophone') {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq * 2, now);
-
-                gain.gain.setValueAtTime(0.5 * volScale, now);
-                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
-
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(now); osc.stop(now + 0.18);
-            } else if (inst === 'accordion') {
-                [0.99, 1.01].forEach(detune => {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(freq * detune, now);
-
-                    gain.gain.setValueAtTime(0.12 * volScale, now);
-                    gain.gain.linearRampToValueAtTime(0.12 * volScale, now + duration);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.1);
-
-                    osc.connect(gain); gain.connect(audioCtx.destination);
-                    osc.start(now); osc.stop(now + duration + 0.1);
-                });
             }
         }
 
@@ -3594,28 +3307,11 @@
                         gameStats.earlyLate++;
                         highlightKey(noteStr, 220, '#f97316');
                     }
-
-                    if (isSongBattle) {
-                        const localPlayer = playersList.find(p => p.id === localPlayerId);
-                        if (localPlayer) {
-                            localPlayer.stats = { ...gameStats };
-                            pushPlayerState();
-                        }
-                    }
-
                     if (isGameMode) updateGameStatus();
                 } else {
                     gameStats.miss++;
                     playErrorClackSound();
                     highlightKey(noteStr, 200, '#ef4444');
-
-                    if (isSongBattle) {
-                        const localPlayer = playersList.find(p => p.id === localPlayerId);
-                        if (localPlayer) {
-                            localPlayer.stats = { ...gameStats };
-                            pushPlayerState();
-                        }
-                    }
                 }
             } else {
                 highlightKey(noteStr);
@@ -3706,12 +3402,10 @@
         }
 
         async function syncSongsWithGoogleSheet() {
-            let localCache = [];
             const cachedData = localStorage.getItem('pianopad_sheet_songs');
             if (cachedData) {
                 try {
-                    localCache = JSON.parse(cachedData);
-                    songList = [...localCache];
+                    songList = JSON.parse(cachedData);
                     renderSongSelect();
                     const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
                     if (defaultObj) {
@@ -3724,55 +3418,31 @@
                 }
             }
 
-            let remoteSongs = [];
-
             try {
-                const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_SONGS&t=${Date.now()}`);
+                const response = await fetch(SPREADSHEET_CSV_URL);
+                if (!response.ok) throw new Error('Network response failed');
+                
+                const csvText = await response.text();
+                const liveSongs = parseCSVToSongs(csvText);
 
-                if (res && res.songs && res.songs.length > 0) {
-                    remoteSongs = res.songs;
-                } else {
-                    throw new Error(res ? res.error : "No songs returned from JSONP");
+                if (liveSongs.length > 0) {
+                    songList = liveSongs;
+                    localStorage.setItem('pianopad_sheet_songs', JSON.stringify(liveSongs));
+                    renderSongSelect();
+                    
+                    const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
+                    if (defaultObj) {
+                        currentSongTitle = defaultObj.title;
+                        currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
+                    }
+                    document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
                 }
             } catch (err) {
-                console.warn("Apps Script fetch error, trying CSV fallback...", err);
-                try {
-                    const response = await fetch(SPREADSHEET_CSV_URL);
-                    if (response.ok) {
-                        const csvText = await response.text();
-                        remoteSongs = parseCSVToSongs(csvText);
-                    }
-                } catch (csvErr) {
-                    console.warn("CSV Fallback error:", csvErr);
+                if (songList.length > 0) {
+                    document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
+                } else {
+                    document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
                 }
-            }
-
-            if (remoteSongs.length > 0) {
-                // Merge remote songs with local/imported cache to prevent imported songs from disappearing
-                const songMap = new Map();
-                remoteSongs.forEach(s => songMap.set(s.title.toLowerCase().trim(), s));
-                localCache.forEach(s => {
-                    const key = s.title.toLowerCase().trim();
-                    if (!songMap.has(key)) {
-                        songMap.set(key, s);
-                    }
-                });
-
-                songList = Array.from(songMap.values());
-                localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
-                renderSongSelect();
-
-                const defaultObj = songList.find(s => s.title === currentSongTitle) || songList.find(s => s.title === 'Wipeout') || songList[0];
-                if (defaultObj) {
-                    currentSongTitle = defaultObj.title;
-                    songSelect.value = defaultObj.code;
-                    currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
-                }
-                document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
-            } else if (songList.length > 0) {
-                document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
-            } else {
-                document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
             }
         }
 
@@ -3988,13 +3658,6 @@
                 if ((isGameMode || activeMiniGame) && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 280)) {
                     item.gameStatus = 'miss';
                     gameStats.miss++;
-                    if (isSongBattle) {
-                        const localPlayer = playersList.find(p => p.id === localPlayerId);
-                        if (localPlayer) {
-                            localPlayer.stats = { ...gameStats };
-                            pushPlayerState();
-                        }
-                    }
                     if (isGameMode) updateGameStatus();
                 }
 
@@ -4024,14 +3687,7 @@
                     isPlaying = false;
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                    if (isSongBattle) {
-                        const localPlayer = playersList.find(p => p.id === localPlayerId);
-                        if (localPlayer) {
-                            localPlayer.finished = true;
-                            pushPlayerState();
-                        }
-                        return;
-                    } else if (isGameMode) {
+                    if (isGameMode) {
                         showGameResultsPopUp();
                         return;
                     } else if (activeMiniGame) {
@@ -4277,103 +3933,11 @@
             return new Blob([outBuffer], { type: 'audio/wav' });
         }
 
-        async function postBattleToSpreadsheet(battlePayload) {
-            if (!APPS_SCRIPT_URL) return;
-
-            try {
-                const url = `${APPS_SCRIPT_URL}?action=SUBMIT_BATTLE&players=${encodeURIComponent(JSON.stringify(battlePayload))}&t=${Date.now()}`;
-                await sendJSONP(url);
-                document.getElementById('status').textContent = `Song Battle results saved to Google Sheet!`;
-            } catch (err) {
-                console.warn("Could not post battle to Google Sheet:", err);
-            }
-        }
-
-        function renderSongBattleResults() {
-            if (battleResultsShown) return;
-
-            const allPlayersFinished = playersList.every(p => p.finished === true || p.finished === "true");
-            
-            if (!allPlayersFinished) {
-                document.getElementById('status').textContent = `🏁 Battle finished for you! Waiting for remaining players to complete...`;
-                return;
-            }
-
-            battleResultsShown = true;
-            const multiGraph = document.getElementById('multi-bar-graph');
-            multiGraph.innerHTML = '';
-            multiGraph.style.display = 'flex';
-            document.getElementById('badge-container').innerHTML = '';
-            document.getElementById('single-bar-graph').style.display = 'none';
-            document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
-
-            const localPlayer = playersList.find(p => p.id === localPlayerId);
-            if (localPlayer && localPlayer.stats) {
-                const tot = localPlayer.stats.perfect + localPlayer.stats.earlyLate + localPlayer.stats.miss;
-                const acc = tot > 0 ? (((localPlayer.stats.perfect * 1.0 + localPlayer.stats.earlyLate * 0.5) / tot) * 100) : 0;
-                if (acc >= 80) {
-                    unlockBonusSounds(`Great job! You achieved <strong>${acc.toFixed(1)}%</strong> accuracy in the Song Battle and unlocked 5 bonus instrument sound engines!`);
-                }
-            }
-
-            const sortedRanked = [...playersList].sort((a, b) => {
-                const aStats = a.stats || { perfect: 0, earlyLate: 0, miss: 0 };
-                const bStats = b.stats || { perfect: 0, earlyLate: 0, miss: 0 };
-                const aTot = Math.max(1, aStats.perfect + aStats.earlyLate + aStats.miss);
-                const bTot = Math.max(1, bStats.perfect + bStats.earlyLate + bStats.miss);
-                const aAcc = ((aStats.perfect * 1.0 + aStats.earlyLate * 0.5) / aTot) * 100;
-                const bAcc = ((bStats.perfect * 1.0 + bStats.earlyLate * 0.5) / bTot) * 100;
-                return bAcc - aAcc;
-            });
-
-            const battlePayload = [];
-
-            sortedRanked.forEach((p, idx) => {
-                const col = document.createElement('div');
-                col.className = 'multi-bar-column';
-
-                const pStats = p.stats || { perfect: 0, earlyLate: 0, miss: 0 };
-                const total = Math.max(1, pStats.perfect + pStats.earlyLate + pStats.miss);
-
-                const accuracyPct = ((pStats.perfect * 1.0 + pStats.earlyLate * 0.5) / total) * 100;
-
-                battlePayload.push({
-                    name: p.name,
-                    score: accuracyPct.toFixed(1)
-                });
-
-                const gPct = (pStats.perfect / total) * 100;
-                const oPct = (pStats.earlyLate / total) * 100;
-                const rPct = (pStats.miss / total) * 100;
-
-                const medal = idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `${idx + 1}th`;
-
-                col.innerHTML = `
-                    <div class="rank-medal-badge">${medal}</div>
-                    <div class="stacked-bar">
-                        <div class="bar-part-red" style="height:${rPct}%;"></div>
-                        <div class="bar-part-orange" style="height:${oPct}%;"></div>
-                        <div class="bar-part-green" style="height:${gPct}%;"></div>
-                    </div>
-                    <span style="font-size:0.75rem; font-weight:700; color:#fff;">${p.avatar} ${p.name}</span>
-                `;
-                multiGraph.appendChild(col);
-            });
-
-            if (isSprintHost) {
-                postBattleToSpreadsheet(battlePayload);
-            }
-
-            document.getElementById('game-summary-text').innerHTML = `<div style="font-size:1.2rem; font-weight:800; color:#facc15;">⚔️ Song Battle Standings: ${currentSongTitle}</div>`;
-            document.getElementById('game-rank-text').textContent = `Song Battle Logged!`;
-            gameResultsModal.classList.add('open');
-        }
-
         document.addEventListener('DOMContentLoaded', () => {
             initMIDIHardware();
             syncSongsWithGoogleSheet();
-            setTimeout(updateKeyPositions, 100);
             checkFirstTimeCalibration();
+            setTimeout(updateKeyPositions, 100);
         });
     </script>
 </body>
