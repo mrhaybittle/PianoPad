@@ -2139,13 +2139,19 @@
             }
         }
 
-        function triggerBattleAgain() {
-            gameResultsModal.classList.remove('open');
-            if (isSprintHost) {
-                showHostSetup(sessionStudentName);
-                document.getElementById('sprint-option-modal').classList.add('open');
-            }
-        }
+   async function triggerBattleAgain() {
+    gameResultsModal.classList.remove('open');
+    hasBattleStarted = false; // Reset local trigger flag
+
+    if (isSprintHost) {
+        // Reset server status back to lobby
+        const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(sessionStudentName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
+        await sendJSONP(url);
+
+        showHostSetup(sessionStudentName);
+        document.getElementById('sprint-option-modal').classList.add('open');
+    }
+}
 
         function renderSprintLanes() {
             runnerTrack.style.display = 'flex';
