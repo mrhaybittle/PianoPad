@@ -373,7 +373,8 @@
             }
 
             filterSelect.style.display = '';
-            const activePool = allScores.filter(s => !s.isMiniGame);
+            // Only show songs in the dropdown that have >0 accuracy
+            const activePool = allScores.filter(s => !s.isMiniGame && s.accuracy > 0);
             const uniqueTitles = [...new Set(activePool.map(s => s.song))];
             uniqueTitles.sort();
 
@@ -390,7 +391,8 @@
             const filterValue = document.getElementById('filter-song').value;
             const tbody = document.getElementById('leaderboard-body');
 
-            let pool = allScores.filter(s => !s.isMiniGame);
+            // Filter out mini-games AND filter out any score with 0% accuracy
+            let pool = allScores.filter(s => !s.isMiniGame && s.accuracy > 0);
             let filtered = filterValue === 'ALL' ? [...pool] : pool.filter(s => s.song === filterValue);
 
             filtered.sort((a, b) => {
