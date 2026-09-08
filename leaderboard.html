@@ -346,7 +346,7 @@
 
                     const playerName = row[1] ? row[1].trim().replace(/^"|"$/g, '') : 'Anonymous';
 
-                    // Filter out any entries where the name is Anonymous
+                    // Rule 1: Filter out any entries where the name is Anonymous
                     if (playerName.toLowerCase() === 'anonymous') {
                         continue;
                     }
@@ -373,7 +373,8 @@
             }
 
             filterSelect.style.display = '';
-            // Only show songs in the dropdown that have >0 accuracy
+            
+            // Rule 2 applied here: Only show songs in the dropdown that have >0 accuracy
             const activePool = allScores.filter(s => !s.isMiniGame && s.accuracy > 0);
             const uniqueTitles = [...new Set(activePool.map(s => s.song))];
             uniqueTitles.sort();
@@ -391,7 +392,7 @@
             const filterValue = document.getElementById('filter-song').value;
             const tbody = document.getElementById('leaderboard-body');
 
-            // Filter out mini-games AND filter out any score with 0% accuracy
+            // Rule 2 applied here: Filter out mini-games AND completely exclude any score with exactly 0% accuracy
             let pool = allScores.filter(s => !s.isMiniGame && s.accuracy > 0);
             let filtered = filterValue === 'ALL' ? [...pool] : pool.filter(s => s.song === filterValue);
 
@@ -439,7 +440,7 @@
                 header.textContent = gameConfig.title;
                 colDiv.appendChild(header);
 
-                // Filter scores for this specific mini-game
+                // Arcade scores do NOT strictly filter out 0 accuracy (e.g. 0 time or 0 level is allowed to display)
                 let gameScores = allScores.filter(s => {
                     const titleLower = s.song.toLowerCase();
                     if (gameConfig.altKeys) {
