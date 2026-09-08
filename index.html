@@ -1029,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.08 | 8-Sep 14:00 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 06:53 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1240,6 +1240,7 @@
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRVI-zuNfTZvcxcsG7mNk1iL_r11kCj-or6hKfLsilP0Vf9WSk0MeVxEog-RzXFIIjNA/exec';
+        const SCORE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyJ6BXOjgbsbv03Xlp3kFVj_6aIfVJ7NM66Y3f_fMzuOeDabH2HzEhE-rLuoZzncXAA6g/exec';
 
         let audioCtx = null;
         let songList = [];
@@ -2367,12 +2368,43 @@
             activeMiniGame = null;
         }
 
-        async function postBattleToSpreadsheet(battlePayload) {
-            if (!APPS_SCRIPT_URL) return;
+        async function postScoreToLeaderboard(accuracyNum) {
+            if (!SCORE_SCRIPT_URL) return;
+
+            ensureStudentName();
+            const speedText = speedSlider.value + '%';
+            const payload = {
+                action: "SCORE_SUBMIT",
+                name: sessionStudentName,
+                title: currentSongTitle,
+                score: accuracyNum,
+                tempo: speedText
+            };
 
             try {
-                const url = `${APPS_SCRIPT_URL}?action=SUBMIT_BATTLE&players=${encodeURIComponent(JSON.stringify(battlePayload))}&t=${Date.now()}`;
-                await sendJSONP(url);
+                await fetch(SCORE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payload)
+                });
+                
+                document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
+            } catch (err) {
+                console.warn("Could not post score to Google Apps Script.", err);
+            }
+        }
+
+        async function postBattleToSpreadsheet(battlePayload) {
+            if (!SCORE_SCRIPT_URL) return;
+
+            try {
+                await fetch(SCORE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({ action: "SUBMIT_BATTLE", players: JSON.stringify(battlePayload) })
+                });
                 document.getElementById('status').textContent = `Song Battle results saved to Google Sheet!`;
             } catch (err) {
                 console.warn("Could not post battle to Google Sheet:", err);
@@ -2892,10 +2924,14 @@
             teacherModal.classList.remove('open');
             document.getElementById('status').textContent = `Adding "${title}" to PianoPad & Google Sheet...`;
 
-            if (APPS_SCRIPT_URL) {
+            if (SCORE_SCRIPT_URL) {
                 try {
-                    const addUrl = `${APPS_SCRIPT_URL}?action=ADD_SONG&title=${encodeURIComponent(title)}&code=${encodeURIComponent(code)}&t=${Date.now()}`;
-                    await sendJSONP(addUrl);
+                    await fetch(SCORE_SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'text/plain' },
+                        body: JSON.stringify({ action: "ADD_SONG", title: title, code: code })
+                    });
                     document.getElementById('status').textContent = ` "${title}" successfully added to PianoPad & Google Sheet!`;
                 } catch (e) {
                     console.warn("Could not post to Apps Script endpoint.", e);
@@ -2935,34 +2971,6 @@
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
             document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}`;
-        }
-
-        async function postScoreToLeaderboard(accuracyNum) {
-            if (!APPS_SCRIPT_URL) return;
-
-            ensureStudentName();
-            const speedText = speedSlider.value + '%';
-            const payload = {
-                action: "SCORE_SUBMIT",
-                name: sessionStudentName,
-                title: currentSongTitle,
-                score: accuracyNum,
-                tempo: speedText
-            };
-
-            try {
-                await fetch(APPS_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify(payload)
-                });
-                const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&t=${Date.now()}`;
-                sendJSONP(url);
-                document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
-            } catch (err) {
-                console.warn("Could not post score to Google Apps Script.", err);
-            }
         }
 
         async function calculateAndDisplayRank(accuracyNum) {
