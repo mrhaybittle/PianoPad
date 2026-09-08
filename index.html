@@ -1029,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.08 | 8-Sep 12:19 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.08 | 8-Sep 14:00 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1373,6 +1373,18 @@
             return `${firstName} ${lastInitial}`;
         }
 
+        function ensureStudentName() {
+            if (!sessionStudentName || !sessionStudentName.trim()) {
+                const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
+                if (inputName && inputName.trim()) {
+                    sessionStudentName = sanitizeName(inputName);
+                } else {
+                    sessionStudentName = "Anonymous";
+                }
+            }
+            return sessionStudentName;
+        }
+
         function sendJSONP(url, callbackName) {
             return new Promise((resolve) => {
                 const script = document.createElement('script');
@@ -1703,8 +1715,9 @@
                 currentSongTitle = "Simon Taps";
                 
                 const maxLevelRemembered = Math.max(1, simonSequence.length - 1);
+                ensureStudentName();
                 
-                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>Max Level Remembered: <span style="color:#22c55e; font-size:1.3rem;">Level ${maxLevelRemembered}</span>`;
+                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Max Level Remembered: <span style="color:#22c55e; font-size:1.3rem;">Level ${maxLevelRemembered}</span>`;
                 document.getElementById('single-bar-graph').style.display = 'flex';
                 document.getElementById('multi-bar-graph').style.display = 'none';
                 document.getElementById('btn-battle-again').style.display = 'none';
@@ -1749,9 +1762,10 @@
             if (diff === 0) {
                 highlightKey(noteStr, 500, '#22c55e');
                 currentSongTitle = "Mystery Note";
+                ensureStudentName();
 
                 document.getElementById('game-summary-text').innerHTML = 
-                    `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>` +
+                    `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>` +
                     `Guesses Taken: <span style="color:#22c55e; font-size:1.4rem; font-weight:800;">${mysteryGuessCount}</span>`;
 
                 document.getElementById('single-bar-graph').style.display = 'flex';
@@ -2347,6 +2361,7 @@
             gameResultsModal.classList.add('open');
 
             if (localPlayer && localPlayer.finishTime) {
+                ensureStudentName();
                 postScoreToLeaderboard(parseFloat(localPlayer.finishTime));
             }
             activeMiniGame = null;
@@ -2925,10 +2940,25 @@
         async function postScoreToLeaderboard(accuracyNum) {
             if (!APPS_SCRIPT_URL) return;
 
+            ensureStudentName();
             const speedText = speedSlider.value + '%';
+            const payload = {
+                action: "SCORE_SUBMIT",
+                name: sessionStudentName,
+                title: currentSongTitle,
+                score: accuracyNum,
+                tempo: speedText
+            };
+
             try {
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payload)
+                });
                 const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&t=${Date.now()}`;
-                await sendJSONP(url);
+                sendJSONP(url);
                 document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
             } catch (err) {
                 console.warn("Could not post score to Google Apps Script.", err);
@@ -2985,8 +3015,13 @@
                 const currentSpeedNum = parseInt(speedSlider.value, 10);
                 songScores.push({ accuracy: accuracyNum, speed: currentSpeedNum });
 
+                const titleLower = currentSongTitle.toLowerCase();
+                const isAscending = titleLower.includes('mystery note') || titleLower.includes('finger sprint');
+
                 songScores.sort((a, b) => {
-                    if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+                    if (a.accuracy !== b.accuracy) {
+                        return isAscending ? a.accuracy - b.accuracy : b.accuracy - a.accuracy;
+                    }
                     return b.speed - a.speed;
                 });
 
@@ -3001,14 +3036,7 @@
         }
 
         function showGameResultsPopUp() {
-            if (!sessionStudentName) {
-                const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
-                if (inputName && inputName.trim()) {
-                    sessionStudentName = sanitizeName(inputName);
-                } else {
-                    sessionStudentName = "Anonymous";
-                }
-            }
+            ensureStudentName();
 
             const perfectHits = gameStats.perfect;
             const earlyLateHits = gameStats.earlyLate;
@@ -3047,9 +3075,8 @@
 
             gameResultsModal.classList.add('open');
 
-            calculateAndDisplayRank(accuracyNum).then(() => {
-                postScoreToLeaderboard(accuracyNum);
-            });
+            postScoreToLeaderboard(accuracyNum);
+            calculateAndDisplayRank(accuracyNum);
         }
 
         function toggleLoopMode() {
