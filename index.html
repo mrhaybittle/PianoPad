@@ -1029,7 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.09 | 9-Sep 06:53 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 07:33 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -2043,8 +2043,10 @@
             playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true }];
             renderLobbyGrid('lobby-players-grid');
 
-            const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(hostName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
-            await sendJSONP(url);
+            if (APPS_SCRIPT_URL) {
+                const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(hostName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
+                await sendJSONP(url);
+            }
 
             startGoogleAppsScriptPolling(activeBattleRoomCode, true);
         }
@@ -2059,12 +2061,14 @@
             document.getElementById('status').textContent = `Connecting to room ${roomCode}...`;
 
             let res = null;
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                const url = `${APPS_SCRIPT_URL}?action=JOIN_ROOM&roomCode=${roomCode}&playerId=${localPlayerId}&playerName=${encodeURIComponent(racerName)}&avatar=${encodeURIComponent(AVATARS[avatarIdx])}&t=${Date.now()}`;
-                res = await sendJSONP(url);
-                
-                if (res && !res.error) break;
-                await new Promise(r => setTimeout(r, 1000));
+            if (APPS_SCRIPT_URL) {
+                for (let attempt = 1; attempt <= 3; attempt++) {
+                    const url = `${APPS_SCRIPT_URL}?action=JOIN_ROOM&roomCode=${roomCode}&playerId=${localPlayerId}&playerName=${encodeURIComponent(racerName)}&avatar=${encodeURIComponent(AVATARS[avatarIdx])}&t=${Date.now()}`;
+                    res = await sendJSONP(url);
+                    
+                    if (res && !res.error) break;
+                    await new Promise(r => setTimeout(r, 1000));
+                }
             }
 
             if (res && res.error) {
@@ -2081,6 +2085,7 @@
         }
 
         function startGoogleAppsScriptPolling(roomCode, isHost) {
+            if (!APPS_SCRIPT_URL) return;
             if (httpPollTimer) clearInterval(httpPollTimer);
             hasBattleStarted = false;
 
@@ -2160,7 +2165,7 @@
         }
 
         async function pushPlayerState() {
-            if (!activeBattleRoomCode) return;
+            if (!activeBattleRoomCode || !APPS_SCRIPT_URL) return;
             const localPlayer = playersList.find(p => p.id === localPlayerId);
             if (!localPlayer) return;
 
@@ -2170,7 +2175,7 @@
         }
 
         async function triggerHostStartRace() {
-            if (!activeBattleRoomCode) return;
+            if (!activeBattleRoomCode || !APPS_SCRIPT_URL) return;
 
             const url = `${APPS_SCRIPT_URL}?action=START_ROOM&roomCode=${activeBattleRoomCode}&t=${Date.now()}`;
             await sendJSONP(url);
@@ -2207,7 +2212,7 @@
             hasBattleStarted = false;
             battleResultsShown = false;
 
-            if (isSprintHost) {
+            if (isSprintHost && APPS_SCRIPT_URL) {
                 const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(sessionStudentName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
                 await sendJSONP(url);
 
@@ -2368,33 +2373,6 @@
             activeMiniGame = null;
         }
 
-        async function postScoreToLeaderboard(accuracyNum) {
-            if (!SCORE_SCRIPT_URL) return;
-
-            ensureStudentName();
-            const speedText = speedSlider.value + '%';
-            const payload = {
-                action: "SCORE_SUBMIT",
-                name: sessionStudentName,
-                title: currentSongTitle,
-                score: accuracyNum,
-                tempo: speedText
-            };
-
-            try {
-                await fetch(SCORE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify(payload)
-                });
-                
-                document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
-            } catch (err) {
-                console.warn("Could not post score to Google Apps Script.", err);
-            }
-        }
-
         async function postBattleToSpreadsheet(battlePayload) {
             if (!SCORE_SCRIPT_URL) return;
 
@@ -2433,9 +2411,13 @@
             if (localPlayer && localPlayer.stats) {
                 const tot = localPlayer.stats.perfect + localPlayer.stats.earlyLate + localPlayer.stats.miss;
                 const acc = tot > 0 ? (((localPlayer.stats.perfect * 1.0 + localPlayer.stats.earlyLate * 0.5) / tot) * 100) : 0;
+                
                 if (acc >= 80) {
                     unlockBonusSounds(`Great job! You achieved <strong>${acc.toFixed(1)}%</strong> accuracy in the Song Battle and unlocked 5 bonus instrument sound engines!`);
                 }
+                
+                // Submit the individual player's accuracy score to the leaderboard spreadsheet
+                postScoreToLeaderboard(parseFloat(acc.toFixed(1)));
             }
 
             const sortedRanked = [...playersList].sort((a, b) => {
@@ -2924,14 +2906,10 @@
             teacherModal.classList.remove('open');
             document.getElementById('status').textContent = `Adding "${title}" to PianoPad & Google Sheet...`;
 
-            if (SCORE_SCRIPT_URL) {
+            if (APPS_SCRIPT_URL) {
                 try {
-                    await fetch(SCORE_SCRIPT_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'text/plain' },
-                        body: JSON.stringify({ action: "ADD_SONG", title: title, code: code })
-                    });
+                    const addUrl = `${APPS_SCRIPT_URL}?action=ADD_SONG&title=${encodeURIComponent(title)}&code=${encodeURIComponent(code)}&t=${Date.now()}`;
+                    await sendJSONP(addUrl);
                     document.getElementById('status').textContent = ` "${title}" successfully added to PianoPad & Google Sheet!`;
                 } catch (e) {
                     console.warn("Could not post to Apps Script endpoint.", e);
@@ -2971,6 +2949,32 @@
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
             document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}`;
+        }
+
+        async function postScoreToLeaderboard(accuracyNum) {
+            if (!SCORE_SCRIPT_URL) return;
+
+            ensureStudentName();
+            const speedText = speedSlider.value + '%';
+            const payload = {
+                action: "SCORE_SUBMIT",
+                name: sessionStudentName,
+                title: currentSongTitle,
+                score: accuracyNum,
+                tempo: speedText
+            };
+
+            try {
+                await fetch(SCORE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payload)
+                });
+                document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
+            } catch (err) {
+                console.warn("Could not post score to Google Apps Script.", err);
+            }
         }
 
         async function calculateAndDisplayRank(accuracyNum) {
@@ -3954,6 +3958,8 @@
             ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
             ctx.lineTo(x + width, y + height - radius);
             ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
             ctx.lineTo(x + radius, y + height);
             ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
             ctx.lineTo(x, y + radius);
