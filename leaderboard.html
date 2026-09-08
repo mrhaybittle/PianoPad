@@ -344,9 +344,16 @@
                         return titleLower.includes(g.key);
                     });
 
+                    const playerName = row[1] ? row[1].trim().replace(/^"|"$/g, '') : 'Anonymous';
+
+                    // Filter out any entries where the name is Anonymous
+                    if (playerName.toLowerCase() === 'anonymous') {
+                        continue;
+                    }
+
                     records.push({
                         timestamp: row[0] ? row[0].trim().replace(/^"|"$/g, '') : '',
-                        name: row[1] ? row[1].trim().replace(/^"|"$/g, '') : 'Anonymous',
+                        name: playerName,
                         song: songTitle,
                         accuracy: parseFloat(row[3]) || 0,
                         speed: parseInt(row[4]) || 100,
