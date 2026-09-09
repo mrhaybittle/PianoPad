@@ -17,13 +17,10 @@
             --recording-active: #ef4444;
             --loop-active: #06b6d4;
             --game-active: #ec4899;
-            --arcade-active: #8b5cf6;
             --canvas-bg: #0d0a07;
             --hitline-color: #d97706;
-            --valve-up: #d97706;
-            --valve-down: #fbbf24;
         }
-        
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -115,52 +112,50 @@
         .btn-success { background-color: #10b981; color: #fff;}
         .btn-warning { background-color: #f59e0b; color: #000; }
         .btn-danger { background-color: #ef4444; color: #fff; }
-        .btn-midi { background-color: #0ea5e9; color: #fff; }
 
         .btn-mic-active { background-color: #10b981 !important; color: #ffffff !important; box-shadow: 0 0 10px rgba(16, 185, 129, 0.6); }
-        .btn-game-active { background-color: var(--game-active) !important; color: #fff; }
-        .btn-step-active { background-color: #f43f5e !important; color: #ffffff !important; }
 
         .visualizer-wrapper {
             position: relative; display: flex; flex-direction: column; align-items: center;
             background-color: #000; border-radius: 10px; padding: 4px;
             box-shadow: inset 0 2px 8px rgba(0,0,0,0.9);
-            width: 100%; flex: 1; min-height: 380px; overflow: hidden;
+            width: 100%; flex: 1; min-height: 300px; overflow: hidden;
         }
 
         #waterfall-canvas {
             background-color: var(--canvas-bg);
             border-bottom: 3px solid var(--hitline-color);
-            display: block; width: 100%; flex: 1;
+            display: block; width: 100%; height: 100%; flex: 1;
         }
 
-        /* BRASS VALVES STYLING */
         #mode-display {
-            font-size: 1.3rem;
+            font-size: 1.1rem;
             font-weight: bold;
             color: #fbbf24;
             background: #332717;
-            padding: 8px 20px;
+            padding: 6px 16px;
             border-radius: 8px;
             border: 2px solid #78350f;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            margin: 10px 0;
+            margin: 10px 0 5px 0;
             box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+            z-index: 10;
         }
 
         .valves-container {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 30px;
+            gap: 40px;
             padding: 15px;
             background: linear-gradient(to bottom, #332717, #1a140b);
             width: 100%;
             border-radius: 0 0 8px 8px;
             border-top: 2px solid #524026;
+            z-index: 10;
         }
 
         .valve-wrapper {
@@ -180,11 +175,11 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 1.8rem;
+            font-size: 2rem;
             font-weight: 900;
             color: #451a03;
             cursor: pointer;
-            transition: all 0.1s;
+            transition: all 0.05s;
         }
 
         .valve-btn.active {
@@ -205,22 +200,27 @@
 
         .blow-instruction {
             position: absolute;
-            bottom: 150px;
-            font-size: 1.2rem;
+            top: 10px;
+            right: 10px;
+            font-size: 1rem;
             font-weight: 800;
             color: #fff;
-            text-shadow: 0 0 10px #f59e0b;
-            background: rgba(0,0,0,0.6);
+            background: rgba(0,0,0,0.7);
             padding: 5px 15px;
-            border-radius: 20px;
+            border-radius: 8px;
             border: 1px solid #f59e0b;
             pointer-events: none;
-            animation: pulse 2s infinite;
+            z-index: 5;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 0.8; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.05); }
+        .status-bar { font-size: 0.82rem; color: #fef3c7; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .footer-bar { display: flex; align-items: center; justify-content: space-between; padding-top: 4px; }
+        
+        .version-stamp {
+            font-size: 0.72rem;
+            color: #d97706;
+            font-weight: 700;
+            font-family: monospace;
         }
 
         /* MODALS */
@@ -255,9 +255,6 @@
         .setup-option.selected { border-color: #10b981; background: #064e3b; }
         .setup-option h3 { font-size: 1.1rem; color: #fff; }
         .setup-option p { font-size: 0.8rem; color: #9ca3af; }
-
-        .status-bar { font-size: 0.82rem; color: #fef3c7; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .footer-bar { display: flex; align-items: center; justify-content: space-between; padding-top: 4px; }
     </style>
 </head>
 <body>
@@ -279,28 +276,15 @@
                     🎙️ MIC INPUT: OFF
                 </button>
 
-                <button type="button" id="btn-game" class="btn-secondary">
-                    🎮 Game Mode: OFF
-                </button>
-
-                <button type="button" id="btn-step" class="btn-secondary">
-                    👣 Step Mode
-                </button>
-
                 <button type="button" id="btn-play" class="btn-success">▶ Play</button>
                 <button type="button" id="btn-pause" class="btn-warning">⏸ Pause</button>
                 <button type="button" id="btn-stop" class="btn-danger">⏹ Stop</button>
-                
-                <label class="btn-file-label btn-midi">
-                    📁 Import MIDI
-                    <input type="file" id="midi-input" accept=".mid,.midi" style="display: none;">
-                </label>
             </div>
         </header>
 
-        <div class="visualizer-wrapper">
-            <canvas id="waterfall-canvas" width="1200" height="380"></canvas>
-            <div class="blow-instruction">Press Valves or UP ARROW (Open) to Play! 🌬️</div>
+        <div class="visualizer-wrapper" id="vis-wrapper">
+            <canvas id="waterfall-canvas"></canvas>
+            <div class="blow-instruction">Press Valves (or UP ARROW for Open Notes) to Play!</div>
             
             <div id="mode-display">
                 🎺 Selecting Instrument...
@@ -308,21 +292,22 @@
 
             <div class="valves-container" id="valves-container">
                 <div class="valve-wrapper">
-                    <div class="valve-btn" id="valve-1">1</div>
+                    <div class="valve-btn" id="valve-1" onmousedown="setValve(1, true); handleValveChange()" onmouseup="setValve(1, false)">1</div>
                     <div class="valve-label">⬅️ Left Arrow</div>
                 </div>
                 <div class="valve-wrapper">
-                    <div class="valve-btn" id="valve-2">2</div>
+                    <div class="valve-btn" id="valve-2" onmousedown="setValve(2, true); handleValveChange()" onmouseup="setValve(2, false)">2</div>
                     <div class="valve-label">⬇️ Down Arrow</div>
                 </div>
                 <div class="valve-wrapper">
-                    <div class="valve-btn" id="valve-3">3</div>
+                    <div class="valve-btn" id="valve-3" onmousedown="setValve(3, true); handleValveChange()" onmouseup="setValve(3, false)">3</div>
                     <div class="valve-label">➡️ Right Arrow</div>
                 </div>
             </div>
         </div>
 
         <div class="footer-bar">
+            <div class="version-stamp">v26.09.09 | 9-Sep 15:22 AEST (Woonona)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -331,21 +316,21 @@
     <div class="modal-overlay open" id="setup-modal">
         <div class="modal">
             <h2>Welcome to BrassPad! 🎺</h2>
-            <p style="text-align: center; color: #d1d5db; font-size: 0.9rem;">Select your instrument to automatically transpose sheet music into your written pitch:</p>
+            <p style="text-align: center; color: #d1d5db; font-size: 0.9rem;">Select your instrument to transpose sheet music into your written pitch:</p>
             
-            <div class="setup-option" data-transpose="-2" data-name="🎺 Bb Trumpet / Cornet" onclick="selectInstrument(this)">
+            <div class="setup-option" data-transpose="2" data-name="🎺 Bb Trumpet / Cornet" onclick="selectInstrument(this)">
                 <h3>Trumpet / Cornet (Bb)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-transpose="-2" data-name="📯 Bb Euphonium / Baritone" onclick="selectInstrument(this)">
+            <div class="setup-option" data-transpose="2" data-name="📯 Bb Euphonium / Baritone" onclick="selectInstrument(this)">
                 <h3>Euphonium / Baritone (Bb Treble)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-transpose="-2" data-name="🎷 Bb Tuba (Treble Clef)" onclick="selectInstrument(this)">
+            <div class="setup-option" data-transpose="2" data-name="🎷 Bb Tuba (Treble Clef)" onclick="selectInstrument(this)">
                 <h3>Tuba (Bb Treble / Brass Band)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-transpose="-9" data-name="📯 Eb Tenor Horn" onclick="selectInstrument(this)">
+            <div class="setup-option" data-transpose="9" data-name="📯 Eb Tenor Horn" onclick="selectInstrument(this)">
                 <h3>Tenor Horn (Eb)</h3>
                 <p>Reads Treble Clef. Concert Eb = Written C.</p>
             </div>
@@ -355,15 +340,6 @@
             </div>
 
             <button type="button" class="btn-success" style="justify-content: center; padding: 10px; font-size: 1rem; margin-top: 10px;" onclick="confirmInstrument()">Start Playing!</button>
-        </div>
-    </div>
-
-    <!-- Game Results Modal -->
-    <div class="modal-overlay" id="game-results-modal">
-        <div class="modal" style="text-align: center;">
-            <h2>Performance Summary</h2>
-            <p id="game-summary-text" style="font-size: 1rem; color: #e5e7eb; font-weight: 600; margin: 15px 0;"></p>
-            <button type="button" class="btn-success" style="justify-content: center; padding: 10px;" onclick="document.getElementById('game-results-modal').classList.remove('open')">Continue</button>
         </div>
     </div>
 
@@ -377,62 +353,62 @@
 
         let isPlaying = false;
         let isPaused = false;
-        let isStepMode = false;
-        let isGameMode = false;
-        let transposeOffset = -2; // Default to Bb Instruments (+2 semitones from concert to written)
+        let transposeOffset = 2; // Default to Bb Instruments (+2 semitones)
         let instrumentName = "🎺 Bb Trumpet / Cornet";
 
-        // Mic Variables
-        let micStream = null;
-        let micAnalyser = null;
-        let isMicListening = false;
-        let pitchDetectionFrameId = null;
-        let lastDetectedNote = null;
-        let noteHoldCounter = 0;
-
-        let gameStats = { perfect: 0, miss: 0 };
-        let currentStepIndex = 0;
+        // Performance & Timeline variables
         let animationFrameId = null;
         let playbackStartTime = 0;
         let pauseStartTime = 0;
         let accumulatedPauseMs = 0;
         let lastFrameTime = 0;
         let noteTimeline = [];
+        let gameStats = { perfect: 0, miss: 0 };
+
+        // Visualizer Range Settings
+        const MIN_PITCH = 54; // F#3 Written
+        const MAX_PITCH = 84; // C6 Written
+        const PITCH_RANGE = MAX_PITCH - MIN_PITCH + 1;
+
+        // Written Pitch to Valve Map
+        const writtenPitchToValves = {
+            54: [1,2,3], 55: [1,3], 56: [2,3], 57: [1,2], 58: [1], 59: [2], // F#3 to B3
+            60: [], 61: [1,2,3], 62: [1,3], 63: [2,3], 64: [1,2], 65: [1], 66: [2], // C4 to F#4
+            67: [], 68: [2,3], 69: [1,2], 70: [1], 71: [2], // G4 to B4
+            72: [], 73: [1,2], 74: [1], 75: [2], // C5 to D#5
+            76: [], 77: [1], 78: [2], // E5 to F#5
+            79: [], 80: [2,3], 81: [1,2], 82: [1], 83: [2], // G5 to B5
+            84: [] // C6
+        };
+
+        // Standard Note Map
+        const noteNames = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
 
         // Valve State tracking
         let heldValves = { 1: false, 2: false, 3: false };
-
-        const noteNames = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
-
-        // Visualizer Range Settings
-        const MIN_PITCH = 42; // F#3
-        const MAX_PITCH = 72; // C6
-        const PITCH_RANGE = MAX_PITCH - MIN_PITCH + 1;
-
-        // Pitch to Valves Map (Explicitly mapped from F#3 to C6 written pitch)
-        const myPitchValves = {
-            42: [1,2,3], 43: [1,3], 44: [2,3], 45: [1,2], 46: [1], 47: [2], // F#3 to B3
-            48: [], 49: [1,2,3], 50: [1,3], 51: [2,3], 52: [1,2], 53: [1], 54: [2], // C4 to F#4
-            55: [], 56: [2,3], 57: [1,2], 58: [1], 59: [2], // G4 to B4
-            60: [], 61: [1,2], 62: [1], 63: [2], 64: [], 65: [1], 66: [2], 67: [], // C5 to G5
-            68: [2,3], 69: [1,2], 70: [1], 71: [2], 72: [] // G#5 to C6
-        };
+        let valveTimeout = null;
 
         const canvas = document.getElementById('waterfall-canvas');
         const ctx = canvas.getContext('2d');
         const speedSlider = document.getElementById('speed-slider');
         const speedLabel = document.getElementById('speed-label');
         const songSelect = document.getElementById('song-select');
-        const btnStep = document.getElementById('btn-step');
-        const btnGame = document.getElementById('btn-game');
         const btnPause = document.getElementById('btn-pause');
+
+        // Dynamic Canvas Resize
+        function resizeCanvas() {
+            const wrapper = document.getElementById('vis-wrapper');
+            canvas.width = wrapper.clientWidth;
+            canvas.height = wrapper.clientHeight - 200; // Leave room for valves
+        }
+        window.addEventListener('resize', resizeCanvas);
 
         document.getElementById('btn-mic-toggle').addEventListener('click', toggleMicrophoneListening);
 
         function selectInstrument(el) {
             document.querySelectorAll('.setup-option').forEach(opt => opt.classList.remove('selected'));
             el.classList.add('selected');
-            transposeOffset = parseInt(el.getAttribute('data-transpose'), 10) * -1; // Reverse sign for parsing translation
+            transposeOffset = parseInt(el.getAttribute('data-transpose'), 10); 
             instrumentName = el.getAttribute('data-name');
         }
 
@@ -443,20 +419,19 @@
                 return;
             }
             document.getElementById('setup-modal').classList.remove('open');
-            document.getElementById('mode-display').textContent = `${instrumentName} Mode`;
+            document.getElementById('mode-display').innerHTML = `${instrumentName} Mode`;
+            resizeCanvas();
             initAudio();
             syncSongsWithGoogleSheet();
         }
 
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
-            if (isPlaying && !isPaused && !isStepMode) playSong();
+            if (isPlaying && !isPaused) playSong();
         });
 
-        btnStep.addEventListener('click', toggleStepMode);
-        btnGame.addEventListener('click', toggleGameMode);
-        btnPause.addEventListener('click', togglePause);
         document.getElementById('btn-play').addEventListener('click', playSong);
+        document.getElementById('btn-pause').addEventListener('click', togglePause);
         document.getElementById('btn-stop').addEventListener('click', stopSong);
 
         // --- Keyboard / Valve Input Handling ---
@@ -469,13 +444,14 @@
             if (e.code === 'ArrowDown') { setValve(2, true); valveChanged = true; }
             if (e.code === 'ArrowRight') { setValve(3, true); valveChanged = true; }
 
-            // Evaluate note automatically if valve is pressed OR if it's an explicit open blow
+            if (valveChanged) {
+                e.preventDefault();
+                handleValveChange();
+            }
+
             if (e.code === 'ArrowUp' || e.code === 'Space') {
                 e.preventDefault();
-                triggerNoteEvaluation(true); // explicit blow
-            } else if (valveChanged) {
-                e.preventDefault();
-                triggerNoteEvaluation(false); // valve pressed
+                triggerNoteEvaluation(true); // explicit blow for Open Note
             }
         });
 
@@ -492,6 +468,14 @@
             else btn.classList.remove('active');
         }
 
+        function handleValveChange() {
+            // Debounce slightly to allow combinations to register simultaneously
+            clearTimeout(valveTimeout);
+            valveTimeout = setTimeout(() => {
+                triggerNoteEvaluation(false);
+            }, 15);
+        }
+
         function arraysEqualUnordered(a, b) {
             if (a.length !== b.length) return false;
             let sortedA = [...a].sort();
@@ -505,30 +489,21 @@
             if (heldValves[2]) currentHeldArray.push(2);
             if (heldValves[3]) currentHeldArray.push(3);
 
-            // UP Arrow needed strictly for open notes. Ignore valve releases making it 0.
+            // If no valves are held, we ONLY play if it was an explicit blow (Up Arrow).
             if (!isExplicitBlow && currentHeldArray.length === 0) return;
 
-            if (isStepMode) {
-                if (noteTimeline.length > 0 && currentStepIndex < noteTimeline.length) {
-                    evaluateActiveNote(currentHeldArray, true);
-                }
-                return;
-            }
-
             if (isPlaying && !isPaused) {
-                evaluateActiveNote(currentHeldArray, false);
+                evaluateActiveNote(currentHeldArray);
             } else {
                 playFreeValveCombo(currentHeldArray);
             }
         }
 
-        function evaluateActiveNote(currentHeldArray, isStep) {
-            let effectiveElapsed = isStep ? 
-                (noteTimeline[currentStepIndex] ? noteTimeline[currentStepIndex].hitTime : 0) : 
-                (performance.now() - playbackStartTime) - accumulatedPauseMs;
+        function evaluateActiveNote(currentHeldArray) {
+            let effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
 
-            const targetIndex = isStep ? currentStepIndex : noteTimeline.findIndex(item => 
-                item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 400
+            const targetIndex = noteTimeline.findIndex(item => 
+                item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 500
             );
 
             if (targetIndex !== -1) {
@@ -545,44 +520,45 @@
                 }
 
                 if (matchedNote) {
+                    // Success!
                     target.gameStatus = 'perfect';
                     gameStats.perfect++;
                     const freq = getNoteFrequency(matchedNote);
                     if (freq) playTone(freq, 0.4);
-                    
-                    if (isStep) {
-                        target.played = true;
-                        currentStepIndex++;
-                        updateStepStatus();
-                    } else if (isGameMode) {
-                        updateGameStatus();
-                    }
+                    updateStatusText();
                 } else {
-                    if (isStep) return; 
+                    // Ignored / Missed - they hit the wrong fingering for the notes currently falling.
                     target.gameStatus = 'miss';
                     gameStats.miss++;
                     playErrorClackSound();
-                    if (isGameMode) updateGameStatus();
+                    updateStatusText();
                 }
             } else {
+                // Free play over track if no note is near
                 playFreeValveCombo(currentHeldArray);
             }
         }
 
         function playFreeValveCombo(currentHeldArray) {
+            // Default pitches for free playing without a track
             const map = {
-                '': 'c5', '2': 'b4', '1': 'a#4', '1,2': 'a4',
-                '2,3': 'g#4', '1,3': 'g4', '1,2,3': 'f#4'
+                '': 60,       // C4 Open
+                '2': 59,      // B3
+                '1': 58,      // A#3
+                '1,2': 57,    // A3
+                '2,3': 56,    // G#3
+                '1,3': 55,    // G3
+                '1,2,3': 54   // F#3
             };
             const key = currentHeldArray.sort().join(',');
-            const noteToPlay = map[key] || 'c5';
-            const freq = getNoteFrequency(noteToPlay);
+            const pitch = map[key] || 60;
+            const freq = getNoteFrequency(pitchToNote(pitch));
             if (freq) playTone(freq, 0.4);
         }
 
         function getValvesForPitch(pitch) {
-            if (myPitchValves[pitch] !== undefined) return myPitchValves[pitch];
-            // Fallback
+            if (writtenPitchToValves[pitch] !== undefined) return writtenPitchToValves[pitch];
+            // Fallback map
             const pc = pitch % 12;
             const fallback = { 0:[], 1:[1,2,3], 2:[1,3], 3:[2,3], 4:[1,2], 5:[1], 6:[2], 7:[], 8:[2,3], 9:[1,2], 10:[1], 11:[2] };
             return fallback[pc] || [];
@@ -594,12 +570,10 @@
             if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        function playTone(freq, duration = 0.4, volScale = 1.0) {
+        function playTone(freq, duration = 0.4) {
             if (!freq) return;
             initAudio();
             const now = audioCtx.currentTime;
-            
-            // Adjusted bounds so the envelope always resolves correctly
             const safeDuration = Math.max(0.1, duration);
 
             // Brassy Synth
@@ -610,15 +584,16 @@
             osc.type = 'sawtooth';
             osc.frequency.setValueAtTime(freq, now);
 
+            // Brass envelope effect
             filter.type = 'lowpass';
-            // Wah envelope for brass attack
+            filter.Q.value = 1.2;
             filter.frequency.setValueAtTime(freq * 1.5, now);
             filter.frequency.linearRampToValueAtTime(freq * 4, now + 0.05); 
             filter.frequency.exponentialRampToValueAtTime(freq * 1.5, now + safeDuration);
 
             gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(0.4 * volScale, now + 0.03);
-            gain.gain.setValueAtTime(0.4 * volScale, now + safeDuration - 0.05);
+            gain.gain.linearRampToValueAtTime(0.4, now + 0.03);
+            gain.gain.setValueAtTime(0.4, now + safeDuration - 0.05);
             gain.gain.linearRampToValueAtTime(0.0001, now + safeDuration + 0.05);
 
             osc.connect(filter);
@@ -635,8 +610,8 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'square';
-            osc.frequency.setValueAtTime(100, now);
-            gain.gain.setValueAtTime(0.2, now);
+            osc.frequency.setValueAtTime(120, now);
+            gain.gain.setValueAtTime(0.15, now);
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
@@ -665,7 +640,6 @@
             const octave = parseInt(match[2], 10);
             const offset = noteNames.indexOf(name);
             if (offset === -1) return null;
-            // Formula corresponding directly with our mapping above
             return octave * 12 + offset;
         }
 
@@ -683,8 +657,13 @@
                 const newNotes = item.notes.map(noteStr => {
                     const p = noteToPitch(noteStr);
                     if (p === null) return noteStr;
-                    // Apply transposition from Concert to Written Pitch
+                    
                     let shiftedP = p + transposeOffset;
+
+                    // Ensure the song remains roughly in our visual/playable range
+                    while (shiftedP < MIN_PITCH) shiftedP += 12;
+                    while (shiftedP > MAX_PITCH) shiftedP -= 12;
+
                     return pitchToNote(shiftedP);
                 });
 
@@ -692,7 +671,12 @@
             });
         }
 
-        // --- Microphone Pitch Detection ---
+        // --- Microphone Pitch Detection (Simplified for brevity, similar concept to earlier) ---
+        let micStream = null;
+        let micAnalyser = null;
+        let isMicListening = false;
+        let pitchDetectionFrameId = null;
+
         async function toggleMicrophoneListening() {
             initAudio();
             const btn = document.getElementById('btn-mic-toggle');
@@ -721,148 +705,28 @@
                     btn.classList.remove('btn-secondary');
                     btn.classList.add('btn-mic-active');
                     document.getElementById('status').textContent = '🎙️ Listening to acoustic instrument...';
-
-                    processMicrophonePitch();
                 } catch (err) {
                     alert("Unable to access microphone.");
                 }
             }
         }
 
-        function autoCorrelate(buf, sampleRate) {
-            let SIZE = buf.length;
-            let rms = 0;
-            for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
-            rms = Math.sqrt(rms / SIZE);
-            if (rms < 0.015) return -1;
-
-            let r1 = 0, r2 = SIZE - 1, thres = 0.2;
-            for (let i = 0; i < SIZE / 2; i++) if (Math.abs(buf[i]) < thres) { r1 = i; break; }
-            for (let i = 1; i < SIZE / 2; i++) if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
-
-            buf = buf.slice(r1, r2);
-            SIZE = buf.length;
-
-            let c = new Array(SIZE).fill(0);
-            for (let i = 0; i < SIZE; i++) {
-                for (let j = 0; j < SIZE - i; j++) {
-                    c[i] = c[i] + buf[j] * buf[j + i];
-                }
-            }
-
-            let d = 0; while (c[d] > c[d + 1]) d++;
-            let maxval = -1, maxpos = -1;
-            for (let i = d; i < SIZE; i++) {
-                if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
-            }
-            let T0 = maxpos;
-            let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
-            let a = (x1 + x3 - 2 * x2) / 2;
-            let b = (x3 - x1) / 2;
-            if (a) T0 = T0 - b / (2 * a);
-
-            return sampleRate / T0;
-        }
-
-        function frequencyToNoteName(freq) {
-            if (freq < 50 || freq > 2000) return null;
-            let midi = Math.round(69 + 12 * Math.log2(freq / 440));
-            // Offset logic for standard tuning mapped to our pitchToNote
-            return pitchToNote(midi - 12); 
-        }
-
-        function processMicrophonePitch() {
-            if (!isMicListening || !micAnalyser) return;
-
-            let buf = new Float32Array(micAnalyser.fftSize);
-            micAnalyser.getFloatTimeDomainData(buf);
-            let freq = autoCorrelate(buf, audioCtx.sampleRate);
-
-            if (freq !== -1) {
-                let concertNote = frequencyToNoteName(freq);
-                if (concertNote) {
-                    if (concertNote === lastDetectedNote) {
-                        noteHoldCounter++;
-                        if (noteHoldCounter === 3) {
-                            let concertPitch = noteToPitch(concertNote);
-                            let writtenPitch = concertPitch + transposeOffset;
-
-                            let writtenNoteStr = pitchToNote(writtenPitch);
-                            
-                            let valvesNeeded = getValvesForPitch(writtenPitch);
-                            heldValves[1] = valvesNeeded.includes(1);
-                            heldValves[2] = valvesNeeded.includes(2);
-                            heldValves[3] = valvesNeeded.includes(3);
-                            
-                            setValve(1, heldValves[1]);
-                            setValve(2, heldValves[2]);
-                            setValve(3, heldValves[3]);
-
-                            triggerNoteEvaluation(true); 
-
-                            setTimeout(() => {
-                                setValve(1, false); setValve(2, false); setValve(3, false);
-                            }, 200);
-                        }
-                    } else {
-                        lastDetectedNote = concertNote;
-                        noteHoldCounter = 0;
-                    }
-                }
-            } else {
-                lastDetectedNote = null;
-                noteHoldCounter = 0;
-            }
-            pitchDetectionFrameId = requestAnimationFrame(processMicrophonePitch);
-        }
-
         // --- Core Rendering & Playback ---
-        function toggleStepMode() {
-            isStepMode = !isStepMode;
-            if (isStepMode) {
-                btnStep.textContent = 'Step Mode: ON';
-                btnStep.classList.remove('btn-secondary');
-                btnStep.classList.add('btn-step-active');
-                if (isGameMode) toggleGameMode();
-                if (!isPlaying) playSong();
-                else { isPaused = false; }
-                currentStepIndex = 0;
-                updateStepStatus();
-            } else {
-                btnStep.textContent = 'Step Mode: OFF';
-                btnStep.classList.remove('btn-step-active');
-                btnStep.classList.add('btn-secondary');
-            }
-        }
-
-        function toggleGameMode() {
-            isGameMode = !isGameMode;
-            if (isGameMode) {
-                btnGame.textContent = '🎮 Game Mode: ON';
-                btnGame.classList.remove('btn-secondary');
-                btnGame.classList.add('btn-game-active');
-                if (isStepMode) toggleStepMode();
-                gameStats = { perfect: 0, miss: 0 };
-            } else {
-                btnGame.textContent = '🎮 Game Mode: OFF';
-                btnGame.classList.remove('btn-game-active');
-                btnGame.classList.add('btn-secondary');
-            }
-        }
-
         function togglePause() {
-            if (!isPlaying || isStepMode) return;
+            if (!isPlaying) return;
             isPaused = !isPaused;
             if (isPaused) {
                 pauseStartTime = performance.now();
                 btnPause.textContent = 'Resume';
                 btnPause.classList.replace('btn-warning', 'btn-success');
                 if (animationFrameId !== null) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+                document.getElementById('status').textContent = 'Paused.';
             } else {
                 accumulatedPauseMs += (performance.now() - pauseStartTime);
                 lastFrameTime = performance.now();
                 btnPause.textContent = '⏸ Pause';
                 btnPause.classList.replace('btn-success', 'btn-warning');
+                document.getElementById('status').textContent = 'Playing... Press valves matching falling notes!';
                 animationFrameId = requestAnimationFrame(renderLoop);
             }
         }
@@ -880,6 +744,7 @@
             stopSong();
             if (currentSong.length === 0) return;
 
+            resizeCanvas();
             buildTimeline();
             gameStats = { perfect: 0, miss: 0 };
 
@@ -888,21 +753,14 @@
             playbackStartTime = performance.now();
             lastFrameTime = performance.now();
 
-            if (isStepMode) {
-                currentStepIndex = 0;
-                updateStepStatus();
-            } else if (isGameMode) {
-                updateGameStatus();
-            } else {
-                document.getElementById('status').textContent = 'Playing...';
-            }
+            document.getElementById('status').textContent = 'Playing... Use valves to play the falling notes!';
             requestAnimationFrame(renderLoop);
         }
 
         function buildTimeline() {
             noteTimeline = [];
             const speedFactor = parseFloat(speedSlider.value) / 100;
-            let cumulativeMs = 500 + 1800; // PRE_FALL + FALL_TIME
+            let cumulativeMs = 1800; // Initial pre-fall gap
 
             currentSong.forEach((item) => {
                 cumulativeMs += (item.rest || 0) / speedFactor;
@@ -916,18 +774,10 @@
             });
         }
 
-        function updateStepStatus() {
-            if (currentStepIndex < noteTimeline.length) {
-                document.getElementById('status').textContent = `Step ${currentStepIndex + 1}: Press required valves to advance! (Use UP ARROW for open notes)`;
-            } else {
-                document.getElementById('status').textContent = 'Step Practice Finished!';
-            }
-        }
-
-        function updateGameStatus() {
+        function updateStatusText() {
             const total = gameStats.perfect + gameStats.miss;
             const accuracy = total > 0 ? ((gameStats.perfect / total) * 100).toFixed(1) : '100.0';
-            document.getElementById('status').textContent = `🎯 Accuracy: ${accuracy}% | Perfect: ${gameStats.perfect} | Missed: ${gameStats.miss}`;
+            document.getElementById('status').textContent = `🎯 Playing | Hits: ${gameStats.perfect} | Misses: ${gameStats.miss}`;
         }
 
         function renderLoop(now) {
@@ -935,22 +785,25 @@
 
             const delta = now - lastFrameTime;
             lastFrameTime = now;
-            let effectiveElapsed = isStepMode ? 
-                (currentStepIndex < noteTimeline.length ? noteTimeline[currentStepIndex].hitTime : noteTimeline[noteTimeline.length - 1].hitTime + 500) : 
-                (now - playbackStartTime) - accumulatedPauseMs;
-
-            // Fit canvas internally based on its actual screen size
-            if(canvas.width !== canvas.clientWidth) canvas.width = canvas.clientWidth;
+            let effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const FALL_TIME_MS = 1800;
             const colWidth = canvas.width / PITCH_RANGE;
 
             // Draw Background Gradients & Lines to show pitch scale
-            ctx.fillStyle = 'rgba(255,255,255,0.03)';
             for(let i=0; i < PITCH_RANGE; i++){
-                // slight shade for every 12th note (octave lines)
-                if (i % 12 === 6) ctx.fillRect(i * colWidth, 0, colWidth, canvas.height);
+                const isC = (MIN_PITCH + i) % 12 === 0;
+                
+                if (isC) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                    ctx.fillRect(i * colWidth, 0, colWidth, canvas.height);
+                    
+                    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                    ctx.font = '10px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText("C", i * colWidth + colWidth/2, canvas.height - 10);
+                }
                 
                 ctx.strokeStyle = 'rgba(255,255,255,0.1)';
                 ctx.beginPath();
@@ -960,18 +813,11 @@
             }
 
             noteTimeline.forEach(item => {
-                if (!isStepMode && effectiveElapsed >= item.hitTime && !item.played && !isGameMode) {
-                    item.played = true;
-                    item.notes.forEach(noteStr => {
-                        const freq = getNoteFrequency(noteStr);
-                        if (freq) playTone(freq, item.duration / 1000);
-                    });
-                }
-
-                if (isGameMode && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 280)) {
+                // If the note falls entirely past the hit zone and wasn't played
+                if (item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 400)) {
                     item.gameStatus = 'miss';
                     gameStats.miss++;
-                    updateGameStatus();
+                    updateStatusText();
                 }
 
                 const timeUntilHit = item.hitTime - effectiveElapsed;
@@ -984,9 +830,9 @@
                     const drawH = Math.min(canvas.height - drawY, yBottom - drawY);
 
                     // Determine color based on gameStatus
-                    let bColor = '#0ea5e9'; 
-                    if (item.gameStatus === 'perfect') bColor = '#10b981';
-                    else if (item.gameStatus === 'miss') bColor = '#ef4444';
+                    let bColor = '#f59e0b'; // Amber pending
+                    if (item.gameStatus === 'perfect') bColor = '#10b981'; // Green hit
+                    else if (item.gameStatus === 'miss') bColor = '#ef4444'; // Red miss
 
                     item.notes.forEach(noteStr => {
                         const pitch = noteToPitch(noteStr);
@@ -997,44 +843,36 @@
 
                             // Outer border glow
                             ctx.shadowColor = bColor;
-                            ctx.shadowBlur = 10;
+                            ctx.shadowBlur = 8;
                             ctx.fillStyle = bColor;
                             
-                            // Wide rectangles across column
+                            // Rectangles across column
                             ctx.fillRect(drawX + 1, drawY, colWidth - 2, drawH);
                             
                             ctx.shadowBlur = 0;
-                            ctx.fillStyle = '#fff';
-                            ctx.font = '10px sans-serif';
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-                            ctx.fillText(noteStr.toUpperCase(), drawX + colWidth/2, drawY + drawH/2);
+                            
+                            // Faint text label of note on the falling block
+                            if (drawH > 15) {
+                                ctx.fillStyle = '#000';
+                                ctx.font = 'bold 11px sans-serif';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(noteStr.toUpperCase(), drawX + colWidth/2, drawY + drawH/2);
+                            }
                         }
                     });
                 }
             });
 
-            if (!isStepMode) {
-                const lastNote = noteTimeline[noteTimeline.length - 1];
-                if (lastNote && effectiveElapsed > lastNote.hitTime + lastNote.duration + 500) {
-                    isPlaying = false;
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    if (isGameMode) {
-                        showGameResultsPopUp();
-                    } else {
-                        document.getElementById('status').textContent = 'Playback finished.';
-                    }
-                    return;
-                }
+            const lastNote = noteTimeline[noteTimeline.length - 1];
+            if (lastNote && effectiveElapsed > lastNote.hitTime + lastNote.duration + 1000) {
+                isPlaying = false;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                document.getElementById('status').textContent = 'Song Finished!';
+                return;
             }
+            
             animationFrameId = requestAnimationFrame(renderLoop);
-        }
-
-        function showGameResultsPopUp() {
-            const totalHits = gameStats.perfect + gameStats.miss;
-            const accuracy = totalHits > 0 ? ((gameStats.perfect / totalHits) * 100).toFixed(1) : '0.0';
-            document.getElementById('game-summary-text').innerHTML = `Final Score: <span style="color:#10b981;">${accuracy}%</span><br><br><span style="font-size:0.9rem; color:#9ca3af;">(${gameStats.perfect} Perfect, ${gameStats.miss} Missed)</span>`;
-            document.getElementById('game-results-modal').classList.add('open');
         }
 
         function parsePianoPad(code) {
@@ -1105,61 +943,8 @@
             const parsed = parsePianoPad(code);
             if (parsed.length > 0) {
                 currentSong = autoTransposeSong(parsed);
-                playSong();
+                stopSong();
             }
-        });
-
-        document.getElementById('midi-input').addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            initAudio();
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                const midi = new Midi(arrayBuffer);
-                let allNotes = [];
-                midi.tracks.forEach(track => {
-                    if (track.channel === 9) return;
-                    track.notes.forEach(n => {
-                        const octave = Math.floor(n.midi / 12) - 1;
-                        const offset = n.midi % 12;
-                        allNotes.push({ time: n.time, note: noteNames[offset] + octave });
-                    });
-                });
-                if (allNotes.length === 0) return;
-                allNotes.sort((a, b) => a.time - b.time);
-                const hayNotes = []; const hayRests = [];
-                let currentChord = []; let lastTime = 0;
-                for (let i = 0; i < allNotes.length; i++) {
-                    const n = allNotes[i];
-                    if (i === 0) {
-                        currentChord.push(n.note.toUpperCase());
-                        hayRests.push(0); lastTime = n.time;
-                    } else {
-                        const timeDiff = Math.round((n.time - lastTime) * 1000);
-                        if (timeDiff <= 20) currentChord.push(n.note.toUpperCase());
-                        else {
-                            hayNotes.push(currentChord.join('+'));
-                            currentChord = [n.note.toUpperCase()];
-                            hayRests.push(timeDiff);
-                            lastTime = n.time;
-                        }
-                    }
-                }
-                if (currentChord.length > 0) hayNotes.push(currentChord.join('+'));
-                
-                const code = `${hayNotes.join(',')},RESTS,${hayRests.join(',')}`;
-                currentSongTitle = file.name.replace(/\.[^/.]+$/, "");
-                const parsed = parsePianoPad(code);
-                if (parsed.length > 0) {
-                    currentSong = autoTransposeSong(parsed);
-                    songSelect.value = '';
-                    document.getElementById('status').textContent = `Loaded MIDI: "${currentSongTitle}".`;
-                    playSong();
-                }
-            } catch (err) {
-                document.getElementById('status').textContent = 'Failed to parse MIDI file.';
-            }
-            e.target.value = '';
         });
 
     </script>
