@@ -316,7 +316,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.09 | 9-Sep 15:52 AEST</div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 16:05 AEST</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -355,9 +355,16 @@
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
 
+        // Bundled Emergency Song Library (In case Google Sheets is blocked/offline)
+        const FALLBACK_SONGS = [
+            { title: "Wipeout", code: "C2,C2,C2,C2,D2,D2,D2,D2,E2,E2,D2,D2,C2,Rests,250,250,250,250,250,250,250,250,250,250,250,250,500" },
+            { title: "Hot Cross Buns", code: "E2,D2,C2,E2,D2,C2,C2,C2,C2,C2,D2,D2,D2,D2,E2,D2,C2,Rests,400,400,800,400,400,800,200,200,200,200,200,200,200,200,400,400,800" },
+            { title: "Ode to Joy", code: "E2,E2,F2,G2,G2,F2,E2,D2,C2,C2,D2,E2,E2,D2,D2,Rests,400,400,400,400,400,400,400,400,400,400,400,400,600,200,800" }
+        ];
+
         let audioCtx = null;
         let songList = [];
-        let rawParsedSong = []; // Original raw HayCode notes before transposition
+        let rawParsedSong = []; 
         let currentSong = [];
         let currentSongTitle = "Wipeout";
 
@@ -434,7 +441,7 @@
         document.getElementById('btn-pause').addEventListener('click', togglePause);
         document.getElementById('btn-stop').addEventListener('click', stopSong);
 
-        // --- Keyboard / Valve Input Handling ---
+        // --- Keyboard / Input Handling ---
         window.addEventListener('keydown', (e) => {
             if (e.repeat) return;
             if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
@@ -451,7 +458,7 @@
             }
 
             if (e.code === 'ArrowUp' || e.code === 'Space' || e.code === 'Enter') {
-                triggerNoteEvaluation(true); // Explicit blow for Open Notes
+                triggerNoteEvaluation(true); // Explicit blow for Open Note
             }
         });
 
@@ -610,7 +617,6 @@
             osc.stop(now + 0.1);
         }
 
-        // Fixed Standard MIDI Pitch Parsing
         function noteToPitch(noteStr) {
             if (!noteStr) return null;
             noteStr = noteStr.trim().toLowerCase();
@@ -725,17 +731,15 @@
         function playSong() {
             initAudio();
             
-            // Auto-load song from dropdown if currentSong is empty
-            if (!currentSong || currentSong.length === 0) {
-                const code = songSelect.value;
-                if (code) {
-                    rawParsedSong = parsePianoPad(code);
-                    currentSong = autoTransposeSong(rawParsedSong);
-                }
+            // Re-parse current dropdown option if song is empty
+            const code = songSelect.value;
+            if (code) {
+                rawParsedSong = parsePianoPad(code);
+                currentSong = autoTransposeSong(rawParsedSong);
             }
 
             if (!currentSong || currentSong.length === 0) {
-                document.getElementById('status').textContent = 'Please choose a song first.';
+                document.getElementById('status').textContent = 'Please choose a song from the dropdown first.';
                 return;
             }
 
@@ -756,7 +760,7 @@
         function buildTimeline() {
             noteTimeline = [];
             const speedFactor = parseFloat(speedSlider.value) / 100;
-            let cumulativeMs = 1800; // Pre-fall lead time
+            let cumulativeMs = 1800; 
 
             currentSong.forEach((item) => {
                 noteTimeline.push({
@@ -909,30 +913,44 @@
         }
 
         async function syncSongsWithGoogleSheet() {
+            // First load bundled fallback songs into the dropdown immediately
+            songList = [...FALLBACK_SONGS];
+            renderSongSelect();
+            
+            const defaultObj = songList[0];
+            songSelect.value = defaultObj.code;
+            currentSongTitle = defaultObj.title;
+            rawParsedSong = parsePianoPad(defaultObj.code);
+            currentSong = autoTransposeSong(rawParsedSong);
+            
+            document.getElementById('status').textContent = `Loaded ${songList.length} initial songs. Syncing Google Sheets...`;
+
+            // Attempt online sync
             try {
                 const response = await fetch(SPREADSHEET_CSV_URL);
                 if (response.ok) {
                     const csvText = await response.text();
                     const lines = csvText.split(/\r?\n/);
-                    songList = [];
+                    let remoteSongs = [];
                     for (let i = 1; i < lines.length; i++) {
                         const row = lines[i].split(',');
                         if (row.length >= 2 && row[0].trim()) {
-                            songList.push({ title: row[0].trim().replace(/^"|"$/g, ''), code: row[1].trim().replace(/^"|"$/g, '') });
+                            remoteSongs.push({ title: row[0].trim().replace(/^"|"$/g, ''), code: row[1].trim().replace(/^"|"$/g, '') });
                         }
                     }
-                    renderSongSelect();
-                    const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
-                    if (defaultObj) {
-                        songSelect.value = defaultObj.code;
-                        currentSongTitle = defaultObj.title;
-                        rawParsedSong = parsePianoPad(defaultObj.code);
+                    if (remoteSongs.length > 0) {
+                        songList = remoteSongs;
+                        renderSongSelect();
+                        const wipeout = songList.find(s => s.title === 'Wipeout') || songList[0];
+                        songSelect.value = wipeout.code;
+                        currentSongTitle = wipeout.title;
+                        rawParsedSong = parsePianoPad(wipeout.code);
                         currentSong = autoTransposeSong(rawParsedSong);
+                        document.getElementById('status').textContent = `Synced ${songList.length} songs live from Google Sheet! Ready!`;
                     }
-                    document.getElementById('status').textContent = `Loaded ${songList.length} songs. Select a song and press Play!`;
                 }
             } catch (e) {
-                document.getElementById('status').textContent = "Could not load songs. Check connection.";
+                document.getElementById('status').textContent = `Loaded ${songList.length} offline songs. Ready to play!`;
             }
         }
 
