@@ -327,7 +327,7 @@
 
         #waterfall-canvas {
             background-color: var(--canvas-bg);
-            border-bottom: 3px solid var(--hitline-color);
+            border-bottom: 3px solid #374151;
             display: block;
             width: 100%;
             flex: 1;
@@ -942,11 +942,6 @@
                     Get Songs
                 </a>
 
-                <!-- NEW LEADERBOARD BUTTON -->
-                <a href="https://mrhaybittle.github.io/PianoPad/leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
-                    🏆 Leaderboard
-                </a>
-
                 <button type="button" id="btn-play" class="btn-success">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     Play
@@ -1034,20 +1029,7 @@
         </div>
 
         <div class="footer-bar">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div class="version-stamp">v26.09.09 | 9-Sep 05:17 PM AEST (Sydney)</div>
-                <div style="display: flex; gap: 4px;">
-                    <button type="button" id="btn-footer-rec" class="btn-secondary" title="Record">
-                        <svg class="icon" style="color: #ef4444; fill: #ef4444;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
-                    </button>
-                    <button type="button" id="btn-footer-play" class="btn-success" title="Play">
-                        <svg class="icon" style="color: white; fill: white;" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                    </button>
-                    <button type="button" id="btn-footer-stop" class="btn-danger" title="Stop">
-                        <svg class="icon" style="color: #000; fill: #000;" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
-                    </button>
-                </div>
-            </div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 21:22 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1592,7 +1574,7 @@
                 calibStep = 1;
                 document.getElementById('btn-calib-skip').style.display = 'inline-flex';
                 document.getElementById('btn-calib-cancel').style.display = 'none';
-                document.getElementById('calib-instructions').innerHTML = "Play the <span style='color: #ef4444;'>LOWEST</span> note on your keyboard";
+                document.getElementById('calib-instructions').textContent = "Welcome! Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
                 calibModal.classList.add('open');
             }
         }
@@ -2738,10 +2720,6 @@
         document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
         document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
 
-        document.getElementById('btn-footer-rec').addEventListener('click', toggleRecording);
-        document.getElementById('btn-footer-play').addEventListener('click', playSong);
-        document.getElementById('btn-footer-stop').addEventListener('click', stopSong);
-
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
             if (isPlaying && !isPaused && !isStepMode) playSong();
@@ -3233,30 +3211,6 @@
                 document.getElementById('status').textContent = `Step ${currentStepIndex + 1} of ${noteTimeline.length}: Next Note -> [ ${displayStr} ] (Press SPACE BAR or play on MIDI Keyboard)`;
             } else {
                 document.getElementById('status').textContent = 'Step Practice Finished!';
-            }
-        }
-
-        function stopSong() {
-            isPlaying = false;
-            isPaused = false;
-            btnPause.textContent = 'Pause';
-            btnPause.classList.remove('btn-success');
-            btnPause.classList.add('btn-warning');
-
-            if (animationFrameId !== null) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
-            document.querySelectorAll('.key').forEach(k => {
-                k.classList.remove('active');
-                k.style.backgroundColor = '';
-                k.style.boxShadow = '';
-            });
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            document.getElementById('status').textContent = 'Playback stopped.';
-
-            if (isRecording) {
-                toggleRecording();
             }
         }
 
@@ -3904,6 +3858,26 @@
             }
         });
 
+        function stopSong() {
+            isPlaying = false;
+            isPaused = false;
+            btnPause.textContent = 'Pause';
+            btnPause.classList.remove('btn-success');
+            btnPause.classList.add('btn-warning');
+
+            if (animationFrameId !== null) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            document.querySelectorAll('.key').forEach(k => {
+                k.classList.remove('active');
+                k.style.backgroundColor = '';
+                k.style.boxShadow = '';
+            });
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('status').textContent = 'Playback stopped.';
+        }
+
         function playSong() {
             initAudio();
             stopSong();
@@ -3935,7 +3909,7 @@
             requestAnimationFrame(renderLoop);
         }
 
-        function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending') {
+        function drawOvalNote(x, y, noteStr, active, gameStatus = 'pending') {
             ctx.save();
             
             const palette = themePalettes[currentTheme] || themePalettes.default;
@@ -3965,29 +3939,19 @@
             ctx.shadowColor = shadowColor;
             ctx.shadowBlur = 8;
 
-            const radius = Math.min(6, width / 2, height / 2);
             ctx.beginPath();
-            ctx.moveTo(x + radius, y);
-            ctx.lineTo(x + width - radius, y);
-            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-            ctx.lineTo(x + width, y + height - radius);
-            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-            ctx.lineTo(x + radius, y + height);
-            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-            ctx.lineTo(x, y + radius);
-            ctx.quadraticCurveTo(x, y, x + radius, y);
-            ctx.closePath();
+            ctx.ellipse(x, y, 12, 8, -Math.PI / 12, 0, Math.PI * 2); 
             ctx.fill();
 
-            if (height >= 18) {
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 11px -apple-system, sans-serif';
-                ctx.textAlign = 'center';
+            if (noteStr.includes('#')) {
+                ctx.fillStyle = blockColor;
+                ctx.shadowBlur = 0;
+                ctx.font = 'bold 16px sans-serif';
+                ctx.textAlign = 'right';
                 ctx.textBaseline = 'middle';
-                const match = noteName.match(/^([a-g]#?)/i);
-                const label = match ? match[1].toUpperCase() : noteName.toUpperCase();
-                ctx.fillText(label, x + width / 2, y + height / 2);
+                ctx.fillText('♯', x - 15, y + 1); 
             }
+
             ctx.restore();
         }
 
@@ -4037,10 +4001,54 @@
                 drawSimonStaircase(simonSequence.length);
             } else {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw Staff
+                const staffSpacing = 20;
+                const staffTopY = 150;
+                const clefX = 100;
+                
+                ctx.save();
+                ctx.strokeStyle = '#374151';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 5; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(clefX, staffTopY + i * staffSpacing);
+                    ctx.lineTo(canvas.width, staffTopY + i * staffSpacing);
+                    ctx.stroke();
+                }
+                
+                ctx.fillStyle = '#cbd5e1';
+                ctx.font = '70px serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('𝄞', clefX - 20, staffTopY + 2 * staffSpacing + 5);
+                ctx.restore();
             }
 
             const canvasHeight = canvas.height;
             const currentFallSpeed = activeMiniGame === 'drop' ? miniGameFallSpeedMs : FALL_TIME_MS;
+
+            // Note mapping function
+            const baseOctaveMap = { 'c': 0, 'd': 1, 'e': 2, 'f': 3, 'g': 4, 'a': 5, 'b': 6 };
+            function getNoteStaffInfo(noteStr) {
+                const staffSpacing = 20;
+                const c4Y = 150 + 5 * staffSpacing; // 250
+                const match = noteStr.toLowerCase().trim().match(/^([a-g])#?([1-7])$/);
+                if (!match) return { y: c4Y, shiftLevel: 0 };
+                
+                const noteChar = match[1];
+                const appOctave = parseInt(match[2], 10);
+                const diatonicStep = (appOctave - 1) * 7 + baseOctaveMap[noteChar];
+                
+                let y = c4Y - diatonicStep * (staffSpacing / 2);
+                let shiftLevel = 0;
+                
+                while (y < 110) { 
+                    y += 7 * (staffSpacing / 2); // 70px down
+                    shiftLevel++;
+                }
+                return { y, shiftLevel };
+            }
 
             noteTimeline.forEach(item => {
                 const backgroundVol = (isGameMode || activeMiniGame) ? 0.2 : 1.0;
@@ -4072,20 +4080,51 @@
                 }
 
                 item.notes.forEach(noteStr => {
-                    const normNote = noteStr.toLowerCase().trim();
-                    const pos = keyPosMap[normNote];
+                    const timeUntilHit = item.hitTime - effectiveElapsed;
+                    const clefX = 100;
+                    const speedPxPerMs = (canvas.width - clefX) / currentFallSpeed;
+                    const currentX = clefX + timeUntilHit * speedPxPerMs;
 
-                    if (pos) {
-                        const timeUntilHit = item.hitTime - effectiveElapsed;
-                        const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * canvasHeight;
-                        const blockHeight = (item.duration / currentFallSpeed) * canvasHeight;
-                        const yTop = yBottom - blockHeight;
+                    if (currentX > clefX + 15 && currentX < canvas.width + 50) {
+                        const { y, shiftLevel } = getNoteStaffInfo(noteStr);
+                        const active = effectiveElapsed >= item.hitTime && effectiveElapsed <= (item.hitTime + item.duration);
+                        
+                        // Ledger Lines
+                        ctx.save();
+                        ctx.strokeStyle = '#cbd5e1';
+                        ctx.lineWidth = 1.5;
+                        const staffSpacing = 20;
+                        const staffTopY = 150;
+                        const staffBottomY = staffTopY + 4 * staffSpacing;
+                        
+                        if (y >= staffBottomY + staffSpacing) {
+                            for (let lY = staffBottomY + staffSpacing; lY <= y + 1; lY += staffSpacing) {
+                                ctx.beginPath();
+                                ctx.moveTo(currentX - 18, lY);
+                                ctx.lineTo(currentX + 18, lY);
+                                ctx.stroke();
+                            }
+                        } else if (y <= staffTopY - staffSpacing) {
+                            for (let lY = staffTopY - staffSpacing; lY >= y - 1; lY -= staffSpacing) {
+                                ctx.beginPath();
+                                ctx.moveTo(currentX - 18, lY);
+                                ctx.lineTo(currentX + 18, lY);
+                                ctx.stroke();
+                            }
+                        }
+                        ctx.restore();
 
-                        if (yBottom > 0 && yTop < canvasHeight) {
-                            const drawY = Math.max(0, yTop);
-                            const drawH = Math.min(canvasHeight - drawY, yBottom - drawY);
-                            const active = effectiveElapsed >= item.hitTime && effectiveElapsed <= (item.hitTime + item.duration);
-                            drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, noteStr, active, item.gameStatus);
+                        // Draw Oval Note
+                        drawOvalNote(currentX, y, noteStr, active, item.gameStatus);
+
+                        if (shiftLevel > 0) {
+                            ctx.save();
+                            ctx.fillStyle = '#cbd5e1';
+                            ctx.font = 'italic 12px serif';
+                            ctx.textAlign = 'center';
+                            const label = shiftLevel === 1 ? '8va' : (shiftLevel === 2 ? '15ma' : ((shiftLevel * 7 + 1) + 'ma'));
+                            ctx.fillText(label, currentX, y - 22);
+                            ctx.restore();
                         }
                     }
                 });
