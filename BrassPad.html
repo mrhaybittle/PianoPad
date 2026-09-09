@@ -617,6 +617,7 @@
             osc.stop(now + 0.1);
         }
 
+        // Fixed Standard MIDI Pitch Parsing
         function noteToPitch(noteStr) {
             if (!noteStr) return null;
             noteStr = noteStr.trim().toLowerCase();
@@ -913,7 +914,7 @@
         }
 
         async function syncSongsWithGoogleSheet() {
-            // First load bundled fallback songs into the dropdown immediately
+            // Load fallback songs into dropdown immediately
             songList = [...FALLBACK_SONGS];
             renderSongSelect();
             
@@ -925,7 +926,6 @@
             
             document.getElementById('status').textContent = `Loaded ${songList.length} initial songs. Syncing Google Sheets...`;
 
-            // Attempt online sync
             try {
                 const response = await fetch(SPREADSHEET_CSV_URL);
                 if (response.ok) {
