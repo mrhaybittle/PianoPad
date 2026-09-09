@@ -90,6 +90,7 @@
         #song-select {
             color: #facc15 !important; border: 2px solid #eab308 !important;
             background-color: #1f170a !important; font-weight: 700 !important;
+            max-width: 250px;
         }
 
         button, .btn-link, .btn-file-label {
@@ -120,7 +121,7 @@
 
         #waterfall-canvas {
             background-color: var(--canvas-bg);
-            display: block; width: 100%; flex: 1;
+            display: block; width: 100%; flex: 1; min-height: 100px;
         }
 
         #mode-display {
@@ -142,7 +143,7 @@
 
         /* Brass Valves Section */
         .valves-container {
-            display: flex; /* Always visible for testing */
+            display: flex;
             justify-content: center;
             align-items: center;
             gap: 35px;
@@ -176,7 +177,7 @@
             color: #451a03;
             cursor: pointer;
             user-select: none;
-            transition: all 0.05s ease;
+            transition: transform 0.05s ease, box-shadow 0.05s ease;
         }
 
         .valve-btn.active {
@@ -316,8 +317,8 @@
         </div>
 
         <div class="footer-bar">
-            <!-- Timestamp Added Here to confirm Update -->
-            <div class="version-stamp">v26.09.09 | 9-Sep 15:53 AEST (Woonona)</div>
+            <!-- Timestamp updated correctly -->
+            <div class="version-stamp">v26.09.09 | 9-Sep 16:03 AEST (Woonona)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -353,6 +354,15 @@
         </div>
     </div>
 
+    <!-- Game Results Modal -->
+    <div class="modal-overlay" id="game-results-modal">
+        <div class="modal" style="text-align: center;">
+            <h2>Performance Summary</h2>
+            <p id="game-summary-text" style="font-size: 1rem; color: #e5e7eb; font-weight: 600; margin: 15px 0;"></p>
+            <button type="button" class="btn-success" style="justify-content: center; padding: 10px;" onclick="document.getElementById('game-results-modal').classList.remove('open')">Continue</button>
+        </div>
+    </div>
+
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
 
@@ -366,6 +376,7 @@
 
         let audioCtx = null;
         let songList = [];
+        let currentRenderedSongs = []; // Maps exact dropdown Index -> Object
         let rawParsedSong = []; 
         let currentSong = [];
         let currentSongTitle = "Wipeout";
@@ -424,10 +435,7 @@
         function selectInstrument(el) {
             document.querySelectorAll('.setup-option').forEach(opt => opt.classList.remove('selected'));
             el.classList.add('selected');
-            
-            // e.g. Bb instrument = -2 transposition in prompt logic, so Concert + 2 = Written
-            let rawTrans = parseInt(el.getAttribute('data-transpose'), 10);
-            transposeOffset = rawTrans === 0 ? 0 : rawTrans * -1; 
+            transposeOffset = parseInt(el.getAttribute('data-transpose'), 10) * -1; 
             instrumentName = el.getAttribute('data-name');
         }
 
@@ -484,9 +492,10 @@
 
         function handleValveChange() {
             clearTimeout(valveTimeout);
+            // Wait 35ms so user can depress combinations (like 1+3) without it evaluating 1 then 1+3 separately.
             valveTimeout = setTimeout(() => {
                 triggerNoteEvaluation(false);
-            }, 30);
+            }, 35);
         }
 
         function arraysEqualUnordered(a, b) {
@@ -502,6 +511,7 @@
             if (heldValves[2]) currentHeldArray.push(2);
             if (heldValves[3]) currentHeldArray.push(3);
 
+            // Require explicit blow for Open Notes (Array Length 0)
             if (currentHeldArray.length === 0 && !isExplicitBlow) return;
 
             if (isPlaying && !isPaused) {
@@ -532,10 +542,11 @@
                 }
 
                 if (matchedNote) {
+                    // Success!
                     target.gameStatus = 'perfect';
                     gameStats.perfect++;
                     const freq = getNoteFrequency(matchedNote);
-                    if (freq) playTone(freq, target.duration / 1000);
+                    if (freq) playTone(freq, 0.4);
                     updateStatusText();
                 } else {
                     target.gameStatus = 'miss';
@@ -670,44 +681,6 @@
             });
         }
 
-        // --- Microphone System ---
-        let micStream = null;
-        let micAnalyser = null;
-        let isMicListening = false;
-
-        async function toggleMicrophoneListening() {
-            initAudio();
-            const btn = document.getElementById('btn-mic-toggle');
-
-            if (isMicListening) {
-                isMicListening = false;
-                if (micStream) {
-                    micStream.getTracks().forEach(track => track.stop());
-                    micStream = null;
-                }
-                btn.textContent = '🎙️ MIC INPUT: OFF';
-                btn.classList.remove('btn-mic-active');
-                btn.classList.add('btn-secondary');
-                document.getElementById('status').textContent = 'Microphone disabled.';
-            } else {
-                try {
-                    micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                    const micSource = audioCtx.createMediaStreamSource(micStream);
-                    micAnalyser = audioCtx.createAnalyser();
-                    micAnalyser.fftSize = 2048;
-                    micSource.connect(micAnalyser);
-
-                    isMicListening = true;
-                    btn.textContent = '🎙️ MIC INPUT: ON';
-                    btn.classList.remove('btn-secondary');
-                    btn.classList.add('btn-mic-active');
-                    document.getElementById('status').textContent = '🎙️ Listening... Play near your computer microphone!';
-                } catch (err) {
-                    alert("Unable to access microphone.");
-                }
-            }
-        }
-
         // --- Core Engine & Animation Loop ---
         function togglePause() {
             if (!isPlaying) return;
@@ -739,12 +712,13 @@
         function playSong() {
             initAudio();
             
-            // Check if currentSong array is populated; if not, parse dropdown immediately
-            if (!currentSong || currentSong.length === 0) {
-                const selectedIndex = songSelect.value;
-                if (selectedIndex && songList[selectedIndex]) {
-                    currentSongTitle = songList[selectedIndex].title;
-                    rawParsedSong = parsePianoPad(songList[selectedIndex].code);
+            // Re-parse current dropdown option using array index safely
+            const index = songSelect.value;
+            if (index !== "") {
+                const songObj = currentRenderedSongs[index];
+                if (songObj) {
+                    currentSongTitle = songObj.title;
+                    rawParsedSong = parsePianoPad(songObj.code);
                     currentSong = autoTransposeSong(rawParsedSong);
                 }
             }
@@ -890,7 +864,13 @@
             animationFrameId = requestAnimationFrame(renderLoop);
         }
 
-        // --- Song Data Loading & Parsing ---
+        function showGameResultsPopUp() {
+            const totalHits = gameStats.perfect + gameStats.miss;
+            const accuracy = totalHits > 0 ? ((gameStats.perfect / totalHits) * 100).toFixed(1) : '0.0';
+            document.getElementById('game-summary-text').innerHTML = `Final Score: <span style="color:#10b981;">${accuracy}%</span><br><br><span style="font-size:0.9rem; color:#9ca3af;">(${gameStats.perfect} Perfect, ${gameStats.miss} Missed)</span>`;
+            document.getElementById('game-results-modal').classList.add('open');
+        }
+
         function parsePianoPad(code) {
             if (!code || !code.trim()) return [];
             const parts = code.replace(/[\r\n\s]+/g, '').split(/,Rests,/i);
@@ -909,26 +889,29 @@
 
         function renderSongSelect() {
             songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
-            songList.forEach((song, index) => {
+            currentRenderedSongs.forEach((song, index) => {
                 const opt = document.createElement('option');
-                opt.value = index; // Store array index instead of the massive raw code string!
+                opt.value = index; // Fixed logic: Use pure index for lookup later
                 opt.textContent = song.title;
                 songSelect.appendChild(opt);
             });
         }
 
         async function syncSongsWithGoogleSheet() {
-            // Load fallback songs into dropdown immediately
-            songList = [...FALLBACK_SONGS];
+            // Load fallback songs into array structure immediately
+            const uniqueMap = new Map();
+            FALLBACK_SONGS.forEach(s => uniqueMap.set(s.title.toLowerCase().trim(), s));
+            
+            currentRenderedSongs = Array.from(uniqueMap.values()).sort((a, b) => a.title.localeCompare(b.title));
             renderSongSelect();
             
-            // Auto-select the first fallback song
+            // Autoload Wipeout on launch safely
             songSelect.value = "0";
-            currentSongTitle = songList[0].title;
-            rawParsedSong = parsePianoPad(songList[0].code);
+            currentSongTitle = currentRenderedSongs[0].title;
+            rawParsedSong = parsePianoPad(currentRenderedSongs[0].code);
             currentSong = autoTransposeSong(rawParsedSong);
             
-            document.getElementById('status').textContent = `Loaded ${songList.length} initial songs. Syncing Google Sheets...`;
+            document.getElementById('status').textContent = `Loaded ${currentRenderedSongs.length} initial songs. Syncing Google Sheets...`;
 
             try {
                 const response = await fetch(SPREADSHEET_CSV_URL);
@@ -943,23 +926,23 @@
                         }
                     }
                     if (remoteSongs.length > 0) {
-                        songList = remoteSongs;
+                        remoteSongs.forEach(s => uniqueMap.set(s.title.toLowerCase().trim(), s));
+                        currentRenderedSongs = Array.from(uniqueMap.values()).sort((a, b) => a.title.localeCompare(b.title));
                         renderSongSelect();
                         
-                        // Select Wipeout (or default)
-                        const wipeoutIndex = songList.findIndex(s => s.title === 'Wipeout');
+                        const wipeoutIndex = currentRenderedSongs.findIndex(s => s.title === 'Wipeout');
                         const defaultIndex = wipeoutIndex !== -1 ? wipeoutIndex : 0;
                         
                         songSelect.value = defaultIndex;
-                        currentSongTitle = songList[defaultIndex].title;
-                        rawParsedSong = parsePianoPad(songList[defaultIndex].code);
+                        currentSongTitle = currentRenderedSongs[defaultIndex].title;
+                        rawParsedSong = parsePianoPad(currentRenderedSongs[defaultIndex].code);
                         currentSong = autoTransposeSong(rawParsedSong);
                         
-                        document.getElementById('status').textContent = `Synced ${songList.length} songs live from Google Sheet! Ready!`;
+                        document.getElementById('status').textContent = `Synced ${currentRenderedSongs.length} songs live from Google Sheet! Ready!`;
                     }
                 }
             } catch (e) {
-                document.getElementById('status').textContent = `Loaded ${songList.length} offline songs. Ready to play!`;
+                document.getElementById('status').textContent = `Loaded ${currentRenderedSongs.length} offline songs. Ready to play!`;
             }
         }
 
@@ -967,17 +950,18 @@
             initAudio();
             const index = e.target.value;
             if (index === "") return;
-            const song = songList[index];
-            currentSongTitle = song.title;
-            rawParsedSong = parsePianoPad(song.code);
-            if (rawParsedSong.length > 0) {
-                currentSong = autoTransposeSong(rawParsedSong);
-                stopSong();
-                document.getElementById('status').textContent = `Loaded "${currentSongTitle}". Press Play!`;
+            const songObj = currentRenderedSongs[index];
+            if (songObj) {
+                currentSongTitle = songObj.title;
+                rawParsedSong = parsePianoPad(songObj.code);
+                if (rawParsedSong.length > 0) {
+                    currentSong = autoTransposeSong(rawParsedSong);
+                    stopSong();
+                    document.getElementById('status').textContent = `Loaded "${currentSongTitle}". Press Play!`;
+                }
             }
         });
 
-        // Init on DOM load
         document.addEventListener('DOMContentLoaded', () => {
             resizeCanvas();
             syncSongsWithGoogleSheet();
