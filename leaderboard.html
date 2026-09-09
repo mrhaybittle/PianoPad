@@ -157,6 +157,15 @@
             letter-spacing: 0.05em;
         }
 
+        .sortable-col {
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.2s;
+        }
+        .sortable-col:hover {
+            color: #f3f4f6;
+        }
+
         td {
             padding: 10px 14px;
             border-bottom: 1px solid #1f2937;
@@ -258,7 +267,7 @@
                 <select id="filter-song">
                     <option value="ALL">All Songs</option>
                 </select>
-                <button id="btn-toggle-mode" class="btn btn-arcade">
+                <button id="btn-toggle-mode" class="btn btn-arcade" type="button">
                     🎮 MINI-GAME Leaderboard
                 </button>
                 <a href="index.html" class="btn btn-back">← Back to Player</a>
@@ -276,7 +285,7 @@
                             <th>Song Title</th>
                             <th>Accuracy</th>
                             <th>Tempo Speed</th>
-                            <th>Date</th>
+                            <th id="th-date-sort" class="sortable-col" title="Click to sort by date">Date <span id="date-sort-icon">↕️</span></th>
                         </tr>
                     </thead>
                     <tbody id="leaderboard-body">
@@ -305,6 +314,7 @@
 
         let allScores = [];
         let viewMode = 'SONGS';
+        let dateSortMode = 'DEFAULT'; // 'DEFAULT', 'NEWEST', 'OLDEST'
 
         function parseCSV(csvText) {
             const lines = csvText.split(/\r?\n/);
@@ -355,7 +365,7 @@
             const filterSelect = document.getElementById('filter-song');
             
             if (viewMode === 'GAMES') {
-                filterSelect.style.display = 'none'; // Filter not needed for 5-column dashboard
+                filterSelect.style.display = 'none';
                 return;
             }
 
@@ -376,7 +386,7 @@
         function isToday(dateString) {
             if (!dateString) return false;
             const d = new Date(dateString);
-            if (isNaN(d)) return false;
+            if (isNaN(d.getTime())) return false;
             const today = new Date();
             return d.getDate() === today.getDate() &&
                    d.getMonth() === today.getMonth() &&
@@ -390,10 +400,18 @@
             let pool = allScores.filter(s => !s.isMiniGame);
             let filtered = filterValue === 'ALL' ? [...pool] : pool.filter(s => s.song === filterValue);
 
-            filtered.sort((a, b) => {
-                if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
-                return b.speed - a.speed;
-            });
+            // Apply Sort Mode
+            if (dateSortMode === 'NEWEST') {
+                filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            } else if (dateSortMode === 'OLDEST') {
+                filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            } else {
+                // DEFAULT
+                filtered.sort((a, b) => {
+                    if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+                    return b.speed - a.speed;
+                });
+            }
 
             if (filtered.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="6" class="status-msg">No high scores found for this song.</td></tr>`;
@@ -405,9 +423,11 @@
                 const tr = document.createElement('tr');
 
                 let rankBadge = `<span class="rank-badge rank-other">${index + 1}</span>`;
-                if (index === 0) rankBadge = `<span class="rank-badge rank-1">🥇</span>`;
-                else if (index === 1) rankBadge = `<span class="rank-badge rank-2">🥈</span>`;
-                else if (index === 2) rankBadge = `<span class="rank-badge rank-3">🥉</span>`;
+                if (dateSortMode === 'DEFAULT') {
+                    if (index === 0) rankBadge = `<span class="rank-badge rank-1">🥇</span>`;
+                    else if (index === 1) rankBadge = `<span class="rank-badge rank-2">🥈</span>`;
+                    else if (index === 2) rankBadge = `<span class="rank-badge rank-3">🥉</span>`;
+                }
 
                 let dateStyle = isToday(item.timestamp) ? 'font-weight: 700; color: #facc15;' : 'color: #9ca3af;';
 
@@ -436,15 +456,12 @@
                 header.textContent = gameConfig.title;
                 colDiv.appendChild(header);
 
-                // Filter scores for this specific mini-game
                 let gameScores = allScores.filter(s => s.song.toLowerCase().includes(gameConfig.key));
 
-                // Apply custom game sorting
                 gameScores.sort((a, b) => {
                     return gameConfig.sortAsc ? a.accuracy - b.accuracy : b.accuracy - a.accuracy;
                 });
 
-                // Top 8 Scores per Mini-Game
                 const topScores = gameScores.slice(0, 8);
 
                 if (topScores.length === 0) {
@@ -478,7 +495,6 @@
                         colDiv.appendChild(row);
                     });
                 }
-
                 dashboard.appendChild(colDiv);
             });
         }
@@ -532,6 +548,21 @@
 
         document.getElementById('filter-song').addEventListener('change', renderSongLeaderboard);
         document.getElementById('btn-toggle-mode').addEventListener('click', toggleViewMode);
+        
+        document.getElementById('th-date-sort').addEventListener('click', () => {
+            const icon = document.getElementById('date-sort-icon');
+            if (dateSortMode === 'DEFAULT') {
+                dateSortMode = 'NEWEST';
+                icon.textContent = '⬇️';
+            } else if (dateSortMode === 'NEWEST') {
+                dateSortMode = 'OLDEST';
+                icon.textContent = '⬆️';
+            } else {
+                dateSortMode = 'DEFAULT';
+                icon.textContent = '↕️';
+            }
+            renderSongLeaderboard();
+        });
 
         fetchScores();
     </script>
