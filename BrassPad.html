@@ -278,8 +278,8 @@
             justify-content: center;
             height: 160px;
             width: 100px;
-            background: #0b0f19;
-            border: 1px solid #374151;
+            background: #0f172a;
+            border: 1px solid #334155;
             border-radius: 8px;
             padding: 8px;
             position: relative;
@@ -293,7 +293,7 @@
             height: 130px;
             border-radius: 4px;
             overflow: hidden;
-            background: #181f2e;
+            background: #1e293b;
         }
 
         .bar-part-red { background-color: #ef4444; width: 100%; transition: height 0.4s ease; }
@@ -309,7 +309,7 @@
             border-radius: 20px;
             font-size: 0.85rem;
             font-weight: 700;
-            margin-top: 6px;
+            margin-top: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
             color: #000;
         }
@@ -318,15 +318,16 @@
         .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
 
         .rank-display-box {
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             font-weight: 800;
             color: #facc15;
             margin-top: 8px;
-            padding: 6px 12px;
-            background: #0b0f19;
+            padding: 8px 12px;
+            background: #111827;
             border: 1px solid #eab308;
             border-radius: 8px;
             display: inline-block;
+            text-align: center;
         }
     </style>
 </head>
@@ -361,7 +362,7 @@
 
         <div class="visualizer-wrapper" id="vis-wrapper">
             <canvas id="waterfall-canvas"></canvas>
-            <div class="blow-instruction">Press Valves (M, comma, period) to Play! Use UP ARROW, D, or ; for Open Notes</div>
+            <div class="blow-instruction">Press Valves (M, comma, period) to Play! Use UP ARROW, D, L, or ; for Open Notes</div>
             
             <div id="mode-display" onclick="openSetupModal()" title="Click to change Instrument">
                 <span id="instrument-label">🎺 Bb Trumpet / Cornet Mode</span>
@@ -397,7 +398,8 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.09 | 9-Sep 17:35 AEST (Woonona)</div>
+            <!-- Timestamp Updated -->
+            <div class="version-stamp">v26.09.09 | 9-Sep 17:35 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -488,7 +490,7 @@
         let isStepMode = false;
         let sessionStudentName = "";
         
-        let transposeOffset = 2; // Default to Bb Instruments (+2 semitones from concert to written)
+        let transposeOffset = 2; // Default to Bb Instruments (+2 semitones transposition from Concert to Written)
         let instrumentName = "🎺 Bb Trumpet / Cornet Mode";
 
         let animationFrameId = null;
@@ -556,6 +558,7 @@
             document.getElementById('setup-modal').classList.remove('open');
             document.getElementById('instrument-label').textContent = instrumentName;
             
+            // Re-transpose current song based on new instrument selection
             if (rawParsedSong.length > 0) {
                 currentSong = autoTransposeSong(rawParsedSong);
             }
@@ -582,6 +585,7 @@
             document.getElementById('game-results-modal').classList.remove('open');
         });
 
+        // --- Leaderboard Support (Mock) ---
         function sanitizeName(str) {
             const parts = str.trim().split(/\s+/);
             if (parts.length === 1) return parts[0];
@@ -645,8 +649,8 @@
                 handleValveChange();
             }
 
-            // Open Notes: Up Arrow, d, or ;
-            if (e.code === 'ArrowUp' || keyStr === 'd' || keyStr === ';') {
+            // Open Notes: Up Arrow, d, ;, or l
+            if (e.code === 'ArrowUp' || keyStr === 'd' || keyStr === ';' || keyStr === 'l') {
                 triggerNoteEvaluation(true); // Explicit blow for Open Note
             }
         });
@@ -667,6 +671,7 @@
 
         function handleValveChange() {
             clearTimeout(valveTimeout);
+            // 30ms buffer allows pressing multiple keys simultaneously securely
             valveTimeout = setTimeout(() => {
                 triggerNoteEvaluation(false);
             }, 30);
@@ -685,6 +690,7 @@
             if (heldValves[2]) currentHeldArray.push(2);
             if (heldValves[3]) currentHeldArray.push(3);
 
+            // Require explicit blow for Open Notes (Array Length 0)
             if (currentHeldArray.length === 0 && !isExplicitBlow) return;
 
             if (isStepMode) {
@@ -705,7 +711,7 @@
                 (performance.now() - playbackStartTime) - accumulatedPauseMs;
 
             const targetIndex = isStep ? currentStepIndex : noteTimeline.findIndex(item => 
-                item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 500
+                item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 400
             );
 
             if (targetIndex !== -1 && targetIndex < noteTimeline.length) {
@@ -742,7 +748,7 @@
                         updateStatusText();
                     }
                 } else {
-                    if (isStep) return; 
+                    if (isStep) return; // Wait for right input
                     target.gameStatus = 'miss';
                     gameStats.miss++;
                     playErrorClackSound();
@@ -764,9 +770,8 @@
                 '1,2,3': 54   // F#3
             };
             const key = currentHeldArray.sort().join(',');
-            const writtenPitch = map[key] || 60;
-            const writtenNoteStr = pitchToNote(writtenPitch);
-            const freq = getConcertFrequency(writtenNoteStr);
+            const pitch = map[key] || 60;
+            const freq = getNoteFrequency(pitchToNote(pitch));
             if (freq) playTone(freq, 0.4);
         }
 
@@ -1002,7 +1007,7 @@
 
         function updateStepStatus() {
             if (currentStepIndex < noteTimeline.length) {
-                document.getElementById('status').textContent = `Step ${currentStepIndex + 1}: Press required valves to advance! (Use UP ARROW, D, or ; for open notes)`;
+                document.getElementById('status').textContent = `Step ${currentStepIndex + 1}: Press required valves to advance! (Use UP ARROW, D, L, or ; for open notes)`;
             } else {
                 document.getElementById('status').textContent = 'Step Practice Finished!';
             }
@@ -1154,12 +1159,14 @@
             ensureStudentName();
             const totalHits = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = totalHits > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
+            const accuracyNum = parseFloat(accuracy);
             
-            document.getElementById('game-summary-text').innerHTML = `
+            let summaryHTML = `
                 <div style="font-size: 0.95rem; font-weight:bold; color: #fff;">Student: <span style="color:#38bdf8;">${sessionStudentName}</span></div>
                 <div style="font-size: 1.1rem; font-weight:bold; color: #22c55e;">Final Score: ${accuracy}%</div>
                 <div style="font-size: 0.8rem; color: #9ca3af; margin-top: 4px;">(${gameStats.perfect} Perfect, ${gameStats.earlyLate} Early/Late, ${gameStats.miss} Missed out of ${totalHits} notes)</div>
             `;
+            document.getElementById('game-summary-text').innerHTML = summaryHTML;
             
             const greenPct = totalHits > 0 ? (gameStats.perfect / totalHits) * 100 : 0;
             const orangePct = totalHits > 0 ? (gameStats.earlyLate / totalHits) * 100 : 0;
@@ -1300,8 +1307,6 @@
                     currentSong = autoTransposeSong(rawParsedSong);
                     stopSong();
                     document.getElementById('status').textContent = `Loaded "${currentSongTitle}". Press Play!`;
-                } else {
-                    document.getElementById('status').textContent = `Error: Song data could not be read for "${currentSongTitle}".`;
                 }
             }
         });
