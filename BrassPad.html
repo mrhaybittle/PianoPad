@@ -110,7 +110,8 @@
         .btn-warning { background-color: #f59e0b; color: #000; }
         .btn-danger { background-color: #ef4444; color: #fff; }
 
-        .btn-mic-active { background-color: #10b981 !important; color: #ffffff !important; box-shadow: 0 0 10px rgba(16, 185, 129, 0.6); }
+        .btn-game-active { background-color: #ec4899 !important; color: #fff; }
+        .btn-step-active { background-color: #f43f5e !important; color: #ffffff !important; }
 
         .visualizer-wrapper {
             position: relative; display: flex; flex-direction: column; align-items: center;
@@ -121,7 +122,7 @@
 
         #waterfall-canvas {
             background-color: var(--canvas-bg);
-            display: block; width: 100%; flex: 1; min-height: 150px;
+            display: block; width: 100%; flex: 1; min-height: 100px;
         }
 
         #mode-display {
@@ -136,7 +137,7 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
-            margin: 8px 0;
+            margin: 4px 0;
             box-shadow: 0 4px 6px rgba(0,0,0,0.5);
             z-index: 10;
             cursor: pointer;
@@ -228,7 +229,7 @@
             font-family: monospace;
         }
 
-        /* MODALS */
+        /* MODALS & GRAPHS */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0, 0, 0, 0.85); display: flex; align-items: center; justify-content: center;
@@ -260,6 +261,45 @@
         .setup-option.selected { border-color: #10b981; background: #064e3b; }
         .setup-option h3 { font-size: 1.1rem; color: #fff; }
         .setup-option p { font-size: 0.8rem; color: #9ca3af; }
+
+        /* Graphic Score */
+        .graph-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .bar-chart-wrapper {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            height: 160px;
+            width: 100px;
+            background: #0b0f19;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 8px;
+            position: relative;
+        }
+
+        .stacked-bar {
+            width: 38px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            height: 130px;
+            border-radius: 4px;
+            overflow: hidden;
+            background: #181f2e;
+        }
+
+        .bar-part-red { background-color: #ef4444; width: 100%; transition: height 0.4s ease; }
+        .bar-part-orange { background-color: #f97316; width: 100%; transition: height 0.4s ease; }
+        .bar-part-green { background-color: #22c55e; width: 100%; transition: height 0.4s ease; }
+
     </style>
 </head>
 <body>
@@ -277,8 +317,12 @@
                     <input type="range" id="speed-slider" min="10" max="300" value="100" step="5">
                 </div>
 
-                <button type="button" id="btn-mic-toggle" class="btn-secondary" title="Listen for real brass instrument">
-                    🎙️ MIC INPUT: OFF
+                <button type="button" id="btn-game" class="btn-secondary">
+                    🎮 Game Mode: OFF
+                </button>
+
+                <button type="button" id="btn-step" class="btn-secondary">
+                    👣 Step Mode
                 </button>
 
                 <button type="button" id="btn-play" class="btn-success">▶ Play</button>
@@ -289,7 +333,7 @@
 
         <div class="visualizer-wrapper" id="vis-wrapper">
             <canvas id="waterfall-canvas"></canvas>
-            <div class="blow-instruction">Press Valves to Play! (Use UP ARROW or SPACE for Open Notes)</div>
+            <div class="blow-instruction">Press Valves to Play! (Use UP ARROW, D, or ; for Open Notes)</div>
             
             <div id="mode-display" onclick="openSetupModal()" title="Click to change Instrument">
                 <span id="instrument-label">🎺 Bb Trumpet / Cornet Mode</span>
@@ -303,7 +347,7 @@
                          onmouseup="setValve(1, false); handleValveChange()"
                          ontouchstart="setValve(1, true); handleValveChange(); event.preventDefault()"
                          ontouchend="setValve(1, false); handleValveChange(); event.preventDefault()">1</div>
-                    <div class="valve-label">⬅️ / Z / 1</div>
+                    <div class="valve-label">M</div>
                 </div>
                 <div class="valve-wrapper">
                     <div class="valve-btn" id="valve-2" 
@@ -311,7 +355,7 @@
                          onmouseup="setValve(2, false); handleValveChange()"
                          ontouchstart="setValve(2, true); handleValveChange(); event.preventDefault()"
                          ontouchend="setValve(2, false); handleValveChange(); event.preventDefault()">2</div>
-                    <div class="valve-label">⬇️ / X / 2</div>
+                    <div class="valve-label">,</div>
                 </div>
                 <div class="valve-wrapper">
                     <div class="valve-btn" id="valve-3" 
@@ -319,14 +363,14 @@
                          onmouseup="setValve(3, false); handleValveChange()"
                          ontouchstart="setValve(3, true); handleValveChange(); event.preventDefault()"
                          ontouchend="setValve(3, false); handleValveChange(); event.preventDefault()">3</div>
-                    <div class="valve-label">➡️ / C / 3</div>
+                    <div class="valve-label">.</div>
                 </div>
             </div>
         </div>
 
         <div class="footer-bar">
             <!-- Timestamp Updated -->
-            <div class="version-stamp">v26.09.09 | 9-Sep 16:20 AEST (Woonona)</div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 16:31 AEST (Woonona)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -362,12 +406,28 @@
         </div>
     </div>
 
-    <!-- Game Results Modal -->
+    <!-- Game Results Graphical Score Modal -->
     <div class="modal-overlay" id="game-results-modal">
         <div class="modal" style="text-align: center;">
             <h2>Performance Summary</h2>
-            <p id="game-summary-text" style="font-size: 1rem; color: #e5e7eb; font-weight: 600; margin: 15px 0;"></p>
-            <button type="button" class="btn-success" style="justify-content: center; padding: 10px;" onclick="document.getElementById('game-results-modal').classList.remove('open')">Continue</button>
+            <p id="game-summary-text" style="font-size: 1rem; color: #e5e7eb; font-weight: 600; margin: 10px 0 0 0;"></p>
+            
+            <div class="graph-container">
+                <div class="bar-chart-wrapper" id="single-bar-graph">
+                    <div class="stacked-bar">
+                        <div id="bar-red" class="bar-part-red"></div>
+                        <div id="bar-orange" class="bar-part-orange"></div>
+                        <div id="bar-green" class="bar-part-green"></div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 600; margin-top: 4px;">
+                    <span style="color: #22c55e;">● Perfect</span>
+                    <span style="color: #f97316;">● Early/Late</span>
+                    <span style="color: #ef4444;">● Missed</span>
+                </div>
+            </div>
+
+            <button type="button" class="btn-success" style="justify-content: center; padding: 10px; margin-top: 10px;" onclick="document.getElementById('game-results-modal').classList.remove('open')">Continue</button>
         </div>
     </div>
 
@@ -391,6 +451,8 @@
 
         let isPlaying = false;
         let isPaused = false;
+        let isGameMode = false;
+        let isStepMode = false;
         
         // Defaults bypass setup modal temporarily
         let transposeOffset = 2; // +2 semitones transposition (Bb Instrument standard)
@@ -402,7 +464,8 @@
         let accumulatedPauseMs = 0;
         let lastFrameTime = 0;
         let noteTimeline = [];
-        let gameStats = { perfect: 0, miss: 0 };
+        let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+        let currentStepIndex = 0;
 
         // Visualizer Range Settings (MIDI Pitch Standards)
         const MIN_PITCH = 54; // F#3
@@ -432,6 +495,8 @@
         const speedLabel = document.getElementById('speed-label');
         const songSelect = document.getElementById('song-select');
         const btnPause = document.getElementById('btn-pause');
+        const btnGame = document.getElementById('btn-game');
+        const btnStep = document.getElementById('btn-step');
 
         function resizeCanvas() {
             const wrapper = document.getElementById('vis-wrapper');
@@ -457,7 +522,7 @@
             document.getElementById('setup-modal').classList.remove('open');
             document.getElementById('instrument-label').textContent = instrumentName;
             
-            // Re-transpose current song
+            // Re-transpose current song based on new instrument selection
             if (rawParsedSong.length > 0) {
                 currentSong = autoTransposeSong(rawParsedSong);
             }
@@ -480,24 +545,28 @@
             
             initAudio();
             let valveChanged = false;
+            const keyStr = e.key.toLowerCase();
 
-            if (e.code === 'ArrowLeft' || e.key === '1' || e.code === 'KeyZ') { setValve(1, true); valveChanged = true; }
-            if (e.code === 'ArrowDown'  || e.key === '2' || e.code === 'KeyX') { setValve(2, true); valveChanged = true; }
-            if (e.code === 'ArrowRight' || e.key === '3' || e.code === 'KeyC') { setValve(3, true); valveChanged = true; }
+            // Valves: m, comma, period
+            if (keyStr === 'm') { setValve(1, true); valveChanged = true; }
+            if (keyStr === ',') { setValve(2, true); valveChanged = true; }
+            if (keyStr === '.') { setValve(3, true); valveChanged = true; }
 
             if (valveChanged) {
                 handleValveChange();
             }
 
-            if (e.code === 'ArrowUp' || e.code === 'Space' || e.code === 'Enter') {
+            // Open Notes: Up Arrow, d, or ;
+            if (e.code === 'ArrowUp' || keyStr === 'd' || keyStr === ';') {
                 triggerNoteEvaluation(true); // Explicit blow for Open Note
             }
         });
 
         window.addEventListener('keyup', (e) => {
-            if (e.code === 'ArrowLeft' || e.key === '1' || e.code === 'KeyZ') { setValve(1, false); }
-            if (e.code === 'ArrowDown'  || e.key === '2' || e.code === 'KeyX') { setValve(2, false); }
-            if (e.code === 'ArrowRight' || e.key === '3' || e.code === 'KeyC') { setValve(3, false); }
+            const keyStr = e.key.toLowerCase();
+            if (keyStr === 'm') { setValve(1, false); }
+            if (keyStr === ',') { setValve(2, false); }
+            if (keyStr === '.') { setValve(3, false); }
         });
 
         function setValve(num, isDown) {
@@ -559,14 +628,19 @@
                 }
 
                 if (matchedNote) {
-                    // Success Hit!
-                    target.gameStatus = 'perfect';
-                    gameStats.perfect++;
+                    const diff = Math.abs(effectiveElapsed - target.hitTime);
+                    if (diff <= 140) {
+                        target.gameStatus = 'perfect';
+                        gameStats.perfect++;
+                    } else {
+                        target.gameStatus = 'earlyLate';
+                        gameStats.earlyLate++;
+                    }
+                    
                     const freq = getNoteFrequency(matchedNote);
                     if (freq) playTone(freq, 0.4);
                     updateStatusText();
                 } else {
-                    // Missed Fingering
                     target.gameStatus = 'miss';
                     gameStats.miss++;
                     playErrorClackSound();
@@ -653,6 +727,7 @@
             osc.stop(now + 0.1);
         }
 
+        // Standard MIDI Pitch Parsing
         function noteToPitch(noteStr) {
             if (!noteStr) return null;
             noteStr = noteStr.trim().toLowerCase();
@@ -662,7 +737,7 @@
             const octave = parseInt(match[2], 10);
             const offset = noteNames.indexOf(name);
             if (offset === -1) return null;
-            return (octave + 1) * 12 + offset; // Standard MIDI formatting: C4 = 60
+            return (octave + 1) * 12 + offset; // C4 = 60
         }
 
         function pitchToNote(pitch) {
@@ -699,6 +774,37 @@
         }
 
         // --- Core Engine & Animation Loop ---
+        function toggleGameMode() {
+            isGameMode = !isGameMode;
+            if (isGameMode) {
+                btnGame.textContent = '🎮 Game Mode: ON';
+                btnGame.classList.remove('btn-secondary');
+                btnGame.classList.add('btn-game-active');
+                if (isStepMode) toggleStepMode();
+                gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+                document.getElementById('status').textContent = ' GAME MODE ACTIVE! Press Play and hit falling notes in time.';
+            } else {
+                btnGame.textContent = '🎮 Game Mode: OFF';
+                btnGame.classList.remove('btn-game-active');
+                btnGame.classList.add('btn-secondary');
+                document.getElementById('status').textContent = 'Game Mode OFF. Normal auto-play active.';
+            }
+        }
+
+        function toggleStepMode() {
+            isStepMode = !isStepMode;
+            if (isStepMode) {
+                btnStep.textContent = 'Step Mode: ON';
+                btnStep.classList.remove('btn-secondary');
+                btnStep.classList.add('btn-step-active');
+                if (isGameMode) toggleGameMode();
+            } else {
+                btnStep.textContent = 'Step Mode: OFF';
+                btnStep.classList.remove('btn-step-active');
+                btnStep.classList.add('btn-secondary');
+            }
+        }
+
         function togglePause() {
             if (!isPlaying) return;
             isPaused = !isPaused;
@@ -746,14 +852,19 @@
             stopSong();
             resizeCanvas();
             buildTimeline();
-            gameStats = { perfect: 0, miss: 0 };
+            gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
 
             isPlaying = true;
             accumulatedPauseMs = 0;
             playbackStartTime = performance.now();
             lastFrameTime = performance.now();
 
-            document.getElementById('status').textContent = 'Playing... Use valves to hit the falling notes!';
+            if (isGameMode) {
+                document.getElementById('status').textContent = 'Game Mode Active! Hit the notes on time!';
+            } else {
+                document.getElementById('status').textContent = 'Auto-Playing... (Press Game Mode to play along interactively)';
+            }
+            
             animationFrameId = requestAnimationFrame(renderLoop);
         }
 
@@ -776,7 +887,11 @@
         }
 
         function updateStatusText() {
-            document.getElementById('status').textContent = `🎯 Playing | Hits: ${gameStats.perfect} | Misses: ${gameStats.miss}`;
+            if (isGameMode) {
+                const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+                const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
+                document.getElementById('status').textContent = `🎯 Acc: ${accuracy}% | Perf: ${gameStats.perfect} | E/L: ${gameStats.earlyLate} | Miss: ${gameStats.miss}`;
+            }
         }
 
         function renderLoop(now) {
@@ -826,7 +941,18 @@
 
             // 3. Render Falling Notes
             noteTimeline.forEach(item => {
-                if (item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 300)) {
+                
+                // AUTO-PLAY SOUND LOGIC (If not in Game Mode)
+                if (!isGameMode && !isStepMode && effectiveElapsed >= item.hitTime && !item.played) {
+                    item.played = true;
+                    item.notes.forEach(noteStr => {
+                        const freq = getNoteFrequency(noteStr);
+                        if (freq) playTone(freq, item.duration / 1000);
+                    });
+                }
+
+                // MISS LOGIC FOR GAME MODE
+                if (isGameMode && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 300)) {
                     item.gameStatus = 'miss';
                     gameStats.miss++;
                     updateStatusText();
@@ -840,6 +966,7 @@
                 if (yBottom > -canvas.height && yTop < canvas.height * 2) {
                     let bColor = '#f59e0b'; // Amber pending
                     if (item.gameStatus === 'perfect') bColor = '#10b981'; // Green hit
+                    else if (item.gameStatus === 'earlyLate') bColor = '#f97316'; // Orange early/late
                     else if (item.gameStatus === 'miss') bColor = '#ef4444'; // Red miss
 
                     item.notes.forEach(noteStr => {
@@ -872,11 +999,34 @@
             if (lastNote && effectiveElapsed > lastNote.hitTime + lastNote.duration + 1000) {
                 isPlaying = false;
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                document.getElementById('status').textContent = 'Song Finished! Great playing!';
+                
+                if (isGameMode) {
+                    showGameResultsPopUp();
+                } else {
+                    document.getElementById('status').textContent = 'Song Finished!';
+                }
                 return;
             }
             
             animationFrameId = requestAnimationFrame(renderLoop);
+        }
+
+        function showGameResultsPopUp() {
+            const totalHits = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+            const accuracy = totalHits > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
+            
+            document.getElementById('game-summary-text').innerHTML = `Final Score: <span style="color:#10b981;">${accuracy}%</span><br><br><span style="font-size:0.9rem; color:#9ca3af;">(${gameStats.perfect} Perfect, ${gameStats.earlyLate} Early/Late, ${gameStats.miss} Missed)</span>`;
+            
+            const greenPct = totalHits > 0 ? (gameStats.perfect / totalHits) * 100 : 0;
+            const orangePct = totalHits > 0 ? (gameStats.earlyLate / totalHits) * 100 : 0;
+            const redPct = totalHits > 0 ? (gameStats.miss / totalHits) * 100 : 0;
+
+            document.getElementById('bar-green').style.height = `${greenPct}%`;
+            document.getElementById('bar-orange').style.height = `${orangePct}%`;
+            document.getElementById('bar-red').style.height = `${redPct}%`;
+
+            document.getElementById('game-results-modal').classList.add('open');
+            document.getElementById('single-bar-graph').style.display = 'flex';
         }
 
         // --- Robust HayCode Parser ---
