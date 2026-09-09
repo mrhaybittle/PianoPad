@@ -13,15 +13,8 @@
             --accent-hover: #fbbf24;
             --text-main: #fef3c7;
             --highlight: #eab308;
-            --step-active: #f59e0b;
-            --recording-active: #ef4444;
-            --loop-active: #06b6d4;
-            --game-active: #ec4899;
-            --arcade-active: #8b5cf6;
             --canvas-bg: #0d0a07;
             --hitline-color: #ef4444;
-            --valve-up: #d97706;
-            --valve-down: #fbbf24;
         }
 
         * {
@@ -117,14 +110,12 @@
         .btn-danger { background-color: #ef4444; color: #fff; }
 
         .btn-mic-active { background-color: #10b981 !important; color: #ffffff !important; box-shadow: 0 0 10px rgba(16, 185, 129, 0.6); }
-        .btn-game-active { background-color: var(--game-active) !important; color: #fff; }
-        .btn-step-active { background-color: #f43f5e !important; color: #ffffff !important; }
 
         .visualizer-wrapper {
             position: relative; display: flex; flex-direction: column; align-items: center;
             background-color: #000; border-radius: 10px; padding: 4px;
             box-shadow: inset 0 2px 8px rgba(0,0,0,0.9);
-            width: 100%; flex: 1; min-height: 380px; overflow: hidden;
+            width: 100%; flex: 1; min-height: 350px; overflow: hidden;
         }
 
         #waterfall-canvas {
@@ -133,47 +124,50 @@
         }
 
         #mode-display {
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             font-weight: bold;
             color: #fbbf24;
             background: #332717;
-            padding: 8px 20px;
+            padding: 6px 18px;
             border-radius: 8px;
             border: 2px solid #78350f;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            margin: 10px 0;
+            margin: 6px 0;
             box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+            z-index: 10;
         }
 
+        /* Valve Section */
         .valves-container {
-            display: flex;
+            display: none; /* Controlled via JS when modal finishes */
             justify-content: center;
             align-items: center;
-            gap: 30px;
-            padding: 15px;
+            gap: 35px;
+            padding: 10px;
             background: linear-gradient(to bottom, #332717, #1a140b);
             width: 100%;
             border-radius: 0 0 8px 8px;
             border-top: 2px solid #524026;
+            z-index: 10;
         }
 
         .valve-wrapper {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .valve-btn {
-            width: 80px;
-            height: 80px;
+            width: 75px;
+            height: 75px;
             border-radius: 50%;
             background: radial-gradient(circle at 30% 30%, #fbbf24, #b45309);
             border: 4px solid #78350f;
-            box-shadow: 0 10px 0 #451a03, 0 15px 20px rgba(0,0,0,0.6);
+            box-shadow: 0 8px 0 #451a03, 0 12px 15px rgba(0,0,0,0.6);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -181,43 +175,49 @@
             font-weight: 900;
             color: #451a03;
             cursor: pointer;
-            transition: all 0.1s;
+            user-select: none;
+            transition: all 0.05s ease;
         }
 
         .valve-btn.active {
-            transform: translateY(10px);
-            box-shadow: 0 0px 0 #451a03, 0 5px 10px rgba(0,0,0,0.6);
+            transform: translateY(8px);
+            box-shadow: 0 0px 0 #451a03, 0 4px 8px rgba(0,0,0,0.6);
             background: radial-gradient(circle at 30% 30%, #fcd34d, #d97706);
             border-color: #92400e;
         }
 
         .valve-label {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-weight: bold;
             color: #fbbf24;
             background: rgba(0,0,0,0.5);
-            padding: 4px 10px;
+            padding: 3px 8px;
             border-radius: 4px;
         }
 
         .blow-instruction {
             position: absolute;
-            bottom: 150px;
-            font-size: 1.2rem;
+            top: 10px;
+            right: 12px;
+            font-size: 0.85rem;
             font-weight: 800;
             color: #fff;
-            text-shadow: 0 0 10px #f59e0b;
-            background: rgba(0,0,0,0.6);
-            padding: 5px 15px;
-            border-radius: 20px;
+            background: rgba(0,0,0,0.75);
+            padding: 6px 14px;
+            border-radius: 8px;
             border: 1px solid #f59e0b;
             pointer-events: none;
-            animation: pulse 2s infinite;
+            z-index: 5;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 0.8; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.05); }
+        .status-bar { font-size: 0.82rem; color: #fef3c7; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .footer-bar { display: flex; align-items: center; justify-content: space-between; padding-top: 4px; }
+        
+        .version-stamp {
+            font-size: 0.72rem;
+            color: #d97706;
+            font-weight: 700;
+            font-family: monospace;
         }
 
         /* MODALS */
@@ -252,16 +252,6 @@
         .setup-option.selected { border-color: #10b981; background: #064e3b; }
         .setup-option h3 { font-size: 1.1rem; color: #fff; }
         .setup-option p { font-size: 0.8rem; color: #9ca3af; }
-
-        .status-bar { font-size: 0.82rem; color: #fef3c7; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .footer-bar { display: flex; align-items: center; justify-content: space-between; padding-top: 4px; }
-        
-        .version-stamp {
-            font-size: 0.72rem;
-            color: #d97706;
-            font-weight: 700;
-            font-family: monospace;
-        }
     </style>
 </head>
 <body>
@@ -283,14 +273,6 @@
                     🎙️ MIC INPUT: OFF
                 </button>
 
-                <button type="button" id="btn-game" class="btn-secondary">
-                    🎮 Game Mode: OFF
-                </button>
-
-                <button type="button" id="btn-step" class="btn-secondary">
-                    👣 Step Mode
-                </button>
-
                 <button type="button" id="btn-play" class="btn-success">▶ Play</button>
                 <button type="button" id="btn-pause" class="btn-warning">⏸ Pause</button>
                 <button type="button" id="btn-stop" class="btn-danger">⏹ Stop</button>
@@ -307,23 +289,34 @@
 
             <div class="valves-container" id="valves-container">
                 <div class="valve-wrapper">
-                    <div class="valve-btn" id="valve-1" onmousedown="setValve(1, true); handleValveChange()" onmouseup="setValve(1, false); handleValveChange()">1</div>
+                    <div class="valve-btn" id="valve-1" 
+                         onmousedown="setValve(1, true); handleValveChange()" 
+                         onmouseup="setValve(1, false); handleValveChange()"
+                         ontouchstart="setValve(1, true); handleValveChange(); event.preventDefault()"
+                         ontouchend="setValve(1, false); handleValveChange(); event.preventDefault()">1</div>
                     <div class="valve-label">⬅️ / Z / 1</div>
                 </div>
                 <div class="valve-wrapper">
-                    <div class="valve-btn" id="valve-2" onmousedown="setValve(2, true); handleValveChange()" onmouseup="setValve(2, false); handleValveChange()">2</div>
+                    <div class="valve-btn" id="valve-2" 
+                         onmousedown="setValve(2, true); handleValveChange()" 
+                         onmouseup="setValve(2, false); handleValveChange()"
+                         ontouchstart="setValve(2, true); handleValveChange(); event.preventDefault()"
+                         ontouchend="setValve(2, false); handleValveChange(); event.preventDefault()">2</div>
                     <div class="valve-label">⬇️ / X / 2</div>
                 </div>
                 <div class="valve-wrapper">
-                    <div class="valve-btn" id="valve-3" onmousedown="setValve(3, true); handleValveChange()" onmouseup="setValve(3, false); handleValveChange()">3</div>
+                    <div class="valve-btn" id="valve-3" 
+                         onmousedown="setValve(3, true); handleValveChange()" 
+                         onmouseup="setValve(3, false); handleValveChange()"
+                         ontouchstart="setValve(3, true); handleValveChange(); event.preventDefault()"
+                         ontouchend="setValve(3, false); handleValveChange(); event.preventDefault()">3</div>
                     <div class="valve-label">➡️ / C / 3</div>
                 </div>
             </div>
         </div>
 
         <div class="footer-bar">
-            <!-- Timestamp Added Here to confirm Update -->
-            <div class="version-stamp">v26.09.09 | 9-Sep 15:38 AEST (Woonona)</div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 15:48 AEST</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -332,9 +325,9 @@
     <div class="modal-overlay open" id="setup-modal">
         <div class="modal">
             <h2>Welcome to BrassPad! 🎺</h2>
-            <p style="text-align: center; color: #d1d5db; font-size: 0.9rem;">Select your instrument to automatically transpose sheet music into your written pitch:</p>
+            <p style="text-align: center; color: #d1d5db; font-size: 0.9rem;">Select your instrument to transpose sheet music into your written pitch:</p>
             
-            <div class="setup-option" data-transpose="-2" data-name="🎺 Bb Trumpet / Cornet" onclick="selectInstrument(this)">
+            <div class="setup-option selected" data-transpose="-2" data-name="🎺 Bb Trumpet / Cornet" onclick="selectInstrument(this)">
                 <h3>Trumpet / Cornet (Bb)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
@@ -359,59 +352,35 @@
         </div>
     </div>
 
-    <!-- Game Results Modal -->
-    <div class="modal-overlay" id="game-results-modal">
-        <div class="modal" style="text-align: center;">
-            <h2>Performance Summary</h2>
-            <p id="game-summary-text" style="font-size: 1rem; color: #e5e7eb; font-weight: 600; margin: 15px 0;"></p>
-            <button type="button" class="btn-success" style="justify-content: center; padding: 10px;" onclick="document.getElementById('game-results-modal').classList.remove('open')">Continue</button>
-        </div>
-    </div>
-
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
 
         let audioCtx = null;
         let songList = [];
+        let rawParsedSong = []; // Original song before transposition
         let currentSong = [];
         let currentSongTitle = "Wipeout";
 
         let isPlaying = false;
         let isPaused = false;
-        let isStepMode = false;
-        let isGameMode = false;
         let transposeOffset = -2; 
         let instrumentName = "🎺 Bb Trumpet / Cornet";
 
-        let micStream = null;
-        let micAnalyser = null;
-        let isMicListening = false;
-        let pitchDetectionFrameId = null;
-        let lastDetectedNote = null;
-        let noteHoldCounter = 0;
-
-        let gameStats = { perfect: 0, miss: 0 };
-        let currentStepIndex = 0;
         let animationFrameId = null;
         let playbackStartTime = 0;
         let pauseStartTime = 0;
         let accumulatedPauseMs = 0;
         let lastFrameTime = 0;
         let noteTimeline = [];
+        let gameStats = { perfect: 0, miss: 0 };
 
-        // Valve State tracking
-        let heldValves = { 1: false, 2: false, 3: false };
-        let valveTimeout = null;
-
-        const noteNames = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
-
-        // Visualizer Range Settings (Written Pitch standard MIDI layout)
+        // Visualizer Range Settings (MIDI Pitch Standards)
         const MIN_PITCH = 54; // F#3
         const MAX_PITCH = 84; // C6
         const PITCH_RANGE = MAX_PITCH - MIN_PITCH + 1;
 
-        // Note Fingering map (Pitch to Array of Valves)
-        const myPitchValves = {
+        // Written Pitch to Valve Combinations Map
+        const writtenPitchToValves = {
             54: [1,2,3], 55: [1,3], 56: [2,3], 57: [1,2], 58: [1], 59: [2], // F#3 to B3
             60: [], 61: [1,2,3], 62: [1,3], 63: [2,3], 64: [1,2], 65: [1], 66: [2], // C4 to F#4
             67: [], 68: [2,3], 69: [1,2], 70: [1], 71: [2], // G4 to B4
@@ -421,24 +390,25 @@
             84: [] // C6
         };
 
+        const noteNames = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
+
+        // Valve State Tracking
+        let heldValves = { 1: false, 2: false, 3: false };
+        let valveTimeout = null;
+
         const canvas = document.getElementById('waterfall-canvas');
         const ctx = canvas.getContext('2d');
         const speedSlider = document.getElementById('speed-slider');
         const speedLabel = document.getElementById('speed-label');
         const songSelect = document.getElementById('song-select');
-        const btnStep = document.getElementById('btn-step');
-        const btnGame = document.getElementById('btn-game');
         const btnPause = document.getElementById('btn-pause');
 
-        // Dynamically resize canvas to fit parent accurately
         function resizeCanvas() {
             const wrapper = document.getElementById('vis-wrapper');
-            if (canvas.width !== wrapper.clientWidth) canvas.width = wrapper.clientWidth;
-            if (canvas.height !== wrapper.clientHeight) canvas.height = wrapper.clientHeight;
+            canvas.width = wrapper.clientWidth;
+            canvas.height = wrapper.clientHeight;
         }
         window.addEventListener('resize', resizeCanvas);
-
-        document.getElementById('btn-mic-toggle').addEventListener('click', toggleMicrophoneListening);
 
         function selectInstrument(el) {
             document.querySelectorAll('.setup-option').forEach(opt => opt.classList.remove('selected'));
@@ -448,12 +418,8 @@
         }
 
         function confirmInstrument() {
-            const selected = document.querySelector('.setup-option.selected');
-            if (!selected) {
-                alert("Please select an instrument!");
-                return;
-            }
             document.getElementById('setup-modal').classList.remove('open');
+            document.getElementById('valves-container').style.display = 'flex';
             document.getElementById('mode-display').textContent = `${instrumentName} Mode`;
             resizeCanvas();
             initAudio();
@@ -462,26 +428,21 @@
 
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
-            if (isPlaying && !isPaused && !isStepMode) playSong();
+            if (isPlaying && !isPaused) playSong();
         });
 
-        btnStep.addEventListener('click', toggleStepMode);
-        btnGame.addEventListener('click', toggleGameMode);
-        btnPause.addEventListener('click', togglePause);
         document.getElementById('btn-play').addEventListener('click', playSong);
+        document.getElementById('btn-pause').addEventListener('click', togglePause);
         document.getElementById('btn-stop').addEventListener('click', stopSong);
 
-        // --- Keyboard / Valve Input Handling ---
+        // --- Keyboard / Input Handling ---
         window.addEventListener('keydown', (e) => {
             if (e.repeat) return;
-            // Prevent default browser scrolling for game keys
             if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
             
             initAudio();
-
             let valveChanged = false;
-            
-            // Map Arrows OR 1/2/3 OR Z/X/C to prevent hardware ghosting constraints
+
             if (e.code === 'ArrowLeft' || e.key === '1' || e.code === 'KeyZ') { setValve(1, true); valveChanged = true; }
             if (e.code === 'ArrowDown'  || e.key === '2' || e.code === 'KeyX') { setValve(2, true); valveChanged = true; }
             if (e.code === 'ArrowRight' || e.key === '3' || e.code === 'KeyC') { setValve(3, true); valveChanged = true; }
@@ -491,15 +452,14 @@
             }
 
             if (e.code === 'ArrowUp' || e.code === 'Space' || e.code === 'Enter') {
-                triggerNoteEvaluation(true); // explicit blow for Open Note
+                triggerNoteEvaluation(true); // Explicit blow trigger for Open Notes
             }
         });
 
         window.addEventListener('keyup', (e) => {
-            let valveChanged = false;
-            if (e.code === 'ArrowLeft' || e.key === '1' || e.code === 'KeyZ') { setValve(1, false); valveChanged = true; }
-            if (e.code === 'ArrowDown'  || e.key === '2' || e.code === 'KeyX') { setValve(2, false); valveChanged = true; }
-            if (e.code === 'ArrowRight' || e.key === '3' || e.code === 'KeyC') { setValve(3, false); valveChanged = true; }
+            if (e.code === 'ArrowLeft' || e.key === '1' || e.code === 'KeyZ') { setValve(1, false); }
+            if (e.code === 'ArrowDown'  || e.key === '2' || e.code === 'KeyX') { setValve(2, false); }
+            if (e.code === 'ArrowRight' || e.key === '3' || e.code === 'KeyC') { setValve(3, false); }
         });
 
         function setValve(num, isDown) {
@@ -510,11 +470,10 @@
         }
 
         function handleValveChange() {
-            // Give 35ms debounce for the user to press combinations of keys at once before evaluating
             clearTimeout(valveTimeout);
             valveTimeout = setTimeout(() => {
                 triggerNoteEvaluation(false);
-            }, 35);
+            }, 30);
         }
 
         function arraysEqualUnordered(a, b) {
@@ -530,29 +489,19 @@
             if (heldValves[2]) currentHeldArray.push(2);
             if (heldValves[3]) currentHeldArray.push(3);
 
-            // Require explicit blow for Open Notes (Array Length 0)
             if (currentHeldArray.length === 0 && !isExplicitBlow) return;
 
-            if (isStepMode) {
-                if (noteTimeline.length > 0 && currentStepIndex < noteTimeline.length) {
-                    evaluateActiveNote(currentHeldArray, true);
-                }
-                return;
-            }
-
             if (isPlaying && !isPaused) {
-                evaluateActiveNote(currentHeldArray, false);
+                evaluateActiveNote(currentHeldArray);
             } else {
                 playFreeValveCombo(currentHeldArray);
             }
         }
 
-        function evaluateActiveNote(currentHeldArray, isStep) {
-            let effectiveElapsed = isStep ? 
-                (noteTimeline[currentStepIndex] ? noteTimeline[currentStepIndex].hitTime : 0) : 
-                (performance.now() - playbackStartTime) - accumulatedPauseMs;
+        function evaluateActiveNote(currentHeldArray) {
+            let effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
 
-            const targetIndex = isStep ? currentStepIndex : noteTimeline.findIndex(item => 
+            const targetIndex = noteTimeline.findIndex(item => 
                 item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 500
             );
 
@@ -570,26 +519,16 @@
                 }
 
                 if (matchedNote) {
-                    // Success!
                     target.gameStatus = 'perfect';
                     gameStats.perfect++;
                     const freq = getNoteFrequency(matchedNote);
                     if (freq) playTone(freq, 0.4);
-                    
-                    if (isStep) {
-                        target.played = true;
-                        currentStepIndex++;
-                        updateStepStatus();
-                    } else if (isGameMode) {
-                        updateGameStatus();
-                    }
+                    updateStatusText();
                 } else {
-                    // Missed fingering
-                    if (isStep) return; 
                     target.gameStatus = 'miss';
                     gameStats.miss++;
                     playErrorClackSound();
-                    if (isGameMode) updateGameStatus();
+                    updateStatusText();
                 }
             } else {
                 playFreeValveCombo(currentHeldArray);
@@ -613,27 +552,24 @@
         }
 
         function getValvesForPitch(pitch) {
-            if (myPitchValves[pitch] !== undefined) return myPitchValves[pitch];
-            // Safe Fallback map logic
+            if (writtenPitchToValves[pitch] !== undefined) return writtenPitchToValves[pitch];
             const pc = pitch % 12;
             const fallback = { 0:[], 1:[1,2,3], 2:[1,3], 3:[2,3], 4:[1,2], 5:[1], 6:[2], 7:[], 8:[2,3], 9:[1,2], 10:[1], 11:[2] };
             return fallback[pc] || [];
         }
 
-        // --- Audio System ---
+        // --- Audio Synthesizer ---
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        function playTone(freq, duration = 0.4, volScale = 1.0) {
+        function playTone(freq, duration = 0.4) {
             if (!freq) return;
             initAudio();
             const now = audioCtx.currentTime;
-            
             const safeDuration = Math.max(0.1, duration);
 
-            // Brassy Synth
             const osc = audioCtx.createOscillator();
             const filter = audioCtx.createBiquadFilter();
             const gain = audioCtx.createGain();
@@ -648,9 +584,9 @@
             filter.frequency.exponentialRampToValueAtTime(freq * 1.5, now + safeDuration);
 
             gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(0.4 * volScale, now + 0.03);
-            gain.gain.setValueAtTime(0.4 * volScale, now + safeDuration);
-            gain.gain.linearRampToValueAtTime(0.0001, now + safeDuration + 0.1);
+            gain.gain.linearRampToValueAtTime(0.4, now + 0.03);
+            gain.gain.setValueAtTime(0.4, now + safeDuration - 0.05);
+            gain.gain.linearRampToValueAtTime(0.0001, now + safeDuration + 0.05);
 
             osc.connect(filter);
             filter.connect(gain);
@@ -667,7 +603,7 @@
             const gain = audioCtx.createGain();
             osc.type = 'square';
             osc.frequency.setValueAtTime(100, now);
-            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.setValueAtTime(0.15, now);
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
@@ -675,8 +611,9 @@
             osc.stop(now + 0.1);
         }
 
-        // Standardised MIDI Note calculations
+        // Fixed Standard MIDI Pitch Parsing
         function noteToPitch(noteStr) {
+            if (!noteStr) return null;
             noteStr = noteStr.trim().toLowerCase();
             const match = noteStr.match(/^([a-g]#?)([0-9]+)$/);
             if (!match) return null;
@@ -684,7 +621,7 @@
             const octave = parseInt(match[2], 10);
             const offset = noteNames.indexOf(name);
             if (offset === -1) return null;
-            return (octave + 1) * 12 + offset; // C4 -> 60
+            return (octave + 1) * 12 + offset; // C4 = 60
         }
 
         function pitchToNote(pitch) {
@@ -710,7 +647,6 @@
                     
                     let shiftedP = p + transposeOffset;
 
-                    // Ensure the song remains roughly in our visual/playable range
                     while (shiftedP < MIN_PITCH) shiftedP += 12;
                     while (shiftedP > MAX_PITCH) shiftedP -= 12;
 
@@ -721,14 +657,17 @@
             });
         }
 
-        // --- Microphone Pitch Detection ---
+        // --- Microphone System ---
+        let micStream = null;
+        let micAnalyser = null;
+        let isMicListening = false;
+
         async function toggleMicrophoneListening() {
             initAudio();
             const btn = document.getElementById('btn-mic-toggle');
 
             if (isMicListening) {
                 isMicListening = false;
-                if (pitchDetectionFrameId) cancelAnimationFrame(pitchDetectionFrameId);
                 if (micStream) {
                     micStream.getTracks().forEach(track => track.stop());
                     micStream = null;
@@ -749,138 +688,16 @@
                     btn.textContent = '🎙️ MIC INPUT: ON';
                     btn.classList.remove('btn-secondary');
                     btn.classList.add('btn-mic-active');
-                    document.getElementById('status').textContent = '🎙️ Listening to acoustic instrument...';
-
-                    processMicrophonePitch();
+                    document.getElementById('status').textContent = '🎙️ Listening... Play near your computer microphone!';
                 } catch (err) {
                     alert("Unable to access microphone.");
                 }
             }
         }
 
-        function autoCorrelate(buf, sampleRate) {
-            let SIZE = buf.length;
-            let rms = 0;
-            for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
-            rms = Math.sqrt(rms / SIZE);
-            if (rms < 0.015) return -1;
-
-            let r1 = 0, r2 = SIZE - 1, thres = 0.2;
-            for (let i = 0; i < SIZE / 2; i++) if (Math.abs(buf[i]) < thres) { r1 = i; break; }
-            for (let i = 1; i < SIZE / 2; i++) if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
-
-            buf = buf.slice(r1, r2);
-            SIZE = buf.length;
-
-            let c = new Array(SIZE).fill(0);
-            for (let i = 0; i < SIZE; i++) {
-                for (let j = 0; j < SIZE - i; j++) {
-                    c[i] = c[i] + buf[j] * buf[j + i];
-                }
-            }
-
-            let d = 0; while (c[d] > c[d + 1]) d++;
-            let maxval = -1, maxpos = -1;
-            for (let i = d; i < SIZE; i++) {
-                if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
-            }
-            let T0 = maxpos;
-            let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
-            let a = (x1 + x3 - 2 * x2) / 2;
-            let b = (x3 - x1) / 2;
-            if (a) T0 = T0 - b / (2 * a);
-
-            return sampleRate / T0;
-        }
-
-        function frequencyToNoteName(freq) {
-            if (freq < 50 || freq > 2000) return null;
-            let midi = Math.round(69 + 12 * Math.log2(freq / 440));
-            // Standardise tuning detection back to our NoteMap scale
-            return pitchToNote(midi); 
-        }
-
-        function processMicrophonePitch() {
-            if (!isMicListening || !micAnalyser) return;
-
-            let buf = new Float32Array(micAnalyser.fftSize);
-            micAnalyser.getFloatTimeDomainData(buf);
-            let freq = autoCorrelate(buf, audioCtx.sampleRate);
-
-            if (freq !== -1) {
-                let concertNote = frequencyToNoteName(freq);
-                if (concertNote) {
-                    if (concertNote === lastDetectedNote) {
-                        noteHoldCounter++;
-                        if (noteHoldCounter === 3) {
-                            let concertPitch = noteToPitch(concertNote);
-                            let writtenPitch = concertPitch + transposeOffset;
-
-                            let writtenNoteStr = pitchToNote(writtenPitch);
-                            
-                            let valvesNeeded = getValvesForPitch(writtenPitch);
-                            heldValves[1] = valvesNeeded.includes(1);
-                            heldValves[2] = valvesNeeded.includes(2);
-                            heldValves[3] = valvesNeeded.includes(3);
-                            
-                            setValve(1, heldValves[1]);
-                            setValve(2, heldValves[2]);
-                            setValve(3, heldValves[3]);
-
-                            triggerNoteEvaluation(true); 
-
-                            setTimeout(() => {
-                                setValve(1, false); setValve(2, false); setValve(3, false);
-                            }, 200);
-                        }
-                    } else {
-                        lastDetectedNote = concertNote;
-                        noteHoldCounter = 0;
-                    }
-                }
-            } else {
-                lastDetectedNote = null;
-                noteHoldCounter = 0;
-            }
-            pitchDetectionFrameId = requestAnimationFrame(processMicrophonePitch);
-        }
-
-        // --- Core Rendering & Playback ---
-        function toggleStepMode() {
-            isStepMode = !isStepMode;
-            if (isStepMode) {
-                btnStep.textContent = 'Step Mode: ON';
-                btnStep.classList.remove('btn-secondary');
-                btnStep.classList.add('btn-step-active');
-                if (isGameMode) toggleGameMode();
-                if (!isPlaying) playSong();
-                else { isPaused = false; }
-                currentStepIndex = 0;
-                updateStepStatus();
-            } else {
-                btnStep.textContent = 'Step Mode: OFF';
-                btnStep.classList.remove('btn-step-active');
-                btnStep.classList.add('btn-secondary');
-            }
-        }
-
-        function toggleGameMode() {
-            isGameMode = !isGameMode;
-            if (isGameMode) {
-                btnGame.textContent = '🎮 Game Mode: ON';
-                btnGame.classList.remove('btn-secondary');
-                btnGame.classList.add('btn-game-active');
-                if (isStepMode) toggleStepMode();
-                gameStats = { perfect: 0, miss: 0 };
-            } else {
-                btnGame.textContent = '🎮 Game Mode: OFF';
-                btnGame.classList.remove('btn-game-active');
-                btnGame.classList.add('btn-secondary');
-            }
-        }
-
+        // --- Core Engine & Animation Loop ---
         function togglePause() {
-            if (!isPlaying || isStepMode) return;
+            if (!isPlaying) return;
             isPaused = !isPaused;
             if (isPaused) {
                 pauseStartTime = performance.now();
@@ -909,7 +726,10 @@
         function playSong() {
             initAudio();
             stopSong();
-            if (currentSong.length === 0) return;
+            if (currentSong.length === 0) {
+                document.getElementById('status').textContent = 'Please choose a song first.';
+                return;
+            }
 
             resizeCanvas();
             buildTimeline();
@@ -920,48 +740,31 @@
             playbackStartTime = performance.now();
             lastFrameTime = performance.now();
 
-            if (isStepMode) {
-                currentStepIndex = 0;
-                updateStepStatus();
-            } else if (isGameMode) {
-                updateGameStatus();
-            } else {
-                document.getElementById('status').textContent = 'Playing... Press valves matching falling notes!';
-            }
-            
+            document.getElementById('status').textContent = 'Playing... Use valves to hit the falling notes!';
             animationFrameId = requestAnimationFrame(renderLoop);
         }
 
         function buildTimeline() {
             noteTimeline = [];
             const speedFactor = parseFloat(speedSlider.value) / 100;
-            let cumulativeMs = 1800; // PRE_FALL gap
+            let cumulativeMs = 1800; // Pre-fall lead time
 
             currentSong.forEach((item) => {
                 noteTimeline.push({
                     notes: item.notes,
                     hitTime: cumulativeMs,
-                    duration: Math.max(140, (item.rest || 250) * 0.85 / speedFactor),
+                    duration: Math.max(160, (item.rest || 250) * 0.85 / speedFactor),
                     played: false,
                     gameStatus: 'pending'
                 });
                 
-                cumulativeMs += (item.rest || 250) / speedFactor;
+                // Advance cumulative time by note duration/rest delay
+                cumulativeMs += Math.max(180, (item.rest || 250) / speedFactor);
             });
         }
 
-        function updateStepStatus() {
-            if (currentStepIndex < noteTimeline.length) {
-                document.getElementById('status').textContent = `Step ${currentStepIndex + 1}: Press required valves to advance! (Use UP ARROW or SPACE for open notes)`;
-            } else {
-                document.getElementById('status').textContent = 'Step Practice Finished!';
-            }
-        }
-
-        function updateGameStatus() {
-            const total = gameStats.perfect + gameStats.miss;
-            const accuracy = total > 0 ? ((gameStats.perfect / total) * 100).toFixed(1) : '100.0';
-            document.getElementById('status').textContent = `🎯 Accuracy: ${accuracy}% | Perfect: ${gameStats.perfect} | Missed: ${gameStats.miss}`;
+        function updateStatusText() {
+            document.getElementById('status').textContent = `🎯 Playing | Hits: ${gameStats.perfect} | Misses: ${gameStats.miss}`;
         }
 
         function renderLoop(now) {
@@ -969,41 +772,36 @@
 
             const delta = now - lastFrameTime;
             lastFrameTime = now;
-            let effectiveElapsed = isStepMode ? 
-                (currentStepIndex < noteTimeline.length ? noteTimeline[currentStepIndex].hitTime : noteTimeline[noteTimeline.length - 1].hitTime + 500) : 
-                (now - playbackStartTime) - accumulatedPauseMs;
-
-            // Fit canvas internally based on its actual screen size safely
-            if (canvas.width !== canvas.clientWidth) canvas.width = canvas.clientWidth;
-            if (canvas.height !== canvas.clientHeight) canvas.height = canvas.clientHeight;
+            let effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const FALL_TIME_MS = 1800;
             const colWidth = canvas.width / PITCH_RANGE;
-            const HIT_ZONE_Y = canvas.height - 40;
+            const HIT_ZONE_Y = canvas.height - 50;
 
-            // Draw Background Gradients & Lines to show pitch scale
-            for(let i=0; i < PITCH_RANGE; i++) {
-                const isC = (MIN_PITCH + i) % 12 === 0;
+            // 1. Draw Pitch Grid Columns
+            for (let i = 0; i < PITCH_RANGE; i++) {
+                const pitch = MIN_PITCH + i;
+                const isC = pitch % 12 === 0;
                 
                 if (isC) {
-                    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                    ctx.fillStyle = 'rgba(255,255,255,0.06)';
                     ctx.fillRect(i * colWidth, 0, colWidth, canvas.height);
                     
-                    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-                    ctx.font = '10px sans-serif';
+                    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+                    ctx.font = 'bold 11px sans-serif';
                     ctx.textAlign = 'center';
-                    ctx.fillText("C", i * colWidth + colWidth/2, HIT_ZONE_Y + 15);
+                    ctx.fillText(pitchToNote(pitch).toUpperCase(), i * colWidth + colWidth/2, HIT_ZONE_Y + 25);
                 }
                 
-                ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                ctx.strokeStyle = 'rgba(255,255,255,0.08)';
                 ctx.beginPath();
                 ctx.moveTo(i * colWidth, 0);
                 ctx.lineTo(i * colWidth, canvas.height);
                 ctx.stroke();
             }
 
-            // Draw Hit Line
+            // 2. Draw Target Hit Line
             ctx.strokeStyle = 'var(--hitline-color)';
             ctx.lineWidth = 4;
             ctx.beginPath();
@@ -1011,16 +809,12 @@
             ctx.lineTo(canvas.width, HIT_ZONE_Y);
             ctx.stroke();
 
+            // 3. Render Falling Notes
             noteTimeline.forEach(item => {
-                if (!isStepMode && effectiveElapsed >= item.hitTime && !item.played && !isGameMode) {
-                    item.played = true;
-                    // Auto-play is completely removed - sound only comes from user playing the valves!
-                }
-
                 if (item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 300)) {
                     item.gameStatus = 'miss';
                     gameStats.miss++;
-                    updateGameStatus();
+                    updateStatusText();
                 }
 
                 const timeUntilHit = item.hitTime - effectiveElapsed;
@@ -1029,7 +823,6 @@
                 const yTop = yBottom - blockHeight;
 
                 if (yBottom > -canvas.height && yTop < canvas.height * 2) {
-                    // Determine color based on gameStatus
                     let bColor = '#f59e0b'; // Amber pending
                     if (item.gameStatus === 'perfect') bColor = '#10b981'; // Green hit
                     else if (item.gameStatus === 'miss') bColor = '#ef4444'; // Red miss
@@ -1037,7 +830,6 @@
                     item.notes.forEach(noteStr => {
                         const pitch = noteToPitch(noteStr);
                         
-                        // Map pitch directly to layout X coordinate
                         if (pitch >= MIN_PITCH && pitch <= MAX_PITCH) {
                             const drawX = (pitch - MIN_PITCH) * colWidth;
 
@@ -1045,14 +837,12 @@
                             ctx.shadowBlur = 8;
                             ctx.fillStyle = bColor;
                             
-                            // Rectangles across column
-                            ctx.fillRect(drawX + 1, yTop, colWidth - 2, blockHeight);
-                            
+                            ctx.fillRect(drawX + 1, yTop, colWidth - 2, Math.max(10, blockHeight));
                             ctx.shadowBlur = 0;
                             
-                            if (blockHeight > 15) {
+                            if (blockHeight > 14) {
                                 ctx.fillStyle = '#000';
-                                ctx.font = 'bold 11px sans-serif';
+                                ctx.font = 'bold 10px sans-serif';
                                 ctx.textAlign = 'center';
                                 ctx.textBaseline = 'middle';
                                 ctx.fillText(noteStr.toUpperCase(), drawX + colWidth/2, yTop + blockHeight/2);
@@ -1062,29 +852,19 @@
                 }
             });
 
-            if (!isStepMode) {
-                const lastNote = noteTimeline[noteTimeline.length - 1];
-                if (lastNote && effectiveElapsed > lastNote.hitTime + lastNote.duration + 1000) {
-                    isPlaying = false;
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    if (isGameMode) {
-                        showGameResultsPopUp();
-                    } else {
-                        document.getElementById('status').textContent = 'Playback finished.';
-                    }
-                    return;
-                }
+            // 4. Check for Track Completion
+            const lastNote = noteTimeline[noteTimeline.length - 1];
+            if (lastNote && effectiveElapsed > lastNote.hitTime + lastNote.duration + 1000) {
+                isPlaying = false;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                document.getElementById('status').textContent = 'Song Finished! Great playing!';
+                return;
             }
+            
             animationFrameId = requestAnimationFrame(renderLoop);
         }
 
-        function showGameResultsPopUp() {
-            const totalHits = gameStats.perfect + gameStats.miss;
-            const accuracy = totalHits > 0 ? ((gameStats.perfect / totalHits) * 100).toFixed(1) : '0.0';
-            document.getElementById('game-summary-text').innerHTML = `Final Score: <span style="color:#10b981;">${accuracy}%</span><br><br><span style="font-size:0.9rem; color:#9ca3af;">(${gameStats.perfect} Perfect, ${gameStats.miss} Missed)</span>`;
-            document.getElementById('game-results-modal').classList.add('open');
-        }
-
+        // --- Song Data Loading & Parsing ---
         function parsePianoPad(code) {
             if (!code || !code.trim()) return [];
             const parts = code.replace(/[\r\n\s]+/g, '').split(/,Rests,/i);
@@ -1135,9 +915,10 @@
                     if (defaultObj) {
                         songSelect.value = defaultObj.code;
                         currentSongTitle = defaultObj.title;
-                        currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
+                        rawParsedSong = parsePianoPad(defaultObj.code);
+                        currentSong = autoTransposeSong(rawParsedSong);
                     }
-                    document.getElementById('status').textContent = `Loaded ${songList.length} songs. Ready!`;
+                    document.getElementById('status').textContent = `Loaded ${songList.length} songs. Select a song and press Play!`;
                 }
             } catch (e) {
                 document.getElementById('status').textContent = "Could not load songs. Check connection.";
@@ -1150,10 +931,11 @@
             if (!code) return;
             const opt = songSelect.options[songSelect.selectedIndex];
             if (opt) currentSongTitle = opt.text;
-            const parsed = parsePianoPad(code);
-            if (parsed.length > 0) {
-                currentSong = autoTransposeSong(parsed);
+            rawParsedSong = parsePianoPad(code);
+            if (rawParsedSong.length > 0) {
+                currentSong = autoTransposeSong(rawParsedSong);
                 stopSong();
+                document.getElementById('status').textContent = `Loaded "${currentSongTitle}". Press Play!`;
             }
         });
 
