@@ -258,7 +258,7 @@
                 <select id="filter-song">
                     <option value="ALL">All Songs</option>
                 </select>
-                <button id="btn-toggle-mode" type="button" class="btn btn-arcade">
+                <button id="btn-toggle-mode" class="btn btn-arcade">
                     🎮 MINI-GAME Leaderboard
                 </button>
                 <a href="index.html" class="btn btn-back">← Back to Player</a>
@@ -298,7 +298,7 @@
         const MINI_GAMES = [
             { key: 'simon taps', title: '🧠 Simon Taps', unit: 'Level', sortAsc: false },
             { key: 'mystery note', title: '🔍 Mystery Note', unit: 'Guesses', sortAsc: true },
-            { key: 'maze runner', altKeys: ['maze runner', 'drop dodge'], title: '🌲 Maze Runner', unit: 'Gaps', sortAsc: false },
+            { key: 'drop dodge', title: '🛡️ Drop Dodge', unit: 'Dodges', sortAsc: false },
             { key: 'combo strike', title: '⚡ Combo Strike', unit: 'Score', sortAsc: false },
             { key: 'finger sprint', title: '🏃 Finger Sprint', unit: 'Seconds', sortAsc: true }
         ];
@@ -336,24 +336,11 @@
 
                 if (row.length >= 4) {
                     const songTitle = row[2] ? row[2].trim().replace(/^"|"$/g, '') : 'Unknown';
-                    const isMiniGame = MINI_GAMES.some(g => {
-                        const titleLower = songTitle.toLowerCase();
-                        if (g.altKeys) {
-                            return g.altKeys.some(k => titleLower.includes(k));
-                        }
-                        return titleLower.includes(g.key);
-                    });
-
-                    const playerName = row[1] ? row[1].trim().replace(/^"|"$/g, '') : 'Anonymous';
-
-                    // Filter out any entries where the name is Anonymous
-                    if (playerName.toLowerCase() === 'anonymous') {
-                        continue;
-                    }
+                    const isMiniGame = MINI_GAMES.some(g => songTitle.toLowerCase().includes(g.key));
 
                     records.push({
                         timestamp: row[0] ? row[0].trim().replace(/^"|"$/g, '') : '',
-                        name: playerName,
+                        name: row[1] ? row[1].trim().replace(/^"|"$/g, '') : 'Anonymous',
                         song: songTitle,
                         accuracy: parseFloat(row[3]) || 0,
                         speed: parseInt(row[4]) || 100,
@@ -373,8 +360,7 @@
             }
 
             filterSelect.style.display = '';
-            // Only show songs in the dropdown that have >0 accuracy
-            const activePool = allScores.filter(s => !s.isMiniGame && s.accuracy > 0);
+            const activePool = allScores.filter(s => !s.isMiniGame);
             const uniqueTitles = [...new Set(activePool.map(s => s.song))];
             uniqueTitles.sort();
 
@@ -387,12 +373,21 @@
             });
         }
 
+        function isToday(dateString) {
+            if (!dateString) return false;
+            const d = new Date(dateString);
+            if (isNaN(d)) return false;
+            const today = new Date();
+            return d.getDate() === today.getDate() &&
+                   d.getMonth() === today.getMonth() &&
+                   d.getFullYear() === today.getFullYear();
+        }
+
         function renderSongLeaderboard() {
             const filterValue = document.getElementById('filter-song').value;
             const tbody = document.getElementById('leaderboard-body');
 
-            // Filter out mini-games AND filter out any score with 0% accuracy
-            let pool = allScores.filter(s => !s.isMiniGame && s.accuracy > 0);
+            let pool = allScores.filter(s => !s.isMiniGame);
             let filtered = filterValue === 'ALL' ? [...pool] : pool.filter(s => s.song === filterValue);
 
             filtered.sort((a, b) => {
@@ -414,13 +409,15 @@
                 else if (index === 1) rankBadge = `<span class="rank-badge rank-2">🥈</span>`;
                 else if (index === 2) rankBadge = `<span class="rank-badge rank-3">🥉</span>`;
 
+                let dateStyle = isToday(item.timestamp) ? 'font-weight: 700; color: #facc15;' : 'color: #9ca3af;';
+
                 tr.innerHTML = `
                     <td>${rankBadge}</td>
                     <td style="font-weight: 600; color: #fff;">${item.name}</td>
                     <td>${item.song}</td>
                     <td class="score-highlight">${item.accuracy.toFixed(1)}%</td>
                     <td>${item.speed}%</td>
-                    <td style="font-size: 0.8rem; color: #9ca3af;">${item.timestamp || 'N/A'}</td>
+                    <td style="font-size: 0.8rem; ${dateStyle}">${item.timestamp || 'N/A'}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -440,13 +437,7 @@
                 colDiv.appendChild(header);
 
                 // Filter scores for this specific mini-game
-                let gameScores = allScores.filter(s => {
-                    const titleLower = s.song.toLowerCase();
-                    if (gameConfig.altKeys) {
-                        return gameConfig.altKeys.some(k => titleLower.includes(k));
-                    }
-                    return titleLower.includes(gameConfig.key);
-                });
+                let gameScores = allScores.filter(s => s.song.toLowerCase().includes(gameConfig.key));
 
                 // Apply custom game sorting
                 gameScores.sort((a, b) => {
@@ -475,7 +466,6 @@
                         let formattedVal = `${score.accuracy.toFixed(1)}%`;
                         if (gameConfig.key === 'simon taps') formattedVal = `Lvl ${Math.round(score.accuracy)}`;
                         else if (gameConfig.key === 'mystery note') formattedVal = `${Math.round(score.accuracy)} Guesses`;
-                        else if (gameConfig.key === 'maze runner') formattedVal = `${Math.round(score.accuracy)} Gaps`;
                         else if (gameConfig.key === 'finger sprint') formattedVal = `${score.accuracy.toFixed(2)}s`;
 
                         row.innerHTML = `
