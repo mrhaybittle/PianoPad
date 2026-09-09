@@ -1038,7 +1038,7 @@
 
         <div class="footer-bar">
             <div style="display: flex; align-items: center; gap: 12px;">
-                <div class="version-stamp">v26.09.10 | 10-Sep 07:14 AM AEST (Sydney)</div>
+                <div class="version-stamp">v26.09.10 | 10-Sep 07:22 AM AEST (Sydney)</div>
                 <div style="display: flex; gap: 4px;">
                     <button type="button" id="btn-footer-rec" class="btn-secondary" title="Record">
                         <svg class="icon" style="color: #ef4444; fill: #ef4444;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
@@ -3258,6 +3258,30 @@
             }
         }
 
+        function stopSong() {
+            isPlaying = false;
+            isPaused = false;
+            btnPause.textContent = 'Pause';
+            btnPause.classList.remove('btn-success');
+            btnPause.classList.add('btn-warning');
+
+            if (animationFrameId !== null) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            document.querySelectorAll('.key').forEach(k => {
+                k.classList.remove('active');
+                k.style.backgroundColor = '';
+                k.style.boxShadow = '';
+            });
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('status').textContent = 'Playback stopped.';
+
+            if (isRecording) {
+                toggleRecording();
+            }
+        }
+
         function togglePause() {
             initAudio();
             if (!isPlaying || isStepMode) return;
@@ -4075,27 +4099,19 @@
                 ctx.stroke();
             }
 
-            ctx.strokeStyle = '#cbd5e1';
-            ctx.lineWidth = 1;
-            for (let bx = 180; bx < width; bx += 180) {
-                ctx.beginPath();
-                ctx.moveTo(bx, 24);
-                ctx.lineTo(bx, 56);
-                ctx.stroke();
-            }
-
+            // Larger Treble Clef Symbol
             ctx.fillStyle = '#000000';
-            ctx.font = '38px "Segoe UI Symbol", "Apple Symbols", "Noto Music", sans-serif';
+            ctx.font = '52px "Segoe UI Symbol", "Apple Symbols", "Noto Music", sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('𝄞', 35, 41);
+            ctx.fillText('𝄞', 35, 38);
 
             ctx.restore();
         }
 
-        function drawStemlessNote(ctx, x, y, isSharp) {
+        function drawStemlessNote(ctx, x, y, isSharp, color = '#000000') {
             ctx.save();
-            ctx.fillStyle = '#000000';
+            ctx.fillStyle = color;
 
             if (isSharp) {
                 ctx.font = 'bold 12px sans-serif';
@@ -4110,9 +4126,9 @@
             ctx.restore();
         }
 
-        function drawLedgerLines(ctx, x, step, line1_y, halfStep) {
+        function drawLedgerLines(ctx, x, step, line1_y, halfStep, color = '#000000') {
             ctx.save();
-            ctx.strokeStyle = '#000000';
+            ctx.strokeStyle = color;
             ctx.lineWidth = 1.2;
 
             if (step <= -2) {
@@ -4207,18 +4223,33 @@
                 let has8va = false;
                 let has15ma = false;
 
+                // Identify the single next upcoming note closest to hitting the treble clef
+                let nextNoteItem = null;
+                let minUpcomingTime = Infinity;
+
+                noteTimeline.forEach(item => {
+                    const timeUntilHit = item.hitTime - effectiveElapsed;
+                    if (timeUntilHit >= -100 && timeUntilHit < minUpcomingTime && !item.played) {
+                        minUpcomingTime = timeUntilHit;
+                        nextNoteItem = item;
+                    }
+                });
+
                 noteTimeline.forEach(item => {
                     const timeUntilHit = item.hitTime - effectiveElapsed;
                     if (timeUntilHit >= -350 && timeUntilHit <= SCROLL_TIME_MS + 400) {
                         const noteX = targetX + (timeUntilHit / SCROLL_TIME_MS) * (canvas.width - targetX);
 
                         if (noteX > CLEF_X_END && noteX < canvas.width + 15) {
+                            const isNextNote = (item === nextNoteItem);
+                            const noteColor = isNextNote ? '#ef4444' : '#000000';
+
                             item.notes.forEach(noteStr => {
                                 const info = getDiatonicStepAndShift(noteStr);
                                 if (info) {
                                     const noteY = line1_y - info.step * halfStep;
-                                    drawLedgerLines(ctx, noteX, info.step, line1_y, halfStep);
-                                    drawStemlessNote(ctx, noteX, noteY, info.isSharp);
+                                    drawLedgerLines(ctx, noteX, info.step, line1_y, halfStep, noteColor);
+                                    drawStemlessNote(ctx, noteX, noteY, info.isSharp, noteColor);
 
                                     if (info.octaveShift === 1) has8va = true;
                                     if (info.octaveShift === 2) has15ma = true;
