@@ -1038,7 +1038,7 @@
 
         <div class="footer-bar">
             <div style="display: flex; align-items: center; gap: 12px;">
-                <div class="version-stamp">v26.09.10 | 10-Sep 07:05 AM AEST (Sydney)</div>
+                <div class="version-stamp">v26.09.10 | 10-Sep 07:14 AM AEST (Sydney)</div>
                 <div style="display: flex; gap: 4px;">
                     <button type="button" id="btn-footer-rec" class="btn-secondary" title="Record">
                         <svg class="icon" style="color: #ef4444; fill: #ef4444;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
@@ -3199,6 +3199,7 @@
         function toggleStepMode() {
             initAudio();
             
+            // STRICT RULE: Step mode is forbidden inside Song Battles
             if (isSongBattle) {
                 document.getElementById('status').textContent = '⚠️ Step Mode is NOT permitted during Song Battles!';
                 return;
@@ -4400,4 +4401,155 @@
 
             const currentCleanCode = generatedHaycode.replace(/[\r\n\s]+/g, '').toLowerCase();
 
-            let isDuplicate =I encountered an error doing what you asked. Could you try again?
+            let isDuplicate = false;
+            for (let song of songList) {
+                if (song.code) {
+                    const dbCleanCode = song.code.replace(/[\r\n\s]+/g, '').toLowerCase();
+                    if (dbCleanCode === currentCleanCode) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+            }
+
+            if (isDuplicate) {
+                alert("WAV Export Blocked: This recorded HayCode matches an existing song in the database. Audio export is only allowed for original student recordings.");
+                return;
+            }
+
+            const defaultTitle = currentSongTitle && currentSongTitle !== 'Wipeout' ? currentSongTitle : 'My_PianoPad_Song';
+            const userTitle = prompt("Please enter a title for your recorded WAV audio file:", defaultTitle);
+
+            if (userTitle === null) return;
+
+            const cleanFileName = userTitle.trim().replace(/[^a-zA-Z0-9_\-\s]/g, '').replace(/\s+/g, '_') || 'PianoPad_Song';
+
+            exportPerformanceToWAV(cleanFileName);
+        });
+
+        function exportPerformanceToWAV(fileName = 'PianoPad_Song') {
+            if (recordedNotes.length === 0) {
+                alert("No recorded note sequence found.");
+                return;
+            }
+
+            document.getElementById('status').textContent = "Generating WAV audio file...";
+
+            let totalMs = 0;
+            recordedRests.forEach(r => totalMs += r);
+            const totalSeconds = Math.max(1.5, (totalMs + 1000) / 1000);
+
+            const sampleRate = 44100;
+            const offlineCtx = new OfflineAudioContext(1, Math.ceil(sampleRate * totalSeconds), sampleRate);
+
+            let cumulativeTime = 0;
+            for (let i = 0; i < recordedNotes.length; i++) {
+                const noteToken = recordedNotes[i];
+                const restMs = recordedRests[i] || 250;
+                cumulativeTime += (restMs / 1000);
+
+                const noteList = noteToken.split('+').filter(Boolean);
+                noteList.forEach(noteStr => {
+                    const freq = getNoteFrequency(noteStr);
+                    if (freq) {
+                        const osc = offlineCtx.createOscillator();
+                        const gain = offlineCtx.createGain();
+
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, cumulativeTime);
+
+                        gain.gain.setValueAtTime(0, cumulativeTime);
+                        gain.gain.linearRampToValueAtTime(0.4, cumulativeTime + 0.01);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, cumulativeTime + 0.4);
+
+                        osc.connect(gain);
+                        gain.connect(offlineCtx.destination);
+
+                        osc.start(cumulativeTime);
+                        osc.stop(cumulativeTime + 0.4);
+                    }
+                });
+            }
+
+            offlineCtx.startRendering().then(renderedBuffer => {
+                const wavBlob = bufferToWavBlob(renderedBuffer);
+                const url = URL.createObjectURL(wavBlob);
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${fileName}.wav`;
+                a.click();
+
+                document.getElementById('status').textContent = `WAV Audio exported as "${fileName}.wav"!`;
+            }).catch(err => {
+                console.error("WAV Export Error:", err);
+                document.getElementById('status').textContent = "WAV Export failed.";
+            });
+        }
+
+        function bufferToWavBlob(buffer) {
+            const numOfChan = buffer.numberOfChannels;
+            const length = buffer.length * numOfChan * 2 + 44;
+            const outBuffer = new ArrayBuffer(length);
+            const view = new DataView(outBuffer);
+            const channels = [];
+            let sample = 0;
+            let offset = 0;
+            let pos = 0;
+
+            function writeString(str) {
+                for (let i = 0; i < str.length; i++) {
+                    view.setUint8(pos++, str.charCodeAt(i));
+                }
+            }
+
+            function setUint16(data) {
+                view.setUint16(pos, data, true);
+                pos += 2;
+            }
+
+            function setUint32(data) {
+                view.setUint32(pos, data, true);
+                pos += 4;
+            }
+
+            writeString('RIFF');
+            setUint32(length - 8);
+            writeString('WAVE');
+            writeString('fmt ');
+            setUint32(16);
+            setUint16(1);
+            setUint16(numOfChan);
+            setUint32(buffer.sampleRate);
+            setUint32(buffer.sampleRate * 2 * numOfChan);
+            setUint16(numOfChan * 2);
+            setUint16(16);
+            writeString('data');
+            setUint32(length - pos - 4);
+
+            for (let i = 0; i < buffer.numberOfChannels; i++) {
+                channels.push(buffer.getChannelData(i));
+            }
+
+            while (offset < buffer.length) {
+                for (let i = 0; i < numOfChan; i++) {
+                    sample = Math.max(-1, Math.min(1, channels[i][offset]));
+                    sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+                    view.setInt16(pos, sample, true);
+                    pos += 2;
+                }
+                offset++;
+            }
+
+            return new Blob([outBuffer], { type: 'audio/wav' });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initMIDIHardware();
+            syncSongsWithGoogleSheet();
+            setTimeout(updateKeyPositions, 100);
+            checkFirstTimeCalibration();
+        });
+    </script>
+</body>
+</html>
