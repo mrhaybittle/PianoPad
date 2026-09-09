@@ -116,12 +116,12 @@
             position: relative; display: flex; flex-direction: column; align-items: center;
             background-color: #000; border-radius: 10px; padding: 4px;
             box-shadow: inset 0 2px 8px rgba(0,0,0,0.9);
-            width: 100%; flex: 1; min-height: 350px; overflow: hidden;
+            width: 100%; flex: 1; min-height: 300px; overflow: hidden;
         }
 
         #waterfall-canvas {
             background-color: var(--canvas-bg);
-            display: block; width: 100%; flex: 1; min-height: 100px;
+            display: block; width: 100%; flex: 1; min-height: 150px;
         }
 
         #mode-display {
@@ -285,11 +285,12 @@
             <div class="blow-instruction">Press Valves to Play! (Use UP ARROW or SPACE for Open Notes)</div>
             
             <div id="mode-display">
-                🎺 Bb Trumpet / Cornet Mode
+                🎺 Selecting Instrument...
             </div>
 
             <div class="valves-container" id="valves-container">
                 <div class="valve-wrapper">
+                    <!-- Fully independent valve holds -->
                     <div class="valve-btn" id="valve-1" 
                          onmousedown="setValve(1, true); handleValveChange()" 
                          onmouseup="setValve(1, false); handleValveChange()"
@@ -317,8 +318,8 @@
         </div>
 
         <div class="footer-bar">
-            <!-- Timestamp updated correctly -->
-            <div class="version-stamp">v26.09.09 | 9-Sep 16:03 AEST (Woonona)</div>
+            <!-- Confirmed Timestamp -->
+            <div class="version-stamp">v26.09.09 | 9-Sep 16:20 AEST (Woonona)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -366,7 +367,7 @@
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
 
-        // Bundled Emergency Song Library (In case Google Sheets is blocked/offline)
+        // Bundled Emergency Song Library (Protects against CORS Blocks)
         const FALLBACK_SONGS = [
             { title: "Wipeout", code: "C2,C2,C2,C2,D2,D2,D2,D2,E2,E2,D2,D2,C2,Rests,250,250,250,250,250,250,250,250,250,250,250,250,500" },
             { title: "Hot Cross Buns", code: "E2,D2,C2,E2,D2,C2,C2,C2,C2,C2,D2,D2,D2,D2,E2,D2,C2,Rests,400,400,800,400,400,800,200,200,200,200,200,200,200,200,400,400,800" },
@@ -376,7 +377,7 @@
 
         let audioCtx = null;
         let songList = [];
-        let currentRenderedSongs = []; // Maps exact dropdown Index -> Object
+        let currentRenderedSongs = []; // Safely maps dropdown index ID to object
         let rawParsedSong = []; 
         let currentSong = [];
         let currentSongTitle = "Wipeout";
@@ -384,8 +385,8 @@
         let isPlaying = false;
         let isPaused = false;
         
-        // Defaulting to Bb Instruments (+2 semitones transposition from Concert to Written)
-        let transposeOffset = 2; 
+        // Defaults bypass setup modal temporarily
+        let transposeOffset = 2; // +2 semitones transposition (Bb Instrument standard)
         let instrumentName = "🎺 Bb Trumpet / Cornet";
 
         let animationFrameId = null;
@@ -435,7 +436,9 @@
         function selectInstrument(el) {
             document.querySelectorAll('.setup-option').forEach(opt => opt.classList.remove('selected'));
             el.classList.add('selected');
-            transposeOffset = parseInt(el.getAttribute('data-transpose'), 10) * -1; 
+            
+            let rawTrans = parseInt(el.getAttribute('data-transpose'), 10);
+            transposeOffset = rawTrans === 0 ? 0 : rawTrans * -1; 
             instrumentName = el.getAttribute('data-name');
         }
 
@@ -458,7 +461,7 @@
 
         // --- Keyboard / Input Handling ---
         window.addEventListener('keydown', (e) => {
-            if (e.repeat) return;
+            if (e.repeat) return; // Prevent OS rapid-fire keystroke bug
             if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
             
             initAudio();
@@ -492,7 +495,7 @@
 
         function handleValveChange() {
             clearTimeout(valveTimeout);
-            // Wait 35ms so user can depress combinations (like 1+3) without it evaluating 1 then 1+3 separately.
+            // 35ms buffer allows pressing multiple keys simultaneously
             valveTimeout = setTimeout(() => {
                 triggerNoteEvaluation(false);
             }, 35);
@@ -542,13 +545,14 @@
                 }
 
                 if (matchedNote) {
-                    // Success!
+                    // Success Hit!
                     target.gameStatus = 'perfect';
                     gameStats.perfect++;
                     const freq = getNoteFrequency(matchedNote);
                     if (freq) playTone(freq, 0.4);
                     updateStatusText();
                 } else {
+                    // Missed Fingering
                     target.gameStatus = 'miss';
                     gameStats.miss++;
                     playErrorClackSound();
@@ -635,7 +639,6 @@
             osc.stop(now + 0.1);
         }
 
-        // Fixed Standard MIDI Pitch Parsing
         function noteToPitch(noteStr) {
             if (!noteStr) return null;
             noteStr = noteStr.trim().toLowerCase();
@@ -645,7 +648,7 @@
             const octave = parseInt(match[2], 10);
             const offset = noteNames.indexOf(name);
             if (offset === -1) return null;
-            return (octave + 1) * 12 + offset; // C4 = 60
+            return (octave + 1) * 12 + offset; // Standard MIDI formatting: C4 = 60
         }
 
         function pitchToNote(pitch) {
@@ -712,19 +715,17 @@
         function playSong() {
             initAudio();
             
-            // Re-parse current dropdown option using array index safely
+            // Look up directly from array based on dropdown ID
             const index = songSelect.value;
-            if (index !== "") {
+            if (index !== "" && currentRenderedSongs[index]) {
                 const songObj = currentRenderedSongs[index];
-                if (songObj) {
-                    currentSongTitle = songObj.title;
-                    rawParsedSong = parsePianoPad(songObj.code);
-                    currentSong = autoTransposeSong(rawParsedSong);
-                }
+                currentSongTitle = songObj.title;
+                rawParsedSong = parsePianoPad(songObj.code);
+                currentSong = autoTransposeSong(rawParsedSong);
             }
 
             if (!currentSong || currentSong.length === 0) {
-                document.getElementById('status').textContent = 'Please choose a song from the dropdown first.';
+                document.getElementById('status').textContent = 'Error: No valid note sequence found in this song.';
                 return;
             }
 
@@ -871,10 +872,15 @@
             document.getElementById('game-results-modal').classList.add('open');
         }
 
+        // ROBUST PARSER - Works on all variations of Rests delimiters.
         function parsePianoPad(code) {
-            if (!code || !code.trim()) return [];
-            const parts = code.replace(/[\r\n\s]+/g, '').split(/,Rests,/i);
+            if (!code || typeof code !== 'string') return [];
+            const cleanCode = code.replace(/[\r\n\s]+/g, '');
+            // Case-insensitive regex split, with or without commas wrapping RESTS
+            const parts = cleanCode.split(/,?rests?,?/i);
+            
             if (parts.length < 2) return [];
+            
             const rawNotes = parts[0].split(',').filter(Boolean);
             const rests = parts[1].split(',').filter(Boolean);
             const song = [];
@@ -891,26 +897,26 @@
             songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
             currentRenderedSongs.forEach((song, index) => {
                 const opt = document.createElement('option');
-                opt.value = index; // Fixed logic: Use pure index for lookup later
+                opt.value = index; 
                 opt.textContent = song.title;
                 songSelect.appendChild(opt);
             });
         }
 
         async function syncSongsWithGoogleSheet() {
-            // Load fallback songs into array structure immediately
+            // Setup robust memory mapping using Array Index values for HTML safety
             const uniqueMap = new Map();
             FALLBACK_SONGS.forEach(s => uniqueMap.set(s.title.toLowerCase().trim(), s));
             
             currentRenderedSongs = Array.from(uniqueMap.values()).sort((a, b) => a.title.localeCompare(b.title));
             renderSongSelect();
             
-            // Autoload Wipeout on launch safely
             songSelect.value = "0";
             currentSongTitle = currentRenderedSongs[0].title;
             rawParsedSong = parsePianoPad(currentRenderedSongs[0].code);
             currentSong = autoTransposeSong(rawParsedSong);
             
+            document.getElementById('mode-display').textContent = `${instrumentName} Mode`;
             document.getElementById('status').textContent = `Loaded ${currentRenderedSongs.length} initial songs. Syncing Google Sheets...`;
 
             try {
@@ -958,6 +964,8 @@
                     currentSong = autoTransposeSong(rawParsedSong);
                     stopSong();
                     document.getElementById('status').textContent = `Loaded "${currentSongTitle}". Press Play!`;
+                } else {
+                    document.getElementById('status').textContent = `Error: Song data could not be read for "${currentSongTitle}".`;
                 }
             }
         });
