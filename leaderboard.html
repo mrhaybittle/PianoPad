@@ -278,7 +278,8 @@
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 100px;">Rank</th>
+                            <th style="width: 70px;">Rank</th>
+                            <th style="width: 80px;">Position</th>
                             <th>Student Name</th>
                             <th>Song Title</th>
                             <th>Accuracy</th>
@@ -288,7 +289,7 @@
                     </thead>
                     <tbody id="leaderboard-body">
                         <tr>
-                            <td colspan="6" class="status-msg">Loading scores from Google Sheet...</td>
+                            <td colspan="7" class="status-msg">Loading scores from Google Sheet...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -412,27 +413,25 @@
             }
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="status-msg">No high scores found for this song.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="status-msg">No high scores found for this song.</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = '';
-            filtered.forEach((item, index) => {
+            filtered.forEach((item) => {
                 const tr = document.createElement('tr');
-                const totalForSong = allScores.filter(s => s.song === item.song).length;
-                const rankText = `${index + 1}/${totalForSong}`;
 
-                let rankBadge = `<span class="rank-badge rank-other" style="width: auto; padding: 2px 10px; border-radius: 12px;">${rankText}</span>`;
-                if (dateSortMode === 'DEFAULT') {
-                    if (index === 0) rankBadge = `<span class="rank-badge rank-1" style="width: auto; padding: 2px 10px; border-radius: 12px;">🥇 ${rankText}</span>`;
-                    else if (index === 1) rankBadge = `<span class="rank-badge rank-2" style="width: auto; padding: 2px 10px; border-radius: 12px;">🥈 ${rankText}</span>`;
-                    else if (index === 2) rankBadge = `<span class="rank-badge rank-3" style="width: auto; padding: 2px 10px; border-radius: 12px;">🥉 ${rankText}</span>`;
-                }
+                let rankBadge = `<span class="rank-badge rank-other">${item.songRank}</span>`;
+                if (item.songRank === 1) rankBadge = `<span class="rank-badge rank-1">🥇</span>`;
+                else if (item.songRank === 2) rankBadge = `<span class="rank-badge rank-2">🥈</span>`;
+                else if (item.songRank === 3) rankBadge = `<span class="rank-badge rank-3">🥉</span>`;
 
+                let positionText = `${item.songRank}/${item.songTotal}`;
                 let dateStyle = isToday(item.timestamp) ? 'font-weight: 700; color: #facc15;' : 'color: #9ca3af;';
 
                 tr.innerHTML = `
                     <td>${rankBadge}</td>
+                    <td style="font-weight: 600; color: #9ca3af;">${positionText}</td>
                     <td style="font-weight: 600; color: #fff;">${item.name}</td>
                     <td>${item.song}</td>
                     <td class="score-highlight">${item.accuracy.toFixed(1)}%</td>
@@ -537,12 +536,30 @@
                 const csvText = await response.text();
                 allScores = parseCSV(csvText);
 
+                // Compute global rank and total entries per individual song
+                let songRanks = {};
+                allScores.filter(s => !s.isMiniGame).forEach(s => {
+                    if (!songRanks[s.song]) songRanks[s.song] = [];
+                    songRanks[s.song].push(s);
+                });
+
+                for (let song in songRanks) {
+                    songRanks[song].sort((a, b) => {
+                        if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+                        return b.speed - a.speed;
+                    });
+                    songRanks[song].forEach((s, idx) => {
+                        s.songRank = idx + 1;
+                        s.songTotal = songRanks[song].length;
+                    });
+                }
+
                 populateSongFilter();
                 renderSongLeaderboard();
             } catch (err) {
                 console.error(err);
                 document.getElementById('leaderboard-body').innerHTML = 
-                    '<tr><td colspan="6" class="status-msg" style="color:#ef4444;">Failed to load leaderboard data. Please ensure the CSV link is public.</td></tr>';
+                    '<tr><td colspan="7" class="status-msg" style="color:#ef4444;">Failed to load leaderboard data. Please ensure the CSV link is public.</td></tr>';
             }
         }
 
