@@ -124,7 +124,7 @@
         }
 
         #mode-display {
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             font-weight: bold;
             color: #fbbf24;
             background: #332717;
@@ -135,14 +135,14 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
-            margin: 6px 0;
+            margin: 4px 0;
             box-shadow: 0 4px 6px rgba(0,0,0,0.5);
             z-index: 10;
         }
 
-        /* Valve Section */
+        /* Brass Valves Section */
         .valves-container {
-            display: none; /* Controlled via JS when modal finishes */
+            display: flex;
             justify-content: center;
             align-items: center;
             gap: 35px;
@@ -316,7 +316,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.09 | 9-Sep 15:48 AEST</div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 15:52 AEST</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -357,7 +357,7 @@
 
         let audioCtx = null;
         let songList = [];
-        let rawParsedSong = []; // Original song before transposition
+        let rawParsedSong = []; // Original raw HayCode notes before transposition
         let currentSong = [];
         let currentSongTitle = "Wipeout";
 
@@ -405,8 +405,8 @@
 
         function resizeCanvas() {
             const wrapper = document.getElementById('vis-wrapper');
-            canvas.width = wrapper.clientWidth;
-            canvas.height = wrapper.clientHeight;
+            if (canvas.width !== wrapper.clientWidth) canvas.width = wrapper.clientWidth;
+            if (canvas.height !== wrapper.clientHeight) canvas.height = wrapper.clientHeight;
         }
         window.addEventListener('resize', resizeCanvas);
 
@@ -419,7 +419,6 @@
 
         function confirmInstrument() {
             document.getElementById('setup-modal').classList.remove('open');
-            document.getElementById('valves-container').style.display = 'flex';
             document.getElementById('mode-display').textContent = `${instrumentName} Mode`;
             resizeCanvas();
             initAudio();
@@ -435,7 +434,7 @@
         document.getElementById('btn-pause').addEventListener('click', togglePause);
         document.getElementById('btn-stop').addEventListener('click', stopSong);
 
-        // --- Keyboard / Input Handling ---
+        // --- Keyboard / Valve Input Handling ---
         window.addEventListener('keydown', (e) => {
             if (e.repeat) return;
             if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
@@ -452,7 +451,7 @@
             }
 
             if (e.code === 'ArrowUp' || e.code === 'Space' || e.code === 'Enter') {
-                triggerNoteEvaluation(true); // Explicit blow trigger for Open Notes
+                triggerNoteEvaluation(true); // Explicit blow for Open Notes
             }
         });
 
@@ -585,8 +584,8 @@
 
             gain.gain.setValueAtTime(0, now);
             gain.gain.linearRampToValueAtTime(0.4, now + 0.03);
-            gain.gain.setValueAtTime(0.4, now + safeDuration - 0.05);
-            gain.gain.linearRampToValueAtTime(0.0001, now + safeDuration + 0.05);
+            gain.gain.setValueAtTime(0.4, now + safeDuration);
+            gain.gain.linearRampToValueAtTime(0.0001, now + safeDuration + 0.1);
 
             osc.connect(filter);
             filter.connect(gain);
@@ -638,7 +637,7 @@
         }
 
         function autoTransposeSong(song) {
-            if (!song || song.length === 0) return song;
+            if (!song || song.length === 0) return [];
 
             return song.map(item => {
                 const newNotes = item.notes.map(noteStr => {
@@ -725,12 +724,22 @@
 
         function playSong() {
             initAudio();
-            stopSong();
-            if (currentSong.length === 0) {
+            
+            // Auto-load song from dropdown if currentSong is empty
+            if (!currentSong || currentSong.length === 0) {
+                const code = songSelect.value;
+                if (code) {
+                    rawParsedSong = parsePianoPad(code);
+                    currentSong = autoTransposeSong(rawParsedSong);
+                }
+            }
+
+            if (!currentSong || currentSong.length === 0) {
                 document.getElementById('status').textContent = 'Please choose a song first.';
                 return;
             }
 
+            stopSong();
             resizeCanvas();
             buildTimeline();
             gameStats = { perfect: 0, miss: 0 };
@@ -758,7 +767,6 @@
                     gameStatus: 'pending'
                 });
                 
-                // Advance cumulative time by note duration/rest delay
                 cumulativeMs += Math.max(180, (item.rest || 250) / speedFactor);
             });
         }
@@ -773,6 +781,9 @@
             const delta = now - lastFrameTime;
             lastFrameTime = now;
             let effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
+
+            if (canvas.width !== canvas.clientWidth) canvas.width = canvas.clientWidth;
+            if (canvas.height !== canvas.clientHeight) canvas.height = canvas.clientHeight;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const FALL_TIME_MS = 1800;
