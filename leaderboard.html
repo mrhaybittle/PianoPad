@@ -255,6 +255,17 @@
             text-overflow: ellipsis;
             max-width: 100px;
         }
+
+        .total-scores-chip {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #10b981;
+            background: #0b0f19;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #374151;
+            margin-left: 4px;
+        }
     </style>
 </head>
 <body>
@@ -270,6 +281,7 @@
                     🎮 MINI-GAME Leaderboard
                 </button>
                 <a href="index.html" class="btn btn-back">← Back to Player</a>
+                <div id="total-scores-display" class="total-scores-chip">Leaderboard Scores = 0</div>
             </div>
         </header>
 
@@ -278,7 +290,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 70px;">Rank</th>
+                            <th style="width: 80px;">Rank</th>
                             <th style="width: 80px;">Position</th>
                             <th>Student Name</th>
                             <th>Song Title</th>
@@ -421,12 +433,15 @@
             filtered.forEach((item) => {
                 const tr = document.createElement('tr');
 
+                // Column 1: Rank (With Medal logic per unique song ranking)
                 let rankBadge = `<span class="rank-badge rank-other">${item.songRank}</span>`;
-                if (item.songRank === 1) rankBadge = `<span class="rank-badge rank-1">🥇</span>`;
-                else if (item.songRank === 2) rankBadge = `<span class="rank-badge rank-2">🥈</span>`;
-                else if (item.songRank === 3) rankBadge = `<span class="rank-badge rank-3">🥉</span>`;
+                if (item.songRank === 1) rankBadge = `<span class="rank-badge rank-1">1</span> 🥇`;
+                else if (item.songRank === 2) rankBadge = `<span class="rank-badge rank-2">2</span> 🥈`;
+                else if (item.songRank === 3) rankBadge = `<span class="rank-badge rank-3">3</span> 🥉`;
 
+                // Column 2: Position (e.g., 6/249)
                 let positionText = `${item.songRank}/${item.songTotal}`;
+                
                 let dateStyle = isToday(item.timestamp) ? 'font-weight: 700; color: #facc15;' : 'color: #9ca3af;';
 
                 tr.innerHTML = `
@@ -535,6 +550,12 @@
 
                 const csvText = await response.text();
                 allScores = parseCSV(csvText);
+
+                // Update total leaderboard scores badge
+                const totalDisplay = document.getElementById('total-scores-display');
+                if (totalDisplay) {
+                    totalDisplay.textContent = `Leaderboard Scores = ${allScores.length}`;
+                }
 
                 // Compute global rank and total entries per individual song
                 let songRanks = {};
