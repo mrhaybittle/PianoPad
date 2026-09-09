@@ -942,6 +942,11 @@
                     Get Songs
                 </a>
 
+                <!-- NEW LEADERBOARD BUTTON -->
+                <a href="https://mrhaybittle.github.io/PianoPad/leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
+                    🏆 Leaderboard
+                </a>
+
                 <button type="button" id="btn-play" class="btn-success">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     Play
@@ -1029,7 +1034,20 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.09 | 9-Sep 04:54 PM AEST (Sydney)</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="version-stamp">v26.09.09 | 9-Sep 05:17 PM AEST (Sydney)</div>
+                <div style="display: flex; gap: 4px;">
+                    <button type="button" id="btn-footer-rec" class="btn-secondary" title="Record">
+                        <svg class="icon" style="color: #ef4444; fill: #ef4444;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
+                    </button>
+                    <button type="button" id="btn-footer-play" class="btn-success" title="Play">
+                        <svg class="icon" style="color: white; fill: white;" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    </button>
+                    <button type="button" id="btn-footer-stop" class="btn-danger" title="Stop">
+                        <svg class="icon" style="color: #000; fill: #000;" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
+                    </button>
+                </div>
+            </div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1144,7 +1162,7 @@
         <div class="modal" style="max-width: 680px;">
             <h2>MIDI Keyboard Calibration</h2>
             <p id="calib-instructions" style="font-size: 0.9rem; color: #38bdf8; font-weight: 600;">
-                Play the <span style="color: #ef4444;">LOWEST</span> note on your keyboard
+                Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...
             </p>
 
             <div class="calib-piano-container">
@@ -1239,7 +1257,7 @@
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyJ6BXOjgbsbv03Xlp3kFVj_6aIfVJ7NM66Y3f_fMzuOeDabH2HzEhE-rLuoZzncXAA6g/exec';
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRVI-zuNfTZvcxcsG7mNk1iL_r11kCj-or6hKfLsilP0Vf9WSk0MeVxEog-RzXFIIjNA/exec';
 
         let audioCtx = null;
         let songList = [];
@@ -2720,6 +2738,10 @@
         document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
         document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
 
+        document.getElementById('btn-footer-rec').addEventListener('click', toggleRecording);
+        document.getElementById('btn-footer-play').addEventListener('click', playSong);
+        document.getElementById('btn-footer-stop').addEventListener('click', stopSong);
+
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
             if (isPlaying && !isPaused && !isStepMode) playSong();
@@ -2799,7 +2821,7 @@
             calibStep = 1;
             document.getElementById('btn-calib-skip').style.display = 'none';
             document.getElementById('btn-calib-cancel').style.display = 'inline-flex';
-            document.getElementById('calib-instructions').innerHTML = "Play the <span style='color: #ef4444;'>LOWEST</span> note on your keyboard";
+            document.getElementById('calib-instructions').textContent = "Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
             calibModal.classList.add('open');
         }
 
@@ -2819,7 +2841,7 @@
                 if (lowCKey) lowCKey.classList.add('blue-highlight');
 
                 calibStep = 2;
-                document.getElementById('calib-instructions').innerHTML = "Play the <span style='color: #22c55e;'>HIGHEST</span> note on your keyboard";
+                document.getElementById('calib-instructions').textContent = "Recognized Lowest C! Step 2: Now press the HIGHEST 'C' key on your external MIDI Keyboard...";
             } else if (calibStep === 2) {
                 calibHighestRawMIDI = rawMidi;
 
@@ -3211,6 +3233,30 @@
                 document.getElementById('status').textContent = `Step ${currentStepIndex + 1} of ${noteTimeline.length}: Next Note -> [ ${displayStr} ] (Press SPACE BAR or play on MIDI Keyboard)`;
             } else {
                 document.getElementById('status').textContent = 'Step Practice Finished!';
+            }
+        }
+
+        function stopSong() {
+            isPlaying = false;
+            isPaused = false;
+            btnPause.textContent = 'Pause';
+            btnPause.classList.remove('btn-success');
+            btnPause.classList.add('btn-warning');
+
+            if (animationFrameId !== null) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            document.querySelectorAll('.key').forEach(k => {
+                k.classList.remove('active');
+                k.style.backgroundColor = '';
+                k.style.boxShadow = '';
+            });
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('status').textContent = 'Playback stopped.';
+
+            if (isRecording) {
+                toggleRecording();
             }
         }
 
@@ -3857,26 +3903,6 @@
                 playSong();
             }
         });
-
-        function stopSong() {
-            isPlaying = false;
-            isPaused = false;
-            btnPause.textContent = 'Pause';
-            btnPause.classList.remove('btn-success');
-            btnPause.classList.add('btn-warning');
-
-            if (animationFrameId !== null) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
-            document.querySelectorAll('.key').forEach(k => {
-                k.classList.remove('active');
-                k.style.backgroundColor = '';
-                k.style.boxShadow = '';
-            });
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            document.getElementById('status').textContent = 'Playback stopped.';
-        }
 
         function playSong() {
             initAudio();
