@@ -237,7 +237,7 @@
             border: 2px solid #3f3f46; box-shadow: 0 25px 50px -12px rgba(0,0,0,1);
         }
 
-        .modal h2 { color: #fbbf24; text-align: center; margin-bottom: 5px; font-size: 1.4rem;}
+        .modal h2 { color: #f8fafc; text-align: center; margin-bottom: 5px; font-size: 1.4rem;}
         
         .setup-option {
             background: #120e0a;
@@ -329,7 +329,7 @@
     <div class="container">
         <header>
             <div class="logo-container" style="display: flex; align-items: center; gap: 10px;">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 60" width="220" height="60">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 60" width="250" height="60">
                     <defs>
                         <!-- Metallic Brass Gradient for the body -->
                         <linearGradient id="brassShine" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -445,7 +445,7 @@
 
         <div class="footer-bar">
             <!-- Timestamp Updated -->
-            <div class="version-stamp">v26.09.09 | 9-Sep 17:37 AEST (Woonona)</div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 17:44 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -515,7 +515,7 @@
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
 
-        // Bundled Emergency Song Library (Protects against CORS Blocks/Latency)
+        // Bundled Emergency Song Library
         const FALLBACK_SONGS = [
             { title: "Wipeout", code: "C2,C2,C2,C2,D2,D2,D2,D2,E2,E2,D2,D2,C2,Rests,250,250,250,250,250,250,250,250,250,250,250,250,500" },
             { title: "Hot Cross Buns", code: "E2,D2,C2,E2,D2,C2,C2,C2,C2,C2,D2,D2,D2,D2,E2,D2,C2,Rests,400,400,800,400,400,800,200,200,200,200,200,200,200,200,400,400,800" },
@@ -525,7 +525,7 @@
 
         let audioCtx = null;
         let songList = [];
-        let currentRenderedSongs = []; // Safely maps dropdown index ID to object
+        let currentRenderedSongs = []; 
         let rawParsedSong = []; 
         let currentSong = [];
         let currentSongTitle = "Wipeout";
@@ -604,7 +604,6 @@
             document.getElementById('setup-modal').classList.remove('open');
             document.getElementById('instrument-label').textContent = instrumentName;
             
-            // Re-transpose current song based on new instrument selection
             if (rawParsedSong.length > 0) {
                 currentSong = autoTransposeSong(rawParsedSong);
             }
@@ -615,6 +614,9 @@
             speedLabel.textContent = `${speedSlider.value}%`;
             if (isPlaying && !isPaused && !isStepMode) playSong();
         });
+
+        btnGame.addEventListener('click', toggleGameMode);
+        btnStep.addEventListener('click', toggleStepMode);
 
         document.getElementById('btn-play').addEventListener('click', playSong);
         document.getElementById('btn-pause').addEventListener('click', togglePause);
@@ -628,7 +630,7 @@
             document.getElementById('game-results-modal').classList.remove('open');
         });
 
-        // --- Leaderboard Support (Mock) ---
+        // --- Leaderboard Support (Mocked locally per instructions) ---
         function sanitizeName(str) {
             const parts = str.trim().split(/\s+/);
             if (parts.length === 1) return parts[0];
@@ -652,10 +654,8 @@
         function displayMockRank() {
             const rankDiv = document.getElementById('game-rank-text');
             rankDiv.style.display = 'inline-block';
-            
             const randomRank = Math.floor(Math.random() * 15) + 1;
             const totalPlayers = Math.floor(Math.random() * 50) + 20;
-            
             rankDiv.textContent = `${currentSongTitle} Rank ${randomRank}/${totalPlayers}`;
         }
 
@@ -667,7 +667,7 @@
                 case 'd': case 'd#': return '#f97316'; // Orange
                 case 'e': return '#eab308';            // Yellow
                 case 'f': case 'f#': return '#22c55e'; // Green
-                case 'g': case 'g#': return '#06b6d4'; // Aqua / Light Blue
+                case 'g': case 'g#': return '#06b6d4'; // Aqua
                 case 'a': case 'a#': return '#a855f7'; // Purple
                 case 'b': return '#ec4899';            // Pink
                 default: return '#f59e0b';
@@ -692,8 +692,8 @@
                 handleValveChange();
             }
 
-            // Open Notes: Up Arrow, d, ;, or l
-            if (e.code === 'ArrowUp' || keyStr === 'd' || keyStr === ';' || keyStr === 'l') {
+            // Open Notes: Up Arrow, d, l, or ;
+            if (e.code === 'ArrowUp' || keyStr === 'd' || keyStr === 'l' || keyStr === ';') {
                 triggerNoteEvaluation(true); // Explicit blow for Open Note
             }
         });
@@ -888,7 +888,7 @@
             const octave = parseInt(match[2], 10);
             const offset = noteNames.indexOf(name);
             if (offset === -1) return null;
-            return (octave + 1) * 12 + offset; // Standard MIDI formatting: C4 = 60
+            return (octave + 1) * 12 + offset;
         }
 
         function pitchToNote(pitch) {
@@ -904,12 +904,6 @@
             
             const concertPitch = writtenPitch - transposeOffset;
             return 440 * Math.pow(2, (concertPitch - 69) / 12);
-        }
-
-        function getNoteFrequency(noteStr) {
-            const pitch = noteToPitch(noteStr);
-            if (pitch === null) return null;
-            return 440 * Math.pow(2, (pitch - 69) / 12);
         }
 
         function autoTransposeSong(song) {
@@ -957,10 +951,12 @@
                 btnStep.classList.remove('btn-secondary');
                 btnStep.classList.add('btn-step-active');
                 if (isGameMode) toggleGameMode();
+                document.getElementById('status').textContent = ' STEP MODE ACTIVE! Press required valves to advance each note.';
             } else {
                 btnStep.textContent = 'Step Mode: OFF';
                 btnStep.classList.remove('btn-step-active');
                 btnStep.classList.add('btn-secondary');
+                document.getElementById('status').textContent = 'Step Mode OFF. Normal play active.';
             }
         }
 
@@ -1124,7 +1120,7 @@
             // 3. Render Falling Notes
             noteTimeline.forEach(item => {
                 
-                // AUTO-PLAY SOUND LOGIC (If not in Game Mode or Step Mode)
+                // AUTO-PLAY SOUND LOGIC
                 if (!isGameMode && !isStepMode && effectiveElapsed >= item.hitTime && !item.played) {
                     item.played = true;
                     item.notes.forEach(noteStr => {
@@ -1203,7 +1199,6 @@
             ensureStudentName();
             const totalHits = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = totalHits > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
-            const accuracyNum = parseFloat(accuracy);
             
             let summaryHTML = `
                 <div style="font-size: 0.95rem; font-weight:bold; color: #fff;">Student: <span style="color:#38bdf8;">${sessionStudentName}</span></div>
