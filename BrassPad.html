@@ -129,7 +129,6 @@
 
         #waterfall-canvas {
             background-color: var(--canvas-bg);
-            border-bottom: 3px solid var(--hitline-color);
             display: block; width: 100%; flex: 1;
         }
 
@@ -308,7 +307,6 @@
 
             <div class="valves-container" id="valves-container">
                 <div class="valve-wrapper">
-                    <!-- Added onmousedown / mouseup for mouse-clicks to also trigger notes! -->
                     <div class="valve-btn" id="valve-1" onmousedown="setValve(1, true); handleValveChange()" onmouseup="setValve(1, false); handleValveChange()">1</div>
                     <div class="valve-label">⬅️ / Z / 1</div>
                 </div>
@@ -325,7 +323,7 @@
 
         <div class="footer-bar">
             <!-- Timestamp Added Here to confirm Update -->
-            <div class="version-stamp">v26.09.09 | 9-Sep 15:18 AEST</div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 15:38 AEST (Woonona)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -407,7 +405,7 @@
 
         const noteNames = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
 
-        // Visualizer Range Settings (Written Pitch)
+        // Visualizer Range Settings (Written Pitch standard MIDI layout)
         const MIN_PITCH = 54; // F#3
         const MAX_PITCH = 84; // C6
         const PITCH_RANGE = MAX_PITCH - MIN_PITCH + 1;
@@ -502,7 +500,6 @@
             if (e.code === 'ArrowLeft' || e.key === '1' || e.code === 'KeyZ') { setValve(1, false); valveChanged = true; }
             if (e.code === 'ArrowDown'  || e.key === '2' || e.code === 'KeyX') { setValve(2, false); valveChanged = true; }
             if (e.code === 'ArrowRight' || e.key === '3' || e.code === 'KeyC') { setValve(3, false); valveChanged = true; }
-            // Note: We deliberately don't evaluate on keyup so we don't accidentally double play notes upon release
         });
 
         function setValve(num, isDown) {
@@ -513,11 +510,11 @@
         }
 
         function handleValveChange() {
-            // Give 20ms for the user to press a combination of keys at once before triggering
+            // Give 35ms debounce for the user to press combinations of keys at once before evaluating
             clearTimeout(valveTimeout);
             valveTimeout = setTimeout(() => {
                 triggerNoteEvaluation(false);
-            }, 20);
+            }, 35);
         }
 
         function arraysEqualUnordered(a, b) {
@@ -556,7 +553,7 @@
                 (performance.now() - playbackStartTime) - accumulatedPauseMs;
 
             const targetIndex = isStep ? currentStepIndex : noteTimeline.findIndex(item => 
-                item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 400
+                item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 500
             );
 
             if (targetIndex !== -1) {
@@ -678,19 +675,7 @@
             osc.stop(now + 0.1);
         }
 
-        function getNoteFrequency(noteStr) {
-            noteStr = noteStr.trim().toLowerCase();
-            const match = noteStr.match(/^([a-g]#?)([0-9]+)$/);
-            if (!match) return null;
-            const name = match[1];
-            const octave = parseInt(match[2], 10);
-            const realOctave = octave + 3;
-            const noteOffsets = { 'c': 0, 'c#': 1, 'd': 2, 'd#': 3, 'e': 4, 'f': 5, 'f#': 6, 'g': 7, 'g#': 8, 'a': 9, 'a#': 10, 'b': 11 };
-            if (noteOffsets[name] === undefined) return null;
-            const midiNumber = (realOctave + 1) * 12 + noteOffsets[name];
-            return 440 * Math.pow(2, (midiNumber - 69) / 12);
-        }
-
+        // Standardised MIDI Note calculations
         function noteToPitch(noteStr) {
             noteStr = noteStr.trim().toLowerCase();
             const match = noteStr.match(/^([a-g]#?)([0-9]+)$/);
@@ -699,14 +684,20 @@
             const octave = parseInt(match[2], 10);
             const offset = noteNames.indexOf(name);
             if (offset === -1) return null;
-            return octave * 12 + offset;
+            return (octave + 1) * 12 + offset; // C4 -> 60
         }
 
         function pitchToNote(pitch) {
             if (pitch < 0) pitch = 0;
-            const octave = Math.floor(pitch / 12);
+            const octave = Math.floor(pitch / 12) - 1;
             const offset = pitch % 12;
             return noteNames[offset] + octave;
+        }
+
+        function getNoteFrequency(noteStr) {
+            const pitch = noteToPitch(noteStr);
+            if (pitch === null) return null;
+            return 440 * Math.pow(2, (pitch - 69) / 12);
         }
 
         function autoTransposeSong(song) {
@@ -806,7 +797,7 @@
             if (freq < 50 || freq > 2000) return null;
             let midi = Math.round(69 + 12 * Math.log2(freq / 440));
             // Standardise tuning detection back to our NoteMap scale
-            return pitchToNote(midi - 12); 
+            return pitchToNote(midi); 
         }
 
         function processMicrophonePitch() {
@@ -955,7 +946,6 @@
                     gameStatus: 'pending'
                 });
                 
-                // Add the duration of the rest for the next note
                 cumulativeMs += (item.rest || 250) / speedFactor;
             });
         }
@@ -990,6 +980,7 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const FALL_TIME_MS = 1800;
             const colWidth = canvas.width / PITCH_RANGE;
+            const HIT_ZONE_Y = canvas.height - 40;
 
             // Draw Background Gradients & Lines to show pitch scale
             for(let i=0; i < PITCH_RANGE; i++) {
@@ -1002,7 +993,7 @@
                     ctx.fillStyle = 'rgba(255,255,255,0.2)';
                     ctx.font = '10px sans-serif';
                     ctx.textAlign = 'center';
-                    ctx.fillText("C", i * colWidth + colWidth/2, canvas.height - 10);
+                    ctx.fillText("C", i * colWidth + colWidth/2, HIT_ZONE_Y + 15);
                 }
                 
                 ctx.strokeStyle = 'rgba(255,255,255,0.1)';
@@ -1012,23 +1003,28 @@
                 ctx.stroke();
             }
 
+            // Draw Hit Line
+            ctx.strokeStyle = 'var(--hitline-color)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(0, HIT_ZONE_Y);
+            ctx.lineTo(canvas.width, HIT_ZONE_Y);
+            ctx.stroke();
+
             noteTimeline.forEach(item => {
                 if (!isStepMode && effectiveElapsed >= item.hitTime && !item.played && !isGameMode) {
                     item.played = true;
-                    item.notes.forEach(noteStr => {
-                        const freq = getNoteFrequency(noteStr);
-                        if (freq) playTone(freq, item.duration / 1000);
-                    });
+                    // Auto-play is completely removed - sound only comes from user playing the valves!
                 }
 
-                if (isGameMode && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 300)) {
+                if (item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 300)) {
                     item.gameStatus = 'miss';
                     gameStats.miss++;
                     updateGameStatus();
                 }
 
                 const timeUntilHit = item.hitTime - effectiveElapsed;
-                const yBottom = canvas.height - (timeUntilHit / FALL_TIME_MS) * canvas.height;
+                const yBottom = HIT_ZONE_Y - (timeUntilHit / FALL_TIME_MS) * canvas.height;
                 const blockHeight = (item.duration / FALL_TIME_MS) * canvas.height;
                 const yTop = yBottom - blockHeight;
 
@@ -1159,59 +1155,6 @@
                 currentSong = autoTransposeSong(parsed);
                 stopSong();
             }
-        });
-
-        document.getElementById('midi-input').addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            initAudio();
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                const midi = new Midi(arrayBuffer);
-                let allNotes = [];
-                midi.tracks.forEach(track => {
-                    if (track.channel === 9) return;
-                    track.notes.forEach(n => {
-                        const octave = Math.floor(n.midi / 12) - 1;
-                        const offset = n.midi % 12;
-                        allNotes.push({ time: n.time, note: noteNames[offset] + octave });
-                    });
-                });
-                if (allNotes.length === 0) return;
-                allNotes.sort((a, b) => a.time - b.time);
-                const hayNotes = []; const hayRests = [];
-                let currentChord = []; let lastTime = 0;
-                for (let i = 0; i < allNotes.length; i++) {
-                    const n = allNotes[i];
-                    if (i === 0) {
-                        currentChord.push(n.note.toUpperCase());
-                        hayRests.push(0); lastTime = n.time;
-                    } else {
-                        const timeDiff = Math.round((n.time - lastTime) * 1000);
-                        if (timeDiff <= 20) currentChord.push(n.note.toUpperCase());
-                        else {
-                            hayNotes.push(currentChord.join('+'));
-                            currentChord = [n.note.toUpperCase()];
-                            hayRests.push(timeDiff);
-                            lastTime = n.time;
-                        }
-                    }
-                }
-                if (currentChord.length > 0) hayNotes.push(currentChord.join('+'));
-                
-                const code = `${hayNotes.join(',')},RESTS,${hayRests.join(',')}`;
-                currentSongTitle = file.name.replace(/\.[^/.]+$/, "");
-                const parsed = parsePianoPad(code);
-                if (parsed.length > 0) {
-                    currentSong = autoTransposeSong(parsed);
-                    songSelect.value = '';
-                    document.getElementById('status').textContent = `Loaded MIDI: "${currentSongTitle}".`;
-                    playSong();
-                }
-            } catch (err) {
-                document.getElementById('status').textContent = 'Failed to parse MIDI file.';
-            }
-            e.target.value = '';
         });
 
     </script>
