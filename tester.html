@@ -230,6 +230,9 @@
         .btn-settings { background-color: #3b82f6; }
         .btn-settings:hover { background-color: #2563eb; }
 
+        .btn-sheet-active { background-color: #0ea5e9 !important; color: #ffffff !important; box-shadow: 0 0 10px rgba(14, 165, 233, 0.6); }
+        .btn-sheet-active:hover { background-color: #0284c7 !important; }
+
         .btn-mic-active {
             background-color: #10b981 !important;
             color: #ffffff !important;
@@ -323,6 +326,15 @@
             width: 100%;
             flex: 1;
             min-height: 380px;
+        }
+
+        #sheet-music-canvas {
+            display: none;
+            background-color: #f1f5f9;
+            border-radius: 8px 8px 0 0;
+            border-bottom: 3px solid #cbd5e1;
+            width: 100%;
+            margin-bottom: 4px;
         }
 
         #waterfall-canvas {
@@ -883,10 +895,6 @@
                     <option value="gold">Theme: Classic Gold</option>
                 </select>
 
-                <button type="button" id="btn-view-mode" class="btn-secondary" style="font-weight:700;">
-                    👁️ View: Hybrid
-                </button>
-
                 <div class="speed-control">
                     <label for="speed-slider">Speed: <span id="speed-label">100%</span></label>
                     <input type="range" id="speed-slider" min="10" max="500" value="100" step="5">
@@ -899,6 +907,10 @@
                 <button type="button" id="btn-game" class="btn-secondary">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                     Game Mode: OFF
+                </button>
+                
+                <button type="button" id="btn-sheet-music" class="btn-secondary">
+                    🎼 Sheet Music: OFF
                 </button>
 
                 <button type="button" id="btn-loop" class="btn-secondary">
@@ -944,6 +956,11 @@
                 <a href="https://pianopadshare.blogspot.com/" target="_blank" rel="noopener noreferrer" class="btn-link btn-secondary">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
                     Get Songs
+                </a>
+
+                <!-- LEADERBOARD BUTTON (RETAINED) -->
+                <a href="https://mrhaybittle.github.io/PianoPad/leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
+                    🏆 Leaderboard
                 </a>
 
                 <button type="button" id="btn-play" class="btn-success">
@@ -1028,12 +1045,26 @@
         <div class="runner-track-wrapper" id="runner-track" style="display: none;"></div>
 
         <div class="visualizer-wrapper">
+            <canvas id="sheet-music-canvas" width="1232" height="150"></canvas>
             <canvas id="waterfall-canvas" width="1232" height="380"></canvas>
             <div class="piano" id="keyboard"></div>
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.09 | 9-Sep 21:45 AEST (Sydney)</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="version-stamp">v26.09.09 | 9-Sep 05:17 PM AEST (Sydney)</div>
+                <div style="display: flex; gap: 4px;">
+                    <button type="button" id="btn-footer-rec" class="btn-secondary" title="Record">
+                        <svg class="icon" style="color: #ef4444; fill: #ef4444;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
+                    </button>
+                    <button type="button" id="btn-footer-play" class="btn-success" title="Play">
+                        <svg class="icon" style="color: white; fill: white;" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    </button>
+                    <button type="button" id="btn-footer-stop" class="btn-danger" title="Stop">
+                        <svg class="icon" style="color: #000; fill: #000;" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
+                    </button>
+                </div>
+            </div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1157,7 +1188,7 @@
 
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" id="btn-calib-skip" onclick="skipCalibration()">Skip Calibration</button>
-                <button type="button" class="btn-secondary" id="btn-calib-cancel" style="display:none;" onclick="cancelCalibration()">Cancel Calibration</button>
+                <button type="button" class="btn-secondary" id="btn-calib-cancel" style="display:none;">Cancel Calibration</button>
             </div>
         </div>
     </div>
@@ -1257,7 +1288,6 @@
         let isRecording = false;
         let isGameMode = false;
         let currentTheme = 'default';
-        let visualizerMode = 'hybrid'; 
         let bonusSoundsUnlocked = false;
 
         // Microphone Pitch Detection Variables
@@ -1338,11 +1368,120 @@
         document.getElementById('btn-song-battle').addEventListener('click', openSongBattleSelector);
         document.getElementById('btn-mic-toggle').addEventListener('click', toggleMicrophoneListening);
 
-        document.getElementById('btn-view-mode').addEventListener('click', () => {
-            visualizerMode = visualizerMode === 'hybrid' ? 'waterfall' : 'hybrid';
-            const btn = document.getElementById('btn-view-mode');
-            btn.textContent = visualizerMode === 'hybrid' ? '👁️ View: Hybrid' : '👁️ View: Waterfall';
+        // --- SHEET MUSIC LOGIC START ---
+        const btnSheetMusic = document.getElementById('btn-sheet-music');
+        const sheetCanvas = document.getElementById('sheet-music-canvas');
+        const sheetCtx = sheetCanvas.getContext('2d');
+        let isSheetMusicOn = false;
+
+        btnSheetMusic.addEventListener('click', () => {
+            isSheetMusicOn = !isSheetMusicOn;
+            if (isSheetMusicOn) {
+                btnSheetMusic.textContent = '🎼 Sheet Music: ON';
+                btnSheetMusic.classList.remove('btn-secondary');
+                btnSheetMusic.classList.add('btn-sheet-active');
+                sheetCanvas.style.display = 'block';
+            } else {
+                btnSheetMusic.textContent = '🎼 Sheet Music: OFF';
+                btnSheetMusic.classList.remove('btn-sheet-active');
+                btnSheetMusic.classList.add('btn-secondary');
+                sheetCanvas.style.display = 'none';
+            }
         });
+
+        function getNoteYPosition(noteStr) {
+            const noteToStaffMap = {
+                'c1': 21, 'd1': 20, 'e1': 19, 'f1': 18, 'g1': 17, 'a1': 16, 'b1': 15,
+                'c2': 14, 'd2': 13, 'e2': 12, 'f2': 11, 'g2': 10, 'a2': 9,  'b2': 8,
+                'c3': 7,  'd3': 6,  'e3': 5,  'f3': 4,  'g3': 3,  'a3': 2,  'b3': 1,
+                'c4': 0,  'd4': -1, 'e4': -2, 'f4': -3, 'g4': -4, 'a4': -5, 'b4': -6,
+                'c5': -7, 'd5': -8, 'e5': -9, 'f5': -10,'g5': -11,'a5': -12,'b5': -13,
+                'c6': -14,'d6': -15,'e6': -16,'f6': -17,'g6': -18,'a6': -19,'b6': -20
+            };
+            const naturalNote = noteStr.toLowerCase().replace('#', '');
+            const step = noteToStaffMap[naturalNote];
+            if (step === undefined) return null;
+            return 70 + (step * 5); // Shifted UP: Middle C acts as Anchor at 70px Height
+        }
+
+        function drawSheetMusic(effectiveElapsed) {
+            if (!isSheetMusicOn) return;
+            sheetCtx.clearRect(0, 0, sheetCanvas.width, sheetCanvas.height);
+            
+            sheetCtx.strokeStyle = '#64748b'; // Sleek gray staves
+            sheetCtx.lineWidth = 1.5;
+            
+            // Draw Treble & Bass Lines
+            for (let i = 0; i < 5; i++) {
+                const y = 20 + (i * 10);
+                sheetCtx.beginPath(); sheetCtx.moveTo(0, y); sheetCtx.lineTo(sheetCanvas.width, y); sheetCtx.stroke();
+            }
+            for (let i = 0; i < 5; i++) {
+                const y = 80 + (i * 10);
+                sheetCtx.beginPath(); sheetCtx.moveTo(0, y); sheetCtx.lineTo(sheetCanvas.width, y); sheetCtx.stroke();
+            }
+            
+            // Simple Font Clefs
+            sheetCtx.font = '32px serif';
+            sheetCtx.fillStyle = '#334155';
+            sheetCtx.fillText('𝄞', 10, 55);
+            sheetCtx.fillText('𝄢', 10, 110);
+            
+            noteTimeline.forEach(item => {
+                const timeDiff = item.hitTime - effectiveElapsed;
+                if (timeDiff > -500 && timeDiff < 3000) {
+                    const x = 80 + (timeDiff / 3000) * (sheetCanvas.width - 100);
+                    item.notes.forEach(noteStr => {
+                        const y = getNoteYPosition(noteStr);
+                        if (y !== null) {
+                            const isSharp = noteStr.includes('#');
+                            
+                            sheetCtx.beginPath();
+                            sheetCtx.ellipse(x, y, 7, 5, -0.2, 0, 2 * Math.PI);
+                            
+                            if (item.gameStatus === 'perfect') sheetCtx.fillStyle = '#22c55e';
+                            else if (item.gameStatus === 'earlyLate') sheetCtx.fillStyle = '#f97316';
+                            else if (item.gameStatus === 'miss') sheetCtx.fillStyle = '#ef4444';
+                            else sheetCtx.fillStyle = '#0f172a'; // Note color
+                            
+                            sheetCtx.fill();
+                            
+                            sheetCtx.strokeStyle = sheetCtx.fillStyle;
+                            sheetCtx.lineWidth = 1.5;
+                            sheetCtx.beginPath();
+                            if (y < 70) {
+                                sheetCtx.moveTo(x - 5, y); sheetCtx.lineTo(x - 5, y + 25);
+                            } else {
+                                sheetCtx.moveTo(x + 5, y); sheetCtx.lineTo(x + 5, y - 25);
+                            }
+                            sheetCtx.stroke();
+                            
+                            if (isSharp) {
+                                sheetCtx.font = '14px Arial';
+                                sheetCtx.fillText('♯', x - 18, y + 5);
+                            }
+                            
+                            // Ledger lines dynamically drawn
+                            sheetCtx.strokeStyle = '#0f172a';
+                            if (y <= 10) {
+                                for(let ly = 10; ly >= y; ly -= 10) {
+                                    sheetCtx.beginPath(); sheetCtx.moveTo(x - 12, ly); sheetCtx.lineTo(x + 12, ly); sheetCtx.stroke();
+                                }
+                            }
+                            if (y === 70) {
+                                sheetCtx.beginPath(); sheetCtx.moveTo(x - 12, y); sheetCtx.lineTo(x + 12, y); sheetCtx.stroke();
+                            }
+                            if (y >= 130) {
+                                for(let ly = 130; ly <= y; ly += 10) {
+                                    sheetCtx.beginPath(); sheetCtx.moveTo(x - 12, ly); sheetCtx.lineTo(x + 12, ly); sheetCtx.stroke();
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        // --- SHEET MUSIC LOGIC END ---
 
         function stopBattlePolling() {
             isSongBattle = false;
@@ -1585,7 +1724,7 @@
                 calibStep = 1;
                 document.getElementById('btn-calib-skip').style.display = 'inline-flex';
                 document.getElementById('btn-calib-cancel').style.display = 'none';
-                document.getElementById('calib-instructions').textContent = "Welcome! Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
+                document.getElementById('calib-instructions').innerHTML = "Play the <span style='color: #ef4444;'>LOWEST</span> note on your keyboard";
                 calibModal.classList.add('open');
             }
         }
@@ -1898,7 +2037,6 @@
             isSongBattle = true;
             battleResultsShown = false;
             
-            // Force disable Step Mode in Song Battle
             if (isStepMode) {
                 isStepMode = false;
                 btnStep.textContent = 'Step Mode';
@@ -2139,7 +2277,6 @@
                     resetGameStats();
 
                     if (isSongBattle) {
-                        // Ensure Step Mode is OFF when Song Battle starts
                         isStepMode = false;
                         btnStep.textContent = 'Step Mode';
                         btnStep.classList.remove('btn-step-active');
@@ -2190,7 +2327,6 @@
             resetGameStats();
 
             if (isSongBattle) {
-                // Ensure Step Mode is OFF when Song Battle starts
                 isStepMode = false;
                 btnStep.textContent = 'Step Mode';
                 btnStep.classList.remove('btn-step-active');
@@ -2731,6 +2867,10 @@
         document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
         document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
 
+        document.getElementById('btn-footer-rec').addEventListener('click', toggleRecording);
+        document.getElementById('btn-footer-play').addEventListener('click', playSong);
+        document.getElementById('btn-footer-stop').addEventListener('click', stopSong);
+
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
             if (isPlaying && !isPaused && !isStepMode) playSong();
@@ -3166,7 +3306,6 @@
         function toggleStepMode() {
             initAudio();
             
-            // STRICT RULE: Step mode is forbidden inside Song Battles
             if (isSongBattle) {
                 document.getElementById('status').textContent = '⚠️ Step Mode is NOT permitted during Song Battles!';
                 return;
@@ -3222,6 +3361,30 @@
                 document.getElementById('status').textContent = `Step ${currentStepIndex + 1} of ${noteTimeline.length}: Next Note -> [ ${displayStr} ] (Press SPACE BAR or play on MIDI Keyboard)`;
             } else {
                 document.getElementById('status').textContent = 'Step Practice Finished!';
+            }
+        }
+
+        function stopSong() {
+            isPlaying = false;
+            isPaused = false;
+            btnPause.textContent = 'Pause';
+            btnPause.classList.remove('btn-success');
+            btnPause.classList.add('btn-warning');
+
+            if (animationFrameId !== null) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            document.querySelectorAll('.key').forEach(k => {
+                k.classList.remove('active');
+                k.style.backgroundColor = '';
+                k.style.boxShadow = '';
+            });
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('status').textContent = 'Playback stopped.';
+
+            if (isRecording) {
+                toggleRecording();
             }
         }
 
@@ -3385,6 +3548,7 @@
 
             if (targetWidth > 0) {
                 canvas.width = targetWidth;
+                sheetCanvas.width = targetWidth;
             }
 
             const keys = keyboardEl.querySelectorAll('.key');
@@ -3869,26 +4033,6 @@
             }
         });
 
-        function stopSong() {
-            isPlaying = false;
-            isPaused = false;
-            btnPause.textContent = 'Pause';
-            btnPause.classList.remove('btn-success');
-            btnPause.classList.add('btn-warning');
-
-            if (animationFrameId !== null) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
-            document.querySelectorAll('.key').forEach(k => {
-                k.classList.remove('active');
-                k.style.backgroundColor = '';
-                k.style.boxShadow = '';
-            });
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            document.getElementById('status').textContent = 'Playback stopped.';
-        }
-
         function playSong() {
             initAudio();
             stopSong();
@@ -3976,73 +4120,6 @@
             ctx.restore();
         }
 
-        function getNoteStaffInfo(noteStr, staffTopY, staffSpacing) {
-            const baseOctaveMap = { 'c': 0, 'd': 1, 'e': 2, 'f': 3, 'g': 4, 'a': 5, 'b': 6 };
-            const c4Y = staffTopY + 5 * staffSpacing; 
-            const match = noteStr.toLowerCase().trim().match(/^([a-g])#?([1-7])$/);
-            if (!match) return { y: c4Y, shiftLevel: 0 };
-            
-            const noteChar = match[1];
-            const appOctave = parseInt(match[2], 10);
-            
-            const diatonicStep = (appOctave - 1) * 7 + baseOctaveMap[noteChar];
-            const stepsAboveC4 = diatonicStep - 21;
-            
-            let y = c4Y - stepsAboveC4 * (staffSpacing / 2);
-            let shiftLevel = 0;
-            
-            while (y < -5) { 
-                y += 7 * (staffSpacing / 2); 
-                shiftLevel++;
-            }
-            return { y, shiftLevel };
-        }
-
-        function drawOvalNote(x, y, noteStr, active, gameStatus = 'pending') {
-            ctx.save();
-            
-            const palette = themePalettes[currentTheme] || themePalettes.default;
-            let blockColor = palette.normal;
-            let shadowColor = palette.shadowNormal;
-
-            if (isGameMode || activeMiniGame) {
-                if (gameStatus === 'perfect') {
-                    blockColor = '#22c55e';
-                    shadowColor = 'rgba(34, 197, 94, 0.8)';
-                } else if (gameStatus === 'earlyLate') {
-                    blockColor = '#f97316';
-                    shadowColor = 'rgba(249, 115, 22, 0.8)';
-                } else if (gameStatus === 'miss') {
-                    blockColor = '#ef4444';
-                    shadowColor = 'rgba(239, 68, 68, 0.8)';
-                } else {
-                    blockColor = palette.pending;
-                    shadowColor = palette.shadowActive;
-                }
-            } else if (active) {
-                blockColor = palette.pending;
-                shadowColor = palette.shadowActive;
-            }
-
-            ctx.fillStyle = blockColor;
-            ctx.shadowColor = shadowColor;
-            ctx.shadowBlur = 8;
-
-            ctx.beginPath();
-            ctx.ellipse(x, y, 6, 4, -Math.PI / 12, 0, Math.PI * 2); 
-            ctx.fill();
-
-            if (noteStr.includes('#')) {
-                ctx.fillStyle = blockColor;
-                ctx.shadowBlur = 0;
-                ctx.font = 'bold 10px sans-serif';
-                ctx.textAlign = 'right';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('♯', x - 8, y + 1); 
-            }
-            ctx.restore();
-        }
-
         function renderLoop(now) {
             if (!isPlaying || isPaused) return;
 
@@ -4089,138 +4166,64 @@
                 drawSimonStaircase(simonSequence.length);
             } else {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            
+            // Sheet Music Render Tick
+            if (isSheetMusicOn) {
+                drawSheetMusic(effectiveElapsed);
+            }
 
-                const sheetAreaHeight = visualizerMode === 'hybrid' ? 75 : 0;
-                const staffSpacing = 10;
-                const staffTopY = 15;
-                const clefX = 60;
-                const sheetHitX = 100;
+            const canvasHeight = canvas.height;
+            const currentFallSpeed = activeMiniGame === 'drop' ? miniGameFallSpeedMs : FALL_TIME_MS;
 
-                if (visualizerMode === 'hybrid') {
-                    ctx.fillStyle = '#0b0f19';
-                    ctx.fillRect(0, 0, canvas.width, sheetAreaHeight);
-                    ctx.strokeStyle = '#374151';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(0, sheetAreaHeight);
-                    ctx.lineTo(canvas.width, sheetAreaHeight);
-                    ctx.stroke();
+            noteTimeline.forEach(item => {
+                const backgroundVol = (isGameMode || activeMiniGame) ? 0.2 : 1.0;
 
-                    ctx.save();
-                    ctx.strokeStyle = '#374151';
-                    ctx.lineWidth = 1;
-                    for (let i = 0; i < 5; i++) {
-                        ctx.beginPath();
-                        ctx.moveTo(clefX, staffTopY + i * staffSpacing);
-                        ctx.lineTo(canvas.width, staffTopY + i * staffSpacing);
-                        ctx.stroke();
-                    }
-                    
-                    ctx.fillStyle = '#cbd5e1';
-                    ctx.font = '35px serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('𝄞', clefX - 10, staffTopY + 2 * staffSpacing + 2);
-                    ctx.restore();
-                }
-
-                const canvasHeight = canvas.height;
-                const currentFallSpeed = activeMiniGame === 'drop' ? miniGameFallSpeedMs : FALL_TIME_MS;
-
-                noteTimeline.forEach(item => {
-                    const backgroundVol = (isGameMode || activeMiniGame) ? 0.2 : 1.0;
-
-                    if (!isStepMode && effectiveElapsed >= item.hitTime && !item.played) {
-                        item.played = true;
-                        item.notes.forEach(noteStr => {
-                            const freq = getNoteFrequency(noteStr);
-                            if (freq) {
-                                playTone(freq, item.duration / 1000, backgroundVol);
-                                if (!isGameMode && !activeMiniGame) {
-                                    highlightKey(noteStr, item.duration);
-                                }
-                            }
-                        });
-                    }
-
-                    if ((isGameMode || activeMiniGame) && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 280)) {
-                        item.gameStatus = 'miss';
-                        gameStats.miss++;
-                        if (isSongBattle) {
-                            const localPlayer = playersList.find(p => p.id === localPlayerId);
-                            if (localPlayer) {
-                                localPlayer.stats = { ...gameStats };
-                                pushPlayerState();
-                            }
-                        }
-                        if (isGameMode) updateGameStatus();
-                    }
-
+                if (!isStepMode && effectiveElapsed >= item.hitTime && !item.played) {
+                    item.played = true;
                     item.notes.forEach(noteStr => {
-                        const normNote = noteStr.toLowerCase().trim();
-                        const pos = keyPosMap[normNote];
-                        const active = effectiveElapsed >= item.hitTime && effectiveElapsed <= (item.hitTime + item.duration);
-                        const timeUntilHit = item.hitTime - effectiveElapsed;
-
-                        if (pos && (visualizerMode === 'hybrid' || visualizerMode === 'waterfall')) {
-                            const startY = sheetAreaHeight;
-                            const activeHeight = canvasHeight - startY;
-                            const yBottom = startY + activeHeight - (timeUntilHit / currentFallSpeed) * activeHeight;
-                            const blockHeight = (item.duration / currentFallSpeed) * activeHeight;
-                            const yTop = yBottom - blockHeight;
-
-                            if (yBottom > startY && yTop < canvasHeight) {
-                                const drawY = Math.max(startY, yTop);
-                                const drawH = Math.min(canvasHeight - drawY, yBottom - drawY);
-                                drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, noteStr, active, item.gameStatus);
-                            }
-                        }
-
-                        if (visualizerMode === 'hybrid') {
-                            const speedPxPerMs = (canvas.width - sheetHitX) / currentFallSpeed;
-                            const currentX = sheetHitX + timeUntilHit * speedPxPerMs;
-
-                            if (currentX >= sheetHitX && currentX < canvas.width + 50) {
-                                const { y, shiftLevel } = getNoteStaffInfo(noteStr, staffTopY, staffSpacing);
-                                
-                                ctx.save();
-                                ctx.strokeStyle = '#cbd5e1';
-                                ctx.lineWidth = 1;
-                                const staffBottomY = staffTopY + 4 * staffSpacing;
-                                
-                                if (y >= staffBottomY + staffSpacing) {
-                                    for (let lY = staffBottomY + staffSpacing; lY <= y + 1; lY += staffSpacing) {
-                                        ctx.beginPath();
-                                        ctx.moveTo(currentX - 10, lY);
-                                        ctx.lineTo(currentX + 10, lY);
-                                        ctx.stroke();
-                                    }
-                                } else if (y <= staffTopY - staffSpacing) {
-                                    for (let lY = staffTopY - staffSpacing; lY >= y - 1; lY -= staffSpacing) {
-                                        ctx.beginPath();
-                                        ctx.moveTo(currentX - 10, lY);
-                                        ctx.lineTo(currentX + 10, lY);
-                                        ctx.stroke();
-                                    }
-                                }
-                                ctx.restore();
-
-                                drawOvalNote(currentX, y, noteStr, active, item.gameStatus);
-
-                                if (shiftLevel > 0) {
-                                    ctx.save();
-                                    ctx.fillStyle = '#cbd5e1';
-                                    ctx.font = 'italic 10px serif';
-                                    ctx.textAlign = 'center';
-                                    const label = shiftLevel === 1 ? '8va' : (shiftLevel === 2 ? '15ma' : ((shiftLevel * 7 + 1) + 'ma'));
-                                    ctx.fillText(label, currentX, y - 12);
-                                    ctx.restore();
-                                }
+                        const freq = getNoteFrequency(noteStr);
+                        if (freq) {
+                            playTone(freq, item.duration / 1000, backgroundVol);
+                            if (!isGameMode && !activeMiniGame) {
+                                highlightKey(noteStr, item.duration);
                             }
                         }
                     });
+                }
+
+                if ((isGameMode || activeMiniGame) && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 280)) {
+                    item.gameStatus = 'miss';
+                    gameStats.miss++;
+                    if (isSongBattle) {
+                        const localPlayer = playersList.find(p => p.id === localPlayerId);
+                        if (localPlayer) {
+                            localPlayer.stats = { ...gameStats };
+                            pushPlayerState();
+                        }
+                    }
+                    if (isGameMode) updateGameStatus();
+                }
+
+                item.notes.forEach(noteStr => {
+                    const normNote = noteStr.toLowerCase().trim();
+                    const pos = keyPosMap[normNote];
+
+                    if (pos) {
+                        const timeUntilHit = item.hitTime - effectiveElapsed;
+                        const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * canvasHeight;
+                        const blockHeight = (item.duration / currentFallSpeed) * canvasHeight;
+                        const yTop = yBottom - blockHeight;
+
+                        if (yBottom > 0 && yTop < canvasHeight) {
+                            const drawY = Math.max(0, yTop);
+                            const drawH = Math.min(canvasHeight - drawY, yBottom - drawY);
+                            const active = effectiveElapsed >= item.hitTime && effectiveElapsed <= (item.hitTime + item.duration);
+                            drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, noteStr, active, item.gameStatus);
+                        }
+                    }
                 });
-            }
+            });
 
             if (!isStepMode && !isLooping) {
                 const lastNote = noteTimeline[noteTimeline.length - 1];
