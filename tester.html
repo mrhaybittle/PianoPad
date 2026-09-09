@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PianoPad Player - Visualizer & Haycode Creator</title>
+    <title>PianoPad - by Haybittle</title>
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
     <style>
         :root {
@@ -942,6 +942,11 @@
                     Get Songs
                 </a>
 
+                <!-- NEW LEADERBOARD BUTTON -->
+                <a href="https://mrhaybittle.github.io/PianoPad/leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
+                    🏆 Leaderboard
+                </a>
+
                 <button type="button" id="btn-play" class="btn-success">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     Play
@@ -1029,7 +1034,20 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.08 | 8-Sep 08:42 AEST (Sydney)</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="version-stamp">v26.09.09 | 9-Sep 05:17 PM AEST (Sydney)</div>
+                <div style="display: flex; gap: 4px;">
+                    <button type="button" id="btn-footer-rec" class="btn-secondary" title="Record">
+                        <svg class="icon" style="color: #ef4444; fill: #ef4444;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
+                    </button>
+                    <button type="button" id="btn-footer-play" class="btn-success" title="Play">
+                        <svg class="icon" style="color: white; fill: white;" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    </button>
+                    <button type="button" id="btn-footer-stop" class="btn-danger" title="Stop">
+                        <svg class="icon" style="color: #000; fill: #000;" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
+                    </button>
+                </div>
+            </div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1373,6 +1391,18 @@
             return `${firstName} ${lastInitial}`;
         }
 
+        function ensureStudentName() {
+            if (!sessionStudentName || !sessionStudentName.trim()) {
+                const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
+                if (inputName && inputName.trim()) {
+                    sessionStudentName = sanitizeName(inputName);
+                } else {
+                    sessionStudentName = "Anonymous";
+                }
+            }
+            return sessionStudentName;
+        }
+
         function sendJSONP(url, callbackName) {
             return new Promise((resolve) => {
                 const script = document.createElement('script');
@@ -1562,7 +1592,7 @@
                 calibStep = 1;
                 document.getElementById('btn-calib-skip').style.display = 'inline-flex';
                 document.getElementById('btn-calib-cancel').style.display = 'none';
-                document.getElementById('calib-instructions').textContent = "Welcome! Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
+                document.getElementById('calib-instructions').innerHTML = "Play the <span style='color: #ef4444;'>LOWEST</span> note on your keyboard";
                 calibModal.classList.add('open');
             }
         }
@@ -1703,8 +1733,9 @@
                 currentSongTitle = "Simon Taps";
                 
                 const maxLevelRemembered = Math.max(1, simonSequence.length - 1);
+                ensureStudentName();
                 
-                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>Max Level Remembered: <span style="color:#22c55e; font-size:1.3rem;">Level ${maxLevelRemembered}</span>`;
+                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Max Level Remembered: <span style="color:#22c55e; font-size:1.3rem;">Level ${maxLevelRemembered}</span>`;
                 document.getElementById('single-bar-graph').style.display = 'flex';
                 document.getElementById('multi-bar-graph').style.display = 'none';
                 document.getElementById('btn-battle-again').style.display = 'none';
@@ -1749,9 +1780,10 @@
             if (diff === 0) {
                 highlightKey(noteStr, 500, '#22c55e');
                 currentSongTitle = "Mystery Note";
+                ensureStudentName();
 
                 document.getElementById('game-summary-text').innerHTML = 
-                    `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>` +
+                    `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>` +
                     `Guesses Taken: <span style="color:#22c55e; font-size:1.4rem; font-weight:800;">${mysteryGuessCount}</span>`;
 
                 document.getElementById('single-bar-graph').style.display = 'flex';
@@ -1991,7 +2023,7 @@
                     if (!raceActive) { clearInterval(botInt); return; }
                     const bot = playersList.find(p => p.id === 'bot');
                     if (bot && !bot.finishTime) {
-                        bot.pxProgress += 3.8 + Math.random() * 1.4;
+                        bot.pxProgress += 42.0 + Math.random() * 6.0;
                         updateMultiplayerLanesUI();
                         if (bot.pxProgress >= 3600) {
                             bot.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
@@ -2347,6 +2379,7 @@
             gameResultsModal.classList.add('open');
 
             if (localPlayer && localPlayer.finishTime) {
+                ensureStudentName();
                 postScoreToLeaderboard(parseFloat(localPlayer.finishTime));
             }
             activeMiniGame = null;
@@ -2705,6 +2738,10 @@
         document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
         document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
 
+        document.getElementById('btn-footer-rec').addEventListener('click', toggleRecording);
+        document.getElementById('btn-footer-play').addEventListener('click', playSong);
+        document.getElementById('btn-footer-stop').addEventListener('click', stopSong);
+
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
             if (isPlaying && !isPaused && !isStepMode) playSong();
@@ -2925,10 +2962,25 @@
         async function postScoreToLeaderboard(accuracyNum) {
             if (!APPS_SCRIPT_URL) return;
 
+            ensureStudentName();
             const speedText = speedSlider.value + '%';
+            const payload = {
+                action: "SCORE_SUBMIT",
+                name: sessionStudentName,
+                title: currentSongTitle,
+                score: accuracyNum,
+                tempo: speedText
+            };
+
             try {
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payload)
+                });
                 const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&t=${Date.now()}`;
-                await sendJSONP(url);
+                sendJSONP(url);
                 document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
             } catch (err) {
                 console.warn("Could not post score to Google Apps Script.", err);
@@ -2985,8 +3037,13 @@
                 const currentSpeedNum = parseInt(speedSlider.value, 10);
                 songScores.push({ accuracy: accuracyNum, speed: currentSpeedNum });
 
+                const titleLower = currentSongTitle.toLowerCase();
+                const isAscending = titleLower.includes('mystery note') || titleLower.includes('finger sprint');
+
                 songScores.sort((a, b) => {
-                    if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+                    if (a.accuracy !== b.accuracy) {
+                        return isAscending ? a.accuracy - b.accuracy : b.accuracy - a.accuracy;
+                    }
                     return b.speed - a.speed;
                 });
 
@@ -3001,14 +3058,7 @@
         }
 
         function showGameResultsPopUp() {
-            if (!sessionStudentName) {
-                const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
-                if (inputName && inputName.trim()) {
-                    sessionStudentName = sanitizeName(inputName);
-                } else {
-                    sessionStudentName = "Anonymous";
-                }
-            }
+            ensureStudentName();
 
             const perfectHits = gameStats.perfect;
             const earlyLateHits = gameStats.earlyLate;
@@ -3047,9 +3097,8 @@
 
             gameResultsModal.classList.add('open');
 
-            calculateAndDisplayRank(accuracyNum).then(() => {
-                postScoreToLeaderboard(accuracyNum);
-            });
+            postScoreToLeaderboard(accuracyNum);
+            calculateAndDisplayRank(accuracyNum);
         }
 
         function toggleLoopMode() {
@@ -3184,6 +3233,30 @@
                 document.getElementById('status').textContent = `Step ${currentStepIndex + 1} of ${noteTimeline.length}: Next Note -> [ ${displayStr} ] (Press SPACE BAR or play on MIDI Keyboard)`;
             } else {
                 document.getElementById('status').textContent = 'Step Practice Finished!';
+            }
+        }
+
+        function stopSong() {
+            isPlaying = false;
+            isPaused = false;
+            btnPause.textContent = 'Pause';
+            btnPause.classList.remove('btn-success');
+            btnPause.classList.add('btn-warning');
+
+            if (animationFrameId !== null) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            document.querySelectorAll('.key').forEach(k => {
+                k.classList.remove('active');
+                k.style.backgroundColor = '';
+                k.style.boxShadow = '';
+            });
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('status').textContent = 'Playback stopped.';
+
+            if (isRecording) {
+                toggleRecording();
             }
         }
 
@@ -3830,26 +3903,6 @@
                 playSong();
             }
         });
-
-        function stopSong() {
-            isPlaying = false;
-            isPaused = false;
-            btnPause.textContent = 'Pause';
-            btnPause.classList.remove('btn-success');
-            btnPause.classList.add('btn-warning');
-
-            if (animationFrameId !== null) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
-            document.querySelectorAll('.key').forEach(k => {
-                k.classList.remove('active');
-                k.style.backgroundColor = '';
-                k.style.boxShadow = '';
-            });
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            document.getElementById('status').textContent = 'Playback stopped.';
-        }
 
         function playSong() {
             initAudio();
