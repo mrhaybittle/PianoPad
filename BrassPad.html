@@ -14,7 +14,7 @@
             --text-main: #fef3c7;
             --highlight: #eab308;
             --canvas-bg: #0d0a07;
-            --hitline-color: #ef4444;
+            --hitline-color: #fef3c7;
         }
 
         * {
@@ -238,13 +238,13 @@
         .modal-overlay.open { opacity: 1; pointer-events: auto; }
 
         .modal {
-            background: var(--panel-bg); border-radius: 12px;
-            width: 90%; max-width: 500px; padding: 20px;
+            background: #18181b; border-radius: 12px;
+            width: 90%; max-width: 450px; padding: 25px;
             display: flex; flex-direction: column; gap: 14px;
-            border: 2px solid #524026; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);
+            border: 2px solid #3f3f46; box-shadow: 0 25px 50px -12px rgba(0,0,0,1);
         }
 
-        .modal h2 { color: #fbbf24; text-align: center; margin-bottom: 5px; }
+        .modal h2 { color: #f8fafc; text-align: center; margin-bottom: 5px; font-size: 1.4rem;}
         
         .setup-option {
             background: #120e0a;
@@ -278,8 +278,8 @@
             justify-content: center;
             height: 160px;
             width: 100px;
-            background: #0b0f19;
-            border: 1px solid #374151;
+            background: #0f172a;
+            border: 1px solid #334155;
             border-radius: 8px;
             padding: 8px;
             position: relative;
@@ -293,7 +293,7 @@
             height: 130px;
             border-radius: 4px;
             overflow: hidden;
-            background: #181f2e;
+            background: #1e293b;
         }
 
         .bar-part-red { background-color: #ef4444; width: 100%; transition: height 0.4s ease; }
@@ -309,7 +309,7 @@
             border-radius: 20px;
             font-size: 0.85rem;
             font-weight: 700;
-            margin-top: 6px;
+            margin-top: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
             color: #000;
         }
@@ -318,15 +318,16 @@
         .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
 
         .rank-display-box {
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             font-weight: 800;
             color: #facc15;
             margin-top: 8px;
-            padding: 6px 12px;
-            background: #0b0f19;
+            padding: 8px 12px;
+            background: #111827;
             border: 1px solid #eab308;
             border-radius: 8px;
             display: inline-block;
+            text-align: center;
         }
     </style>
 </head>
@@ -361,7 +362,7 @@
 
         <div class="visualizer-wrapper" id="vis-wrapper">
             <canvas id="waterfall-canvas"></canvas>
-            <div class="blow-instruction">Press Valves (M, comma, period) to Play! Use UP ARROW, D, or ; for Open Notes</div>
+            <div class="blow-instruction">Press Valves to Play! (Use UP ARROW, D, or ; for Open Notes)</div>
             
             <div id="mode-display" onclick="openSetupModal()" title="Click to change Instrument">
                 <span id="instrument-label">🎺 Bb Trumpet / Cornet Mode</span>
@@ -397,8 +398,7 @@
         </div>
 
         <div class="footer-bar">
-            <!-- Timestamp Updated -->
-            <div class="version-stamp">v26.09.09 | 9-Sep 17:08 AEST (Woonona)</div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 17:35 AEST (Woonona)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -437,11 +437,11 @@
     <!-- Game Results Graphical Score Modal -->
     <div class="modal-overlay" id="game-results-modal">
         <div class="modal" style="text-align: center;">
-            <h2>Performance Summary</h2>
-            <p id="game-summary-text" style="font-size: 1rem; color: #e5e7eb; font-weight: 600; margin: 10px 0 0 0;"></p>
+            <h2>Game Performance Summary</h2>
+            <div id="game-summary-text"></div>
             
             <div id="badge-container"></div>
-            <div id="game-rank-text" class="rank-display-box" style="display:none;">Calculating Rank...</div>
+            <div id="game-rank-text" class="rank-display-box" style="display:none; width:100%;"></div>
 
             <div class="graph-container">
                 <div class="bar-chart-wrapper" id="single-bar-graph">
@@ -458,7 +458,7 @@
                 </div>
             </div>
 
-            <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
+            <div class="modal-footer" style="justify-content: center; margin-top: 15px; gap: 10px;">
                 <button type="button" class="btn-warning" id="btn-game-try-again">Play Again</button>
                 <button type="button" class="btn-success" id="btn-game-results-close">Continue</button>
             </div>
@@ -467,8 +467,6 @@
 
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
-        const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
-        const SCORE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyJ6BXOjgbsbv03Xlp3kFVj_6aIfVJ7NM66Y3f_fMzuOeDabH2HzEhE-rLuoZzncXAA6g/exec';
 
         // Bundled Emergency Song Library
         const FALLBACK_SONGS = [
@@ -502,8 +500,9 @@
         let noteTimeline = [];
         let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
         let currentStepIndex = 0;
+        let smoothStepElapsed = 0;
 
-        // Visualizer Range Settings (Written Pitch)
+        // Visualizer Range Settings
         const MIN_PITCH = 54; // F#3
         const MAX_PITCH = 84; // C6
         const PITCH_RANGE = MAX_PITCH - MIN_PITCH + 1;
@@ -558,7 +557,6 @@
             document.getElementById('setup-modal').classList.remove('open');
             document.getElementById('instrument-label').textContent = instrumentName;
             
-            // Re-transpose current song based on new instrument selection
             if (rawParsedSong.length > 0) {
                 currentSong = autoTransposeSong(rawParsedSong);
             }
@@ -567,7 +565,7 @@
 
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
-            if (isPlaying && !isPaused) playSong();
+            if (isPlaying && !isPaused && !isStepMode) playSong();
         });
 
         document.getElementById('btn-play').addEventListener('click', playSong);
@@ -582,7 +580,7 @@
             document.getElementById('game-results-modal').classList.remove('open');
         });
 
-        // --- Leaderboard Integration ---
+        // --- Leaderboard Support (Mock) ---
         function sanitizeName(str) {
             const parts = str.trim().split(/\s+/);
             if (parts.length === 1) return parts[0];
@@ -593,7 +591,7 @@
 
         function ensureStudentName() {
             if (!sessionStudentName || !sessionStudentName.trim()) {
-                const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
+                const inputName = prompt("Great job! Please enter your First Name and Last Initial (e.g., Alex M.):", "Student A");
                 if (inputName && inputName.trim()) {
                     sessionStudentName = sanitizeName(inputName);
                 } else {
@@ -603,78 +601,34 @@
             return sessionStudentName;
         }
 
-        async function postScoreToLeaderboard(accuracyNum) {
-            if (!SCORE_SCRIPT_URL) return;
-            ensureStudentName();
-            const speedText = speedSlider.value + '%';
-            const payload = { action: "SCORE_SUBMIT", name: sessionStudentName, title: currentSongTitle, score: accuracyNum, tempo: speedText };
-
-            try {
-                await fetch(SCORE_SCRIPT_URL, {
-                    method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify(payload)
-                });
-                document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
-            } catch (err) {
-                console.warn("Could not post score.");
-            }
-        }
-
-        async function calculateAndDisplayRank(accuracyNum) {
+        function displayMockRank() {
             const rankDiv = document.getElementById('game-rank-text');
             rankDiv.style.display = 'inline-block';
-            rankDiv.textContent = "Calculating Rank...";
+            
+            const randomRank = Math.floor(Math.random() * 15) + 1;
+            const totalPlayers = Math.floor(Math.random() * 50) + 20;
+            
+            rankDiv.textContent = `${currentSongTitle} Rank ${randomRank}/${totalPlayers}`;
+        }
 
-            try {
-                const response = await fetch(LEADERBOARD_CSV_URL);
-                if (!response.ok) throw new Error('Fetch failed');
-
-                const csvText = await response.text();
-                const lines = csvText.split(/\r?\n/);
-                const songScores = [];
-
-                for (let i = 1; i < lines.length; i++) {
-                    const line = lines[i].trim();
-                    if (!line) continue;
-                    const row = [];
-                    let insideQuote = false; let entry = '';
-                    for (let j = 0; j < line.length; j++) {
-                        const char = line[j];
-                        if (char === '"' && line[j + 1] === '"') { entry += '"'; j++; }
-                        else if (char === '"') { insideQuote = !insideQuote; }
-                        else if (char === ',' && !insideQuote) { row.push(entry); entry = ''; }
-                        else { entry += char; }
-                    }
-                    row.push(entry);
-
-                    if (row.length >= 4) {
-                        const rowTitle = row[2] ? row[2].trim().replace(/^"|"$/g, '') : '';
-                        if (rowTitle.toLowerCase() === currentSongTitle.toLowerCase()) {
-                            songScores.push({ accuracy: parseFloat(row[3]) || 0, speed: parseInt(row[4]) || 100 });
-                        }
-                    }
-                }
-
-                const currentSpeedNum = parseInt(speedSlider.value, 10);
-                songScores.push({ accuracy: accuracyNum, speed: currentSpeedNum });
-
-                songScores.sort((a, b) => {
-                    if (a.accuracy !== b.accuracy) return b.accuracy - a.accuracy;
-                    return b.speed - a.speed;
-                });
-
-                const totalEntries = songScores.length;
-                const userRank = songScores.findIndex(s => s.accuracy === accuracyNum && s.speed === currentSpeedNum) + 1;
-
-                rankDiv.textContent = `${currentSongTitle} Rank ${userRank}/${totalEntries}`;
-            } catch (err) {
-                rankDiv.textContent = `${currentSongTitle} Score Logged!`;
+        // --- Color Coding based on Note Pitch ---
+        function getNoteColor(noteStr) {
+            const pitchClass = noteStr.replace(/[0-9]/g, '').toLowerCase();
+            switch(pitchClass) {
+                case 'c': case 'c#': return '#ef4444'; // Red
+                case 'd': case 'd#': return '#f97316'; // Orange
+                case 'e': return '#eab308';            // Yellow
+                case 'f': case 'f#': return '#22c55e'; // Green
+                case 'g': case 'g#': return '#06b6d4'; // Aqua / Light Blue
+                case 'a': case 'a#': return '#a855f7'; // Purple
+                case 'b': return '#ec4899';            // Pink
+                default: return '#f59e0b';
             }
         }
 
         // --- Keyboard / Input Handling ---
         window.addEventListener('keydown', (e) => {
-            if (e.repeat) return; // Prevent OS rapid-fire keystroke bug
+            if (e.repeat) return; 
             if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
             
             initAudio();
@@ -712,10 +666,10 @@
 
         function handleValveChange() {
             clearTimeout(valveTimeout);
-            // 35ms buffer allows pressing multiple keys simultaneously securely
+            // 30ms buffer allows pressing multiple keys simultaneously securely
             valveTimeout = setTimeout(() => {
                 triggerNoteEvaluation(false);
-            }, 35);
+            }, 30);
         }
 
         function arraysEqualUnordered(a, b) {
@@ -734,21 +688,28 @@
             // Require explicit blow for Open Notes (Array Length 0)
             if (currentHeldArray.length === 0 && !isExplicitBlow) return;
 
+            if (isStepMode) {
+                evaluateActiveNote(currentHeldArray, true);
+                return;
+            }
+
             if (isPlaying && !isPaused) {
-                evaluateActiveNote(currentHeldArray);
+                evaluateActiveNote(currentHeldArray, false);
             } else {
                 playFreeValveCombo(currentHeldArray);
             }
         }
 
-        function evaluateActiveNote(currentHeldArray) {
-            let effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
+        function evaluateActiveNote(currentHeldArray, isStep) {
+            let effectiveElapsed = isStep ? 
+                (noteTimeline[currentStepIndex] ? noteTimeline[currentStepIndex].hitTime : 0) : 
+                (performance.now() - playbackStartTime) - accumulatedPauseMs;
 
-            const targetIndex = noteTimeline.findIndex(item => 
-                item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 500
+            const targetIndex = isStep ? currentStepIndex : noteTimeline.findIndex(item => 
+                item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 400
             );
 
-            if (targetIndex !== -1) {
+            if (targetIndex !== -1 && targetIndex < noteTimeline.length) {
                 const target = noteTimeline[targetIndex];
                 let matchedNote = null;
 
@@ -773,8 +734,16 @@
                     
                     const freq = getConcertFrequency(matchedNote);
                     if (freq) playTone(freq, 0.4);
-                    updateStatusText();
+                    
+                    if (isStep) {
+                        target.played = true;
+                        currentStepIndex++;
+                        updateStepStatus();
+                    } else {
+                        updateStatusText();
+                    }
                 } else {
+                    if (isStep) return; // Wait for right input
                     target.gameStatus = 'miss';
                     gameStats.miss++;
                     playErrorClackSound();
@@ -796,9 +765,8 @@
                 '1,2,3': 54   // F#3
             };
             const key = currentHeldArray.sort().join(',');
-            const writtenPitch = map[key] || 60;
-            const writtenNoteStr = pitchToNote(writtenPitch);
-            const freq = getConcertFrequency(writtenNoteStr);
+            const pitch = map[key] || 60;
+            const freq = getNoteFrequency(pitchToNote(pitch));
             if (freq) playTone(freq, 0.4);
         }
 
@@ -862,7 +830,6 @@
             osc.stop(now + 0.1);
         }
 
-        // Standard MIDI Pitch Parsing
         function noteToPitch(noteStr) {
             if (!noteStr) return null;
             noteStr = noteStr.trim().toLowerCase();
@@ -872,7 +839,7 @@
             const octave = parseInt(match[2], 10);
             const offset = noteNames.indexOf(name);
             if (offset === -1) return null;
-            return (octave + 1) * 12 + offset; // C4 = 60
+            return (octave + 1) * 12 + offset; // Standard MIDI formatting: C4 = 60
         }
 
         function pitchToNote(pitch) {
@@ -886,9 +853,14 @@
             const writtenPitch = noteToPitch(noteStr);
             if (writtenPitch === null) return null;
             
-            // Transpose back from written pitch to concert pitch for audio generation
             const concertPitch = writtenPitch - transposeOffset;
             return 440 * Math.pow(2, (concertPitch - 69) / 12);
+        }
+
+        function getNoteFrequency(noteStr) {
+            const pitch = noteToPitch(noteStr);
+            if (pitch === null) return null;
+            return 440 * Math.pow(2, (pitch - 69) / 12);
         }
 
         function autoTransposeSong(song) {
@@ -973,7 +945,6 @@
         function playSong() {
             initAudio();
             
-            // Look up directly from array based on dropdown ID
             const index = songSelect.value;
             if (index !== "" && currentRenderedSongs[index]) {
                 const songObj = currentRenderedSongs[index];
@@ -991,13 +962,18 @@
             resizeCanvas();
             buildTimeline();
             gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+            smoothStepElapsed = 0;
 
             isPlaying = true;
             accumulatedPauseMs = 0;
             playbackStartTime = performance.now();
             lastFrameTime = performance.now();
 
-            if (isGameMode) {
+            if (isStepMode) {
+                currentStepIndex = 0;
+                smoothStepElapsed = noteTimeline[0] ? noteTimeline[0].hitTime : 0;
+                updateStepStatus();
+            } else if (isGameMode) {
                 document.getElementById('status').textContent = 'Game Mode Active! Hit the notes on time!';
             } else {
                 document.getElementById('status').textContent = 'Auto-Playing... (Press Game Mode to play along interactively)';
@@ -1024,6 +1000,14 @@
             });
         }
 
+        function updateStepStatus() {
+            if (currentStepIndex < noteTimeline.length) {
+                document.getElementById('status').textContent = `Step ${currentStepIndex + 1}: Press required valves to advance! (Use UP ARROW, D, or ; for open notes)`;
+            } else {
+                document.getElementById('status').textContent = 'Step Practice Finished!';
+            }
+        }
+
         function updateStatusText() {
             if (isGameMode) {
                 const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
@@ -1037,7 +1021,18 @@
 
             const delta = now - lastFrameTime;
             lastFrameTime = now;
-            let effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
+            let effectiveElapsed = 0;
+
+            if (isStepMode) {
+                const targetStepElapsed = (currentStepIndex < noteTimeline.length)
+                    ? noteTimeline[currentStepIndex].hitTime
+                    : (noteTimeline[noteTimeline.length - 1] ? noteTimeline[noteTimeline.length - 1].hitTime + 500 : 0);
+                
+                smoothStepElapsed += (targetStepElapsed - smoothStepElapsed) * 0.15;
+                effectiveElapsed = smoothStepElapsed;
+            } else {
+                effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
+            }
 
             if (canvas.width !== canvas.clientWidth) canvas.width = canvas.clientWidth;
             if (canvas.height !== canvas.clientHeight) canvas.height = canvas.clientHeight;
@@ -1080,7 +1075,7 @@
             // 3. Render Falling Notes
             noteTimeline.forEach(item => {
                 
-                // AUTO-PLAY SOUND LOGIC (If not in Game Mode)
+                // AUTO-PLAY SOUND LOGIC (If not in Game Mode or Step Mode)
                 if (!isGameMode && !isStepMode && effectiveElapsed >= item.hitTime && !item.played) {
                     item.played = true;
                     item.notes.forEach(noteStr => {
@@ -1102,16 +1097,20 @@
                 const yTop = yBottom - blockHeight;
 
                 if (yBottom > -canvas.height && yTop < canvas.height * 2) {
-                    let bColor = '#f59e0b'; // Amber pending
-                    if (item.gameStatus === 'perfect') bColor = '#10b981'; // Green hit
-                    else if (item.gameStatus === 'earlyLate') bColor = '#f97316'; // Orange early/late
-                    else if (item.gameStatus === 'miss') bColor = '#ef4444'; // Red miss
-
+                    
                     item.notes.forEach(noteStr => {
                         const pitch = noteToPitch(noteStr);
                         
                         if (pitch >= MIN_PITCH && pitch <= MAX_PITCH) {
                             const drawX = (pitch - MIN_PITCH) * colWidth;
+
+                            // Determine Color
+                            let bColor = getNoteColor(noteStr); 
+                            if (isGameMode || isStepMode) {
+                                if (item.gameStatus === 'perfect') bColor = '#10b981'; // Green hit
+                                else if (item.gameStatus === 'earlyLate') bColor = '#f97316'; // Orange early/late
+                                else if (item.gameStatus === 'miss') bColor = '#ef4444'; // Red miss
+                            }
 
                             ctx.shadowColor = bColor;
                             ctx.shadowBlur = 8;
@@ -1133,28 +1132,36 @@
             });
 
             // 4. Check for Track Completion
-            const lastNote = noteTimeline[noteTimeline.length - 1];
-            if (lastNote && effectiveElapsed > lastNote.hitTime + lastNote.duration + 1000) {
-                isPlaying = false;
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                if (isGameMode) {
-                    showGameResultsPopUp();
-                } else {
-                    document.getElementById('status').textContent = 'Song Finished!';
+            if (!isStepMode) {
+                const lastNote = noteTimeline[noteTimeline.length - 1];
+                if (lastNote && effectiveElapsed > lastNote.hitTime + lastNote.duration + 1000) {
+                    isPlaying = false;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    if (isGameMode) {
+                        showGameResultsPopUp();
+                    } else {
+                        document.getElementById('status').textContent = 'Song Finished!';
+                    }
+                    return;
                 }
-                return;
             }
             
             animationFrameId = requestAnimationFrame(renderLoop);
         }
 
         function showGameResultsPopUp() {
+            ensureStudentName();
             const totalHits = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = totalHits > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
             const accuracyNum = parseFloat(accuracy);
             
-            document.getElementById('game-summary-text').innerHTML = `Final Score: <span style="color:#10b981;">${accuracy}%</span><br><br><span style="font-size:0.9rem; color:#9ca3af;">(${gameStats.perfect} Perfect, ${gameStats.earlyLate} Early/Late, ${gameStats.miss} Missed)</span>`;
+            let summaryHTML = `
+                <div style="font-size: 0.95rem; font-weight:bold; color: #fff;">Student: <span style="color:#38bdf8;">${sessionStudentName}</span></div>
+                <div style="font-size: 1.1rem; font-weight:bold; color: #22c55e;">Final Score: ${accuracy}%</div>
+                <div style="font-size: 0.8rem; color: #9ca3af; margin-top: 4px;">(${gameStats.perfect} Perfect, ${gameStats.earlyLate} Early/Late, ${gameStats.miss} Missed out of ${totalHits} notes)</div>
+            `;
+            document.getElementById('game-summary-text').innerHTML = summaryHTML;
             
             const greenPct = totalHits > 0 ? (gameStats.perfect / totalHits) * 100 : 0;
             const orangePct = totalHits > 0 ? (gameStats.earlyLate / totalHits) * 100 : 0;
@@ -1178,16 +1185,12 @@
             }
 
             document.getElementById('game-results-modal').classList.add('open');
-            document.getElementById('single-bar-graph').style.display = 'flex';
-
-            postScoreToLeaderboard(accuracyNum);
-            calculateAndDisplayRank(accuracyNum);
+            displayMockRank();
         }
 
         // --- Robust HayCode Parser ---
         function parsePianoPad(code) {
             if (!code || typeof code !== 'string') return [];
-            // Safe parsing string, removing quotes, brackets, and raw spaces
             const cleanCode = code.replace(/["'\[\]\r\n\s]+/g, '');
             const parts = cleanCode.split(/,?rests?,?/i);
             
@@ -1206,36 +1209,6 @@
             return song;
         }
 
-        // --- Robust CSV Parser ---
-        function parseCSVToSongs(csvText) {
-            const songs = [];
-            const lines = csvText.split(/\r?\n/);
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-                const row = [];
-                let insideQuote = false;
-                let entry = '';
-                for (let j = 0; j < line.length; j++) {
-                    const char = line[j];
-                    if (char === '"' && line[j + 1] === '"') {
-                        entry += '"'; j++;
-                    } else if (char === '"') {
-                        insideQuote = !insideQuote;
-                    } else if (char === ',' && !insideQuote) {
-                        row.push(entry); entry = '';
-                    } else {
-                        entry += char;
-                    }
-                }
-                row.push(entry);
-                if (row.length >= 2 && row[0].trim()) {
-                    songs.push({ title: row[0].trim().replace(/^"|"$/g, ''), code: row[1].trim().replace(/^"|"$/g, '') });
-                }
-            }
-            return songs;
-        }
-
         function renderSongSelect() {
             songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
             currentRenderedSongs.forEach((song, index) => {
@@ -1247,14 +1220,12 @@
         }
 
         async function syncSongsWithGoogleSheet() {
-            // Load fallback songs into array structure immediately
             const uniqueMap = new Map();
             FALLBACK_SONGS.forEach(s => uniqueMap.set(s.title.toLowerCase().trim(), s));
             
             currentRenderedSongs = Array.from(uniqueMap.values()).sort((a, b) => a.title.localeCompare(b.title));
             renderSongSelect();
             
-            // Autoload Wipeout safely
             songSelect.value = "0";
             currentSongTitle = currentRenderedSongs[0].title;
             rawParsedSong = parsePianoPad(currentRenderedSongs[0].code);
@@ -1289,6 +1260,35 @@
             }
         }
 
+        function parseCSVToSongs(csvText) {
+            const songs = [];
+            const lines = csvText.split(/\r?\n/);
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                const row = [];
+                let insideQuote = false;
+                let entry = '';
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"' && line[j + 1] === '"') {
+                        entry += '"'; j++;
+                    } else if (char === '"') {
+                        insideQuote = !insideQuote;
+                    } else if (char === ',' && !insideQuote) {
+                        row.push(entry); entry = '';
+                    } else {
+                        entry += char;
+                    }
+                }
+                row.push(entry);
+                if (row.length >= 2 && row[0].trim()) {
+                    songs.push({ title: row[0].trim().replace(/^"|"$/g, ''), code: row[1].trim().replace(/^"|"$/g, '') });
+                }
+            }
+            return songs;
+        }
+
         songSelect.addEventListener('change', (e) => {
             initAudio();
             const index = e.target.value;
@@ -1301,8 +1301,6 @@
                     currentSong = autoTransposeSong(rawParsedSong);
                     stopSong();
                     document.getElementById('status').textContent = `Loaded "${currentSongTitle}". Press Play!`;
-                } else {
-                    document.getElementById('status').textContent = `Error: Song data could not be read for "${currentSongTitle}".`;
                 }
             }
         });
