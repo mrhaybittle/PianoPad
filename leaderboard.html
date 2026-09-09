@@ -271,12 +271,6 @@
             max-width: 100px;
         }
 
-        /* Home Entry Styling */
-        .home-entry {
-            color: var(--home-pink) !important;
-            font-weight: 700;
-        }
-
         .home-icon {
             margin-left: 4px;
             font-style: normal;
@@ -341,7 +335,7 @@
         let viewMode = 'SONGS';
         let dateSortMode = 'DEFAULT'; 
 
-        // Helper function to check if entry timestamp is between 2:05 PM and 8:15 AM
+        // Helper function to check if timestamp is between 2:05 PM and 8:15 AM
         function isOutsideSchoolHours(dateString) {
             if (!dateString) return false;
             const d = new Date(dateString);
@@ -468,21 +462,27 @@
                 else if (item.songRank === 3) rankBadge = `<span class="rank-badge rank-3">🥉</span>`;
 
                 let positionText = `${item.songRank}/${item.songTotal}`;
-                let dateStyle = isToday(item.timestamp) ? 'font-weight: 700; color: #facc15;' : 'color: #9ca3af;';
 
-                // Check for home / outside school hours
+                // Date styling logic: pink + home icon if outside school hours, yellow if today, gray default
                 const isHome = isOutsideSchoolHours(item.timestamp);
-                const nameStyleClass = isHome ? 'home-entry' : '';
+                let dateStyle = 'color: #9ca3af;';
+                
+                if (isHome) {
+                    dateStyle = 'font-weight: 700; color: var(--home-pink);';
+                } else if (isToday(item.timestamp)) {
+                    dateStyle = 'font-weight: 700; color: #facc15;';
+                }
+
                 const homeIcon = isHome ? ' <span class="home-icon" title="Achieved outside school hours">🏠</span>' : '';
 
                 tr.innerHTML = `
                     <td>${rankBadge}</td>
                     <td style="font-weight: 700; color: #9ca3af;">${positionText}</td>
-                    <td class="${nameStyleClass}" style="${!isHome ? 'font-weight: 600; color: #fff;' : ''}">${item.name}${homeIcon}</td>
+                    <td style="font-weight: 600; color: #fff;">${item.name}</td>
                     <td>${item.song}</td>
                     <td class="score-highlight">${item.accuracy.toFixed(1)}%</td>
                     <td>${item.speed}%</td>
-                    <td style="font-size: 0.8rem; ${dateStyle}">${item.timestamp || 'N/A'}</td>
+                    <td style="font-size: 0.8rem; ${dateStyle}">${item.timestamp || 'N/A'}${homeIcon}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -530,15 +530,10 @@
                         else if (gameConfig.key === 'mystery note') formattedVal = `${Math.round(score.accuracy)} Guesses`;
                         else if (gameConfig.key === 'finger sprint') formattedVal = `${score.accuracy.toFixed(2)}s`;
 
-                        // Check for home / outside school hours
-                        const isHome = isOutsideSchoolHours(score.timestamp);
-                        const nameStyleClass = isHome ? 'arcade-row-name home-entry' : 'arcade-row-name';
-                        const homeIcon = isHome ? ' <span class="home-icon" title="Achieved outside school hours">🏠</span>' : '';
-
                         row.innerHTML = `
                             <div style="display:flex; align-items:center; gap:6px;">
                                 ${badge}
-                                <span class="${nameStyleClass}">${score.name}${homeIcon}</span>
+                                <span class="arcade-row-name">${score.name}</span>
                             </div>
                             <span class="score-highlight">${formattedVal}</span>
                         `;
