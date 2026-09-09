@@ -398,7 +398,7 @@
 
         <div class="footer-bar">
             <!-- Timestamp Updated -->
-            <div class="version-stamp">v26.09.09 | 9-Sep 16:56 AEST (Woonona)</div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 17:08 AEST (Woonona)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -438,7 +438,7 @@
     <div class="modal-overlay" id="game-results-modal">
         <div class="modal" style="text-align: center;">
             <h2>Performance Summary</h2>
-            <p id="game-summary-text" style="font-size: 0.95rem; color: #e5e7eb; font-weight: 600; margin: 10px 0 0 0;"></p>
+            <p id="game-summary-text" style="font-size: 1rem; color: #e5e7eb; font-weight: 600; margin: 10px 0 0 0;"></p>
             
             <div id="badge-container"></div>
             <div id="game-rank-text" class="rank-display-box" style="display:none;">Calculating Rank...</div>
@@ -491,7 +491,7 @@
         let isStepMode = false;
         let sessionStudentName = "";
         
-        let transposeOffset = 2; // Default to Bb Instruments
+        let transposeOffset = 2; // Default to Bb Instruments (+2 semitones from concert to written)
         let instrumentName = "🎺 Bb Trumpet / Cornet Mode";
 
         let animationFrameId = null;
@@ -503,7 +503,7 @@
         let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
         let currentStepIndex = 0;
 
-        // Visualizer Range Settings (MIDI Pitch Standards)
+        // Visualizer Range Settings (Written Pitch)
         const MIN_PITCH = 54; // F#3
         const MAX_PITCH = 84; // C6
         const PITCH_RANGE = MAX_PITCH - MIN_PITCH + 1;
@@ -771,7 +771,7 @@
                         gameStats.earlyLate++;
                     }
                     
-                    const freq = getNoteFrequency(matchedNote);
+                    const freq = getConcertFrequency(matchedNote);
                     if (freq) playTone(freq, 0.4);
                     updateStatusText();
                 } else {
@@ -796,8 +796,9 @@
                 '1,2,3': 54   // F#3
             };
             const key = currentHeldArray.sort().join(',');
-            const pitch = map[key] || 60;
-            const freq = getNoteFrequency(pitchToNote(pitch));
+            const writtenPitch = map[key] || 60;
+            const writtenNoteStr = pitchToNote(writtenPitch);
+            const freq = getConcertFrequency(writtenNoteStr);
             if (freq) playTone(freq, 0.4);
         }
 
@@ -881,10 +882,13 @@
             return noteNames[offset] + octave;
         }
 
-        function getNoteFrequency(noteStr) {
-            const pitch = noteToPitch(noteStr);
-            if (pitch === null) return null;
-            return 440 * Math.pow(2, (pitch - 69) / 12);
+        function getConcertFrequency(noteStr) {
+            const writtenPitch = noteToPitch(noteStr);
+            if (writtenPitch === null) return null;
+            
+            // Transpose back from written pitch to concert pitch for audio generation
+            const concertPitch = writtenPitch - transposeOffset;
+            return 440 * Math.pow(2, (concertPitch - 69) / 12);
         }
 
         function autoTransposeSong(song) {
@@ -1080,7 +1084,7 @@
                 if (!isGameMode && !isStepMode && effectiveElapsed >= item.hitTime && !item.played) {
                     item.played = true;
                     item.notes.forEach(noteStr => {
-                        const freq = getNoteFrequency(noteStr);
+                        const freq = getConcertFrequency(noteStr);
                         if (freq) playTone(freq, item.duration / 1000);
                     });
                 }
