@@ -278,7 +278,7 @@
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 70px;">Rank</th>
+                            <th style="width: 100px;">Rank</th>
                             <th>Student Name</th>
                             <th>Song Title</th>
                             <th>Accuracy</th>
@@ -419,12 +419,14 @@
             tbody.innerHTML = '';
             filtered.forEach((item, index) => {
                 const tr = document.createElement('tr');
+                const totalForSong = allScores.filter(s => s.song === item.song).length;
+                const rankText = `${index + 1}/${totalForSong}`;
 
-                let rankBadge = `<span class="rank-badge rank-other">${index + 1}</span>`;
+                let rankBadge = `<span class="rank-badge rank-other" style="width: auto; padding: 2px 10px; border-radius: 12px;">${rankText}</span>`;
                 if (dateSortMode === 'DEFAULT') {
-                    if (index === 0) rankBadge = `<span class="rank-badge rank-1">🥇</span>`;
-                    else if (index === 1) rankBadge = `<span class="rank-badge rank-2">🥈</span>`;
-                    else if (index === 2) rankBadge = `<span class="rank-badge rank-3">🥉</span>`;
+                    if (index === 0) rankBadge = `<span class="rank-badge rank-1" style="width: auto; padding: 2px 10px; border-radius: 12px;">🥇 ${rankText}</span>`;
+                    else if (index === 1) rankBadge = `<span class="rank-badge rank-2" style="width: auto; padding: 2px 10px; border-radius: 12px;">🥈 ${rankText}</span>`;
+                    else if (index === 2) rankBadge = `<span class="rank-badge rank-3" style="width: auto; padding: 2px 10px; border-radius: 12px;">🥉 ${rankText}</span>`;
                 }
 
                 let dateStyle = isToday(item.timestamp) ? 'font-weight: 700; color: #facc15;' : 'color: #9ca3af;';
