@@ -892,6 +892,10 @@
                     🎙️ MIC INPUT: OFF
                 </button>
 
+                <button type="button" id="btn-sheet-toggle" class="btn-secondary" style="background-color: #0d9488; font-weight: 700;" title="Toggle Sheet Music Display">
+                    🎼 Sheet: ON
+                </button>
+
                 <button type="button" id="btn-game" class="btn-secondary">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                     Game Mode: OFF
@@ -940,11 +944,6 @@
                 <a href="https://pianopadshare.blogspot.com/" target="_blank" rel="noopener noreferrer" class="btn-link btn-secondary">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
                     Get Songs
-                </a>
-
-                <!-- NEW LEADERBOARD BUTTON -->
-                <a href="https://mrhaybittle.github.io/PianoPad/leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
-                    🏆 Leaderboard
                 </a>
 
                 <button type="button" id="btn-play" class="btn-success">
@@ -1034,20 +1033,7 @@
         </div>
 
         <div class="footer-bar">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div class="version-stamp">v26.09.09 | 9-Sep 05:17 PM AEST (Sydney)</div>
-                <div style="display: flex; gap: 4px;">
-                    <button type="button" id="btn-footer-rec" class="btn-secondary" title="Record">
-                        <svg class="icon" style="color: #ef4444; fill: #ef4444;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
-                    </button>
-                    <button type="button" id="btn-footer-play" class="btn-success" title="Play">
-                        <svg class="icon" style="color: white; fill: white;" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                    </button>
-                    <button type="button" id="btn-footer-stop" class="btn-danger" title="Stop">
-                        <svg class="icon" style="color: #000; fill: #000;" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
-                    </button>
-                </div>
-            </div>
+            <div class="version-stamp">v26.09.10 | 10-Sep 09:37 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1273,6 +1259,30 @@
         let currentTheme = 'default';
         let bonusSoundsUnlocked = false;
 
+        // Sheet Music State
+        let showSheetMusic = localStorage.getItem('pianopad_sheet_music') !== 'false';
+        const btnSheetToggle = document.getElementById('btn-sheet-toggle');
+
+        if (btnSheetToggle) {
+            btnSheetToggle.addEventListener('click', () => {
+                showSheetMusic = !showSheetMusic;
+                localStorage.setItem('pianopad_sheet_music', showSheetMusic ? 'true' : 'false');
+                updateSheetToggleButton();
+            });
+            updateSheetToggleButton();
+        }
+
+        function updateSheetToggleButton() {
+            if (!btnSheetToggle) return;
+            if (showSheetMusic) {
+                btnSheetToggle.textContent = '🎼 Sheet: ON';
+                btnSheetToggle.style.backgroundColor = '#0d9488';
+            } else {
+                btnSheetToggle.textContent = '🎼 Sheet: OFF';
+                btnSheetToggle.style.backgroundColor = '#4b5563';
+            }
+        }
+
         // Microphone Pitch Detection Variables
         let micStream = null;
         let micAnalyser = null;
@@ -1423,6 +1433,125 @@
                 };
                 document.body.appendChild(script);
             });
+        }
+
+        /* --- Sheet Music Helper Functions --- */
+        function getDiatonicStepAndShift(noteStr) {
+            noteStr = noteStr.trim().toLowerCase();
+            const match = noteStr.match(/^([a-g])(#?)([0-9]+)$/);
+            if (!match) return null;
+
+            const letter = match[1].toUpperCase();
+            const isSharp = match[2] === '#';
+            let octave = parseInt(match[3], 10);
+
+            const baseSteps = { 'C': 0, 'D': 1, 'E': 2, 'F': 3, 'G': 4, 'A': 5, 'B': 6 };
+            let baseStep = baseSteps[letter];
+            if (baseStep === undefined) return null;
+
+            let totalDiatonicStep = (octave - 1) * 7 + baseStep;
+
+            let octaveShift = 0;
+            if (totalDiatonicStep > 14 && totalDiatonicStep <= 21) {
+                octaveShift = 1; // 8va
+                totalDiatonicStep -= 7;
+            } else if (totalDiatonicStep > 21) {
+                octaveShift = 2; // 15ma
+                totalDiatonicStep -= 14;
+            }
+
+            let relativeStep = totalDiatonicStep - 2;
+
+            return {
+                letter: letter,
+                isSharp: isSharp,
+                step: relativeStep,
+                octaveShift: octaveShift
+            };
+        }
+
+        function drawSheetMusicStaff(ctx, width) {
+            const STAFF_HEIGHT = 75;
+            const line1_y = 56;
+            const lineSpacing = 8;
+
+            ctx.save();
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, STAFF_HEIGHT);
+
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, STAFF_HEIGHT);
+            ctx.lineTo(width, STAFF_HEIGHT);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 5; i++) {
+                const ly = line1_y - i * lineSpacing;
+                ctx.beginPath();
+                ctx.moveTo(0, ly);
+                ctx.lineTo(width, ly);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = '#000000';
+            ctx.font = '68px "Segoe UI Symbol", "Apple Symbols", "Noto Music", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('𝄞', 35, 48);
+
+            ctx.restore();
+        }
+
+        function drawStemlessNote(ctx, x, y, isSharp, color = '#000000') {
+            ctx.save();
+            ctx.fillStyle = color;
+
+            if (isSharp) {
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('♯', x - 7, y);
+            }
+
+            ctx.beginPath();
+            ctx.ellipse(x, y, 5.5, 4.0, -0.25, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawLedgerLines(ctx, x, step, line1_y, halfStep, color = '#000000') {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.2;
+
+            if (step <= -2) {
+                const ly = line1_y + 2 * halfStep;
+                ctx.beginPath();
+                ctx.moveTo(x - 9, ly);
+                ctx.lineTo(x + 9, ly);
+                ctx.stroke();
+            }
+
+            if (step >= 10) {
+                const ly1 = line1_y - 10 * halfStep;
+                ctx.beginPath();
+                ctx.moveTo(x - 9, ly1);
+                ctx.lineTo(x + 9, ly1);
+                ctx.stroke();
+            }
+
+            if (step >= 12) {
+                const ly2 = line1_y - 12 * halfStep;
+                ctx.beginPath();
+                ctx.moveTo(x - 9, ly2);
+                ctx.lineTo(x + 9, ly2);
+                ctx.stroke();
+            }
+
+            ctx.restore();
         }
 
         /* --- Audio Pitch Detection Implementation --- */
@@ -1592,7 +1721,7 @@
                 calibStep = 1;
                 document.getElementById('btn-calib-skip').style.display = 'inline-flex';
                 document.getElementById('btn-calib-cancel').style.display = 'none';
-                document.getElementById('calib-instructions').innerHTML = "Play the <span style='color: #ef4444;'>LOWEST</span> note on your keyboard";
+                document.getElementById('calib-instructions').textContent = "Welcome! Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
                 calibModal.classList.add('open');
             }
         }
@@ -2738,10 +2867,6 @@
         document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
         document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
 
-        document.getElementById('btn-footer-rec').addEventListener('click', toggleRecording);
-        document.getElementById('btn-footer-play').addEventListener('click', playSong);
-        document.getElementById('btn-footer-stop').addEventListener('click', stopSong);
-
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
             if (isPlaying && !isPaused && !isStepMode) playSong();
@@ -3233,30 +3358,6 @@
                 document.getElementById('status').textContent = `Step ${currentStepIndex + 1} of ${noteTimeline.length}: Next Note -> [ ${displayStr} ] (Press SPACE BAR or play on MIDI Keyboard)`;
             } else {
                 document.getElementById('status').textContent = 'Step Practice Finished!';
-            }
-        }
-
-        function stopSong() {
-            isPlaying = false;
-            isPaused = false;
-            btnPause.textContent = 'Pause';
-            btnPause.classList.remove('btn-success');
-            btnPause.classList.add('btn-warning');
-
-            if (animationFrameId !== null) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
-            document.querySelectorAll('.key').forEach(k => {
-                k.classList.remove('active');
-                k.style.backgroundColor = '';
-                k.style.boxShadow = '';
-            });
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            document.getElementById('status').textContent = 'Playback stopped.';
-
-            if (isRecording) {
-                toggleRecording();
             }
         }
 
@@ -3904,6 +4005,26 @@
             }
         });
 
+        function stopSong() {
+            isPlaying = false;
+            isPaused = false;
+            btnPause.textContent = 'Pause';
+            btnPause.classList.remove('btn-success');
+            btnPause.classList.add('btn-warning');
+
+            if (animationFrameId !== null) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            document.querySelectorAll('.key').forEach(k => {
+                k.classList.remove('active');
+                k.style.backgroundColor = '';
+                k.style.boxShadow = '';
+            });
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('status').textContent = 'Playback stopped.';
+        }
+
         function playSong() {
             initAudio();
             stopSong();
@@ -4041,6 +4162,67 @@
 
             const canvasHeight = canvas.height;
             const currentFallSpeed = activeMiniGame === 'drop' ? miniGameFallSpeedMs : FALL_TIME_MS;
+            const waterfallTop = (showSheetMusic && !activeMiniGame) ? 75 : 0;
+            const waterfallHeight = canvasHeight - waterfallTop;
+
+            if (showSheetMusic && !activeMiniGame) {
+                drawSheetMusicStaff(ctx, canvas.width);
+
+                const line1_y = 56;
+                const halfStep = 4;
+                const targetX = 85;
+                const CLEF_X_END = 65;
+                const SCROLL_TIME_MS = 2200;
+
+                let has8va = false;
+                let has15ma = false;
+
+                let nextNoteItem = null;
+                let minUpcomingTime = Infinity;
+
+                noteTimeline.forEach(item => {
+                    const timeUntilHit = item.hitTime - effectiveElapsed;
+                    if (timeUntilHit >= -100 && timeUntilHit < minUpcomingTime && !item.played) {
+                        minUpcomingTime = timeUntilHit;
+                        nextNoteItem = item;
+                    }
+                });
+
+                noteTimeline.forEach(item => {
+                    const timeUntilHit = item.hitTime - effectiveElapsed;
+                    if (timeUntilHit >= -350 && timeUntilHit <= SCROLL_TIME_MS + 400) {
+                        const noteX = targetX + (timeUntilHit / SCROLL_TIME_MS) * (canvas.width - targetX);
+
+                        if (noteX > CLEF_X_END && noteX < canvas.width + 15) {
+                            const isNextNote = (item === nextNoteItem);
+                            const noteColor = isNextNote ? '#ef4444' : '#000000';
+
+                            item.notes.forEach(noteStr => {
+                                const info = getDiatonicStepAndShift(noteStr);
+                                if (info) {
+                                    const noteY = line1_y - info.step * halfStep;
+                                    drawLedgerLines(ctx, noteX, info.step, line1_y, halfStep, noteColor);
+                                    drawStemlessNote(ctx, noteX, noteY, info.isSharp, noteColor);
+
+                                    if (info.octaveShift === 1) has8va = true;
+                                    if (info.octaveShift === 2) has15ma = true;
+                                }
+                            });
+                        }
+                    }
+                });
+
+                if (has8va || has15ma) {
+                    ctx.save();
+                    ctx.fillStyle = '#8b5cf6';
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'top';
+                    const octText = has15ma ? '15ma' : '8va';
+                    ctx.fillText(`${octText} ------------------`, 85, 4);
+                    ctx.restore();
+                }
+            }
 
             noteTimeline.forEach(item => {
                 const backgroundVol = (isGameMode || activeMiniGame) ? 0.2 : 1.0;
@@ -4077,12 +4259,12 @@
 
                     if (pos) {
                         const timeUntilHit = item.hitTime - effectiveElapsed;
-                        const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * canvasHeight;
-                        const blockHeight = (item.duration / currentFallSpeed) * canvasHeight;
+                        const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * waterfallHeight;
+                        const blockHeight = (item.duration / currentFallSpeed) * waterfallHeight;
                         const yTop = yBottom - blockHeight;
 
-                        if (yBottom > 0 && yTop < canvasHeight) {
-                            const drawY = Math.max(0, yTop);
+                        if (yBottom > waterfallTop && yTop < canvasHeight) {
+                            const drawY = Math.max(waterfallTop, yTop);
                             const drawH = Math.min(canvasHeight - drawY, yBottom - drawY);
                             const active = effectiveElapsed >= item.hitTime && effectiveElapsed <= (item.hitTime + item.duration);
                             drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, noteStr, active, item.gameStatus);
