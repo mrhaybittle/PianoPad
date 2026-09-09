@@ -1038,7 +1038,7 @@
 
         <div class="footer-bar">
             <div style="display: flex; align-items: center; gap: 12px;">
-                <div class="version-stamp">v26.09.10 | 10-Sep 07:22 AM AEST (Sydney)</div>
+                <div class="version-stamp">v26.09.10 | 10-Sep 07:29 AM AEST (Sydney)</div>
                 <div style="display: flex; gap: 4px;">
                     <button type="button" id="btn-footer-rec" class="btn-secondary" title="Record">
                         <svg class="icon" style="color: #ef4444; fill: #ef4444;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
@@ -4099,9 +4099,9 @@
                 ctx.stroke();
             }
 
-            // Larger Treble Clef Symbol
+            // Extra Large Treble Clef Symbol
             ctx.fillStyle = '#000000';
-            ctx.font = '52px "Segoe UI Symbol", "Apple Symbols", "Noto Music", sans-serif';
+            ctx.font = '68px "Segoe UI Symbol", "Apple Symbols", "Noto Music", sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText('𝄞', 35, 38);
@@ -4223,7 +4223,6 @@
                 let has8va = false;
                 let has15ma = false;
 
-                // Identify the single next upcoming note closest to hitting the treble clef
                 let nextNoteItem = null;
                 let minUpcomingTime = Infinity;
 
