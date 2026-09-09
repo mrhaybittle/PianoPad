@@ -16,6 +16,7 @@
             --gold: #fbbf24;
             --silver: #cbd5e1;
             --bronze: #d97706;
+            --home-pink: #f472b6;
         }
 
         * {
@@ -269,6 +270,17 @@
             text-overflow: ellipsis;
             max-width: 100px;
         }
+
+        /* Home Entry Styling */
+        .home-entry {
+            color: var(--home-pink) !important;
+            font-weight: 700;
+        }
+
+        .home-icon {
+            margin-left: 4px;
+            font-style: normal;
+        }
     </style>
 </head>
 <body>
@@ -328,6 +340,19 @@
         let allScores = [];
         let viewMode = 'SONGS';
         let dateSortMode = 'DEFAULT'; 
+
+        // Helper function to check if entry timestamp is between 2:05 PM and 8:15 AM
+        function isOutsideSchoolHours(dateString) {
+            if (!dateString) return false;
+            const d = new Date(dateString);
+            if (isNaN(d.getTime())) return false;
+
+            const totalMinutes = d.getHours() * 60 + d.getMinutes();
+            const startHomeMins = (14 * 60) + 5; // 2:05 PM = 845 minutes
+            const endHomeMins = (8 * 60) + 15;   // 8:15 AM = 495 minutes
+
+            return totalMinutes >= startHomeMins || totalMinutes < endHomeMins;
+        }
 
         function parseCSV(csvText) {
             const lines = csvText.split(/\r?\n/);
@@ -436,21 +461,24 @@
             filtered.forEach((item) => {
                 const tr = document.createElement('tr');
 
-                // Medal Logic for EVERY unique song (based on pre-calculated item.songRank)
+                // Medal Logic
                 let rankBadge = `<span class="rank-badge rank-other">${item.songRank}</span>`;
                 if (item.songRank === 1) rankBadge = `<span class="rank-badge rank-1">🥇</span>`;
                 else if (item.songRank === 2) rankBadge = `<span class="rank-badge rank-2">🥈</span>`;
                 else if (item.songRank === 3) rankBadge = `<span class="rank-badge rank-3">🥉</span>`;
 
-                // Distinct Position Column
                 let positionText = `${item.songRank}/${item.songTotal}`;
-                
                 let dateStyle = isToday(item.timestamp) ? 'font-weight: 700; color: #facc15;' : 'color: #9ca3af;';
+
+                // Check for home / outside school hours
+                const isHome = isOutsideSchoolHours(item.timestamp);
+                const nameStyleClass = isHome ? 'home-entry' : '';
+                const homeIcon = isHome ? ' <span class="home-icon" title="Achieved outside school hours">🏠</span>' : '';
 
                 tr.innerHTML = `
                     <td>${rankBadge}</td>
                     <td style="font-weight: 700; color: #9ca3af;">${positionText}</td>
-                    <td style="font-weight: 600; color: #fff;">${item.name}</td>
+                    <td class="${nameStyleClass}" style="${!isHome ? 'font-weight: 600; color: #fff;' : ''}">${item.name}${homeIcon}</td>
                     <td>${item.song}</td>
                     <td class="score-highlight">${item.accuracy.toFixed(1)}%</td>
                     <td>${item.speed}%</td>
@@ -502,10 +530,15 @@
                         else if (gameConfig.key === 'mystery note') formattedVal = `${Math.round(score.accuracy)} Guesses`;
                         else if (gameConfig.key === 'finger sprint') formattedVal = `${score.accuracy.toFixed(2)}s`;
 
+                        // Check for home / outside school hours
+                        const isHome = isOutsideSchoolHours(score.timestamp);
+                        const nameStyleClass = isHome ? 'arcade-row-name home-entry' : 'arcade-row-name';
+                        const homeIcon = isHome ? ' <span class="home-icon" title="Achieved outside school hours">🏠</span>' : '';
+
                         row.innerHTML = `
                             <div style="display:flex; align-items:center; gap:6px;">
                                 ${badge}
-                                <span class="arcade-row-name">${score.name}</span>
+                                <span class="${nameStyleClass}">${score.name}${homeIcon}</span>
                             </div>
                             <span class="score-highlight">${formattedVal}</span>
                         `;
@@ -560,7 +593,7 @@
                     totalDisplay.textContent = `Leaderboard Scores = ${allScores.length}`;
                 }
 
-                // Compute global rank and total entries per individual song for medal display
+                // Compute global rank and total entries per individual song
                 let songRanks = {};
                 allScores.filter(s => !s.isMiniGame).forEach(s => {
                     if (!songRanks[s.song]) songRanks[s.song] = [];
