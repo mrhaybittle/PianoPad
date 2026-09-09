@@ -233,14 +233,14 @@
 
         .modal {
             background: #18181b; border-radius: 12px;
-            width: 90%; max-width: 500px; padding: 25px;
+            width: 90%; max-width: 450px; padding: 25px;
             display: flex; flex-direction: column; gap: 14px;
-            border: 2px solid #524026; box-shadow: 0 25px 50px -12px rgba(0,0,0,1);
+            border: 2px solid #3f3f46; box-shadow: 0 25px 50px -12px rgba(0,0,0,1);
             max-height: 85vh;
             overflow-y: auto;
         }
 
-        .modal h2 { color: #fbbf24; text-align: center; margin-bottom: 5px; font-size: 1.4rem;}
+        .modal h2 { color: #f8fafc; text-align: center; margin-bottom: 5px; font-size: 1.4rem;}
         
         .setup-option {
             background: #120e0a;
@@ -407,7 +407,7 @@
 
         <div class="visualizer-wrapper" id="vis-wrapper">
             <canvas id="waterfall-canvas"></canvas>
-            <div class="blow-instruction">Press Valves (M, comma, period) to Play! Use UP ARROW, D, L, or ; for Open Notes</div>
+            <div class="blow-instruction">Press Valves to Play! (Use UP ARROW, D, L, or ; for Open Notes)</div>
             
             <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0; z-index: 10;">
                 <button type="button" id="btn-octave-down" class="btn-secondary" style="height: 38px; font-weight: bold; font-size: 1rem;" title="Shift Audio Down 1 Octave">⬇️ 8vb</button>
@@ -449,12 +449,13 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.09 | 9-Sep 18:12 AEST (Sydney)</div>
+            <!-- Timestamp Updated -->
+            <div class="version-stamp">v26.09.09 | 9-Sep 18:24 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
 
-    <!-- Initial Setup Modal -->
+    <!-- Instrument Setup Modal -->
     <div class="modal-overlay" id="setup-modal">
         <div class="modal">
             <h2>Select Instrument 🎺</h2>
@@ -493,7 +494,7 @@
         <div class="modal">
             <h2>Select MIDI Channel 🎛️</h2>
             <p style="text-align: center; color: #d1d5db; font-size: 0.9rem; margin-bottom: 10px;">Multiple tracks found. Choose which instrument/channel to import:</p>
-            <div id="midi-channel-list" style="display: flex; flex-direction: column; gap: 8px;">
+            <div id="midi-channel-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto;">
                 <!-- Populated by JS -->
             </div>
             <button type="button" class="btn-secondary" style="justify-content: center; padding: 10px; margin-top: 10px;" onclick="document.getElementById('midi-channel-modal').classList.remove('open')">Cancel</button>
@@ -704,7 +705,7 @@
             rankDiv.style.display = 'inline-block';
             const randomRank = Math.floor(Math.random() * 15) + 1;
             const totalPlayers = Math.floor(Math.random() * 50) + 20;
-            rankDiv.textContent = `World Cup Song Rank ${randomRank}/${totalPlayers}`;
+            rankDiv.textContent = `Global Song Rank ${randomRank}/${totalPlayers}`;
         }
 
         // --- Color Coding based on Note Pitch ---
@@ -821,7 +822,7 @@
             let valveChanged = false;
             const keyStr = e.key.toLowerCase();
 
-            // Valves: M, comma, period
+            // Valves: m, comma, period
             if (keyStr === 'm') { setValve(1, true); valveChanged = true; }
             if (keyStr === ',') { setValve(2, true); valveChanged = true; }
             if (keyStr === '.') { setValve(3, true); valveChanged = true; }
@@ -852,10 +853,10 @@
 
         function handleValveChange() {
             clearTimeout(valveTimeout);
-            // 30ms buffer allows pressing multiple keys simultaneously securely
+            // 35ms buffer allows pressing multiple keys simultaneously securely
             valveTimeout = setTimeout(() => {
                 triggerNoteEvaluation(false);
-            }, 30);
+            }, 35);
         }
 
         function arraysEqualUnordered(a, b) {
@@ -874,28 +875,23 @@
             // Require explicit blow for Open Notes (Array Length 0)
             if (currentHeldArray.length === 0 && !isExplicitBlow) return;
 
-            if (isStepMode) {
-                evaluateActiveNote(currentHeldArray, true);
-                return;
-            }
-
             if (isPlaying && !isPaused) {
-                evaluateActiveNote(currentHeldArray, false);
+                evaluateActiveNote(currentHeldArray);
             } else {
                 playFreeValveCombo(currentHeldArray);
             }
         }
 
-        function evaluateActiveNote(currentHeldArray, isStep) {
-            let effectiveElapsed = isStep ? 
+        function evaluateActiveNote(currentHeldArray) {
+            let effectiveElapsed = isStepMode ? 
                 (noteTimeline[currentStepIndex] ? noteTimeline[currentStepIndex].hitTime : 0) : 
                 (performance.now() - playbackStartTime) - accumulatedPauseMs;
 
-            const targetIndex = isStep ? currentStepIndex : noteTimeline.findIndex(item => 
-                item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 400
+            const targetIndex = noteTimeline.findIndex(item => 
+                item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 500
             );
 
-            if (targetIndex !== -1 && targetIndex < noteTimeline.length) {
+            if (targetIndex !== -1 && (!isStepMode || targetIndex === currentStepIndex)) {
                 const target = noteTimeline[targetIndex];
                 let matchedNote = null;
 
@@ -921,7 +917,7 @@
                     const freq = getConcertFrequency(matchedNote);
                     if (freq) playTone(freq, 0.4);
                     
-                    if (isStep) {
+                    if (isStepMode) {
                         target.played = true;
                         currentStepIndex++;
                         updateStepStatus();
@@ -929,14 +925,14 @@
                         updateStatusText();
                     }
                 } else {
-                    if (isStep) return; // Wait for right input in Step Mode
+                    if (isStepMode) return; // Wait for right input in Step Mode
                     target.gameStatus = 'miss';
                     gameStats.miss++;
                     playErrorClackSound();
                     updateStatusText();
                 }
             } else {
-                playFreeValveCombo(currentHeldArray);
+                if (!isStepMode) playFreeValveCombo(currentHeldArray);
             }
         }
 
@@ -988,23 +984,23 @@
 
             if (instrumentType === 'trumpet') {
                 osc.type = 'sawtooth';
-                filterMultiplierStart = 5;
-                filterMultiplierEnd = 2;
+                filterMultiplierStart = 6.0;
+                filterMultiplierEnd = 2.5;
                 baseGain = 0.4;
             } else if (instrumentType === 'horn') {
                 osc.type = 'sawtooth';
-                filterMultiplierStart = 3;
-                filterMultiplierEnd = 1.2;
+                filterMultiplierStart = 3.5;
+                filterMultiplierEnd = 1.5;
                 baseGain = 0.45;
             } else if (instrumentType === 'euphonium') {
                 osc.type = 'triangle'; 
-                filterMultiplierStart = 2.5;
-                filterMultiplierEnd = 1.0;
+                filterMultiplierStart = 2.0;
+                filterMultiplierEnd = 0.9;
                 baseGain = 0.6; 
             } else if (instrumentType === 'tuba') {
                 osc.type = 'triangle'; 
-                filterMultiplierStart = 1.5;
-                filterMultiplierEnd = 0.8;
+                filterMultiplierStart = 1.2;
+                filterMultiplierEnd = 0.6;
                 baseGain = 0.8;
             }
 
@@ -1073,12 +1069,6 @@
             return 440 * Math.pow(2, (concertPitch - 69) / 12);
         }
 
-        function getNoteFrequency(noteStr) {
-            const pitch = noteToPitch(noteStr);
-            if (pitch === null) return null;
-            return 440 * Math.pow(2, (pitch - 69) / 12);
-        }
-
         function autoTransposeSong(song) {
             if (!song || song.length === 0) return [];
             let allPitches = [];
@@ -1117,11 +1107,14 @@
             });
         }
 
-        // --- Microphone Auto-Detect Feature ---
+        // --- Microphone Pitch Detection Gameplay Input ---
         let micStream = null;
         let micAnalyser = null;
         let isMicListening = false;
         let pitchDetectionFrameId = null;
+        let lastDetectedNote = null;
+        let noteHoldCounter = 0;
+        let lastMicTriggeredNote = null;
 
         function autoCorrelate(buf, sampleRate) {
             let SIZE = buf.length;
@@ -1158,75 +1151,101 @@
             return sampleRate / T0;
         }
 
-        async function startAutoDetect() {
-            document.getElementById('setup-modal-subtitle').textContent = "🎙️ Listening... Play an Open Note (no valves) loudly!";
+        function frequencyToNoteName(freq) {
+            if (freq < 50 || freq > 2000) return null;
+            let midi = Math.round(69 + 12 * Math.log2(freq / 440));
+            return pitchToNote(midi); 
+        }
+
+        async function toggleMicrophoneListening() {
             initAudio();
-            
-            if (micStream) {
-                micStream.getTracks().forEach(track => track.stop());
-                micStream = null;
-            }
+            const btn = document.getElementById('btn-mic-toggle');
 
-            try {
-                micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                const micSource = audioCtx.createMediaStreamSource(micStream);
-                micAnalyser = audioCtx.createAnalyser();
-                micAnalyser.fftSize = 4096; // High res for low notes
-                micSource.connect(micAnalyser);
-
-                let detectCounter = 0;
-                let detectedFreqSum = 0;
-
-                function analyzeAutoDetect() {
-                    if (!micAnalyser) return;
-                    let buf = new Float32Array(micAnalyser.fftSize);
-                    micAnalyser.getFloatTimeDomainData(buf);
-                    let freq = autoCorrelate(buf, audioCtx.sampleRate);
-
-                    if (freq > 40 && freq < 600) {
-                        detectCounter++;
-                        detectedFreqSum += freq;
-                        if (detectCounter === 10) {
-                            const avgFreq = detectedFreqSum / 10;
-                            // Make decision based on Concert pitch frequency
-                            let selectedInstIndex = 0;
-                            let detectedName = "Concert Pitch Tuba";
-                            
-                            if (avgFreq < 80) { // Tuba Bb1 = ~58Hz
-                                selectedInstIndex = 2; detectedName = "Bb Tuba";
-                            } else if (avgFreq >= 80 && avgFreq < 135) { // Euph/Baritone Bb2 = ~116Hz
-                                selectedInstIndex = 1; detectedName = "Bb Euphonium";
-                            } else if (avgFreq >= 135 && avgFreq < 185) { // Tenor Horn Eb3 = ~155Hz
-                                selectedInstIndex = 3; detectedName = "Eb Tenor Horn";
-                            } else { // Trumpet Bb3 = ~233Hz
-                                selectedInstIndex = 0; detectedName = "Bb Trumpet";
-                            }
-
-                            document.getElementById('setup-modal-subtitle').textContent = `🎯 Detected ~${Math.round(avgFreq)}Hz. Setting to ${detectedName}!`;
-                            
-                            // Auto select corresponding option
-                            const options = document.querySelectorAll('.setup-option');
-                            selectInstrument(options[selectedInstIndex]);
-
-                            micStream.getTracks().forEach(track => track.stop());
-                            micStream = null;
-                            micAnalyser = null;
-                            return;
-                        }
-                    } else {
-                        detectCounter = 0;
-                        detectedFreqSum = 0;
-                    }
-                    requestAnimationFrame(analyzeAutoDetect);
+            if (isMicListening) {
+                isMicListening = false;
+                if (pitchDetectionFrameId) cancelAnimationFrame(pitchDetectionFrameId);
+                if (micStream) {
+                    micStream.getTracks().forEach(track => track.stop());
+                    micStream = null;
                 }
-                
-                requestAnimationFrame(analyzeAutoDetect);
+                btn.textContent = '🎙️ MIC INPUT: OFF';
+                btn.classList.remove('btn-mic-active');
+                btn.classList.add('btn-secondary');
+                document.getElementById('status').textContent = 'Microphone gameplay input disabled.';
+            } else {
+                try {
+                    micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                    const micSource = audioCtx.createMediaStreamSource(micStream);
+                    micAnalyser = audioCtx.createAnalyser();
+                    micAnalyser.fftSize = 2048;
+                    micSource.connect(micAnalyser);
 
-            } catch (err) {
-                alert("Microphone access needed for Auto-Detect!");
-                document.getElementById('setup-modal-subtitle').textContent = "Select your instrument manually below:";
+                    isMicListening = true;
+                    btn.textContent = '🎙️ MIC INPUT: ON';
+                    btn.classList.remove('btn-secondary');
+                    btn.classList.add('btn-mic-active');
+                    document.getElementById('status').textContent = '🎙️ Listening to acoustic instrument... Play to trigger notes!';
+
+                    processMicrophonePitch();
+                } catch (err) {
+                    alert("Unable to access microphone.");
+                }
             }
         }
+
+        function processMicrophonePitch() {
+            if (!isMicListening || !micAnalyser) return;
+
+            let buf = new Float32Array(micAnalyser.fftSize);
+            micAnalyser.getFloatTimeDomainData(buf);
+            let freq = autoCorrelate(buf, audioCtx.sampleRate);
+
+            if (freq !== -1) {
+                let concertNote = frequencyToNoteName(freq);
+                if (concertNote) {
+                    if (concertNote === lastDetectedNote) {
+                        noteHoldCounter++;
+                        if (noteHoldCounter === 3 && lastMicTriggeredNote !== concertNote) {
+                            lastMicTriggeredNote = concertNote;
+                            
+                            let concertPitch = noteToPitch(concertNote);
+                            
+                            // Map what the mic hears to the Written Pitch of the game track
+                            let writtenPitch = concertPitch - audioShift - (userOctaveShift * 12);
+                            
+                            // Let's ensure it stays roughly in visual bounds if they play an octave out
+                            while (writtenPitch < MIN_PITCH) writtenPitch += 12;
+                            while (writtenPitch > MAX_PITCH) writtenPitch -= 12;
+
+                            let valvesNeeded = getValvesForPitch(writtenPitch);
+                            
+                            // Visually show the valves the student should be pressing for that note
+                            setValve(1, valvesNeeded.includes(1));
+                            setValve(2, valvesNeeded.includes(2));
+                            setValve(3, valvesNeeded.includes(3));
+
+                            setTimeout(() => {
+                                setValve(1, false); setValve(2, false); setValve(3, false);
+                            }, 250);
+
+                            // Trigger the evaluation in the game engine with the valves the mic "pressed"
+                            if (isPlaying && !isPaused) {
+                                evaluateActiveNote(valvesNeeded, isStepMode);
+                            }
+                        }
+                    } else {
+                        lastDetectedNote = concertNote;
+                        noteHoldCounter = 0;
+                    }
+                }
+            } else {
+                lastDetectedNote = null;
+                noteHoldCounter = 0;
+                lastMicTriggeredNote = null; // Reset so next articulation fires
+            }
+            pitchDetectionFrameId = requestAnimationFrame(processMicrophonePitch);
+        }
+
 
         // --- Core Engine & Animation Loop ---
         function toggleGameMode() {
@@ -1375,7 +1394,6 @@
                     ? noteTimeline[currentStepIndex].hitTime
                     : (noteTimeline[noteTimeline.length - 1] ? noteTimeline[noteTimeline.length - 1].hitTime + 500 : 0);
                 
-                // Allow user to trigger step play indefinitely if it stays paused
                 smoothStepElapsed += (targetStepElapsed - smoothStepElapsed) * 0.15;
                 effectiveElapsed = smoothStepElapsed;
             } else {
