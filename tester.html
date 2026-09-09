@@ -946,10 +946,6 @@
                     Get Songs
                 </a>
 
-                <a href="https://mrhaybittle.github.io/PianoPad/leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
-                    🏆 Leaderboard
-                </a>
-
                 <button type="button" id="btn-play" class="btn-success">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     Play
@@ -1037,20 +1033,7 @@
         </div>
 
         <div class="footer-bar">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div class="version-stamp">v26.09.10 | 10-Sep 07:48 AM AEST (Sydney)</div>
-                <div style="display: flex; gap: 4px;">
-                    <button type="button" id="btn-footer-rec" class="btn-secondary" title="Record">
-                        <svg class="icon" style="color: #ef4444; fill: #ef4444;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
-                    </button>
-                    <button type="button" id="btn-footer-play" class="btn-success" title="Play">
-                        <svg class="icon" style="color: white; fill: white;" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                    </button>
-                    <button type="button" id="btn-footer-stop" class="btn-danger" title="Stop">
-                        <svg class="icon" style="color: #000; fill: #000;" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
-                    </button>
-                </div>
-            </div>
+            <div class="version-stamp">v26.09.10 | 10-Sep 09:37 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1275,7 +1258,30 @@
         let isGameMode = false;
         let currentTheme = 'default';
         let bonusSoundsUnlocked = false;
+
+        // Sheet Music State
         let showSheetMusic = localStorage.getItem('pianopad_sheet_music') !== 'false';
+        const btnSheetToggle = document.getElementById('btn-sheet-toggle');
+
+        if (btnSheetToggle) {
+            btnSheetToggle.addEventListener('click', () => {
+                showSheetMusic = !showSheetMusic;
+                localStorage.setItem('pianopad_sheet_music', showSheetMusic ? 'true' : 'false');
+                updateSheetToggleButton();
+            });
+            updateSheetToggleButton();
+        }
+
+        function updateSheetToggleButton() {
+            if (!btnSheetToggle) return;
+            if (showSheetMusic) {
+                btnSheetToggle.textContent = '🎼 Sheet: ON';
+                btnSheetToggle.style.backgroundColor = '#0d9488';
+            } else {
+                btnSheetToggle.textContent = '🎼 Sheet: OFF';
+                btnSheetToggle.style.backgroundColor = '#4b5563';
+            }
+        }
 
         // Microphone Pitch Detection Variables
         let micStream = null;
@@ -1348,33 +1354,12 @@
         const arcadeControlsBar = document.getElementById('arcade-controls-bar');
         const timelineBox = document.getElementById('timeline-box');
         const runnerTrack = document.getElementById('runner-track');
-        const btnSheetToggle = document.getElementById('btn-sheet-toggle');
 
         document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
         document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
         document.getElementById('btn-stop-arcade').addEventListener('click', exitActiveMiniGame);
         document.getElementById('btn-song-battle').addEventListener('click', openSongBattleSelector);
         document.getElementById('btn-mic-toggle').addEventListener('click', toggleMicrophoneListening);
-
-        if (btnSheetToggle) {
-            btnSheetToggle.addEventListener('click', () => {
-                showSheetMusic = !showSheetMusic;
-                localStorage.setItem('pianopad_sheet_music', showSheetMusic ? 'true' : 'false');
-                updateSheetToggleButton();
-            });
-            updateSheetToggleButton();
-        }
-
-        function updateSheetToggleButton() {
-            if (!btnSheetToggle) return;
-            if (showSheetMusic) {
-                btnSheetToggle.textContent = '🎼 Sheet: ON';
-                btnSheetToggle.style.backgroundColor = '#0d9488';
-            } else {
-                btnSheetToggle.textContent = '🎼 Sheet: OFF';
-                btnSheetToggle.style.backgroundColor = '#4b5563';
-            }
-        }
 
         function stopBattlePolling() {
             isSongBattle = false;
@@ -1448,6 +1433,125 @@
                 };
                 document.body.appendChild(script);
             });
+        }
+
+        /* --- Sheet Music Helper Functions --- */
+        function getDiatonicStepAndShift(noteStr) {
+            noteStr = noteStr.trim().toLowerCase();
+            const match = noteStr.match(/^([a-g])(#?)([0-9]+)$/);
+            if (!match) return null;
+
+            const letter = match[1].toUpperCase();
+            const isSharp = match[2] === '#';
+            let octave = parseInt(match[3], 10);
+
+            const baseSteps = { 'C': 0, 'D': 1, 'E': 2, 'F': 3, 'G': 4, 'A': 5, 'B': 6 };
+            let baseStep = baseSteps[letter];
+            if (baseStep === undefined) return null;
+
+            let totalDiatonicStep = (octave - 1) * 7 + baseStep;
+
+            let octaveShift = 0;
+            if (totalDiatonicStep > 14 && totalDiatonicStep <= 21) {
+                octaveShift = 1; // 8va
+                totalDiatonicStep -= 7;
+            } else if (totalDiatonicStep > 21) {
+                octaveShift = 2; // 15ma
+                totalDiatonicStep -= 14;
+            }
+
+            let relativeStep = totalDiatonicStep - 2;
+
+            return {
+                letter: letter,
+                isSharp: isSharp,
+                step: relativeStep,
+                octaveShift: octaveShift
+            };
+        }
+
+        function drawSheetMusicStaff(ctx, width) {
+            const STAFF_HEIGHT = 75;
+            const line1_y = 56;
+            const lineSpacing = 8;
+
+            ctx.save();
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, STAFF_HEIGHT);
+
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, STAFF_HEIGHT);
+            ctx.lineTo(width, STAFF_HEIGHT);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 5; i++) {
+                const ly = line1_y - i * lineSpacing;
+                ctx.beginPath();
+                ctx.moveTo(0, ly);
+                ctx.lineTo(width, ly);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = '#000000';
+            ctx.font = '68px "Segoe UI Symbol", "Apple Symbols", "Noto Music", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('𝄞', 35, 48);
+
+            ctx.restore();
+        }
+
+        function drawStemlessNote(ctx, x, y, isSharp, color = '#000000') {
+            ctx.save();
+            ctx.fillStyle = color;
+
+            if (isSharp) {
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('♯', x - 7, y);
+            }
+
+            ctx.beginPath();
+            ctx.ellipse(x, y, 5.5, 4.0, -0.25, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawLedgerLines(ctx, x, step, line1_y, halfStep, color = '#000000') {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.2;
+
+            if (step <= -2) {
+                const ly = line1_y + 2 * halfStep;
+                ctx.beginPath();
+                ctx.moveTo(x - 9, ly);
+                ctx.lineTo(x + 9, ly);
+                ctx.stroke();
+            }
+
+            if (step >= 10) {
+                const ly1 = line1_y - 10 * halfStep;
+                ctx.beginPath();
+                ctx.moveTo(x - 9, ly1);
+                ctx.lineTo(x + 9, ly1);
+                ctx.stroke();
+            }
+
+            if (step >= 12) {
+                const ly2 = line1_y - 12 * halfStep;
+                ctx.beginPath();
+                ctx.moveTo(x - 9, ly2);
+                ctx.lineTo(x + 9, ly2);
+                ctx.stroke();
+            }
+
+            ctx.restore();
         }
 
         /* --- Audio Pitch Detection Implementation --- */
@@ -1617,7 +1721,7 @@
                 calibStep = 1;
                 document.getElementById('btn-calib-skip').style.display = 'inline-flex';
                 document.getElementById('btn-calib-cancel').style.display = 'none';
-                document.getElementById('calib-instructions').innerHTML = "Welcome! Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
+                document.getElementById('calib-instructions').textContent = "Welcome! Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
                 calibModal.classList.add('open');
             }
         }
@@ -2763,10 +2867,6 @@
         document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
         document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
 
-        document.getElementById('btn-footer-rec').addEventListener('click', toggleRecording);
-        document.getElementById('btn-footer-play').addEventListener('click', playSong);
-        document.getElementById('btn-footer-stop').addEventListener('click', stopSong);
-
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
             if (isPlaying && !isPaused && !isStepMode) playSong();
@@ -3258,30 +3358,6 @@
                 document.getElementById('status').textContent = `Step ${currentStepIndex + 1} of ${noteTimeline.length}: Next Note -> [ ${displayStr} ] (Press SPACE BAR or play on MIDI Keyboard)`;
             } else {
                 document.getElementById('status').textContent = 'Step Practice Finished!';
-            }
-        }
-
-        function stopSong() {
-            isPlaying = false;
-            isPaused = false;
-            btnPause.textContent = 'Pause';
-            btnPause.classList.remove('btn-success');
-            btnPause.classList.add('btn-warning');
-
-            if (animationFrameId !== null) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
-            document.querySelectorAll('.key').forEach(k => {
-                k.classList.remove('active');
-                k.style.backgroundColor = '';
-                k.style.boxShadow = '';
-            });
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            document.getElementById('status').textContent = 'Playback stopped.';
-
-            if (isRecording) {
-                toggleRecording();
             }
         }
 
@@ -3947,10 +4023,6 @@
             });
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.getElementById('status').textContent = 'Playback stopped.';
-
-            if (isRecording) {
-                toggleRecording();
-            }
         }
 
         function playSong() {
@@ -4037,128 +4109,6 @@
                 const label = match ? match[1].toUpperCase() : noteName.toUpperCase();
                 ctx.fillText(label, x + width / 2, y + height / 2);
             }
-            ctx.restore();
-        }
-
-        /* --- Sheet Music Score Rendering Helpers --- */
-        function getDiatonicStepAndShift(noteStr) {
-            noteStr = noteStr.trim().toLowerCase();
-            const match = noteStr.match(/^([a-g])(#?)([0-9]+)$/);
-            if (!match) return null;
-
-            const letter = match[1].toUpperCase();
-            const isSharp = match[2] === '#';
-            let octave = parseInt(match[3], 10);
-
-            const baseSteps = { 'C': 0, 'D': 1, 'E': 2, 'F': 3, 'G': 4, 'A': 5, 'B': 6 };
-            let baseStep = baseSteps[letter];
-            if (baseStep === undefined) return null;
-
-            let totalDiatonicStep = (octave - 1) * 7 + baseStep;
-
-            let octaveShift = 0;
-            if (totalDiatonicStep > 14 && totalDiatonicStep <= 21) {
-                octaveShift = 1; // 8va
-                totalDiatonicStep -= 7;
-            } else if (totalDiatonicStep > 21) {
-                octaveShift = 2; // 15ma
-                totalDiatonicStep -= 14;
-            }
-
-            // Relative to Line 1 (E1/E4) which has totalDiatonicStep = 2
-            let relativeStep = totalDiatonicStep - 2;
-
-            return {
-                letter: letter,
-                isSharp: isSharp,
-                step: relativeStep,
-                octaveShift: octaveShift
-            };
-        }
-
-        function drawSheetMusicStaff(ctx, width) {
-            const STAFF_HEIGHT = 75;
-            const line1_y = 56;
-            const lineSpacing = 8;
-
-            ctx.save();
-            // Pure White Background for optimal contrast and clarity
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, width, STAFF_HEIGHT);
-
-            ctx.strokeStyle = '#374151';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(0, STAFF_HEIGHT);
-            ctx.lineTo(width, STAFF_HEIGHT);
-            ctx.stroke();
-
-            ctx.strokeStyle = '#1e293b';
-            ctx.lineWidth = 1;
-            for (let i = 0; i < 5; i++) {
-                const ly = line1_y - i * lineSpacing;
-                ctx.beginPath();
-                ctx.moveTo(0, ly);
-                ctx.lineTo(width, ly);
-                ctx.stroke();
-            }
-
-            // Standard Large Treble Clef Symbol correctly centered on the 5-line staff
-            ctx.fillStyle = '#000000';
-            ctx.font = '68px "Segoe UI Symbol", "Apple Symbols", "Noto Music", sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('𝄞', 35, 48);
-
-            ctx.restore();
-        }
-
-        function drawStemlessNote(ctx, x, y, isSharp, color = '#000000') {
-            ctx.save();
-            ctx.fillStyle = color;
-
-            if (isSharp) {
-                ctx.font = 'bold 12px sans-serif';
-                ctx.textAlign = 'right';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('♯', x - 7, y);
-            }
-
-            ctx.beginPath();
-            ctx.ellipse(x, y, 5.5, 4.0, -0.25, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.restore();
-        }
-
-        function drawLedgerLines(ctx, x, step, line1_y, halfStep, color = '#000000') {
-            ctx.save();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 1.2;
-
-            if (step <= -2) {
-                const ly = line1_y + 2 * halfStep;
-                ctx.beginPath();
-                ctx.moveTo(x - 9, ly);
-                ctx.lineTo(x + 9, ly);
-                ctx.stroke();
-            }
-
-            if (step >= 10) {
-                const ly1 = line1_y - 10 * halfStep;
-                ctx.beginPath();
-                ctx.moveTo(x - 9, ly1);
-                ctx.lineTo(x + 9, ly1);
-                ctx.stroke();
-            }
-
-            if (step >= 12) {
-                const ly2 = line1_y - 12 * halfStep;
-                ctx.beginPath();
-                ctx.moveTo(x - 9, ly2);
-                ctx.lineTo(x + 9, ly2);
-                ctx.stroke();
-            }
-
             ctx.restore();
         }
 
