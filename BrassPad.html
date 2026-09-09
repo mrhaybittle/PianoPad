@@ -23,7 +23,7 @@
             --valve-up: #d97706;
             --valve-down: #fbbf24;
         }
-        
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -258,6 +258,13 @@
 
         .status-bar { font-size: 0.82rem; color: #fef3c7; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .footer-bar { display: flex; align-items: center; justify-content: space-between; padding-top: 4px; }
+        
+        .version-stamp {
+            font-size: 0.72rem;
+            color: #d97706;
+            font-weight: 700;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
@@ -323,6 +330,7 @@
         </div>
 
         <div class="footer-bar">
+            <div class="version-stamp">v26.09.09 | 9-Sep 15:18 AEST (Woonona)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
