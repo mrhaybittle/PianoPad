@@ -116,7 +116,7 @@
             position: relative; display: flex; flex-direction: column; align-items: center;
             background-color: #000; border-radius: 10px; padding: 4px;
             box-shadow: inset 0 2px 8px rgba(0,0,0,0.9);
-            width: 100%; flex: 1; min-height: 300px; overflow: hidden;
+            width: 100%; flex: 1; min-height: 350px; overflow: hidden;
         }
 
         #waterfall-canvas {
@@ -136,9 +136,16 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
-            margin: 4px 0;
+            margin: 8px 0;
             box-shadow: 0 4px 6px rgba(0,0,0,0.5);
             z-index: 10;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        #mode-display:hover {
+            background: #4a3620;
+            border-color: #fbbf24;
         }
 
         /* Brass Valves Section */
@@ -236,7 +243,7 @@
             border: 2px solid #524026; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);
         }
 
-        .modal h2 { color: #fbbf24; text-align: center; }
+        .modal h2 { color: #fbbf24; text-align: center; margin-bottom: 5px; }
         
         .setup-option {
             background: #120e0a;
@@ -284,13 +291,13 @@
             <canvas id="waterfall-canvas"></canvas>
             <div class="blow-instruction">Press Valves to Play! (Use UP ARROW or SPACE for Open Notes)</div>
             
-            <div id="mode-display">
-                🎺 Selecting Instrument...
+            <div id="mode-display" onclick="openSetupModal()" title="Click to change Instrument">
+                <span id="instrument-label">🎺 Bb Trumpet / Cornet Mode</span>
+                <span style="font-size: 0.8rem; margin-left: 5px; color: #9ca3af;">▼ Change</span>
             </div>
 
             <div class="valves-container" id="valves-container">
                 <div class="valve-wrapper">
-                    <!-- Fully independent valve holds -->
                     <div class="valve-btn" id="valve-1" 
                          onmousedown="setValve(1, true); handleValveChange()" 
                          onmouseup="setValve(1, false); handleValveChange()"
@@ -318,40 +325,40 @@
         </div>
 
         <div class="footer-bar">
-            <!-- Confirmed Timestamp -->
+            <!-- Timestamp Updated -->
             <div class="version-stamp">v26.09.09 | 9-Sep 16:20 AEST (Woonona)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
 
-    <!-- Initial Setup Modal (Skipped for testing - Removed "open" class) -->
+    <!-- Initial Setup Modal -->
     <div class="modal-overlay" id="setup-modal">
         <div class="modal">
-            <h2>Welcome to BrassPad! 🎺</h2>
-            <p style="text-align: center; color: #d1d5db; font-size: 0.9rem;">Select your instrument to transpose sheet music into your written pitch:</p>
+            <h2>Select Instrument 🎺</h2>
+            <p style="text-align: center; color: #d1d5db; font-size: 0.9rem; margin-bottom: 10px;">Select your instrument to transpose sheet music into your written pitch:</p>
             
-            <div class="setup-option selected" data-transpose="-2" data-name="🎺 Bb Trumpet / Cornet" onclick="selectInstrument(this)">
+            <div class="setup-option selected" data-transpose="-2" data-name="🎺 Bb Trumpet / Cornet Mode" onclick="selectInstrument(this)">
                 <h3>Trumpet / Cornet (Bb)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-transpose="-2" data-name="📯 Bb Euphonium / Baritone" onclick="selectInstrument(this)">
+            <div class="setup-option" data-transpose="-2" data-name="📯 Bb Euphonium / Baritone Mode" onclick="selectInstrument(this)">
                 <h3>Euphonium / Baritone (Bb Treble)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-transpose="-2" data-name="🎷 Bb Tuba (Treble Clef)" onclick="selectInstrument(this)">
+            <div class="setup-option" data-transpose="-2" data-name="🎷 Bb Tuba Mode" onclick="selectInstrument(this)">
                 <h3>Tuba (Bb Treble / Brass Band)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-transpose="-9" data-name="📯 Eb Tenor Horn" onclick="selectInstrument(this)">
+            <div class="setup-option" data-transpose="-9" data-name="📯 Eb Tenor Horn Mode" onclick="selectInstrument(this)">
                 <h3>Tenor Horn (Eb)</h3>
                 <p>Reads Treble Clef. Concert Eb = Written C.</p>
             </div>
-            <div class="setup-option" data-transpose="0" data-name="🎶 Concert Pitch Brass" onclick="selectInstrument(this)">
+            <div class="setup-option" data-transpose="0" data-name="🎶 Concert Pitch Brass Mode" onclick="selectInstrument(this)">
                 <h3>Tuba / Euphonium (Concert Pitch)</h3>
                 <p>Reads Bass Clef at Concert Pitch.</p>
             </div>
 
-            <button type="button" class="btn-success" style="justify-content: center; padding: 10px; font-size: 1rem; margin-top: 10px;" onclick="confirmInstrument()">Start Playing!</button>
+            <button type="button" class="btn-success" style="justify-content: center; padding: 10px; font-size: 1rem; margin-top: 10px;" onclick="confirmInstrument()">Confirm Selection</button>
         </div>
     </div>
 
@@ -367,7 +374,7 @@
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
 
-        // Bundled Emergency Song Library (Protects against CORS Blocks)
+        // Bundled Emergency Song Library (Protects against CORS Blocks/Latency)
         const FALLBACK_SONGS = [
             { title: "Wipeout", code: "C2,C2,C2,C2,D2,D2,D2,D2,E2,E2,D2,D2,C2,Rests,250,250,250,250,250,250,250,250,250,250,250,250,500" },
             { title: "Hot Cross Buns", code: "E2,D2,C2,E2,D2,C2,C2,C2,C2,C2,D2,D2,D2,D2,E2,D2,C2,Rests,400,400,800,400,400,800,200,200,200,200,200,200,200,200,400,400,800" },
@@ -387,7 +394,7 @@
         
         // Defaults bypass setup modal temporarily
         let transposeOffset = 2; // +2 semitones transposition (Bb Instrument standard)
-        let instrumentName = "🎺 Bb Trumpet / Cornet";
+        let instrumentName = "🎺 Bb Trumpet / Cornet Mode";
 
         let animationFrameId = null;
         let playbackStartTime = 0;
@@ -433,6 +440,10 @@
         }
         window.addEventListener('resize', resizeCanvas);
 
+        function openSetupModal() {
+            document.getElementById('setup-modal').classList.add('open');
+        }
+
         function selectInstrument(el) {
             document.querySelectorAll('.setup-option').forEach(opt => opt.classList.remove('selected'));
             el.classList.add('selected');
@@ -444,10 +455,13 @@
 
         function confirmInstrument() {
             document.getElementById('setup-modal').classList.remove('open');
-            document.getElementById('mode-display').textContent = `${instrumentName} Mode`;
-            resizeCanvas();
-            initAudio();
-            syncSongsWithGoogleSheet();
+            document.getElementById('instrument-label').textContent = instrumentName;
+            
+            // Re-transpose current song
+            if (rawParsedSong.length > 0) {
+                currentSong = autoTransposeSong(rawParsedSong);
+            }
+            if (isPlaying) playSong();
         }
 
         speedSlider.addEventListener('input', () => {
@@ -865,18 +879,11 @@
             animationFrameId = requestAnimationFrame(renderLoop);
         }
 
-        function showGameResultsPopUp() {
-            const totalHits = gameStats.perfect + gameStats.miss;
-            const accuracy = totalHits > 0 ? ((gameStats.perfect / totalHits) * 100).toFixed(1) : '0.0';
-            document.getElementById('game-summary-text').innerHTML = `Final Score: <span style="color:#10b981;">${accuracy}%</span><br><br><span style="font-size:0.9rem; color:#9ca3af;">(${gameStats.perfect} Perfect, ${gameStats.miss} Missed)</span>`;
-            document.getElementById('game-results-modal').classList.add('open');
-        }
-
-        // ROBUST PARSER - Works on all variations of Rests delimiters.
+        // --- Robust HayCode Parser ---
         function parsePianoPad(code) {
             if (!code || typeof code !== 'string') return [];
-            const cleanCode = code.replace(/[\r\n\s]+/g, '');
-            // Case-insensitive regex split, with or without commas wrapping RESTS
+            // Safe parsing string, removing quotes, brackets, and raw spaces
+            const cleanCode = code.replace(/["'\[\]\r\n\s]+/g, '');
             const parts = cleanCode.split(/,?rests?,?/i);
             
             if (parts.length < 2) return [];
@@ -884,6 +891,7 @@
             const rawNotes = parts[0].split(',').filter(Boolean);
             const rests = parts[1].split(',').filter(Boolean);
             const song = [];
+            
             for (let i = 0; i < rawNotes.length; i++) {
                 song.push({
                     notes: rawNotes[i].split('+').filter(Boolean),
@@ -891,6 +899,36 @@
                 });
             }
             return song;
+        }
+
+        // --- Robust CSV Parser ---
+        function parseCSVToSongs(csvText) {
+            const songs = [];
+            const lines = csvText.split(/\r?\n/);
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                const row = [];
+                let insideQuote = false;
+                let entry = '';
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"' && line[j + 1] === '"') {
+                        entry += '"'; j++;
+                    } else if (char === '"') {
+                        insideQuote = !insideQuote;
+                    } else if (char === ',' && !insideQuote) {
+                        row.push(entry); entry = '';
+                    } else {
+                        entry += char;
+                    }
+                }
+                row.push(entry);
+                if (row.length >= 2 && row[0].trim()) {
+                    songs.push({ title: row[0].trim().replace(/^"|"$/g, ''), code: row[1].trim().replace(/^"|"$/g, '') });
+                }
+            }
+            return songs;
         }
 
         function renderSongSelect() {
@@ -904,33 +942,27 @@
         }
 
         async function syncSongsWithGoogleSheet() {
-            // Setup robust memory mapping using Array Index values for HTML safety
+            // Load fallback songs into array structure immediately
             const uniqueMap = new Map();
             FALLBACK_SONGS.forEach(s => uniqueMap.set(s.title.toLowerCase().trim(), s));
             
             currentRenderedSongs = Array.from(uniqueMap.values()).sort((a, b) => a.title.localeCompare(b.title));
             renderSongSelect();
             
+            // Autoload Wipeout safely
             songSelect.value = "0";
             currentSongTitle = currentRenderedSongs[0].title;
             rawParsedSong = parsePianoPad(currentRenderedSongs[0].code);
             currentSong = autoTransposeSong(rawParsedSong);
             
-            document.getElementById('mode-display').textContent = `${instrumentName} Mode`;
             document.getElementById('status').textContent = `Loaded ${currentRenderedSongs.length} initial songs. Syncing Google Sheets...`;
 
             try {
                 const response = await fetch(SPREADSHEET_CSV_URL);
                 if (response.ok) {
                     const csvText = await response.text();
-                    const lines = csvText.split(/\r?\n/);
-                    let remoteSongs = [];
-                    for (let i = 1; i < lines.length; i++) {
-                        const row = lines[i].split(',');
-                        if (row.length >= 2 && row[0].trim()) {
-                            remoteSongs.push({ title: row[0].trim().replace(/^"|"$/g, ''), code: row[1].trim().replace(/^"|"$/g, '') });
-                        }
-                    }
+                    let remoteSongs = parseCSVToSongs(csvText);
+                    
                     if (remoteSongs.length > 0) {
                         remoteSongs.forEach(s => uniqueMap.set(s.title.toLowerCase().trim(), s));
                         currentRenderedSongs = Array.from(uniqueMap.values()).sort((a, b) => a.title.localeCompare(b.title));
