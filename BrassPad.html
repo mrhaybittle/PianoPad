@@ -131,7 +131,7 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
-            margin: 0;
+            margin: 4px 0;
             box-shadow: 0 4px 6px rgba(0,0,0,0.5);
             z-index: 10;
             cursor: pointer;
@@ -233,9 +233,11 @@
 
         .modal {
             background: #18181b; border-radius: 12px;
-            width: 90%; max-width: 450px; padding: 25px;
+            width: 90%; max-width: 500px; padding: 25px;
             display: flex; flex-direction: column; gap: 14px;
-            border: 2px solid #3f3f46; box-shadow: 0 25px 50px -12px rgba(0,0,0,1);
+            border: 2px solid #524026; box-shadow: 0 25px 50px -12px rgba(0,0,0,1);
+            max-height: 85vh;
+            overflow-y: auto;
         }
 
         .modal h2 { color: #fbbf24; text-align: center; margin-bottom: 5px; font-size: 1.4rem;}
@@ -380,6 +382,15 @@
                     <input type="range" id="speed-slider" min="10" max="300" value="100" step="5">
                 </div>
 
+                <label class="btn-file-label btn-midi" style="background-color: #0ea5e9; color:#fff;">
+                    📁 Import MIDI
+                    <input type="file" id="midi-input" accept=".mid,.midi" style="display: none;">
+                </label>
+
+                <button type="button" id="btn-mic-toggle" class="btn-secondary" title="Listen for real brass instrument">
+                    🎙️ MIC INPUT: OFF
+                </button>
+
                 <button type="button" id="btn-game" class="btn-secondary">
                     🎮 Game Mode: OFF
                 </button>
@@ -438,13 +449,12 @@
         </div>
 
         <div class="footer-bar">
-            <!-- Timestamp Updated -->
-            <div class="version-stamp">v26.09.09 | 9-Sep 18:05 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 18:12 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
 
-    <!-- Instrument Setup Modal -->
+    <!-- Initial Setup Modal -->
     <div class="modal-overlay" id="setup-modal">
         <div class="modal">
             <h2>Select Instrument 🎺</h2>
@@ -475,6 +485,18 @@
             </div>
 
             <button type="button" class="btn-success" style="justify-content: center; padding: 10px; font-size: 1rem; margin-top: 10px;" onclick="confirmInstrument()">Confirm Selection</button>
+        </div>
+    </div>
+
+    <!-- MIDI Channel Selection Modal -->
+    <div class="modal-overlay" id="midi-channel-modal">
+        <div class="modal">
+            <h2>Select MIDI Channel 🎛️</h2>
+            <p style="text-align: center; color: #d1d5db; font-size: 0.9rem; margin-bottom: 10px;">Multiple tracks found. Choose which instrument/channel to import:</p>
+            <div id="midi-channel-list" style="display: flex; flex-direction: column; gap: 8px;">
+                <!-- Populated by JS -->
+            </div>
+            <button type="button" class="btn-secondary" style="justify-content: center; padding: 10px; margin-top: 10px;" onclick="document.getElementById('midi-channel-modal').classList.remove('open')">Cancel</button>
         </div>
     </div>
 
@@ -540,6 +562,10 @@
         
         // Let user artificially push the sound up or down an octave
         let userOctaveShift = 0; 
+
+        // MIDI Parsing Cache
+        let pendingMidiData = null;
+        let pendingMidiName = "";
 
         let animationFrameId = null;
         let playbackStartTime = 0;
@@ -694,6 +720,96 @@
                 case 'b': return '#ec4899';            // Pink
                 default: return '#f59e0b';
             }
+        }
+
+        // --- MIDI Import Feature ---
+        document.getElementById('midi-input').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            initAudio();
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                pendingMidiData = new Midi(arrayBuffer);
+                pendingMidiName = file.name.replace(/\.[^/.]+$/, "");
+
+                const listContainer = document.getElementById('midi-channel-list');
+                listContainer.innerHTML = '';
+                
+                let hasTracks = false;
+                pendingMidiData.tracks.forEach((track, index) => {
+                    if (track.notes.length > 0 && track.channel !== 9) { // Ignore drums
+                        hasTracks = true;
+                        const btn = document.createElement('div');
+                        btn.className = 'setup-option';
+                        const instName = track.instrument.name || "Unknown Instrument";
+                        const trackName = track.name || `Track ${index + 1}`;
+                        btn.innerHTML = `<h3>${trackName}</h3><p>Channel: ${track.channel} | Instrument: ${instName} | Notes: ${track.notes.length}</p>`;
+                        btn.onclick = () => processMidiTrack(index);
+                        listContainer.appendChild(btn);
+                    }
+                });
+
+                if (!hasTracks) {
+                    alert("No playable melody notes found in this MIDI file.");
+                    return;
+                }
+
+                document.getElementById('midi-channel-modal').classList.add('open');
+            } catch (err) {
+                console.error("MIDI Parse Error: ", err);
+                alert("Failed to parse MIDI file.");
+            }
+            e.target.value = ''; // reset
+        });
+
+        function processMidiTrack(trackIndex) {
+            document.getElementById('midi-channel-modal').classList.remove('open');
+            const track = pendingMidiData.tracks[trackIndex];
+            
+            let allNotes = [];
+            track.notes.forEach(n => {
+                const octave = Math.floor(n.midi / 12) - 1;
+                const offset = n.midi % 12;
+                allNotes.push({ time: n.time, note: noteNames[offset] + octave });
+            });
+
+            allNotes.sort((a, b) => a.time - b.time);
+            
+            const hayNotes = []; const hayRests = [];
+            let currentChord = []; let lastTime = 0;
+            for (let i = 0; i < allNotes.length; i++) {
+                const n = allNotes[i];
+                if (i === 0) {
+                    currentChord.push(n.note.toUpperCase());
+                    hayRests.push(0); lastTime = n.time;
+                } else {
+                    const timeDiff = Math.round((n.time - lastTime) * 1000);
+                    if (timeDiff <= 20) currentChord.push(n.note.toUpperCase());
+                    else {
+                        hayNotes.push(currentChord.join('+'));
+                        currentChord = [n.note.toUpperCase()];
+                        hayRests.push(timeDiff);
+                        lastTime = n.time;
+                    }
+                }
+            }
+            if (currentChord.length > 0) hayNotes.push(currentChord.join('+'));
+            
+            const code = `${hayNotes.join(',')},RESTS,${hayRests.join(',')}`;
+            const displayTitle = pendingMidiName + ` (${track.instrument.name || 'Ch '+track.channel})`;
+            
+            // Add to session list temporarily
+            const newSongObj = { title: displayTitle, code: code };
+            currentRenderedSongs.unshift(newSongObj);
+            renderSongSelect();
+            songSelect.value = 0; 
+            
+            currentSongTitle = displayTitle;
+            rawParsedSong = parsePianoPad(code);
+            currentSong = autoTransposeSong(rawParsedSong);
+            
+            document.getElementById('status').textContent = `Loaded MIDI Track: "${currentSongTitle}".`;
+            playSong();
         }
 
         // --- Keyboard / Input Handling ---
@@ -872,23 +988,23 @@
 
             if (instrumentType === 'trumpet') {
                 osc.type = 'sawtooth';
-                filterMultiplierStart = 6.0;
-                filterMultiplierEnd = 2.5;
+                filterMultiplierStart = 5;
+                filterMultiplierEnd = 2;
                 baseGain = 0.4;
             } else if (instrumentType === 'horn') {
                 osc.type = 'sawtooth';
-                filterMultiplierStart = 3.5;
-                filterMultiplierEnd = 1.5;
+                filterMultiplierStart = 3;
+                filterMultiplierEnd = 1.2;
                 baseGain = 0.45;
             } else if (instrumentType === 'euphonium') {
                 osc.type = 'triangle'; 
-                filterMultiplierStart = 2.0;
-                filterMultiplierEnd = 0.9;
+                filterMultiplierStart = 2.5;
+                filterMultiplierEnd = 1.0;
                 baseGain = 0.6; 
             } else if (instrumentType === 'tuba') {
                 osc.type = 'triangle'; 
-                filterMultiplierStart = 1.2;
-                filterMultiplierEnd = 0.6;
+                filterMultiplierStart = 1.5;
+                filterMultiplierEnd = 0.8;
                 baseGain = 0.8;
             }
 
@@ -1259,6 +1375,7 @@
                     ? noteTimeline[currentStepIndex].hitTime
                     : (noteTimeline[noteTimeline.length - 1] ? noteTimeline[noteTimeline.length - 1].hitTime + 500 : 0);
                 
+                // Allow user to trigger step play indefinitely if it stays paused
                 smoothStepElapsed += (targetStepElapsed - smoothStepElapsed) * 0.15;
                 effectiveElapsed = smoothStepElapsed;
             } else {
