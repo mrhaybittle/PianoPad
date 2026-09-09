@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PianoPad Player - Visualizer & Haycode Creator</title>
+    <title>PianoPad - by Haybittle</title>
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
     <style>
         :root {
@@ -24,7 +24,6 @@
             --hitline-color: #ef4444;
         }
 
-        /* Custom Theme Overrides */
         body[data-theme="cyberpunk"] {
             --bg-color: #0c0721;
             --panel-bg: #180e36;
@@ -101,14 +100,15 @@
         .container {
             width: 100%;
             max-width: 1400px;
+            height: calc(100vh - 16px);
             max-height: calc(100vh - 16px);
             background-color: var(--panel-bg);
             border-radius: 14px;
             box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.6);
-            padding: 12px 18px;
+            padding: 10px 16px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
             transition: background-color 0.3s;
         }
 
@@ -119,11 +119,12 @@
             flex-wrap: wrap;
             gap: 8px;
             border-bottom: 1px solid #374151;
-            padding-bottom: 8px;
+            padding-bottom: 6px;
+            flex-shrink: 0;
         }
 
         h1 {
-            font-size: 1.3rem;
+            font-size: 1.25rem;
             font-weight: 700;
             letter-spacing: -0.025em;
         }
@@ -140,10 +141,10 @@
             align-items: center;
             gap: 6px;
             background-color: #0b0f19;
-            padding: 5px 10px;
+            padding: 4px 8px;
             border-radius: 6px;
             border: 1px solid #374151;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             font-weight: 600;
         }
 
@@ -153,22 +154,22 @@
         }
 
         .speed-control input[type="range"] {
-            width: 75px;
+            width: 70px;
             accent-color: var(--accent-color);
             cursor: pointer;
         }
 
         select {
-            padding: 6px 10px;
+            padding: 5px 8px;
             border-radius: 6px;
             border: 1px solid #374151;
             background-color: #0b0f19;
             color: var(--text-main);
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             cursor: pointer;
             outline: none;
-            max-width: 180px;
+            max-width: 170px;
         }
 
         select:focus {
@@ -191,14 +192,14 @@
         button, .btn-link, .btn-file-label {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            padding: 6px 10px;
+            gap: 4px;
+            padding: 5px 8px;
             border-radius: 6px;
             border: none;
             background-color: var(--accent-color);
             color: white;
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             cursor: pointer;
             text-decoration: none;
             transition: background-color 0.2s, transform 0.1s;
@@ -229,14 +230,30 @@
         .btn-settings { background-color: #3b82f6; }
         .btn-settings:hover { background-color: #2563eb; }
 
+        .btn-mic-active {
+            background-color: #10b981 !important;
+            color: #ffffff !important;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+        }
+
         .btn-arcade {
             background: linear-gradient(135deg, #8b5cf6, #ec4899) !important;
             color: #ffffff !important;
             font-weight: 800 !important;
-            box-shadow: 0 0 12px rgba(236, 72, 153, 0.5);
+            box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
         }
         .btn-arcade:hover {
             background: linear-gradient(135deg, #7c3aed, #db2777) !important;
+        }
+
+        .btn-song-battle {
+            background: linear-gradient(135deg, #f59e0b, #ef4444) !important;
+            color: #ffffff !important;
+            font-weight: 800 !important;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+        }
+        .btn-song-battle:hover {
+            background: linear-gradient(135deg, #d97706, #dc2626) !important;
         }
 
         .btn-step { background-color: #ec4899 !important; color: #ffffff !important; font-weight: 700; }
@@ -266,8 +283,8 @@
         .btn-loop-active { background-color: var(--loop-active); color: #000; }
 
         .icon {
-            width: 14px;
-            height: 14px;
+            width: 13px;
+            height: 13px;
             fill: none;
             stroke: currentColor;
             stroke-width: 2;
@@ -275,33 +292,20 @@
             stroke-linejoin: round;
         }
 
-        .timeline-container {
+        .timeline-container-inline {
             background-color: #0b0f19;
             border: 1px solid #374151;
-            border-radius: 8px;
-            padding: 6px 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .timeline-header {
-            display: flex;
-            justify-content: space-between;
+            border-radius: 6px;
+            padding: 3px 8px;
+            display: inline-flex;
             align-items: center;
-            font-size: 0.78rem;
+            gap: 6px;
+            font-size: 0.72rem;
             font-weight: 600;
-            color: #cbd5e1;
         }
 
-        .timeline-sliders {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .timeline-sliders input[type="range"] {
-            flex: 1;
+        .timeline-container-inline input[type="range"] {
+            width: 50px;
             accent-color: var(--loop-active);
             cursor: pointer;
         }
@@ -317,12 +321,16 @@
             box-shadow: inset 0 2px 8px rgba(0,0,0,0.9);
             overflow-x: auto;
             width: 100%;
+            flex: 1;
+            min-height: 380px;
         }
 
         #waterfall-canvas {
             background-color: var(--canvas-bg);
             border-bottom: 3px solid var(--hitline-color);
             display: block;
+            width: 100%;
+            flex: 1;
             transition: background-color 0.3s, border-color 0.3s;
         }
 
@@ -331,6 +339,9 @@
             position: relative;
             background-color: #000;
             user-select: none;
+            flex-shrink: 0;
+            width: 100%;
+            justify-content: center;
         }
 
         .key {
@@ -344,11 +355,12 @@
             font-weight: 700;
             font-size: 0.75rem;
             position: relative;
+            flex-shrink: 0;
         }
 
         .key.white {
             width: 44px;
-            height: 130px;
+            height: 125px;
             background-color: var(--key-white);
             border: 1px solid #cbd5e1;
             color: #0f172a;
@@ -363,7 +375,7 @@
 
         .key.black {
             width: 28px;
-            height: 80px;
+            height: 76px;
             background-color: var(--key-black);
             margin-left: -14px;
             margin-right: -14px;
@@ -413,7 +425,7 @@
             background: var(--panel-bg);
             border-radius: 12px;
             width: 90%;
-            max-width: 580px;
+            max-width: 620px;
             padding: 20px;
             display: flex;
             flex-direction: column;
@@ -442,10 +454,10 @@
         }
 
         .status-bar {
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             color: #9ca3af;
             text-align: center;
-            min-height: 1.8rem;
+            min-height: 1.6rem;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -457,6 +469,7 @@
             align-items: center;
             justify-content: space-between;
             padding-top: 4px;
+            flex-shrink: 0;
         }
 
         .version-stamp {
@@ -522,6 +535,7 @@
             align-items: center;
             gap: 10px;
             margin-top: 10px;
+            width: 100%;
         }
 
         .bar-chart-wrapper {
@@ -537,14 +551,45 @@
             position: relative;
         }
 
+        .multi-bar-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 16px;
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            padding: 12px;
+            background: #0b0f19;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            min-height: 180px;
+        }
+
+        .multi-bar-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+            min-width: 58px;
+        }
+
+        .rank-medal-badge {
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: #facc15;
+        }
+
         .stacked-bar {
-            width: 45px;
+            width: 38px;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
-            height: 100%;
+            height: 130px;
             border-radius: 4px;
             overflow: hidden;
+            background: #181f2e;
         }
 
         .bar-part-red {
@@ -651,57 +696,164 @@
         .runner-track-wrapper {
             position: relative;
             width: 100%;
-            height: 52px;
+            max-height: 240px;
+            overflow-y: auto;
             background: #0b0f19;
             border: 1px solid #374151;
             border-radius: 8px;
-            overflow: hidden;
             display: flex;
-            align-items: center;
-            padding: 0 10px;
+            flex-direction: column;
+            gap: 4px;
+            padding: 6px;
             margin-top: 6px;
         }
 
-        .runner-finish-line {
+        .runner-lane {
+            position: relative;
+            width: 100%;
+            height: 28px;
+            background: #131927;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid #1f2937;
+            flex-shrink: 0;
+        }
+
+        .runner-lane.my-lane {
+            border: 2px solid #22c55e !important;
+            background: #0f2318 !important;
+            box-shadow: inset 0 0 10px rgba(34, 197, 94, 0.4);
+        }
+
+        .runner-track-scroll {
             position: absolute;
-            right: 14px;
+            left: 0;
             top: 0;
-            bottom: 0;
-            width: 12px;
-            background: repeating-linear-gradient(0deg, #fff, #fff 8px, #000 8px, #000 16px);
+            height: 100%;
+            width: 100%;
         }
 
         .runner-avatar {
             position: absolute;
             left: 10px;
-            font-size: 1.8rem;
-            transition: left 0.18s linear, transform 0.25s ease-out;
+            bottom: 0px;
+            font-size: 1.2rem;
+            transition: transform 0.2s ease-out;
             user-select: none;
             transform: scaleX(-1);
             z-index: 5;
         }
 
         .runner-avatar.jumping {
-            transform: scaleX(-1) translateY(-22px) rotate(-10deg);
+            transform: scaleX(-1) translateY(-12px) rotate(-10deg);
         }
 
         .hurdle-obstacle {
             position: absolute;
-            bottom: 4px;
-            width: 26px;
-            height: 30px;
+            bottom: 2px;
+            width: 20px;
+            height: 22px;
             background: #ef4444;
-            border: 2px solid #ffffff;
-            border-radius: 4px 4px 0 0;
+            border: 1px solid #ffffff;
+            border-radius: 3px 3px 0 0;
             color: #ffffff;
             font-weight: 900;
-            font-size: 0.8rem;
+            font-size: 0.65rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+            box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
             z-index: 2;
-            transition: opacity 0.3s;
+        }
+
+        .runner-finish-line {
+            position: absolute;
+            left: 3600px;
+            top: 0;
+            bottom: 0;
+            width: 12px;
+            background: repeating-linear-gradient(0deg, #fff, #fff 8px, #000 8px, #000 16px);
+            z-index: 4;
+        }
+
+        .lane-label {
+            position: absolute;
+            right: 6px;
+            top: 2px;
+            font-size: 0.6rem;
+            font-weight: 800;
+            color: #cbd5e1;
+            z-index: 6;
+            background: rgba(0,0,0,0.65);
+            padding: 1px 5px;
+            border-radius: 3px;
+        }
+
+        .countdown-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+
+        .countdown-number {
+            font-size: 8rem;
+            font-weight: 900;
+            color: #facc15;
+            text-shadow: 0 0 30px #facc15;
+            animation: pulseCount 0.8s ease-in-out infinite;
+        }
+
+        @keyframes pulseCount {
+            0% { transform: scale(0.6); opacity: 0; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+
+        .lobby-players-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            margin: 10px 0;
+            text-align: left;
+        }
+
+        .lobby-player-card {
+            background: #0b0f19;
+            border: 1px solid #374151;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .race-results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 0.85rem;
+        }
+
+        .race-results-table th {
+            background: #181f2e;
+            color: #9ca3af;
+            padding: 6px 10px;
+            border-bottom: 1px solid #374151;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .race-results-table td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #1f2937;
+            color: #f3f4f6;
         }
     </style>
 </head>
@@ -739,6 +891,10 @@
                     <label for="speed-slider">Speed: <span id="speed-label">100%</span></label>
                     <input type="range" id="speed-slider" min="10" max="500" value="100" step="5">
                 </div>
+
+                <button type="button" id="btn-mic-toggle" class="btn-secondary" title="Listen for Acoustic Piano Notes">
+                    🎙️ MIC INPUT: OFF
+                </button>
 
                 <button type="button" id="btn-game" class="btn-secondary">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -806,6 +962,18 @@
                 <button type="button" id="btn-open-arcade" class="btn-arcade">
                     🕹️ MINI-GAMES
                 </button>
+
+                <button type="button" id="btn-song-battle" class="btn-song-battle">
+                    ⚔️ SONG BATTLE
+                </button>
+
+                <div class="timeline-container-inline" id="timeline-box">
+                    <span>Trim:</span>
+                    <input type="range" id="loop-start" min="0" max="100" value="0" title="Loop Start %">
+                    <span>-</span>
+                    <input type="range" id="loop-end" min="0" max="100" value="100" title="Loop End %">
+                    <span id="loop-range-label" style="display:none;">0%-100%</span>
+                </div>
             </div>
 
             <div class="controls" id="arcade-controls-bar" style="display: none;">
@@ -849,43 +1017,100 @@
                     <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Combo Strike</button>
                 </div>
 
-                <div class="game-card" onclick="startFingerSprint()">
-                    <h3>🏃 Finger Sprint</h3>
-                    <p>Alternate C1 & D1 to sprint! Jump hurdles when close by playing matching high-octave keys!</p>
+                <div class="game-card" onclick="openSprintModeSelector()">
+                    <h3>🏃 Finger Sprint Race</h3>
+                    <p>Challenge Robo-Opponent (🤖) or Host/Join Live Multi-Player Races with custom Room Codes!</p>
                     <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Finger Sprint</button>
                 </div>
             </div>
         </div>
 
-        <div class="timeline-container" id="timeline-box">
-            <div class="timeline-header">
-                <span>Timeline Trim & Loop Region</span>
-                <span id="loop-range-label">0% - 100% (Entire Song)</span>
-            </div>
-            <div class="timeline-sliders">
-                <label style="font-size: 0.75rem; color: #9ca3af;">Start:</label>
-                <input type="range" id="loop-start" min="0" max="100" value="0">
-                <label style="font-size: 0.75rem; color: #9ca3af;">End:</label>
-                <input type="range" id="loop-end" min="0" max="100" value="100">
-            </div>
-        </div>
-
-        <div class="runner-track-wrapper" id="runner-track" style="display: none;">
-            <div class="runner-avatar" id="runner-sprite">🏃</div>
-            <div id="hurdle-container"></div>
-            <div class="runner-finish-line"></div>
-        </div>
+        <div class="runner-track-wrapper" id="runner-track" style="display: none;"></div>
 
         <div class="visualizer-wrapper">
-            <canvas id="waterfall-canvas" width="1232" height="210"></canvas>
+            <canvas id="waterfall-canvas" width="1232" height="380"></canvas>
             <div class="piano" id="keyboard"></div>
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.09 | 9-Sep 22:07 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 21:45 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
+    </div>
+
+    <!-- Live Sprint & Song Battle Setup Modal -->
+    <div class="modal-overlay" id="sprint-option-modal">
+        <div class="modal" style="text-align: center;">
+            <h2 id="battle-modal-title">🏃 Setup Mode</h2>
+            <p style="font-size: 0.85rem; color: #9ca3af;" id="battle-modal-subtitle">Select your battle option:</p>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin: 10px 0;" id="sprint-menu-buttons">
+                <button type="button" class="btn-arcade" id="btn-sprint-bot-opt" onclick="initSinglePlayerSprint()">🤖 Challenge Robot Opponent</button>
+                <button type="button" class="btn-success" onclick="openHostNamePrompt()">👑 Host Live Session</button>
+                <button type="button" class="btn-midi" onclick="openJoinNamePrompt()">🎮 Join Live Session</button>
+            </div>
+            
+            <div id="sprint-form-container" style="display: none; flex-direction: column; gap: 8px; text-align: left;">
+                <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Your First Name & Surname Initial:</label>
+                <input type="text" id="sprint-player-name" placeholder="e.g. Alex M" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem;">
+                
+                <div id="host-song-selector-group" style="display:none; flex-direction:column; gap:4px; margin-top:4px;">
+                    <label style="font-size:0.75rem; color:#facc15; font-weight:700;">Select Battle Song:</label>
+                    <select id="host-battle-song-select" style="width:100%; max-width:100%;"></select>
+                </div>
+
+                <div id="inline-name-error" style="color:#ef4444; font-size:0.75rem; font-weight:700; display:none;">⚠️ Please enter your First Name & Surname Initial before continuing!</div>
+
+                <div id="code-input-group" style="display:none; flex-direction:column; gap:4px;">
+                    <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Enter Host Join Code:</label>
+                    <input type="text" id="sprint-room-code" placeholder="e.g. 766" maxlength="6" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; text-transform:uppercase;">
+                </div>
+
+                <div id="host-lobby-group" style="display:none; flex-direction:column; gap:4px; text-align:center;">
+                    <div style="font-size:1.1rem; color:#facc15; font-weight:800;" id="generated-room-code-display">Room Code: Generating...</div>
+                    <div class="lobby-players-grid" id="lobby-players-grid"></div>
+                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-content:center;" onclick="triggerHostStartRace()">🚀 START LIVE SESSION FOR ALL PLAYERS</button>
+                </div>
+
+                <div id="client-waiting-group" style="display:none; flex-direction:column; gap:6px; text-align:center;">
+                    <p style="font-size:0.85rem; color:#22c55e; font-weight:700;">Connected to Host Room!</p>
+                    <div class="lobby-players-grid" id="client-lobby-grid"></div>
+                    <p style="font-size:0.75rem; color:#9ca3af;">Waiting for host to press start...</p>
+                </div>
+
+                <button type="button" class="btn-success" id="btn-confirm-sprint-action" style="margin-top:6px; justify-content:center;">Confirm & Continue</button>
+            </div>
+
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn-secondary" onclick="closeSprintOptionModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bonus Sound Unlock Notification Modal -->
+    <div class="modal-overlay" id="unlock-modal">
+        <div class="modal" style="text-align: center; border: 2px solid #22c55e; box-shadow: 0 0 25px rgba(34, 197, 94, 0.5);">
+            <h2 style="color: #facc15; font-size: 1.5rem;">🎉 BONUS SOUNDS UNLOCKED!</h2>
+            <p id="unlock-modal-text" style="font-size: 0.95rem; color: #e5e7eb; line-height: 1.4;">
+                Outstanding accuracy! You scored <strong>>80%</strong> and unlocked 5 additional instrument sound engines:
+            </p>
+            <div style="background: #0b0f19; border: 1px solid #374151; border-radius: 8px; padding: 10px; margin: 10px 0; text-align: left; font-size: 0.85rem; color: #38bdf8;">
+                ● 🎹 Electric Piano<br>
+                ● 🎼 Harpsichord<br>
+                ● 🎛️ 80s Synth Lead<br>
+                ● 🪵 Xylophone<br>
+                ● 🪗 Accordion
+            </div>
+            <p style="font-size: 0.8rem; color: #9ca3af;">Try them out now in the Instrument selector dropdown at the top bar!</p>
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn-success" onclick="closeUnlockModal()">Awesome, Let's Play!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Countdown Overlay -->
+    <div class="countdown-overlay" id="countdown-overlay">
+        <div class="countdown-number" id="countdown-text">3</div>
     </div>
 
     <!-- Import Modal -->
@@ -947,23 +1172,26 @@
             <div id="game-rank-text" class="rank-display-box">Calculating Rank...</div>
 
             <div class="graph-container">
-                <div class="bar-chart-wrapper">
+                <div class="multi-bar-container" id="multi-bar-graph" style="display: none;"></div>
+                
+                <div class="bar-chart-wrapper" id="single-bar-graph">
                     <div class="stacked-bar">
                         <div id="bar-red" class="bar-part-red"></div>
                         <div id="bar-orange" class="bar-part-orange"></div>
                         <div id="bar-green" class="bar-part-green"></div>
                     </div>
                 </div>
-                <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 600;">
+                
+                <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 600; margin-top: 4px;">
                     <span style="color: #22c55e;">● Perfect</span>
                     <span style="color: #f97316;">● Early/Late</span>
                     <span style="color: #ef4444;">● Missed</span>
                 </div>
             </div>
 
-            <!-- UPDATED MODAL FOOTER: Guaranteed new tab navigation link -->
             <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
                 <a href="leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">View Entire Leaderboard</a>
+                <button type="button" class="btn-warning" id="btn-battle-again" style="display: none;" onclick="triggerBattleAgain()">⚔️ Battle Again</button>
                 <button type="button" class="btn-warning" id="btn-game-try-again">Play Again</button>
                 <button type="button" class="btn-arcade" id="btn-game-arcade-menu">Mini-Game Menu</button>
                 <button type="button" class="btn-success" id="btn-game-results-close">Continue</button>
@@ -1015,7 +1243,7 @@
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyJ6BXOjgbsbv03Xlp3kFVj_6aIfVJ7NM66Y3f_fMzuOeDabH2HzEhE-rLuoZzncXAA6g/exec';
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRVI-zuNfTZvcxcsG7mNk1iL_r11kCj-or6hKfLsilP0Vf9WSk0MeVxEog-RzXFIIjNA/exec';
 
         let audioCtx = null;
         let songList = [];
@@ -1030,6 +1258,15 @@
         let isGameMode = false;
         let currentTheme = 'default';
         let visualizerMode = 'hybrid'; 
+        let bonusSoundsUnlocked = false;
+
+        // Microphone Pitch Detection Variables
+        let micStream = null;
+        let micAnalyser = null;
+        let isMicListening = false;
+        let pitchDetectionFrameId = null;
+        let lastDetectedNote = null;
+        let noteHoldCounter = 0;
 
         let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
         let sessionStudentName = "";
@@ -1068,13 +1305,23 @@
         let dodgeLives = 5;
         let dodgeDodgedCount = 0;
 
+        // Multi-Player Relay State
+        let httpPollTimer = null;
+        let isSprintHost = false;
+        let localPlayerId = 'p1';
         let sprintSequence = ['c1', 'd1'];
         let sprintIndex = 0;
         let sprintKeystrokeCount = 0;
-        const SPRINT_TARGET_KEYSTROKES = 32;
         let sprintStartTime = 0;
-        let activeHurdles = [];
-        let runnerLegToggle = false;
+        let raceActive = false;
+        let isSongBattle = false;
+        let activeBattleRoomCode = "";
+        let hasBattleStarted = false;
+        let battleResultsShown = false;
+
+        const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄'];
+
+        let playersList = [];
 
         let miniGameFallSpeedMs = 3800;
 
@@ -1084,16 +1331,12 @@
         const arcadeControlsBar = document.getElementById('arcade-controls-bar');
         const timelineBox = document.getElementById('timeline-box');
         const runnerTrack = document.getElementById('runner-track');
-        const runnerSprite = document.getElementById('runner-sprite');
-        const hurdleContainer = document.getElementById('hurdle-container');
 
         document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
         document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
         document.getElementById('btn-stop-arcade').addEventListener('click', exitActiveMiniGame);
-        document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
-            gameResultsModal.classList.remove('open');
-            openArcadeHub();
-        });
+        document.getElementById('btn-song-battle').addEventListener('click', openSongBattleSelector);
+        document.getElementById('btn-mic-toggle').addEventListener('click', toggleMicrophoneListening);
 
         document.getElementById('btn-view-mode').addEventListener('click', () => {
             visualizerMode = visualizerMode === 'hybrid' ? 'waterfall' : 'hybrid';
@@ -1101,15 +1344,202 @@
             btn.textContent = visualizerMode === 'hybrid' ? '👁️ View: Hybrid' : '👁️ View: Waterfall';
         });
 
+        function stopBattlePolling() {
+            isSongBattle = false;
+            activeBattleRoomCode = "";
+            battleResultsShown = false;
+            if (httpPollTimer) {
+                clearInterval(httpPollTimer);
+                httpPollTimer = null;
+            }
+        }
+
+        document.getElementById('btn-game-results-close').addEventListener('click', () => {
+            gameResultsModal.classList.remove('open');
+            stopBattlePolling();
+        });
+
+        document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
+            gameResultsModal.classList.remove('open');
+            stopBattlePolling();
+            openArcadeHub();
+        });
+
         document.getElementById('btn-game-try-again').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
+            stopBattlePolling();
             if (currentSongTitle === "Mystery Note") startMysteryNote();
             else if (currentSongTitle === "Simon Taps") startSimonTaps();
             else if (currentSongTitle === "Drop Dodge") startDropDodge();
             else if (currentSongTitle === "Combo Strike") startComboStrike();
-            else if (currentSongTitle === "Finger Sprint") startFingerSprint();
+            else if (currentSongTitle === "Finger Sprint") openSprintModeSelector();
             else playSong();
         });
+
+        function sanitizeName(str) {
+            const parts = str.trim().split(/\s+/);
+            if (parts.length === 1) return parts[0];
+            const firstName = parts[0];
+            const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
+            return `${firstName} ${lastInitial}`;
+        }
+
+        function ensureStudentName() {
+            if (!sessionStudentName || !sessionStudentName.trim()) {
+                const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
+                if (inputName && inputName.trim()) {
+                    sessionStudentName = sanitizeName(inputName);
+                } else {
+                    sessionStudentName = "Anonymous";
+                }
+            }
+            return sessionStudentName;
+        }
+
+        function sendJSONP(url, callbackName) {
+            return new Promise((resolve) => {
+                const script = document.createElement('script');
+                const cbName = callbackName || 'jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+                
+                window[cbName] = function(data) {
+                    delete window[cbName];
+                    if (document.body.contains(script)) document.body.removeChild(script);
+                    resolve(data);
+                };
+
+                const del = url.includes('?') ? '&' : '?';
+                script.src = `${url}${del}callback=${cbName}`;
+                script.onerror = function() {
+                    delete window[cbName];
+                    if (document.body.contains(script)) document.body.removeChild(script);
+                    resolve({ error: "SCRIPT_LOAD_ERROR" });
+                };
+                document.body.appendChild(script);
+            });
+        }
+
+        /* --- Audio Pitch Detection Implementation --- */
+        async function toggleMicrophoneListening() {
+            initAudio();
+            const btn = document.getElementById('btn-mic-toggle');
+
+            if (isMicListening) {
+                stopMicrophoneListening();
+                btn.textContent = '🎙️ MIC INPUT: OFF';
+                btn.classList.remove('btn-mic-active');
+                btn.classList.add('btn-secondary');
+                document.getElementById('status').textContent = 'Microphone Pitch Detection stopped.';
+            } else {
+                try {
+                    micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                    const micSource = audioCtx.createMediaStreamSource(micStream);
+                    micAnalyser = audioCtx.createAnalyser();
+                    micAnalyser.fftSize = 2048;
+                    micSource.connect(micAnalyser);
+
+                    isMicListening = true;
+                    btn.textContent = '🎙️ MIC INPUT: ON';
+                    btn.classList.remove('btn-secondary');
+                    btn.classList.add('btn-mic-active');
+                    document.getElementById('status').textContent = '🎙️ Listening to acoustic piano notes... Play near your computer microphone!';
+
+                    processMicrophonePitch();
+                } catch (err) {
+                    console.error("Microphone access error:", err);
+                    alert("Unable to access microphone. Please allow microphone permissions in your browser.");
+                }
+            }
+        }
+
+        function stopMicrophoneListening() {
+            isMicListening = false;
+            if (pitchDetectionFrameId) cancelAnimationFrame(pitchDetectionFrameId);
+            if (micStream) {
+                micStream.getTracks().forEach(track => track.stop());
+                micStream = null;
+            }
+        }
+
+        function autoCorrelate(buf, sampleRate) {
+            let SIZE = buf.length;
+            let rms = 0;
+
+            for (let i = 0; i < SIZE; i++) {
+                let val = buf[i];
+                rms += val * val;
+            }
+            rms = Math.sqrt(rms / SIZE);
+            if (rms < 0.015) return -1;
+
+            let r1 = 0, r2 = SIZE - 1, thres = 0.2;
+            for (let i = 0; i < SIZE / 2; i++) {
+                if (Math.abs(buf[i]) < thres) { r1 = i; break; }
+            }
+            for (let i = 1; i < SIZE / 2; i++) {
+                if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
+            }
+
+            buf = buf.slice(r1, r2);
+            SIZE = buf.length;
+
+            let c = new Array(SIZE).fill(0);
+            for (let i = 0; i < SIZE; i++) {
+                for (let j = 0; j < SIZE - i; j++) {
+                    c[i] = c[i] + buf[j] * buf[j + i];
+                }
+            }
+
+            let d = 0; while (c[d] > c[d + 1]) d++;
+            let maxval = -1, maxpos = -1;
+            for (let i = d; i < SIZE; i++) {
+                if (c[i] > maxval) {
+                    maxval = c[i];
+                    maxpos = i;
+                }
+            }
+            let T0 = maxpos;
+
+            let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+            let a = (x1 + x3 - 2 * x2) / 2;
+            let b = (x3 - x1) / 2;
+            if (a) T0 = T0 - b / (2 * a);
+
+            return sampleRate / T0;
+        }
+
+        function frequencyToNoteName(freq) {
+            if (freq < 50 || freq > 2000) return null;
+            let midi = Math.round(69 + 12 * Math.log2(freq / 440));
+            return midiNoteToName(midi);
+        }
+
+        function processMicrophonePitch() {
+            if (!isMicListening || !micAnalyser) return;
+
+            let buf = new Float32Array(micAnalyser.fftSize);
+            micAnalyser.getFloatTimeDomainData(buf);
+            let freq = autoCorrelate(buf, audioCtx.sampleRate);
+
+            if (freq !== -1) {
+                let note = frequencyToNoteName(freq);
+                if (note) {
+                    if (note === lastDetectedNote) {
+                        noteHoldCounter++;
+                        if (noteHoldCounter === 3) {
+                            playManualNote(note);
+                        }
+                    } else {
+                        lastDetectedNote = note;
+                        noteHoldCounter = 0;
+                    }
+                }
+            } else {
+                lastDetectedNote = null;
+                noteHoldCounter = 0;
+            }
+
+            pitchDetectionFrameId = requestAnimationFrame(processMicrophonePitch);
+        }
 
         function openArcadeHub() {
             initAudio();
@@ -1127,15 +1557,17 @@
             arcadeControlsBar.style.display = 'none';
             runnerTrack.style.display = 'none';
             mainControlsBar.style.display = 'flex';
-            timelineBox.style.display = 'flex';
+            timelineBox.style.display = 'inline-flex';
             document.getElementById('status').textContent = 'Returned to PianoPad Player view.';
         }
 
         function exitActiveMiniGame() {
             activeMiniGame = null;
             isPlaying = false;
+            raceActive = false;
+            stopBattlePolling();
             runnerTrack.style.display = 'none';
-            hurdleContainer.innerHTML = '';
+            runnerTrack.innerHTML = '';
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.querySelectorAll('.key').forEach(k => {
                 k.classList.remove('active');
@@ -1165,7 +1597,37 @@
             document.getElementById('status').textContent = 'Calibration skipped. Default key map active.';
         }
 
-        /* 1. SIMON TAPS MINI-GAME WITH COLORFUL STAIRCASE VISUALIZER */
+        function unlockBonusSounds(reasonText) {
+            if (bonusSoundsUnlocked) return;
+            bonusSoundsUnlocked = true;
+
+            const instSelect = document.getElementById('instrument-select');
+            const bonusOptions = [
+                { val: 'epiano', text: '🎹 Electric Piano' },
+                { val: 'harpsichord', text: '🎼 Harpsichord' },
+                { val: 'synth80s', text: '🎛️ 80s Synth Lead' },
+                { val: 'xylophone', text: '🪵 Xylophone' },
+                { val: 'accordion', text: '🪗 Accordion' }
+            ];
+
+            bonusOptions.forEach(opt => {
+                const optionEl = document.createElement('option');
+                optionEl.value = opt.val;
+                optionEl.textContent = opt.text;
+                instSelect.appendChild(optionEl);
+            });
+
+            if (reasonText) {
+                document.getElementById('unlock-modal-text').innerHTML = reasonText;
+            }
+            document.getElementById('unlock-modal').classList.add('open');
+        }
+
+        function closeUnlockModal() {
+            document.getElementById('unlock-modal').classList.remove('open');
+        }
+
+        /* 1. SIMON TAPS MINI-GAME */
         function startSimonTaps() {
             initAudio();
             exitActiveMiniGame();
@@ -1264,8 +1726,12 @@
                 currentSongTitle = "Simon Taps";
                 
                 const maxLevelRemembered = Math.max(1, simonSequence.length - 1);
+                ensureStudentName();
                 
-                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>Max Level Remembered: <span style="color:#22c55e; font-size:1.3rem;">Level ${maxLevelRemembered}</span>`;
+                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Max Level Remembered: <span style="color:#22c55e; font-size:1.3rem;">Level ${maxLevelRemembered}</span>`;
+                document.getElementById('single-bar-graph').style.display = 'flex';
+                document.getElementById('multi-bar-graph').style.display = 'none';
+                document.getElementById('btn-battle-again').style.display = 'none';
                 document.getElementById('bar-green').style.height = '100%';
                 document.getElementById('bar-orange').style.height = '0%';
                 document.getElementById('bar-red').style.height = '0%';
@@ -1277,7 +1743,7 @@
             }
         }
 
-        /* 2. MYSTERY NOTE (HOT/COLD) MINI-GAME */
+        /* 2. MYSTERY NOTE */
         function startMysteryNote() {
             initAudio();
             exitActiveMiniGame();
@@ -1292,7 +1758,7 @@
             const freq = getNoteFrequency(mysteryTargetPitch);
             if (freq) playTone(freq, 0.6, 1.0);
 
-            document.getElementById('status').textContent = '🔍 Mystery Note chosen! Tap keys to guess... (Listen carefully!)';
+            document.getElementById('status').textContent = '🔍 Mystery Note chosen! Tap keys to guess...';
         }
 
         function handleMysteryInput(noteStr) {
@@ -1307,11 +1773,15 @@
             if (diff === 0) {
                 highlightKey(noteStr, 500, '#22c55e');
                 currentSongTitle = "Mystery Note";
+                ensureStudentName();
 
                 document.getElementById('game-summary-text').innerHTML = 
-                    `Student: <span style="color:#38bdf8;">${sessionStudentName || 'Student'}</span><br>` +
+                    `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>` +
                     `Guesses Taken: <span style="color:#22c55e; font-size:1.4rem; font-weight:800;">${mysteryGuessCount}</span>`;
 
+                document.getElementById('single-bar-graph').style.display = 'flex';
+                document.getElementById('multi-bar-graph').style.display = 'none';
+                document.getElementById('btn-battle-again').style.display = 'none';
                 document.getElementById('bar-green').style.height = '100%';
                 document.getElementById('bar-orange').style.height = '0%';
                 document.getElementById('bar-red').style.height = '0%';
@@ -1333,7 +1803,7 @@
             }
         }
 
-        /* 3. SLOWER DROP DODGE MINI-GAME WITH 5 LIVES */
+        /* 3. DROP DODGE */
         function startDropDodge() {
             initAudio();
             exitActiveMiniGame();
@@ -1397,81 +1867,616 @@
             requestAnimationFrame(renderLoop);
         }
 
-        /* 5. FINGER SPRINT WITH PROXIMITY-BASED HURDLES & ANIMATED RUNNER */
-        function renderHurdles() {
-            hurdleContainer.innerHTML = '';
-            activeHurdles.forEach((h) => {
-                const hurdleDiv = document.createElement('div');
-                hurdleDiv.className = 'hurdle-obstacle';
-                hurdleDiv.style.left = `${h.posPct}%`;
-                hurdleDiv.textContent = h.letter;
-                if (h.cleared) {
-                    hurdleDiv.style.opacity = '0.2';
-                    hurdleDiv.style.borderColor = '#22c55e';
-                }
-                hurdleContainer.appendChild(hurdleDiv);
+        /* 5. MULTI-PLAYER / BOT SPRINT & SONG BATTLE SYSTEM */
+        function openSprintModeSelector() {
+            initAudio();
+            isSongBattle = false;
+            document.getElementById('battle-modal-title').textContent = "🏃 Finger Sprint Setup";
+            document.getElementById('battle-modal-subtitle').textContent = "Select your race mode:";
+            document.getElementById('btn-sprint-bot-opt').style.display = 'inline-flex';
+            document.getElementById('host-song-selector-group').style.display = 'none';
+            document.getElementById('sprint-menu-buttons').style.display = 'flex';
+            document.getElementById('sprint-form-container').style.display = 'none';
+            document.getElementById('inline-name-error').style.display = 'none';
+            document.getElementById('sprint-option-modal').classList.add('open');
+        }
+
+        function populateHostSongSelector() {
+            const hostSelect = document.getElementById('host-battle-song-select');
+            hostSelect.innerHTML = '';
+            songList.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.code;
+                opt.textContent = s.title;
+                if (s.title === currentSongTitle) opt.selected = true;
+                hostSelect.appendChild(opt);
             });
         }
 
-        function startFingerSprint() {
+        function openSongBattleSelector() {
             initAudio();
+            isSongBattle = true;
+            battleResultsShown = false;
+            
+            // Force disable Step Mode in Song Battle
+            if (isStepMode) {
+                isStepMode = false;
+                btnStep.textContent = 'Step Mode';
+                btnStep.classList.remove('btn-step-active');
+                btnStep.classList.add('btn-step');
+            }
+
+            document.getElementById('battle-modal-title').textContent = `⚔️ Song Battle Setup`;
+            document.getElementById('battle-modal-subtitle').textContent = "Host or join a live song battle:";
+            document.getElementById('btn-sprint-bot-opt').style.display = 'none';
+            document.getElementById('sprint-menu-buttons').style.display = 'flex';
+            document.getElementById('sprint-form-container').style.display = 'none';
+            document.getElementById('inline-name-error').style.display = 'none';
+            document.getElementById('sprint-option-modal').classList.add('open');
+        }
+
+        function closeSprintOptionModal() {
+            document.getElementById('sprint-option-modal').classList.remove('open');
+        }
+
+        function openHostNamePrompt() {
+            document.getElementById('sprint-menu-buttons').style.display = 'none';
+            document.getElementById('sprint-form-container').style.display = 'flex';
+            document.getElementById('code-input-group').style.display = 'none';
+            document.getElementById('host-lobby-group').style.display = 'none';
+            document.getElementById('client-waiting-group').style.display = 'none';
+            document.getElementById('inline-name-error').style.display = 'none';
+            document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
+
+            if (isSongBattle) {
+                populateHostSongSelector();
+                document.getElementById('host-song-selector-group').style.display = 'flex';
+            } else {
+                document.getElementById('host-song-selector-group').style.display = 'none';
+            }
+            
+            document.getElementById('btn-confirm-sprint-action').onclick = () => {
+                const rawName = document.getElementById('sprint-player-name').value;
+                if (!rawName.trim()) {
+                    document.getElementById('inline-name-error').style.display = 'block';
+                    document.getElementById('sprint-player-name').focus();
+                    return;
+                }
+
+                const nameInput = sanitizeName(rawName);
+                document.getElementById('sprint-player-name').value = nameInput;
+
+                if (isSongBattle) {
+                    const selectedCode = document.getElementById('host-battle-song-select').value;
+                    const opt = document.getElementById('host-battle-song-select').selectedOptions[0];
+                    if (opt) currentSongTitle = opt.text;
+                    songSelect.value = selectedCode;
+                    const parsed = parsePianoPad(selectedCode);
+                    if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
+                }
+
+                showHostSetup(nameInput);
+            };
+        }
+
+        function openJoinNamePrompt() {
+            document.getElementById('sprint-menu-buttons').style.display = 'none';
+            document.getElementById('sprint-form-container').style.display = 'flex';
+            document.getElementById('code-input-group').style.display = 'flex';
+            document.getElementById('host-song-selector-group').style.display = 'none';
+            document.getElementById('host-lobby-group').style.display = 'none';
+            document.getElementById('client-waiting-group').style.display = 'none';
+            document.getElementById('inline-name-error').style.display = 'none';
+            document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
+
+            document.getElementById('btn-confirm-sprint-action').onclick = () => {
+                const rawName = document.getElementById('sprint-player-name').value;
+                const roomCode = document.getElementById('sprint-room-code').value.trim().toUpperCase();
+
+                if (!rawName.trim()) {
+                    document.getElementById('inline-name-error').style.display = 'block';
+                    document.getElementById('sprint-player-name').focus();
+                    return;
+                }
+
+                if (!roomCode) {
+                    alert("Please enter a valid Host Join Code!");
+                    document.getElementById('sprint-room-code').focus();
+                    return;
+                }
+
+                const nameInput = sanitizeName(rawName);
+                document.getElementById('sprint-player-name').value = nameInput;
+
+                showJoinSetup(nameInput, roomCode);
+            };
+        }
+
+        function initSinglePlayerSprint() {
+            closeSprintOptionModal();
             exitActiveMiniGame();
             arcadeHub.classList.remove('open');
             activeMiniGame = 'sprint';
+            resetGameStats();
 
-            runnerTrack.style.display = 'flex';
-            runnerSprite.style.left = '10px';
-            runnerSprite.textContent = '🏃';
-            runnerSprite.classList.add('sprinting');
-
-            sprintIndex = 0;
-            sprintKeystrokeCount = 0;
-            sprintStartTime = performance.now();
-
-            activeHurdles = [
-                { letter: 'G', posPct: 35, cleared: false },
-                { letter: 'E', posPct: 70, cleared: false }
+            playersList = [
+                { id: 'p1', name: 'YOU', avatar: '🏃', pxProgress: 0, finishTime: null, isLocal: true },
+                { id: 'bot', name: 'ROBO-OPPONENT', avatar: '🤖', pxProgress: 0, finishTime: null, isBot: true }
             ];
-            renderHurdles();
+            localPlayerId = 'p1';
 
-            document.getElementById('status').textContent = `🏃 FINGER SPRINT: Alternate C1 & D1 to sprint! Play High G/E to jump hurdles!`;
-            highlightKey('c1', 600, '#eab308');
+            renderSprintLanes();
+            startCountdown(() => {
+                raceActive = true;
+                sprintStartTime = performance.now();
+                sprintKeystrokeCount = 0;
+                sprintIndex = 0;
+
+                const botInt = setInterval(() => {
+                    if (!raceActive) { clearInterval(botInt); return; }
+                    const bot = playersList.find(p => p.id === 'bot');
+                    if (bot && !bot.finishTime) {
+                        bot.pxProgress += 42.0 + Math.random() * 6.0;
+                        updateMultiplayerLanesUI();
+                        if (bot.pxProgress >= 3600) {
+                            bot.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
+                            checkAllFinished();
+                        }
+                    }
+                }, 100);
+            });
+        }
+
+        function renderLobbyGrid(gridElementId) {
+            const grid = document.getElementById(gridElementId);
+            if (!grid) return;
+            grid.innerHTML = '';
+            playersList.forEach((player) => {
+                const card = document.createElement('div');
+                card.className = 'lobby-player-card';
+                card.innerHTML = `<span>${player.avatar}</span><span>${player.name}</span>`;
+                grid.appendChild(card);
+            });
+        }
+
+        async function showHostSetup(hostName) {
+            sessionStudentName = hostName;
+            document.getElementById('btn-confirm-sprint-action').style.display = 'none';
+            document.getElementById('host-lobby-group').style.display = 'flex';
+            document.getElementById('host-song-selector-group').style.display = 'none';
+
+            activeBattleRoomCode = '' + Math.floor(100 + Math.random() * 900);
+            document.getElementById('generated-room-code-display').textContent = `Join Code: ${activeBattleRoomCode}`;
+
+            isSprintHost = true;
+            localPlayerId = 'p1';
+            playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true }];
+            renderLobbyGrid('lobby-players-grid');
+
+            const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(hostName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
+            await sendJSONP(url);
+
+            startGoogleAppsScriptPolling(activeBattleRoomCode, true);
+        }
+
+        async function showJoinSetup(racerName, roomCode) {
+            sessionStudentName = racerName;
+            activeBattleRoomCode = roomCode;
+
+            localPlayerId = 'p' + (Date.now() % 10000);
+            const avatarIdx = Math.floor(Math.random() * AVATARS.length);
+
+            document.getElementById('status').textContent = `Connecting to room ${roomCode}...`;
+
+            let res = null;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                const url = `${APPS_SCRIPT_URL}?action=JOIN_ROOM&roomCode=${roomCode}&playerId=${localPlayerId}&playerName=${encodeURIComponent(racerName)}&avatar=${encodeURIComponent(AVATARS[avatarIdx])}&t=${Date.now()}`;
+                res = await sendJSONP(url);
+                
+                if (res && !res.error) break;
+                await new Promise(r => setTimeout(r, 1000));
+            }
+
+            if (res && res.error) {
+                alert("Room not found! Check code and try again.");
+                return;
+            }
+
+            document.getElementById('code-input-group').style.display = 'none';
+            document.getElementById('btn-confirm-sprint-action').style.display = 'none';
+            document.getElementById('client-waiting-group').style.display = 'flex';
+            document.getElementById('status').textContent = `Connected to Host Code (${roomCode})! Waiting for start...`;
+
+            startGoogleAppsScriptPolling(roomCode, false);
+        }
+
+        function startGoogleAppsScriptPolling(roomCode, isHost) {
+            if (httpPollTimer) clearInterval(httpPollTimer);
+            hasBattleStarted = false;
+
+            httpPollTimer = setInterval(async () => {
+                if (!activeBattleRoomCode) return;
+                const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_ROOM&roomCode=${roomCode}&t=${Date.now()}`);
+                if (!res || !res.players) return;
+
+                playersList = res.players.map(remotePlayer => {
+                    const localMatch = playersList.find(p => p.id === remotePlayer.id);
+                    const isLocal = remotePlayer.id === localPlayerId;
+                    const finished = isLocal ? (localMatch ? (localMatch.finished || remotePlayer.finished) : remotePlayer.finished) : remotePlayer.finished;
+
+                    return {
+                        ...remotePlayer,
+                        isLocal: isLocal,
+                        finished: finished === true || finished === "true",
+                        stats: remotePlayer.stats || { perfect: 0, earlyLate: 0, miss: 0 }
+                    };
+                });
+
+                if (isHost) renderLobbyGrid('lobby-players-grid');
+                else renderLobbyGrid('client-lobby-grid');
+
+                if (isSongBattle) {
+                    const localPlayer = playersList.find(p => p.id === localPlayerId);
+                    if (localPlayer && localPlayer.finished) {
+                        pushPlayerState();
+                    }
+                    renderSongBattleResults();
+                } else {
+                    updateMultiplayerLanesUI();
+                }
+
+                if (res.songCode && !isHost) {
+                    currentSongTitle = res.songTitle;
+                    songSelect.value = res.songCode;
+                    const parsed = parsePianoPad(res.songCode);
+                    if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
+                }
+
+                if (res.status === "started" && !hasBattleStarted) {
+                    hasBattleStarted = true;
+                    document.getElementById('sprint-option-modal').classList.remove('open');
+                    arcadeHub.classList.remove('open');
+                    resetGameStats();
+
+                    if (isSongBattle) {
+                        // Ensure Step Mode is OFF when Song Battle starts
+                        isStepMode = false;
+                        btnStep.textContent = 'Step Mode';
+                        btnStep.classList.remove('btn-step-active');
+                        btnStep.classList.add('btn-step');
+
+                        isGameMode = true;
+                        btnGame.textContent = 'Game Mode: ON';
+                        btnGame.classList.add('btn-game-active');
+                        startCountdown(() => { playSong(); });
+                    } else {
+                        activeMiniGame = 'sprint';
+                        renderSprintLanes();
+                        startCountdown(() => {
+                            raceActive = true;
+                            sprintStartTime = performance.now();
+                            sprintKeystrokeCount = 0;
+                            sprintIndex = 0;
+                        });
+                    }
+                }
+
+                if (res.status === "finished" && raceActive) {
+                    raceActive = false;
+                    if (isSongBattle) renderSongBattleResults();
+                    else finishSprintRace();
+                }
+            }, 1000);
+        }
+
+        async function pushPlayerState() {
+            if (!activeBattleRoomCode) return;
+            const localPlayer = playersList.find(p => p.id === localPlayerId);
+            if (!localPlayer) return;
+
+            const stats = localPlayer.stats || gameStats;
+            const url = `${APPS_SCRIPT_URL}?action=UPDATE_PLAYER&roomCode=${activeBattleRoomCode}&playerId=${localPlayerId}&pxProgress=${localPlayer.pxProgress}&finishTime=${localPlayer.finishTime || ''}&finished=${localPlayer.finished}&perfect=${stats.perfect}&earlyLate=${stats.earlyLate}&miss=${stats.miss}&t=${Date.now()}`;
+            await sendJSONP(url);
+        }
+
+        async function triggerHostStartRace() {
+            if (!activeBattleRoomCode) return;
+
+            const url = `${APPS_SCRIPT_URL}?action=START_ROOM&roomCode=${activeBattleRoomCode}&t=${Date.now()}`;
+            await sendJSONP(url);
+
+            document.getElementById('sprint-option-modal').classList.remove('open');
+            arcadeHub.classList.remove('open');
+            resetGameStats();
+
+            if (isSongBattle) {
+                // Ensure Step Mode is OFF when Song Battle starts
+                isStepMode = false;
+                btnStep.textContent = 'Step Mode';
+                btnStep.classList.remove('btn-step-active');
+                btnStep.classList.add('btn-step');
+
+                isGameMode = true;
+                btnGame.textContent = 'Game Mode: ON';
+                btnGame.classList.add('btn-game-active');
+                startCountdown(() => { playSong(); });
+            } else {
+                activeMiniGame = 'sprint';
+                renderSprintLanes();
+                startCountdown(() => {
+                    raceActive = true;
+                    sprintStartTime = performance.now();
+                    sprintKeystrokeCount = 0;
+                    sprintIndex = 0;
+                });
+            }
+        }
+
+        async function triggerBattleAgain() {
+            gameResultsModal.classList.remove('open');
+            hasBattleStarted = false;
+            battleResultsShown = false;
+
+            if (isSprintHost) {
+                const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(sessionStudentName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
+                await sendJSONP(url);
+
+                showHostSetup(sessionStudentName);
+                document.getElementById('sprint-option-modal').classList.add('open');
+            }
+        }
+
+        function renderSprintLanes() {
+            runnerTrack.style.display = 'flex';
+            runnerTrack.innerHTML = '';
+
+            const hurdleNotes = ['G', 'E', 'C', 'F', 'A', 'D', 'B', 'C', 'E', 'G'];
+
+            playersList.forEach((player) => {
+                const laneDiv = document.createElement('div');
+                laneDiv.className = `runner-lane ${player.id === localPlayerId ? 'my-lane' : ''}`;
+                laneDiv.id = `lane-${player.id}`;
+
+                const label = document.createElement('div');
+                label.className = 'lane-label';
+                label.textContent = `${player.name} (${player.avatar})`;
+
+                const avatar = document.createElement('div');
+                avatar.className = 'runner-avatar';
+                avatar.id = `avatar-${player.id}`;
+                avatar.textContent = player.avatar;
+
+                const scrollTrack = document.createElement('div');
+                scrollTrack.className = 'runner-track-scroll';
+                scrollTrack.id = `scroll-${player.id}`;
+
+                hurdleNotes.forEach((note, idx) => {
+                    const hurdleDiv = document.createElement('div');
+                    hurdleDiv.className = 'hurdle-obstacle';
+                    hurdleDiv.style.left = `${(idx + 1) * 320}px`;
+                    hurdleDiv.textContent = note;
+                    scrollTrack.appendChild(hurdleDiv);
+                });
+
+                const finishLine = document.createElement('div');
+                finishLine.className = 'runner-finish-line';
+                scrollTrack.appendChild(finishLine);
+
+                laneDiv.appendChild(label);
+                laneDiv.appendChild(avatar);
+                laneDiv.appendChild(scrollTrack);
+                runnerTrack.appendChild(laneDiv);
+            });
+        }
+
+        function updateMultiplayerLanesUI() {
+            playersList.forEach((player) => {
+                const scrollTrack = document.getElementById(`scroll-${player.id}`);
+                if (scrollTrack) {
+                    scrollTrack.style.transform = `translateX(-${player.pxProgress}px)`;
+                }
+            });
+        }
+
+        function startCountdown(onComplete) {
+            const overlay = document.getElementById('countdown-overlay');
+            const numText = document.getElementById('countdown-text');
+            overlay.style.display = 'flex';
+
+            let count = 3;
+            numText.textContent = count;
+
+            const interval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    numText.textContent = count;
+                } else if (count === 0) {
+                    numText.textContent = "GO!";
+                } else {
+                    clearInterval(interval);
+                    overlay.style.display = 'none';
+                    if (onComplete) onComplete();
+                }
+            }, 800);
+        }
+
+        function checkAllFinished() {
+            const allFinished = playersList.every(p => p.finished === true || p.finished === "true" || p.finishTime !== null || p.pxProgress >= 3600);
+            if (allFinished) {
+                if (raceActive) {
+                    raceActive = false;
+                    finishSprintRace();
+                } else if (isSongBattle) {
+                    renderSongBattleResults();
+                }
+            }
+        }
+
+        function finishSprintRace() {
+            raceActive = false;
+            currentSongTitle = "Finger Sprint";
+
+            const localPlayer = playersList.find(p => p.id === localPlayerId);
+            const winner = [...playersList].sort((a,b) => parseFloat(a.finishTime || 999) - parseFloat(b.finishTime || 999))[0];
+            const isWinner = winner && winner.id === localPlayerId;
+
+            const popUpHeader = isWinner ? `🎉 YOU WON! (${localPlayer ? localPlayer.finishTime : ''}s)` : `❌ YOU LOST! Winner: ${winner ? winner.name : 'Opponent'}`;
+
+            const sortedResults = [...playersList].sort((a, b) => {
+                if (a.finishTime && b.finishTime) return parseFloat(a.finishTime) - parseFloat(b.finishTime);
+                if (a.finishTime) return -1;
+                if (b.finishTime) return 1;
+                return b.pxProgress - a.pxProgress;
+            });
+
+            let tableRows = sortedResults.map((p, idx) => {
+                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
+                const timeLabel = p.finishTime ? `${p.finishTime}s` : 'DNF';
+                return `<tr>
+                    <td style="font-weight:800;">${medal}</td>
+                    <td>${p.avatar} ${p.name}</td>
+                    <td style="color:#22c55e; font-weight:700;">${timeLabel}</td>
+                </tr>`;
+            }).join('');
+
+            const resultsHTML = `
+                <div style="margin-bottom:8px; font-weight:900; font-size:1.3rem; color:${isWinner ? '#22c55e' : '#ef4444'};">${popUpHeader}</div>
+                <table class="race-results-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Racer</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            `;
+
+            document.getElementById('game-summary-text').innerHTML = resultsHTML;
+
+            document.getElementById('badge-container').innerHTML = '';
+            document.getElementById('single-bar-graph').style.display = 'flex';
+            document.getElementById('multi-bar-graph').style.display = 'none';
+            document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
+
+            const totalHits = gameStats.perfect + gameStats.miss;
+            const greenPct = totalHits > 0 ? (gameStats.perfect / totalHits) * 100 : 100;
+            const redPct = totalHits > 0 ? (gameStats.miss / totalHits) * 100 : 0;
+
+            document.getElementById('bar-green').style.height = `${greenPct}%`;
+            document.getElementById('bar-orange').style.height = '0%';
+            document.getElementById('bar-red').style.height = `${redPct}%`;
+
+            document.getElementById('game-rank-text').textContent = `Finger Sprint Finish!`;
+            gameResultsModal.classList.add('open');
+
+            if (localPlayer && localPlayer.finishTime) {
+                ensureStudentName();
+                postScoreToLeaderboard(parseFloat(localPlayer.finishTime));
+            }
+            activeMiniGame = null;
+        }
+
+        async function postBattleToSpreadsheet(battlePayload) {
+            if (!APPS_SCRIPT_URL) return;
+
+            try {
+                const url = `${APPS_SCRIPT_URL}?action=SUBMIT_BATTLE&players=${encodeURIComponent(JSON.stringify(battlePayload))}&t=${Date.now()}`;
+                await sendJSONP(url);
+                document.getElementById('status').textContent = `Song Battle results saved to Google Sheet!`;
+            } catch (err) {
+                console.warn("Could not post battle to Google Sheet:", err);
+            }
+        }
+
+        function renderSongBattleResults() {
+            if (battleResultsShown) return;
+
+            const allPlayersFinished = playersList.every(p => p.finished === true || p.finished === "true");
+            
+            if (!allPlayersFinished) {
+                document.getElementById('status').textContent = `🏁 Battle finished for you! Waiting for remaining players to complete...`;
+                return;
+            }
+
+            battleResultsShown = true;
+            const multiGraph = document.getElementById('multi-bar-graph');
+            multiGraph.innerHTML = '';
+            multiGraph.style.display = 'flex';
+            document.getElementById('badge-container').innerHTML = '';
+            document.getElementById('single-bar-graph').style.display = 'none';
+            document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
+
+            const localPlayer = playersList.find(p => p.id === localPlayerId);
+            if (localPlayer && localPlayer.stats) {
+                const tot = localPlayer.stats.perfect + localPlayer.stats.earlyLate + localPlayer.stats.miss;
+                const acc = tot > 0 ? (((localPlayer.stats.perfect * 1.0 + localPlayer.stats.earlyLate * 0.5) / tot) * 100) : 0;
+                if (acc >= 80) {
+                    unlockBonusSounds(`Great job! You achieved <strong>${acc.toFixed(1)}%</strong> accuracy in the Song Battle and unlocked 5 bonus instrument sound engines!`);
+                }
+            }
+
+            const sortedRanked = [...playersList].sort((a, b) => {
+                const aStats = a.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+                const bStats = b.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+                const aTot = Math.max(1, aStats.perfect + aStats.earlyLate + aStats.miss);
+                const bTot = Math.max(1, bStats.perfect + bStats.earlyLate + bStats.miss);
+                const aAcc = ((aStats.perfect * 1.0 + aStats.earlyLate * 0.5) / aTot) * 100;
+                const bAcc = ((bStats.perfect * 1.0 + bStats.earlyLate * 0.5) / bTot) * 100;
+                return bAcc - aAcc;
+            });
+
+            const battlePayload = [];
+
+            sortedRanked.forEach((p, idx) => {
+                const col = document.createElement('div');
+                col.className = 'multi-bar-column';
+
+                const pStats = p.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+                const total = Math.max(1, pStats.perfect + pStats.earlyLate + pStats.miss);
+
+                const accuracyPct = ((pStats.perfect * 1.0 + pStats.earlyLate * 0.5) / total) * 100;
+
+                battlePayload.push({
+                    name: p.name,
+                    score: accuracyPct.toFixed(1)
+                });
+
+                const gPct = (pStats.perfect / total) * 100;
+                const oPct = (pStats.earlyLate / total) * 100;
+                const rPct = (pStats.miss / total) * 100;
+
+                const medal = idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `${idx + 1}th`;
+
+                col.innerHTML = `
+                    <div class="rank-medal-badge">${medal}</div>
+                    <div class="stacked-bar">
+                        <div class="bar-part-red" style="height:${rPct}%;"></div>
+                        <div class="bar-part-orange" style="height:${oPct}%;"></div>
+                        <div class="bar-part-green" style="height:${gPct}%;"></div>
+                    </div>
+                    <span style="font-size:0.75rem; font-weight:700; color:#fff;">${p.avatar || '🏃'} ${p.name}</span>
+                `;
+                multiGraph.appendChild(col);
+            });
+
+            if (isSprintHost) {
+                postBattleToSpreadsheet(battlePayload);
+            }
+
+            document.getElementById('game-summary-text').innerHTML = `<div style="font-size:1.2rem; font-weight:800; color:#facc15;">⚔️ Song Battle Standings: ${currentSongTitle}</div>`;
+            document.getElementById('game-rank-text').textContent = `Song Battle Logged!`;
+            gameResultsModal.classList.add('open');
         }
 
         function handleSprintInput(noteStr) {
+            if (!raceActive) return;
+
             const rawNoteName = noteStr.toLowerCase().trim();
-            const noteMatch = rawNoteName.match(/^([a-g]#?)([0-9]+)$/);
-            
-            if (!noteMatch) return;
-            const letter = noteMatch[1].toUpperCase();
-            const octave = parseInt(noteMatch[2], 10);
+            const localPlayer = playersList.find(p => p.id === localPlayerId);
 
-            const currentPosPct = (sprintKeystrokeCount / SPRINT_TARGET_KEYSTROKES) * 85;
-
-            const nearbyHurdle = activeHurdles.find(h => !h.cleared && Math.abs(currentPosPct - h.posPct) <= 16);
-
-            if (nearbyHurdle) {
-                if (letter === nearbyHurdle.letter && octave >= 2) {
-                    nearbyHurdle.cleared = true;
-                    gameStats.perfect++;
-                    renderHurdles();
-
-                    runnerSprite.textContent = '🤸';
-                    runnerSprite.classList.add('jumping');
-
-                    setTimeout(() => {
-                        runnerSprite.classList.remove('jumping');
-                        runnerSprite.textContent = runnerLegToggle ? '🏃' : '🏃‍♂️';
-                    }, 450);
-
-                    document.getElementById('status').textContent = `🦘 HURDLE JUMP CLEARED! High ${letter} Jump Successful!`;
-                    return;
-                } else if (letter === nearbyHurdle.letter && octave === 1) {
-                    playErrorClackSound();
-                    document.getElementById('status').textContent = `⚠️ Play a HIGH ${letter} (Octave 2, 3, or 4) to Jump over the Hurdle!`;
-                    return;
-                }
-            }
+            if (!localPlayer || localPlayer.finishTime) return;
 
             const expectedNote = sprintSequence[sprintIndex % 2];
             if (rawNoteName === expectedNote.toLowerCase().trim()) {
@@ -1479,29 +2484,17 @@
                 sprintIndex++;
                 sprintKeystrokeCount++;
 
-                runnerLegToggle = !runnerLegToggle;
-                if (!runnerSprite.classList.contains('jumping')) {
-                    runnerSprite.textContent = runnerLegToggle ? '🏃' : '🏃‍♂️';
+                localPlayer.pxProgress = sprintKeystrokeCount * 36;
+                updateMultiplayerLanesUI();
+
+                if (localPlayer.pxProgress >= 3600 && !localPlayer.finishTime) {
+                    localPlayer.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
                 }
 
-                const newProgressPct = (sprintKeystrokeCount / SPRINT_TARGET_KEYSTROKES) * 85;
-                runnerSprite.style.left = `calc(10px + ${newProgressPct}%)`;
+                pushPlayerState();
 
-                if (sprintKeystrokeCount >= SPRINT_TARGET_KEYSTROKES) {
-                    const totalTimeSeconds = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
-                    runnerSprite.classList.remove('sprinting');
-                    runnerSprite.textContent = '🏃';
-                    currentSongTitle = "Finger Sprint";
-                    
-                    document.getElementById('game-summary-text').innerHTML = `Sprint Time: <span style="color:#facc15; font-size:1.3rem;">${totalTimeSeconds} Seconds</span>`;
-                    document.getElementById('bar-green').style.height = '100%';
-                    document.getElementById('bar-orange').style.height = '0%';
-                    document.getElementById('bar-red').style.height = '0%';
-
-                    document.getElementById('game-rank-text').textContent = `Finger Sprint Completed!`;
-                    gameResultsModal.classList.add('open');
-                    postScoreToLeaderboard(parseFloat(totalTimeSeconds));
-                    activeMiniGame = null;
+                if (localPlayer.pxProgress >= 3600) {
+                    checkAllFinished();
                     return;
                 }
 
@@ -1815,6 +2808,8 @@
             buildCalibrationKeyboard();
             isCalibrating = true;
             calibStep = 1;
+            document.getElementById('btn-calib-skip').style.display = 'none';
+            document.getElementById('btn-calib-cancel').style.display = 'inline-flex';
             document.getElementById('calib-instructions').textContent = "Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
             calibModal.classList.add('open');
         }
@@ -2983,29 +3978,21 @@
 
         function getNoteStaffInfo(noteStr, staffTopY, staffSpacing) {
             const baseOctaveMap = { 'c': 0, 'd': 1, 'e': 2, 'f': 3, 'g': 4, 'a': 5, 'b': 6 };
-            
-            // In PianoPad mapping, the lowest key 'c1' corresponds to Middle C (C4).
-            // Middle C is 1 ledger line below the standard treble staff.
-            // Treble staff bottom line (E4) is at: staffTopY + 4 * staffSpacing
-            // C4 is one full staffSpacing below E4.
-            const c1Y = staffTopY + 5 * staffSpacing; 
-            
+            const c4Y = staffTopY + 5 * staffSpacing; 
             const match = noteStr.toLowerCase().trim().match(/^([a-g])#?([1-7])$/);
-            if (!match) return { y: c1Y, shiftLevel: 0 };
+            if (!match) return { y: c4Y, shiftLevel: 0 };
             
             const noteChar = match[1];
             const appOctave = parseInt(match[2], 10);
             
-            // Calculate diatonic steps above 'c1'
-            const stepsAboveC1 = (appOctave - 1) * 7 + baseOctaveMap[noteChar];
+            const diatonicStep = (appOctave - 1) * 7 + baseOctaveMap[noteChar];
+            const stepsAboveC4 = diatonicStep - 21;
             
-            let y = c1Y - stepsAboveC1 * (staffSpacing / 2);
+            let y = c4Y - stepsAboveC4 * (staffSpacing / 2);
             let shiftLevel = 0;
             
-            // Keep notes contained on the staff (drop 8va/15ma if above the 2nd ledger line)
-            const maxHighY = staffTopY - 2 * staffSpacing;
-            while (y < maxHighY) { 
-                y += 7 * (staffSpacing / 2); // 1 Octave down visual shift
+            while (y < -5) { 
+                y += 7 * (staffSpacing / 2); 
                 shiftLevel++;
             }
             return { y, shiftLevel };
@@ -3193,7 +4180,7 @@
                             const speedPxPerMs = (canvas.width - sheetHitX) / currentFallSpeed;
                             const currentX = sheetHitX + timeUntilHit * speedPxPerMs;
 
-                            if (currentX >= sheetHitX - 15 && currentX < canvas.width + 50) {
+                            if (currentX >= sheetHitX && currentX < canvas.width + 50) {
                                 const { y, shiftLevel } = getNoteStaffInfo(noteStr, staffTopY, staffSpacing);
                                 
                                 ctx.save();
