@@ -14,7 +14,7 @@
             --text-main: #fef3c7;
             --highlight: #eab308;
             --canvas-bg: #0d0a07;
-            --hitline-color: #fef3c7;
+            --hitline-color: #ef4444;
         }
 
         * {
@@ -105,6 +105,7 @@
 
         .btn-game-active { background-color: #ec4899 !important; color: #fff; }
         .btn-step-active { background-color: #f43f5e !important; color: #ffffff !important; }
+        .btn-mic-active { background-color: #10b981 !important; color: #ffffff !important; box-shadow: 0 0 10px rgba(16, 185, 129, 0.6); }
 
         .visualizer-wrapper {
             position: relative; display: flex; flex-direction: column; align-items: center;
@@ -237,7 +238,7 @@
             border: 2px solid #3f3f46; box-shadow: 0 25px 50px -12px rgba(0,0,0,1);
         }
 
-        .modal h2 { color: #f8fafc; text-align: center; margin-bottom: 5px; font-size: 1.4rem;}
+        .modal h2 { color: #fbbf24; text-align: center; margin-bottom: 5px; font-size: 1.4rem;}
         
         .setup-option {
             background: #120e0a;
@@ -331,14 +332,12 @@
             <div class="logo-container" style="display: flex; align-items: center; gap: 10px;">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 60" width="250" height="60">
                     <defs>
-                        <!-- Metallic Brass Gradient for the body -->
                         <linearGradient id="brassShine" x1="0%" y1="0%" x2="0%" y2="100%">
                             <stop offset="0%" stop-color="#fbbf24" />
                             <stop offset="40%" stop-color="#fef3c7" />
                             <stop offset="60%" stop-color="#f59e0b" />
                             <stop offset="100%" stop-color="#78350f" />
                         </linearGradient>
-                        <!-- Vertical Gradient for the text -->
                         <linearGradient id="textGrad" x1="0%" y1="0%" x2="0%" y2="100%">
                             <stop offset="0%" stop-color="#fcd34d" />
                             <stop offset="100%" stop-color="#d97706" />
@@ -349,35 +348,24 @@
                     </defs>
 
                     <g filter="url(#dropShadow)">
-                        <!-- Trumpet Main Pipe -->
                         <path d="M 20 38 L 70 38 L 70 44 L 20 44 Z" fill="url(#brassShine)" />
-                        
-                        <!-- Trumpet Bell -->
                         <path d="M 70 38 C 85 38, 90 20, 95 15 L 95 65 C 90 60, 85 44, 70 44 Z" fill="url(#brassShine)" />
-                        
-                        <!-- Mouthpiece -->
                         <path d="M 10 39 L 20 39 L 20 43 L 10 43 L 5 46 L 5 36 Z" fill="url(#brassShine)" />
 
-                        <!-- Valve 1 -->
                         <rect x="30" y="24" width="8" height="26" rx="1" fill="url(#brassShine)" />
                         <rect x="33" y="10" width="2" height="14" fill="#cbd5e1" />
                         <rect x="31" y="8" width="6" height="3" rx="1" fill="#f8fafc" />
 
-                        <!-- Valve 2 (Pressed down slightly) -->
                         <rect x="42" y="24" width="8" height="26" rx="1" fill="url(#brassShine)" />
                         <rect x="45" y="15" width="2" height="9" fill="#cbd5e1" />
                         <rect x="43" y="13" width="6" height="3" rx="1" fill="#f8fafc" />
 
-                        <!-- Valve 3 -->
                         <rect x="54" y="24" width="8" height="26" rx="1" fill="url(#brassShine)" />
                         <rect x="57" y="10" width="2" height="14" fill="#cbd5e1" />
                         <rect x="55" y="8" width="6" height="3" rx="1" fill="#f8fafc" />
                         
-                        <!-- Tubing loop details -->
                         <path d="M 34 50 Q 46 60 58 50" fill="none" stroke="url(#brassShine)" stroke-width="3" stroke-linecap="round"/>
                     </g>
-
-                    <!-- BrassPad Text -->
                     <text x="105" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="900" font-size="28" fill="url(#textGrad)" letter-spacing="-0.5" filter="url(#dropShadow)">BrassPad</text>
                 </svg>
             </div>
@@ -391,6 +379,10 @@
                     <label for="speed-slider">Tempo: <span id="speed-label">100%</span></label>
                     <input type="range" id="speed-slider" min="10" max="300" value="100" step="5">
                 </div>
+
+                <button type="button" id="btn-mic-toggle" class="btn-secondary" title="Listen for real brass instrument">
+                    🎙️ Play/Listen Mode
+                </button>
 
                 <button type="button" id="btn-game" class="btn-secondary">
                     🎮 Game Mode: OFF
@@ -444,35 +436,37 @@
         </div>
 
         <div class="footer-bar">
-            <!-- Timestamp Updated -->
-            <div class="version-stamp">v26.09.09 | 9-Sep 17:44 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 17:54 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
 
-    <!-- Initial Setup Modal -->
+    <!-- Instrument Setup Modal -->
     <div class="modal-overlay" id="setup-modal">
         <div class="modal">
             <h2>Select Instrument 🎺</h2>
-            <p style="text-align: center; color: #d1d5db; font-size: 0.9rem; margin-bottom: 10px;">Select your instrument to transpose sheet music into your written pitch:</p>
+            <p style="text-align: center; color: #d1d5db; font-size: 0.9rem; margin-bottom: 5px;">Select your instrument to shift playback pitch:</p>
             
-            <div class="setup-option selected" data-transpose="-2" data-name="🎺 Bb Trumpet / Cornet Mode" onclick="selectInstrument(this)">
+            <button type="button" class="btn-warning" style="justify-content: center; padding: 10px; font-size: 1rem; margin-bottom: 10px;" onclick="startAutoDetect()">🎙️ Auto-Detect via Microphone</button>
+            <p id="setup-modal-subtitle" style="text-align: center; color: #facc15; font-size: 0.85rem; height: 15px; margin: 0;"></p>
+
+            <div class="setup-option selected" data-audio-transpose="-2" data-type="trumpet" data-name="🎺 Bb Trumpet / Cornet Mode" onclick="selectInstrument(this)">
                 <h3>Trumpet / Cornet (Bb)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-transpose="-2" data-name="📯 Bb Euphonium / Baritone Mode" onclick="selectInstrument(this)">
+            <div class="setup-option" data-audio-transpose="-14" data-type="euphonium" data-name="📯 Bb Euphonium / Baritone Mode" onclick="selectInstrument(this)">
                 <h3>Euphonium / Baritone (Bb Treble)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-transpose="-2" data-name="🎷 Bb Tuba Mode" onclick="selectInstrument(this)">
+            <div class="setup-option" data-audio-transpose="-26" data-type="tuba" data-name="🎷 Bb Tuba Mode" onclick="selectInstrument(this)">
                 <h3>Tuba (Bb Treble / Brass Band)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-transpose="-9" data-name="📯 Eb Tenor Horn Mode" onclick="selectInstrument(this)">
+            <div class="setup-option" data-audio-transpose="-9" data-type="horn" data-name="📯 Eb Tenor Horn Mode" onclick="selectInstrument(this)">
                 <h3>Tenor Horn (Eb)</h3>
                 <p>Reads Treble Clef. Concert Eb = Written C.</p>
             </div>
-            <div class="setup-option" data-transpose="0" data-name="🎶 Concert Pitch Brass Mode" onclick="selectInstrument(this)">
+            <div class="setup-option" data-audio-transpose="0" data-type="tuba" data-name="🎶 Concert Pitch Brass Mode" onclick="selectInstrument(this)">
                 <h3>Tuba / Euphonium (Concert Pitch)</h3>
                 <p>Reads Bass Clef at Concert Pitch.</p>
             </div>
@@ -515,7 +509,7 @@
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
 
-        // Bundled Emergency Song Library
+        // Bundled Emergency Song Library (Protects against CORS Blocks/Latency)
         const FALLBACK_SONGS = [
             { title: "Wipeout", code: "C2,C2,C2,C2,D2,D2,D2,D2,E2,E2,D2,D2,C2,Rests,250,250,250,250,250,250,250,250,250,250,250,250,500" },
             { title: "Hot Cross Buns", code: "E2,D2,C2,E2,D2,C2,C2,C2,C2,C2,D2,D2,D2,D2,E2,D2,C2,Rests,400,400,800,400,400,800,200,200,200,200,200,200,200,200,400,400,800" },
@@ -536,8 +530,9 @@
         let isStepMode = false;
         let sessionStudentName = "";
         
-        let transposeOffset = 2; // Default to Bb Instruments (+2 semitones from concert to written)
+        let audioTranspose = -2; // Default audio transposition for playback pitch
         let instrumentName = "🎺 Bb Trumpet / Cornet Mode";
+        let instrumentType = "trumpet"; // Affects synthesizer shape
 
         let animationFrameId = null;
         let playbackStartTime = 0;
@@ -549,7 +544,7 @@
         let currentStepIndex = 0;
         let smoothStepElapsed = 0;
 
-        // Visualizer Range Settings
+        // Visualizer Range Settings (Written Pitch standard representation)
         const MIN_PITCH = 54; // F#3
         const MAX_PITCH = 84; // C6
         const PITCH_RANGE = MAX_PITCH - MIN_PITCH + 1;
@@ -595,15 +590,16 @@
             document.querySelectorAll('.setup-option').forEach(opt => opt.classList.remove('selected'));
             el.classList.add('selected');
             
-            let rawTrans = parseInt(el.getAttribute('data-transpose'), 10);
-            transposeOffset = rawTrans === 0 ? 0 : rawTrans * -1; 
+            audioTranspose = parseInt(el.getAttribute('data-audio-transpose'), 10); 
             instrumentName = el.getAttribute('data-name');
+            instrumentType = el.getAttribute('data-type');
         }
 
         function confirmInstrument() {
             document.getElementById('setup-modal').classList.remove('open');
             document.getElementById('instrument-label').textContent = instrumentName;
             
+            // Re-normalize current song visually
             if (rawParsedSong.length > 0) {
                 currentSong = autoTransposeSong(rawParsedSong);
             }
@@ -630,7 +626,7 @@
             document.getElementById('game-results-modal').classList.remove('open');
         });
 
-        // --- Leaderboard Support (Mocked locally per instructions) ---
+        // --- Mock Leaderboard Display ---
         function sanitizeName(str) {
             const parts = str.trim().split(/\s+/);
             if (parts.length === 1) return parts[0];
@@ -656,7 +652,7 @@
             rankDiv.style.display = 'inline-block';
             const randomRank = Math.floor(Math.random() * 15) + 1;
             const totalPlayers = Math.floor(Math.random() * 50) + 20;
-            rankDiv.textContent = `${currentSongTitle} Rank ${randomRank}/${totalPlayers}`;
+            rankDiv.textContent = `World Cup Song Rank ${randomRank}/${totalPlayers}`;
         }
 
         // --- Color Coding based on Note Pitch ---
@@ -667,7 +663,7 @@
                 case 'd': case 'd#': return '#f97316'; // Orange
                 case 'e': return '#eab308';            // Yellow
                 case 'f': case 'f#': return '#22c55e'; // Green
-                case 'g': case 'g#': return '#06b6d4'; // Aqua
+                case 'g': case 'g#': return '#06b6d4'; // Aqua / Light Blue
                 case 'a': case 'a#': return '#a855f7'; // Purple
                 case 'b': return '#ec4899';            // Pink
                 default: return '#f59e0b';
@@ -683,7 +679,7 @@
             let valveChanged = false;
             const keyStr = e.key.toLowerCase();
 
-            // Valves: m, comma, period
+            // Valves: M, comma, period
             if (keyStr === 'm') { setValve(1, true); valveChanged = true; }
             if (keyStr === ',') { setValve(2, true); valveChanged = true; }
             if (keyStr === '.') { setValve(3, true); valveChanged = true; }
@@ -842,26 +838,53 @@
             const filter = audioCtx.createBiquadFilter();
             const gain = audioCtx.createGain();
 
+            // Morph sound based on selected instrument type
             osc.type = 'sawtooth';
+            let filterMultiplierStart = 4;
+            let filterMultiplierEnd = 1.5;
+            let baseGain = 0.4;
+
+            if (instrumentType === 'trumpet') {
+                osc.type = 'sawtooth';
+                filterMultiplierStart = 5;
+                filterMultiplierEnd = 2;
+                baseGain = 0.4;
+            } else if (instrumentType === 'horn') {
+                osc.type = 'sawtooth';
+                filterMultiplierStart = 3;
+                filterMultiplierEnd = 1.2;
+                baseGain = 0.45;
+            } else if (instrumentType === 'euphonium') {
+                osc.type = 'triangle'; 
+                filterMultiplierStart = 2.5;
+                filterMultiplierEnd = 1.0;
+                baseGain = 0.6; 
+            } else if (instrumentType === 'tuba') {
+                osc.type = 'triangle'; 
+                filterMultiplierStart = 1.5;
+                filterMultiplierEnd = 0.8;
+                baseGain = 0.8;
+            }
+
             osc.frequency.setValueAtTime(freq, now);
 
             filter.type = 'lowpass';
-            filter.Q.value = 1.2;
+            filter.Q.value = 1.0;
             filter.frequency.setValueAtTime(freq * 1.5, now);
-            filter.frequency.linearRampToValueAtTime(freq * 4, now + 0.05); 
-            filter.frequency.exponentialRampToValueAtTime(freq * 1.5, now + safeDuration);
+            filter.frequency.linearRampToValueAtTime(freq * filterMultiplierStart, now + 0.05); 
+            filter.frequency.exponentialRampToValueAtTime(freq * filterMultiplierEnd, now + safeDuration);
 
             gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(0.4, now + 0.03);
-            gain.gain.setValueAtTime(0.4, now + safeDuration - 0.05);
-            gain.gain.linearRampToValueAtTime(0.0001, now + safeDuration + 0.05);
+            gain.gain.linearRampToValueAtTime(baseGain, now + 0.04);
+            gain.gain.setValueAtTime(baseGain, now + safeDuration - 0.05);
+            gain.gain.linearRampToValueAtTime(0.0001, now + safeDuration + 0.1);
 
             osc.connect(filter);
             filter.connect(gain);
             gain.connect(audioCtx.destination);
             
             osc.start(now);
-            osc.stop(now + safeDuration + 0.1);
+            osc.stop(now + safeDuration + 0.2);
         }
 
         function playErrorClackSound() {
@@ -888,7 +911,7 @@
             const octave = parseInt(match[2], 10);
             const offset = noteNames.indexOf(name);
             if (offset === -1) return null;
-            return (octave + 1) * 12 + offset;
+            return (octave + 1) * 12 + offset; // C4 = 60
         }
 
         function pitchToNote(pitch) {
@@ -902,24 +925,43 @@
             const writtenPitch = noteToPitch(noteStr);
             if (writtenPitch === null) return null;
             
-            const concertPitch = writtenPitch - transposeOffset;
+            // audioTranspose drops it to correct Concert Pitch
+            const concertPitch = writtenPitch + audioTranspose;
             return 440 * Math.pow(2, (concertPitch - 69) / 12);
+        }
+
+        function getNoteFrequency(noteStr) {
+            const pitch = noteToPitch(noteStr);
+            if (pitch === null) return null;
+            return 440 * Math.pow(2, (pitch - 69) / 12);
         }
 
         function autoTransposeSong(song) {
             if (!song || song.length === 0) return [];
+            let pitches = [];
+            
+            song.forEach(item => {
+                item.notes.forEach(noteStr => {
+                    const p = noteToPitch(noteStr);
+                    if (p !== null) pitches.push(p);
+                });
+            });
+            
+            if (pitches.length === 0) return song;
+
+            let minP = Math.min(...pitches);
+            let maxP = Math.max(...pitches);
+            let octaveShift = 0;
+
+            // Shift octave so visual notes stay clamped between 54 (F#3) and 84 (C6)
+            while (minP + octaveShift * 12 < MIN_PITCH) octaveShift++;
+            while (maxP + octaveShift * 12 > MAX_PITCH && minP + octaveShift * 12 > MIN_PITCH) octaveShift--;
 
             return song.map(item => {
                 const newNotes = item.notes.map(noteStr => {
                     const p = noteToPitch(noteStr);
                     if (p === null) return noteStr;
-                    
-                    let shiftedP = p + transposeOffset;
-
-                    while (shiftedP < MIN_PITCH) shiftedP += 12;
-                    while (shiftedP > MAX_PITCH) shiftedP -= 12;
-
-                    return pitchToNote(shiftedP);
+                    return pitchToNote(p + octaveShift * 12);
                 });
 
                 return { ...item, notes: newNotes };
@@ -947,13 +989,13 @@
         function toggleStepMode() {
             isStepMode = !isStepMode;
             if (isStepMode) {
-                btnStep.textContent = 'Step Mode: ON';
+                btnStep.textContent = '👣 Step Mode: ON';
                 btnStep.classList.remove('btn-secondary');
                 btnStep.classList.add('btn-step-active');
                 if (isGameMode) toggleGameMode();
                 document.getElementById('status').textContent = ' STEP MODE ACTIVE! Press required valves to advance each note.';
             } else {
-                btnStep.textContent = 'Step Mode: OFF';
+                btnStep.textContent = '👣 Step Mode: OFF';
                 btnStep.classList.remove('btn-step-active');
                 btnStep.classList.add('btn-secondary');
                 document.getElementById('status').textContent = 'Step Mode OFF. Normal play active.';
@@ -1230,6 +1272,77 @@
 
             document.getElementById('game-results-modal').classList.add('open');
             displayMockRank();
+        }
+
+        // --- Microphone Auto-Detect Feature ---
+        async function startAutoDetect() {
+            document.getElementById('setup-modal-subtitle').textContent = "🎙️ Listening... Play an Open Note (no valves) loudly!";
+            initAudio();
+            
+            if (micStream) {
+                micStream.getTracks().forEach(track => track.stop());
+                micStream = null;
+            }
+
+            try {
+                micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                const micSource = audioCtx.createMediaStreamSource(micStream);
+                micAnalyser = audioCtx.createAnalyser();
+                micAnalyser.fftSize = 4096; // High res for low notes
+                micSource.connect(micAnalyser);
+
+                let detectCounter = 0;
+                let detectedFreqSum = 0;
+
+                function analyzeAutoDetect() {
+                    if (!micAnalyser) return;
+                    let buf = new Float32Array(micAnalyser.fftSize);
+                    micAnalyser.getFloatTimeDomainData(buf);
+                    let freq = autoCorrelate(buf, audioCtx.sampleRate);
+
+                    if (freq > 40 && freq < 600) {
+                        detectCounter++;
+                        detectedFreqSum += freq;
+                        if (detectCounter === 10) {
+                            const avgFreq = detectedFreqSum / 10;
+                            // Make decision based on Concert pitch frequency
+                            let selectedInstIndex = 0;
+                            let detectedName = "Concert Pitch Tuba";
+                            
+                            if (avgFreq < 80) { // Tuba Bb1 = ~58Hz
+                                selectedInstIndex = 2; detectedName = "Bb Tuba";
+                            } else if (avgFreq >= 80 && avgFreq < 135) { // Euph/Baritone Bb2 = ~116Hz
+                                selectedInstIndex = 1; detectedName = "Bb Euphonium";
+                            } else if (avgFreq >= 135 && avgFreq < 185) { // Tenor Horn Eb3 = ~155Hz
+                                selectedInstIndex = 3; detectedName = "Eb Tenor Horn";
+                            } else { // Trumpet Bb3 = ~233Hz
+                                selectedInstIndex = 0; detectedName = "Bb Trumpet";
+                            }
+
+                            document.getElementById('setup-modal-subtitle').textContent = `🎯 Detected ~${Math.round(avgFreq)}Hz. Setting to ${detectedName}!`;
+                            
+                            // Auto select corresponding option
+                            const options = document.querySelectorAll('.setup-option');
+                            selectInstrument(options[selectedInstIndex]);
+
+                            micStream.getTracks().forEach(track => track.stop());
+                            micStream = null;
+                            micAnalyser = null;
+                            return;
+                        }
+                    } else {
+                        detectCounter = 0;
+                        detectedFreqSum = 0;
+                    }
+                    requestAnimationFrame(analyzeAutoDetect);
+                }
+                
+                requestAnimationFrame(analyzeAutoDetect);
+
+            } catch (err) {
+                alert("Microphone access needed for Auto-Detect!");
+                document.getElementById('setup-modal-subtitle').textContent = "Select your instrument manually below:";
+            }
         }
 
         // --- Robust HayCode Parser ---
