@@ -882,7 +882,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.09 | 9-Sep 21:55 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 22:07 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1910,12 +1910,8 @@
 
             if (APPS_SCRIPT_URL) {
                 try {
-                    await fetch(APPS_SCRIPT_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'text/plain' },
-                        body: JSON.stringify({ action: "ADD_SONG", title: title, code: code })
-                    });
+                    const addUrl = `${APPS_SCRIPT_URL}?action=ADD_SONG&title=${encodeURIComponent(title)}&code=${encodeURIComponent(code)}&t=${Date.now()}`;
+                    await sendJSONP(addUrl);
                     document.getElementById('status').textContent = ` "${title}" successfully added to PianoPad & Google Sheet!`;
                 } catch (e) {
                     console.warn("Could not post to Apps Script endpoint.", e);
@@ -1960,6 +1956,7 @@
         async function postScoreToLeaderboard(accuracyNum) {
             if (!APPS_SCRIPT_URL) return;
 
+            ensureStudentName();
             const speedText = speedSlider.value + '%';
             const payload = {
                 action: "SCORE_SUBMIT",
@@ -1976,6 +1973,8 @@
                     headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify(payload)
                 });
+                const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&t=${Date.now()}`;
+                sendJSONP(url);
                 document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
             } catch (err) {
                 console.warn("Could not post score to Google Apps Script.", err);
@@ -2032,8 +2031,13 @@
                 const currentSpeedNum = parseInt(speedSlider.value, 10);
                 songScores.push({ accuracy: accuracyNum, speed: currentSpeedNum });
 
+                const titleLower = currentSongTitle.toLowerCase();
+                const isAscending = titleLower.includes('mystery note') || titleLower.includes('finger sprint');
+
                 songScores.sort((a, b) => {
-                    if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+                    if (a.accuracy !== b.accuracy) {
+                        return isAscending ? a.accuracy - b.accuracy : b.accuracy - a.accuracy;
+                    }
                     return b.speed - a.speed;
                 });
 
@@ -2048,14 +2052,7 @@
         }
 
         function showGameResultsPopUp() {
-            if (!sessionStudentName) {
-                const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
-                if (inputName && inputName.trim()) {
-                    sessionStudentName = inputName.trim();
-                } else {
-                    sessionStudentName = "Anonymous";
-                }
-            }
+            ensureStudentName();
 
             const perfectHits = gameStats.perfect;
             const earlyLateHits = gameStats.earlyLate;
@@ -2088,11 +2085,14 @@
                 badgeContainer.innerHTML = `<div style="font-size:0.8rem; color:#9ca3af; margin-top:4px;">Practice Speed: ${currentSpeed}% (Reach 50%+ for Practice Badges)</div>`;
             }
 
+            if (accuracyNum >= 80) {
+                unlockBonusSounds(`Awesome performance! You achieved <strong>${accuracyNum}%</strong> accuracy on ${currentSongTitle} and unlocked 5 bonus instrument sound engines!`);
+            }
+
             gameResultsModal.classList.add('open');
 
-            calculateAndDisplayRank(accuracyNum).then(() => {
-                postScoreToLeaderboard(accuracyNum);
-            });
+            postScoreToLeaderboard(accuracyNum);
+            calculateAndDisplayRank(accuracyNum);
         }
 
         function toggleLoopMode() {
@@ -2170,6 +2170,13 @@
 
         function toggleStepMode() {
             initAudio();
+            
+            // STRICT RULE: Step mode is forbidden inside Song Battles
+            if (isSongBattle) {
+                document.getElementById('status').textContent = '⚠️ Step Mode is NOT permitted during Song Battles!';
+                return;
+            }
+
             isStepMode = !isStepMode;
             if (isStepMode) {
                 btnStep.textContent = 'Step Mode: ON';
@@ -2220,12 +2227,6 @@
                 document.getElementById('status').textContent = `Step ${currentStepIndex + 1} of ${noteTimeline.length}: Next Note -> [ ${displayStr} ] (Press SPACE BAR or play on MIDI Keyboard)`;
             } else {
                 document.getElementById('status').textContent = 'Step Practice Finished!';
-                setTimeout(() => {
-                    const subject = encodeURIComponent("PianoPad wrong notes in song");
-                    const body = encodeURIComponent("Song Title: " + currentSongTitle + "\n\n");
-                    const mailto = `mailto:ghaybittle@erc.nsw.edu.au?subject=${subject}&body=${body}`;
-                    document.getElementById('status').innerHTML = `<a href="${mailto}" target="_blank" class="btn-link btn-danger" style="text-decoration:none;">Wrong Notes? CLICK HERE</a>`;
-                }, 400);
             }
         }
 
@@ -2383,15 +2384,23 @@
 
         function updateKeyPositions() {
             keyPosMap = {};
+            const pianoRect = keyboardEl.getBoundingClientRect();
+            const pianoLeft = pianoRect.left;
+            const targetWidth = pianoRect.width;
+
+            if (targetWidth > 0) {
+                canvas.width = targetWidth;
+            }
+
             const keys = keyboardEl.querySelectorAll('.key');
             keys.forEach(k => {
+                const kRect = k.getBoundingClientRect();
                 keyPosMap[k.dataset.note] = {
-                    left: k.offsetLeft,
-                    width: k.offsetWidth,
+                    left: kRect.left - pianoLeft,
+                    width: kRect.width,
                     isBlack: k.classList.contains('black')
                 };
             });
-            canvas.width = keyboardEl.offsetWidth;
         }
 
         function playTone(freq, duration = 0.4, volScale = 1.0) {
@@ -2479,6 +2488,73 @@
                 gain.connect(audioCtx.destination);
                 osc.start(now);
                 osc.stop(now + duration + 0.02);
+            } else if (inst === 'epiano') {
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc1.type = 'sine';
+                osc2.type = 'triangle';
+                osc1.frequency.setValueAtTime(freq, now);
+                osc2.frequency.setValueAtTime(freq * 2, now);
+
+                gain.gain.setValueAtTime(0.35 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.4);
+
+                osc1.connect(gain); osc2.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc1.start(now); osc2.start(now);
+                osc1.stop(now + duration + 0.4); osc2.stop(now + duration + 0.4);
+            } else if (inst === 'harpsichord') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, now);
+
+                gain.gain.setValueAtTime(0.25 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.15);
+
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + duration + 0.15);
+            } else if (inst === 'synth80s') {
+                const osc = audioCtx.createOscillator();
+                const filter = audioCtx.createBiquadFilter();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq, now);
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(freq * 4, now);
+
+                gain.gain.setValueAtTime(0.2 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.2);
+
+                osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + duration + 0.2);
+            } else if (inst === 'xylophone') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq * 2, now);
+
+                gain.gain.setValueAtTime(0.5 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 0.18);
+            } else if (inst === 'accordion') {
+                [0.99, 1.01].forEach(detune => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq * detune, now);
+
+                    gain.gain.setValueAtTime(0.12 * volScale, now);
+                    gain.gain.linearRampToValueAtTime(0.12 * volScale, now + duration);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.1);
+
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(now); osc.stop(now + duration + 0.1);
+                });
             }
         }
 
@@ -2582,11 +2658,28 @@
                         gameStats.earlyLate++;
                         highlightKey(noteStr, 220, '#f97316');
                     }
+
+                    if (isSongBattle) {
+                        const localPlayer = playersList.find(p => p.id === localPlayerId);
+                        if (localPlayer) {
+                            localPlayer.stats = { ...gameStats };
+                            pushPlayerState();
+                        }
+                    }
+
                     if (isGameMode) updateGameStatus();
                 } else {
                     gameStats.miss++;
                     playErrorClackSound();
                     highlightKey(noteStr, 200, '#ef4444');
+
+                    if (isSongBattle) {
+                        const localPlayer = playersList.find(p => p.id === localPlayerId);
+                        if (localPlayer) {
+                            localPlayer.stats = { ...gameStats };
+                            pushPlayerState();
+                        }
+                    }
                 }
             } else {
                 highlightKey(noteStr);
@@ -2677,10 +2770,12 @@
         }
 
         async function syncSongsWithGoogleSheet() {
+            let localCache = [];
             const cachedData = localStorage.getItem('pianopad_sheet_songs');
             if (cachedData) {
                 try {
-                    songList = JSON.parse(cachedData);
+                    localCache = JSON.parse(cachedData);
+                    songList = [...localCache];
                     renderSongSelect();
                     const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
                     if (defaultObj) {
@@ -2693,31 +2788,54 @@
                 }
             }
 
-            try {
-                const response = await fetch(SPREADSHEET_CSV_URL);
-                if (!response.ok) throw new Error('Network response failed');
-                
-                const csvText = await response.text();
-                const liveSongs = parseCSVToSongs(csvText);
+            let remoteSongs = [];
 
-                if (liveSongs.length > 0) {
-                    songList = liveSongs;
-                    localStorage.setItem('pianopad_sheet_songs', JSON.stringify(liveSongs));
-                    renderSongSelect();
-                    
-                    const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
-                    if (defaultObj) {
-                        currentSongTitle = defaultObj.title;
-                        currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
-                    }
-                    document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
+            try {
+                const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_SONGS&t=${Date.now()}`);
+
+                if (res && res.songs && res.songs.length > 0) {
+                    remoteSongs = res.songs;
+                } else {
+                    throw new Error(res ? res.error : "No songs returned from JSONP");
                 }
             } catch (err) {
-                if (songList.length > 0) {
-                    document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
-                } else {
-                    document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
+                console.warn("Apps Script fetch error, trying CSV fallback...", err);
+                try {
+                    const response = await fetch(SPREADSHEET_CSV_URL);
+                    if (response.ok) {
+                        const csvText = await response.text();
+                        remoteSongs = parseCSVToSongs(csvText);
+                    }
+                } catch (csvErr) {
+                    console.warn("CSV Fallback error:", csvErr);
                 }
+            }
+
+            if (remoteSongs.length > 0) {
+                const songMap = new Map();
+                remoteSongs.forEach(s => songMap.set(s.title.toLowerCase().trim(), s));
+                localCache.forEach(s => {
+                    const key = s.title.toLowerCase().trim();
+                    if (!songMap.has(key)) {
+                        songMap.set(key, s);
+                    }
+                });
+
+                songList = Array.from(songMap.values());
+                localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
+                renderSongSelect();
+
+                const defaultObj = songList.find(s => s.title === currentSongTitle) || songList.find(s => s.title === 'Wipeout') || songList[0];
+                if (defaultObj) {
+                    currentSongTitle = defaultObj.title;
+                    songSelect.value = defaultObj.code;
+                    currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
+                }
+                document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
+            } else if (songList.length > 0) {
+                document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
+            } else {
+                document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
             }
         }
 
@@ -2885,7 +3003,8 @@
             let shiftLevel = 0;
             
             // Keep notes contained on the staff (drop 8va/15ma if above the 2nd ledger line)
-            while (y < -5) { 
+            const maxHighY = staffTopY - 2 * staffSpacing;
+            while (y < maxHighY) { 
                 y += 7 * (staffSpacing / 2); // 1 Octave down visual shift
                 shiftLevel++;
             }
@@ -3040,6 +3159,13 @@
                     if ((isGameMode || activeMiniGame) && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 280)) {
                         item.gameStatus = 'miss';
                         gameStats.miss++;
+                        if (isSongBattle) {
+                            const localPlayer = playersList.find(p => p.id === localPlayerId);
+                            if (localPlayer) {
+                                localPlayer.stats = { ...gameStats };
+                                pushPlayerState();
+                            }
+                        }
                         if (isGameMode) updateGameStatus();
                     }
 
@@ -3115,7 +3241,14 @@
                     isPlaying = false;
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                    if (isGameMode) {
+                    if (isSongBattle) {
+                        const localPlayer = playersList.find(p => p.id === localPlayerId);
+                        if (localPlayer) {
+                            localPlayer.finished = true;
+                            pushPlayerState();
+                        }
+                        return;
+                    } else if (isGameMode) {
                         showGameResultsPopUp();
                         return;
                     } else if (activeMiniGame) {
@@ -3125,11 +3258,7 @@
                         return;
                     }
 
-                    const subject = encodeURIComponent("PianoPad wrong notes in song");
-                    const body = encodeURIComponent("Song Title: " + currentSongTitle + "\n\n");
-                    const mailto = `mailto:ghaybittle@erc.nsw.edu.au?subject=${subject}&body=${body}`;
-
-                    document.getElementById('status').innerHTML = `<a href="${mailto}" target="_blank" class="btn-link btn-danger" style="text-decoration:none;">Wrong Notes? CLICK HERE</a>`;
+                    document.getElementById('status').textContent = 'Playback finished.';
                     return;
                 }
             }
