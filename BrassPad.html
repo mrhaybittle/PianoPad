@@ -262,13 +262,13 @@
         .setup-option h3 { font-size: 1.1rem; color: #fff; }
         .setup-option p { font-size: 0.8rem; color: #9ca3af; }
 
-        /* Graphic Score */
+        /* Graphic Score Elements */
         .graph-container {
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 10px;
-            margin-top: 10px;
+            margin-top: 5px;
             width: 100%;
         }
 
@@ -300,6 +300,34 @@
         .bar-part-orange { background-color: #f97316; width: 100%; transition: height 0.4s ease; }
         .bar-part-green { background-color: #22c55e; width: 100%; transition: height 0.4s ease; }
 
+        .badge-box {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-top: 6px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+            color: #000;
+        }
+        .badge-gold { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+        .badge-silver { background: linear-gradient(135deg, #94a3b8, #cbd5e1); }
+        .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
+
+        .rank-display-box {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #facc15;
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: #0b0f19;
+            border: 1px solid #eab308;
+            border-radius: 8px;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -333,7 +361,7 @@
 
         <div class="visualizer-wrapper" id="vis-wrapper">
             <canvas id="waterfall-canvas"></canvas>
-            <div class="blow-instruction">Press Valves to Play! (Use UP ARROW, D, or ; for Open Notes)</div>
+            <div class="blow-instruction">Press Valves (M, comma, period) to Play! Use UP ARROW, D, or ; for Open Notes</div>
             
             <div id="mode-display" onclick="openSetupModal()" title="Click to change Instrument">
                 <span id="instrument-label">🎺 Bb Trumpet / Cornet Mode</span>
@@ -370,7 +398,7 @@
 
         <div class="footer-bar">
             <!-- Timestamp Updated -->
-            <div class="version-stamp">v26.09.09 | 9-Sep 16:31 AEST (Woonona)</div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 16:56 AEST (Woonona)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -410,8 +438,11 @@
     <div class="modal-overlay" id="game-results-modal">
         <div class="modal" style="text-align: center;">
             <h2>Performance Summary</h2>
-            <p id="game-summary-text" style="font-size: 1rem; color: #e5e7eb; font-weight: 600; margin: 10px 0 0 0;"></p>
+            <p id="game-summary-text" style="font-size: 0.95rem; color: #e5e7eb; font-weight: 600; margin: 10px 0 0 0;"></p>
             
+            <div id="badge-container"></div>
+            <div id="game-rank-text" class="rank-display-box" style="display:none;">Calculating Rank...</div>
+
             <div class="graph-container">
                 <div class="bar-chart-wrapper" id="single-bar-graph">
                     <div class="stacked-bar">
@@ -427,14 +458,19 @@
                 </div>
             </div>
 
-            <button type="button" class="btn-success" style="justify-content: center; padding: 10px; margin-top: 10px;" onclick="document.getElementById('game-results-modal').classList.remove('open')">Continue</button>
+            <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
+                <button type="button" class="btn-warning" id="btn-game-try-again">Play Again</button>
+                <button type="button" class="btn-success" id="btn-game-results-close">Continue</button>
+            </div>
         </div>
     </div>
 
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
+        const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
+        const SCORE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyJ6BXOjgbsbv03Xlp3kFVj_6aIfVJ7NM66Y3f_fMzuOeDabH2HzEhE-rLuoZzncXAA6g/exec';
 
-        // Bundled Emergency Song Library (Protects against CORS Blocks/Latency)
+        // Bundled Emergency Song Library
         const FALLBACK_SONGS = [
             { title: "Wipeout", code: "C2,C2,C2,C2,D2,D2,D2,D2,E2,E2,D2,D2,C2,Rests,250,250,250,250,250,250,250,250,250,250,250,250,500" },
             { title: "Hot Cross Buns", code: "E2,D2,C2,E2,D2,C2,C2,C2,C2,C2,D2,D2,D2,D2,E2,D2,C2,Rests,400,400,800,400,400,800,200,200,200,200,200,200,200,200,400,400,800" },
@@ -453,9 +489,9 @@
         let isPaused = false;
         let isGameMode = false;
         let isStepMode = false;
+        let sessionStudentName = "";
         
-        // Defaults bypass setup modal temporarily
-        let transposeOffset = 2; // +2 semitones transposition (Bb Instrument standard)
+        let transposeOffset = 2; // Default to Bb Instruments
         let instrumentName = "🎺 Bb Trumpet / Cornet Mode";
 
         let animationFrameId = null;
@@ -537,6 +573,104 @@
         document.getElementById('btn-play').addEventListener('click', playSong);
         document.getElementById('btn-pause').addEventListener('click', togglePause);
         document.getElementById('btn-stop').addEventListener('click', stopSong);
+        
+        document.getElementById('btn-game-try-again').addEventListener('click', () => {
+            document.getElementById('game-results-modal').classList.remove('open');
+            playSong();
+        });
+        document.getElementById('btn-game-results-close').addEventListener('click', () => {
+            document.getElementById('game-results-modal').classList.remove('open');
+        });
+
+        // --- Leaderboard Integration ---
+        function sanitizeName(str) {
+            const parts = str.trim().split(/\s+/);
+            if (parts.length === 1) return parts[0];
+            const firstName = parts[0];
+            const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
+            return `${firstName} ${lastInitial}`;
+        }
+
+        function ensureStudentName() {
+            if (!sessionStudentName || !sessionStudentName.trim()) {
+                const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
+                if (inputName && inputName.trim()) {
+                    sessionStudentName = sanitizeName(inputName);
+                } else {
+                    sessionStudentName = "Anonymous";
+                }
+            }
+            return sessionStudentName;
+        }
+
+        async function postScoreToLeaderboard(accuracyNum) {
+            if (!SCORE_SCRIPT_URL) return;
+            ensureStudentName();
+            const speedText = speedSlider.value + '%';
+            const payload = { action: "SCORE_SUBMIT", name: sessionStudentName, title: currentSongTitle, score: accuracyNum, tempo: speedText };
+
+            try {
+                await fetch(SCORE_SCRIPT_URL, {
+                    method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payload)
+                });
+                document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
+            } catch (err) {
+                console.warn("Could not post score.");
+            }
+        }
+
+        async function calculateAndDisplayRank(accuracyNum) {
+            const rankDiv = document.getElementById('game-rank-text');
+            rankDiv.style.display = 'inline-block';
+            rankDiv.textContent = "Calculating Rank...";
+
+            try {
+                const response = await fetch(LEADERBOARD_CSV_URL);
+                if (!response.ok) throw new Error('Fetch failed');
+
+                const csvText = await response.text();
+                const lines = csvText.split(/\r?\n/);
+                const songScores = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+                    const row = [];
+                    let insideQuote = false; let entry = '';
+                    for (let j = 0; j < line.length; j++) {
+                        const char = line[j];
+                        if (char === '"' && line[j + 1] === '"') { entry += '"'; j++; }
+                        else if (char === '"') { insideQuote = !insideQuote; }
+                        else if (char === ',' && !insideQuote) { row.push(entry); entry = ''; }
+                        else { entry += char; }
+                    }
+                    row.push(entry);
+
+                    if (row.length >= 4) {
+                        const rowTitle = row[2] ? row[2].trim().replace(/^"|"$/g, '') : '';
+                        if (rowTitle.toLowerCase() === currentSongTitle.toLowerCase()) {
+                            songScores.push({ accuracy: parseFloat(row[3]) || 0, speed: parseInt(row[4]) || 100 });
+                        }
+                    }
+                }
+
+                const currentSpeedNum = parseInt(speedSlider.value, 10);
+                songScores.push({ accuracy: accuracyNum, speed: currentSpeedNum });
+
+                songScores.sort((a, b) => {
+                    if (a.accuracy !== b.accuracy) return b.accuracy - a.accuracy;
+                    return b.speed - a.speed;
+                });
+
+                const totalEntries = songScores.length;
+                const userRank = songScores.findIndex(s => s.accuracy === accuracyNum && s.speed === currentSpeedNum) + 1;
+
+                rankDiv.textContent = `${currentSongTitle} Rank ${userRank}/${totalEntries}`;
+            } catch (err) {
+                rankDiv.textContent = `${currentSongTitle} Score Logged!`;
+            }
+        }
 
         // --- Keyboard / Input Handling ---
         window.addEventListener('keydown', (e) => {
@@ -578,7 +712,7 @@
 
         function handleValveChange() {
             clearTimeout(valveTimeout);
-            // 35ms buffer allows pressing multiple keys simultaneously
+            // 35ms buffer allows pressing multiple keys simultaneously securely
             valveTimeout = setTimeout(() => {
                 triggerNoteEvaluation(false);
             }, 35);
@@ -1014,6 +1148,7 @@
         function showGameResultsPopUp() {
             const totalHits = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = totalHits > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
+            const accuracyNum = parseFloat(accuracy);
             
             document.getElementById('game-summary-text').innerHTML = `Final Score: <span style="color:#10b981;">${accuracy}%</span><br><br><span style="font-size:0.9rem; color:#9ca3af;">(${gameStats.perfect} Perfect, ${gameStats.earlyLate} Early/Late, ${gameStats.miss} Missed)</span>`;
             
@@ -1025,8 +1160,24 @@
             document.getElementById('bar-orange').style.height = `${orangePct}%`;
             document.getElementById('bar-red').style.height = `${redPct}%`;
 
+            const currentSpeed = parseInt(speedSlider.value, 10);
+            const badgeContainer = document.getElementById('badge-container');
+            
+            if (currentSpeed >= 100) {
+                badgeContainer.innerHTML = `<div class="badge-box badge-gold">🏆 GOLD BADGE: Master Speed (${currentSpeed}%)</div>`;
+            } else if (currentSpeed >= 75) {
+                badgeContainer.innerHTML = `<div class="badge-box badge-silver">🥈 SILVER BADGE: Intermediate Tempo (${currentSpeed}%)</div>`;
+            } else if (currentSpeed >= 50) {
+                badgeContainer.innerHTML = `<div class="badge-box badge-bronze">🥉 BRONZE BADGE: Practice Pace (${currentSpeed}%)</div>`;
+            } else {
+                badgeContainer.innerHTML = `<div style="font-size:0.8rem; color:#9ca3af; margin-top:4px;">Practice Speed: ${currentSpeed}% (Reach 50%+ for Badges)</div>`;
+            }
+
             document.getElementById('game-results-modal').classList.add('open');
             document.getElementById('single-bar-graph').style.display = 'flex';
+
+            postScoreToLeaderboard(accuracyNum);
+            calculateAndDisplayRank(accuracyNum);
         }
 
         // --- Robust HayCode Parser ---
