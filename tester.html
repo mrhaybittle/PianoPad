@@ -230,9 +230,6 @@
         .btn-settings { background-color: #3b82f6; }
         .btn-settings:hover { background-color: #2563eb; }
 
-        .btn-sheet-active { background-color: #0ea5e9 !important; color: #ffffff !important; box-shadow: 0 0 10px rgba(14, 165, 233, 0.6); }
-        .btn-sheet-active:hover { background-color: #0284c7 !important; }
-
         .btn-mic-active {
             background-color: #10b981 !important;
             color: #ffffff !important;
@@ -326,15 +323,6 @@
             width: 100%;
             flex: 1;
             min-height: 380px;
-        }
-
-        #sheet-music-canvas {
-            display: none;
-            background-color: #f1f5f9;
-            border-radius: 8px 8px 0 0;
-            border-bottom: 3px solid #cbd5e1;
-            width: 100%;
-            margin-bottom: 4px;
         }
 
         #waterfall-canvas {
@@ -904,13 +892,13 @@
                     🎙️ MIC INPUT: OFF
                 </button>
 
+                <button type="button" id="btn-sheet-toggle" class="btn-secondary" style="background-color: #0d9488; font-weight: 700;" title="Toggle Sheet Music Display">
+                    🎼 Sheet: ON
+                </button>
+
                 <button type="button" id="btn-game" class="btn-secondary">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                     Game Mode: OFF
-                </button>
-                
-                <button type="button" id="btn-sheet-music" class="btn-secondary">
-                    🎼 Sheet Music: OFF
                 </button>
 
                 <button type="button" id="btn-loop" class="btn-secondary">
@@ -958,7 +946,6 @@
                     Get Songs
                 </a>
 
-                <!-- LEADERBOARD BUTTON (RETAINED) -->
                 <a href="https://mrhaybittle.github.io/PianoPad/leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
                     🏆 Leaderboard
                 </a>
@@ -1045,14 +1032,13 @@
         <div class="runner-track-wrapper" id="runner-track" style="display: none;"></div>
 
         <div class="visualizer-wrapper">
-            <canvas id="sheet-music-canvas" width="1232" height="150"></canvas>
             <canvas id="waterfall-canvas" width="1232" height="380"></canvas>
             <div class="piano" id="keyboard"></div>
         </div>
 
         <div class="footer-bar">
             <div style="display: flex; align-items: center; gap: 12px;">
-                <div class="version-stamp">v26.09.09 | 9-Sep 05:17 PM AEST (Sydney)</div>
+                <div class="version-stamp">v26.09.10 | 10-Sep 07:05 AM AEST (Sydney)</div>
                 <div style="display: flex; gap: 4px;">
                     <button type="button" id="btn-footer-rec" class="btn-secondary" title="Record">
                         <svg class="icon" style="color: #ef4444; fill: #ef4444;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
@@ -1289,6 +1275,7 @@
         let isGameMode = false;
         let currentTheme = 'default';
         let bonusSoundsUnlocked = false;
+        let showSheetMusic = localStorage.getItem('pianopad_sheet_music') !== 'false';
 
         // Microphone Pitch Detection Variables
         let micStream = null;
@@ -1361,6 +1348,7 @@
         const arcadeControlsBar = document.getElementById('arcade-controls-bar');
         const timelineBox = document.getElementById('timeline-box');
         const runnerTrack = document.getElementById('runner-track');
+        const btnSheetToggle = document.getElementById('btn-sheet-toggle');
 
         document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
         document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
@@ -1368,120 +1356,25 @@
         document.getElementById('btn-song-battle').addEventListener('click', openSongBattleSelector);
         document.getElementById('btn-mic-toggle').addEventListener('click', toggleMicrophoneListening);
 
-        // --- SHEET MUSIC LOGIC START ---
-        const btnSheetMusic = document.getElementById('btn-sheet-music');
-        const sheetCanvas = document.getElementById('sheet-music-canvas');
-        const sheetCtx = sheetCanvas.getContext('2d');
-        let isSheetMusicOn = false;
-
-        btnSheetMusic.addEventListener('click', () => {
-            isSheetMusicOn = !isSheetMusicOn;
-            if (isSheetMusicOn) {
-                btnSheetMusic.textContent = '🎼 Sheet Music: ON';
-                btnSheetMusic.classList.remove('btn-secondary');
-                btnSheetMusic.classList.add('btn-sheet-active');
-                sheetCanvas.style.display = 'block';
-            } else {
-                btnSheetMusic.textContent = '🎼 Sheet Music: OFF';
-                btnSheetMusic.classList.remove('btn-sheet-active');
-                btnSheetMusic.classList.add('btn-secondary');
-                sheetCanvas.style.display = 'none';
-            }
-        });
-
-        function getNoteYPosition(noteStr) {
-            const noteToStaffMap = {
-                'c1': 21, 'd1': 20, 'e1': 19, 'f1': 18, 'g1': 17, 'a1': 16, 'b1': 15,
-                'c2': 14, 'd2': 13, 'e2': 12, 'f2': 11, 'g2': 10, 'a2': 9,  'b2': 8,
-                'c3': 7,  'd3': 6,  'e3': 5,  'f3': 4,  'g3': 3,  'a3': 2,  'b3': 1,
-                'c4': 0,  'd4': -1, 'e4': -2, 'f4': -3, 'g4': -4, 'a4': -5, 'b4': -6,
-                'c5': -7, 'd5': -8, 'e5': -9, 'f5': -10,'g5': -11,'a5': -12,'b5': -13,
-                'c6': -14,'d6': -15,'e6': -16,'f6': -17,'g6': -18,'a6': -19,'b6': -20
-            };
-            const naturalNote = noteStr.toLowerCase().replace('#', '');
-            const step = noteToStaffMap[naturalNote];
-            if (step === undefined) return null;
-            return 70 + (step * 5); // Shifted UP: Middle C acts as Anchor at 70px Height
-        }
-
-        function drawSheetMusic(effectiveElapsed) {
-            if (!isSheetMusicOn) return;
-            sheetCtx.clearRect(0, 0, sheetCanvas.width, sheetCanvas.height);
-            
-            sheetCtx.strokeStyle = '#64748b'; // Sleek gray staves
-            sheetCtx.lineWidth = 1.5;
-            
-            // Draw Treble & Bass Lines
-            for (let i = 0; i < 5; i++) {
-                const y = 20 + (i * 10);
-                sheetCtx.beginPath(); sheetCtx.moveTo(0, y); sheetCtx.lineTo(sheetCanvas.width, y); sheetCtx.stroke();
-            }
-            for (let i = 0; i < 5; i++) {
-                const y = 80 + (i * 10);
-                sheetCtx.beginPath(); sheetCtx.moveTo(0, y); sheetCtx.lineTo(sheetCanvas.width, y); sheetCtx.stroke();
-            }
-            
-            // Simple Font Clefs
-            sheetCtx.font = '32px serif';
-            sheetCtx.fillStyle = '#334155';
-            sheetCtx.fillText('𝄞', 10, 55);
-            sheetCtx.fillText('𝄢', 10, 110);
-            
-            noteTimeline.forEach(item => {
-                const timeDiff = item.hitTime - effectiveElapsed;
-                if (timeDiff > -500 && timeDiff < 3000) {
-                    const x = 80 + (timeDiff / 3000) * (sheetCanvas.width - 100);
-                    item.notes.forEach(noteStr => {
-                        const y = getNoteYPosition(noteStr);
-                        if (y !== null) {
-                            const isSharp = noteStr.includes('#');
-                            
-                            sheetCtx.beginPath();
-                            sheetCtx.ellipse(x, y, 7, 5, -0.2, 0, 2 * Math.PI);
-                            
-                            if (item.gameStatus === 'perfect') sheetCtx.fillStyle = '#22c55e';
-                            else if (item.gameStatus === 'earlyLate') sheetCtx.fillStyle = '#f97316';
-                            else if (item.gameStatus === 'miss') sheetCtx.fillStyle = '#ef4444';
-                            else sheetCtx.fillStyle = '#0f172a'; // Note color
-                            
-                            sheetCtx.fill();
-                            
-                            sheetCtx.strokeStyle = sheetCtx.fillStyle;
-                            sheetCtx.lineWidth = 1.5;
-                            sheetCtx.beginPath();
-                            if (y < 70) {
-                                sheetCtx.moveTo(x - 5, y); sheetCtx.lineTo(x - 5, y + 25);
-                            } else {
-                                sheetCtx.moveTo(x + 5, y); sheetCtx.lineTo(x + 5, y - 25);
-                            }
-                            sheetCtx.stroke();
-                            
-                            if (isSharp) {
-                                sheetCtx.font = '14px Arial';
-                                sheetCtx.fillText('♯', x - 18, y + 5);
-                            }
-                            
-                            // Ledger lines dynamically drawn
-                            sheetCtx.strokeStyle = '#0f172a';
-                            if (y <= 10) {
-                                for(let ly = 10; ly >= y; ly -= 10) {
-                                    sheetCtx.beginPath(); sheetCtx.moveTo(x - 12, ly); sheetCtx.lineTo(x + 12, ly); sheetCtx.stroke();
-                                }
-                            }
-                            if (y === 70) {
-                                sheetCtx.beginPath(); sheetCtx.moveTo(x - 12, y); sheetCtx.lineTo(x + 12, y); sheetCtx.stroke();
-                            }
-                            if (y >= 130) {
-                                for(let ly = 130; ly <= y; ly += 10) {
-                                    sheetCtx.beginPath(); sheetCtx.moveTo(x - 12, ly); sheetCtx.lineTo(x + 12, ly); sheetCtx.stroke();
-                                }
-                            }
-                        }
-                    });
-                }
+        if (btnSheetToggle) {
+            btnSheetToggle.addEventListener('click', () => {
+                showSheetMusic = !showSheetMusic;
+                localStorage.setItem('pianopad_sheet_music', showSheetMusic ? 'true' : 'false');
+                updateSheetToggleButton();
             });
+            updateSheetToggleButton();
         }
-        // --- SHEET MUSIC LOGIC END ---
+
+        function updateSheetToggleButton() {
+            if (!btnSheetToggle) return;
+            if (showSheetMusic) {
+                btnSheetToggle.textContent = '🎼 Sheet: ON';
+                btnSheetToggle.style.backgroundColor = '#0d9488';
+            } else {
+                btnSheetToggle.textContent = '🎼 Sheet: OFF';
+                btnSheetToggle.style.backgroundColor = '#4b5563';
+            }
+        }
 
         function stopBattlePolling() {
             isSongBattle = false;
@@ -1724,7 +1617,7 @@
                 calibStep = 1;
                 document.getElementById('btn-calib-skip').style.display = 'inline-flex';
                 document.getElementById('btn-calib-cancel').style.display = 'none';
-                document.getElementById('calib-instructions').innerHTML = "Play the <span style='color: #ef4444;'>LOWEST</span> note on your keyboard";
+                document.getElementById('calib-instructions').innerHTML = "Welcome! Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
                 calibModal.classList.add('open');
             }
         }
@@ -3364,30 +3257,6 @@
             }
         }
 
-        function stopSong() {
-            isPlaying = false;
-            isPaused = false;
-            btnPause.textContent = 'Pause';
-            btnPause.classList.remove('btn-success');
-            btnPause.classList.add('btn-warning');
-
-            if (animationFrameId !== null) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
-            document.querySelectorAll('.key').forEach(k => {
-                k.classList.remove('active');
-                k.style.backgroundColor = '';
-                k.style.boxShadow = '';
-            });
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            document.getElementById('status').textContent = 'Playback stopped.';
-
-            if (isRecording) {
-                toggleRecording();
-            }
-        }
-
         function togglePause() {
             initAudio();
             if (!isPlaying || isStepMode) return;
@@ -3548,7 +3417,6 @@
 
             if (targetWidth > 0) {
                 canvas.width = targetWidth;
-                sheetCanvas.width = targetWidth;
             }
 
             const keys = keyboardEl.querySelectorAll('.key');
@@ -4033,6 +3901,30 @@
             }
         });
 
+        function stopSong() {
+            isPlaying = false;
+            isPaused = false;
+            btnPause.textContent = 'Pause';
+            btnPause.classList.remove('btn-success');
+            btnPause.classList.add('btn-warning');
+
+            if (animationFrameId !== null) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            document.querySelectorAll('.key').forEach(k => {
+                k.classList.remove('active');
+                k.style.backgroundColor = '';
+                k.style.boxShadow = '';
+            });
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('status').textContent = 'Playback stopped.';
+
+            if (isRecording) {
+                toggleRecording();
+            }
+        }
+
         function playSong() {
             initAudio();
             stopSong();
@@ -4120,6 +4012,135 @@
             ctx.restore();
         }
 
+        /* --- Sheet Music Score Rendering Helpers --- */
+        function getDiatonicStepAndShift(noteStr) {
+            noteStr = noteStr.trim().toLowerCase();
+            const match = noteStr.match(/^([a-g])(#?)([0-9]+)$/);
+            if (!match) return null;
+
+            const letter = match[1].toUpperCase();
+            const isSharp = match[2] === '#';
+            let octave = parseInt(match[3], 10);
+
+            const baseSteps = { 'C': 0, 'D': 1, 'E': 2, 'F': 3, 'G': 4, 'A': 5, 'B': 6 };
+            let baseStep = baseSteps[letter];
+            if (baseStep === undefined) return null;
+
+            let totalDiatonicStep = (octave - 1) * 7 + baseStep;
+
+            let octaveShift = 0;
+            if (totalDiatonicStep > 14 && totalDiatonicStep <= 21) {
+                octaveShift = 1; // 8va
+                totalDiatonicStep -= 7;
+            } else if (totalDiatonicStep > 21) {
+                octaveShift = 2; // 15ma
+                totalDiatonicStep -= 14;
+            }
+
+            // Relative to Line 1 (E1/E4) which has totalDiatonicStep = 2
+            let relativeStep = totalDiatonicStep - 2;
+
+            return {
+                letter: letter,
+                isSharp: isSharp,
+                step: relativeStep,
+                octaveShift: octaveShift
+            };
+        }
+
+        function drawSheetMusicStaff(ctx, width) {
+            const STAFF_HEIGHT = 75;
+            const line1_y = 56;
+            const lineSpacing = 8;
+
+            ctx.save();
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, STAFF_HEIGHT);
+
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, STAFF_HEIGHT);
+            ctx.lineTo(width, STAFF_HEIGHT);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 5; i++) {
+                const ly = line1_y - i * lineSpacing;
+                ctx.beginPath();
+                ctx.moveTo(0, ly);
+                ctx.lineTo(width, ly);
+                ctx.stroke();
+            }
+
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1;
+            for (let bx = 180; bx < width; bx += 180) {
+                ctx.beginPath();
+                ctx.moveTo(bx, 24);
+                ctx.lineTo(bx, 56);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = '#000000';
+            ctx.font = '38px "Segoe UI Symbol", "Apple Symbols", "Noto Music", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('𝄞', 35, 41);
+
+            ctx.restore();
+        }
+
+        function drawStemlessNote(ctx, x, y, isSharp) {
+            ctx.save();
+            ctx.fillStyle = '#000000';
+
+            if (isSharp) {
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('♯', x - 7, y);
+            }
+
+            ctx.beginPath();
+            ctx.ellipse(x, y, 5.5, 4.0, -0.25, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawLedgerLines(ctx, x, step, line1_y, halfStep) {
+            ctx.save();
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1.2;
+
+            if (step <= -2) {
+                const ly = line1_y + 2 * halfStep;
+                ctx.beginPath();
+                ctx.moveTo(x - 9, ly);
+                ctx.lineTo(x + 9, ly);
+                ctx.stroke();
+            }
+
+            if (step >= 10) {
+                const ly1 = line1_y - 10 * halfStep;
+                ctx.beginPath();
+                ctx.moveTo(x - 9, ly1);
+                ctx.lineTo(x + 9, ly1);
+                ctx.stroke();
+            }
+
+            if (step >= 12) {
+                const ly2 = line1_y - 12 * halfStep;
+                ctx.beginPath();
+                ctx.moveTo(x - 9, ly2);
+                ctx.lineTo(x + 9, ly2);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
         function renderLoop(now) {
             if (!isPlaying || isPaused) return;
 
@@ -4167,14 +4188,56 @@
             } else {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
-            
-            // Sheet Music Render Tick
-            if (isSheetMusicOn) {
-                drawSheetMusic(effectiveElapsed);
-            }
 
             const canvasHeight = canvas.height;
             const currentFallSpeed = activeMiniGame === 'drop' ? miniGameFallSpeedMs : FALL_TIME_MS;
+            const waterfallTop = (showSheetMusic && !activeMiniGame) ? 75 : 0;
+            const waterfallHeight = canvasHeight - waterfallTop;
+
+            if (showSheetMusic && !activeMiniGame) {
+                drawSheetMusicStaff(ctx, canvas.width);
+
+                const line1_y = 56;
+                const halfStep = 4;
+                const targetX = 85;
+                const CLEF_X_END = 65;
+                const SCROLL_TIME_MS = 2200;
+
+                let has8va = false;
+                let has15ma = false;
+
+                noteTimeline.forEach(item => {
+                    const timeUntilHit = item.hitTime - effectiveElapsed;
+                    if (timeUntilHit >= -350 && timeUntilHit <= SCROLL_TIME_MS + 400) {
+                        const noteX = targetX + (timeUntilHit / SCROLL_TIME_MS) * (canvas.width - targetX);
+
+                        if (noteX > CLEF_X_END && noteX < canvas.width + 15) {
+                            item.notes.forEach(noteStr => {
+                                const info = getDiatonicStepAndShift(noteStr);
+                                if (info) {
+                                    const noteY = line1_y - info.step * halfStep;
+                                    drawLedgerLines(ctx, noteX, info.step, line1_y, halfStep);
+                                    drawStemlessNote(ctx, noteX, noteY, info.isSharp);
+
+                                    if (info.octaveShift === 1) has8va = true;
+                                    if (info.octaveShift === 2) has15ma = true;
+                                }
+                            });
+                        }
+                    }
+                });
+
+                if (has8va || has15ma) {
+                    ctx.save();
+                    ctx.fillStyle = '#8b5cf6';
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'top';
+                    const octText = has15ma ? '15ma' : '8va';
+                    ctx.fillText(`${octText} ------------------`, 85, 4);
+                    ctx.restore();
+                }
+            }
 
             noteTimeline.forEach(item => {
                 const backgroundVol = (isGameMode || activeMiniGame) ? 0.2 : 1.0;
@@ -4211,12 +4274,12 @@
 
                     if (pos) {
                         const timeUntilHit = item.hitTime - effectiveElapsed;
-                        const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * canvasHeight;
-                        const blockHeight = (item.duration / currentFallSpeed) * canvasHeight;
+                        const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * waterfallHeight;
+                        const blockHeight = (item.duration / currentFallSpeed) * waterfallHeight;
                         const yTop = yBottom - blockHeight;
 
-                        if (yBottom > 0 && yTop < canvasHeight) {
-                            const drawY = Math.max(0, yTop);
+                        if (yBottom > waterfallTop && yTop < canvasHeight) {
+                            const drawY = Math.max(waterfallTop, yTop);
                             const drawH = Math.min(canvasHeight - drawY, yBottom - drawY);
                             const active = effectiveElapsed >= item.hitTime && effectiveElapsed <= (item.hitTime + item.duration);
                             drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, noteStr, active, item.gameStatus);
@@ -4337,155 +4400,4 @@
 
             const currentCleanCode = generatedHaycode.replace(/[\r\n\s]+/g, '').toLowerCase();
 
-            let isDuplicate = false;
-            for (let song of songList) {
-                if (song.code) {
-                    const dbCleanCode = song.code.replace(/[\r\n\s]+/g, '').toLowerCase();
-                    if (dbCleanCode === currentCleanCode) {
-                        isDuplicate = true;
-                        break;
-                    }
-                }
-            }
-
-            if (isDuplicate) {
-                alert("WAV Export Blocked: This recorded HayCode matches an existing song in the database. Audio export is only allowed for original student recordings.");
-                return;
-            }
-
-            const defaultTitle = currentSongTitle && currentSongTitle !== 'Wipeout' ? currentSongTitle : 'My_PianoPad_Song';
-            const userTitle = prompt("Please enter a title for your recorded WAV audio file:", defaultTitle);
-
-            if (userTitle === null) return;
-
-            const cleanFileName = userTitle.trim().replace(/[^a-zA-Z0-9_\-\s]/g, '').replace(/\s+/g, '_') || 'PianoPad_Song';
-
-            exportPerformanceToWAV(cleanFileName);
-        });
-
-        function exportPerformanceToWAV(fileName = 'PianoPad_Song') {
-            if (recordedNotes.length === 0) {
-                alert("No recorded note sequence found.");
-                return;
-            }
-
-            document.getElementById('status').textContent = "Generating WAV audio file...";
-
-            let totalMs = 0;
-            recordedRests.forEach(r => totalMs += r);
-            const totalSeconds = Math.max(1.5, (totalMs + 1000) / 1000);
-
-            const sampleRate = 44100;
-            const offlineCtx = new OfflineAudioContext(1, Math.ceil(sampleRate * totalSeconds), sampleRate);
-
-            let cumulativeTime = 0;
-            for (let i = 0; i < recordedNotes.length; i++) {
-                const noteToken = recordedNotes[i];
-                const restMs = recordedRests[i] || 250;
-                cumulativeTime += (restMs / 1000);
-
-                const noteList = noteToken.split('+').filter(Boolean);
-                noteList.forEach(noteStr => {
-                    const freq = getNoteFrequency(noteStr);
-                    if (freq) {
-                        const osc = offlineCtx.createOscillator();
-                        const gain = offlineCtx.createGain();
-
-                        osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(freq, cumulativeTime);
-
-                        gain.gain.setValueAtTime(0, cumulativeTime);
-                        gain.gain.linearRampToValueAtTime(0.4, cumulativeTime + 0.01);
-                        gain.gain.exponentialRampToValueAtTime(0.0001, cumulativeTime + 0.4);
-
-                        osc.connect(gain);
-                        gain.connect(offlineCtx.destination);
-
-                        osc.start(cumulativeTime);
-                        osc.stop(cumulativeTime + 0.4);
-                    }
-                });
-            }
-
-            offlineCtx.startRendering().then(renderedBuffer => {
-                const wavBlob = bufferToWavBlob(renderedBuffer);
-                const url = URL.createObjectURL(wavBlob);
-
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${fileName}.wav`;
-                a.click();
-
-                document.getElementById('status').textContent = `WAV Audio exported as "${fileName}.wav"!`;
-            }).catch(err => {
-                console.error("WAV Export Error:", err);
-                document.getElementById('status').textContent = "WAV Export failed.";
-            });
-        }
-
-        function bufferToWavBlob(buffer) {
-            const numOfChan = buffer.numberOfChannels;
-            const length = buffer.length * numOfChan * 2 + 44;
-            const outBuffer = new ArrayBuffer(length);
-            const view = new DataView(outBuffer);
-            const channels = [];
-            let sample = 0;
-            let offset = 0;
-            let pos = 0;
-
-            function writeString(str) {
-                for (let i = 0; i < str.length; i++) {
-                    view.setUint8(pos++, str.charCodeAt(i));
-                }
-            }
-
-            function setUint16(data) {
-                view.setUint16(pos, data, true);
-                pos += 2;
-            }
-
-            function setUint32(data) {
-                view.setUint32(pos, data, true);
-                pos += 4;
-            }
-
-            writeString('RIFF');
-            setUint32(length - 8);
-            writeString('WAVE');
-            writeString('fmt ');
-            setUint32(16);
-            setUint16(1);
-            setUint16(numOfChan);
-            setUint32(buffer.sampleRate);
-            setUint32(buffer.sampleRate * 2 * numOfChan);
-            setUint16(numOfChan * 2);
-            setUint16(16);
-            writeString('data');
-            setUint32(length - pos - 4);
-
-            for (let i = 0; i < buffer.numberOfChannels; i++) {
-                channels.push(buffer.getChannelData(i));
-            }
-
-            while (offset < buffer.length) {
-                for (let i = 0; i < numOfChan; i++) {
-                    sample = Math.max(-1, Math.min(1, channels[i][offset]));
-                    sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
-                    view.setInt16(pos, sample, true);
-                    pos += 2;
-                }
-                offset++;
-            }
-
-            return new Blob([outBuffer], { type: 'audio/wav' });
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            initMIDIHardware();
-            syncSongsWithGoogleSheet();
-            setTimeout(updateKeyPositions, 100);
-            checkFirstTimeCalibration();
-        });
-    </script>
-</body>
-</html>
+            let isDuplicate =I encountered an error doing what you asked. Could you try again?
