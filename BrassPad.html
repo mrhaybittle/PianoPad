@@ -14,7 +14,7 @@
             --text-main: #fef3c7;
             --highlight: #eab308;
             --canvas-bg: #0d0a07;
-            --hitline-color: #fef3c7;
+            --hitline-color: #ef4444;
         }
 
         * {
@@ -278,8 +278,8 @@
             justify-content: center;
             height: 160px;
             width: 100px;
-            background: #0f172a;
-            border: 1px solid #334155;
+            background: #0b0f19;
+            border: 1px solid #374151;
             border-radius: 8px;
             padding: 8px;
             position: relative;
@@ -293,7 +293,7 @@
             height: 130px;
             border-radius: 4px;
             overflow: hidden;
-            background: #1e293b;
+            background: #181f2e;
         }
 
         .bar-part-red { background-color: #ef4444; width: 100%; transition: height 0.4s ease; }
@@ -309,7 +309,7 @@
             border-radius: 20px;
             font-size: 0.85rem;
             font-weight: 700;
-            margin-top: 10px;
+            margin-top: 6px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
             color: #000;
         }
@@ -318,16 +318,15 @@
         .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
 
         .rank-display-box {
-            font-size: 1.05rem;
+            font-size: 1.1rem;
             font-weight: 800;
             color: #facc15;
             margin-top: 8px;
-            padding: 8px 12px;
-            background: #111827;
+            padding: 6px 12px;
+            background: #0b0f19;
             border: 1px solid #eab308;
             border-radius: 8px;
             display: inline-block;
-            text-align: center;
         }
     </style>
 </head>
@@ -362,7 +361,7 @@
 
         <div class="visualizer-wrapper" id="vis-wrapper">
             <canvas id="waterfall-canvas"></canvas>
-            <div class="blow-instruction">Press Valves to Play! (Use UP ARROW, D, or ; for Open Notes)</div>
+            <div class="blow-instruction">Press Valves (M, comma, period) to Play! Use UP ARROW, D, or ; for Open Notes</div>
             
             <div id="mode-display" onclick="openSetupModal()" title="Click to change Instrument">
                 <span id="instrument-label">🎺 Bb Trumpet / Cornet Mode</span>
@@ -568,6 +567,9 @@
             if (isPlaying && !isPaused && !isStepMode) playSong();
         });
 
+        btnGame.addEventListener('click', toggleGameMode);
+        btnStep.addEventListener('click', toggleStepMode);
+
         document.getElementById('btn-play').addEventListener('click', playSong);
         document.getElementById('btn-pause').addEventListener('click', togglePause);
         document.getElementById('btn-stop').addEventListener('click', stopSong);
@@ -580,7 +582,6 @@
             document.getElementById('game-results-modal').classList.remove('open');
         });
 
-        // --- Leaderboard Support (Mock) ---
         function sanitizeName(str) {
             const parts = str.trim().split(/\s+/);
             if (parts.length === 1) return parts[0];
@@ -666,7 +667,6 @@
 
         function handleValveChange() {
             clearTimeout(valveTimeout);
-            // 30ms buffer allows pressing multiple keys simultaneously securely
             valveTimeout = setTimeout(() => {
                 triggerNoteEvaluation(false);
             }, 30);
@@ -685,7 +685,6 @@
             if (heldValves[2]) currentHeldArray.push(2);
             if (heldValves[3]) currentHeldArray.push(3);
 
-            // Require explicit blow for Open Notes (Array Length 0)
             if (currentHeldArray.length === 0 && !isExplicitBlow) return;
 
             if (isStepMode) {
@@ -706,7 +705,7 @@
                 (performance.now() - playbackStartTime) - accumulatedPauseMs;
 
             const targetIndex = isStep ? currentStepIndex : noteTimeline.findIndex(item => 
-                item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 400
+                item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 500
             );
 
             if (targetIndex !== -1 && targetIndex < noteTimeline.length) {
@@ -743,7 +742,7 @@
                         updateStatusText();
                     }
                 } else {
-                    if (isStep) return; // Wait for right input
+                    if (isStep) return; 
                     target.gameStatus = 'miss';
                     gameStats.miss++;
                     playErrorClackSound();
@@ -765,8 +764,9 @@
                 '1,2,3': 54   // F#3
             };
             const key = currentHeldArray.sort().join(',');
-            const pitch = map[key] || 60;
-            const freq = getNoteFrequency(pitchToNote(pitch));
+            const writtenPitch = map[key] || 60;
+            const writtenNoteStr = pitchToNote(writtenPitch);
+            const freq = getConcertFrequency(writtenNoteStr);
             if (freq) playTone(freq, 0.4);
         }
 
@@ -1154,14 +1154,12 @@
             ensureStudentName();
             const totalHits = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = totalHits > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
-            const accuracyNum = parseFloat(accuracy);
             
-            let summaryHTML = `
+            document.getElementById('game-summary-text').innerHTML = `
                 <div style="font-size: 0.95rem; font-weight:bold; color: #fff;">Student: <span style="color:#38bdf8;">${sessionStudentName}</span></div>
                 <div style="font-size: 1.1rem; font-weight:bold; color: #22c55e;">Final Score: ${accuracy}%</div>
                 <div style="font-size: 0.8rem; color: #9ca3af; margin-top: 4px;">(${gameStats.perfect} Perfect, ${gameStats.earlyLate} Early/Late, ${gameStats.miss} Missed out of ${totalHits} notes)</div>
             `;
-            document.getElementById('game-summary-text').innerHTML = summaryHTML;
             
             const greenPct = totalHits > 0 ? (gameStats.perfect / totalHits) * 100 : 0;
             const orangePct = totalHits > 0 ? (gameStats.earlyLate / totalHits) * 100 : 0;
@@ -1207,6 +1205,36 @@
                 });
             }
             return song;
+        }
+
+        // --- Robust CSV Parser ---
+        function parseCSVToSongs(csvText) {
+            const songs = [];
+            const lines = csvText.split(/\r?\n/);
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                const row = [];
+                let insideQuote = false;
+                let entry = '';
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"' && line[j + 1] === '"') {
+                        entry += '"'; j++;
+                    } else if (char === '"') {
+                        insideQuote = !insideQuote;
+                    } else if (char === ',' && !insideQuote) {
+                        row.push(entry); entry = '';
+                    } else {
+                        entry += char;
+                    }
+                }
+                row.push(entry);
+                if (row.length >= 2 && row[0].trim()) {
+                    songs.push({ title: row[0].trim().replace(/^"|"$/g, ''), code: row[1].trim().replace(/^"|"$/g, '') });
+                }
+            }
+            return songs;
         }
 
         function renderSongSelect() {
@@ -1260,35 +1288,6 @@
             }
         }
 
-        function parseCSVToSongs(csvText) {
-            const songs = [];
-            const lines = csvText.split(/\r?\n/);
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-                const row = [];
-                let insideQuote = false;
-                let entry = '';
-                for (let j = 0; j < line.length; j++) {
-                    const char = line[j];
-                    if (char === '"' && line[j + 1] === '"') {
-                        entry += '"'; j++;
-                    } else if (char === '"') {
-                        insideQuote = !insideQuote;
-                    } else if (char === ',' && !insideQuote) {
-                        row.push(entry); entry = '';
-                    } else {
-                        entry += char;
-                    }
-                }
-                row.push(entry);
-                if (row.length >= 2 && row[0].trim()) {
-                    songs.push({ title: row[0].trim().replace(/^"|"$/g, ''), code: row[1].trim().replace(/^"|"$/g, '') });
-                }
-            }
-            return songs;
-        }
-
         songSelect.addEventListener('change', (e) => {
             initAudio();
             const index = e.target.value;
@@ -1301,6 +1300,8 @@
                     currentSong = autoTransposeSong(rawParsedSong);
                     stopSong();
                     document.getElementById('status').textContent = `Loaded "${currentSongTitle}". Press Play!`;
+                } else {
+                    document.getElementById('status').textContent = `Error: Song data could not be read for "${currentSongTitle}".`;
                 }
             }
         });
