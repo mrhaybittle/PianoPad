@@ -131,7 +131,7 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
-            margin: 4px 0;
+            margin: 0;
             box-shadow: 0 4px 6px rgba(0,0,0,0.5);
             z-index: 10;
             cursor: pointer;
@@ -253,7 +253,7 @@
         }
         .setup-option:hover { border-color: #fbbf24; background: #2a1b0a; }
         .setup-option.selected { border-color: #10b981; background: #064e3b; }
-        .setup-option h3 { font-size: 1.1rem; color: #fff; }
+        .setup-option h3 { font-size: 1.1rem; color: #fff; margin-bottom: 2px; }
         .setup-option p { font-size: 0.8rem; color: #9ca3af; }
 
         /* Graphic Score Elements */
@@ -380,10 +380,6 @@
                     <input type="range" id="speed-slider" min="10" max="300" value="100" step="5">
                 </div>
 
-                <button type="button" id="btn-mic-toggle" class="btn-secondary" title="Listen for real brass instrument">
-                    🎙️ Play/Listen Mode
-                </button>
-
                 <button type="button" id="btn-game" class="btn-secondary">
                     🎮 Game Mode: OFF
                 </button>
@@ -402,9 +398,15 @@
             <canvas id="waterfall-canvas"></canvas>
             <div class="blow-instruction">Press Valves (M, comma, period) to Play! Use UP ARROW, D, L, or ; for Open Notes</div>
             
-            <div id="mode-display" onclick="openSetupModal()" title="Click to change Instrument">
-                <span id="instrument-label">🎺 Bb Trumpet / Cornet Mode</span>
-                <span style="font-size: 0.8rem; margin-left: 5px; color: #9ca3af;">▼ Change</span>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0; z-index: 10;">
+                <button type="button" id="btn-octave-down" class="btn-secondary" style="height: 38px; font-weight: bold; font-size: 1rem;" title="Shift Audio Down 1 Octave">⬇️ 8vb</button>
+                
+                <div id="mode-display" onclick="openSetupModal()" title="Click to change Instrument" style="margin: 0;">
+                    <span id="instrument-label">🎺 Bb Trumpet / Cornet Mode</span>
+                    <span style="font-size: 0.8rem; margin-left: 5px; color: #9ca3af;">▼ Change</span>
+                </div>
+
+                <button type="button" id="btn-octave-up" class="btn-secondary" style="height: 38px; font-weight: bold; font-size: 1rem;" title="Shift Audio Up 1 Octave">⬆️ 8va</button>
             </div>
 
             <div class="valves-container" id="valves-container">
@@ -436,7 +438,8 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.09 | 9-Sep 17:54 AEST (Sydney)</div>
+            <!-- Timestamp Updated -->
+            <div class="version-stamp">v26.09.09 | 9-Sep 18:05 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -445,28 +448,28 @@
     <div class="modal-overlay" id="setup-modal">
         <div class="modal">
             <h2>Select Instrument 🎺</h2>
-            <p style="text-align: center; color: #d1d5db; font-size: 0.9rem; margin-bottom: 5px;">Select your instrument to shift playback pitch:</p>
+            <p style="text-align: center; color: #d1d5db; font-size: 0.9rem; margin-bottom: 5px;">Select your instrument to align sheet music and playback frequency:</p>
             
-            <button type="button" class="btn-warning" style="justify-content: center; padding: 10px; font-size: 1rem; margin-bottom: 10px;" onclick="startAutoDetect()">🎙️ Auto-Detect via Microphone</button>
+            <button type="button" class="btn-warning" style="justify-content: center; padding: 10px; font-size: 1rem; margin-bottom: 5px;" onclick="startAutoDetect()">🎙️ Auto-Detect via Microphone</button>
             <p id="setup-modal-subtitle" style="text-align: center; color: #facc15; font-size: 0.85rem; height: 15px; margin: 0;"></p>
 
-            <div class="setup-option selected" data-audio-transpose="-2" data-type="trumpet" data-name="🎺 Bb Trumpet / Cornet Mode" onclick="selectInstrument(this)">
+            <div class="setup-option selected" data-visual-transpose="2" data-audio-shift="-2" data-type="trumpet" data-name="🎺 Bb Trumpet / Cornet Mode" onclick="selectInstrument(this)">
                 <h3>Trumpet / Cornet (Bb)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-audio-transpose="-14" data-type="euphonium" data-name="📯 Bb Euphonium / Baritone Mode" onclick="selectInstrument(this)">
+            <div class="setup-option" data-visual-transpose="2" data-audio-shift="-14" data-type="euphonium" data-name="📯 Bb Euphonium / Baritone Mode" onclick="selectInstrument(this)">
                 <h3>Euphonium / Baritone (Bb Treble)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-audio-transpose="-26" data-type="tuba" data-name="🎷 Bb Tuba Mode" onclick="selectInstrument(this)">
+            <div class="setup-option" data-visual-transpose="2" data-audio-shift="-14" data-type="tuba" data-name="🎷 Bb Tuba Mode" onclick="selectInstrument(this)">
                 <h3>Tuba (Bb Treble / Brass Band)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-audio-transpose="-9" data-type="horn" data-name="📯 Eb Tenor Horn Mode" onclick="selectInstrument(this)">
+            <div class="setup-option" data-visual-transpose="9" data-audio-shift="3" data-type="horn" data-name="📯 Eb Tenor Horn Mode" onclick="selectInstrument(this)">
                 <h3>Tenor Horn (Eb)</h3>
                 <p>Reads Treble Clef. Concert Eb = Written C.</p>
             </div>
-            <div class="setup-option" data-audio-transpose="0" data-type="tuba" data-name="🎶 Concert Pitch Brass Mode" onclick="selectInstrument(this)">
+            <div class="setup-option" data-visual-transpose="0" data-audio-shift="0" data-type="tuba" data-name="🎶 Concert Pitch Brass Mode" onclick="selectInstrument(this)">
                 <h3>Tuba / Euphonium (Concert Pitch)</h3>
                 <p>Reads Bass Clef at Concert Pitch.</p>
             </div>
@@ -530,9 +533,13 @@
         let isStepMode = false;
         let sessionStudentName = "";
         
-        let audioTranspose = -2; // Default audio transposition for playback pitch
+        let visualTranspose = 2; // Shifts rendering so notes stay in staff view
+        let audioShift = -2; // Deducts to play True Concert Pitch
         let instrumentName = "🎺 Bb Trumpet / Cornet Mode";
-        let instrumentType = "trumpet"; // Affects synthesizer shape
+        let instrumentType = "trumpet"; 
+        
+        // Let user artificially push the sound up or down an octave
+        let userOctaveShift = 0; 
 
         let animationFrameId = null;
         let playbackStartTime = 0;
@@ -584,26 +591,45 @@
 
         function openSetupModal() {
             document.getElementById('setup-modal').classList.add('open');
+            document.getElementById('setup-modal-subtitle').textContent = ""; // Clear mic prompt
         }
 
         function selectInstrument(el) {
             document.querySelectorAll('.setup-option').forEach(opt => opt.classList.remove('selected'));
             el.classList.add('selected');
             
-            audioTranspose = parseInt(el.getAttribute('data-audio-transpose'), 10); 
+            visualTranspose = parseInt(el.getAttribute('data-visual-transpose'), 10);
+            audioShift = parseInt(el.getAttribute('data-audio-shift'), 10); 
             instrumentName = el.getAttribute('data-name');
             instrumentType = el.getAttribute('data-type');
         }
 
         function confirmInstrument() {
             document.getElementById('setup-modal').classList.remove('open');
-            document.getElementById('instrument-label').textContent = instrumentName;
+            userOctaveShift = 0; // Reset user shifts on mode change
+            updateModeDisplay();
             
             // Re-normalize current song visually
             if (rawParsedSong.length > 0) {
                 currentSong = autoTransposeSong(rawParsedSong);
             }
             if (isPlaying) playSong();
+        }
+
+        // Octave Up / Down buttons
+        document.getElementById('btn-octave-up').addEventListener('click', () => {
+            userOctaveShift++;
+            updateModeDisplay();
+        });
+
+        document.getElementById('btn-octave-down').addEventListener('click', () => {
+            userOctaveShift--;
+            updateModeDisplay();
+        });
+
+        function updateModeDisplay() {
+            let octStr = userOctaveShift === 0 ? "" : (userOctaveShift > 0 ? ` (+${userOctaveShift} 8va)` : ` (${userOctaveShift} 8vb)`);
+            document.getElementById('instrument-label').textContent = instrumentName + octStr;
         }
 
         speedSlider.addEventListener('input', () => {
@@ -787,7 +813,7 @@
                         updateStatusText();
                     }
                 } else {
-                    if (isStep) return; // Wait for right input
+                    if (isStep) return; // Wait for right input in Step Mode
                     target.gameStatus = 'miss';
                     gameStats.miss++;
                     playErrorClackSound();
@@ -846,23 +872,23 @@
 
             if (instrumentType === 'trumpet') {
                 osc.type = 'sawtooth';
-                filterMultiplierStart = 5;
-                filterMultiplierEnd = 2;
+                filterMultiplierStart = 6.0;
+                filterMultiplierEnd = 2.5;
                 baseGain = 0.4;
             } else if (instrumentType === 'horn') {
                 osc.type = 'sawtooth';
-                filterMultiplierStart = 3;
-                filterMultiplierEnd = 1.2;
+                filterMultiplierStart = 3.5;
+                filterMultiplierEnd = 1.5;
                 baseGain = 0.45;
             } else if (instrumentType === 'euphonium') {
                 osc.type = 'triangle'; 
-                filterMultiplierStart = 2.5;
-                filterMultiplierEnd = 1.0;
+                filterMultiplierStart = 2.0;
+                filterMultiplierEnd = 0.9;
                 baseGain = 0.6; 
             } else if (instrumentType === 'tuba') {
                 osc.type = 'triangle'; 
-                filterMultiplierStart = 1.5;
-                filterMultiplierEnd = 0.8;
+                filterMultiplierStart = 1.2;
+                filterMultiplierEnd = 0.6;
                 baseGain = 0.8;
             }
 
@@ -925,8 +951,9 @@
             const writtenPitch = noteToPitch(noteStr);
             if (writtenPitch === null) return null;
             
-            // audioTranspose drops it to correct Concert Pitch
-            const concertPitch = writtenPitch + audioTranspose;
+            // Audio Shift drops it to true Concert Pitch for playback, 
+            // plus userOctaveShift applies custom 8va/8vb modifications
+            const concertPitch = writtenPitch + audioShift + (userOctaveShift * 12);
             return 440 * Math.pow(2, (concertPitch - 69) / 12);
         }
 
@@ -938,34 +965,151 @@
 
         function autoTransposeSong(song) {
             if (!song || song.length === 0) return [];
-            let pitches = [];
+            let allPitches = [];
             
             song.forEach(item => {
                 item.notes.forEach(noteStr => {
                     const p = noteToPitch(noteStr);
-                    if (p !== null) pitches.push(p);
+                    if (p !== null) allPitches.push(p + visualTranspose);
                 });
             });
             
-            if (pitches.length === 0) return song;
+            if (allPitches.length === 0) return song;
 
-            let minP = Math.min(...pitches);
-            let maxP = Math.max(...pitches);
+            let minP = Math.min(...allPitches);
+            let maxP = Math.max(...allPitches);
             let octaveShift = 0;
 
-            // Shift octave so visual notes stay clamped between 54 (F#3) and 84 (C6)
-            while (minP + octaveShift * 12 < MIN_PITCH) octaveShift++;
-            while (maxP + octaveShift * 12 > MAX_PITCH && minP + octaveShift * 12 > MIN_PITCH) octaveShift--;
+            // Shift ENTIRE song homogeneously so it falls on the visible staff (MIN_PITCH 54 to MAX_PITCH 84)
+            // This prevents relative contour from becoming scrambled.
+            while (minP + (octaveShift * 12) < MIN_PITCH && maxP + (octaveShift * 12) + 12 <= MAX_PITCH) {
+                octaveShift++;
+            }
+            while (maxP + (octaveShift * 12) > MAX_PITCH && minP + (octaveShift * 12) - 12 >= MIN_PITCH) {
+                octaveShift--;
+            }
 
             return song.map(item => {
                 const newNotes = item.notes.map(noteStr => {
                     const p = noteToPitch(noteStr);
                     if (p === null) return noteStr;
-                    return pitchToNote(p + octaveShift * 12);
+                    let finalPitch = p + visualTranspose + (octaveShift * 12);
+                    return pitchToNote(finalPitch);
                 });
 
                 return { ...item, notes: newNotes };
             });
+        }
+
+        // --- Microphone Auto-Detect Feature ---
+        let micStream = null;
+        let micAnalyser = null;
+        let isMicListening = false;
+        let pitchDetectionFrameId = null;
+
+        function autoCorrelate(buf, sampleRate) {
+            let SIZE = buf.length;
+            let rms = 0;
+            for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
+            rms = Math.sqrt(rms / SIZE);
+            if (rms < 0.015) return -1;
+
+            let r1 = 0, r2 = SIZE - 1, thres = 0.2;
+            for (let i = 0; i < SIZE / 2; i++) if (Math.abs(buf[i]) < thres) { r1 = i; break; }
+            for (let i = 1; i < SIZE / 2; i++) if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
+
+            buf = buf.slice(r1, r2);
+            SIZE = buf.length;
+
+            let c = new Array(SIZE).fill(0);
+            for (let i = 0; i < SIZE; i++) {
+                for (let j = 0; j < SIZE - i; j++) {
+                    c[i] = c[i] + buf[j] * buf[j + i];
+                }
+            }
+
+            let d = 0; while (c[d] > c[d + 1]) d++;
+            let maxval = -1, maxpos = -1;
+            for (let i = d; i < SIZE; i++) {
+                if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
+            }
+            let T0 = maxpos;
+            let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+            let a = (x1 + x3 - 2 * x2) / 2;
+            let b = (x3 - x1) / 2;
+            if (a) T0 = T0 - b / (2 * a);
+
+            return sampleRate / T0;
+        }
+
+        async function startAutoDetect() {
+            document.getElementById('setup-modal-subtitle').textContent = "🎙️ Listening... Play an Open Note (no valves) loudly!";
+            initAudio();
+            
+            if (micStream) {
+                micStream.getTracks().forEach(track => track.stop());
+                micStream = null;
+            }
+
+            try {
+                micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                const micSource = audioCtx.createMediaStreamSource(micStream);
+                micAnalyser = audioCtx.createAnalyser();
+                micAnalyser.fftSize = 4096; // High res for low notes
+                micSource.connect(micAnalyser);
+
+                let detectCounter = 0;
+                let detectedFreqSum = 0;
+
+                function analyzeAutoDetect() {
+                    if (!micAnalyser) return;
+                    let buf = new Float32Array(micAnalyser.fftSize);
+                    micAnalyser.getFloatTimeDomainData(buf);
+                    let freq = autoCorrelate(buf, audioCtx.sampleRate);
+
+                    if (freq > 40 && freq < 600) {
+                        detectCounter++;
+                        detectedFreqSum += freq;
+                        if (detectCounter === 10) {
+                            const avgFreq = detectedFreqSum / 10;
+                            // Make decision based on Concert pitch frequency
+                            let selectedInstIndex = 0;
+                            let detectedName = "Concert Pitch Tuba";
+                            
+                            if (avgFreq < 80) { // Tuba Bb1 = ~58Hz
+                                selectedInstIndex = 2; detectedName = "Bb Tuba";
+                            } else if (avgFreq >= 80 && avgFreq < 135) { // Euph/Baritone Bb2 = ~116Hz
+                                selectedInstIndex = 1; detectedName = "Bb Euphonium";
+                            } else if (avgFreq >= 135 && avgFreq < 185) { // Tenor Horn Eb3 = ~155Hz
+                                selectedInstIndex = 3; detectedName = "Eb Tenor Horn";
+                            } else { // Trumpet Bb3 = ~233Hz
+                                selectedInstIndex = 0; detectedName = "Bb Trumpet";
+                            }
+
+                            document.getElementById('setup-modal-subtitle').textContent = `🎯 Detected ~${Math.round(avgFreq)}Hz. Setting to ${detectedName}!`;
+                            
+                            // Auto select corresponding option
+                            const options = document.querySelectorAll('.setup-option');
+                            selectInstrument(options[selectedInstIndex]);
+
+                            micStream.getTracks().forEach(track => track.stop());
+                            micStream = null;
+                            micAnalyser = null;
+                            return;
+                        }
+                    } else {
+                        detectCounter = 0;
+                        detectedFreqSum = 0;
+                    }
+                    requestAnimationFrame(analyzeAutoDetect);
+                }
+                
+                requestAnimationFrame(analyzeAutoDetect);
+
+            } catch (err) {
+                alert("Microphone access needed for Auto-Detect!");
+                document.getElementById('setup-modal-subtitle').textContent = "Select your instrument manually below:";
+            }
         }
 
         // --- Core Engine & Animation Loop ---
@@ -1191,8 +1335,10 @@
                         if (pitch >= MIN_PITCH && pitch <= MAX_PITCH) {
                             const drawX = (pitch - MIN_PITCH) * colWidth;
 
-                            // Determine Color
+                            // Determine Color Based on Pitch
                             let bColor = getNoteColor(noteStr); 
+                            
+                            // Override color if evaluated in Game/Step mode
                             if (isGameMode || isStepMode) {
                                 if (item.gameStatus === 'perfect') bColor = '#10b981'; // Green hit
                                 else if (item.gameStatus === 'earlyLate') bColor = '#f97316'; // Orange early/late
@@ -1272,77 +1418,6 @@
 
             document.getElementById('game-results-modal').classList.add('open');
             displayMockRank();
-        }
-
-        // --- Microphone Auto-Detect Feature ---
-        async function startAutoDetect() {
-            document.getElementById('setup-modal-subtitle').textContent = "🎙️ Listening... Play an Open Note (no valves) loudly!";
-            initAudio();
-            
-            if (micStream) {
-                micStream.getTracks().forEach(track => track.stop());
-                micStream = null;
-            }
-
-            try {
-                micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                const micSource = audioCtx.createMediaStreamSource(micStream);
-                micAnalyser = audioCtx.createAnalyser();
-                micAnalyser.fftSize = 4096; // High res for low notes
-                micSource.connect(micAnalyser);
-
-                let detectCounter = 0;
-                let detectedFreqSum = 0;
-
-                function analyzeAutoDetect() {
-                    if (!micAnalyser) return;
-                    let buf = new Float32Array(micAnalyser.fftSize);
-                    micAnalyser.getFloatTimeDomainData(buf);
-                    let freq = autoCorrelate(buf, audioCtx.sampleRate);
-
-                    if (freq > 40 && freq < 600) {
-                        detectCounter++;
-                        detectedFreqSum += freq;
-                        if (detectCounter === 10) {
-                            const avgFreq = detectedFreqSum / 10;
-                            // Make decision based on Concert pitch frequency
-                            let selectedInstIndex = 0;
-                            let detectedName = "Concert Pitch Tuba";
-                            
-                            if (avgFreq < 80) { // Tuba Bb1 = ~58Hz
-                                selectedInstIndex = 2; detectedName = "Bb Tuba";
-                            } else if (avgFreq >= 80 && avgFreq < 135) { // Euph/Baritone Bb2 = ~116Hz
-                                selectedInstIndex = 1; detectedName = "Bb Euphonium";
-                            } else if (avgFreq >= 135 && avgFreq < 185) { // Tenor Horn Eb3 = ~155Hz
-                                selectedInstIndex = 3; detectedName = "Eb Tenor Horn";
-                            } else { // Trumpet Bb3 = ~233Hz
-                                selectedInstIndex = 0; detectedName = "Bb Trumpet";
-                            }
-
-                            document.getElementById('setup-modal-subtitle').textContent = `🎯 Detected ~${Math.round(avgFreq)}Hz. Setting to ${detectedName}!`;
-                            
-                            // Auto select corresponding option
-                            const options = document.querySelectorAll('.setup-option');
-                            selectInstrument(options[selectedInstIndex]);
-
-                            micStream.getTracks().forEach(track => track.stop());
-                            micStream = null;
-                            micAnalyser = null;
-                            return;
-                        }
-                    } else {
-                        detectCounter = 0;
-                        detectedFreqSum = 0;
-                    }
-                    requestAnimationFrame(analyzeAutoDetect);
-                }
-                
-                requestAnimationFrame(analyzeAutoDetect);
-
-            } catch (err) {
-                alert("Microphone access needed for Auto-Detect!");
-                document.getElementById('setup-modal-subtitle').textContent = "Select your instrument manually below:";
-            }
         }
 
         // --- Robust HayCode Parser ---
