@@ -49,7 +49,7 @@
         }
 
         .container.wide-mode {
-            max-width: 1400px; /* Expand container width for multi-column arcade dashboard */
+            max-width: 1400px;
         }
 
         header {
@@ -209,7 +209,6 @@
             font-size: 0.9rem;
         }
 
-        /* Arcade Multi-Column Grid Styling */
         .arcade-dashboard {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -267,7 +266,7 @@
                 <select id="filter-song">
                     <option value="ALL">All Songs</option>
                 </select>
-                <button id="btn-toggle-mode" class="btn btn-arcade" type="button">
+                <button type="button" id="btn-toggle-mode" class="btn btn-arcade">
                     🎮 MINI-GAME Leaderboard
                 </button>
                 <a href="index.html" class="btn btn-back">← Back to Player</a>
@@ -275,7 +274,6 @@
         </header>
 
         <div id="view-content-area">
-            <!-- Standard Song View Table -->
             <div class="table-wrapper" id="song-table-wrapper">
                 <table>
                     <thead>
@@ -296,7 +294,6 @@
                 </table>
             </div>
 
-            <!-- Arcade 5-Column Grid View (Hidden by Default) -->
             <div class="arcade-dashboard" id="arcade-dashboard" style="display: none;"></div>
         </div>
     </div>
@@ -314,7 +311,7 @@
 
         let allScores = [];
         let viewMode = 'SONGS';
-        let dateSortMode = 'DEFAULT'; // 'DEFAULT', 'NEWEST', 'OLDEST'
+        let dateSortMode = 'DEFAULT'; 
 
         function parseCSV(csvText) {
             const lines = csvText.split(/\r?\n/);
@@ -345,6 +342,9 @@
                 row.push(entry);
 
                 if (row.length >= 4) {
+                    const accuracy = parseFloat(row[3]) || 0;
+                    if (accuracy <= 0.0) continue; 
+
                     const songTitle = row[2] ? row[2].trim().replace(/^"|"$/g, '') : 'Unknown';
                     const isMiniGame = MINI_GAMES.some(g => songTitle.toLowerCase().includes(g.key));
 
@@ -352,7 +352,7 @@
                         timestamp: row[0] ? row[0].trim().replace(/^"|"$/g, '') : '',
                         name: row[1] ? row[1].trim().replace(/^"|"$/g, '') : 'Anonymous',
                         song: songTitle,
-                        accuracy: parseFloat(row[3]) || 0,
+                        accuracy: accuracy,
                         speed: parseInt(row[4]) || 100,
                         isMiniGame: isMiniGame
                     });
@@ -400,13 +400,11 @@
             let pool = allScores.filter(s => !s.isMiniGame);
             let filtered = filterValue === 'ALL' ? [...pool] : pool.filter(s => s.song === filterValue);
 
-            // Apply Sort Mode
             if (dateSortMode === 'NEWEST') {
                 filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             } else if (dateSortMode === 'OLDEST') {
                 filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
             } else {
-                // DEFAULT
                 filtered.sort((a, b) => {
                     if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
                     return b.speed - a.speed;
