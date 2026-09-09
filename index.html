@@ -941,8 +941,8 @@
                     <svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
                     Get Songs
                 </a>
-                
-                <a href="https://mrhaybittle.github.io/PianoPad/leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-settings" style="background-color:#d97706;">
+
+                <a href="https://mrhaybittle.github.io/PianoPad/leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
                     🏆 Leaderboard
                 </a>
 
@@ -1033,7 +1033,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.09 | 9-Sep 07:44 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.09 | 9-Sep 11:51 AM AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1157,7 +1157,7 @@
 
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" id="btn-calib-skip" onclick="skipCalibration()">Skip Calibration</button>
-                <button type="button" class="btn-secondary" id="btn-calib-cancel" style="display:none;">Cancel Calibration</button>
+                <button type="button" class="btn-secondary" id="btn-calib-cancel" style="display:none;" onclick="cancelCalibration()">Cancel Calibration</button>
             </div>
         </div>
     </div>
@@ -1190,7 +1190,7 @@
             </div>
 
             <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
-                <a href="leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">View Entire Leaderboard</a>
+                <a href="https://mrhaybittle.github.io/PianoPad/leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">View Entire Leaderboard</a>
                 <button type="button" class="btn-warning" id="btn-battle-again" style="display: none;" onclick="triggerBattleAgain()">⚔️ Battle Again</button>
                 <button type="button" class="btn-warning" id="btn-game-try-again">Play Again</button>
                 <button type="button" class="btn-arcade" id="btn-game-arcade-menu">Mini-Game Menu</button>
@@ -1244,7 +1244,6 @@
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRVI-zuNfTZvcxcsG7mNk1iL_r11kCj-or6hKfLsilP0Vf9WSk0MeVxEog-RzXFIIjNA/exec';
-        const SCORE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyJ6BXOjgbsbv03Xlp3kFVj_6aIfVJ7NM66Y3f_fMzuOeDabH2HzEhE-rLuoZzncXAA6g/exec';
 
         let audioCtx = null;
         let songList = [];
@@ -1347,28 +1346,6 @@
                 httpPollTimer = null;
             }
         }
-
-        document.getElementById('btn-game-results-close').addEventListener('click', () => {
-            gameResultsModal.classList.remove('open');
-            stopBattlePolling();
-        });
-
-        document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
-            gameResultsModal.classList.remove('open');
-            stopBattlePolling();
-            openArcadeHub();
-        });
-
-        document.getElementById('btn-game-try-again').addEventListener('click', () => {
-            gameResultsModal.classList.remove('open');
-            stopBattlePolling();
-            if (currentSongTitle === "Mystery Note") startMysteryNote();
-            else if (currentSongTitle === "Simon Taps") startSimonTaps();
-            else if (currentSongTitle === "Drop Dodge") startDropDodge();
-            else if (currentSongTitle === "Combo Strike") startComboStrike();
-            else if (currentSongTitle === "Finger Sprint") openSprintModeSelector();
-            else playSong();
-        });
 
         function sanitizeName(str) {
             const parts = str.trim().split(/\s+/);
@@ -2133,7 +2110,6 @@
                     resetGameStats();
 
                     if (isSongBattle) {
-                        // Ensure Step Mode is OFF when Song Battle starts
                         isStepMode = false;
                         btnStep.textContent = 'Step Mode';
                         btnStep.classList.remove('btn-step-active');
@@ -2184,7 +2160,6 @@
             resetGameStats();
 
             if (isSongBattle) {
-                // Ensure Step Mode is OFF when Song Battle starts
                 isStepMode = false;
                 btnStep.textContent = 'Step Mode';
                 btnStep.classList.remove('btn-step-active');
@@ -2373,15 +2348,11 @@
         }
 
         async function postBattleToSpreadsheet(battlePayload) {
-            if (!SCORE_SCRIPT_URL) return;
+            if (!APPS_SCRIPT_URL) return;
 
             try {
-                await fetch(SCORE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify({ action: "SUBMIT_BATTLE", players: JSON.stringify(battlePayload) })
-                });
+                const url = `${APPS_SCRIPT_URL}?action=SUBMIT_BATTLE&players=${encodeURIComponent(JSON.stringify(battlePayload))}&t=${Date.now()}`;
+                await sendJSONP(url);
                 document.getElementById('status').textContent = `Song Battle results saved to Google Sheet!`;
             } catch (err) {
                 console.warn("Could not post battle to Google Sheet:", err);
@@ -2413,9 +2384,6 @@
                 if (acc >= 80) {
                     unlockBonusSounds(`Great job! You achieved <strong>${acc.toFixed(1)}%</strong> accuracy in the Song Battle and unlocked 5 bonus instrument sound engines!`);
                 }
-                
-                // FIXED: Submit the player's personal song battle score to the Leaderboard
-                postScoreToLeaderboard(parseFloat(acc.toFixed(1)));
             }
 
             const sortedRanked = [...playersList].sort((a, b) => {
@@ -2730,7 +2698,6 @@
         });
         document.getElementById('btn-settings-close').addEventListener('click', () => settingsModal.classList.remove('open'));
         document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
-        document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
 
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
@@ -2950,7 +2917,7 @@
         }
 
         async function postScoreToLeaderboard(accuracyNum) {
-            if (!SCORE_SCRIPT_URL) return;
+            if (!APPS_SCRIPT_URL) return;
 
             ensureStudentName();
             const speedText = speedSlider.value + '%';
@@ -2963,12 +2930,14 @@
             };
 
             try {
-                await fetch(SCORE_SCRIPT_URL, {
+                await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify(payload)
                 });
+                const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&t=${Date.now()}`;
+                sendJSONP(url);
                 document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
             } catch (err) {
                 console.warn("Could not post score to Google Apps Script.", err);
@@ -3165,7 +3134,6 @@
         function toggleStepMode() {
             initAudio();
             
-            // STRICT RULE: Step mode is forbidden inside Song Battles
             if (isSongBattle) {
                 document.getElementById('status').textContent = '⚠️ Step Mode is NOT permitted during Song Battles!';
                 return;
