@@ -142,7 +142,7 @@
 
         /* Brass Valves Section */
         .valves-container {
-            display: flex;
+            display: flex; /* Always visible for testing */
             justify-content: center;
             align-items: center;
             gap: 35px;
@@ -284,7 +284,7 @@
             <div class="blow-instruction">Press Valves to Play! (Use UP ARROW or SPACE for Open Notes)</div>
             
             <div id="mode-display">
-                🎺 Selecting Instrument...
+                🎺 Bb Trumpet / Cornet Mode
             </div>
 
             <div class="valves-container" id="valves-container">
@@ -316,13 +316,14 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.09 | 9-Sep 16:05 AEST</div>
+            <!-- Timestamp Added Here to confirm Update -->
+            <div class="version-stamp">v26.09.09 | 9-Sep 15:53 AEST (Woonona)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
 
-    <!-- Initial Setup Modal -->
-    <div class="modal-overlay open" id="setup-modal">
+    <!-- Initial Setup Modal (Skipped for testing - Removed "open" class) -->
+    <div class="modal-overlay" id="setup-modal">
         <div class="modal">
             <h2>Welcome to BrassPad! 🎺</h2>
             <p style="text-align: center; color: #d1d5db; font-size: 0.9rem;">Select your instrument to transpose sheet music into your written pitch:</p>
@@ -359,7 +360,8 @@
         const FALLBACK_SONGS = [
             { title: "Wipeout", code: "C2,C2,C2,C2,D2,D2,D2,D2,E2,E2,D2,D2,C2,Rests,250,250,250,250,250,250,250,250,250,250,250,250,500" },
             { title: "Hot Cross Buns", code: "E2,D2,C2,E2,D2,C2,C2,C2,C2,C2,D2,D2,D2,D2,E2,D2,C2,Rests,400,400,800,400,400,800,200,200,200,200,200,200,200,200,400,400,800" },
-            { title: "Ode to Joy", code: "E2,E2,F2,G2,G2,F2,E2,D2,C2,C2,D2,E2,E2,D2,D2,Rests,400,400,400,400,400,400,400,400,400,400,400,400,600,200,800" }
+            { title: "Ode to Joy", code: "E2,E2,F2,G2,G2,F2,E2,D2,C2,C2,D2,E2,E2,D2,D2,Rests,400,400,400,400,400,400,400,400,400,400,400,400,600,200,800" },
+            { title: "Mary Had A Little Lamb", code: "E2,D2,C2,D2,E2,E2,E2,D2,D2,D2,E2,G2,G2,E2,D2,C2,D2,E2,E2,E2,E2,D2,D2,E2,D2,C2,Rests,400,400,400,400,400,400,800,400,400,800,400,400,800,400,400,400,400,400,400,400,400,400,400,400,400,800" }
         ];
 
         let audioCtx = null;
@@ -370,7 +372,9 @@
 
         let isPlaying = false;
         let isPaused = false;
-        let transposeOffset = -2; 
+        
+        // Defaulting to Bb Instruments (+2 semitones transposition from Concert to Written)
+        let transposeOffset = 2; 
         let instrumentName = "🎺 Bb Trumpet / Cornet";
 
         let animationFrameId = null;
@@ -420,7 +424,10 @@
         function selectInstrument(el) {
             document.querySelectorAll('.setup-option').forEach(opt => opt.classList.remove('selected'));
             el.classList.add('selected');
-            transposeOffset = parseInt(el.getAttribute('data-transpose'), 10) * -1; 
+            
+            // e.g. Bb instrument = -2 transposition in prompt logic, so Concert + 2 = Written
+            let rawTrans = parseInt(el.getAttribute('data-transpose'), 10);
+            transposeOffset = rawTrans === 0 ? 0 : rawTrans * -1; 
             instrumentName = el.getAttribute('data-name');
         }
 
@@ -528,7 +535,7 @@
                     target.gameStatus = 'perfect';
                     gameStats.perfect++;
                     const freq = getNoteFrequency(matchedNote);
-                    if (freq) playTone(freq, 0.4);
+                    if (freq) playTone(freq, target.duration / 1000);
                     updateStatusText();
                 } else {
                     target.gameStatus = 'miss';
@@ -591,8 +598,8 @@
 
             gain.gain.setValueAtTime(0, now);
             gain.gain.linearRampToValueAtTime(0.4, now + 0.03);
-            gain.gain.setValueAtTime(0.4, now + safeDuration);
-            gain.gain.linearRampToValueAtTime(0.0001, now + safeDuration + 0.1);
+            gain.gain.setValueAtTime(0.4, now + safeDuration - 0.05);
+            gain.gain.linearRampToValueAtTime(0.0001, now + safeDuration + 0.05);
 
             osc.connect(filter);
             filter.connect(gain);
@@ -732,11 +739,14 @@
         function playSong() {
             initAudio();
             
-            // Re-parse current dropdown option if song is empty
-            const code = songSelect.value;
-            if (code) {
-                rawParsedSong = parsePianoPad(code);
-                currentSong = autoTransposeSong(rawParsedSong);
+            // Check if currentSong array is populated; if not, parse dropdown immediately
+            if (!currentSong || currentSong.length === 0) {
+                const selectedIndex = songSelect.value;
+                if (selectedIndex && songList[selectedIndex]) {
+                    currentSongTitle = songList[selectedIndex].title;
+                    rawParsedSong = parsePianoPad(songList[selectedIndex].code);
+                    currentSong = autoTransposeSong(rawParsedSong);
+                }
             }
 
             if (!currentSong || currentSong.length === 0) {
@@ -761,7 +771,7 @@
         function buildTimeline() {
             noteTimeline = [];
             const speedFactor = parseFloat(speedSlider.value) / 100;
-            let cumulativeMs = 1800; 
+            let cumulativeMs = 1800; // Pre-fall lead time
 
             currentSong.forEach((item) => {
                 noteTimeline.push({
@@ -898,16 +908,10 @@
         }
 
         function renderSongSelect() {
-            const uniqueMap = new Map();
-            songList.forEach(s => {
-                const key = s.title.toLowerCase().trim();
-                if (!uniqueMap.has(key)) uniqueMap.set(key, s);
-            });
-            const sortedList = Array.from(uniqueMap.values()).sort((a, b) => a.title.localeCompare(b.title));
             songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
-            sortedList.forEach(song => {
+            songList.forEach((song, index) => {
                 const opt = document.createElement('option');
-                opt.value = song.code;
+                opt.value = index; // Store array index instead of the massive raw code string!
                 opt.textContent = song.title;
                 songSelect.appendChild(opt);
             });
@@ -918,10 +922,10 @@
             songList = [...FALLBACK_SONGS];
             renderSongSelect();
             
-            const defaultObj = songList[0];
-            songSelect.value = defaultObj.code;
-            currentSongTitle = defaultObj.title;
-            rawParsedSong = parsePianoPad(defaultObj.code);
+            // Auto-select the first fallback song
+            songSelect.value = "0";
+            currentSongTitle = songList[0].title;
+            rawParsedSong = parsePianoPad(songList[0].code);
             currentSong = autoTransposeSong(rawParsedSong);
             
             document.getElementById('status').textContent = `Loaded ${songList.length} initial songs. Syncing Google Sheets...`;
@@ -941,11 +945,16 @@
                     if (remoteSongs.length > 0) {
                         songList = remoteSongs;
                         renderSongSelect();
-                        const wipeout = songList.find(s => s.title === 'Wipeout') || songList[0];
-                        songSelect.value = wipeout.code;
-                        currentSongTitle = wipeout.title;
-                        rawParsedSong = parsePianoPad(wipeout.code);
+                        
+                        // Select Wipeout (or default)
+                        const wipeoutIndex = songList.findIndex(s => s.title === 'Wipeout');
+                        const defaultIndex = wipeoutIndex !== -1 ? wipeoutIndex : 0;
+                        
+                        songSelect.value = defaultIndex;
+                        currentSongTitle = songList[defaultIndex].title;
+                        rawParsedSong = parsePianoPad(songList[defaultIndex].code);
                         currentSong = autoTransposeSong(rawParsedSong);
+                        
                         document.getElementById('status').textContent = `Synced ${songList.length} songs live from Google Sheet! Ready!`;
                     }
                 }
@@ -956,16 +965,22 @@
 
         songSelect.addEventListener('change', (e) => {
             initAudio();
-            const code = e.target.value;
-            if (!code) return;
-            const opt = songSelect.options[songSelect.selectedIndex];
-            if (opt) currentSongTitle = opt.text;
-            rawParsedSong = parsePianoPad(code);
+            const index = e.target.value;
+            if (index === "") return;
+            const song = songList[index];
+            currentSongTitle = song.title;
+            rawParsedSong = parsePianoPad(song.code);
             if (rawParsedSong.length > 0) {
                 currentSong = autoTransposeSong(rawParsedSong);
                 stopSong();
                 document.getElementById('status').textContent = `Loaded "${currentSongTitle}". Press Play!`;
             }
+        });
+
+        // Init on DOM load
+        document.addEventListener('DOMContentLoaded', () => {
+            resizeCanvas();
+            syncSongsWithGoogleSheet();
         });
 
     </script>
