@@ -23,8 +23,6 @@
             --valve-up: #d97706;
             --valve-down: #fbbf24;
         }
-
-        /* Removed standard themes to keep it Brassy, but left attributes for compatibility */
         
         * {
             box-sizing: border-box;
@@ -123,13 +121,11 @@
         .btn-game-active { background-color: var(--game-active) !important; color: #fff; }
         .btn-step-active { background-color: #f43f5e !important; color: #ffffff !important; }
 
-        .icon { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
         .visualizer-wrapper {
             position: relative; display: flex; flex-direction: column; align-items: center;
             background-color: #000; border-radius: 10px; padding: 4px;
             box-shadow: inset 0 2px 8px rgba(0,0,0,0.9);
-            width: 100%; flex: 1; min-height: 380px;
+            width: 100%; flex: 1; min-height: 380px; overflow: hidden;
         }
 
         #waterfall-canvas {
@@ -139,11 +135,27 @@
         }
 
         /* BRASS VALVES STYLING */
+        #mode-display {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #fbbf24;
+            background: #332717;
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: 2px solid #78350f;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 10px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+        }
+
         .valves-container {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 20px;
+            gap: 30px;
             padding: 15px;
             background: linear-gradient(to bottom, #332717, #1a140b);
             width: 100%;
@@ -159,16 +171,16 @@
         }
 
         .valve-btn {
-            width: 70px;
-            height: 70px;
+            width: 80px;
+            height: 80px;
             border-radius: 50%;
             background: radial-gradient(circle at 30% 30%, #fbbf24, #b45309);
             border: 4px solid #78350f;
-            box-shadow: 0 8px 0 #451a03, 0 15px 20px rgba(0,0,0,0.6);
+            box-shadow: 0 10px 0 #451a03, 0 15px 20px rgba(0,0,0,0.6);
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             font-weight: 900;
             color: #451a03;
             cursor: pointer;
@@ -176,24 +188,24 @@
         }
 
         .valve-btn.active {
-            transform: translateY(8px);
+            transform: translateY(10px);
             box-shadow: 0 0px 0 #451a03, 0 5px 10px rgba(0,0,0,0.6);
             background: radial-gradient(circle at 30% 30%, #fcd34d, #d97706);
             border-color: #92400e;
         }
 
         .valve-label {
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             font-weight: bold;
             color: #fbbf24;
             background: rgba(0,0,0,0.5);
-            padding: 3px 8px;
+            padding: 4px 10px;
             border-radius: 4px;
         }
 
         .blow-instruction {
             position: absolute;
-            bottom: 110px;
+            bottom: 150px;
             font-size: 1.2rem;
             font-weight: 800;
             color: #fff;
@@ -288,7 +300,12 @@
 
         <div class="visualizer-wrapper">
             <canvas id="waterfall-canvas" width="1200" height="380"></canvas>
-            <div class="blow-instruction">Hold Valves & Press UP ARROW to Blow! 🌬️</div>
+            <div class="blow-instruction">Press Valves or UP ARROW (Open) to Play! 🌬️</div>
+            
+            <div id="mode-display">
+                🎺 Selecting Instrument...
+            </div>
+
             <div class="valves-container" id="valves-container">
                 <div class="valve-wrapper">
                     <div class="valve-btn" id="valve-1">1</div>
@@ -316,23 +333,23 @@
             <h2>Welcome to BrassPad! 🎺</h2>
             <p style="text-align: center; color: #d1d5db; font-size: 0.9rem;">Select your instrument to automatically transpose sheet music into your written pitch:</p>
             
-            <div class="setup-option" data-transpose="2" onclick="selectInstrument(this)">
+            <div class="setup-option" data-transpose="-2" data-name="🎺 Bb Trumpet / Cornet" onclick="selectInstrument(this)">
                 <h3>Trumpet / Cornet (Bb)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-transpose="2" onclick="selectInstrument(this)">
+            <div class="setup-option" data-transpose="-2" data-name="📯 Bb Euphonium / Baritone" onclick="selectInstrument(this)">
                 <h3>Euphonium / Baritone (Bb Treble)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-transpose="2" onclick="selectInstrument(this)">
+            <div class="setup-option" data-transpose="-2" data-name="🎷 Bb Tuba (Treble Clef)" onclick="selectInstrument(this)">
                 <h3>Tuba (Bb Treble / Brass Band)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-transpose="9" onclick="selectInstrument(this)">
+            <div class="setup-option" data-transpose="-9" data-name="📯 Eb Tenor Horn" onclick="selectInstrument(this)">
                 <h3>Tenor Horn (Eb)</h3>
                 <p>Reads Treble Clef. Concert Eb = Written C.</p>
             </div>
-            <div class="setup-option" data-transpose="0" onclick="selectInstrument(this)">
+            <div class="setup-option" data-transpose="0" data-name="🎶 Concert Pitch Brass" onclick="selectInstrument(this)">
                 <h3>Tuba / Euphonium (Concert Pitch)</h3>
                 <p>Reads Bass Clef at Concert Pitch.</p>
             </div>
@@ -362,7 +379,8 @@
         let isPaused = false;
         let isStepMode = false;
         let isGameMode = false;
-        let transposeOffset = 2; // Default to Bb Instruments
+        let transposeOffset = -2; // Default to Bb Instruments (+2 semitones from concert to written)
+        let instrumentName = "🎺 Bb Trumpet / Cornet";
 
         // Mic Variables
         let micStream = null;
@@ -386,12 +404,18 @@
 
         const noteNames = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
 
-        // Generic Brass Fingering Map (Pitch Class -> Valves)
-        // 1=Valve1, 2=Valve2, 3=Valve3
-        const genericFingering = {
-            'c': [], 'c#': [1,2,3], 'd': [1,3], 'd#': [2,3], 'e': [1,2],
-            'f': [1], 'f#': [2], 'g': [], 'g#': [2,3], 'a': [1,2],
-            'a#': [1], 'b': [2]
+        // Visualizer Range Settings
+        const MIN_PITCH = 42; // F#3
+        const MAX_PITCH = 72; // C6
+        const PITCH_RANGE = MAX_PITCH - MIN_PITCH + 1;
+
+        // Pitch to Valves Map (Explicitly mapped from F#3 to C6 written pitch)
+        const myPitchValves = {
+            42: [1,2,3], 43: [1,3], 44: [2,3], 45: [1,2], 46: [1], 47: [2], // F#3 to B3
+            48: [], 49: [1,2,3], 50: [1,3], 51: [2,3], 52: [1,2], 53: [1], 54: [2], // C4 to F#4
+            55: [], 56: [2,3], 57: [1,2], 58: [1], 59: [2], // G4 to B4
+            60: [], 61: [1,2], 62: [1], 63: [2], 64: [], 65: [1], 66: [2], 67: [], // C5 to G5
+            68: [2,3], 69: [1,2], 70: [1], 71: [2], 72: [] // G#5 to C6
         };
 
         const canvas = document.getElementById('waterfall-canvas');
@@ -408,7 +432,8 @@
         function selectInstrument(el) {
             document.querySelectorAll('.setup-option').forEach(opt => opt.classList.remove('selected'));
             el.classList.add('selected');
-            transposeOffset = parseInt(el.getAttribute('data-transpose'), 10);
+            transposeOffset = parseInt(el.getAttribute('data-transpose'), 10) * -1; // Reverse sign for parsing translation
+            instrumentName = el.getAttribute('data-name');
         }
 
         function confirmInstrument() {
@@ -418,6 +443,7 @@
                 return;
             }
             document.getElementById('setup-modal').classList.remove('open');
+            document.getElementById('mode-display').textContent = `${instrumentName} Mode`;
             initAudio();
             syncSongsWithGoogleSheet();
         }
@@ -438,13 +464,18 @@
             if (e.repeat) return;
             initAudio();
 
-            if (e.code === 'ArrowLeft') { setValve(1, true); e.preventDefault(); }
-            if (e.code === 'ArrowDown') { setValve(2, true); e.preventDefault(); }
-            if (e.code === 'ArrowRight') { setValve(3, true); e.preventDefault(); }
+            let valveChanged = false;
+            if (e.code === 'ArrowLeft') { setValve(1, true); valveChanged = true; }
+            if (e.code === 'ArrowDown') { setValve(2, true); valveChanged = true; }
+            if (e.code === 'ArrowRight') { setValve(3, true); valveChanged = true; }
 
+            // Evaluate note automatically if valve is pressed OR if it's an explicit open blow
             if (e.code === 'ArrowUp' || e.code === 'Space') {
                 e.preventDefault();
-                triggerBlow();
+                triggerNoteEvaluation(true); // explicit blow
+            } else if (valveChanged) {
+                e.preventDefault();
+                triggerNoteEvaluation(false); // valve pressed
             }
         });
 
@@ -461,22 +492,6 @@
             else btn.classList.remove('active');
         }
 
-        function triggerBlow() {
-            if (isStepMode) {
-                if (noteTimeline.length > 0 && currentStepIndex < noteTimeline.length) {
-                    checkAndPlayActiveNote(true);
-                }
-                return;
-            }
-
-            if (isPlaying && !isPaused) {
-                checkAndPlayActiveNote(false);
-            } else {
-                // Free play
-                playFreeValveCombo();
-            }
-        }
-
         function arraysEqualUnordered(a, b) {
             if (a.length !== b.length) return false;
             let sortedA = [...a].sort();
@@ -484,12 +499,30 @@
             return sortedA.every((val, index) => val === sortedB[index]);
         }
 
-        function checkAndPlayActiveNote(isStep) {
+        function triggerNoteEvaluation(isExplicitBlow) {
             const currentHeldArray = [];
             if (heldValves[1]) currentHeldArray.push(1);
             if (heldValves[2]) currentHeldArray.push(2);
             if (heldValves[3]) currentHeldArray.push(3);
 
+            // UP Arrow needed strictly for open notes. Ignore valve releases making it 0.
+            if (!isExplicitBlow && currentHeldArray.length === 0) return;
+
+            if (isStepMode) {
+                if (noteTimeline.length > 0 && currentStepIndex < noteTimeline.length) {
+                    evaluateActiveNote(currentHeldArray, true);
+                }
+                return;
+            }
+
+            if (isPlaying && !isPaused) {
+                evaluateActiveNote(currentHeldArray, false);
+            } else {
+                playFreeValveCombo(currentHeldArray);
+            }
+        }
+
+        function evaluateActiveNote(currentHeldArray, isStep) {
             let effectiveElapsed = isStep ? 
                 (noteTimeline[currentStepIndex] ? noteTimeline[currentStepIndex].hitTime : 0) : 
                 (performance.now() - playbackStartTime) - accumulatedPauseMs;
@@ -500,10 +533,11 @@
 
             if (targetIndex !== -1) {
                 const target = noteTimeline[targetIndex];
-                // Check if held valves match the required valves for any note in the block
                 let matchedNote = null;
+
                 for (let noteStr of target.notes) {
-                    const required = getValvesForNote(noteStr);
+                    const pitch = noteToPitch(noteStr);
+                    const required = getValvesForPitch(pitch);
                     if (arraysEqualUnordered(currentHeldArray, required)) {
                         matchedNote = noteStr;
                         break;
@@ -511,7 +545,6 @@
                 }
 
                 if (matchedNote) {
-                    // Success!
                     target.gameStatus = 'perfect';
                     gameStats.perfect++;
                     const freq = getNoteFrequency(matchedNote);
@@ -525,40 +558,34 @@
                         updateGameStatus();
                     }
                 } else {
-                    // Missed fingering
-                    if (isStep) return; // Don't advance in step mode if wrong
+                    if (isStep) return; 
                     target.gameStatus = 'miss';
                     gameStats.miss++;
                     playErrorClackSound();
                     if (isGameMode) updateGameStatus();
                 }
             } else {
-                // Blew at wrong time, or free play over track
-                playFreeValveCombo();
+                playFreeValveCombo(currentHeldArray);
             }
         }
 
-        function playFreeValveCombo() {
-            const currentHeldArray = [];
-            if (heldValves[1]) currentHeldArray.push(1);
-            if (heldValves[2]) currentHeldArray.push(2);
-            if (heldValves[3]) currentHeldArray.push(3);
-
-            // Simple map for free play (descending C scale)
+        function playFreeValveCombo(currentHeldArray) {
             const map = {
-                '': 'c4', '2': 'b3', '1': 'a#3', '1,2': 'a3',
-                '2,3': 'g#3', '1,3': 'g3', '1,2,3': 'f#3'
+                '': 'c5', '2': 'b4', '1': 'a#4', '1,2': 'a4',
+                '2,3': 'g#4', '1,3': 'g4', '1,2,3': 'f#4'
             };
             const key = currentHeldArray.sort().join(',');
-            const noteToPlay = map[key] || 'c4';
+            const noteToPlay = map[key] || 'c5';
             const freq = getNoteFrequency(noteToPlay);
             if (freq) playTone(freq, 0.4);
         }
 
-        function getValvesForNote(noteName) {
-            let name = noteName.toLowerCase();
-            let pitchClass = name.replace(/[0-9]/g, '');
-            return genericFingering[pitchClass] || [];
+        function getValvesForPitch(pitch) {
+            if (myPitchValves[pitch] !== undefined) return myPitchValves[pitch];
+            // Fallback
+            const pc = pitch % 12;
+            const fallback = { 0:[], 1:[1,2,3], 2:[1,3], 3:[2,3], 4:[1,2], 5:[1], 6:[2], 7:[], 8:[2,3], 9:[1,2], 10:[1], 11:[2] };
+            return fallback[pc] || [];
         }
 
         // --- Audio System ---
@@ -571,8 +598,11 @@
             if (!freq) return;
             initAudio();
             const now = audioCtx.currentTime;
+            
+            // Adjusted bounds so the envelope always resolves correctly
+            const safeDuration = Math.max(0.1, duration);
 
-            // Simple Brass-like Synth
+            // Brassy Synth
             const osc = audioCtx.createOscillator();
             const filter = audioCtx.createBiquadFilter();
             const gain = audioCtx.createGain();
@@ -581,19 +611,22 @@
             osc.frequency.setValueAtTime(freq, now);
 
             filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(freq * 3, now);
-            filter.frequency.exponentialRampToValueAtTime(freq, now + duration);
+            // Wah envelope for brass attack
+            filter.frequency.setValueAtTime(freq * 1.5, now);
+            filter.frequency.linearRampToValueAtTime(freq * 4, now + 0.05); 
+            filter.frequency.exponentialRampToValueAtTime(freq * 1.5, now + safeDuration);
 
             gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(0.3 * volScale, now + 0.05);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.1);
+            gain.gain.linearRampToValueAtTime(0.4 * volScale, now + 0.03);
+            gain.gain.setValueAtTime(0.4 * volScale, now + safeDuration - 0.05);
+            gain.gain.linearRampToValueAtTime(0.0001, now + safeDuration + 0.05);
 
             osc.connect(filter);
             filter.connect(gain);
             gain.connect(audioCtx.destination);
             
             osc.start(now);
-            osc.stop(now + duration + 0.1);
+            osc.stop(now + safeDuration + 0.1);
         }
 
         function playErrorClackSound() {
@@ -632,6 +665,7 @@
             const octave = parseInt(match[2], 10);
             const offset = noteNames.indexOf(name);
             if (offset === -1) return null;
+            // Formula corresponding directly with our mapping above
             return octave * 12 + offset;
         }
 
@@ -649,12 +683,8 @@
                 const newNotes = item.notes.map(noteStr => {
                     const p = noteToPitch(noteStr);
                     if (p === null) return noteStr;
+                    // Apply transposition from Concert to Written Pitch
                     let shiftedP = p + transposeOffset;
-                    
-                    // Keep in standard brass staff range roughly (MIDI 54 to 84)
-                    while(shiftedP < 54) shiftedP += 12;
-                    while(shiftedP > 84) shiftedP -= 12;
-                    
                     return pitchToNote(shiftedP);
                 });
 
@@ -737,7 +767,8 @@
         function frequencyToNoteName(freq) {
             if (freq < 50 || freq > 2000) return null;
             let midi = Math.round(69 + 12 * Math.log2(freq / 440));
-            return pitchToNote(midi);
+            // Offset logic for standard tuning mapped to our pitchToNote
+            return pitchToNote(midi - 12); 
         }
 
         function processMicrophonePitch() {
@@ -753,28 +784,21 @@
                     if (concertNote === lastDetectedNote) {
                         noteHoldCounter++;
                         if (noteHoldCounter === 3) {
-                            // Mic heard Concert Pitch. Transpose it to Written Pitch!
                             let concertPitch = noteToPitch(concertNote);
                             let writtenPitch = concertPitch + transposeOffset;
-                            
-                            // Wrap to standard range
-                            while(writtenPitch < 54) writtenPitch += 12;
-                            while(writtenPitch > 84) writtenPitch -= 12;
 
                             let writtenNoteStr = pitchToNote(writtenPitch);
                             
-                            // Simulate blowing this note
-                            let valvesNeeded = getValvesForNote(writtenNoteStr);
+                            let valvesNeeded = getValvesForPitch(writtenPitch);
                             heldValves[1] = valvesNeeded.includes(1);
                             heldValves[2] = valvesNeeded.includes(2);
                             heldValves[3] = valvesNeeded.includes(3);
                             
-                            // Update UI valves temporarily
                             setValve(1, heldValves[1]);
                             setValve(2, heldValves[2]);
                             setValve(3, heldValves[3]);
 
-                            triggerBlow(); // Check against timeline!
+                            triggerNoteEvaluation(true); 
 
                             setTimeout(() => {
                                 setValve(1, false); setValve(2, false); setValve(3, false);
@@ -894,8 +918,7 @@
 
         function updateStepStatus() {
             if (currentStepIndex < noteTimeline.length) {
-                const nextItem = noteTimeline[currentStepIndex];
-                document.getElementById('status').textContent = `Step ${currentStepIndex + 1}: Hold required valves and press UP ARROW!`;
+                document.getElementById('status').textContent = `Step ${currentStepIndex + 1}: Press required valves to advance! (Use UP ARROW for open notes)`;
             } else {
                 document.getElementById('status').textContent = 'Step Practice Finished!';
             }
@@ -916,28 +939,25 @@
                 (currentStepIndex < noteTimeline.length ? noteTimeline[currentStepIndex].hitTime : noteTimeline[noteTimeline.length - 1].hitTime + 500) : 
                 (now - playbackStartTime) - accumulatedPauseMs;
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const colWidth = canvas.width / 4;
-            const FALL_TIME_MS = 1800;
+            // Fit canvas internally based on its actual screen size
+            if(canvas.width !== canvas.clientWidth) canvas.width = canvas.clientWidth;
 
-            // Draw column dividers
-            ctx.strokeStyle = '#332717';
-            ctx.lineWidth = 2;
-            for(let i=1; i<=3; i++){
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const FALL_TIME_MS = 1800;
+            const colWidth = canvas.width / PITCH_RANGE;
+
+            // Draw Background Gradients & Lines to show pitch scale
+            ctx.fillStyle = 'rgba(255,255,255,0.03)';
+            for(let i=0; i < PITCH_RANGE; i++){
+                // slight shade for every 12th note (octave lines)
+                if (i % 12 === 6) ctx.fillRect(i * colWidth, 0, colWidth, canvas.height);
+                
+                ctx.strokeStyle = 'rgba(255,255,255,0.1)';
                 ctx.beginPath();
-                ctx.moveTo(colWidth * i, 0);
-                ctx.lineTo(colWidth * i, canvas.height);
+                ctx.moveTo(i * colWidth, 0);
+                ctx.lineTo(i * colWidth, canvas.height);
                 ctx.stroke();
             }
-
-            // Draw Column labels faintly
-            ctx.fillStyle = 'rgba(255,255,255,0.1)';
-            ctx.font = 'bold 24px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText("VALVE 1", colWidth * 0.5, 30);
-            ctx.fillText("VALVE 2", colWidth * 1.5, 30);
-            ctx.fillText("VALVE 3", colWidth * 2.5, 30);
-            ctx.fillText("OPEN", colWidth * 3.5, 30);
 
             noteTimeline.forEach(item => {
                 if (!isStepMode && effectiveElapsed >= item.hitTime && !item.played && !isGameMode) {
@@ -964,31 +984,31 @@
                     const drawH = Math.min(canvas.height - drawY, yBottom - drawY);
 
                     // Determine color based on gameStatus
-                    let bColor = '#0ea5e9'; // Default pending blue
+                    let bColor = '#0ea5e9'; 
                     if (item.gameStatus === 'perfect') bColor = '#10b981';
                     else if (item.gameStatus === 'miss') bColor = '#ef4444';
 
                     item.notes.forEach(noteStr => {
-                        const requiredValves = getValvesForNote(noteStr);
+                        const pitch = noteToPitch(noteStr);
                         
-                        if (requiredValves.length === 0) {
-                            // OPEN NOTE -> Draw in 4th column
+                        // Map pitch directly to layout X coordinate
+                        if (pitch >= MIN_PITCH && pitch <= MAX_PITCH) {
+                            const drawX = (pitch - MIN_PITCH) * colWidth;
+
+                            // Outer border glow
+                            ctx.shadowColor = bColor;
+                            ctx.shadowBlur = 10;
                             ctx.fillStyle = bColor;
-                            ctx.fillRect(colWidth * 3 + 5, drawY, colWidth - 10, drawH);
+                            
+                            // Wide rectangles across column
+                            ctx.fillRect(drawX + 1, drawY, colWidth - 2, drawH);
+                            
+                            ctx.shadowBlur = 0;
                             ctx.fillStyle = '#fff';
-                            ctx.font = '12px sans-serif';
-                            ctx.fillText(noteStr.toUpperCase(), colWidth * 3.5, drawY + drawH/2);
-                        } else {
-                            // Draw block in specific valve columns
-                            requiredValves.forEach(v => {
-                                const colIndex = v - 1;
-                                ctx.fillStyle = bColor;
-                                ctx.fillRect(colWidth * colIndex + 5, drawY, colWidth - 10, drawH);
-                            });
-                            // Just label the first block for readability
-                            ctx.fillStyle = '#fff';
-                            ctx.font = '12px sans-serif';
-                            ctx.fillText(noteStr.toUpperCase(), colWidth * (requiredValves[0]-1) + colWidth/2, drawY + drawH/2);
+                            ctx.font = '10px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(noteStr.toUpperCase(), drawX + colWidth/2, drawY + drawH/2);
                         }
                     });
                 }
