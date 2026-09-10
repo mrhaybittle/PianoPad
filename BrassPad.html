@@ -392,7 +392,7 @@
                     🎙️ MIC INPUT: OFF
                 </button>
 
-                <!-- Sheet Music Toggle Added Here -->
+                <!-- Sheet Music Toggle -->
                 <button type="button" id="btn-sheet-toggle" class="btn-secondary" style="background-color: #0d9488; font-weight: 700;" title="Toggle Sheet Music Display">
                     🎼 Sheet: ON
                 </button>
@@ -416,14 +416,14 @@
             <div class="blow-instruction">Press Valves to Play! (Use UP ARROW, D, L, or ; for Open Notes)</div>
             
             <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0; z-index: 10;">
-                <button type="button" id="btn-octave-down" class="btn-secondary" style="height: 38px; font-weight: bold; font-size: 1rem;" title="Shift Audio Down 1 Octave">⬇️ 8vb</button>
+                <button type="button" id="btn-octave-down" class="btn-secondary" style="height: 38px; font-weight: bold; font-size: 1rem;" title="Shift Sheet Music & Audio Down 1 Octave">⬇️ 8vb</button>
                 
                 <div id="mode-display" onclick="openSetupModal()" title="Click to change Instrument" style="margin: 0;">
                     <span id="instrument-label">🎺 Bb Trumpet / Cornet Mode</span>
                     <span style="font-size: 0.8rem; margin-left: 5px; color: #9ca3af;">▼ Change</span>
                 </div>
 
-                <button type="button" id="btn-octave-up" class="btn-secondary" style="height: 38px; font-weight: bold; font-size: 1rem;" title="Shift Audio Up 1 Octave">⬆️ 8va</button>
+                <button type="button" id="btn-octave-up" class="btn-secondary" style="height: 38px; font-weight: bold; font-size: 1rem;" title="Shift Sheet Music & Audio Up 1 Octave">⬆️ 8va</button>
             </div>
 
             <div class="valves-container" id="valves-container">
@@ -456,7 +456,7 @@
 
         <div class="footer-bar">
             <!-- Timestamp Updated -->
-            <div class="version-stamp">v26.09.10 | 10-Sep 12:03 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.10 | 10-Sep 12:18 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -586,10 +586,10 @@
         let currentStepIndex = 0;
         let smoothStepElapsed = 0;
 
-        // Visualizer Range Settings (Written Pitch standard representation)
-        const MIN_PITCH = 54; // F#3
-        const MAX_PITCH = 84; // C6
-        const PITCH_RANGE = MAX_PITCH - MIN_PITCH + 1;
+        // Visualizer Range Settings (Base representation)
+        const BASE_MIN_PITCH = 54; // F#3
+        const BASE_MAX_PITCH = 84; // C6
+        const PITCH_RANGE = BASE_MAX_PITCH - BASE_MIN_PITCH + 1;
 
         // Written Pitch to Valve Combinations Map
         const writtenPitchToValves = {
@@ -668,23 +668,45 @@
             document.getElementById('setup-modal').classList.remove('open');
             userOctaveShift = 0; // Reset user shifts on mode change
             updateModeDisplay();
-            
-            // Re-normalize current song visually
+            applyVisualShift();
+        }
+
+        // Apply Shift Logic
+        function applyVisualShift() {
             if (rawParsedSong.length > 0) {
                 currentSong = autoTransposeSong(rawParsedSong);
+                
+                let effectiveElapsed = 0;
+                if (isPlaying) {
+                    effectiveElapsed = isStepMode ? 
+                        smoothStepElapsed : 
+                        (performance.now() - playbackStartTime) - accumulatedPauseMs;
+                }
+                
+                buildTimeline();
+
+                if (isPlaying) {
+                    noteTimeline.forEach(item => {
+                        if (item.hitTime <= effectiveElapsed) {
+                            item.played = true;
+                            item.gameStatus = 'miss'; // Mark past notes so they don't jump / sound
+                        }
+                    });
+                }
             }
-            if (isPlaying) playSong();
         }
 
         // Octave Up / Down buttons
         document.getElementById('btn-octave-up').addEventListener('click', () => {
             userOctaveShift++;
             updateModeDisplay();
+            applyVisualShift();
         });
 
         document.getElementById('btn-octave-down').addEventListener('click', () => {
             userOctaveShift--;
             updateModeDisplay();
+            applyVisualShift();
         });
 
         function updateModeDisplay() {
@@ -1087,7 +1109,10 @@
                 '1,2,3': 54   // F#3
             };
             const key = currentHeldArray.sort().join(',');
-            const writtenPitch = map[key] || 60;
+            
+            // Map the base valve combo up to the currently selected user Octave Shift 
+            let writtenPitch = (map[key] || 60) + (userOctaveShift * 12);
+            
             const writtenNoteStr = pitchToNote(writtenPitch);
             const freq = getConcertFrequency(writtenNoteStr);
             if (freq) playTone(freq, 0.4);
@@ -1203,9 +1228,9 @@
             const writtenPitch = noteToPitch(noteStr);
             if (writtenPitch === null) return null;
             
-            // Audio Shift drops it to true Concert Pitch for playback, 
-            // plus userOctaveShift applies custom 8va/8vb modifications
-            const concertPitch = writtenPitch + audioShift + (userOctaveShift * 12);
+            // Audio Shift drops it to true Concert Pitch for playback.
+            // userOctaveShift is already mathematically baked into 'writtenPitch' visual note
+            const concertPitch = writtenPitch + audioShift;
             return 440 * Math.pow(2, (concertPitch - 69) / 12);
         }
 
@@ -1226,13 +1251,16 @@
             let maxP = Math.max(...allPitches);
             let octaveShift = 0;
 
-            // Shift ENTIRE song homogeneously so it falls on the visible staff (MIN_PITCH 54 to MAX_PITCH 84)
-            while (minP + (octaveShift * 12) < MIN_PITCH && maxP + (octaveShift * 12) + 12 <= MAX_PITCH) {
+            // Normalize song to fit around the baseline staff
+            while (minP + (octaveShift * 12) < BASE_MIN_PITCH && maxP + (octaveShift * 12) + 12 <= BASE_MAX_PITCH) {
                 octaveShift++;
             }
-            while (maxP + (octaveShift * 12) > MAX_PITCH && minP + (octaveShift * 12) - 12 >= MIN_PITCH) {
+            while (maxP + (octaveShift * 12) > BASE_MAX_PITCH && minP + (octaveShift * 12) - 12 >= BASE_MIN_PITCH) {
                 octaveShift--;
             }
+
+            // Apply user defined shift to actually shift the visual notes and staff
+            octaveShift += userOctaveShift;
 
             return song.map(item => {
                 const newNotes = item.notes.map(noteStr => {
@@ -1350,10 +1378,14 @@
                             let concertPitch = noteToPitch(concertNote);
                             
                             // Map what the mic hears to the Written Pitch of the game track
-                            let writtenPitch = concertPitch - audioShift - (userOctaveShift * 12);
+                            let writtenPitch = concertPitch - audioShift;
                             
-                            while (writtenPitch < MIN_PITCH) writtenPitch += 12;
-                            while (writtenPitch > MAX_PITCH) writtenPitch -= 12;
+                            // Keep boundaries matched to the shifting timeline scale so auto-evaluation registers accurately
+                            const currentMin = BASE_MIN_PITCH + (userOctaveShift * 12);
+                            const currentMax = BASE_MAX_PITCH + (userOctaveShift * 12);
+
+                            while (writtenPitch < currentMin) writtenPitch += 12;
+                            while (writtenPitch > currentMax) writtenPitch -= 12;
 
                             let valvesNeeded = getValvesForPitch(writtenPitch);
                             
@@ -1625,9 +1657,12 @@
             const waterfallHeight = canvas.height - waterfallTop;
             const HIT_ZONE_Y = canvas.height - 50;
 
+            const currentMinPitchBounds = BASE_MIN_PITCH + (userOctaveShift * 12);
+            const currentMaxPitchBounds = BASE_MAX_PITCH + (userOctaveShift * 12);
+
             // 1. Draw Pitch Grid Columns
             for (let i = 0; i < PITCH_RANGE; i++) {
-                const pitch = MIN_PITCH + i;
+                const pitch = currentMinPitchBounds + i;
                 const isC = pitch % 12 === 0;
                 
                 if (isC) {
@@ -1726,8 +1761,8 @@
                     item.notes.forEach(noteStr => {
                         const pitch = noteToPitch(noteStr);
                         
-                        if (pitch >= MIN_PITCH && pitch <= MAX_PITCH) {
-                            const drawX = (pitch - MIN_PITCH) * colWidth;
+                        if (pitch >= currentMinPitchBounds && pitch <= currentMaxPitchBounds) {
+                            const drawX = (pitch - currentMinPitchBounds) * colWidth;
 
                             // Determine Color Based on Pitch
                             let bColor = getNoteColor(noteStr); 
