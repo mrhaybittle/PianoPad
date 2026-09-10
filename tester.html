@@ -1038,7 +1038,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.10 | 10-Sep 18:21 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.10 | 10-Sep 18:27 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1533,12 +1533,6 @@
                 ctx.lineTo(width, ly);
                 ctx.stroke();
             }
-
-            ctx.fillStyle = '#000000';
-            ctx.font = '68px "Segoe UI Symbol", "Apple Symbols", "Noto Music", sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('𝄞', 35, 48);
 
             ctx.restore();
         }
@@ -4372,14 +4366,14 @@
                     let has8va = false;
                     let has15ma = false;
 
-                    let nextNoteItem = null;
-                    let minUpcomingTime = Infinity;
+                    let currentActiveItem = null;
+                    let maxActiveHitTime = -1;
 
+                    // Identify the currently playing note item based on timeline elapsed position
                     noteTimeline.forEach(item => {
-                        const timeUntilHit = item.hitTime - effectiveElapsed;
-                        if (timeUntilHit >= -100 && timeUntilHit < minUpcomingTime && !item.played) {
-                            minUpcomingTime = timeUntilHit;
-                            nextNoteItem = item;
+                        if (effectiveElapsed >= item.hitTime - 50 && effectiveElapsed > maxActiveHitTime) {
+                            maxActiveHitTime = item.hitTime;
+                            currentActiveItem = item;
                         }
                     });
 
@@ -4389,8 +4383,8 @@
                             const noteX = targetX + (timeUntilHit / SCROLL_TIME_MS) * (scaledWidth - targetX);
 
                             if (noteX > CLEF_X_END && noteX < scaledWidth + 15) {
-                                const isNextNote = (item === nextNoteItem);
-                                const noteColor = isNextNote ? '#ef4444' : '#000000';
+                                const isCurrentNote = (item === currentActiveItem);
+                                const noteColor = isCurrentNote ? '#ef4444' : '#000000';
 
                                 item.notes.forEach(noteStr => {
                                     const info = getDiatonicStepAndShift(noteStr);
@@ -4430,14 +4424,14 @@
                     let has8va = false;
                     let has15ma = false;
 
-                    let nextNoteItem = null;
-                    let minUpcomingTime = Infinity;
+                    let currentActiveItem = null;
+                    let maxActiveHitTime = -1;
 
+                    // Identify the currently playing note item based on timeline elapsed position
                     noteTimeline.forEach(item => {
-                        const timeUntilHit = item.hitTime - effectiveElapsed;
-                        if (timeUntilHit >= -100 && timeUntilHit < minUpcomingTime && !item.played) {
-                            minUpcomingTime = timeUntilHit;
-                            nextNoteItem = item;
+                        if (effectiveElapsed >= item.hitTime - 50 && effectiveElapsed > maxActiveHitTime) {
+                            maxActiveHitTime = item.hitTime;
+                            currentActiveItem = item;
                         }
                     });
 
@@ -4447,8 +4441,8 @@
                             const noteX = targetX + (timeUntilHit / SCROLL_TIME_MS) * (canvas.width - targetX);
 
                             if (noteX > CLEF_X_END && noteX < canvas.width + 15) {
-                                const isNextNote = (item === nextNoteItem);
-                                const noteColor = isNextNote ? '#ef4444' : '#000000';
+                                const isCurrentNote = (item === currentActiveItem);
+                                const noteColor = isCurrentNote ? '#ef4444' : '#000000';
 
                                 item.notes.forEach(noteStr => {
                                     const info = getDiatonicStepAndShift(noteStr);
