@@ -1052,7 +1052,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.11 | 11-Sep 09:07 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.11 | 11-Sep 09:14 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -4008,6 +4008,15 @@
             return song;
         }
 
+        function normalizeDifficulty(diff) {
+            if (!diff) return 'MEDIUM';
+            const str = String(diff).trim().toUpperCase();
+            if (str.includes('EASY')) return 'EASY';
+            if (str.includes('HARD')) return 'HARD';
+            if (str.includes('MEDIUM')) return 'MEDIUM';
+            return 'MEDIUM';
+        }
+
         function parseCSVToSongs(csvText) {
             const songs = [];
             const lines = csvText.split(/\r?\n/);
@@ -4037,23 +4046,15 @@
                 row.push(entry);
 
                 if (row.length >= 2 && row[0].trim()) {
+                    const rawDiff = row[2] ? row[2].trim().replace(/^"|"$/g, '') : '';
                     songs.push({
                         title: row[0].trim().replace(/^"|"$/g, ''),
                         code: row[1].trim().replace(/^"|"$/g, ''),
-                        difficulty: row[2] ? row[2].trim().replace(/^"|"$/g, '') : ''
+                        difficulty: normalizeDifficulty(rawDiff)
                     });
                 }
             }
             return songs;
-        }
-
-        function normalizeDifficulty(diff) {
-            if (!diff) return 'MEDIUM';
-            const str = String(diff).trim().toUpperCase();
-            if (str.includes('EASY')) return 'EASY';
-            if (str.includes('HARD')) return 'HARD';
-            if (str.includes('MEDIUM')) return 'MEDIUM';
-            return 'MEDIUM';
         }
 
         function renderSongSelect() {
@@ -4061,7 +4062,12 @@
             const uniqueMap = new Map();
             songList.forEach(s => {
                 const key = s.title.toLowerCase().trim();
-                if (!uniqueMap.has(key)) uniqueMap.set(key, s);
+                if (!uniqueMap.has(key)) {
+                    uniqueMap.set(key, {
+                        ...s,
+                        difficulty: normalizeDifficulty(s.difficulty || s.Difficulty)
+                    });
+                }
             });
             let sortedList = Array.from(uniqueMap.values());
             sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
@@ -4094,7 +4100,11 @@
             if (cachedData) {
                 try {
                     localCache = JSON.parse(cachedData);
-                    songList = [...localCache];
+                    songList = localCache.map(s => ({
+                        title: s.title || s['Song Title'] || s[0] || '',
+                        code: s.code || s['HayCode'] || s[1] || '',
+                        difficulty: normalizeDifficulty(s.difficulty || s.Difficulty || s['Difficulty'] || s[2])
+                    }));
                     renderSongSelect();
                     const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
                     if (defaultObj) {
@@ -4132,11 +4142,33 @@
 
             if (remoteSongs.length > 0) {
                 const songMap = new Map();
-                remoteSongs.forEach(s => songMap.set(s.title.toLowerCase().trim(), s));
+                remoteSongs.forEach(s => {
+                    const title = s.title || s['Song Title'] || s.Title || (Array.isArray(s) ? s[0] : '');
+                    const code = s.code || s['HayCode'] || s.Code || (Array.isArray(s) ? s[1] : '');
+                    const rawDiff = s.difficulty || s.Difficulty || s['Difficulty'] || s.diff || (Array.isArray(s) ? s[2] : '');
+                    if (title && code) {
+                        const normSong = {
+                            title: String(title).trim().replace(/^"|"$/g, ''),
+                            code: String(code).trim().replace(/^"|"$/g, ''),
+                            difficulty: normalizeDifficulty(rawDiff)
+                        };
+                        songMap.set(normSong.title.toLowerCase().trim(), normSong);
+                    }
+                });
+
                 localCache.forEach(s => {
-                    const key = s.title.toLowerCase().trim();
-                    if (!songMap.has(key)) {
-                        songMap.set(key, s);
+                    const title = s.title || s['Song Title'] || '';
+                    const code = s.code || s['HayCode'] || '';
+                    const rawDiff = s.difficulty || s.Difficulty || s['Difficulty'] || '';
+                    if (title && code) {
+                        const key = title.toLowerCase().trim();
+                        if (!songMap.has(key)) {
+                            songMap.set(key, {
+                                title: String(title).trim().replace(/^"|"$/g, ''),
+                                code: String(code).trim().replace(/^"|"$/g, ''),
+                                difficulty: normalizeDifficulty(rawDiff)
+                            });
+                        }
                     }
                 });
 
