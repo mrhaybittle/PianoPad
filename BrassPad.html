@@ -211,6 +211,7 @@
             border: 1px solid #f59e0b;
             pointer-events: none;
             z-index: 5;
+            transition: top 0.3s ease;
         }
 
         .status-bar { font-size: 0.82rem; color: #fef3c7; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -391,6 +392,11 @@
                     🎙️ MIC INPUT: OFF
                 </button>
 
+                <!-- Sheet Music Toggle Added Here -->
+                <button type="button" id="btn-sheet-toggle" class="btn-secondary" style="background-color: #0d9488; font-weight: 700;" title="Toggle Sheet Music Display">
+                    🎼 Sheet: ON
+                </button>
+
                 <button type="button" id="btn-game" class="btn-secondary">
                     🎮 Game Mode: OFF
                 </button>
@@ -450,7 +456,7 @@
 
         <div class="footer-bar">
             <!-- Timestamp Updated -->
-            <div class="version-stamp">v26.09.09 | 9-Sep 18:32 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.10 | 10-Sep 12:03 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -464,23 +470,23 @@
             <button type="button" class="btn-warning" style="justify-content: center; padding: 10px; font-size: 1rem; margin-bottom: 5px;" onclick="startAutoDetect()">🎙️ Auto-Detect via Microphone</button>
             <p id="setup-modal-subtitle" style="text-align: center; color: #facc15; font-size: 0.85rem; height: 15px; margin: 0;"></p>
 
-            <div class="setup-option selected" data-visual-transpose="2" data-audio-shift="-2" data-type="trumpet" data-name="🎺 Bb Trumpet / Cornet Mode" onclick="selectInstrument(this)">
+            <div class="setup-option selected" data-clef="treble" data-visual-transpose="2" data-audio-shift="-2" data-type="trumpet" data-name="🎺 Bb Trumpet / Cornet Mode" onclick="selectInstrument(this)">
                 <h3>Trumpet / Cornet (Bb)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-visual-transpose="2" data-audio-shift="-14" data-type="euphonium" data-name="📯 Bb Euphonium / Baritone Mode" onclick="selectInstrument(this)">
+            <div class="setup-option" data-clef="treble" data-visual-transpose="2" data-audio-shift="-14" data-type="euphonium" data-name="📯 Bb Euphonium / Baritone Mode" onclick="selectInstrument(this)">
                 <h3>Euphonium / Baritone (Bb Treble)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-visual-transpose="2" data-audio-shift="-14" data-type="tuba" data-name="🎷 Bb Tuba Mode" onclick="selectInstrument(this)">
+            <div class="setup-option" data-clef="treble" data-visual-transpose="2" data-audio-shift="-14" data-type="tuba" data-name="🎷 Bb Tuba Mode" onclick="selectInstrument(this)">
                 <h3>Tuba (Bb Treble / Brass Band)</h3>
                 <p>Reads Treble Clef. Concert Bb = Written C.</p>
             </div>
-            <div class="setup-option" data-visual-transpose="9" data-audio-shift="3" data-type="horn" data-name="📯 Eb Tenor Horn Mode" onclick="selectInstrument(this)">
+            <div class="setup-option" data-clef="treble" data-visual-transpose="9" data-audio-shift="3" data-type="horn" data-name="📯 Eb Tenor Horn Mode" onclick="selectInstrument(this)">
                 <h3>Tenor Horn (Eb)</h3>
                 <p>Reads Treble Clef. Concert Eb = Written C.</p>
             </div>
-            <div class="setup-option" data-visual-transpose="0" data-audio-shift="0" data-type="tuba" data-name="🎶 Concert Pitch Brass Mode" onclick="selectInstrument(this)">
+            <div class="setup-option" data-clef="bass" data-visual-transpose="0" data-audio-shift="0" data-type="tuba" data-name="🎶 Concert Pitch Brass Mode" onclick="selectInstrument(this)">
                 <h3>Tuba / Euphonium (Concert Pitch)</h3>
                 <p>Reads Bass Clef at Concert Pitch.</p>
             </div>
@@ -560,6 +566,8 @@
         let audioShift = -2; // Deducts to play True Concert Pitch
         let instrumentName = "🎺 Bb Trumpet / Cornet Mode";
         let instrumentType = "trumpet"; 
+        let currentClef = 'treble';
+        let showSheetMusic = localStorage.getItem('brasspad_sheet_music') !== 'false';
         
         // Let user artificially push the sound up or down an octave
         let userOctaveShift = 0; 
@@ -608,6 +616,7 @@
         const btnPause = document.getElementById('btn-pause');
         const btnGame = document.getElementById('btn-game');
         const btnStep = document.getElementById('btn-step');
+        const btnSheetToggle = document.getElementById('btn-sheet-toggle');
 
         function resizeCanvas() {
             const wrapper = document.getElementById('vis-wrapper');
@@ -615,6 +624,29 @@
             if (canvas.height !== wrapper.clientHeight) canvas.height = wrapper.clientHeight;
         }
         window.addEventListener('resize', resizeCanvas);
+
+        function updateSheetToggleButton() {
+            if (!btnSheetToggle) return;
+            const blowInst = document.querySelector('.blow-instruction');
+            if (showSheetMusic) {
+                btnSheetToggle.textContent = '🎼 Sheet: ON';
+                btnSheetToggle.style.backgroundColor = '#0d9488';
+                if (blowInst) blowInst.style.top = '85px';
+            } else {
+                btnSheetToggle.textContent = '🎼 Sheet: OFF';
+                btnSheetToggle.style.backgroundColor = '#78350f';
+                if (blowInst) blowInst.style.top = '10px';
+            }
+        }
+
+        if (btnSheetToggle) {
+            btnSheetToggle.addEventListener('click', () => {
+                showSheetMusic = !showSheetMusic;
+                localStorage.setItem('brasspad_sheet_music', showSheetMusic ? 'true' : 'false');
+                updateSheetToggleButton();
+            });
+            updateSheetToggleButton();
+        }
 
         function openSetupModal() {
             document.getElementById('setup-modal').classList.add('open');
@@ -629,6 +661,7 @@
             audioShift = parseInt(el.getAttribute('data-audio-shift'), 10); 
             instrumentName = el.getAttribute('data-name');
             instrumentType = el.getAttribute('data-type');
+            currentClef = el.getAttribute('data-clef') || 'treble';
         }
 
         function confirmInstrument() {
@@ -722,6 +755,107 @@
                 case 'b': return '#ec4899';            // Pink
                 default: return '#f59e0b';
             }
+        }
+
+        // --- Sheet Music Drawing Engine ---
+        function getDiatonicStep(noteStr, clef) {
+            noteStr = noteStr.trim().toLowerCase();
+            const match = noteStr.match(/^([a-g])(#?)([0-9]+)$/);
+            if (!match) return null;
+
+            const letter = match[1].toUpperCase();
+            const isSharp = match[2] === '#';
+            let octave = parseInt(match[3], 10);
+
+            const baseSteps = { 'C': 0, 'D': 1, 'E': 2, 'F': 3, 'G': 4, 'A': 5, 'B': 6 };
+            let baseStep = baseSteps[letter];
+
+            let step = 0;
+            if (clef === 'bass') {
+                // Shift down exactly 2 octaves so it renders correctly on bass staff
+                octave -= 2;
+                step = (octave - 2) * 7 + baseStep - 4;
+            } else {
+                step = (octave - 4) * 7 + baseStep - 2;
+            }
+
+            return { letter, isSharp, step };
+        }
+
+        function drawSheetMusicStaff(ctx, width, clef) {
+            const STAFF_HEIGHT = 75;
+            const line1_y = 56;
+            const lineSpacing = 8;
+
+            ctx.save();
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, STAFF_HEIGHT);
+
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, STAFF_HEIGHT);
+            ctx.lineTo(width, STAFF_HEIGHT);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 5; i++) {
+                const ly = line1_y - i * lineSpacing;
+                ctx.beginPath();
+                ctx.moveTo(0, ly);
+                ctx.lineTo(width, ly);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = '#000000';
+            if (clef === 'bass') {
+                ctx.font = '54px "Segoe UI Symbol", "Apple Symbols", "Noto Music", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('𝄢', 35, 40);
+            } else {
+                ctx.font = '68px "Segoe UI Symbol", "Apple Symbols", "Noto Music", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('𝄞', 35, 48);
+            }
+
+            ctx.restore();
+        }
+
+        function drawStemlessNote(ctx, x, y, isSharp, color = '#000000') {
+            ctx.save();
+            ctx.fillStyle = color;
+            if (isSharp) {
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('♯', x - 7, y);
+            }
+            ctx.beginPath();
+            ctx.ellipse(x, y, 5.5, 4.0, -0.25, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawLedgerLines(ctx, x, step, line1_y, halfStep, color = '#000000') {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.2;
+            if (step <= -2) {
+                for (let s = -2; s >= step; s -= 2) {
+                    const ly = line1_y - s * halfStep;
+                    ctx.beginPath(); ctx.moveTo(x - 9, ly); ctx.lineTo(x + 9, ly); ctx.stroke();
+                }
+            }
+            if (step >= 10) {
+                for (let s = 10; s <= step; s += 2) {
+                    const ly = line1_y - s * halfStep;
+                    ctx.beginPath(); ctx.moveTo(x - 9, ly); ctx.lineTo(x + 9, ly); ctx.stroke();
+                }
+            }
+            ctx.restore();
         }
 
         // --- MIDI Import Feature ---
@@ -1093,7 +1227,6 @@
             let octaveShift = 0;
 
             // Shift ENTIRE song homogeneously so it falls on the visible staff (MIN_PITCH 54 to MAX_PITCH 84)
-            // This prevents relative contour from becoming scrambled.
             while (minP + (octaveShift * 12) < MIN_PITCH && maxP + (octaveShift * 12) + 12 <= MAX_PITCH) {
                 octaveShift++;
             }
@@ -1488,6 +1621,8 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const FALL_TIME_MS = 1800;
             const colWidth = canvas.width / PITCH_RANGE;
+            const waterfallTop = showSheetMusic ? 75 : 0;
+            const waterfallHeight = canvas.height - waterfallTop;
             const HIT_ZONE_Y = canvas.height - 50;
 
             // 1. Draw Pitch Grid Columns
@@ -1497,7 +1632,7 @@
                 
                 if (isC) {
                     ctx.fillStyle = 'rgba(255,255,255,0.06)';
-                    ctx.fillRect(i * colWidth, 0, colWidth, canvas.height);
+                    ctx.fillRect(i * colWidth, waterfallTop, colWidth, waterfallHeight);
                     
                     ctx.fillStyle = 'rgba(255,255,255,0.25)';
                     ctx.font = 'bold 11px sans-serif';
@@ -1507,7 +1642,7 @@
                 
                 ctx.strokeStyle = 'rgba(255,255,255,0.08)';
                 ctx.beginPath();
-                ctx.moveTo(i * colWidth, 0);
+                ctx.moveTo(i * colWidth, waterfallTop);
                 ctx.lineTo(i * colWidth, canvas.height);
                 ctx.stroke();
             }
@@ -1520,7 +1655,49 @@
             ctx.lineTo(canvas.width, HIT_ZONE_Y);
             ctx.stroke();
 
-            // 3. Render Falling Notes
+            // 3. Draw Sheet Music Staff
+            if (showSheetMusic) {
+                drawSheetMusicStaff(ctx, canvas.width, currentClef);
+                const line1_y = 56;
+                const halfStep = 4;
+                const targetX = 85;
+                const CLEF_X_END = 65;
+                const SCROLL_TIME_MS = 2200;
+
+                let nextNoteItem = null;
+                let minUpcomingTime = Infinity;
+
+                noteTimeline.forEach(item => {
+                    const timeUntilHit = item.hitTime - effectiveElapsed;
+                    if (timeUntilHit >= -100 && timeUntilHit < minUpcomingTime && !item.played) {
+                        minUpcomingTime = timeUntilHit;
+                        nextNoteItem = item;
+                    }
+                });
+
+                noteTimeline.forEach(item => {
+                    const timeUntilHit = item.hitTime - effectiveElapsed;
+                    if (timeUntilHit >= -350 && timeUntilHit <= SCROLL_TIME_MS + 400) {
+                        const noteX = targetX + (timeUntilHit / SCROLL_TIME_MS) * (canvas.width - targetX);
+                        if (noteX > CLEF_X_END && noteX < canvas.width + 15) {
+                            const isNextNote = (item === nextNoteItem);
+                            const noteColor = isNextNote ? '#ef4444' : '#000000';
+                            item.notes.forEach(noteStr => {
+                                const info = getDiatonicStep(noteStr, currentClef);
+                                if (info) {
+                                    const noteY = line1_y - info.step * halfStep;
+                                    drawLedgerLines(ctx, noteX, info.step, line1_y, halfStep, noteColor);
+                                    drawStemlessNote(ctx, noteX, noteY, info.isSharp, noteColor);
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+
+            // 4. Render Falling Notes
+            const fallDistance = HIT_ZONE_Y - waterfallTop;
+
             noteTimeline.forEach(item => {
                 
                 // AUTO-PLAY SOUND LOGIC
@@ -1540,11 +1717,11 @@
                 }
 
                 const timeUntilHit = item.hitTime - effectiveElapsed;
-                const yBottom = HIT_ZONE_Y - (timeUntilHit / FALL_TIME_MS) * canvas.height;
-                const blockHeight = (item.duration / FALL_TIME_MS) * canvas.height;
+                const yBottom = HIT_ZONE_Y - (timeUntilHit / FALL_TIME_MS) * fallDistance;
+                const blockHeight = (item.duration / FALL_TIME_MS) * fallDistance;
                 const yTop = yBottom - blockHeight;
 
-                if (yBottom > -canvas.height && yTop < canvas.height * 2) {
+                if (yBottom > waterfallTop && yTop < canvas.height * 2) {
                     
                     item.notes.forEach(noteStr => {
                         const pitch = noteToPitch(noteStr);
@@ -1562,26 +1739,31 @@
                                 else if (item.gameStatus === 'miss') bColor = '#ef4444'; // Red miss
                             }
 
-                            ctx.shadowColor = bColor;
-                            ctx.shadowBlur = 8;
-                            ctx.fillStyle = bColor;
-                            
-                            ctx.fillRect(drawX + 1, yTop, colWidth - 2, Math.max(10, blockHeight));
-                            ctx.shadowBlur = 0;
-                            
-                            if (blockHeight > 14) {
-                                ctx.fillStyle = '#000';
-                                ctx.font = 'bold 10px sans-serif';
-                                ctx.textAlign = 'center';
-                                ctx.textBaseline = 'middle';
-                                ctx.fillText(noteStr.toUpperCase(), drawX + colWidth/2, yTop + blockHeight/2);
+                            const drawY = Math.max(waterfallTop, yTop);
+                            const drawH = Math.min(canvas.height - drawY, yBottom - drawY);
+
+                            if (drawH > 0) {
+                                ctx.shadowColor = bColor;
+                                ctx.shadowBlur = 8;
+                                ctx.fillStyle = bColor;
+                                
+                                ctx.fillRect(drawX + 1, drawY, colWidth - 2, Math.max(2, drawH));
+                                ctx.shadowBlur = 0;
+                                
+                                if (drawH > 14 && drawY === yTop) {
+                                    ctx.fillStyle = '#000';
+                                    ctx.font = 'bold 10px sans-serif';
+                                    ctx.textAlign = 'center';
+                                    ctx.textBaseline = 'middle';
+                                    ctx.fillText(noteStr.toUpperCase(), drawX + colWidth/2, yTop + blockHeight/2);
+                                }
                             }
                         }
                     });
                 }
             });
 
-            // 4. Check for Track Completion
+            // 5. Check for Track Completion
             if (!isStepMode) {
                 const lastNote = noteTimeline[noteTimeline.length - 1];
                 if (lastNote && effectiveElapsed > lastNote.hitTime + lastNote.duration + 1000) {
