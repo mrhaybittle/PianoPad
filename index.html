@@ -731,7 +731,6 @@
             top: 0;
             height: 100%;
             width: 100%;
-            transition: transform 0.1s linear;
         }
 
         .runner-avatar {
@@ -1132,6 +1131,22 @@
         </div>
     </div>
 
+    <!-- MIDI Channel Selection Modal -->
+    <div class="modal-overlay" id="midi-channel-modal">
+        <div class="modal">
+            <h2>Select MIDI Channel</h2>
+            <p style="font-size: 0.85rem; color: #9ca3af;">Select which MIDI channel/track you would like to import into PianoPad:</p>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">MIDI Channels Found:</label>
+                <select id="midi-channel-select" style="width: 100%; max-width: 100%; padding: 8px; font-size: 0.85rem;"></select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="btn-midi-channel-cancel">Cancel</button>
+                <button type="button" class="btn-midi" id="btn-midi-channel-confirm">Import Channel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div class="modal-overlay" id="settings-modal">
         <div class="modal">
@@ -1321,6 +1336,9 @@
         let calibLowestRawMIDI = 36;
         let calibHighestRawMIDI = 96;
         let midiOctaveOffset = 0;
+
+        // Pending MIDI Data for Channel Selection Modal
+        let pendingMidiData = null;
 
         // Arcade Mini-Game Variables
         let activeMiniGame = null;
@@ -2332,6 +2350,7 @@
             resetGameStats();
 
             if (isSongBattle) {
+                // Ensure Step Mode is OFF when Song Battle starts
                 isStepMode = false;
                 btnStep.textContent = 'Step Mode';
                 btnStep.classList.remove('btn-step-active');
@@ -2374,7 +2393,6 @@
             const hurdleNotes = ['G', 'E', 'C', 'F', 'A', 'D', 'B', 'C', 'E', 'G'];
 
             playersList.forEach((player) => {
-                player.clearedHurdles = [];
                 const laneDiv = document.createElement('div');
                 laneDiv.className = `runner-lane ${player.id === localPlayerId ? 'my-lane' : ''}`;
                 laneDiv.id = `lane-${player.id}`;
@@ -2829,75 +2847,137 @@
             try {
                 const arrayBuffer = await file.arrayBuffer();
                 const midi = new Midi(arrayBuffer);
+                const fileName = file.name.replace(/\.[^/.]+$/, "");
 
-                let allNotes = [];
-                midi.tracks.forEach(track => {
-                    if (track.channel === 9) return;
-                    track.notes.forEach(n => {
-                        allNotes.push({
-                            time: n.time,
-                            note: midiNoteToName(n.midi)
-                        });
-                    });
+                // Map all channels containing notes
+                const channelMap = new Map();
+                midi.tracks.forEach((track, tIdx) => {
+                    if (!track.notes || track.notes.length === 0) return;
+                    const ch = track.channel;
+                    if (!channelMap.has(ch)) {
+                        channelMap.set(ch, { channel: ch, noteCount: 0, trackNames: [] });
+                    }
+                    const info = channelMap.get(ch);
+                    info.noteCount += track.notes.length;
+                    const tName = track.name || (track.instrument && track.instrument.name ? track.instrument.name : '') || `Track ${tIdx + 1}`;
+                    if (tName && !info.trackNames.includes(tName)) info.trackNames.push(tName);
                 });
 
-                if (allNotes.length === 0) {
-                    document.getElementById('status').textContent = 'No playable melody notes found in MIDI file.';
+                if (channelMap.size === 0) {
+                    document.getElementById('status').textContent = 'No playable notes found in MIDI file.';
+                    e.target.value = '';
                     return;
                 }
 
-                allNotes.sort((a, b) => a.time - b.time);
+                pendingMidiData = { midi, fileName };
 
-                const hayNotes = [];
-                const hayRests = [];
+                // Populate MIDI Channel Selection Dropdown
+                const channelSelect = document.getElementById('midi-channel-select');
+                channelSelect.innerHTML = '';
 
-                let currentChord = [];
-                let lastTime = 0;
+                const sortedChannels = Array.from(channelMap.values()).sort((a, b) => a.channel - b.channel);
 
-                for (let i = 0; i < allNotes.length; i++) {
-                    const n = allNotes[i];
-                    if (i === 0) {
-                        currentChord.push(n.note.toUpperCase());
-                        hayRests.push(0);
-                        lastTime = n.time;
-                    } else {
-                        const timeDiff = Math.round((n.time - lastTime) * 1000);
-                        if (timeDiff <= 20) {
-                            currentChord.push(n.note.toUpperCase());
-                        } else {
-                            hayNotes.push(currentChord.join('+'));
-                            currentChord = [n.note.toUpperCase()];
-                            hayRests.push(timeDiff);
-                            lastTime = n.time;
-                        }
+                sortedChannels.forEach(info => {
+                    const opt = document.createElement('option');
+                    opt.value = info.channel;
+                    const chNumDisplay = info.channel + 1; // 1-indexed for display
+                    const trackDesc = info.trackNames.length > 0 ? info.trackNames.join(', ') : 'Track';
+                    const isDrums = info.channel === 9 ? ' [Drums/Percussion]' : '';
+                    opt.textContent = `Channel ${chNumDisplay}${isDrums}: ${trackDesc} (${info.noteCount} notes)`;
+
+                    if (info.channel !== 9) {
+                        opt.selected = true;
                     }
-                }
-                if (currentChord.length > 0) {
-                    hayNotes.push(currentChord.join('+'));
-                }
+                    channelSelect.appendChild(opt);
+                });
 
-                const midiHayCode = `${hayNotes.join(',')},RESTS,${hayRests.join(',')}`;
-                const fileName = file.name.replace(/\.[^/.]+$/, "");
+                // Show the MIDI Channel Selection Modal
+                document.getElementById('midi-channel-modal').classList.add('open');
 
-                currentSongTitle = fileName;
-                const parsed = parsePianoPad(midiHayCode);
-
-                if (parsed.length > 0) {
-                    currentSong = autoTransposeSong(parsed);
-                    generatedHaycode = midiHayCode;
-                    btnShare.style.display = 'inline-flex';
-                    songSelect.value = '';
-                    document.getElementById('status').textContent = `Loaded MIDI: "${fileName}". Converted to HayCode successfully!`;
-                    playSong();
-                } else {
-                    document.getElementById('status').textContent = 'Error parsing converted MIDI sequence.';
-                }
             } catch (err) {
                 console.error(err);
                 document.getElementById('status').textContent = 'Failed to parse MIDI file.';
             }
 
             e.target.value = '';
+        });
+
+        // Modal Handlers for MIDI Channel Import
+        document.getElementById('btn-midi-channel-cancel').addEventListener('click', () => {
+            document.getElementById('midi-channel-modal').classList.remove('open');
+            pendingMidiData = null;
+        });
+
+        document.getElementById('btn-midi-channel-confirm').addEventListener('click', () => {
+            if (!pendingMidiData) return;
+            const selectedChannel = parseInt(document.getElementById('midi-channel-select').value, 10);
+            const { midi, fileName } = pendingMidiData;
+            document.getElementById('midi-channel-modal').classList.remove('open');
+
+            let allNotes = [];
+            midi.tracks.forEach(track => {
+                if (track.channel !== selectedChannel) return;
+                track.notes.forEach(n => {
+                    allNotes.push({
+                        time: n.time,
+                        note: midiNoteToName(n.midi)
+                    });
+                });
+            });
+
+            if (allNotes.length === 0) {
+                document.getElementById('status').textContent = 'No playable notes in selected channel.';
+                pendingMidiData = null;
+                return;
+            }
+
+            allNotes.sort((a, b) => a.time - b.time);
+
+            const hayNotes = [];
+            const hayRests = [];
+
+            let currentChord = [];
+            let lastTime = 0;
+
+            for (let i = 0; i < allNotes.length; i++) {
+                const n = allNotes[i];
+                if (i === 0) {
+                    currentChord.push(n.note.toUpperCase());
+                    hayRests.push(0);
+                    lastTime = n.time;
+                } else {
+                    const timeDiff = Math.round((n.time - lastTime) * 1000);
+                    if (timeDiff <= 20) {
+                        currentChord.push(n.note.toUpperCase());
+                    } else {
+                        hayNotes.push(currentChord.join('+'));
+                        currentChord = [n.note.toUpperCase()];
+                        hayRests.push(timeDiff);
+                        lastTime = n.time;
+                    }
+                }
+            }
+            if (currentChord.length > 0) {
+                hayNotes.push(currentChord.join('+'));
+            }
+
+            const midiHayCode = `${hayNotes.join(',')},RESTS,${hayRests.join(',')}`;
+
+            currentSongTitle = fileName;
+            const parsed = parsePianoPad(midiHayCode);
+
+            if (parsed.length > 0) {
+                currentSong = autoTransposeSong(parsed);
+                generatedHaycode = midiHayCode;
+                btnShare.style.display = 'inline-flex';
+                songSelect.value = '';
+                document.getElementById('status').textContent = `Loaded MIDI Channel ${selectedChannel + 1}: "${fileName}". Converted successfully!`;
+                playSong();
+            } else {
+                document.getElementById('status').textContent = 'Error parsing converted MIDI sequence.';
+            }
+
+            pendingMidiData = null;
         });
 
         const themePalettes = {
