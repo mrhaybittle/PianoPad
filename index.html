@@ -1033,7 +1033,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.10 | 10-Sep 09:47 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.10 | 10-Sep 09:57 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -2034,6 +2034,7 @@
             isSongBattle = true;
             battleResultsShown = false;
             
+            // Force disable Step Mode in Song Battle
             if (isStepMode) {
                 isStepMode = false;
                 btnStep.textContent = 'Step Mode';
@@ -2274,6 +2275,7 @@
                     resetGameStats();
 
                     if (isSongBattle) {
+                        // Ensure Step Mode is OFF when Song Battle starts
                         isStepMode = false;
                         btnStep.textContent = 'Step Mode';
                         btnStep.classList.remove('btn-step-active');
@@ -2324,6 +2326,7 @@
             resetGameStats();
 
             if (isSongBattle) {
+                // Ensure Step Mode is OFF when Song Battle starts
                 isStepMode = false;
                 btnStep.textContent = 'Step Mode';
                 btnStep.classList.remove('btn-step-active');
@@ -3086,10 +3089,23 @@
 
             ensureStudentName();
             const speedText = speedSlider.value + '%';
+            const payload = {
+                action: "SCORE_SUBMIT",
+                name: sessionStudentName,
+                title: currentSongTitle,
+                score: accuracyNum,
+                tempo: speedText
+            };
 
             try {
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payload)
+                });
                 const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&t=${Date.now()}`;
-                await sendJSONP(url);
+                sendJSONP(url);
                 document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
             } catch (err) {
                 console.warn("Could not post score to Google Apps Script.", err);
