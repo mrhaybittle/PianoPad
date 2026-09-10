@@ -2465,28 +2465,23 @@
 
             ensureStudentName();
             const speedText = speedSlider.value + '%';
-            const payload = {
-                action: "SCORE_SUBMIT",
-                name: sessionStudentName,
-                title: currentSongTitle,
-                score: accuracyNum,
-                tempo: speedText
-            };
 
             try {
-                fetch(APPS_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify(payload)
-                }).catch(e => console.warn(e));
+                document.getElementById('status').textContent = `Submitting score (${accuracyNum}) for ${sessionStudentName}...`;
 
                 const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&t=${Date.now()}`;
-                await sendJSONP(url);
+                const res = await sendJSONP(url);
                 
-                document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
+                if (res && res.status === "SCORE_SUBMITTED") {
+                    document.getElementById('status').textContent = `Score (${accuracyNum}) saved to Google Sheet for ${sessionStudentName}!`;
+                } else if (res && res.error) {
+                    document.getElementById('status').textContent = `Google Sheet write error: ${res.error}`;
+                } else {
+                    document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
+                }
             } catch (err) {
                 console.warn("Could not post score to Google Apps Script.", err);
+                document.getElementById('status').textContent = `Failed to submit score for ${sessionStudentName}.`;
             }
         }
 
@@ -3024,36 +3019,6 @@
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
             document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}`;
-        }
-
-        async function postScoreToLeaderboard(accuracyNum) {
-            if (!APPS_SCRIPT_URL) return;
-
-            ensureStudentName();
-            const speedText = speedSlider.value + '%';
-            const payload = {
-                action: "SCORE_SUBMIT",
-                name: sessionStudentName,
-                title: currentSongTitle,
-                score: accuracyNum,
-                tempo: speedText
-            };
-
-            try {
-                fetch(APPS_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify(payload)
-                }).catch(e => console.warn(e));
-
-                const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&t=${Date.now()}`;
-                await sendJSONP(url);
-                
-                document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
-            } catch (err) {
-                console.warn("Could not post score to Google Apps Script.", err);
-            }
         }
 
         async function calculateAndDisplayRank(accuracyNum) {
