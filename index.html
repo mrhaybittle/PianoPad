@@ -189,6 +189,13 @@
             color: #f3f4f6;
         }
 
+        #difficulty-filter {
+            color: #38bdf8 !important;
+            border: 1px solid #0284c7 !important;
+            background-color: #082f49 !important;
+            font-weight: 700 !important;
+        }
+
         button, .btn-link, .btn-file-label {
             display: inline-flex;
             align-items: center;
@@ -863,6 +870,13 @@
         <header>
             <h1>PianoPad 26</h1>
             <div class="controls" id="main-controls-bar">
+                <select id="difficulty-filter">
+                    <option value="ALL">All Difficulties</option>
+                    <option value="EASY">Easy</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HARD">Hard</option>
+                </select>
+
                 <select id="song-select">
                     <option value="">Choose a Song</option>
                 </select>
@@ -1038,7 +1052,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.10 | 10-Sep 18:27 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.11 | 11-Sep 08:42 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -3011,6 +3025,7 @@
         const speedSlider = document.getElementById('speed-slider');
         const speedLabel = document.getElementById('speed-label');
         const songSelect = document.getElementById('song-select');
+        const difficultyFilter = document.getElementById('difficulty-filter');
         const instrumentSelect = document.getElementById('instrument-select');
         const themeSelect = document.getElementById('theme-select');
         const btnStep = document.getElementById('btn-step');
@@ -3205,7 +3220,7 @@
                 return;
             }
 
-            songList.push({ title: title, code: code });
+            songList.push({ title: title, code: code, difficulty: 'MEDIUM' });
             localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
             renderSongSelect();
             
@@ -4024,7 +4039,8 @@
                 if (row.length >= 2 && row[0].trim()) {
                     songs.push({
                         title: row[0].trim().replace(/^"|"$/g, ''),
-                        code: row[1].trim().replace(/^"|"$/g, '')
+                        code: row[1].trim().replace(/^"|"$/g, ''),
+                        difficulty: row[2] ? row[2].trim().replace(/^"|"$/g, '') : 'Unspecified'
                     });
                 }
             }
@@ -4032,20 +4048,31 @@
         }
 
         function renderSongSelect() {
+            const selectedDifficulty = difficultyFilter ? difficultyFilter.value : 'ALL';
             const uniqueMap = new Map();
             songList.forEach(s => {
                 const key = s.title.toLowerCase().trim();
                 if (!uniqueMap.has(key)) uniqueMap.set(key, s);
             });
-            const sortedList = Array.from(uniqueMap.values());
+            let sortedList = Array.from(uniqueMap.values());
             sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
+
+            if (selectedDifficulty !== 'ALL') {
+                sortedList = sortedList.filter(s => s.difficulty && s.difficulty.trim().toUpperCase() === selectedDifficulty);
+            }
 
             songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
             sortedList.forEach(song => {
                 const opt = document.createElement('option');
                 opt.value = song.code;
-                opt.textContent = song.title;
+                opt.textContent = `${song.title}${song.difficulty ? ' (' + song.difficulty + ')' : ''}`;
                 songSelect.appendChild(opt);
+            });
+        }
+
+        if (difficultyFilter) {
+            difficultyFilter.addEventListener('change', () => {
+                renderSongSelect();
             });
         }
 
@@ -4146,7 +4173,9 @@
             const code = e.target.value;
             if (!code) return;
             const opt = songSelect.options[songSelect.selectedIndex];
-            if (opt) currentSongTitle = opt.text;
+            if (opt) {
+                currentSongTitle = opt.textContent.replace(/\s*\([^)]*\)$/, '');
+            }
             const parsed = parsePianoPad(code);
             if (parsed.length > 0) {
                 currentSong = autoTransposeSong(parsed);
