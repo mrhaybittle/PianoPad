@@ -321,6 +321,9 @@
     </div>
 
     <script>
+        // Live direct export URL (bypasses Google 15-min publishing delay)
+        const SPREADSHEET_DIRECT_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=191904617';
+        // Web published CSV URL fallback
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
 
         const MINI_GAMES = [
@@ -377,8 +380,8 @@
                 row.push(entry);
 
                 if (row.length >= 4) {
-                    const accuracy = parseFloat(row[3]) || 0;
-                    if (accuracy <= 0.0) continue; 
+                    const accuracy = parseFloat(row[3]);
+                    if (isNaN(accuracy)) continue;
 
                     const songTitle = row[2] ? row[2].trim().replace(/^"|"$/g, '') : 'Unknown';
                     const isMiniGame = MINI_GAMES.some(g => songTitle.toLowerCase().includes(g.key));
@@ -576,10 +579,24 @@
 
         async function fetchScores() {
             try {
-                const response = await fetch(LEADERBOARD_CSV_URL);
-                if (!response.ok) throw new Error('Network response error');
+                let csvText = '';
+                const cacheBuster = '&_t=' + Date.now();
 
-                const csvText = await response.text();
+                // Try fetching live sheet directly (bypasses Google Web Publishing 15-minute delay)
+                try {
+                    const resDirect = await fetch(SPREADSHEET_DIRECT_CSV_URL + cacheBuster, { cache: 'no-store' });
+                    if (resDirect.ok) {
+                        csvText = await resDirect.text();
+                    } else {
+                        throw new Error('Direct export failed');
+                    }
+                } catch (e) {
+                    // Fallback to published web CSV if direct export fails
+                    const resPub = await fetch(LEADERBOARD_CSV_URL + cacheBuster, { cache: 'no-store' });
+                    if (!resPub.ok) throw new Error('Published CSV response error');
+                    csvText = await resPub.text();
+                }
+
                 allScores = parseCSV(csvText);
 
                 // Update Total Scores Label
@@ -607,7 +624,11 @@
                 }
 
                 populateSongFilter();
-                renderSongLeaderboard();
+                if (viewMode === 'SONGS') {
+                    renderSongLeaderboard();
+                } else {
+                    renderArcadeDashboard();
+                }
             } catch (err) {
                 console.error(err);
                 document.getElementById('leaderboard-body').innerHTML = 
@@ -633,7 +654,14 @@
             renderSongLeaderboard();
         });
 
+        // Initial fetch on page load
         fetchScores();
+
+        // Auto-refresh scores every 30 seconds and when switching back to this tab
+        setInterval(fetchScores, 30000);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') fetchScores();
+        });
     </script>
 </body>
 </html>
