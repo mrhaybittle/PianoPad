@@ -1052,7 +1052,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.11 | 11-Sep 08:49 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.11 | 11-Sep 08:56 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -4047,8 +4047,16 @@
             return songs;
         }
 
+        function normalizeDifficulty(diff) {
+            if (!diff) return 'MEDIUM';
+            const str = String(diff).trim().toUpperCase();
+            if (str.includes('EASY')) return 'EASY';
+            if (str.includes('HARD')) return 'HARD';
+            return 'MEDIUM';
+        }
+
         function renderSongSelect() {
-            const selectedDifficulty = difficultyFilter ? difficultyFilter.value : 'ALL';
+            const selectedDifficulty = difficultyFilter ? difficultyFilter.value.trim().toUpperCase() : 'ALL';
             const uniqueMap = new Map();
             songList.forEach(s => {
                 const key = s.title.toLowerCase().trim();
@@ -4059,7 +4067,7 @@
 
             if (selectedDifficulty !== 'ALL') {
                 sortedList = sortedList.filter(s => {
-                    const diff = (s.difficulty || s.Difficulty || 'MEDIUM').toString().trim().toUpperCase();
+                    const diff = normalizeDifficulty(s.difficulty || s.Difficulty);
                     return diff === selectedDifficulty;
                 });
             }
@@ -4068,7 +4076,7 @@
             sortedList.forEach(song => {
                 const opt = document.createElement('option');
                 opt.value = song.code;
-                const diffLabel = song.difficulty || song.Difficulty || '';
+                const diffLabel = normalizeDifficulty(song.difficulty || song.Difficulty);
                 opt.textContent = `${song.title}${diffLabel ? ' (' + diffLabel + ')' : ''}`;
                 songSelect.appendChild(opt);
             });
