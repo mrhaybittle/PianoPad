@@ -892,8 +892,8 @@
                     🎙️ MIC INPUT: OFF
                 </button>
 
-                <button type="button" id="btn-sheet-toggle" class="btn-secondary" style="background-color: #0d9488; font-weight: 700;" title="Toggle Sheet Music Display">
-                    🎼 Sheet: ON
+                <button type="button" id="btn-sheet-toggle" class="btn-secondary" style="background-color: #0d9488; font-weight: 700;" title="Toggle Visualizer Mode (Hybrid / Sheet Music / Rectangles)">
+                    🎼 Sheet: Hybrid
                 </button>
 
                 <button type="button" id="btn-game" class="btn-secondary">
@@ -1038,7 +1038,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.10 | 10-Sep 16:43 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.10 | 10-Sep 18:27 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1280,14 +1280,25 @@
         let currentTheme = 'default';
         let bonusSoundsUnlocked = false;
 
-        // Sheet Music State
-        let showSheetMusic = localStorage.getItem('pianopad_sheet_music') !== 'false';
+        // Visualizer Sheet Music Modes: 'hybrid' (Default), 'sheet' (Enlarged 5x), 'rectangles' (Falling Blocks only)
+        let sheetMusicMode = localStorage.getItem('pianopad_sheet_mode');
+        if (!sheetMusicMode) {
+            const oldFlag = localStorage.getItem('pianopad_sheet_music');
+            sheetMusicMode = (oldFlag === 'false') ? 'rectangles' : 'hybrid';
+        }
+        
         const btnSheetToggle = document.getElementById('btn-sheet-toggle');
 
         if (btnSheetToggle) {
             btnSheetToggle.addEventListener('click', () => {
-                showSheetMusic = !showSheetMusic;
-                localStorage.setItem('pianopad_sheet_music', showSheetMusic ? 'true' : 'false');
+                if (sheetMusicMode === 'hybrid') {
+                    sheetMusicMode = 'sheet';
+                } else if (sheetMusicMode === 'sheet') {
+                    sheetMusicMode = 'rectangles';
+                } else {
+                    sheetMusicMode = 'hybrid';
+                }
+                localStorage.setItem('pianopad_sheet_mode', sheetMusicMode);
                 updateSheetToggleButton();
             });
             updateSheetToggleButton();
@@ -1295,11 +1306,14 @@
 
         function updateSheetToggleButton() {
             if (!btnSheetToggle) return;
-            if (showSheetMusic) {
-                btnSheetToggle.textContent = '🎼 Sheet: ON';
+            if (sheetMusicMode === 'hybrid') {
+                btnSheetToggle.textContent = '🎼 Sheet: Hybrid';
                 btnSheetToggle.style.backgroundColor = '#0d9488';
-            } else {
-                btnSheetToggle.textContent = '🎼 Sheet: OFF';
+            } else if (sheetMusicMode === 'sheet') {
+                btnSheetToggle.textContent = '🎼 Sheet: Sheet Music Mode';
+                btnSheetToggle.style.backgroundColor = '#8b5cf6';
+            } else if (sheetMusicMode === 'rectangles') {
+                btnSheetToggle.textContent = '🎼 Sheet: Rectangles Only';
                 btnSheetToggle.style.backgroundColor = '#4b5563';
             }
         }
@@ -1519,12 +1533,6 @@
                 ctx.lineTo(width, ly);
                 ctx.stroke();
             }
-
-            ctx.fillStyle = '#000000';
-            ctx.font = '68px "Segoe UI Symbol", "Apple Symbols", "Noto Music", sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('𝄞', 35, 48);
 
             ctx.restore();
         }
@@ -4303,65 +4311,164 @@
 
             const canvasHeight = canvas.height;
             const currentFallSpeed = activeMiniGame === 'drop' ? miniGameFallSpeedMs : FALL_TIME_MS;
-            const waterfallTop = (showSheetMusic && !activeMiniGame) ? 90 : 0;
+            
+            // Waterfall layout depending on active sheet music viewing mode
+            let waterfallTop = 0;
+            if (!activeMiniGame) {
+                if (sheetMusicMode === 'hybrid') {
+                    waterfallTop = 90;
+                } else if (sheetMusicMode === 'sheet') {
+                    waterfallTop = canvasHeight; // Falling blocks completely hidden/replaced
+                } else {
+                    waterfallTop = 0; // Rectangles only mode
+                }
+            }
             const waterfallHeight = canvasHeight - waterfallTop;
 
-            if (showSheetMusic && !activeMiniGame) {
-                drawSheetMusicStaff(ctx, canvas.width);
-
-                const line1_y = 56;
-                const halfStep = 4;
-                const targetX = 85;
-                const CLEF_X_END = 65;
-                const SCROLL_TIME_MS = 2200;
-
-                let has8va = false;
-                let has15ma = false;
-
-                let nextNoteItem = null;
-                let minUpcomingTime = Infinity;
-
-                noteTimeline.forEach(item => {
-                    const timeUntilHit = item.hitTime - effectiveElapsed;
-                    if (timeUntilHit >= -100 && timeUntilHit < minUpcomingTime && !item.played) {
-                        minUpcomingTime = timeUntilHit;
-                        nextNoteItem = item;
-                    }
-                });
-
-                noteTimeline.forEach(item => {
-                    const timeUntilHit = item.hitTime - effectiveElapsed;
-                    if (timeUntilHit >= -350 && timeUntilHit <= SCROLL_TIME_MS + 400) {
-                        const noteX = targetX + (timeUntilHit / SCROLL_TIME_MS) * (canvas.width - targetX);
-
-                        if (noteX > CLEF_X_END && noteX < canvas.width + 15) {
-                            const isNextNote = (item === nextNoteItem);
-                            const noteColor = isNextNote ? '#ef4444' : '#000000';
-
-                            item.notes.forEach(noteStr => {
-                                const info = getDiatonicStepAndShift(noteStr);
-                                if (info) {
-                                    const noteY = line1_y - info.step * halfStep;
-                                    drawLedgerLines(ctx, noteX, info.step, line1_y, halfStep, noteColor);
-                                    drawStemlessNote(ctx, noteX, noteY, info.isSharp, noteColor);
-
-                                    if (info.octaveShift === 1) has8va = true;
-                                    if (info.octaveShift === 2) has15ma = true;
-                                }
-                            });
-                        }
-                    }
-                });
-
-                if (has8va || has15ma) {
+            // MODE 2 & 3: Sheet Music Staff Drawing
+            if (!activeMiniGame) {
+                if (sheetMusicMode === 'sheet') {
+                    // MODE 3: Sheet Music Mode (Enlarged 5 times filling waterfall area)
                     ctx.save();
-                    ctx.fillStyle = '#8b5cf6';
-                    ctx.font = 'bold 11px sans-serif';
-                    ctx.textAlign = 'left';
-                    ctx.textBaseline = 'top';
-                    const octText = has15ma ? '15ma' : '8va';
-                    ctx.fillText(`${octText} ------------------`, 85, 4);
+                    ctx.scale(5, 5);
+
+                    const scaledWidth = canvas.width / 5;
+                    const scaledHeight = canvas.height / 5;
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, scaledWidth, scaledHeight);
+
+                    const line1_y = 56;
+                    const lineSpacing = 8;
+
+                    ctx.strokeStyle = '#374151';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, scaledHeight);
+                    ctx.lineTo(scaledWidth, scaledHeight);
+                    ctx.stroke();
+
+                    ctx.strokeStyle = '#1e293b';
+                    ctx.lineWidth = 1;
+                    for (let i = 0; i < 5; i++) {
+                        const ly = line1_y - i * lineSpacing;
+                        ctx.beginPath();
+                        ctx.moveTo(0, ly);
+                        ctx.lineTo(scaledWidth, ly);
+                        ctx.stroke();
+                    }
+
+                    const halfStep = 4;
+                    const targetX = 85;
+                    const CLEF_X_END = 65;
+                    const SCROLL_TIME_MS = 2200;
+
+                    let has8va = false;
+                    let has15ma = false;
+
+                    let currentActiveItem = null;
+                    let maxActiveHitTime = -1;
+
+                    // Identify the currently playing note item based on timeline elapsed position
+                    noteTimeline.forEach(item => {
+                        if (effectiveElapsed >= item.hitTime - 50 && effectiveElapsed > maxActiveHitTime) {
+                            maxActiveHitTime = item.hitTime;
+                            currentActiveItem = item;
+                        }
+                    });
+
+                    noteTimeline.forEach(item => {
+                        const timeUntilHit = item.hitTime - effectiveElapsed;
+                        if (timeUntilHit >= -350 && timeUntilHit <= SCROLL_TIME_MS + 400) {
+                            const noteX = targetX + (timeUntilHit / SCROLL_TIME_MS) * (scaledWidth - targetX);
+
+                            if (noteX > CLEF_X_END && noteX < scaledWidth + 15) {
+                                const isCurrentNote = (item === currentActiveItem);
+                                const noteColor = isCurrentNote ? '#ef4444' : '#000000';
+
+                                item.notes.forEach(noteStr => {
+                                    const info = getDiatonicStepAndShift(noteStr);
+                                    if (info) {
+                                        const noteY = line1_y - info.step * halfStep;
+                                        drawLedgerLines(ctx, noteX, info.step, line1_y, halfStep, noteColor);
+                                        drawStemlessNote(ctx, noteX, noteY, info.isSharp, noteColor);
+
+                                        if (info.octaveShift === 1) has8va = true;
+                                        if (info.octaveShift === 2) has15ma = true;
+                                    }
+                                });
+                            }
+                        }
+                    });
+
+                    if (has8va || has15ma) {
+                        ctx.fillStyle = '#8b5cf6';
+                        ctx.font = 'bold 11px sans-serif';
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'top';
+                        const octText = has15ma ? '15ma' : '8va';
+                        ctx.fillText(`${octText} ------------------`, 85, 4);
+                    }
+
                     ctx.restore();
+                } else if (sheetMusicMode === 'hybrid') {
+                    // MODE 1: Hybrid Mode (Standard staff at top)
+                    drawSheetMusicStaff(ctx, canvas.width);
+
+                    const line1_y = 56;
+                    const halfStep = 4;
+                    const targetX = 85;
+                    const CLEF_X_END = 65;
+                    const SCROLL_TIME_MS = 2200;
+
+                    let has8va = false;
+                    let has15ma = false;
+
+                    let currentActiveItem = null;
+                    let maxActiveHitTime = -1;
+
+                    // Identify the currently playing note item based on timeline elapsed position
+                    noteTimeline.forEach(item => {
+                        if (effectiveElapsed >= item.hitTime - 50 && effectiveElapsed > maxActiveHitTime) {
+                            maxActiveHitTime = item.hitTime;
+                            currentActiveItem = item;
+                        }
+                    });
+
+                    noteTimeline.forEach(item => {
+                        const timeUntilHit = item.hitTime - effectiveElapsed;
+                        if (timeUntilHit >= -350 && timeUntilHit <= SCROLL_TIME_MS + 400) {
+                            const noteX = targetX + (timeUntilHit / SCROLL_TIME_MS) * (canvas.width - targetX);
+
+                            if (noteX > CLEF_X_END && noteX < canvas.width + 15) {
+                                const isCurrentNote = (item === currentActiveItem);
+                                const noteColor = isCurrentNote ? '#ef4444' : '#000000';
+
+                                item.notes.forEach(noteStr => {
+                                    const info = getDiatonicStepAndShift(noteStr);
+                                    if (info) {
+                                        const noteY = line1_y - info.step * halfStep;
+                                        drawLedgerLines(ctx, noteX, info.step, line1_y, halfStep, noteColor);
+                                        drawStemlessNote(ctx, noteX, noteY, info.isSharp, noteColor);
+
+                                        if (info.octaveShift === 1) has8va = true;
+                                        if (info.octaveShift === 2) has15ma = true;
+                                    }
+                                });
+                            }
+                        }
+                    });
+
+                    if (has8va || has15ma) {
+                        ctx.save();
+                        ctx.fillStyle = '#8b5cf6';
+                        ctx.font = 'bold 11px sans-serif';
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'top';
+                        const octText = has15ma ? '15ma' : '8va';
+                        ctx.fillText(`${octText} ------------------`, 85, 4);
+                        ctx.restore();
+                    }
                 }
             }
 
@@ -4394,24 +4501,27 @@
                     if (isGameMode) updateGameStatus();
                 }
 
-                item.notes.forEach(noteStr => {
-                    const normNote = noteStr.toLowerCase().trim();
-                    const pos = keyPosMap[normNote];
+                // Render falling blocks (Skipped in Sheet Music Mode)
+                if (sheetMusicMode !== 'sheet' || activeMiniGame) {
+                    item.notes.forEach(noteStr => {
+                        const normNote = noteStr.toLowerCase().trim();
+                        const pos = keyPosMap[normNote];
 
-                    if (pos) {
-                        const timeUntilHit = item.hitTime - effectiveElapsed;
-                        const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * waterfallHeight;
-                        const blockHeight = (item.duration / currentFallSpeed) * waterfallHeight;
-                        const yTop = yBottom - blockHeight;
+                        if (pos) {
+                            const timeUntilHit = item.hitTime - effectiveElapsed;
+                            const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * waterfallHeight;
+                            const blockHeight = (item.duration / currentFallSpeed) * waterfallHeight;
+                            const yTop = yBottom - blockHeight;
 
-                        if (yBottom > waterfallTop && yTop < canvasHeight) {
-                            const drawY = Math.max(waterfallTop, yTop);
-                            const drawH = Math.min(canvasHeight - drawY, yBottom - drawY);
-                            const active = effectiveElapsed >= item.hitTime && effectiveElapsed <= (item.hitTime + item.duration);
-                            drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, noteStr, active, item.gameStatus);
+                            if (yBottom > waterfallTop && yTop < canvasHeight) {
+                                const drawY = Math.max(waterfallTop, yTop);
+                                const drawH = Math.min(canvasHeight - drawY, yBottom - drawY);
+                                const active = effectiveElapsed >= item.hitTime && effectiveElapsed <= (item.hitTime + item.duration);
+                                drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, noteStr, active, item.gameStatus);
+                            }
                         }
-                    }
-                });
+                    });
+                }
             });
 
             if (!isStepMode && !isLooping) {
