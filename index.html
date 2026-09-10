@@ -731,6 +731,7 @@
             top: 0;
             height: 100%;
             width: 100%;
+            transition: transform 0.1s linear;
         }
 
         .runner-avatar {
@@ -942,11 +943,6 @@
                     Get Songs
                 </a>
 
-                <!-- NEW LEADERBOARD BUTTON -->
-                <a href="https://mrhaybittle.github.io/PianoPad/leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
-                    🏆 Leaderboard
-                </a>
-
                 <button type="button" id="btn-play" class="btn-success">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     Play
@@ -1034,20 +1030,7 @@
         </div>
 
         <div class="footer-bar">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div class="version-stamp">v26.09.09 | 10-Sep 10:08 AM AEST (Sydney)</div>
-                <div style="display: flex; gap: 4px;">
-                    <button type="button" id="btn-footer-rec" class="btn-secondary" title="Record">
-                        <svg class="icon" style="color: #ef4444; fill: #ef4444;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
-                    </button>
-                    <button type="button" id="btn-footer-play" class="btn-success" title="Play">
-                        <svg class="icon" style="color: white; fill: white;" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                    </button>
-                    <button type="button" id="btn-footer-stop" class="btn-danger" title="Stop">
-                        <svg class="icon" style="color: #000; fill: #000;" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
-                    </button>
-                </div>
-            </div>
+            <div class="version-stamp">v26.09.10 | 10-Sep 10:12 AM AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1592,7 +1575,7 @@
                 calibStep = 1;
                 document.getElementById('btn-calib-skip').style.display = 'inline-flex';
                 document.getElementById('btn-calib-cancel').style.display = 'none';
-                document.getElementById('calib-instructions').innerHTML = "Play the <span style='color: #ef4444;'>LOWEST</span> note on your keyboard";
+                document.getElementById('calib-instructions').innerHTML = "Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
                 calibModal.classList.add('open');
             }
         }
@@ -2007,8 +1990,8 @@
             resetGameStats();
 
             playersList = [
-                { id: 'p1', name: 'YOU', avatar: '🏃', pxProgress: 0, finishTime: null, isLocal: true },
-                { id: 'bot', name: 'ROBO-OPPONENT', avatar: '🤖', pxProgress: 0, finishTime: null, isBot: true }
+                { id: 'p1', name: 'YOU', avatar: '🏃', pxProgress: 0, finishTime: null, isLocal: true, clearedHurdles: [] },
+                { id: 'bot', name: 'ROBO-OPPONENT', avatar: '🤖', pxProgress: 0, finishTime: null, isBot: true, clearedHurdles: [] }
             ];
             localPlayerId = 'p1';
 
@@ -2057,7 +2040,7 @@
 
             isSprintHost = true;
             localPlayerId = 'p1';
-            playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true }];
+            playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true, clearedHurdles: [] }];
             renderLobbyGrid('lobby-players-grid');
 
             const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(hostName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
@@ -2115,6 +2098,7 @@
                         ...remotePlayer,
                         isLocal: isLocal,
                         finished: finished === true || finished === "true",
+                        clearedHurdles: localMatch ? localMatch.clearedHurdles : [],
                         stats: remotePlayer.stats || { perfect: 0, earlyLate: 0, miss: 0 }
                     };
                 });
@@ -2146,7 +2130,6 @@
                     resetGameStats();
 
                     if (isSongBattle) {
-                        // Ensure Step Mode is OFF when Song Battle starts
                         isStepMode = false;
                         btnStep.textContent = 'Step Mode';
                         btnStep.classList.remove('btn-step-active');
@@ -2197,7 +2180,6 @@
             resetGameStats();
 
             if (isSongBattle) {
-                // Ensure Step Mode is OFF when Song Battle starts
                 isStepMode = false;
                 btnStep.textContent = 'Step Mode';
                 btnStep.classList.remove('btn-step-active');
@@ -2240,6 +2222,7 @@
             const hurdleNotes = ['G', 'E', 'C', 'F', 'A', 'D', 'B', 'C', 'E', 'G'];
 
             playersList.forEach((player) => {
+                player.clearedHurdles = [];
                 const laneDiv = document.createElement('div');
                 laneDiv.className = `runner-lane ${player.id === localPlayerId ? 'my-lane' : ''}`;
                 laneDiv.id = `lane-${player.id}`;
@@ -2477,6 +2460,38 @@
             gameResultsModal.classList.add('open');
         }
 
+        async function postScoreToLeaderboard(accuracyNum) {
+            if (!APPS_SCRIPT_URL) return;
+
+            ensureStudentName();
+            const speedText = speedSlider.value + '%';
+            const payload = {
+                action: "SCORE_SUBMIT",
+                name: sessionStudentName,
+                title: currentSongTitle,
+                score: accuracyNum,
+                tempo: speedText
+            };
+
+            try {
+                // Fire POST asynchronously without awaiting to bypass CORS strict blocks
+                fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payload)
+                }).catch(e => console.warn(e));
+
+                // Guarantee write via JSONP GET request
+                const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&t=${Date.now()}`;
+                await sendJSONP(url);
+                
+                document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
+            } catch (err) {
+                console.warn("Could not post score to Google Apps Script.", err);
+            }
+        }
+
         function handleSprintInput(noteStr) {
             if (!raceActive) return;
 
@@ -2485,11 +2500,69 @@
 
             if (!localPlayer || localPlayer.finishTime) return;
 
+            // Finger Sprint Hurdle Jump Logic
+            const hurdleNotes = ['G', 'E', 'C', 'F', 'A', 'D', 'B', 'C', 'E', 'G'];
+            let nearHurdleIndex = -1;
+            let expectedHurdleNote = null;
+
+            for (let i = 0; i < hurdleNotes.length; i++) {
+                const hPx = (i + 1) * 320;
+                // Proximity detection for hurdle jump window
+                if (localPlayer.pxProgress >= hPx - 90 && localPlayer.pxProgress <= hPx + 30) {
+                    nearHurdleIndex = i;
+                    expectedHurdleNote = hurdleNotes[i];
+                    break;
+                }
+            }
+
+            const parsedNote = rawNoteName.match(/^([a-g]#?)([0-9]+)$/);
+            if (parsedNote && expectedHurdleNote) {
+                const letter = parsedNote[1].toUpperCase();
+                const octave = parseInt(parsedNote[2], 10);
+                
+                localPlayer.clearedHurdles = localPlayer.clearedHurdles || [];
+
+                if (!localPlayer.clearedHurdles.includes(nearHurdleIndex)) {
+                    if (letter === expectedHurdleNote && octave >= 2) {
+                        gameStats.perfect++;
+                        localPlayer.clearedHurdles.push(nearHurdleIndex);
+                        localPlayer.pxProgress += 60; // Leap forward over the hurdle!
+                        sprintKeystrokeCount += 2; // Internally increment to maintain sequence parity
+                        
+                        updateMultiplayerLanesUI();
+                        
+                        const avatarEl = document.getElementById(`avatar-${localPlayer.id}`);
+                        if (avatarEl) {
+                            avatarEl.textContent = '🤸';
+                            avatarEl.classList.add('jumping');
+                            setTimeout(() => {
+                                avatarEl.classList.remove('jumping');
+                                avatarEl.textContent = '🏃';
+                            }, 450);
+                        }
+                        
+                        document.getElementById('status').textContent = `🤸 Jumped Hurdle ${expectedHurdleNote}!`;
+                        pushPlayerState();
+                        return;
+                    } else if (letter === expectedHurdleNote && octave < 2) {
+                        playErrorClackSound();
+                        document.getElementById('status').textContent = `⚠️ Play a HIGH ${expectedHurdleNote} (Octave 2+) to jump!`;
+                        return;
+                    }
+                }
+            }
+
+            // Normal Sprint sequence
             const expectedNote = sprintSequence[sprintIndex % 2];
             if (rawNoteName === expectedNote.toLowerCase().trim()) {
                 gameStats.perfect++;
                 sprintIndex++;
                 sprintKeystrokeCount++;
+
+                const avatarEl = document.getElementById(`avatar-${localPlayer.id}`);
+                if (avatarEl && !avatarEl.classList.contains('jumping')) {
+                    avatarEl.textContent = (sprintKeystrokeCount % 2 === 0) ? '🏃‍♂️' : '🏃';
+                }
 
                 localPlayer.pxProgress = sprintKeystrokeCount * 36;
                 updateMultiplayerLanesUI();
@@ -2738,10 +2811,6 @@
         document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
         document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
 
-        document.getElementById('btn-footer-rec').addEventListener('click', toggleRecording);
-        document.getElementById('btn-footer-play').addEventListener('click', playSong);
-        document.getElementById('btn-footer-stop').addEventListener('click', stopSong);
-
         speedSlider.addEventListener('input', () => {
             speedLabel.textContent = `${speedSlider.value}%`;
             if (isPlaying && !isPaused && !isStepMode) playSong();
@@ -2973,14 +3042,18 @@
             };
 
             try {
-                await fetch(APPS_SCRIPT_URL, {
+                // Fire POST asynchronously without awaiting to bypass CORS strict blocks
+                fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify(payload)
-                });
+                }).catch(e => console.warn(e));
+
+                // Guarantee write via JSONP GET request
                 const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&t=${Date.now()}`;
-                sendJSONP(url);
+                await sendJSONP(url);
+                
                 document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
             } catch (err) {
                 console.warn("Could not post score to Google Apps Script.", err);
@@ -3233,30 +3306,6 @@
                 document.getElementById('status').textContent = `Step ${currentStepIndex + 1} of ${noteTimeline.length}: Next Note -> [ ${displayStr} ] (Press SPACE BAR or play on MIDI Keyboard)`;
             } else {
                 document.getElementById('status').textContent = 'Step Practice Finished!';
-            }
-        }
-
-        function stopSong() {
-            isPlaying = false;
-            isPaused = false;
-            btnPause.textContent = 'Pause';
-            btnPause.classList.remove('btn-success');
-            btnPause.classList.add('btn-warning');
-
-            if (animationFrameId !== null) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
-            document.querySelectorAll('.key').forEach(k => {
-                k.classList.remove('active');
-                k.style.backgroundColor = '';
-                k.style.boxShadow = '';
-            });
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            document.getElementById('status').textContent = 'Playback stopped.';
-
-            if (isRecording) {
-                toggleRecording();
             }
         }
 
@@ -3903,6 +3952,26 @@
                 playSong();
             }
         });
+
+        function stopSong() {
+            isPlaying = false;
+            isPaused = false;
+            btnPause.textContent = 'Pause';
+            btnPause.classList.remove('btn-success');
+            btnPause.classList.add('btn-warning');
+
+            if (animationFrameId !== null) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            document.querySelectorAll('.key').forEach(k => {
+                k.classList.remove('active');
+                k.style.backgroundColor = '';
+                k.style.boxShadow = '';
+            });
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('status').textContent = 'Playback stopped.';
+        }
 
         function playSong() {
             initAudio();
