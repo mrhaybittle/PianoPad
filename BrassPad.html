@@ -466,7 +466,7 @@
 
         <div class="footer-bar">
             <!-- Timestamp Updated -->
-            <div class="version-stamp">v26.09.11 | Added 50 Brass Exercises</div>
+            <div class="version-stamp">v26.09.12 | Exercises Visual Transpose Fixed</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -629,6 +629,7 @@
         let rawParsedSong = []; 
         let currentSong = [];
         let currentSongTitle = "Wipeout";
+        let isCurrentTrackExercise = false; 
 
         let isPlaying = false;
         let isPaused = false;
@@ -749,7 +750,7 @@
         // Apply Shift Logic
         function applyVisualShift() {
             if (rawParsedSong.length > 0) {
-                currentSong = autoTransposeSong(rawParsedSong);
+                currentSong = autoTransposeSong(rawParsedSong, isCurrentTrackExercise);
                 
                 let effectiveElapsed = 0;
                 if (isPlaying) {
@@ -1038,10 +1039,11 @@
             
             if (typeof exerciseSelect !== 'undefined') exerciseSelect.value = "";
             songSelect.value = 0; 
+            isCurrentTrackExercise = false;
             
             currentSongTitle = displayTitle;
             rawParsedSong = parsePianoPad(code);
-            currentSong = autoTransposeSong(rawParsedSong);
+            currentSong = autoTransposeSong(rawParsedSong, isCurrentTrackExercise);
             
             document.getElementById('status').textContent = `Loaded MIDI Track: "${currentSongTitle}".`;
             playSong();
@@ -1337,14 +1339,17 @@
             return 440 * Math.pow(2, (concertPitch - 69) / 12);
         }
 
-        function autoTransposeSong(song) {
+        function autoTransposeSong(song, isExercise = false) {
             if (!song || song.length === 0) return [];
             let allPitches = [];
+            
+            // Exercises ignore the instrument's visual transposition so the written notes match the scale name exactly
+            const currentVisualTranspose = isExercise ? 0 : visualTranspose;
             
             song.forEach(item => {
                 item.notes.forEach(noteStr => {
                     const p = noteToPitch(noteStr);
-                    if (p !== null) allPitches.push(p + visualTranspose);
+                    if (p !== null) allPitches.push(p + currentVisualTranspose);
                 });
             });
             
@@ -1369,7 +1374,7 @@
                 const newNotes = item.notes.map(noteStr => {
                     const p = noteToPitch(noteStr);
                     if (p === null) return noteStr;
-                    let finalPitch = p + visualTranspose + (octaveShift * 12);
+                    let finalPitch = p + currentVisualTranspose + (octaveShift * 12);
                     return pitchToNote(finalPitch);
                 });
 
@@ -1655,14 +1660,16 @@
             let targetObj = null;
             if (songSelect.value !== "") {
                 targetObj = currentRenderedSongs[songSelect.value];
+                isCurrentTrackExercise = false;
             } else if (exerciseSelect.value !== "") {
                 targetObj = JSON.parse(exerciseSelect.value);
+                isCurrentTrackExercise = true;
             }
 
             if (targetObj) {
                 currentSongTitle = targetObj.title;
                 rawParsedSong = parsePianoPad(targetObj.code);
-                currentSong = autoTransposeSong(rawParsedSong);
+                currentSong = autoTransposeSong(rawParsedSong, isCurrentTrackExercise);
             }
 
             if (!currentSong || currentSong.length === 0) {
@@ -2050,9 +2057,10 @@
             
             exerciseSelect.value = ""; // Default empty
             songSelect.value = "0";
+            isCurrentTrackExercise = false;
             currentSongTitle = currentRenderedSongs[0].title;
             rawParsedSong = parsePianoPad(currentRenderedSongs[0].code);
-            currentSong = autoTransposeSong(rawParsedSong);
+            currentSong = autoTransposeSong(rawParsedSong, isCurrentTrackExercise);
             
             document.getElementById('status').textContent = `Loaded ${currentRenderedSongs.length} initial songs. Syncing Google Sheets...`;
 
@@ -2072,9 +2080,10 @@
                         
                         exerciseSelect.value = "";
                         songSelect.value = defaultIndex;
+                        isCurrentTrackExercise = false;
                         currentSongTitle = currentRenderedSongs[defaultIndex].title;
                         rawParsedSong = parsePianoPad(currentRenderedSongs[defaultIndex].code);
-                        currentSong = autoTransposeSong(rawParsedSong);
+                        currentSong = autoTransposeSong(rawParsedSong, isCurrentTrackExercise);
                         
                         document.getElementById('status').textContent = `Synced ${currentRenderedSongs.length} songs live from Google Sheet! Ready!`;
                     }
@@ -2088,6 +2097,7 @@
         songSelect.addEventListener('change', (e) => {
             initAudio();
             if (typeof exerciseSelect !== 'undefined') exerciseSelect.value = ""; // Deselect exercise
+            isCurrentTrackExercise = false;
             const index = e.target.value;
             if (index === "") return;
             const songObj = currentRenderedSongs[index];
@@ -2095,7 +2105,7 @@
                 currentSongTitle = songObj.title;
                 rawParsedSong = parsePianoPad(songObj.code);
                 if (rawParsedSong.length > 0) {
-                    currentSong = autoTransposeSong(rawParsedSong);
+                    currentSong = autoTransposeSong(rawParsedSong, isCurrentTrackExercise);
                     stopSong();
                     document.getElementById('status').textContent = `Loaded "${currentSongTitle}". Press Play!`;
                 }
@@ -2106,6 +2116,7 @@
         exerciseSelect.addEventListener('change', (e) => {
             initAudio();
             if (typeof songSelect !== 'undefined') songSelect.value = ""; // Deselect song
+            isCurrentTrackExercise = true;
             const val = e.target.value;
             if (val === "") return;
             const exerciseObj = JSON.parse(val);
@@ -2113,7 +2124,7 @@
                 currentSongTitle = exerciseObj.title;
                 rawParsedSong = parsePianoPad(exerciseObj.code);
                 if (rawParsedSong.length > 0) {
-                    currentSong = autoTransposeSong(rawParsedSong);
+                    currentSong = autoTransposeSong(rawParsedSong, isCurrentTrackExercise);
                     stopSong();
                     document.getElementById('status').textContent = `Loaded Exercise: "${currentSongTitle}". Press Play!`;
                 }
