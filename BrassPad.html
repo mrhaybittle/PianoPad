@@ -86,6 +86,12 @@
             max-width: 250px;
         }
 
+        #exercise-select {
+            color: #38bdf8 !important; border: 2px solid #0284c7 !important;
+            background-color: #0f172a !important; font-weight: 700 !important;
+            max-width: 250px;
+        }
+
         button, .btn-link, .btn-file-label {
             display: inline-flex; align-items: center; gap: 4px;
             padding: 5px 8px; border-radius: 6px; border: none;
@@ -378,6 +384,10 @@
                     <option value="">Choose a Song</option>
                 </select>
 
+                <select id="exercise-select">
+                    <option value="">Choose an Exercise</option>
+                </select>
+
                 <div class="speed-control">
                     <label for="speed-slider">Tempo: <span id="speed-label">100%</span></label>
                     <input type="range" id="speed-slider" min="10" max="300" value="100" step="5">
@@ -456,7 +466,7 @@
 
         <div class="footer-bar">
             <!-- Timestamp Updated -->
-            <div class="version-stamp">v26.09.10 | 10-Sep 12:27 AEST (Sydney) STEP MODE FIXED</div>
+            <div class="version-stamp">v26.09.11 | Added 50 Brass Exercises</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to song database...</div>
         </div>
     </div>
@@ -549,6 +559,70 @@
             { title: "Mary Had A Little Lamb", code: "E2,D2,C2,D2,E2,E2,E2,D2,D2,D2,E2,G2,G2,E2,D2,C2,D2,E2,E2,E2,E2,D2,D2,E2,D2,C2,Rests,400,400,400,400,400,400,800,400,400,800,400,400,800,400,400,400,400,400,400,400,400,400,400,400,400,800" }
         ];
 
+        // Systematically Generated Brass Exercises
+        const BRASS_EXERCISES = {
+            "C Major": [
+                { title: "C Major Scale (Semibreves)", code: "C4,D4,E4,F4,G4,A4,B4,C5,B4,A4,G4,F4,E4,D4,C4,Rests,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600" },
+                { title: "C Major Scale (Minims)", code: "C4,D4,E4,F4,G4,A4,B4,C5,B4,A4,G4,F4,E4,D4,C4,Rests,800,800,800,800,800,800,800,800,800,800,800,800,800,800,800" },
+                { title: "C Major Scale (Crotchets)", code: "C4,D4,E4,F4,G4,A4,B4,C5,B4,A4,G4,F4,E4,D4,C4,Rests,400,400,400,400,400,400,400,400,400,400,400,400,400,400,400" },
+                { title: "C Major Scale (Quavers)", code: "C4,D4,E4,F4,G4,A4,B4,C5,B4,A4,G4,F4,E4,D4,C4,Rests,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200" },
+                { title: "C Major Scale (Shortening Durations)", code: "C4,D4,E4,F4,G4,A4,B4,C5,B4,A4,G4,F4,E4,D4,C4,C4,D4,E4,F4,G4,A4,B4,C5,B4,A4,G4,F4,E4,D4,C4,C4,D4,E4,F4,G4,A4,B4,C5,B4,A4,G4,F4,E4,D4,C4,C4,D4,E4,F4,G4,A4,B4,C5,B4,A4,G4,F4,E4,D4,C4,C4,D4,E4,F4,G4,A4,B4,C5,B4,A4,G4,F4,E4,D4,C4,Rests,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,800,800,800,800,800,800,800,800,800,800,800,800,800,800,800,400,400,400,400,400,400,400,400,400,400,400,400,400,400,400,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100" },
+                { title: "C Major Thirds", code: "C4,E4,D4,F4,E4,G4,F4,A4,G4,B4,A4,C5,B4,D5,C5,Rests,400,400,400,400,400,400,400,400,400,400,400,400,400,400,400" },
+                { title: "C Major Patterns of 3", code: "C4,D4,E4,D4,E4,F4,E4,F4,G4,F4,G4,A4,G4,A4,B4,A4,B4,C5,C5,Rests,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250" },
+                { title: "C Major Patterns of 4", code: "C4,D4,E4,F4,D4,E4,F4,G4,E4,F4,G4,A4,F4,G4,A4,B4,G4,A4,B4,C5,C5,Rests,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200" },
+                { title: "C Major Intervals from Root", code: "C4,D4,C4,E4,C4,F4,C4,G4,C4,A4,C4,B4,C4,C5,Rests,400,400,400,400,400,400,400,400,400,400,400,400,400,400" },
+                { title: "C Major Arpeggio", code: "C4,E4,G4,C5,G4,E4,C4,Rests,400,400,400,400,400,400,400" }
+            ],
+            "F Major": [
+                { title: "F Major Scale (Semibreves)", code: "F4,G4,A4,A#4,C5,D5,E5,F5,E5,D5,C5,A#4,A4,G4,F4,Rests,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600" },
+                { title: "F Major Scale (Minims)", code: "F4,G4,A4,A#4,C5,D5,E5,F5,E5,D5,C5,A#4,A4,G4,F4,Rests,800,800,800,800,800,800,800,800,800,800,800,800,800,800,800" },
+                { title: "F Major Scale (Crotchets)", code: "F4,G4,A4,A#4,C5,D5,E5,F5,E5,D5,C5,A#4,A4,G4,F4,Rests,400,400,400,400,400,400,400,400,400,400,400,400,400,400,400" },
+                { title: "F Major Scale (Quavers)", code: "F4,G4,A4,A#4,C5,D5,E5,F5,E5,D5,C5,A#4,A4,G4,F4,Rests,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200" },
+                { title: "F Major Scale (Shortening Durations)", code: "F4,G4,A4,A#4,C5,D5,E5,F5,E5,D5,C5,A#4,A4,G4,F4,F4,G4,A4,A#4,C5,D5,E5,F5,E5,D5,C5,A#4,A4,G4,F4,F4,G4,A4,A#4,C5,D5,E5,F5,E5,D5,C5,A#4,A4,G4,F4,F4,G4,A4,A#4,C5,D5,E5,F5,E5,D5,C5,A#4,A4,G4,F4,F4,G4,A4,A#4,C5,D5,E5,F5,E5,D5,C5,A#4,A4,G4,F4,Rests,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,800,800,800,800,800,800,800,800,800,800,800,800,800,800,800,400,400,400,400,400,400,400,400,400,400,400,400,400,400,400,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100" },
+                { title: "F Major Thirds", code: "F4,A4,G4,A#4,A4,C5,A#4,D5,C5,E5,D5,F5,E5,G5,F5,Rests,400,400,400,400,400,400,400,400,400,400,400,400,400,400,400" },
+                { title: "F Major Patterns of 3", code: "F4,G4,A4,G4,A4,A#4,A4,A#4,C5,A#4,C5,D5,C5,D5,E5,D5,E5,F5,F5,Rests,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250" },
+                { title: "F Major Patterns of 4", code: "F4,G4,A4,A#4,G4,A4,A#4,C5,A4,A#4,C5,D5,A#4,C5,D5,E5,C5,D5,E5,F5,F5,Rests,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200" },
+                { title: "F Major Intervals from Root", code: "F4,G4,F4,A4,F4,A#4,F4,C5,F4,D5,F4,E5,F4,F5,Rests,400,400,400,400,400,400,400,400,400,400,400,400,400,400" },
+                { title: "F Major Arpeggio", code: "F4,A4,C5,F5,C5,A4,F4,Rests,400,400,400,400,400,400,400" }
+            ],
+            "Bb Major": [
+                { title: "Bb Major Scale (Semibreves)", code: "A#3,C4,D4,D#4,F4,G4,A4,A#4,A4,G4,F4,D#4,D4,C4,A#3,Rests,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600" },
+                { title: "Bb Major Scale (Minims)", code: "A#3,C4,D4,D#4,F4,G4,A4,A#4,A4,G4,F4,D#4,D4,C4,A#3,Rests,800,800,800,800,800,800,800,800,800,800,800,800,800,800,800" },
+                { title: "Bb Major Scale (Crotchets)", code: "A#3,C4,D4,D#4,F4,G4,A4,A#4,A4,G4,F4,D#4,D4,C4,A#3,Rests,400,400,400,400,400,400,400,400,400,400,400,400,400,400,400" },
+                { title: "Bb Major Scale (Quavers)", code: "A#3,C4,D4,D#4,F4,G4,A4,A#4,A4,G4,F4,D#4,D4,C4,A#3,Rests,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200" },
+                { title: "Bb Major Scale (Shortening Durations)", code: "A#3,C4,D4,D#4,F4,G4,A4,A#4,A4,G4,F4,D#4,D4,C4,A#3,A#3,C4,D4,D#4,F4,G4,A4,A#4,A4,G4,F4,D#4,D4,C4,A#3,A#3,C4,D4,D#4,F4,G4,A4,A#4,A4,G4,F4,D#4,D4,C4,A#3,A#3,C4,D4,D#4,F4,G4,A4,A#4,A4,G4,F4,D#4,D4,C4,A#3,A#3,C4,D4,D#4,F4,G4,A4,A#4,A4,G4,F4,D#4,D4,C4,A#3,Rests,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,800,800,800,800,800,800,800,800,800,800,800,800,800,800,800,400,400,400,400,400,400,400,400,400,400,400,400,400,400,400,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100" },
+                { title: "Bb Major Thirds", code: "A#3,D4,C4,D#4,D4,F4,D#4,G4,F4,A4,G4,A#4,A4,C5,A#4,Rests,400,400,400,400,400,400,400,400,400,400,400,400,400,400,400" },
+                { title: "Bb Major Patterns of 3", code: "A#3,C4,D4,C4,D4,D#4,D4,D#4,F4,D#4,F4,G4,F4,G4,A4,G4,A4,A#4,A#4,Rests,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250" },
+                { title: "Bb Major Patterns of 4", code: "A#3,C4,D4,D#4,C4,D4,D#4,F4,D4,D#4,F4,G4,D#4,F4,G4,A4,F4,G4,A4,A#4,A#4,Rests,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200" },
+                { title: "Bb Major Intervals from Root", code: "A#3,C4,A#3,D4,A#3,D#4,A#3,F4,A#3,G4,A#3,A4,A#3,A#4,Rests,400,400,400,400,400,400,400,400,400,400,400,400,400,400" },
+                { title: "Bb Major Arpeggio", code: "A#3,D4,F4,A#4,F4,D4,A#3,Rests,400,400,400,400,400,400,400" }
+            ],
+            "Eb Major": [
+                { title: "Eb Major Scale (Semibreves)", code: "D#4,F4,G4,G#4,A#4,C5,D5,D#5,D5,C5,A#4,G#4,G4,F4,D#4,Rests,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600" },
+                { title: "Eb Major Scale (Minims)", code: "D#4,F4,G4,G#4,A#4,C5,D5,D#5,D5,C5,A#4,G#4,G4,F4,D#4,Rests,800,800,800,800,800,800,800,800,800,800,800,800,800,800,800" },
+                { title: "Eb Major Scale (Crotchets)", code: "D#4,F4,G4,G#4,A#4,C5,D5,D#5,D5,C5,A#4,G#4,G4,F4,D#4,Rests,400,400,400,400,400,400,400,400,400,400,400,400,400,400,400" },
+                { title: "Eb Major Scale (Quavers)", code: "D#4,F4,G4,G#4,A#4,C5,D5,D#5,D5,C5,A#4,G#4,G4,F4,D#4,Rests,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200" },
+                { title: "Eb Major Scale (Shortening Durations)", code: "D#4,F4,G4,G#4,A#4,C5,D5,D#5,D5,C5,A#4,G#4,G4,F4,D#4,D#4,F4,G4,G#4,A#4,C5,D5,D#5,D5,C5,A#4,G#4,G4,F4,D#4,D#4,F4,G4,G#4,A#4,C5,D5,D#5,D5,C5,A#4,G#4,G4,F4,D#4,D#4,F4,G4,G#4,A#4,C5,D5,D#5,D5,C5,A#4,G#4,G4,F4,D#4,D#4,F4,G4,G#4,A#4,C5,D5,D#5,D5,C5,A#4,G#4,G4,F4,D#4,Rests,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,800,800,800,800,800,800,800,800,800,800,800,800,800,800,800,400,400,400,400,400,400,400,400,400,400,400,400,400,400,400,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100" },
+                { title: "Eb Major Thirds", code: "D#4,G4,F4,G#4,G4,A#4,G#4,C5,A#4,D5,C5,D#5,D5,F5,D#5,Rests,400,400,400,400,400,400,400,400,400,400,400,400,400,400,400" },
+                { title: "Eb Major Patterns of 3", code: "D#4,F4,G4,F4,G4,G#4,G4,G#4,A#4,G#4,A#4,C5,A#4,C5,D5,C5,D5,D#5,D#5,Rests,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250" },
+                { title: "Eb Major Patterns of 4", code: "D#4,F4,G4,G#4,F4,G4,G#4,A#4,G4,G#4,A#4,C5,G#4,A#4,C5,D5,A#4,C5,D5,D#5,D#5,Rests,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200" },
+                { title: "Eb Major Intervals from Root", code: "D#4,F4,D#4,G4,D#4,G#4,D#4,A#4,D#4,C5,D#4,D5,D#4,D#5,Rests,400,400,400,400,400,400,400,400,400,400,400,400,400,400" },
+                { title: "Eb Major Arpeggio", code: "D#4,G4,A#4,D#5,A#4,G4,D#4,Rests,400,400,400,400,400,400,400" }
+            ],
+            "Ab Major": [
+                { title: "Ab Major Scale (Semibreves)", code: "G#3,A#3,C4,C#4,D#4,F4,G4,G#4,G4,F4,D#4,C#4,C4,A#3,G#3,Rests,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600" },
+                { title: "Ab Major Scale (Minims)", code: "G#3,A#3,C4,C#4,D#4,F4,G4,G#4,G4,F4,D#4,C#4,C4,A#3,G#3,Rests,800,800,800,800,800,800,800,800,800,800,800,800,800,800,800" },
+                { title: "Ab Major Scale (Crotchets)", code: "G#3,A#3,C4,C#4,D#4,F4,G4,G#4,G4,F4,D#4,C#4,C4,A#3,G#3,Rests,400,400,400,400,400,400,400,400,400,400,400,400,400,400,400" },
+                { title: "Ab Major Scale (Quavers)", code: "G#3,A#3,C4,C#4,D#4,F4,G4,G#4,G4,F4,D#4,C#4,C4,A#3,G#3,Rests,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200" },
+                { title: "Ab Major Scale (Shortening Durations)", code: "G#3,A#3,C4,C#4,D#4,F4,G4,G#4,G4,F4,D#4,C#4,C4,A#3,G#3,G#3,A#3,C4,C#4,D#4,F4,G4,G#4,G4,F4,D#4,C#4,C4,A#3,G#3,G#3,A#3,C4,C#4,D#4,F4,G4,G#4,G4,F4,D#4,C#4,C4,A#3,G#3,G#3,A#3,C4,C#4,D#4,F4,G4,G#4,G4,F4,D#4,C#4,C4,A#3,G#3,G#3,A#3,C4,C#4,D#4,F4,G4,G#4,G4,F4,D#4,C#4,C4,A#3,G#3,Rests,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,1600,800,800,800,800,800,800,800,800,800,800,800,800,800,800,800,400,400,400,400,400,400,400,400,400,400,400,400,400,400,400,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100" },
+                { title: "Ab Major Thirds", code: "G#3,C4,A#3,C#4,C4,D#4,C#4,F4,D#4,G4,F4,G#4,G4,A#4,G#4,Rests,400,400,400,400,400,400,400,400,400,400,400,400,400,400,400" },
+                { title: "Ab Major Patterns of 3", code: "G#3,A#3,C4,A#3,C4,C#4,C4,C#4,D#4,C#4,D#4,F4,D#4,F4,G4,F4,G4,G#4,G#4,Rests,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250,250" },
+                { title: "Ab Major Patterns of 4", code: "G#3,A#3,C4,C#4,A#3,C4,C#4,D#4,C4,C#4,D#4,F4,C#4,D#4,F4,G4,D#4,F4,G4,G#4,G#4,Rests,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200" },
+                { title: "Ab Major Intervals from Root", code: "G#3,A#3,G#3,C4,G#3,C#4,G#3,D#4,G#3,F4,G#3,G4,G#3,G#4,Rests,400,400,400,400,400,400,400,400,400,400,400,400,400,400" },
+                { title: "Ab Major Arpeggio", code: "G#3,C4,D#4,G#4,D#4,C4,G#3,Rests,400,400,400,400,400,400,400" }
+            ]
+        };
+
         let audioCtx = null;
         let songList = [];
         let currentRenderedSongs = []; 
@@ -613,6 +687,7 @@
         const speedSlider = document.getElementById('speed-slider');
         const speedLabel = document.getElementById('speed-label');
         const songSelect = document.getElementById('song-select');
+        const exerciseSelect = document.getElementById('exercise-select');
         const btnPause = document.getElementById('btn-pause');
         const btnGame = document.getElementById('btn-game');
         const btnStep = document.getElementById('btn-step');
@@ -960,6 +1035,8 @@
             const newSongObj = { title: displayTitle, code: code };
             currentRenderedSongs.unshift(newSongObj);
             renderSongSelect();
+            
+            if (typeof exerciseSelect !== 'undefined') exerciseSelect.value = "";
             songSelect.value = 0; 
             
             currentSongTitle = displayTitle;
@@ -1574,16 +1651,22 @@
         function playSong() {
             initAudio();
             
-            const index = songSelect.value;
-            if (index !== "" && currentRenderedSongs[index]) {
-                const songObj = currentRenderedSongs[index];
-                currentSongTitle = songObj.title;
-                rawParsedSong = parsePianoPad(songObj.code);
+            // Check which dropdown is currently active/selected to grab the correct song obj
+            let targetObj = null;
+            if (songSelect.value !== "") {
+                targetObj = currentRenderedSongs[songSelect.value];
+            } else if (exerciseSelect.value !== "") {
+                targetObj = JSON.parse(exerciseSelect.value);
+            }
+
+            if (targetObj) {
+                currentSongTitle = targetObj.title;
+                rawParsedSong = parsePianoPad(targetObj.code);
                 currentSong = autoTransposeSong(rawParsedSong);
             }
 
             if (!currentSong || currentSong.length === 0) {
-                document.getElementById('status').textContent = 'Error: No valid note sequence found in this song.';
+                document.getElementById('status').textContent = 'Error: No valid note sequence found in this song/exercise.';
                 return;
             }
 
@@ -1942,6 +2025,22 @@
             });
         }
 
+        function renderExerciseSelect() {
+            exerciseSelect.innerHTML = '<option value="">-- Choose an Exercise --</option>';
+            for (const [key, exercises] of Object.entries(BRASS_EXERCISES)) {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = key;
+                exercises.forEach((ex) => {
+                    const opt = document.createElement('option');
+                    // Store the stringified object to parse back on selection
+                    opt.value = JSON.stringify(ex);
+                    opt.textContent = ex.title;
+                    optgroup.appendChild(opt);
+                });
+                exerciseSelect.appendChild(optgroup);
+            }
+        }
+
         async function syncSongsWithGoogleSheet() {
             const uniqueMap = new Map();
             FALLBACK_SONGS.forEach(s => uniqueMap.set(s.title.toLowerCase().trim(), s));
@@ -1949,6 +2048,7 @@
             currentRenderedSongs = Array.from(uniqueMap.values()).sort((a, b) => a.title.localeCompare(b.title));
             renderSongSelect();
             
+            exerciseSelect.value = ""; // Default empty
             songSelect.value = "0";
             currentSongTitle = currentRenderedSongs[0].title;
             rawParsedSong = parsePianoPad(currentRenderedSongs[0].code);
@@ -1970,6 +2070,7 @@
                         const wipeoutIndex = currentRenderedSongs.findIndex(s => s.title === 'Wipeout');
                         const defaultIndex = wipeoutIndex !== -1 ? wipeoutIndex : 0;
                         
+                        exerciseSelect.value = "";
                         songSelect.value = defaultIndex;
                         currentSongTitle = currentRenderedSongs[defaultIndex].title;
                         rawParsedSong = parsePianoPad(currentRenderedSongs[defaultIndex].code);
@@ -1983,8 +2084,10 @@
             }
         }
 
+        // Change handler for the Song dropdown
         songSelect.addEventListener('change', (e) => {
             initAudio();
+            if (typeof exerciseSelect !== 'undefined') exerciseSelect.value = ""; // Deselect exercise
             const index = e.target.value;
             if (index === "") return;
             const songObj = currentRenderedSongs[index];
@@ -1999,8 +2102,27 @@
             }
         });
 
+        // Change handler for the Exercise dropdown
+        exerciseSelect.addEventListener('change', (e) => {
+            initAudio();
+            if (typeof songSelect !== 'undefined') songSelect.value = ""; // Deselect song
+            const val = e.target.value;
+            if (val === "") return;
+            const exerciseObj = JSON.parse(val);
+            if (exerciseObj) {
+                currentSongTitle = exerciseObj.title;
+                rawParsedSong = parsePianoPad(exerciseObj.code);
+                if (rawParsedSong.length > 0) {
+                    currentSong = autoTransposeSong(rawParsedSong);
+                    stopSong();
+                    document.getElementById('status').textContent = `Loaded Exercise: "${currentSongTitle}". Press Play!`;
+                }
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
             resizeCanvas();
+            renderExerciseSelect();
             syncSongsWithGoogleSheet();
         });
 
