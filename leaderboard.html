@@ -322,13 +322,16 @@
     </div>
 
     <script>
-        // Live direct export URL (bypasses Google 15-min publishing delay)
+        // Scores sheet CSV exports (gid=191904617)
         const SPREADSHEET_DIRECT_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=191904617';
-        // Web published CSV URL fallback
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
 
-        // Difficulty tiers mapping generated from "PianoPad_Songlist_PIANOPAD.csv"
-        const SONG_DIFFICULTIES = {
+        // Songlist / PIANOPAD tab CSV exports (defaults to gid=0 for first sheet tab)
+        const SONGLIST_DIRECT_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=0';
+        const SONGLIST_PUB_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=0&single=true&output=csv';
+
+        // Fallback static difficulty mapping if song list fetch fails
+        let SONG_DIFFICULTIES = {
             "12 to 12 - Sombr": "Medium", "Acapella": "Medium", "All Star - from Shrek": "Easy", "Attention - Charlie Puth": "Medium", 
             "Baby Shark": "Easy", "Back to Friends - Sombr": "Easy", "Bad - Michael Jackson": "Easy", "Bad Boys Theme": "Easy", 
             "Bad Guy": "Medium", "Bang Bang": "Easy", "Batman Theme (60s TV Show)": "Medium", "Beat It": "Easy", 
@@ -364,7 +367,7 @@
             "Moonlight Sonata": "Hard", "Morning Mood": "Medium", "Moves Like Jagger": "Medium", "Mr. Bean Theme (Animated TV Show)": "Medium", 
             "Mr. Saxobeat": "Medium", "Mundian To Bach Ke": "Medium", "My Heart Will Go On": "Hard", "Naplan Theme": "Easy", 
             "Never Gonna Give You Up": "Medium", "Never Tear Us Apart": "Medium", "New Thang": "Medium", "Nokia Theme": "Easy", 
-            "Octonauts Theme": "Medium", "Ode to Joy": "Hard", "Old MacDonald Had A Farm": "Hard", "Old Town Road": "Medium", 
+            "Octonauts Theme": "Medium", "Ode to Joy": "Medium", "Old MacDonald Had A Farm": "Hard", "Old Town Road": "Medium", 
             "Only Love Can Hurt Like This": "Medium", "Oom-Pah-Pah": "Medium", "Oompa Loompa Theme": "Medium", 
             "Ordinary - Alex Warren": "Medium", "Painted Black": "Medium", "Panama": "Medium", "Paparazzi": "Hard", 
             "Paradise": "Medium", "Paranoid": "Hard", "Party Rock Anthem": "Hard", "Party Up": "Medium", "Payphone": "Easy", 
@@ -416,6 +419,29 @@
             return totalMinutes >= startHomeMins || totalMinutes < endHomeMins;
         }
 
+        function parseCSVRow(line) {
+            const row = [];
+            let insideQuote = false;
+            let entry = '';
+
+            for (let j = 0; j < line.length; j++) {
+                const char = line[j];
+                if (char === '"' && line[j + 1] === '"') {
+                    entry += '"';
+                    j++;
+                } else if (char === '"') {
+                    insideQuote = !insideQuote;
+                } else if (char === ',' && !insideQuote) {
+                    row.push(entry);
+                    entry = '';
+                } else {
+                    entry += char;
+                }
+            }
+            row.push(entry);
+            return row;
+        }
+
         function parseCSV(csvText) {
             const lines = csvText.split(/\r?\n/);
             const records = [];
@@ -424,25 +450,7 @@
                 const line = lines[i].trim();
                 if (!line) continue;
 
-                const row = [];
-                let insideQuote = false;
-                let entry = '';
-
-                for (let j = 0; j < line.length; j++) {
-                    const char = line[j];
-                    if (char === '"' && line[j + 1] === '"') {
-                        entry += '"';
-                        j++;
-                    } else if (char === '"') {
-                        insideQuote = !insideQuote;
-                    } else if (char === ',' && !insideQuote) {
-                        row.push(entry);
-                        entry = '';
-                    } else {
-                        entry += char;
-                    }
-                }
-                row.push(entry);
+                const row = parseCSVRow(line);
 
                 if (row.length >= 4) {
                     const accuracy = parseFloat(row[3]);
@@ -462,6 +470,39 @@
                 }
             }
             return records;
+        }
+
+        async function fetchLiveSongDifficulties() {
+            try {
+                let csvText = '';
+                const cacheBuster = '&_t=' + Date.now();
+
+                try {
+                    const resDirect = await fetch(SONGLIST_DIRECT_CSV_URL + cacheBuster, { cache: 'no-store' });
+                    if (resDirect.ok) csvText = await resDirect.text();
+                    else throw new Error('Direct songlist export failed');
+                } catch (e) {
+                    const resPub = await fetch(SONGLIST_PUB_CSV_URL + cacheBuster, { cache: 'no-store' });
+                    if (resPub.ok) csvText = await resPub.text();
+                }
+
+                if (csvText) {
+                    const lines = csvText.split(/\r?\n/);
+                    lines.forEach((line, index) => {
+                        if (index === 0 || !line.trim()) return;
+                        const row = parseCSVRow(line);
+                        if (row.length >= 3) {
+                            const title = row[0] ? row[0].trim().replace(/^"|"$/g, '') : '';
+                            const diff = row[2] ? row[2].trim().replace(/^"|"$/g, '') : '';
+                            if (title && diff) {
+                                SONG_DIFFICULTIES[title] = diff;
+                            }
+                        }
+                    });
+                }
+            } catch (err) {
+                console.warn("Using fallback static song difficulties.", err);
+            }
         }
 
         function populateSongFilter() {
@@ -678,6 +719,9 @@
 
         async function fetchScores() {
             try {
+                // Fetch live song difficulties first
+                await fetchLiveSongDifficulties();
+
                 let csvText = '';
                 const cacheBuster = '&_t=' + Date.now();
 
