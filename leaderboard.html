@@ -281,7 +281,7 @@
 
     <div class="container" id="main-container">
         <header>
-            <h1 id="leaderboard-title">🏆 PianoPad Song Hi Scores</h1>
+            <h1 id="leaderboard-title">🏆 PianoPad Song High Scores</h1>
             <div class="controls">
                 <select id="filter-song">
                     <option value="ALL">All Songs</option>
@@ -475,7 +475,7 @@
             const activePool = allScores.filter(s => !s.isMiniGame);
             const uniqueTitles = [...new Set(activePool.map(s => s.song))];
             
-            // Sort by Difficulty first, then alphabetically
+            // Sort dropdown by Difficulty first (Hard > Medium > Easy), then alphabetically
             uniqueTitles.sort((a, b) => {
                 const weightA = DIFFICULTY_WEIGHT[SONG_DIFFICULTIES[a] || "Unknown"] || 0;
                 const weightB = DIFFICULTY_WEIGHT[SONG_DIFFICULTIES[b] || "Unknown"] || 0;
@@ -517,13 +517,18 @@
             } else if (dateSortMode === 'OLDEST') {
                 filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
             } else {
-                // Default Sorting: Difficulty -> Accuracy -> Speed
+                // EXPLICIT SORTING: 1. Difficulty -> 2. Accuracy -> 3. Tempo Speed
                 filtered.sort((a, b) => {
                     const weightA = DIFFICULTY_WEIGHT[SONG_DIFFICULTIES[a.song] || "Unknown"] || 0;
                     const weightB = DIFFICULTY_WEIGHT[SONG_DIFFICULTIES[b.song] || "Unknown"] || 0;
                     
+                    // 1. Difficulty (Hard > Medium > Easy)
                     if (weightA !== weightB) return weightB - weightA;
+                    
+                    // 2. Accuracy (Descending)
                     if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+                    
+                    // 3. Tempo Speed (Descending)
                     return b.speed - a.speed;
                 });
             }
@@ -696,6 +701,7 @@
                 });
 
                 for (let song in songRanks) {
+                    // Internal ranking per song purely uses Accuracy then Tempo Speed
                     songRanks[song].sort((a, b) => {
                         if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
                         return b.speed - a.speed;
