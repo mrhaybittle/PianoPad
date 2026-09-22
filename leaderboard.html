@@ -326,6 +326,71 @@
         // Web published CSV URL fallback
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
 
+        // Difficulty tiers mapping generated from "PianoPad_Songlist_PIANOPAD.csv"
+        const SONG_DIFFICULTIES = {
+            "12 to 12 - Sombr": "Medium", "Acapella": "Medium", "All Star - from Shrek": "Easy", "Attention - Charlie Puth": "Medium", 
+            "Baby Shark": "Easy", "Back to Friends - Sombr": "Easy", "Bad - Michael Jackson": "Easy", "Bad Boys Theme": "Easy", 
+            "Bad Guy": "Medium", "Bang Bang": "Easy", "Batman Theme (60s TV Show)": "Medium", "Beat It": "Easy", 
+            "Billie Jean - Michael Jackson": "Easy", "Blinding Lights - (by JS)": "Medium", "Bluey Theme": "Easy", 
+            "Bombora - The Atlantics": "Medium", "Boys Don't Cry - The Cure": "Hard", "Buffalo Solider": "Medium", 
+            "Burn": "Medium", "Butcher's Theme": "Easy", "California Love - 2Pac": "Easy", "Californication": "Easy", 
+            "Call Me Maybe": "Easy", "Can't Buy Me Love": "Medium", "Can't Get You Out Of My Head": "Medium", 
+            "Can't Hold Us": "Easy", "Carmen: Habanera": "Medium", "Carnival of the Animals (The Elephant)": "Easy", 
+            "Cat's Theme": "Easy", "Chameleon": "Medium", "Christ Be Our Light": "Medium", "Circles - Post Malone": "Medium", 
+            "Clocks - Coldplay": "Hard", "Counting Stars": "Easy", "Dangerzone": "Easy", "Daylight": "Easy", "Demons": "Easy", 
+            "Dirty": "Easy", "Don't You Worry Child": "Easy", "Dora the Explorer Theme": "Medium", "Duck's Theme": "Easy", 
+            "Dumb Ways to Die": "Easy", "Dynamite": "Hard", "Enter Sandman": "Easy", "Espresso": "Medium", 
+            "Everything is Awesome": "Medium", "Fancy": "Easy", "Favourite Things": "Medium", "Feliz Navidad": "Hard", 
+            "Final Countdown": "Hard", "Fingal's Cave": "Easy", "Flight of the Bumblebee": "Hard", "Fly To Moon": "Medium", 
+            "Free": "Easy", "Friday on My Mind (Chorus Melody)": "Hard", "Fur Elise": "Medium", "Fur Elise-short": "Easy", 
+            "Gangnam Style": "Medium", "Gangsta's Paradise (Right Hand)": "Easy", "Geometry Dash": "Easy", "Geronimo": "Easy", 
+            "Get Hyper": "Hard", "Get Lucky": "Easy", "Get Smart Theme": "Medium", "God's Plan": "Easy", "Gold Snafu": "Easy", 
+            "Golden - K Pop Demon Hunters": "Medium", "Greased Lightning": "Medium", "Halloween Theme": "Medium", "Happy": "Hard", 
+            "Happy Birthday": "Medium", "Harry Potter Theme": "Medium", "He-Man (Masters of the Universe)": "Medium", 
+            "Hello": "Medium", "Hey Diddle Diddle": "Medium", "Hot Cross Buns": "Easy", "Hot Potato": "Medium", 
+            "Houdini - Eminem (Abracadabra)": "Easy", "How to Save a Life": "Hard", "Hungarian Dance No. 5": "Hard", 
+            "I Got A Feeling": "Medium", "I Knew You Were Trouble": "Medium", "I Like to Move It": "Medium", "I Love It": "Hard", 
+            "I See Fire": "Medium", "I Want It That Way": "Medium", "I Was Made For Lovin' You": "Medium", "I'm A Little Teapot": "Medium", 
+            "I'm Out": "Medium", "Ice Ice Baby/ Under Pressure": "Medium", "Imperial March Theme": "Medium", "In da Club - 50c": "Easy", 
+            "In da Club - BASSLINE (left hand)": "Easy", "In The End (piano riff)": "Easy", "In The Hall Of The Mountain King": "Easy", 
+            "In the Night Garden Theme": "Medium", "Interstellar Theme": "Easy", "Ironman": "Medium", "Itchy and Scratchy Theme": "Medium", 
+            "Je te laisserai des mots - (by EE)": "Hard", "Jingle Bells": "Easy", "Johnny B. Goode": "Medium", 
+            "Just The Way It Is (classic 80s piano)": "Medium", "La La La": "Medium", "Last Christmas": "Medium", 
+            "Last Friday Night": "Medium", "Lean On Me": "Hard", "Let Her Go": "Hard", "Let's Groove": "Easy", 
+            "Light of Edmund - Chorus": "Medium", "Locked Out of Heaven": "Hard", "London Bridge Is Falling Down": "Easy", 
+            "Mary Had A Little Lamb": "Easy", "Master of Puppets (recorded by JC)": "Hard", "McDonald's Theme": "Easy", 
+            "Minecraft - Sweden": "Medium", "Mission: Impossible Theme": "Hard", "Mister Maker TV Theme": "Easy", 
+            "Moonlight Sonata": "Hard", "Morning Mood": "Medium", "Moves Like Jagger": "Medium", "Mr. Bean Theme (Animated TV Show)": "Medium", 
+            "Mr. Saxobeat": "Medium", "Mundian To Bach Ke": "Medium", "My Heart Will Go On": "Hard", "Naplan Theme": "Easy", 
+            "Never Gonna Give You Up": "Medium", "Never Tear Us Apart": "Medium", "New Thang": "Medium", "Nokia Theme": "Easy", 
+            "Octonauts Theme": "Medium", "Ode to Joy": "Hard", "Old MacDonald Had A Farm": "Hard", "Old Town Road": "Medium", 
+            "Only Love Can Hurt Like This": "Medium", "Oom-Pah-Pah": "Medium", "Oompa Loompa Theme": "Medium", 
+            "Ordinary - Alex Warren": "Medium", "Painted Black": "Medium", "Panama": "Medium", "Paparazzi": "Hard", 
+            "Paradise": "Medium", "Paranoid": "Hard", "Party Rock Anthem": "Hard", "Party Up": "Medium", "Payphone": "Easy", 
+            "Peanuts Theme (Charlie Brown)": "Medium", "Peppa Pig Theme": "Easy", "Percy Jackson Theme": "Easy", "Peter Gunn Theme": "Easy", 
+            "Peter's Theme PW": "Medium", "Pink Panther Theme": "Hard", "Pirates of the Caribbean": "Medium", "Prayer in C": "Medium", 
+            "Problem": "Easy", "Pumped Up Kicks": "Medium", "Push It - by Salt-N-Pepa": "Medium", "Que Sera": "Medium", 
+            "Radioactive": "Hard", "Rather Be": "Medium", "Red": "Hard", "Right Now": "Medium", "Riptide": "Easy", 
+            "River Flows in You - Yiruma": "Hard", "Roar": "Hard", "Rocky": "Medium", "Row, Row, Row Your Boat": "Medium", 
+            "Rude": "Medium", "Runaway - Kanye W": "Easy", "Sail": "Medium", "Sandstorm - by Darude": "Hard", "Sascha the Bird's Theme": "Hard", 
+            "Satisfaction - Rolling Stones": "Medium", "Say Something": "Easy", "Seinfeld Theme": "Medium", "Señorita": "Hard", 
+            "Simpsons Theme": "Medium", "Skyfall": "Medium", "Somebody I Used To Know": "Hard", "Somewhere Over The Rainbow": "Medium", 
+            "Spider-Man Original Theme": "Medium", "Star Wars": "Medium", "Starman": "Easy", "Steve's Lava Chicken - from Minecraft": "Medium", 
+            "Still Dre.": "Easy", "Summertime": "Hard", "Sunshine of Your Love": "Hard", "Super Mario Theme": "Medium", 
+            "Superfreak / You Can't Touch This": "Easy", "Superman Theme": "Medium", "Surfin' Bird": "Medium", "Sweet Child Of Mine": "Hard", 
+            "Swing": "Medium", "Symphony #40 K550": "Hard", "Take On Me": "Medium", "Tetris - by (AT)": "Hard", "Tetris Theme": "Medium", 
+            "The Ants Go Marching (Rice House Theme)": "Medium", "The Next Episode - Snoop and Dr. Dre": "Medium", "The Sorcerer's Apprentice": "Hard", 
+            "The Wonderful Woodwind Family": "Easy", "Thousand Miles - by Vanessa Carlton": "Hard", "Three Little Birds": "Hard", 
+            "Thrift Shop": "Medium", "Through the Fire & Flames - Piano Intro": "Hard", "Thunderstruck Guitar Intro": "Hard", 
+            "Tidy Up the Keys": "Medium", "Titanium": "Hard", "Toccata and Fugue in D minor, BWV 565": "Hard", "Top Gun Theme": "Medium", 
+            "Transformers Theme": "Hard", "Treaty": "Medium", "Trumpets": "Easy", "Tsunami": "Easy", "Tung Tune": "Easy", 
+            "Twinkle Twinkle Little Star": "Medium", "Walk this Way - RUN DMC": "Hard", "We Will Rock You - Queen": "Easy", 
+            "What Does The Fox Say": "Easy", "Wiggle": "Easy", "Wipeout": "Hard", "Without Me": "Easy", "Wolf's Theme": "Easy", 
+            "World Cup Song": "Easy", "X Files Theme (Illuminati theme)": "Medium", "Earrings - Malcolm Todd": "Hard", 
+            "Rockstar - Dababy": "Medium", "You're Welcome - Moana": "Medium"
+        };
+        const DIFFICULTY_WEIGHT = { "Hard": 3, "Medium": 2, "Easy": 1, "Unknown": 0 };
+
         const MINI_GAMES = [
             { key: 'simon taps', title: '🧠 Simon Taps', unit: 'Level', sortAsc: false },
             { key: 'mystery note', title: '🔍 Mystery Note', unit: 'Guesses', sortAsc: true },
@@ -338,7 +403,6 @@
         let viewMode = 'SONGS';
         let dateSortMode = 'DEFAULT'; 
 
-        // Helper function to check if timestamp is between 2:05 PM and 8:15 AM
         function isOutsideSchoolHours(dateString) {
             if (!dateString) return false;
             const d = new Date(dateString);
@@ -410,13 +474,23 @@
             filterSelect.style.display = '';
             const activePool = allScores.filter(s => !s.isMiniGame);
             const uniqueTitles = [...new Set(activePool.map(s => s.song))];
-            uniqueTitles.sort();
+            
+            // Sort by Difficulty first, then alphabetically
+            uniqueTitles.sort((a, b) => {
+                const weightA = DIFFICULTY_WEIGHT[SONG_DIFFICULTIES[a] || "Unknown"] || 0;
+                const weightB = DIFFICULTY_WEIGHT[SONG_DIFFICULTIES[b] || "Unknown"] || 0;
+                if (weightA !== weightB) {
+                    return weightB - weightA; 
+                }
+                return a.localeCompare(b);
+            });
 
             filterSelect.innerHTML = `<option value="ALL">All Songs</option>`;
             uniqueTitles.forEach(title => {
                 const opt = document.createElement('option');
                 opt.value = title;
-                opt.textContent = title;
+                const diff = SONG_DIFFICULTIES[title];
+                opt.textContent = diff ? `[${diff}] ${title}` : title;
                 filterSelect.appendChild(opt);
             });
         }
@@ -443,7 +517,12 @@
             } else if (dateSortMode === 'OLDEST') {
                 filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
             } else {
+                // Default Sorting: Difficulty -> Accuracy -> Speed
                 filtered.sort((a, b) => {
+                    const weightA = DIFFICULTY_WEIGHT[SONG_DIFFICULTIES[a.song] || "Unknown"] || 0;
+                    const weightB = DIFFICULTY_WEIGHT[SONG_DIFFICULTIES[b.song] || "Unknown"] || 0;
+                    
+                    if (weightA !== weightB) return weightB - weightA;
                     if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
                     return b.speed - a.speed;
                 });
@@ -477,12 +556,16 @@
                 }
 
                 const homeIcon = isHome ? ' <span class="home-icon" title="Achieved outside school hours">🏠</span>' : '';
+                
+                // Fetch difficulty badge for the table cell
+                const diff = SONG_DIFFICULTIES[item.song];
+                const diffBadge = diff ? `<span style="font-size: 0.75rem; color: #9ca3af; margin-right: 6px;">[${diff}]</span>` : '';
 
                 tr.innerHTML = `
                     <td>${rankBadge}</td>
                     <td style="font-weight: 700; color: #9ca3af;">${positionText}</td>
                     <td style="font-weight: 600; color: #fff;">${item.name}</td>
-                    <td>${item.song}</td>
+                    <td>${diffBadge}${item.song}</td>
                     <td class="score-highlight">${item.accuracy.toFixed(1)}%</td>
                     <td>${item.speed}%</td>
                     <td style="font-size: 0.8rem; ${dateStyle}">${item.timestamp || 'N/A'}${homeIcon}</td>
