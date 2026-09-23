@@ -462,7 +462,6 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
-            flex: 1;
         }
 
         .footer-bar {
@@ -471,7 +470,6 @@
             justify-content: space-between;
             padding-top: 4px;
             flex-shrink: 0;
-            gap: 10px;
         }
 
         .version-stamp {
@@ -479,101 +477,6 @@
             color: #6b7280;
             font-weight: 600;
             font-family: monospace;
-            white-space: nowrap;
-        }
-
-        .footer-right-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        /* --- MONITOR SESSION WIDGET STYLING --- */
-        .monitor-widget-box {
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-            background: rgba(30, 15, 20, 0.85);
-            border: 1px solid rgba(239, 68, 68, 0.35);
-            border-radius: 8px;
-            padding: 4px 10px;
-            font-size: 0.72rem;
-            color: #f3f4f6;
-            min-width: 270px;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-        }
-
-        .monitor-top-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            white-space: nowrap;
-        }
-
-        .monitor-student-name {
-            font-weight: 800;
-            color: #ffffff;
-            font-size: 0.82rem;
-        }
-
-        .monitor-badge-breaks {
-            background-color: #991b1b;
-            color: #ffffff;
-            font-weight: 800;
-            padding: 1px 6px;
-            border-radius: 4px;
-            font-size: 0.68rem;
-            letter-spacing: 0.02em;
-        }
-
-        .monitor-time-text {
-            color: #cbd5e1;
-            font-weight: 600;
-            font-size: 0.72rem;
-        }
-
-        .monitor-divider {
-            width: 1px;
-            height: 12px;
-            background-color: #4b5563;
-            margin: 0 2px;
-        }
-
-        .monitor-song-text {
-            color: #e2e8f0;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 120px;
-        }
-
-        .monitor-progress-bar-track {
-            position: relative;
-            width: 100%;
-            height: 5px;
-            background-color: #111827;
-            border-radius: 3px;
-            overflow: hidden;
-        }
-
-        .monitor-progress-bar-fill {
-            height: 100%;
-            background-color: #22c55e;
-            width: 0%;
-            transition: width 0.5s ease;
-        }
-
-        .monitor-break-marker {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 3px;
-            background-color: #ef4444;
-            z-index: 2;
         }
 
         .calib-piano-container {
@@ -986,29 +889,9 @@
     <div class="modal-overlay" id="room-join-modal" style="z-index: 300;">
         <div class="modal" style="max-width: 400px; text-align: center;">
             <h2 style="color: #4f46e5;">Welcome to PianoPad 26</h2>
-            <p style="font-size: 0.9rem; color: #9ca3af;">Please choose an avatar and join a room to begin playing:</p>
+            <p style="font-size: 0.9rem; color: #9ca3af;">Please join a room to begin playing:</p>
             <div style="display: flex; flex-direction: column; gap: 12px; margin: 15px 0;">
                 <input type="text" id="student-join-name" placeholder="Your First Name & Last Initial" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 0.9rem;">
-                
-                <select id="student-join-avatar" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 0.9rem;">
-                    <option value="🏃" selected>🏃 Runner (Male)</option>
-                    <option value="🏃‍♀️">🏃‍♀️ Runner (Female)</option>
-                    <option value="🚴">🚴 Cyclist</option>
-                    <option value="🦊">🦊 Fox</option>
-                    <option value="🐯">🐯 Tiger</option>
-                    <option value="🤖">🤖 Robo-Opponent</option>
-                    <option value="🛸">🛸 Flying Saucer</option>
-                    <option value="🦄">🦄 Unicorn</option>
-                    <option value="🎹">🎹 Piano Master</option>
-                    <option value="🎧">🎧 DJ Beats</option>
-                    <option value="👨‍🎤">🎤 Rockstar</option>
-                    <option value="😎">😎 Cool Player</option>
-                    <option value="🐱">🐱 Cat</option>
-                    <option value="🐲">🐉 Dragon</option>
-                    <option value="🚀">🚀 Rocket</option>
-                    <option value="🥷">🥷 Ninja</option>
-                </select>
-
                 <select id="student-join-room" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 0.9rem;">
                     <option value="" disabled selected>Select Room</option>
                     <option value="G1">G1</option>
@@ -1109,7 +992,7 @@
                     Get Songs
                 </a>
 
-                <a href="https://sites.google.com/erc.nsw.edu.au/pianopad-leaderboard/home" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
+                <a href="leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M12 15l-3 4-3-4"></path><path d="M5 6v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"></path><path d="M3 6h18"></path><path d="M5 2h14"></path></svg>
                     Leaderboard
                 </a>
@@ -1201,28 +1084,9 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.23 | 23-Sep 18:29 AEST (Sydney)</div>
-            <div class="status-bar" id="status">Connecting to Google Sheet song database...</div>
-            
-            <div class="footer-right-group">
-                <!-- MONITOR SESSION WIDGET TO LEFT OF HIT COUNTER -->
-                <div class="monitor-widget-box" id="monitor-widget">
-                    <div class="monitor-top-row">
-                        <span id="mon-student-avatar" style="font-size: 0.82rem;">🏃</span>
-                        <span class="monitor-student-name" id="mon-student-name">Student</span>
-                        <span class="monitor-badge-breaks" id="mon-breaks-badge">Breaks: 0</span>
-                        <span class="monitor-time-text" id="mon-time-text">0m / 60m</span>
-                        <div class="monitor-divider"></div>
-                        <span class="monitor-song-text" id="mon-song-text">🎵 Wipeout</span>
-                    </div>
-                    <div class="monitor-progress-bar-track" id="mon-bar-track">
-                        <div class="monitor-progress-bar-fill" id="mon-bar-fill"></div>
-                    </div>
-                </div>
-
-                <!-- HIT COUNTER IMAGE -->
-                <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
-            </div>
+            <div class="version-stamp">v26.09.24 | 24-Sep 07:10 AEST (Sydney)</div>
+            <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
+            <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
     </div>
 
@@ -1462,13 +1326,12 @@
         let currentTheme = 'default';
         let bonusSoundsUnlocked = false;
 
-        // Roster & Session Monitoring Variables
+        let confettiParticles = [];
+
+        // Roster Variables
         let localStudentId = "stu_" + Math.random().toString(36).substr(2, 9);
         let localTabSwitches = 0;
         let currentRoom = "";
-        let sessionStartTime = Date.now();
-        let breakMarkerPositions = [];
-        let sessionStudentAvatar = "🏃";
 
         // Sheet Music State
         let showSheetMusic = localStorage.getItem('pianopad_sheet_music') !== 'false';
@@ -1556,7 +1419,7 @@
         let hasBattleStarted = false;
         let battleResultsShown = false;
 
-        const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄', '🎹', '🎧', '👨‍🎤', '😎', '🐱', '🐲', '🚀', '🥷'];
+        const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄'];
 
         let playersList = [];
 
@@ -1569,64 +1432,22 @@
         const timelineBox = document.getElementById('timeline-box');
         const runnerTrack = document.getElementById('runner-track');
 
-        /* --- MONITOR WIDGET UPDATER FUNCTION --- */
-        function updateMonitorWidget() {
-            const studentEl = document.getElementById('mon-student-name');
-            const avatarEl = document.getElementById('mon-student-avatar');
-            const breaksEl = document.getElementById('mon-breaks-badge');
-            const timeEl = document.getElementById('mon-time-text');
-            const songEl = document.getElementById('mon-song-text');
-            const fillEl = document.getElementById('mon-bar-fill');
-            const trackEl = document.getElementById('mon-bar-track');
-
-            if (studentEl) studentEl.textContent = sessionStudentName || localStorage.getItem('pianopad_name') || "Mr H";
-            if (avatarEl) avatarEl.textContent = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || "🏃";
-            if (breaksEl) breaksEl.textContent = `Breaks: ${localTabSwitches}`;
-            
-            const elapsedMins = Math.floor((Date.now() - sessionStartTime) / 60000);
-            if (timeEl) timeEl.textContent = `${elapsedMins}m / 60m`;
-            if (songEl) songEl.textContent = `🎵 ${currentSongTitle || 'Wipeout'}`;
-
-            if (fillEl) {
-                const fillPct = Math.min(100, Math.max(1, (elapsedMins / 60) * 100));
-                fillEl.style.width = `${fillPct}%`;
-            }
-
-            // Render Break Markers on Track
-            if (trackEl) {
-                trackEl.querySelectorAll('.monitor-break-marker').forEach(m => m.remove());
-                breakMarkerPositions.forEach(posPct => {
-                    const marker = document.createElement('div');
-                    marker.className = 'monitor-break-marker';
-                    marker.style.left = `${posPct}%`;
-                    trackEl.appendChild(marker);
-                });
-            }
-        }
-
         document.getElementById('btn-join-room').addEventListener('click', () => {
             const name = document.getElementById('student-join-name').value.trim();
-            const avatar = document.getElementById('student-join-avatar').value;
             const room = document.getElementById('student-join-room').value;
             if(!name || !room) {
                 alert('Please enter your First Name and Last Initial, and select a room.');
                 return;
             }
             sessionStudentName = sanitizeName(name);
-            sessionStudentAvatar = avatar;
             currentRoom = room;
-
-            // Save preferences locally
             localStorage.setItem('pianopad_name', sessionStudentName);
-            localStorage.setItem('pianopad_avatar', sessionStudentAvatar);
-
             document.getElementById('room-join-modal').classList.remove('open');
             
             if (window.firebaseSet && window.firebaseRef && window.firebaseDb) {
                 const myRef = window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}`);
                 window.firebaseSet(myRef, {
                     name: sessionStudentName,
-                    avatar: sessionStudentAvatar,
                     room: currentRoom,
                     song: currentSongTitle,
                     status: 'active',
@@ -1636,34 +1457,25 @@
                 window.firebaseOnDisconnect(myRef).remove();
             }
             
-            updateMonitorWidget();
             checkFirstTimeCalibration();
         });
 
         document.addEventListener("visibilitychange", () => {
-            if (document.hidden) {
-                localTabSwitches++;
-                const elapsedMs = Date.now() - sessionStartTime;
-                const posPct = Math.min(100, (elapsedMs / (60 * 60000)) * 100);
-                breakMarkerPositions.push(posPct);
-
-                if (sessionStudentName && currentRoom && window.firebaseSet && window.firebaseRef && window.firebaseDb) {
+            if (sessionStudentName && currentRoom && window.firebaseSet && window.firebaseRef && window.firebaseDb) {
+                if (document.hidden) {
+                    localTabSwitches++;
                     window.firebaseSet(window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}/tabSwitches`), localTabSwitches);
                     window.firebaseSet(window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}/status`), "away");
-                }
-            } else {
-                if (sessionStudentName && currentRoom && window.firebaseSet && window.firebaseRef && window.firebaseDb) {
+                } else {
                     window.firebaseSet(window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}/status`), "active");
                 }
             }
-            updateMonitorWidget();
         });
 
         function updateRosterSong() {
             if (sessionStudentName && currentRoom && window.firebaseSet && window.firebaseRef && window.firebaseDb) {
                 window.firebaseSet(window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}/song`), currentSongTitle);
             }
-            updateMonitorWidget();
         }
 
         document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
@@ -1671,6 +1483,26 @@
         document.getElementById('btn-stop-arcade').addEventListener('click', exitActiveMiniGame);
         document.getElementById('btn-song-battle').addEventListener('click', openSongBattleSelector);
         document.getElementById('btn-mic-toggle').addEventListener('click', toggleMicrophoneListening);
+
+        function triggerConfetti(noteStr) {
+            const normNote = noteStr.trim().toLowerCase();
+            const pos = keyPosMap[normNote];
+            let x = canvas.width / 2;
+            if (pos) x = pos.left + pos.width / 2;
+            const y = canvas.height - 30;
+
+            for (let i = 0; i < 30; i++) {
+                confettiParticles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 1) * 10 - 2,
+                    color: ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#ec4899', '#14b8a6'][Math.floor(Math.random() * 7)],
+                    size: Math.random() * 5 + 3,
+                    life: 1.0
+                });
+            }
+        }
 
         function stopBattlePolling() {
             isSongBattle = false;
@@ -1725,7 +1557,6 @@
                     sessionStudentName = "Anonymous";
                 }
             }
-            updateMonitorWidget();
             return sessionStudentName;
         }
 
@@ -1826,10 +1657,12 @@
             ctx.fillStyle = color;
 
             if (isSharp) {
+                ctx.fillStyle = '#000000';
                 ctx.font = 'bold 12px sans-serif';
                 ctx.textAlign = 'right';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('♯', x - 7, y);
+                ctx.fillStyle = color;
             }
 
             ctx.beginPath();
@@ -2168,6 +2001,7 @@
 
             const expected = simonSequence[simonPlayerIndex];
             if (noteStr.toLowerCase().trim() === expected.toLowerCase().trim()) {
+                triggerConfetti(noteStr);
                 simonPlayerIndex++;
                 if (simonPlayerIndex >= simonSequence.length) {
                     document.getElementById('status').textContent = `🎉 Level ${simonSequence.length} Complete! Escalating to Level ${simonSequence.length + 1}...`;
@@ -2223,6 +2057,7 @@
             const diff = Math.abs(guessedPitchNum - targetPitchNum);
 
             if (diff === 0) {
+                triggerConfetti(noteStr);
                 highlightKey(noteStr, 500, '#22c55e');
                 currentSongTitle = "Mystery Note";
                 ensureStudentName();
@@ -2451,7 +2286,7 @@
             resetGameStats();
 
             playersList = [
-                { id: 'p1', name: 'YOU', avatar: sessionStudentAvatar || '🏃', pxProgress: 0, finishTime: null, isLocal: true, clearedHurdles: [] },
+                { id: 'p1', name: 'YOU', avatar: '🏃', pxProgress: 0, finishTime: null, isLocal: true, clearedHurdles: [] },
                 { id: 'bot', name: 'ROBO-OPPONENT', avatar: '🤖', pxProgress: 0, finishTime: null, isBot: true, clearedHurdles: [] }
             ];
             localPlayerIdRoom = 'p1';
@@ -2501,7 +2336,7 @@
 
             isSprintHost = true;
             localPlayerIdRoom = 'p1';
-            playersList = [{ id: 'p1', name: hostName, avatar: sessionStudentAvatar || AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true, clearedHurdles: [] }];
+            playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true, clearedHurdles: [] }];
             renderLobbyGrid('lobby-players-grid');
 
             const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(hostName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
@@ -2515,13 +2350,13 @@
             activeBattleRoomCode = roomCode;
 
             localPlayerIdRoom = 'p' + (Date.now() % 10000);
-            const playerAvatar = sessionStudentAvatar || AVATARS[Math.floor(Math.random() * AVATARS.length)];
+            const avatarIdx = Math.floor(Math.random() * AVATARS.length);
 
             document.getElementById('status').textContent = `Connecting to room ${roomCode}...`;
 
             let res = null;
             for (let attempt = 1; attempt <= 3; attempt++) {
-                const url = `${APPS_SCRIPT_URL}?action=JOIN_ROOM&roomCode=${roomCode}&playerId=${localPlayerIdRoom}&playerName=${encodeURIComponent(racerName)}&avatar=${encodeURIComponent(playerAvatar)}&t=${Date.now()}`;
+                const url = `${APPS_SCRIPT_URL}?action=JOIN_ROOM&roomCode=${roomCode}&playerId=${localPlayerIdRoom}&playerName=${encodeURIComponent(racerName)}&avatar=${encodeURIComponent(AVATARS[avatarIdx])}&t=${Date.now()}`;
                 res = await sendJSONP(url);
                 
                 if (res && !res.error) break;
@@ -2976,6 +2811,7 @@
 
                 if (!localPlayer.clearedHurdles.includes(nearHurdleIndex)) {
                     if (letter === expectedHurdleNote && octave >= 2) {
+                        triggerConfetti(noteStr);
                         gameStats.perfect++;
                         localPlayer.clearedHurdles.push(nearHurdleIndex);
                         localPlayer.pxProgress += 60;
@@ -2989,7 +2825,7 @@
                             avatarEl.classList.add('jumping');
                             setTimeout(() => {
                                 avatarEl.classList.remove('jumping');
-                                avatarEl.textContent = playerAvatar || '🏃';
+                                avatarEl.textContent = '🏃';
                             }, 450);
                         }
                         
@@ -3007,13 +2843,14 @@
             // Normal Sprint sequence
             const expectedNote = sprintSequence[sprintIndex % 2];
             if (rawNoteName === expectedNote.toLowerCase().trim()) {
+                triggerConfetti(noteStr);
                 gameStats.perfect++;
                 sprintIndex++;
                 sprintKeystrokeCount++;
 
                 const avatarEl = document.getElementById(`avatar-${localPlayer.id}`);
                 if (avatarEl && !avatarEl.classList.contains('jumping')) {
-                    avatarEl.textContent = (sprintKeystrokeCount % 2 === 0) ? '🏃‍♂️' : (sessionStudentAvatar || '🏃');
+                    avatarEl.textContent = (sprintKeystrokeCount % 2 === 0) ? '🏃‍♂️' : '🏃';
                 }
 
                 localPlayer.pxProgress = sprintKeystrokeCount * 36;
@@ -3257,7 +3094,6 @@
                 btnShare.style.display = 'inline-flex';
                 songSelect.value = '';
                 document.getElementById('status').textContent = `Loaded MIDI Channel ${selectedChannel + 1}: "${fileName}". Converted successfully!`;
-                updateRosterSong();
                 playSong();
             } else {
                 document.getElementById('status').textContent = 'Error parsing converted MIDI sequence.';
@@ -3507,7 +3343,6 @@
                 document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
             }
             
-            updateRosterSong();
             playSong();
         }
 
@@ -3699,23 +3534,10 @@
             }
         }
 
-        /* --- KEYBOARD LISTENER & FORCED LOGIN HOTKEY '(' --- */
         window.addEventListener('keydown', (e) => {
             if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') return;
 
             initAudio();
-
-            // FORCED LOGIN HOTKEY TRIGGER: '('
-            if (e.key === '(') {
-                e.preventDefault();
-                document.getElementById('student-join-name').value = sessionStudentName || localStorage.getItem('pianopad_name') || "";
-                if (localStorage.getItem('pianopad_avatar')) {
-                    document.getElementById('student-join-avatar').value = localStorage.getItem('pianopad_avatar');
-                }
-                document.getElementById('room-join-modal').classList.add('open');
-                document.getElementById('status').textContent = '🔑 Room Login modal opened via "(" hotkey.';
-                return;
-            }
 
             if (e.code === 'ArrowDown') {
                 e.preventDefault();
@@ -4160,6 +3982,7 @@
                 if (activeWall && activeWall.safeKey) {
                     if (noteStr.toLowerCase().trim() === activeWall.safeKey.toLowerCase().trim()) {
                         activeWall.gameStatus = 'perfect';
+                        triggerConfetti(noteStr);
                         dodgeDodgedCount++;
                         gameStats.perfect++;
                         highlightKey(noteStr, 220, '#22c55e');
@@ -4222,6 +4045,7 @@
                     const diff = Math.abs(effectiveElapsed - target.hitTime);
                     if (diff <= 140) {
                         target.gameStatus = 'perfect';
+                        triggerConfetti(noteStr);
                         gameStats.perfect++;
                         highlightKey(noteStr, 220, '#22c55e');
                     } else {
@@ -4408,7 +4232,6 @@
             } else {
                 document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
             }
-            updateMonitorWidget();
         }
 
         function buildTimeline() {
@@ -4500,10 +4323,15 @@
 
         function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending') {
             ctx.save();
-            
             const palette = themePalettes[currentTheme] || themePalettes.default;
-            let blockColor = palette.normal;
-            let shadowColor = palette.shadowNormal;
+            
+            const baseNote = (noteName || '').toLowerCase().replace(/[^a-g]/g, '');
+            const isSharp = (noteName || '').includes('#');
+            const noteColors = { 'c': '#ef4444', 'd': '#f97316', 'e': '#eab308', 'f': '#22c55e', 'g': '#14b8a6', 'a': '#3b82f6', 'b': '#ec4899' };
+            const defaultNoteColor = noteColors[baseNote] || palette.normal;
+
+            let blockColor = defaultNoteColor;
+            let shadowColor = defaultNoteColor;
 
             if (isGameMode || activeMiniGame) {
                 if (gameStatus === 'perfect') {
@@ -4516,12 +4344,13 @@
                     blockColor = '#ef4444';
                     shadowColor = 'rgba(239, 68, 68, 0.8)';
                 } else {
-                    blockColor = palette.pending;
-                    shadowColor = palette.shadowActive;
+                    blockColor = defaultNoteColor;
+                    shadowColor = defaultNoteColor;
                 }
             } else if (active) {
-                blockColor = palette.pending;
-                shadowColor = palette.shadowActive;
+                blockColor = defaultNoteColor;
+                shadowColor = defaultNoteColor;
+                ctx.shadowBlur = 12;
             }
 
             ctx.fillStyle = blockColor;
@@ -4543,7 +4372,7 @@
             ctx.fill();
 
             if (height >= 18) {
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = isSharp ? '#000000' : '#ffffff';
                 ctx.font = 'bold 11px -apple-system, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
@@ -4637,11 +4466,14 @@
 
                         if (noteX > CLEF_X_END && noteX < canvas.width + 15) {
                             const isNextNote = (item === nextNoteItem);
-                            const noteColor = isNextNote ? '#ef4444' : '#000000';
 
                             item.notes.forEach(noteStr => {
                                 const info = getDiatonicStepAndShift(noteStr);
                                 if (info) {
+                                    const noteColors = { 'c': '#ef4444', 'd': '#f97316', 'e': '#eab308', 'f': '#22c55e', 'g': '#14b8a6', 'a': '#3b82f6', 'b': '#ec4899' };
+                                    const baseCol = noteColors[info.letter.toLowerCase()] || '#000000';
+                                    const noteColor = isNextNote ? '#ef4444' : baseCol;
+
                                     const noteY = line1_y - info.step * halfStep;
                                     drawLedgerLines(ctx, noteX, info.step, line1_y, halfStep, noteColor);
                                     drawStemlessNote(ctx, noteX, noteY, info.isSharp, noteColor);
@@ -4719,7 +4551,6 @@
                 const lastNote = noteTimeline[noteTimeline.length - 1];
                 if (lastNote && effectiveElapsed > lastNote.hitTime + lastNote.duration + 500) {
                     isPlaying = false;
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                     if (isSongBattle) {
                         const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
@@ -4739,11 +4570,32 @@
                     }
 
                     document.getElementById('status').textContent = 'Playback finished.';
-                    return;
                 }
             }
 
-            animationFrameId = requestAnimationFrame(renderLoop);
+            // Draw confetti
+            for (let i = confettiParticles.length - 1; i >= 0; i--) {
+                let p = confettiParticles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.4;
+                p.life -= 0.015;
+                if (p.life <= 0) {
+                    confettiParticles.splice(i, 1);
+                } else {
+                    ctx.save();
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = p.color;
+                    ctx.translate(p.x + p.size/2, p.y + p.size/2);
+                    ctx.rotate(p.life * 10);
+                    ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+                    ctx.restore();
+                }
+            }
+
+            if (isPlaying || confettiParticles.length > 0) {
+                animationFrameId = requestAnimationFrame(renderLoop);
+            }
         }
 
         const modal = document.getElementById('modal');
@@ -4775,7 +4627,6 @@
                 currentSong = autoTransposeSong(parsed);
                 songSelect.value = '';
                 modal.classList.remove('open');
-                updateRosterSong();
                 playSong();
             } else {
                 document.getElementById('status').textContent = 'Invalid code format imported.';
@@ -4976,17 +4827,6 @@
             syncSongsWithGoogleSheet();
             setTimeout(updateKeyPositions, 100);
 
-            // Populate local name & avatar preferences into modal
-            const cachedAvatar = localStorage.getItem('pianopad_avatar');
-            if (cachedAvatar) {
-                sessionStudentAvatar = cachedAvatar;
-                const avatarSelect = document.getElementById('student-join-avatar');
-                if (avatarSelect) avatarSelect.value = cachedAvatar;
-            }
-
-            // Interval to keep Monitor session timer updated
-            setInterval(updateMonitorWidget, 10000);
-
             // Outside of School Time Logic
             const now = new Date();
             const day = now.getDay();
@@ -4997,13 +4837,11 @@
             if (isOOS) {
                 currentRoom = "Outside";
                 sessionStudentName = localStorage.getItem('pianopad_name') || "Student";
-                sessionStudentAvatar = localStorage.getItem('pianopad_avatar') || "🏃";
                 
                 if (window.firebaseSet && window.firebaseRef && window.firebaseDb) {
                     const myRef = window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}`);
                     window.firebaseSet(myRef, {
                         name: sessionStudentName,
-                        avatar: sessionStudentAvatar,
                         room: currentRoom,
                         song: currentSongTitle,
                         status: 'active',
@@ -5012,7 +4850,6 @@
                     });
                     window.firebaseOnDisconnect(myRef).remove();
                 }
-                updateMonitorWidget();
                 checkFirstTimeCalibration();
             } else {
                 document.getElementById('student-join-name').value = localStorage.getItem('pianopad_name') || "";
