@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PianoPad - by Haybittle</title>
+    <title>PianoPad Player - Visualizer & Haycode Creator</title>
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
     <style>
         :root {
@@ -24,6 +24,7 @@
             --hitline-color: #ef4444;
         }
 
+        /* Custom Theme Overrides */
         body[data-theme="cyberpunk"] {
             --bg-color: #0c0721;
             --panel-bg: #180e36;
@@ -984,7 +985,7 @@
                 </button>
 
                 <button type="button" id="btn-settings" class="btn-settings" title="Settings">
-                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 </button>
 
                 <a href="https://pianopadshare.blogspot.com/" target="_blank" rel="noopener noreferrer" class="btn-link btn-secondary">
@@ -1084,7 +1085,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.23 | 23-Sep 21:37 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.23 | 23-Sep 21:51 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1432,13 +1433,14 @@
         const runnerTrack = document.getElementById('runner-track');
 
         function spawnParticles(x, y, color) {
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < 30; i++) {
                 particles.push({
                     x: x,
                     y: y,
-                    vx: (Math.random() - 0.5) * 8,
-                    vy: (Math.random() * -5) - 2, 
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() * -8) - 2, 
                     life: 1.0,
+                    size: Math.random() * 4 + 2,
                     color: color
                 });
             }
@@ -3088,6 +3090,16 @@
             pendingMidiData = null;
         });
 
+        const pitchColorMap = {
+            'C': '#ef4444', // Red
+            'D': '#f97316', // Orange
+            'E': '#eab308', // Yellow
+            'F': '#22c55e', // Green
+            'G': '#3b82f6', // Blue
+            'A': '#a855f7', // Purple
+            'B': '#ec4899'  // Pink
+        };
+
         const themePalettes = {
             default: { pending: '#38bdf8', normal: '#22c55e', shadowActive: 'rgba(56, 189, 248, 0.6)', shadowNormal: 'rgba(34, 197, 94, 0.4)' },
             cyberpunk: { pending: '#00f0ff', normal: '#ff007f', shadowActive: 'rgba(0, 240, 255, 0.8)', shadowNormal: 'rgba(255, 0, 127, 0.6)' },
@@ -3606,6 +3618,12 @@
                 document.getElementById('status').textContent = `Step ${currentStepIndex + 1} of ${noteTimeline.length}: Next Note -> [ ${displayStr} ] (Press SPACE BAR or play on MIDI Keyboard)`;
             } else {
                 document.getElementById('status').textContent = 'Step Practice Finished!';
+                setTimeout(() => {
+                    const subject = encodeURIComponent("PianoPad wrong notes in song");
+                    const body = encodeURIComponent("Song Title: " + currentSongTitle + "\n\n");
+                    const mailto = `mailto:ghaybittle@erc.nsw.edu.au?subject=${subject}&body=${body}`;
+                    document.getElementById('status').innerHTML = `<a href="${mailto}" target="_blank" class="btn-link btn-danger" style="text-decoration:none;">Wrong Notes? CLICK HERE</a>`;
+                }, 400);
             }
         }
 
@@ -3970,11 +3988,16 @@
                         activeWall.gameStatus = 'perfect';
                         dodgeDodgedCount++;
                         gameStats.perfect++;
-                        highlightKey(noteStr, 220, '#22c55e');
-                        document.getElementById('status').textContent = `🛡️ Safe Dodge! Total Dodges: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
                         
+                        const matchNote = noteStr.match(/^([a-g])(#?)/i);
+                        const baseLetter = matchNote ? matchNote[1].toUpperCase() : 'C';
+                        const pColor = pitchColorMap[baseLetter] || '#22c55e';
+                        
+                        highlightKey(noteStr, 220, pColor);
                         const pos = keyPosMap[noteStr.toLowerCase().trim()];
-                        if (pos) spawnParticles(pos.left + pos.width / 2, canvas.height, '#22c55e');
+                        if (pos) spawnParticles(pos.left + pos.width / 2, canvas.height, pColor);
+                        
+                        document.getElementById('status').textContent = `🛡️ Safe Dodge! Total Dodges: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
                     } else {
                         activeWall.gameStatus = 'miss';
                         dodgeLives--;
@@ -4034,10 +4057,15 @@
                     if (diff <= 140) {
                         target.gameStatus = 'perfect';
                         gameStats.perfect++;
-                        highlightKey(noteStr, 220, '#22c55e');
-
+                        
+                        const matchNote = noteStr.match(/^([a-g])(#?)/i);
+                        const baseLetter = matchNote ? matchNote[1].toUpperCase() : 'C';
+                        const pColor = pitchColorMap[baseLetter] || '#22c55e';
+                        
+                        highlightKey(noteStr, 220, pColor);
+                        
                         const pos = keyPosMap[noteStr.toLowerCase().trim()];
-                        if (pos) spawnParticles(pos.left + pos.width / 2, canvas.height, '#22c55e');
+                        if (pos) spawnParticles(pos.left + pos.width / 2, canvas.height, pColor);
                     } else {
                         target.gameStatus = 'earlyLate';
                         gameStats.earlyLate++;
@@ -4315,26 +4343,21 @@
             ctx.save();
             
             const palette = themePalettes[currentTheme] || themePalettes.default;
-            let blockColor = palette.normal;
-            let shadowColor = palette.shadowNormal;
-            let textColor = '#ffffff';
-
+            
             const matchNote = noteName.match(/^([a-g])(#?)/i);
             const baseLetter = matchNote ? matchNote[1].toUpperCase() : 'C';
             const isSharp = matchNote && matchNote[2] === '#';
-
-            if (currentTheme === 'pitch') {
-                const pColor = pitchColorMap[baseLetter] || palette.normal;
-                blockColor = pColor;
-                shadowColor = pColor;
-                textColor = isSharp ? '#000000' : '#ffffff';
-            }
+            
+            const pColor = pitchColorMap[baseLetter] || palette.normal;
+            
+            let blockColor = pColor;
+            let shadowColor = pColor;
+            let textColor = isSharp ? '#000000' : '#ffffff';
 
             if (isGameMode || activeMiniGame) {
                 if (gameStatus === 'perfect') {
-                    blockColor = '#22c55e';
-                    shadowColor = 'rgba(34, 197, 94, 0.8)';
-                    textColor = '#ffffff';
+                    blockColor = pColor;
+                    shadowColor = 'rgba(255, 255, 255, 0.8)';
                 } else if (gameStatus === 'earlyLate') {
                     blockColor = '#f97316';
                     shadowColor = 'rgba(249, 115, 22, 0.8)';
@@ -4343,13 +4366,10 @@
                     blockColor = '#ef4444';
                     shadowColor = 'rgba(239, 68, 68, 0.8)';
                     textColor = '#ffffff';
-                } else if (currentTheme !== 'pitch') {
-                    blockColor = palette.pending;
-                    shadowColor = palette.shadowActive;
                 }
-            } else if (active && currentTheme !== 'pitch') {
-                blockColor = palette.pending;
-                shadowColor = palette.shadowActive;
+            } else if (active) {
+                blockColor = pColor;
+                shadowColor = 'rgba(255, 255, 255, 0.8)';
             }
 
             ctx.fillStyle = blockColor;
@@ -4552,7 +4572,7 @@
                 let p = particles[i];
                 p.x += p.vx;
                 p.y += p.vy;
-                p.vy += 0.3; 
+                p.vy += 0.4; 
                 p.life -= 0.02;
                 if (p.life <= 0) {
                     particles.splice(i, 1);
@@ -4561,7 +4581,7 @@
                     ctx.globalAlpha = Math.max(0, p.life);
                     ctx.fillStyle = p.color;
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+                    ctx.arc(p.x, p.y, p.size || 4, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.restore();
                 }
