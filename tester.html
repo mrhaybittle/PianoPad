@@ -462,6 +462,7 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
+            flex: 1;
         }
 
         .footer-bar {
@@ -470,7 +471,7 @@
             justify-content: space-between;
             padding-top: 4px;
             flex-shrink: 0;
-            gap: 12px;
+            gap: 10px;
         }
 
         .version-stamp {
@@ -478,12 +479,101 @@
             color: #6b7280;
             font-weight: 600;
             font-family: monospace;
+            white-space: nowrap;
         }
 
         .footer-right-group {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+        }
+
+        /* --- MONITOR SESSION WIDGET STYLING --- */
+        .monitor-widget-box {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            background: rgba(30, 15, 20, 0.85);
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 0.72rem;
+            color: #f3f4f6;
+            min-width: 270px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .monitor-top-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .monitor-student-name {
+            font-weight: 800;
+            color: #ffffff;
+            font-size: 0.82rem;
+        }
+
+        .monitor-badge-breaks {
+            background-color: #991b1b;
+            color: #ffffff;
+            font-weight: 800;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.68rem;
+            letter-spacing: 0.02em;
+        }
+
+        .monitor-time-text {
+            color: #cbd5e1;
+            font-weight: 600;
+            font-size: 0.72rem;
+        }
+
+        .monitor-divider {
+            width: 1px;
+            height: 12px;
+            background-color: #4b5563;
+            margin: 0 2px;
+        }
+
+        .monitor-song-text {
+            color: #e2e8f0;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 120px;
+        }
+
+        .monitor-progress-bar-track {
+            position: relative;
+            width: 100%;
+            height: 5px;
+            background-color: #111827;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .monitor-progress-bar-fill {
+            height: 100%;
+            background-color: #22c55e;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .monitor-break-marker {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background-color: #ef4444;
+            z-index: 2;
         }
 
         .calib-piano-container {
@@ -1091,9 +1181,26 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.23 | 23-Sep 16:16 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.23 | 23-Sep 16:34 AEST (Sydney)</div>
+            <div class="status-bar" id="status">Connecting to Google Sheet song database...</div>
+            
             <div class="footer-right-group">
-                <div class="status-bar" id="status">Connecting to Google Sheet song database...</div>
+                <!-- MONITOR SESSION WIDGET TO LEFT OF HIT COUNTER -->
+                <div class="monitor-widget-box" id="monitor-widget">
+                    <div class="monitor-top-row">
+                        <span style="color: #f43f5e; font-size: 0.8rem;">🌙</span>
+                        <span class="monitor-student-name" id="mon-student-name">Student</span>
+                        <span class="monitor-badge-breaks" id="mon-breaks-badge">Breaks: 0</span>
+                        <span class="monitor-time-text" id="mon-time-text">0m / 60m</span>
+                        <div class="monitor-divider"></div>
+                        <span class="monitor-song-text" id="mon-song-text">🎵 Wipeout</span>
+                    </div>
+                    <div class="monitor-progress-bar-track" id="mon-bar-track">
+                        <div class="monitor-progress-bar-fill" id="mon-bar-fill"></div>
+                    </div>
+                </div>
+
+                <!-- HIT COUNTER IMAGE -->
                 <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
             </div>
         </div>
@@ -1335,10 +1442,12 @@
         let currentTheme = 'default';
         let bonusSoundsUnlocked = false;
 
-        // Roster Variables
+        // Roster & Session Monitoring Variables
         let localStudentId = "stu_" + Math.random().toString(36).substr(2, 9);
         let localTabSwitches = 0;
         let currentRoom = "";
+        let sessionStartTime = Date.now();
+        let breakMarkerPositions = [];
 
         // Sheet Music State
         let showSheetMusic = localStorage.getItem('pianopad_sheet_music') !== 'false';
@@ -1439,6 +1548,40 @@
         const timelineBox = document.getElementById('timeline-box');
         const runnerTrack = document.getElementById('runner-track');
 
+        /* --- MONITOR WIDGET UPDATER FUNCTION --- */
+        function updateMonitorWidget() {
+            const studentEl = document.getElementById('mon-student-name');
+            const breaksEl = document.getElementById('mon-breaks-badge');
+            const timeEl = document.getElementById('mon-time-text');
+            const songEl = document.getElementById('mon-song-text');
+            const fillEl = document.getElementById('mon-bar-fill');
+            const trackEl = document.getElementById('mon-bar-track');
+
+            if (studentEl) studentEl.textContent = sessionStudentName || localStorage.getItem('pianopad_name') || "Mr H";
+            if (breaksEl) breaksEl.textContent = `Breaks: ${localTabSwitches}`;
+            
+            const elapsedMins = Math.floor((Date.now() - sessionStartTime) / 60000);
+            if (timeEl) timeEl.textContent = `${elapsedMins}m / 60m`;
+            if (songEl) songEl.textContent = `🎵 ${currentSongTitle || 'Wipeout'}`;
+
+            if (fillEl) {
+                const fillPct = Math.min(100, Math.max(1, (elapsedMins / 60) * 100));
+                fillEl.style.width = `${fillPct}%`;
+            }
+
+            // Render Break Markers on Track
+            if (trackEl) {
+                // Clear existing break markers
+                trackEl.querySelectorAll('.monitor-break-marker').forEach(m => m.remove());
+                breakMarkerPositions.forEach(posPct => {
+                    const marker = document.createElement('div');
+                    marker.className = 'monitor-break-marker';
+                    marker.style.left = `${posPct}%`;
+                    trackEl.appendChild(marker);
+                });
+            }
+        }
+
         document.getElementById('btn-join-room').addEventListener('click', () => {
             const name = document.getElementById('student-join-name').value.trim();
             const room = document.getElementById('student-join-room').value;
@@ -1464,25 +1607,34 @@
                 window.firebaseOnDisconnect(myRef).remove();
             }
             
+            updateMonitorWidget();
             checkFirstTimeCalibration();
         });
 
         document.addEventListener("visibilitychange", () => {
-            if (sessionStudentName && currentRoom && window.firebaseSet && window.firebaseRef && window.firebaseDb) {
-                if (document.hidden) {
-                    localTabSwitches++;
+            if (document.hidden) {
+                localTabSwitches++;
+                const elapsedMs = Date.now() - sessionStartTime;
+                const posPct = Math.min(100, (elapsedMs / (60 * 60000)) * 100);
+                breakMarkerPositions.push(posPct);
+
+                if (sessionStudentName && currentRoom && window.firebaseSet && window.firebaseRef && window.firebaseDb) {
                     window.firebaseSet(window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}/tabSwitches`), localTabSwitches);
                     window.firebaseSet(window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}/status`), "away");
-                } else {
+                }
+            } else {
+                if (sessionStudentName && currentRoom && window.firebaseSet && window.firebaseRef && window.firebaseDb) {
                     window.firebaseSet(window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}/status`), "active");
                 }
             }
+            updateMonitorWidget();
         });
 
         function updateRosterSong() {
             if (sessionStudentName && currentRoom && window.firebaseSet && window.firebaseRef && window.firebaseDb) {
                 window.firebaseSet(window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}/song`), currentSongTitle);
             }
+            updateMonitorWidget();
         }
 
         document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
@@ -1544,6 +1696,7 @@
                     sessionStudentName = "Anonymous";
                 }
             }
+            updateMonitorWidget();
             return sessionStudentName;
         }
 
@@ -3075,6 +3228,7 @@
                 btnShare.style.display = 'inline-flex';
                 songSelect.value = '';
                 document.getElementById('status').textContent = `Loaded MIDI Channel ${selectedChannel + 1}: "${fileName}". Converted successfully!`;
+                updateRosterSong();
                 playSong();
             } else {
                 document.getElementById('status').textContent = 'Error parsing converted MIDI sequence.';
@@ -3324,6 +3478,7 @@
                 document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
             }
             
+            updateRosterSong();
             playSong();
         }
 
@@ -3515,10 +3670,20 @@
             }
         }
 
+        /* --- KEYBOARD LISTENER & FORCED LOGIN HOTKEY '(' --- */
         window.addEventListener('keydown', (e) => {
             if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') return;
 
             initAudio();
+
+            // FORCED LOGIN HOTKEY TRIGGER: '('
+            if (e.key === '(') {
+                e.preventDefault();
+                document.getElementById('student-join-name').value = sessionStudentName || localStorage.getItem('pianopad_name') || "";
+                document.getElementById('room-join-modal').classList.add('open');
+                document.getElementById('status').textContent = '🔑 Room Login modal opened via "(" hotkey.';
+                return;
+            }
 
             if (e.code === 'ArrowDown') {
                 e.preventDefault();
@@ -4211,6 +4376,7 @@
             } else {
                 document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
             }
+            updateMonitorWidget();
         }
 
         function buildTimeline() {
@@ -4577,6 +4743,7 @@
                 currentSong = autoTransposeSong(parsed);
                 songSelect.value = '';
                 modal.classList.remove('open');
+                updateRosterSong();
                 playSong();
             } else {
                 document.getElementById('status').textContent = 'Invalid code format imported.';
@@ -4777,6 +4944,9 @@
             syncSongsWithGoogleSheet();
             setTimeout(updateKeyPositions, 100);
 
+            // Interval to keep Monitor session timer updated
+            setInterval(updateMonitorWidget, 10000);
+
             // Outside of School Time Logic
             const now = new Date();
             const day = now.getDay();
@@ -4800,6 +4970,7 @@
                     });
                     window.firebaseOnDisconnect(myRef).remove();
                 }
+                updateMonitorWidget();
                 checkFirstTimeCalibration();
             } else {
                 document.getElementById('student-join-name').value = localStorage.getItem('pianopad_name') || "";
