@@ -24,7 +24,8 @@
         </div>
     </header>
 
-    <div id="dashboard-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+    <!-- Updated layout to 3 columns representing Active Classrooms only -->
+    <div id="dashboard-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Room G1 -->
         <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col h-[600px]">
             <h2 class="text-xl font-bold text-white border-b border-zinc-700 pb-2 mb-3">Room G1</h2>
@@ -45,14 +46,6 @@
         <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col h-[600px]">
             <h2 class="text-xl font-bold text-white border-b border-zinc-700 pb-2 mb-3">Room G3</h2>
             <div id="roster-G3" class="flex-1 overflow-y-auto space-y-2 pr-2">
-                <div class="text-zinc-600 text-sm italic">Waiting for students...</div>
-            </div>
-        </div>
-
-        <!-- Outside -->
-        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col h-[600px]">
-            <h2 class="text-xl font-bold text-white border-b border-zinc-700 pb-2 mb-3">Outside of School</h2>
-            <div id="roster-Outside" class="flex-1 overflow-y-auto space-y-2 pr-2">
                 <div class="text-zinc-600 text-sm italic">Waiting for students...</div>
             </div>
         </div>
@@ -87,7 +80,7 @@
         }
 
         function renderRoster(data) {
-            const rooms = { "G1": [], "G2": [], "G3": [], "Outside": [] };
+            const rooms = { "G1": [], "G2": [], "G3": [] };
             
             const now = Date.now();
             Object.values(data).forEach(student => {
