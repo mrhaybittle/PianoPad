@@ -1044,6 +1044,7 @@
                     <option value="synthwave">Theme: Retro Synthwave</option>
                     <option value="matrix">Theme: Matrix Green</option>
                     <option value="gold">Theme: Classic Gold</option>
+                    <option value="pitch">Theme: Pitch Colors (Boomwhacker)</option>
                 </select>
 
                 <div class="speed-control">
@@ -1201,7 +1202,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.23 | 23-Sep 18:29 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.23 | 23-Sep 18:46 AEST (Sydney)</div>
             <div class="status-bar" id="status">Connecting to Google Sheet song database...</div>
             
             <div class="footer-right-group">
@@ -3266,12 +3267,23 @@
             pendingMidiData = null;
         });
 
+        const pitchColorMap = {
+            'C': '#ef4444', // Red
+            'D': '#f97316', // Orange
+            'E': '#eab308', // Yellow
+            'F': '#22c55e', // Green
+            'G': '#3b82f6', // Blue
+            'A': '#a855f7', // Purple
+            'B': '#ec4899'  // Pink
+        };
+
         const themePalettes = {
             default: { pending: '#38bdf8', normal: '#22c55e', shadowActive: 'rgba(56, 189, 248, 0.6)', shadowNormal: 'rgba(34, 197, 94, 0.4)' },
             cyberpunk: { pending: '#00f0ff', normal: '#ff007f', shadowActive: 'rgba(0, 240, 255, 0.8)', shadowNormal: 'rgba(255, 0, 127, 0.6)' },
             synthwave: { pending: '#fcee0a', normal: '#ff7700', shadowActive: 'rgba(252, 238, 10, 0.8)', shadowNormal: 'rgba(255, 119, 0, 0.6)' },
             matrix: { pending: '#00cc66', normal: '#00ff41', shadowActive: 'rgba(0, 204, 102, 0.8)', shadowNormal: 'rgba(0, 255, 65, 0.6)' },
-            gold: { pending: '#fbbf24', normal: '#eab308', shadowActive: 'rgba(251, 191, 36, 0.8)', shadowNormal: 'rgba(234, 179, 8, 0.6)' }
+            gold: { pending: '#fbbf24', normal: '#eab308', shadowActive: 'rgba(251, 191, 36, 0.8)', shadowNormal: 'rgba(234, 179, 8, 0.6)' },
+            pitch: { pending: '#38bdf8', normal: '#22c55e', shadowActive: 'rgba(56, 189, 248, 0.6)', shadowNormal: 'rgba(34, 197, 94, 0.4)' }
         };
 
         const keyboardMap = {
@@ -4504,22 +4516,37 @@
             const palette = themePalettes[currentTheme] || themePalettes.default;
             let blockColor = palette.normal;
             let shadowColor = palette.shadowNormal;
+            let textColor = '#ffffff';
+
+            const matchNote = noteName.match(/^([a-g])(#?)/i);
+            const baseLetter = matchNote ? matchNote[1].toUpperCase() : 'C';
+            const isSharp = matchNote && matchNote[2] === '#';
+
+            if (currentTheme === 'pitch') {
+                const pColor = pitchColorMap[baseLetter] || palette.normal;
+                blockColor = pColor;
+                shadowColor = pColor;
+                textColor = isSharp ? '#000000' : '#ffffff';
+            }
 
             if (isGameMode || activeMiniGame) {
                 if (gameStatus === 'perfect') {
                     blockColor = '#22c55e';
                     shadowColor = 'rgba(34, 197, 94, 0.8)';
+                    textColor = '#ffffff';
                 } else if (gameStatus === 'earlyLate') {
                     blockColor = '#f97316';
                     shadowColor = 'rgba(249, 115, 22, 0.8)';
+                    textColor = '#ffffff';
                 } else if (gameStatus === 'miss') {
                     blockColor = '#ef4444';
                     shadowColor = 'rgba(239, 68, 68, 0.8)';
-                } else {
+                    textColor = '#ffffff';
+                } else if (currentTheme !== 'pitch') {
                     blockColor = palette.pending;
                     shadowColor = palette.shadowActive;
                 }
-            } else if (active) {
+            } else if (active && currentTheme !== 'pitch') {
                 blockColor = palette.pending;
                 shadowColor = palette.shadowActive;
             }
@@ -4543,12 +4570,11 @@
             ctx.fill();
 
             if (height >= 18) {
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = textColor;
                 ctx.font = 'bold 11px -apple-system, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                const match = noteName.match(/^([a-g]#?)/i);
-                const label = match ? match[1].toUpperCase() : noteName.toUpperCase();
+                const label = matchNote ? matchNote[0].toUpperCase() : noteName.toUpperCase();
                 ctx.fillText(label, x + width / 2, y + height / 2);
             }
             ctx.restore();
@@ -4637,11 +4663,17 @@
 
                         if (noteX > CLEF_X_END && noteX < canvas.width + 15) {
                             const isNextNote = (item === nextNoteItem);
-                            const noteColor = isNextNote ? '#ef4444' : '#000000';
 
                             item.notes.forEach(noteStr => {
                                 const info = getDiatonicStepAndShift(noteStr);
                                 if (info) {
+                                    let noteColor = '#000000';
+                                    if (currentTheme === 'pitch') {
+                                        noteColor = pitchColorMap[info.letter] || '#000000';
+                                    } else if (isNextNote) {
+                                        noteColor = '#ef4444';
+                                    }
+
                                     const noteY = line1_y - info.step * halfStep;
                                     drawLedgerLines(ctx, noteX, info.step, line1_y, halfStep, noteColor);
                                     drawStemlessNote(ctx, noteX, noteY, info.isSharp, noteColor);
