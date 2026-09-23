@@ -954,7 +954,7 @@
         }
     </style>
 </head>
-<body>
+<body data-theme="pitch">
 
     <!-- FIREBASE INITIALIZATION FOR ROSTER -->
     <script type="module">
@@ -1039,12 +1039,12 @@
                 </select>
 
                 <select id="theme-select">
+                    <option value="pitch" selected>Theme: Rainbow</option>
                     <option value="default">Theme: Default Dark</option>
                     <option value="cyberpunk">Theme: Cyberpunk Neon</option>
                     <option value="synthwave">Theme: Retro Synthwave</option>
                     <option value="matrix">Theme: Matrix Green</option>
                     <option value="gold">Theme: Classic Gold</option>
-                    <option value="pitch">Theme: Pitch Colors (Boomwhacker)</option>
                 </select>
 
                 <div class="speed-control">
@@ -1202,7 +1202,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.23 | 23-Sep 18:46 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.23 | 23-Sep 18:56 AEST (Sydney)</div>
             <div class="status-bar" id="status">Connecting to Google Sheet song database...</div>
             
             <div class="footer-right-group">
@@ -1460,7 +1460,7 @@
         let isLooping = false;
         let isRecording = false;
         let isGameMode = false;
-        let currentTheme = 'default';
+        let currentTheme = 'pitch';
         let bonusSoundsUnlocked = false;
 
         // Roster & Session Monitoring Variables
@@ -4510,6 +4510,25 @@
             requestAnimationFrame(renderLoop);
         }
 
+        const pitchColorMap = {
+            'C': '#ef4444', // Red
+            'D': '#f97316', // Orange
+            'E': '#eab308', // Yellow
+            'F': '#22c55e', // Green
+            'G': '#3b82f6', // Blue
+            'A': '#a855f7', // Purple
+            'B': '#ec4899'  // Pink
+        };
+
+        const themePalettes = {
+            default: { pending: '#38bdf8', normal: '#22c55e', shadowActive: 'rgba(56, 189, 248, 0.6)', shadowNormal: 'rgba(34, 197, 94, 0.4)' },
+            cyberpunk: { pending: '#00f0ff', normal: '#ff007f', shadowActive: 'rgba(0, 240, 255, 0.8)', shadowNormal: 'rgba(255, 0, 127, 0.6)' },
+            synthwave: { pending: '#fcee0a', normal: '#ff7700', shadowActive: 'rgba(252, 238, 10, 0.8)', shadowNormal: 'rgba(255, 119, 0, 0.6)' },
+            matrix: { pending: '#00cc66', normal: '#00ff41', shadowActive: 'rgba(0, 204, 102, 0.8)', shadowNormal: 'rgba(0, 255, 65, 0.6)' },
+            gold: { pending: '#fbbf24', normal: '#eab308', shadowActive: 'rgba(251, 191, 36, 0.8)', shadowNormal: 'rgba(234, 179, 8, 0.6)' },
+            pitch: { pending: '#38bdf8', normal: '#22c55e', shadowActive: 'rgba(56, 189, 248, 0.6)', shadowNormal: 'rgba(34, 197, 94, 0.4)' }
+        };
+
         function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending') {
             ctx.save();
             
@@ -5007,6 +5026,9 @@
             initMIDIHardware();
             syncSongsWithGoogleSheet();
             setTimeout(updateKeyPositions, 100);
+
+            // Set Rainbow Theme on load
+            document.body.setAttribute('data-theme', 'pitch');
 
             // Populate local name & avatar preferences into modal
             const cachedAvatar = localStorage.getItem('pianopad_avatar');
