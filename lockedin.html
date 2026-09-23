@@ -29,7 +29,7 @@
         </div>
         <div class="flex items-center gap-3">
             <div class="text-indigo-400 font-mono text-xs bg-zinc-900 px-3 py-2 rounded-lg border border-zinc-800 font-semibold version-stamp">
-                v26.09.23 | 23-Sep 11:52 AEST (Sydney)
+                v26.09.23 | 23-Sep 11:56 AEST (Sydney)
             </div>
             <div class="text-zinc-500 font-mono text-sm bg-zinc-900 px-4 py-2 rounded-lg border border-zinc-800">
                 Live Updates Active <i class="fa-solid fa-circle text-green-500 ml-2 animate-pulse"></i>
@@ -102,12 +102,31 @@
             const rooms = { "G1": [], "G2": [], "G3": [] };
             
             const now = Date.now();
+            
+            // Pre-process and calculate metrics for sorting
+            const activeStudents = [];
+            
             Object.values(data).forEach(student => {
                 if (student.room && rooms[student.room]) {
                     if (now - student.lastActive < 7200000) {
-                        rooms[student.room].push(student);
+                        const switches = student.tabSwitches || 0;
+                        const elapsedMs = now - student.lastActive;
+                        const elapsedMins = Math.max(0, Math.floor(elapsedMs / 60000));
+                        const lockedInMins = Math.max(0, Math.floor(elapsedMs / 60000) - switches);
+                        
+                        activeStudents.push({
+                            ...student,
+                            switches,
+                            elapsedMins,
+                            lockedInMins
+                        });
                     }
                 }
+            });
+
+            // Distribute and Sort into rooms
+            activeStudents.forEach(student => {
+                rooms[student.room].push(student);
             });
 
             for (const [roomName, students] of Object.entries(rooms)) {
@@ -119,36 +138,35 @@
                     continue;
                 }
 
-                students.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+                // Sort by Locked-In Mins (Highest First), then Breaks (Lowest First), then Alphabetical
+                students.sort((a, b) => {
+                    if (b.lockedInMins !== a.lockedInMins) return b.lockedInMins - a.lockedInMins;
+                    if (a.switches !== b.switches) return a.switches - b.switches;
+                    return (a.name || "").localeCompare(b.name || "");
+                });
 
                 students.forEach(student => {
                     const isAway = student.status === 'away';
                     const bgClass = isAway ? 'bg-red-950/30 border-red-900/50' : 'bg-zinc-800 border-zinc-700';
                     const iconClass = isAway ? 'fa-moon text-red-400' : 'fa-check-circle text-green-500';
-                    const switches = student.tabSwitches || 0;
                     
                     let penaltyBadge = '';
-                    if (switches > 0) {
-                        penaltyBadge = `<span class="bg-red-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded ml-2" title="Tab Focus Lost">Breaks: ${switches}</span>`;
+                    if (student.switches > 0) {
+                        penaltyBadge = `<span class="bg-red-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mx-2" title="Tab Focus Lost">Breaks: ${student.switches}</span>`;
                     }
 
-                    const elapsedMs = now - student.lastActive;
-                    let elapsedMins = Math.max(0, Math.floor(elapsedMs / 60000));
-                    
-                    // Simple simulated pause: subtract 1 minute of score per tab switch (clamped to 0)
-                    const lockedInMins = Math.max(0, Math.floor(elapsedMs / 60000) - switches);
-                    const progressPct = Math.min((elapsedMins / 60) * 100, 100);
+                    const progressPct = Math.min((student.lockedInMins / 60) * 100, 100);
                     
                     let barColorClass = 'bg-green-500';
-                    if (elapsedMins >= 10 && elapsedMins < 20) barColorClass = 'bg-blue-500';
-                    else if (elapsedMins >= 20 && elapsedMins < 30) barColorClass = 'bg-purple-500';
-                    else if (elapsedMins >= 30 && elapsedMins < 40) barColorClass = 'bg-yellow-500';
-                    else if (elapsedMins >= 40 && elapsedMins < 50) barColorClass = 'bg-orange-500';
-                    else if (elapsedMins >= 50) barColorClass = 'bg-red-500';
+                    if (student.lockedInMins >= 10 && student.lockedInMins < 20) barColorClass = 'bg-blue-500';
+                    else if (student.lockedInMins >= 20 && student.lockedInMins < 30) barColorClass = 'bg-purple-500';
+                    else if (student.lockedInMins >= 30 && student.lockedInMins < 40) barColorClass = 'bg-yellow-500';
+                    else if (student.lockedInMins >= 40 && student.lockedInMins < 50) barColorClass = 'bg-orange-500';
+                    else if (student.lockedInMins >= 50) barColorClass = 'bg-red-500';
 
                     let breakLinesHtml = '';
-                    if (switches > 0) {
-                        const numBreaksToDraw = Math.min(switches, 25);
+                    if (student.switches > 0) {
+                        const numBreaksToDraw = Math.min(student.switches, 25);
                         for (let i = 1; i <= numBreaksToDraw; i++) {
                             const leftPos = (i / (numBreaksToDraw + 1)) * 100;
                             breakLinesHtml += `<div class="break-line" style="left: ${leftPos}%"></div>`;
@@ -156,28 +174,25 @@
                     }
 
                     const card = document.createElement('div');
-                    card.className = `p-3 rounded-lg border ${bgClass} transition-colors flex flex-col gap-1.5`;
+                    card.className = `p-2 rounded-lg border ${bgClass} transition-colors flex flex-col gap-1`;
                     card.innerHTML = `
-                        <div class="flex justify-between items-start">
-                            <div class="font-bold text-sm text-zinc-100 flex items-center justify-between w-full">
-                                <div>
-                                    <i class="fa-solid ${iconClass} mr-2 text-[10px]"></i>
-                                    ${student.name || "Unknown"}
-                                    ${penaltyBadge}
-                                </div>
-                                <div class="text-xs text-zinc-400 truncate max-w-[50%] text-right font-normal">
-                                    <i class="fa-solid fa-music mr-1 text-indigo-400"></i> ${student.song || "No song selected"}
-                                </div>
+                        <div class="flex justify-between items-center w-full whitespace-nowrap overflow-hidden">
+                            <div class="font-bold text-sm text-zinc-100 flex items-center shrink-0">
+                                <i class="fa-solid ${iconClass} mr-2 text-[10px]"></i>
+                                ${student.name || "Unknown"}
+                                ${penaltyBadge}
+                            </div>
+                            <div class="text-[10px] text-zinc-400 font-mono tracking-tight shrink-0 mr-2">
+                                ${student.lockedInMins}m / 60m
+                            </div>
+                            <div class="text-xs text-zinc-400 truncate w-full text-right font-normal pl-2 border-l border-zinc-700">
+                                <i class="fa-solid fa-music mr-1 text-indigo-400"></i> ${student.song || "No song selected"}
                             </div>
                         </div>
-                        <div class="w-full bg-zinc-950 rounded-full h-2 border border-zinc-800 overflow-hidden relative group" title="Locked-In Score: ${lockedInMins} mins">
+                        <div class="w-full bg-zinc-950 rounded-full h-1.5 border border-zinc-800 overflow-hidden relative group mt-0.5" title="Locked-In Score: ${student.lockedInMins} mins">
                             <div class="h-full ${barColorClass} transition-all duration-1000 ease-linear relative" style="width: ${progressPct}%">
                                 ${breakLinesHtml}
                             </div>
-                        </div>
-                        <div class="text-[10px] text-zinc-500 font-mono mt-1 tracking-tight flex justify-between">
-                            <span class="font-bold text-zinc-400">Locked-In Score</span>
-                            <span>${lockedInMins}m / 60m</span>
                         </div>
                     `;
                     container.appendChild(card);
