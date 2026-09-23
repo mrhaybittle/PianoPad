@@ -11,16 +11,29 @@
             background-color: #09090b;
             color: #f4f4f5;
         }
+        .break-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: #ef4444; /* red-500 */
+            z-index: 10;
+        }
     </style>
 </head>
 <body class="min-h-screen p-6 font-sans">
     <header class="mb-8 border-b border-zinc-800 pb-4 flex justify-between items-center">
         <div>
             <h1 class="text-3xl font-bold text-indigo-500 tracking-tight"><i class="fa-solid fa-desktop mr-2"></i>PianoPad Monitor</h1>
-            <p class="text-sm text-zinc-400 mt-1">Live tracking of student active status, song selection, and session duration</p>
+            <p class="text-sm text-zinc-400 mt-1">Live tracking of student active status, song selection, and Locked-In Score</p>
         </div>
-        <div class="text-zinc-500 font-mono text-sm bg-zinc-900 px-4 py-2 rounded-lg border border-zinc-800">
-            Live Updates Active <i class="fa-solid fa-circle text-green-500 ml-2 animate-pulse"></i>
+        <div class="flex items-center gap-3">
+            <div class="text-indigo-400 font-mono text-xs bg-zinc-900 px-3 py-2 rounded-lg border border-zinc-800 font-semibold version-stamp">
+                v26.09.23 | 23-Sep 11:40 AEST (Sydney)
+            </div>
+            <div class="text-zinc-500 font-mono text-sm bg-zinc-900 px-4 py-2 rounded-lg border border-zinc-800">
+                Live Updates Active <i class="fa-solid fa-circle text-green-500 ml-2 animate-pulse"></i>
+            </div>
         </div>
     </header>
 
@@ -77,7 +90,7 @@
                 renderRoster(cachedData);
             });
 
-            // Force local re-render every minute to update progress bars without needing a Firebase change event
+            // Local timer trigger to update session progress bars every minute without requiring database mutations
             setInterval(() => {
                 renderRoster(cachedData);
             }, 60000);
@@ -92,7 +105,7 @@
             const now = Date.now();
             Object.values(data).forEach(student => {
                 if (student.room && rooms[student.room]) {
-                    // Filter out ghost entries older than 2 hours (7,200,000 ms)
+                    // Filter out inactive entries older than 2 hours (7,200,000 ms)
                     if (now - student.lastActive < 7200000) {
                         rooms[student.room].push(student);
                     }
@@ -115,23 +128,39 @@
                     const isAway = student.status === 'away';
                     const bgClass = isAway ? 'bg-red-950/30 border-red-900/50' : 'bg-zinc-800 border-zinc-700';
                     const iconClass = isAway ? 'fa-moon text-red-400' : 'fa-check-circle text-green-500';
+                    const switches = student.tabSwitches || 0;
                     
                     let penaltyBadge = '';
-                    if (student.tabSwitches > 0) {
-                        penaltyBadge = `<span class="bg-red-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded ml-2">Tabs: ${student.tabSwitches}</span>`;
+                    if (switches > 0) {
+                        penaltyBadge = `<span class="bg-red-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded ml-2" title="Tab Focus Lost">Breaks: ${switches}</span>`;
                     }
 
-                    // Session Time & Progress Bar Calculation
+                    // Session Time & Locked-In Score Progress Bar Calculation
+                    // Calculate basic elapsed, but visually representation pauses/breaks via red lines
                     const elapsedMs = now - student.lastActive;
-                    const elapsedMins = Math.max(0, Math.floor(elapsedMs / 60000));
-                    const progressPct = Math.min((elapsedMins / 60) * 100, 100);
+                    let elapsedMins = Math.max(0, Math.floor(elapsedMs / 60000));
                     
+                    // Simple simulated pause: subtract 1 minute of score per tab switch (clamped to 0)
+                    const lockedInMins = Math.max(0, elapsedMins - switches);
+                    const progressPct = Math.min((lockedInMins / 60) * 100, 100);
+                    
+                    // Color shifts every 10 minutes
                     let barColorClass = 'bg-green-500';
-                    if (elapsedMins >= 10 && elapsedMins < 20) barColorClass = 'bg-blue-500';
-                    else if (elapsedMins >= 20 && elapsedMins < 30) barColorClass = 'bg-purple-500';
-                    else if (elapsedMins >= 30 && elapsedMins < 40) barColorClass = 'bg-yellow-500';
-                    else if (elapsedMins >= 40 && elapsedMins < 50) barColorClass = 'bg-orange-500';
-                    else if (elapsedMins >= 50) barColorClass = 'bg-red-500';
+                    if (lockedInMins >= 10 && lockedInMins < 20) barColorClass = 'bg-blue-500';
+                    else if (lockedInMins >= 20 && lockedInMins < 30) barColorClass = 'bg-purple-500';
+                    else if (lockedInMins >= 30 && lockedInMins < 40) barColorClass = 'bg-yellow-500';
+                    else if (lockedInMins >= 40 && lockedInMins < 50) barColorClass = 'bg-orange-500';
+                    else if (lockedInMins >= 50) barColorClass = 'bg-red-500';
+
+                    // Generate vertical red break lines inside the progress bar
+                    let breakLinesHtml = '';
+                    if (switches > 0) {
+                        const numBreaksToDraw = Math.min(switches, 25); // cap visual lines to prevent overcrowding
+                        for (let i = 1; i <= numBreaksToDraw; i++) {
+                            const leftPos = (i / (numBreaksToDraw + 1)) * 100;
+                            breakLinesHtml += `<div class="break-line" style="left: ${leftPos}%"></div>`;
+                        }
+                    }
 
                     const card = document.createElement('div');
                     card.className = `p-3 rounded-lg border ${bgClass} transition-colors flex flex-col gap-1.5`;
@@ -146,11 +175,14 @@
                         <div class="text-xs text-zinc-400 truncate mb-1">
                             <i class="fa-solid fa-music mr-1 text-indigo-400"></i> ${student.song || "No song selected"}
                         </div>
-                        <div class="w-full bg-zinc-950 rounded-full h-1.5 border border-zinc-800 overflow-hidden relative group" title="${elapsedMins} mins active">
-                            <div class="h-full ${barColorClass} transition-all duration-1000 ease-linear" style="width: ${progressPct}%"></div>
+                        <div class="w-full bg-zinc-950 rounded-full h-2 border border-zinc-800 overflow-hidden relative group" title="Locked-In Score: ${lockedInMins} mins">
+                            <div class="h-full ${barColorClass} transition-all duration-1000 ease-linear relative" style="width: ${progressPct}%">
+                                ${breakLinesHtml}
+                            </div>
                         </div>
-                        <div class="text-[10px] text-zinc-500 font-mono text-right mt-[-2px] tracking-tight">
-                            ${elapsedMins}m / 60m
+                        <div class="text-[10px] text-zinc-500 font-mono mt-1 tracking-tight flex justify-between">
+                            <span class="font-bold text-zinc-400">Locked-In Score</span>
+                            <span>${lockedInMins}m / 60m</span>
                         </div>
                     `;
                     container.appendChild(card);
