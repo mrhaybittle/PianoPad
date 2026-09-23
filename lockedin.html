@@ -17,14 +17,13 @@
     <header class="mb-8 border-b border-zinc-800 pb-4 flex justify-between items-center">
         <div>
             <h1 class="text-3xl font-bold text-indigo-500 tracking-tight"><i class="fa-solid fa-desktop mr-2"></i>PianoPad Monitor</h1>
-            <p class="text-sm text-zinc-400 mt-1">Live tracking of student active status and song selection</p>
+            <p class="text-sm text-zinc-400 mt-1">Live tracking of student active status, song selection, and session duration</p>
         </div>
         <div class="text-zinc-500 font-mono text-sm bg-zinc-900 px-4 py-2 rounded-lg border border-zinc-800">
             Live Updates Active <i class="fa-solid fa-circle text-green-500 ml-2 animate-pulse"></i>
         </div>
     </header>
 
-    <!-- Updated layout to 3 columns representing Active Classrooms only -->
     <div id="dashboard-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Room G1 -->
         <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col h-[600px]">
@@ -66,15 +65,23 @@
         };
             
         let db;
+        let cachedData = {};
+
         try {
             const app = initializeApp(firebaseConfig);
             db = getDatabase(app);
             
             const rosterRef = ref(db, 'pianopad_roster');
             onValue(rosterRef, (snapshot) => {
-                const data = snapshot.val() || {};
-                renderRoster(data);
+                cachedData = snapshot.val() || {};
+                renderRoster(cachedData);
             });
+
+            // Force local re-render every minute to update progress bars without needing a Firebase change event
+            setInterval(() => {
+                renderRoster(cachedData);
+            }, 60000);
+
         } catch(e) {
             console.error("Firebase connection error:", e);
         }
@@ -85,7 +92,7 @@
             const now = Date.now();
             Object.values(data).forEach(student => {
                 if (student.room && rooms[student.room]) {
-                    // Filter out ghost entries older than 2 hours
+                    // Filter out ghost entries older than 2 hours (7,200,000 ms)
                     if (now - student.lastActive < 7200000) {
                         rooms[student.room].push(student);
                     }
@@ -114,8 +121,20 @@
                         penaltyBadge = `<span class="bg-red-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded ml-2">Tabs: ${student.tabSwitches}</span>`;
                     }
 
+                    // Session Time & Progress Bar Calculation
+                    const elapsedMs = now - student.lastActive;
+                    const elapsedMins = Math.max(0, Math.floor(elapsedMs / 60000));
+                    const progressPct = Math.min((elapsedMins / 60) * 100, 100);
+                    
+                    let barColorClass = 'bg-green-500';
+                    if (elapsedMins >= 10 && elapsedMins < 20) barColorClass = 'bg-blue-500';
+                    else if (elapsedMins >= 20 && elapsedMins < 30) barColorClass = 'bg-purple-500';
+                    else if (elapsedMins >= 30 && elapsedMins < 40) barColorClass = 'bg-yellow-500';
+                    else if (elapsedMins >= 40 && elapsedMins < 50) barColorClass = 'bg-orange-500';
+                    else if (elapsedMins >= 50) barColorClass = 'bg-red-500';
+
                     const card = document.createElement('div');
-                    card.className = `p-3 rounded-lg border ${bgClass} transition-colors`;
+                    card.className = `p-3 rounded-lg border ${bgClass} transition-colors flex flex-col gap-1.5`;
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
                             <div class="font-bold text-sm text-zinc-100 flex items-center">
@@ -124,8 +143,14 @@
                                 ${penaltyBadge}
                             </div>
                         </div>
-                        <div class="text-xs text-zinc-400 mt-1 truncate">
+                        <div class="text-xs text-zinc-400 truncate mb-1">
                             <i class="fa-solid fa-music mr-1 text-indigo-400"></i> ${student.song || "No song selected"}
+                        </div>
+                        <div class="w-full bg-zinc-950 rounded-full h-1.5 border border-zinc-800 overflow-hidden relative group" title="${elapsedMins} mins active">
+                            <div class="h-full ${barColorClass} transition-all duration-1000 ease-linear" style="width: ${progressPct}%"></div>
+                        </div>
+                        <div class="text-[10px] text-zinc-500 font-mono text-right mt-[-2px] tracking-tight">
+                            ${elapsedMins}m / 60m
                         </div>
                     `;
                     container.appendChild(card);
