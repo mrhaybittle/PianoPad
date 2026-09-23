@@ -29,7 +29,7 @@
         </div>
         <div class="flex items-center gap-3">
             <div class="text-indigo-400 font-mono text-xs bg-zinc-900 px-3 py-2 rounded-lg border border-zinc-800 font-semibold version-stamp">
-                v26.09.23 | 23-Sep 11:40 AEST (Sydney)
+                v26.09.23 | 23-Sep 11:47 AEST (Sydney)
             </div>
             <div class="text-zinc-500 font-mono text-sm bg-zinc-900 px-4 py-2 rounded-lg border border-zinc-800">
                 Live Updates Active <i class="fa-solid fa-circle text-green-500 ml-2 animate-pulse"></i>
@@ -90,7 +90,6 @@
                 renderRoster(cachedData);
             });
 
-            // Local timer trigger to update session progress bars every minute without requiring database mutations
             setInterval(() => {
                 renderRoster(cachedData);
             }, 60000);
@@ -105,7 +104,6 @@
             const now = Date.now();
             Object.values(data).forEach(student => {
                 if (student.room && rooms[student.room]) {
-                    // Filter out inactive entries older than 2 hours (7,200,000 ms)
                     if (now - student.lastActive < 7200000) {
                         rooms[student.room].push(student);
                     }
@@ -121,7 +119,6 @@
                     continue;
                 }
 
-                // Sort alphabetical by name
                 students.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
                 students.forEach(student => {
@@ -135,16 +132,12 @@
                         penaltyBadge = `<span class="bg-red-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded ml-2" title="Tab Focus Lost">Breaks: ${switches}</span>`;
                     }
 
-                    // Session Time & Locked-In Score Progress Bar Calculation
-                    // Calculate basic elapsed, but visually representation pauses/breaks via red lines
                     const elapsedMs = now - student.lastActive;
                     let elapsedMins = Math.max(0, Math.floor(elapsedMs / 60000));
                     
-                    // Simple simulated pause: subtract 1 minute of score per tab switch (clamped to 0)
                     const lockedInMins = Math.max(0, elapsedMins - switches);
                     const progressPct = Math.min((lockedInMins / 60) * 100, 100);
                     
-                    // Color shifts every 10 minutes
                     let barColorClass = 'bg-green-500';
                     if (lockedInMins >= 10 && lockedInMins < 20) barColorClass = 'bg-blue-500';
                     else if (lockedInMins >= 20 && lockedInMins < 30) barColorClass = 'bg-purple-500';
@@ -152,10 +145,9 @@
                     else if (lockedInMins >= 40 && lockedInMins < 50) barColorClass = 'bg-orange-500';
                     else if (lockedInMins >= 50) barColorClass = 'bg-red-500';
 
-                    // Generate vertical red break lines inside the progress bar
                     let breakLinesHtml = '';
                     if (switches > 0) {
-                        const numBreaksToDraw = Math.min(switches, 25); // cap visual lines to prevent overcrowding
+                        const numBreaksToDraw = Math.min(switches, 25);
                         for (let i = 1; i <= numBreaksToDraw; i++) {
                             const leftPos = (i / (numBreaksToDraw + 1)) * 100;
                             breakLinesHtml += `<div class="break-line" style="left: ${leftPos}%"></div>`;
