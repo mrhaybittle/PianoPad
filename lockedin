@@ -1,1 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PianoPad Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #09090b;
+            color: #f4f4f5;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-6 font-sans">
+    <header class="mb-8 border-b border-zinc-800 pb-4 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-indigo-500 tracking-tight"><i class="fa-solid fa-desktop mr-2"></i>PianoPad Monitor</h1>
+            <p class="text-sm text-zinc-400 mt-1">Live tracking of student active status and song selection</p>
+        </div>
+        <div class="text-zinc-500 font-mono text-sm bg-zinc-900 px-4 py-2 rounded-lg border border-zinc-800">
+            Live Updates Active <i class="fa-solid fa-circle text-green-500 ml-2 animate-pulse"></i>
+        </div>
+    </header>
 
+    <div id="dashboard-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <!-- Room G1 -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col h-[600px]">
+            <h2 class="text-xl font-bold text-white border-b border-zinc-700 pb-2 mb-3">Room G1</h2>
+            <div id="roster-G1" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                <div class="text-zinc-600 text-sm italic">Waiting for students...</div>
+            </div>
+        </div>
+
+        <!-- Room G2 -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col h-[600px]">
+            <h2 class="text-xl font-bold text-white border-b border-zinc-700 pb-2 mb-3">Room G2</h2>
+            <div id="roster-G2" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                <div class="text-zinc-600 text-sm italic">Waiting for students...</div>
+            </div>
+        </div>
+
+        <!-- Room G3 -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col h-[600px]">
+            <h2 class="text-xl font-bold text-white border-b border-zinc-700 pb-2 mb-3">Room G3</h2>
+            <div id="roster-G3" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                <div class="text-zinc-600 text-sm italic">Waiting for students...</div>
+            </div>
+        </div>
+
+        <!-- Outside -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col h-[600px]">
+            <h2 class="text-xl font-bold text-white border-b border-zinc-700 pb-2 mb-3">Outside of School</h2>
+            <div id="roster-Outside" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                <div class="text-zinc-600 text-sm italic">Waiting for students...</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBAJSw8QFuzMoCXqZY2wmO3Nmy2Fdy6Q4U",
+            authDomain: "haysync-9b816.firebaseapp.com",
+            databaseURL: "https://haysync-9b816-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "haysync-9b816",
+            storageBucket: "haysync-9b816.firebasestorage.app",
+            messagingSenderId: "717730658604",
+            appId: "1:717730658604:web:e09a312b2ac7c8426e9489"
+        };
+            
+        let db;
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getDatabase(app);
+            
+            const rosterRef = ref(db, 'pianopad_roster');
+            onValue(rosterRef, (snapshot) => {
+                const data = snapshot.val() || {};
+                renderRoster(data);
+            });
+        } catch(e) {
+            console.error("Firebase connection error:", e);
+        }
+
+        function renderRoster(data) {
+            const rooms = { "G1": [], "G2": [], "G3": [], "Outside": [] };
+            
+            const now = Date.now();
+            Object.values(data).forEach(student => {
+                if (student.room && rooms[student.room]) {
+                    // Filter out ghost entries older than 2 hours
+                    if (now - student.lastActive < 7200000) {
+                        rooms[student.room].push(student);
+                    }
+                }
+            });
+
+            for (const [roomName, students] of Object.entries(rooms)) {
+                const container = document.getElementById(`roster-${roomName}`);
+                container.innerHTML = '';
+                
+                if (students.length === 0) {
+                    container.innerHTML = '<div class="text-zinc-600 text-sm italic">Empty</div>';
+                    continue;
+                }
+
+                // Sort alphabetical by name
+                students.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+                students.forEach(student => {
+                    const isAway = student.status === 'away';
+                    const bgClass = isAway ? 'bg-red-950/30 border-red-900/50' : 'bg-zinc-800 border-zinc-700';
+                    const iconClass = isAway ? 'fa-moon text-red-400' : 'fa-check-circle text-green-500';
+                    
+                    let penaltyBadge = '';
+                    if (student.tabSwitches > 0) {
+                        penaltyBadge = `<span class="bg-red-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded ml-2">Tabs: ${student.tabSwitches}</span>`;
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = `p-3 rounded-lg border ${bgClass} transition-colors`;
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div class="font-bold text-sm text-zinc-100 flex items-center">
+                                <i class="fa-solid ${iconClass} mr-2 text-[10px]"></i>
+                                ${student.name || "Unknown"}
+                                ${penaltyBadge}
+                            </div>
+                        </div>
+                        <div class="text-xs text-zinc-400 mt-1 truncate">
+                            <i class="fa-solid fa-music mr-1 text-indigo-400"></i> ${student.song || "No song selected"}
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+        }
+    </script>
+</body>
+</html>
