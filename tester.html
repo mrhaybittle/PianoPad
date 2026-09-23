@@ -886,7 +886,7 @@
     </script>
 
     <!-- Room Join Modal -->
-    <div class="modal-overlay open" id="room-join-modal" style="z-index: 300;">
+    <div class="modal-overlay" id="room-join-modal" style="z-index: 300;">
         <div class="modal" style="max-width: 400px; text-align: center;">
             <h2 style="color: #4f46e5;">Welcome to PianoPad 26</h2>
             <p style="font-size: 0.9rem; color: #9ca3af;">Please join a room to begin playing:</p>
@@ -897,7 +897,6 @@
                     <option value="G1">G1</option>
                     <option value="G2">G2</option>
                     <option value="G3">G3</option>
-                    <option value="Outside">Outside of School</option>
                 </select>
             </div>
             <div class="modal-footer" style="justify-content: center;">
@@ -1085,7 +1084,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.23 | 23-Sep 10:07 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.23 | 23-Sep 10:33 AEST (Sydney)</div>
             <div class="status-bar" id="status" style="flex: 1;">Connecting to Google Sheet song database...</div>
             <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
         </div>
@@ -1440,9 +1439,9 @@
             }
             sessionStudentName = sanitizeName(name);
             currentRoom = room;
+            localStorage.setItem('pianopad_name', sessionStudentName);
             document.getElementById('room-join-modal').classList.remove('open');
             
-            // Init Firebase Roster
             if (window.firebaseSet && window.firebaseRef && window.firebaseDb) {
                 const myRef = window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}`);
                 window.firebaseSet(myRef, {
@@ -1456,7 +1455,6 @@
                 window.firebaseOnDisconnect(myRef).remove();
             }
             
-            // Proceed to calibration check
             checkFirstTimeCalibration();
         });
 
@@ -1525,10 +1523,14 @@
         }
 
         function ensureStudentName() {
-            if (!sessionStudentName || !sessionStudentName.trim()) {
+            if (!sessionStudentName || sessionStudentName === "Student" || !sessionStudentName.trim()) {
                 const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
                 if (inputName && inputName.trim()) {
                     sessionStudentName = sanitizeName(inputName);
+                    localStorage.setItem('pianopad_name', sessionStudentName);
+                    if (currentRoom && window.firebaseSet && window.firebaseRef && window.firebaseDb) {
+                        window.firebaseSet(window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}/name`), sessionStudentName);
+                    }
                 } else {
                     sessionStudentName = "Anonymous";
                 }
@@ -3205,9 +3207,9 @@
             buildCalibrationKeyboard();
             isCalibrating = true;
             calibStep = 1;
-            document.getElementById('btn-calib-skip').style.display = 'none';
-            document.getElementById('btn-calib-cancel').style.display = 'inline-flex';
-            document.getElementById('calib-instructions').textContent = "Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
+            document.getElementById('btn-calib-skip').style.display = 'inline-flex';
+            document.getElementById('btn-calib-cancel').style.display = 'none';
+            document.getElementById('calib-instructions').innerHTML = "Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
             calibModal.classList.add('open');
         }
 
@@ -3851,6 +3853,73 @@
                 gain.connect(audioCtx.destination);
                 osc.start(now);
                 osc.stop(now + duration + 0.02);
+            } else if (inst === 'epiano') {
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc1.type = 'sine';
+                osc2.type = 'triangle';
+                osc1.frequency.setValueAtTime(freq, now);
+                osc2.frequency.setValueAtTime(freq * 2, now);
+
+                gain.gain.setValueAtTime(0.35 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.4);
+
+                osc1.connect(gain); osc2.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc1.start(now); osc2.start(now);
+                osc1.stop(now + duration + 0.4); osc2.stop(now + duration + 0.4);
+            } else if (inst === 'harpsichord') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, now);
+
+                gain.gain.setValueAtTime(0.25 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.15);
+
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + duration + 0.15);
+            } else if (inst === 'synth80s') {
+                const osc = audioCtx.createOscillator();
+                const filter = audioCtx.createBiquadFilter();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq, now);
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(freq * 4, now);
+
+                gain.gain.setValueAtTime(0.2 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.2);
+
+                osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + duration + 0.2);
+            } else if (inst === 'xylophone') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq * 2, now);
+
+                gain.gain.setValueAtTime(0.5 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 0.18);
+            } else if (inst === 'accordion') {
+                [0.99, 1.01].forEach(detune => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq * detune, now);
+
+                    gain.gain.setValueAtTime(0.12 * volScale, now);
+                    gain.gain.linearRampToValueAtTime(0.12 * volScale, now + duration);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.1);
+
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(now); osc.stop(now + duration + 0.1);
+                });
             }
         }
 
@@ -4698,6 +4767,35 @@
             initMIDIHardware();
             syncSongsWithGoogleSheet();
             setTimeout(updateKeyPositions, 100);
+
+            // Outside of School Time Logic
+            const now = new Date();
+            const day = now.getDay();
+            const timeMins = now.getHours() * 60 + now.getMinutes();
+            // Weekend OR Before 8:00 AM OR After 2:05 PM
+            const isOOS = (day === 0 || day === 6) || (timeMins < 8 * 60) || (timeMins >= 14 * 60 + 5);
+
+            if (isOOS) {
+                currentRoom = "Outside";
+                sessionStudentName = localStorage.getItem('pianopad_name') || "Student";
+                
+                if (window.firebaseSet && window.firebaseRef && window.firebaseDb) {
+                    const myRef = window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}`);
+                    window.firebaseSet(myRef, {
+                        name: sessionStudentName,
+                        room: currentRoom,
+                        song: currentSongTitle,
+                        status: 'active',
+                        tabSwitches: 0,
+                        lastActive: Date.now()
+                    });
+                    window.firebaseOnDisconnect(myRef).remove();
+                }
+                checkFirstTimeCalibration();
+            } else {
+                document.getElementById('student-join-name').value = localStorage.getItem('pianopad_name') || "";
+                document.getElementById('room-join-modal').classList.add('open');
+            }
         });
     </script>
 </body>
