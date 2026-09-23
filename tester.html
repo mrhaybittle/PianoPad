@@ -986,9 +986,29 @@
     <div class="modal-overlay" id="room-join-modal" style="z-index: 300;">
         <div class="modal" style="max-width: 400px; text-align: center;">
             <h2 style="color: #4f46e5;">Welcome to PianoPad 26</h2>
-            <p style="font-size: 0.9rem; color: #9ca3af;">Please join a room to begin playing:</p>
+            <p style="font-size: 0.9rem; color: #9ca3af;">Please choose an avatar and join a room to begin playing:</p>
             <div style="display: flex; flex-direction: column; gap: 12px; margin: 15px 0;">
                 <input type="text" id="student-join-name" placeholder="Your First Name & Last Initial" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 0.9rem;">
+                
+                <select id="student-join-avatar" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 0.9rem;">
+                    <option value="🏃" selected>🏃 Runner (Male)</option>
+                    <option value="🏃‍♀️">🏃‍♀️ Runner (Female)</option>
+                    <option value="🚴">🚴 Cyclist</option>
+                    <option value="🦊">🦊 Fox</option>
+                    <option value="🐯">🐯 Tiger</option>
+                    <option value="🤖">🤖 Robo-Opponent</option>
+                    <option value="🛸">🛸 Flying Saucer</option>
+                    <option value="🦄">🦄 Unicorn</option>
+                    <option value="🎹">🎹 Piano Master</option>
+                    <option value="🎧">🎧 DJ Beats</option>
+                    <option value="👨‍🎤">🎤 Rockstar</option>
+                    <option value="😎">😎 Cool Player</option>
+                    <option value="🐱">🐱 Cat</option>
+                    <option value="🐲">🐉 Dragon</option>
+                    <option value="🚀">🚀 Rocket</option>
+                    <option value="🥷">🥷 Ninja</option>
+                </select>
+
                 <select id="student-join-room" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 0.9rem;">
                     <option value="" disabled selected>Select Room</option>
                     <option value="G1">G1</option>
@@ -1181,14 +1201,14 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.23 | 23-Sep 16:34 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.23 | 23-Sep 18:29 AEST (Sydney)</div>
             <div class="status-bar" id="status">Connecting to Google Sheet song database...</div>
             
             <div class="footer-right-group">
                 <!-- MONITOR SESSION WIDGET TO LEFT OF HIT COUNTER -->
                 <div class="monitor-widget-box" id="monitor-widget">
                     <div class="monitor-top-row">
-                        <span style="color: #f43f5e; font-size: 0.8rem;">🌙</span>
+                        <span id="mon-student-avatar" style="font-size: 0.82rem;">🏃</span>
                         <span class="monitor-student-name" id="mon-student-name">Student</span>
                         <span class="monitor-badge-breaks" id="mon-breaks-badge">Breaks: 0</span>
                         <span class="monitor-time-text" id="mon-time-text">0m / 60m</span>
@@ -1448,6 +1468,7 @@
         let currentRoom = "";
         let sessionStartTime = Date.now();
         let breakMarkerPositions = [];
+        let sessionStudentAvatar = "🏃";
 
         // Sheet Music State
         let showSheetMusic = localStorage.getItem('pianopad_sheet_music') !== 'false';
@@ -1535,7 +1556,7 @@
         let hasBattleStarted = false;
         let battleResultsShown = false;
 
-        const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄'];
+        const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄', '🎹', '🎧', '👨‍🎤', '😎', '🐱', '🐲', '🚀', '🥷'];
 
         let playersList = [];
 
@@ -1551,6 +1572,7 @@
         /* --- MONITOR WIDGET UPDATER FUNCTION --- */
         function updateMonitorWidget() {
             const studentEl = document.getElementById('mon-student-name');
+            const avatarEl = document.getElementById('mon-student-avatar');
             const breaksEl = document.getElementById('mon-breaks-badge');
             const timeEl = document.getElementById('mon-time-text');
             const songEl = document.getElementById('mon-song-text');
@@ -1558,6 +1580,7 @@
             const trackEl = document.getElementById('mon-bar-track');
 
             if (studentEl) studentEl.textContent = sessionStudentName || localStorage.getItem('pianopad_name') || "Mr H";
+            if (avatarEl) avatarEl.textContent = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || "🏃";
             if (breaksEl) breaksEl.textContent = `Breaks: ${localTabSwitches}`;
             
             const elapsedMins = Math.floor((Date.now() - sessionStartTime) / 60000);
@@ -1571,7 +1594,6 @@
 
             // Render Break Markers on Track
             if (trackEl) {
-                // Clear existing break markers
                 trackEl.querySelectorAll('.monitor-break-marker').forEach(m => m.remove());
                 breakMarkerPositions.forEach(posPct => {
                     const marker = document.createElement('div');
@@ -1584,20 +1606,27 @@
 
         document.getElementById('btn-join-room').addEventListener('click', () => {
             const name = document.getElementById('student-join-name').value.trim();
+            const avatar = document.getElementById('student-join-avatar').value;
             const room = document.getElementById('student-join-room').value;
             if(!name || !room) {
                 alert('Please enter your First Name and Last Initial, and select a room.');
                 return;
             }
             sessionStudentName = sanitizeName(name);
+            sessionStudentAvatar = avatar;
             currentRoom = room;
+
+            // Save preferences locally
             localStorage.setItem('pianopad_name', sessionStudentName);
+            localStorage.setItem('pianopad_avatar', sessionStudentAvatar);
+
             document.getElementById('room-join-modal').classList.remove('open');
             
             if (window.firebaseSet && window.firebaseRef && window.firebaseDb) {
                 const myRef = window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}`);
                 window.firebaseSet(myRef, {
                     name: sessionStudentName,
+                    avatar: sessionStudentAvatar,
                     room: currentRoom,
                     song: currentSongTitle,
                     status: 'active',
@@ -2422,7 +2451,7 @@
             resetGameStats();
 
             playersList = [
-                { id: 'p1', name: 'YOU', avatar: '🏃', pxProgress: 0, finishTime: null, isLocal: true, clearedHurdles: [] },
+                { id: 'p1', name: 'YOU', avatar: sessionStudentAvatar || '🏃', pxProgress: 0, finishTime: null, isLocal: true, clearedHurdles: [] },
                 { id: 'bot', name: 'ROBO-OPPONENT', avatar: '🤖', pxProgress: 0, finishTime: null, isBot: true, clearedHurdles: [] }
             ];
             localPlayerIdRoom = 'p1';
@@ -2472,7 +2501,7 @@
 
             isSprintHost = true;
             localPlayerIdRoom = 'p1';
-            playersList = [{ id: 'p1', name: hostName, avatar: AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true, clearedHurdles: [] }];
+            playersList = [{ id: 'p1', name: hostName, avatar: sessionStudentAvatar || AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true, clearedHurdles: [] }];
             renderLobbyGrid('lobby-players-grid');
 
             const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(hostName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
@@ -2486,13 +2515,13 @@
             activeBattleRoomCode = roomCode;
 
             localPlayerIdRoom = 'p' + (Date.now() % 10000);
-            const avatarIdx = Math.floor(Math.random() * AVATARS.length);
+            const playerAvatar = sessionStudentAvatar || AVATARS[Math.floor(Math.random() * AVATARS.length)];
 
             document.getElementById('status').textContent = `Connecting to room ${roomCode}...`;
 
             let res = null;
             for (let attempt = 1; attempt <= 3; attempt++) {
-                const url = `${APPS_SCRIPT_URL}?action=JOIN_ROOM&roomCode=${roomCode}&playerId=${localPlayerIdRoom}&playerName=${encodeURIComponent(racerName)}&avatar=${encodeURIComponent(AVATARS[avatarIdx])}&t=${Date.now()}`;
+                const url = `${APPS_SCRIPT_URL}?action=JOIN_ROOM&roomCode=${roomCode}&playerId=${localPlayerIdRoom}&playerName=${encodeURIComponent(racerName)}&avatar=${encodeURIComponent(playerAvatar)}&t=${Date.now()}`;
                 res = await sendJSONP(url);
                 
                 if (res && !res.error) break;
@@ -2960,7 +2989,7 @@
                             avatarEl.classList.add('jumping');
                             setTimeout(() => {
                                 avatarEl.classList.remove('jumping');
-                                avatarEl.textContent = '🏃';
+                                avatarEl.textContent = playerAvatar || '🏃';
                             }, 450);
                         }
                         
@@ -2984,7 +3013,7 @@
 
                 const avatarEl = document.getElementById(`avatar-${localPlayer.id}`);
                 if (avatarEl && !avatarEl.classList.contains('jumping')) {
-                    avatarEl.textContent = (sprintKeystrokeCount % 2 === 0) ? '🏃‍♂️' : '🏃';
+                    avatarEl.textContent = (sprintKeystrokeCount % 2 === 0) ? '🏃‍♂️' : (sessionStudentAvatar || '🏃');
                 }
 
                 localPlayer.pxProgress = sprintKeystrokeCount * 36;
@@ -3680,6 +3709,9 @@
             if (e.key === '(') {
                 e.preventDefault();
                 document.getElementById('student-join-name').value = sessionStudentName || localStorage.getItem('pianopad_name') || "";
+                if (localStorage.getItem('pianopad_avatar')) {
+                    document.getElementById('student-join-avatar').value = localStorage.getItem('pianopad_avatar');
+                }
                 document.getElementById('room-join-modal').classList.add('open');
                 document.getElementById('status').textContent = '🔑 Room Login modal opened via "(" hotkey.';
                 return;
@@ -4944,6 +4976,14 @@
             syncSongsWithGoogleSheet();
             setTimeout(updateKeyPositions, 100);
 
+            // Populate local name & avatar preferences into modal
+            const cachedAvatar = localStorage.getItem('pianopad_avatar');
+            if (cachedAvatar) {
+                sessionStudentAvatar = cachedAvatar;
+                const avatarSelect = document.getElementById('student-join-avatar');
+                if (avatarSelect) avatarSelect.value = cachedAvatar;
+            }
+
             // Interval to keep Monitor session timer updated
             setInterval(updateMonitorWidget, 10000);
 
@@ -4957,11 +4997,13 @@
             if (isOOS) {
                 currentRoom = "Outside";
                 sessionStudentName = localStorage.getItem('pianopad_name') || "Student";
+                sessionStudentAvatar = localStorage.getItem('pianopad_avatar') || "🏃";
                 
                 if (window.firebaseSet && window.firebaseRef && window.firebaseDb) {
                     const myRef = window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}`);
                     window.firebaseSet(myRef, {
                         name: sessionStudentName,
+                        avatar: sessionStudentAvatar,
                         room: currentRoom,
                         song: currentSongTitle,
                         status: 'active',
