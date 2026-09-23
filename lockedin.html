@@ -29,7 +29,7 @@
         </div>
         <div class="flex items-center gap-3">
             <div class="text-indigo-400 font-mono text-xs bg-zinc-900 px-3 py-2 rounded-lg border border-zinc-800 font-semibold version-stamp">
-                v26.09.23 | 23-Sep 11:47 AEST (Sydney)
+                v26.09.23 | 23-Sep 11:52 AEST (Sydney)
             </div>
             <div class="text-zinc-500 font-mono text-sm bg-zinc-900 px-4 py-2 rounded-lg border border-zinc-800">
                 Live Updates Active <i class="fa-solid fa-circle text-green-500 ml-2 animate-pulse"></i>
@@ -135,15 +135,16 @@
                     const elapsedMs = now - student.lastActive;
                     let elapsedMins = Math.max(0, Math.floor(elapsedMs / 60000));
                     
-                    const lockedInMins = Math.max(0, elapsedMins - switches);
-                    const progressPct = Math.min((lockedInMins / 60) * 100, 100);
+                    // Simple simulated pause: subtract 1 minute of score per tab switch (clamped to 0)
+                    const lockedInMins = Math.max(0, Math.floor(elapsedMs / 60000) - switches);
+                    const progressPct = Math.min((elapsedMins / 60) * 100, 100);
                     
                     let barColorClass = 'bg-green-500';
-                    if (lockedInMins >= 10 && lockedInMins < 20) barColorClass = 'bg-blue-500';
-                    else if (lockedInMins >= 20 && lockedInMins < 30) barColorClass = 'bg-purple-500';
-                    else if (lockedInMins >= 30 && lockedInMins < 40) barColorClass = 'bg-yellow-500';
-                    else if (lockedInMins >= 40 && lockedInMins < 50) barColorClass = 'bg-orange-500';
-                    else if (lockedInMins >= 50) barColorClass = 'bg-red-500';
+                    if (elapsedMins >= 10 && elapsedMins < 20) barColorClass = 'bg-blue-500';
+                    else if (elapsedMins >= 20 && elapsedMins < 30) barColorClass = 'bg-purple-500';
+                    else if (elapsedMins >= 30 && elapsedMins < 40) barColorClass = 'bg-yellow-500';
+                    else if (elapsedMins >= 40 && elapsedMins < 50) barColorClass = 'bg-orange-500';
+                    else if (elapsedMins >= 50) barColorClass = 'bg-red-500';
 
                     let breakLinesHtml = '';
                     if (switches > 0) {
@@ -158,14 +159,16 @@
                     card.className = `p-3 rounded-lg border ${bgClass} transition-colors flex flex-col gap-1.5`;
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
-                            <div class="font-bold text-sm text-zinc-100 flex items-center">
-                                <i class="fa-solid ${iconClass} mr-2 text-[10px]"></i>
-                                ${student.name || "Unknown"}
-                                ${penaltyBadge}
+                            <div class="font-bold text-sm text-zinc-100 flex items-center justify-between w-full">
+                                <div>
+                                    <i class="fa-solid ${iconClass} mr-2 text-[10px]"></i>
+                                    ${student.name || "Unknown"}
+                                    ${penaltyBadge}
+                                </div>
+                                <div class="text-xs text-zinc-400 truncate max-w-[50%] text-right font-normal">
+                                    <i class="fa-solid fa-music mr-1 text-indigo-400"></i> ${student.song || "No song selected"}
+                                </div>
                             </div>
-                        </div>
-                        <div class="text-xs text-zinc-400 truncate mb-1">
-                            <i class="fa-solid fa-music mr-1 text-indigo-400"></i> ${student.song || "No song selected"}
                         </div>
                         <div class="w-full bg-zinc-950 rounded-full h-2 border border-zinc-800 overflow-hidden relative group" title="Locked-In Score: ${lockedInMins} mins">
                             <div class="h-full ${barColorClass} transition-all duration-1000 ease-linear relative" style="width: ${progressPct}%">
