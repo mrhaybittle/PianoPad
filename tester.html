@@ -1201,7 +1201,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.24 | 24-Sep 07:21 AEST (Sydney)</div>
+            <div class="version-stamp">v26.09.25 | 25-Sep 07:04 AEST (Sydney)</div>
             <div class="status-bar" id="status">Connecting to Google Sheet song database...</div>
             
             <div class="footer-right-group">
@@ -1561,6 +1561,23 @@
         let playersList = [];
 
         let miniGameFallSpeedMs = 3800;
+        
+        let confettiParticles = [];
+        function spawnConfetti(x, y, baseColor) {
+            for (let i = 0; i < 30; i++) {
+                confettiParticles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() * -10) - 2,
+                    size: Math.random() * 6 + 4,
+                    color: Math.random() > 0.3 ? baseColor : (Math.random() > 0.5 ? '#facc15' : '#ec4899'),
+                    life: 1.0,
+                    rot: Math.random() * Math.PI * 2,
+                    rotSpeed: (Math.random() - 0.5) * 0.4
+                });
+            }
+        }
 
         const cMajorScaleNotes = ['c1', 'd1', 'e1', 'f1', 'g1', 'a1', 'b1', 'c2'];
         const arcadeHub = document.getElementById('arcade-hub');
@@ -2170,6 +2187,7 @@
             if (noteStr.toLowerCase().trim() === expected.toLowerCase().trim()) {
                 simonPlayerIndex++;
                 if (simonPlayerIndex >= simonSequence.length) {
+                    spawnConfetti(canvas.width / 2, canvas.height / 2, '#8b5cf6');
                     document.getElementById('status').textContent = `🎉 Level ${simonSequence.length} Complete! Escalating to Level ${simonSequence.length + 1}...`;
                     setTimeout(nextSimonRound, 1200);
                 }
@@ -2224,6 +2242,9 @@
 
             if (diff === 0) {
                 highlightKey(noteStr, 500, '#22c55e');
+                const mPos = keyPosMap[noteStr.toLowerCase().trim()];
+                if(mPos) spawnConfetti(mPos.left + mPos.width / 2, canvas.height, '#22c55e');
+                
                 currentSongTitle = "Mystery Note";
                 ensureStudentName();
 
@@ -2994,6 +3015,7 @@
                         }
                         
                         document.getElementById('status').textContent = `🤸 Jumped Hurdle ${expectedHurdleNote}!`;
+                        spawnConfetti(canvas.width / 2, canvas.height / 2, '#22c55e');
                         pushPlayerState();
                         return;
                     } else if (letter === expectedHurdleNote && octave < 2) {
@@ -4164,6 +4186,9 @@
                         gameStats.perfect++;
                         highlightKey(noteStr, 220, '#22c55e');
                         document.getElementById('status').textContent = `🛡️ Safe Dodge! Total Dodges: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
+                        
+                        const safePos = keyPosMap[noteStr.toLowerCase().trim()];
+                        if (safePos) spawnConfetti(safePos.left + safePos.width / 2, canvas.height, '#22c55e');
                     } else {
                         activeWall.gameStatus = 'miss';
                         dodgeLives--;
@@ -4224,6 +4249,10 @@
                         target.gameStatus = 'perfect';
                         gameStats.perfect++;
                         highlightKey(noteStr, 220, '#22c55e');
+                        
+                        const normNote = noteStr.toLowerCase().trim();
+                        const pos = keyPosMap[normNote];
+                        if (pos) spawnConfetti(pos.left + pos.width / 2, canvas.height, '#22c55e');
                     } else {
                         target.gameStatus = 'earlyLate';
                         gameStats.earlyLate++;
@@ -4715,6 +4744,30 @@
                 });
             });
 
+            // Draw and update Confetti
+            if (confettiParticles.length > 0) {
+                for (let i = confettiParticles.length - 1; i >= 0; i--) {
+                    let p = confettiParticles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.3; 
+                    p.rot += p.rotSpeed;
+                    p.life -= 0.015;
+
+                    if (p.life <= 0) {
+                        confettiParticles.splice(i, 1);
+                    } else {
+                        ctx.save();
+                        ctx.globalAlpha = p.life;
+                        ctx.fillStyle = p.color;
+                        ctx.translate(p.x, p.y);
+                        ctx.rotate(p.rot);
+                        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                        ctx.restore();
+                    }
+                }
+            }
+
             if (!isStepMode && !isLooping) {
                 const lastNote = noteTimeline[noteTimeline.length - 1];
                 if (lastNote && effectiveElapsed > lastNote.hitTime + lastNote.duration + 500) {
@@ -4775,7 +4828,6 @@
                 currentSong = autoTransposeSong(parsed);
                 songSelect.value = '';
                 modal.classList.remove('open');
-                updateRosterSong();
                 playSong();
             } else {
                 document.getElementById('status').textContent = 'Invalid code format imported.';
@@ -4975,17 +5027,6 @@
             initMIDIHardware();
             syncSongsWithGoogleSheet();
             setTimeout(updateKeyPositions, 100);
-
-            // Populate local name & avatar preferences into modal
-            const cachedAvatar = localStorage.getItem('pianopad_avatar');
-            if (cachedAvatar) {
-                sessionStudentAvatar = cachedAvatar;
-                const avatarSelect = document.getElementById('student-join-avatar');
-                if (avatarSelect) avatarSelect.value = cachedAvatar;
-            }
-
-            // Interval to keep Monitor session timer updated
-            setInterval(updateMonitorWidget, 10000);
 
             // Outside of School Time Logic
             const now = new Date();
