@@ -1680,11 +1680,21 @@
         });
 
         function updateRosterSong() {
-            if (sessionStudentName && currentRoom && window.firebaseSet && window.firebaseRef && window.firebaseDb) {
-                window.firebaseSet(window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}/song`), currentSongTitle);
-            }
-            updateMonitorWidget();
-        }
+    if (sessionStudentName && currentRoom && window.firebaseSet && window.firebaseRef && window.firebaseDb) {
+        const myRef = window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}`);
+        window.firebaseSet(myRef, {
+            name: sessionStudentName,
+            studentName: sessionStudentName,
+            avatar: sessionStudentAvatar,
+            room: currentRoom,
+            song: currentSongTitle,
+            status: document.hidden ? "away" : "active",
+            tabSwitches: localTabSwitches,
+            lastActive: Date.now()
+        });
+    }
+    updateMonitorWidget();
+}
 
         document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
         document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
