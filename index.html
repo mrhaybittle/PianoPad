@@ -956,31 +956,34 @@
 </head>
 <body>
 
-    <!-- FIREBASE INITIALIZATION FOR ROSTER -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getDatabase, ref, set, onDisconnect } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+   <!-- FIREBASE INITIALIZATION FOR ROSTER -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getDatabase, ref, set, onDisconnect } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBAJSw8QFuzMoCXqZY2wmO3Nmy2Fdy6Q4U",
-            authDomain: "haysync-9b816.firebaseapp.com",
-            databaseURL: "https://haysync-9b816-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "haysync-9b816",
-            storageBucket: "haysync-9b816.firebasestorage.app",
-            messagingSenderId: "717730658604",
-            appId: "1:717730658604:web:e09a312b2ac7c8426e9489"
-        };
-            
-        try {
-            const app = initializeApp(firebaseConfig);
-            window.firebaseDb = getDatabase(app);
-            window.firebaseSet = set;
-            window.firebaseRef = ref;
-            window.firebaseOnDisconnect = onDisconnect;
-        } catch(e) {
-            console.log("Firebase config error.");
-        }
-    </script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBAJSw8QFuzMoCXqZY2wmO3Nmy2Fdy6Q4U",
+        authDomain: "haysync-9b816.firebaseapp.com",
+        databaseURL: "https://haysync-9b816-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "haysync-9b816",
+        storageBucket: "haysync-9b816.firebasestorage.app",
+        messagingSenderId: "717730658604",
+        appId: "1:717730658604:web:e09a312b2ac7c8426e9489"
+    };
+        
+    try {
+        const app = initializeApp(firebaseConfig);
+        window.firebaseDb = getDatabase(app);
+        window.firebaseSet = set;
+        window.firebaseRef = ref;
+        window.firebaseOnDisconnect = onDisconnect;
+        
+        // Notify application that Firebase API handles are bound
+        window.dispatchEvent(new Event('firebase-initialized'));
+    } catch(e) {
+        console.error("Firebase config error:", e);
+    }
+</script>
 
     <!-- Room Join Modal -->
     <div class="modal-overlay" id="room-join-modal" style="z-index: 300;">
