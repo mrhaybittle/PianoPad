@@ -973,7 +973,8 @@
             
         try {
             const app = initializeApp(firebaseConfig);
-            window.firebaseDb = getDatabase(app);
+            // Explicitly pass the databaseURL for regional servers
+            window.firebaseDb = getDatabase(app, firebaseConfig.databaseURL);
             window.firebaseSet = set;
             window.firebaseRef = ref;
             window.firebaseOnDisconnect = onDisconnect;
