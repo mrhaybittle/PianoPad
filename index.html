@@ -1204,7 +1204,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.10.12 | 12-Oct 17:57 AEDT (Sydney)</div>
+            <div class="version-stamp">v26.10.12 | 12-Oct 18:08 AEDT (Dapto)</div>
             <div class="status-bar" id="status">Connecting to Google Sheet song database...</div>
             
             <div class="footer-right-group">
@@ -1642,6 +1642,7 @@
                 song: currentSongTitle || "Wipeout",
                 status: activeStatus,
                 tabSwitches: localTabSwitches,
+                sessionStartTime: sessionStartTime,
                 lastActive: Date.now()
             });
             window.firebaseOnDisconnect(myRef).remove();
@@ -1836,7 +1837,7 @@
             ctx.font = '68px "Segoe UI Symbol", "Apple Symbols", "Noto Music", sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('Gl', 35, 48);
+            ctx.fillText('𝄞', 35, 48);
 
             ctx.restore();
         }
