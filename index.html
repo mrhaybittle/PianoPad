@@ -1622,40 +1622,43 @@
         }
 
         document.getElementById('btn-join-room').addEventListener('click', () => {
-            const name = document.getElementById('student-join-name').value.trim();
-            const avatar = document.getElementById('student-join-avatar').value;
-            const room = document.getElementById('student-join-room').value;
-            if(!name || !room) {
-                alert('Please enter your First Name and Last Initial, and select a room.');
-                return;
-            }
-            sessionStudentName = sanitizeName(name);
-            sessionStudentAvatar = avatar;
-            currentRoom = room;
+    const name = document.getElementById('student-join-name').value.trim();
+    const avatar = document.getElementById('student-join-avatar').value;
+    const room = document.getElementById('student-join-room').value;
 
-            // Save preferences locally
-            localStorage.setItem('pianopad_name', sessionStudentName);
-            localStorage.setItem('pianopad_avatar', sessionStudentAvatar);
+    if (!name || !room) {
+        alert('Please enter your First Name and Last Initial, and select a room.');
+        return;
+    }
 
-            document.getElementById('room-join-modal').classList.remove('open');
-            
-            if (window.firebaseSet && window.firebaseRef && window.firebaseDb) {
-                const myRef = window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}`);
-                window.firebaseSet(myRef, {
-                    name: sessionStudentName,
-                    avatar: sessionStudentAvatar,
-                    room: currentRoom,
-                    song: currentSongTitle,
-                    status: 'active',
-                    tabSwitches: 0,
-                    lastActive: Date.now()
-                });
-                window.firebaseOnDisconnect(myRef).remove();
-            }
-            
-            updateMonitorWidget();
-            checkFirstTimeCalibration();
+    sessionStudentName = sanitizeName(name);
+    sessionStudentAvatar = avatar;
+    currentRoom = room;
+
+    // Save preferences locally
+    localStorage.setItem('pianopad_name', sessionStudentName);
+    localStorage.setItem('pianopad_avatar', sessionStudentAvatar);
+
+    document.getElementById('room-join-modal').classList.remove('open');
+    
+    if (window.firebaseSet && window.firebaseRef && window.firebaseDb) {
+        const myRef = window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}`);
+        window.firebaseSet(myRef, {
+            name: sessionStudentName,
+            studentName: sessionStudentName, // Added fallback property
+            avatar: sessionStudentAvatar,
+            room: currentRoom,
+            song: currentSongTitle || "Wipeout",
+            status: 'active',
+            tabSwitches: localTabSwitches,
+            lastActive: Date.now()
         });
+        window.firebaseOnDisconnect(myRef).remove();
+    }
+    
+    updateMonitorWidget();
+    checkFirstTimeCalibration();
+});
 
         document.addEventListener("visibilitychange", () => {
             if (document.hidden) {
