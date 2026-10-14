@@ -973,12 +973,15 @@
             
         try {
             const app = initializeApp(firebaseConfig);
-            window.firebaseDb = getDatabase(app);
+            // Explicitly pass databaseURL for regional servers
+            window.firebaseDb = getDatabase(app, firebaseConfig.databaseURL);
             window.firebaseSet = set;
             window.firebaseRef = ref;
             window.firebaseOnDisconnect = onDisconnect;
+            
+            window.dispatchEvent(new Event('firebase-initialized'));
         } catch(e) {
-            console.log("Firebase config error.");
+            console.log("Firebase config error:", e);
         }
     </script>
 
@@ -1201,7 +1204,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.09.25 | 25-Sep 07:04 AEST (Sydney)</div>
+            <div class="version-stamp">v26.10.12 | 12-Oct 18:08 AEDT (Dapto)</div>
             <div class="status-bar" id="status">Connecting to Google Sheet song database...</div>
             
             <div class="footer-right-group">
@@ -1360,7 +1363,7 @@
 
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" id="btn-calib-skip" onclick="skipCalibration()">Skip Calibration</button>
-                <button type="button" class="btn-secondary" id="btn-calib-cancel" style="display:none;">Cancel Calibration</button>
+                <button type="button" class="btn-secondary" id="btn-calib-cancel" style="display:none;" onclick="cancelCalibration()">Cancel Calibration</button>
             </div>
         </div>
     </div>
@@ -1621,6 +1624,30 @@
             }
         }
 
+        /* Centralized, Safe Firebase Roster Sync */
+        function syncStudentToFirebase(statusOverride = null) {
+            if (!window.firebaseSet || !window.firebaseRef || !window.firebaseDb) return;
+            
+            const activeName = sessionStudentName || localStorage.getItem('pianopad_name') || "Student";
+            const activeAvatar = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || "🏃";
+            const activeRoom = currentRoom || "Outside";
+            const activeStatus = statusOverride || (document.hidden ? "away" : "active");
+
+            const myRef = window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}`);
+            window.firebaseSet(myRef, {
+                name: activeName,
+                studentName: activeName,
+                avatar: activeAvatar,
+                room: activeRoom,
+                song: currentSongTitle || "Wipeout",
+                status: activeStatus,
+                tabSwitches: localTabSwitches,
+                sessionStartTime: sessionStartTime,
+                lastActive: Date.now()
+            });
+            window.firebaseOnDisconnect(myRef).remove();
+        }
+
         document.getElementById('btn-join-room').addEventListener('click', () => {
             const name = document.getElementById('student-join-name').value.trim();
             const avatar = document.getElementById('student-join-avatar').value;
@@ -1639,20 +1666,7 @@
 
             document.getElementById('room-join-modal').classList.remove('open');
             
-            if (window.firebaseSet && window.firebaseRef && window.firebaseDb) {
-                const myRef = window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}`);
-                window.firebaseSet(myRef, {
-                    name: sessionStudentName,
-                    avatar: sessionStudentAvatar,
-                    room: currentRoom,
-                    song: currentSongTitle,
-                    status: 'active',
-                    tabSwitches: 0,
-                    lastActive: Date.now()
-                });
-                window.firebaseOnDisconnect(myRef).remove();
-            }
-            
+            syncStudentToFirebase("active");
             updateMonitorWidget();
             checkFirstTimeCalibration();
         });
@@ -1663,23 +1677,15 @@
                 const elapsedMs = Date.now() - sessionStartTime;
                 const posPct = Math.min(100, (elapsedMs / (60 * 60000)) * 100);
                 breakMarkerPositions.push(posPct);
-
-                if (sessionStudentName && currentRoom && window.firebaseSet && window.firebaseRef && window.firebaseDb) {
-                    window.firebaseSet(window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}/tabSwitches`), localTabSwitches);
-                    window.firebaseSet(window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}/status`), "away");
-                }
+                syncStudentToFirebase("away");
             } else {
-                if (sessionStudentName && currentRoom && window.firebaseSet && window.firebaseRef && window.firebaseDb) {
-                    window.firebaseSet(window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}/status`), "active");
-                }
+                syncStudentToFirebase("active");
             }
             updateMonitorWidget();
         });
 
         function updateRosterSong() {
-            if (sessionStudentName && currentRoom && window.firebaseSet && window.firebaseRef && window.firebaseDb) {
-                window.firebaseSet(window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}/song`), currentSongTitle);
-            }
+            syncStudentToFirebase();
             updateMonitorWidget();
         }
 
@@ -1735,9 +1741,7 @@
                 if (inputName && inputName.trim()) {
                     sessionStudentName = sanitizeName(inputName);
                     localStorage.setItem('pianopad_name', sessionStudentName);
-                    if (currentRoom && window.firebaseSet && window.firebaseRef && window.firebaseDb) {
-                        window.firebaseSet(window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}/name`), sessionStudentName);
-                    }
+                    syncStudentToFirebase();
                 } else {
                     sessionStudentName = "Anonymous";
                 }
@@ -5028,6 +5032,11 @@
             syncSongsWithGoogleSheet();
             setTimeout(updateKeyPositions, 100);
 
+            const savedName = localStorage.getItem('pianopad_name');
+            const savedAvatar = localStorage.getItem('pianopad_avatar');
+            if (savedName) sessionStudentName = savedName;
+            if (savedAvatar) sessionStudentAvatar = savedAvatar;
+
             // Outside of School Time Logic
             const now = new Date();
             const day = now.getDay();
@@ -5037,27 +5046,18 @@
 
             if (isOOS) {
                 currentRoom = "Outside";
-                sessionStudentName = localStorage.getItem('pianopad_name') || "Student";
-                sessionStudentAvatar = localStorage.getItem('pianopad_avatar') || "🏃";
-                
-                if (window.firebaseSet && window.firebaseRef && window.firebaseDb) {
-                    const myRef = window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}`);
-                    window.firebaseSet(myRef, {
-                        name: sessionStudentName,
-                        avatar: sessionStudentAvatar,
-                        room: currentRoom,
-                        song: currentSongTitle,
-                        status: 'active',
-                        tabSwitches: 0,
-                        lastActive: Date.now()
-                    });
-                    window.firebaseOnDisconnect(myRef).remove();
-                }
                 updateMonitorWidget();
                 checkFirstTimeCalibration();
             } else {
-                document.getElementById('student-join-name').value = localStorage.getItem('pianopad_name') || "";
+                document.getElementById('student-join-name').value = savedName || "";
+                if (savedAvatar) document.getElementById('student-join-avatar').value = savedAvatar;
                 document.getElementById('room-join-modal').classList.add('open');
+            }
+
+            if (window.firebaseSet) {
+                syncStudentToFirebase();
+            } else {
+                window.addEventListener('firebase-initialized', () => syncStudentToFirebase(), { once: true });
             }
         });
     </script>
