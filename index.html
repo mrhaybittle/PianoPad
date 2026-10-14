@@ -564,7 +564,7 @@
             height: 100%;
             background-color: #22c55e;
             width: 0%;
-            transition: width 0.5s ease;
+            transition: width 0.5s ease, background-color 0.5s ease;
         }
 
         .monitor-break-marker {
@@ -1215,6 +1215,7 @@
                         <span class="monitor-student-name" id="mon-student-name">Student</span>
                         <span class="monitor-badge-breaks" id="mon-breaks-badge">Breaks: 0</span>
                         <span class="monitor-time-text" id="mon-time-text">0m / 60m</span>
+                        <span id="mon-level-badge" style="display:none; align-items:center; font-weight:800; font-size:0.75rem; margin-left:2px; margin-right:2px;"></span>
                         <div class="monitor-divider"></div>
                         <span class="monitor-song-text" id="mon-song-text">🎵 Wipeout</span>
                     </div>
@@ -1598,6 +1599,7 @@
             const songEl = document.getElementById('mon-song-text');
             const fillEl = document.getElementById('mon-bar-fill');
             const trackEl = document.getElementById('mon-bar-track');
+            const badgeEl = document.getElementById('mon-level-badge');
 
             if (studentEl) studentEl.textContent = sessionStudentName || localStorage.getItem('pianopad_name') || "Mr H";
             if (avatarEl) avatarEl.textContent = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || "🏃";
@@ -1607,9 +1609,41 @@
             if (timeEl) timeEl.textContent = `${elapsedMins}m / 60m`;
             if (songEl) songEl.textContent = `🎵 ${currentSongTitle || 'Wipeout'}`;
 
+            let barColor = '#22c55e'; // default green
+
+            if (badgeEl) {
+                let badgeHtml = '';
+                let displayBadge = false;
+                const isDouble = (localTabSwitches === 0);
+                const x2Tag = isDouble ? '<span style="color:#ef4444; font-weight:900; margin-left:4px;">X2</span>' : '';
+
+                if (elapsedMins >= 30) {
+                    displayBadge = true;
+                    badgeHtml = `<span style="color:#facc15;">🥇 Gold Level</span>${x2Tag}`;
+                    barColor = '#facc15';
+                } else if (elapsedMins >= 20) {
+                    displayBadge = true;
+                    badgeHtml = `<span style="color:#cbd5e1;">🥈 Silver Level</span>${x2Tag}`;
+                    barColor = '#cbd5e1';
+                } else if (elapsedMins >= 10) {
+                    displayBadge = true;
+                    badgeHtml = `<span style="color:#f97316;">🥉 Bronze Level</span>${x2Tag}`;
+                    barColor = '#f97316';
+                }
+
+                if (displayBadge) {
+                    badgeEl.style.display = 'inline-flex';
+                    badgeEl.innerHTML = badgeHtml;
+                } else {
+                    badgeEl.style.display = 'none';
+                    badgeEl.innerHTML = '';
+                }
+            }
+
             if (fillEl) {
                 const fillPct = Math.min(100, Math.max(1, (elapsedMins / 60) * 100));
                 fillEl.style.width = `${fillPct}%`;
+                fillEl.style.backgroundColor = barColor;
             }
 
             // Render Break Markers on Track
@@ -3322,7 +3356,7 @@
         const btnPause = document.getElementById('btn-pause');
         const btnLoop = document.getElementById('btn-loop');
         const btnRecord = document.getElementById('btn-record');
-        const btnAddTeacherSong = document.getElementById('btn-add-teacher-song');
+        const btnAddTeacherSong = document.getElementById('btnAddTeacherSong');
         const recordBtnText = document.getElementById('record-btn-text');
         const btnShare = document.getElementById('btn-share');
 
@@ -3367,7 +3401,7 @@
         btnPause.addEventListener('click', togglePause);
         btnLoop.addEventListener('click', toggleLoopMode);
         btnRecord.addEventListener('click', toggleRecording);
-        btnAddTeacherSong.addEventListener('click', openTeacherModal);
+        document.getElementById('btn-add-teacher-song').addEventListener('click', openTeacherModal);
         btnShare.addEventListener('click', shareHaycode);
 
         document.getElementById('btn-teacher-cancel').addEventListener('click', () => teacherModal.classList.remove('open'));
