@@ -985,6 +985,21 @@
         }
     </script>
 
+    <!-- Tab Switch Alert Modal -->
+    <div class="modal-overlay" id="tab-switch-modal" style="z-index: 10000;">
+        <div class="modal" style="max-width: 480px; text-align: center; border: 3px solid #ef4444; box-shadow: 0 0 25px rgba(239, 68, 68, 0.8); background-color: #1f2937;">
+            <h2 style="color: #ef4444; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; gap: 10px; text-transform: uppercase; margin-bottom: 5px;">
+                ⚠️ <span id="tab-switch-title">TAB SWITCH RECORDED!</span>
+            </h2>
+            <p style="font-size: 1.05rem; color: #ffffff; font-weight: 600; margin: 15px 0;">
+                You switched tabs - stay on task please. Break recorded.
+            </p>
+            <button type="button" style="width: 100%; padding: 14px; font-size: 1.1rem; justify-content: center; text-transform: uppercase; font-weight: 800; background: linear-gradient(to bottom, #ef4444, #991b1b); color: white; border: none; border-radius: 8px; cursor: pointer;" onclick="document.getElementById('tab-switch-modal').classList.remove('open')">
+                I UNDERSTAND - BACK TO TASK
+            </button>
+        </div>
+    </div>
+
     <!-- Room Join Modal -->
     <div class="modal-overlay" id="room-join-modal" style="z-index: 300;">
         <div class="modal" style="max-width: 400px; text-align: center;">
@@ -1214,7 +1229,7 @@
                         <span id="mon-student-avatar" style="font-size: 0.82rem;">🏃</span>
                         <span class="monitor-student-name" id="mon-student-name">Student</span>
                         <span class="monitor-badge-breaks" id="mon-breaks-badge">Breaks: 0</span>
-                        <span class="monitor-time-text" id="mon-time-text">0m / 60m</span>
+                        <span class="monitor-time-text" id="mon-time-text">0:00 / 60:00min</span>
                         <span id="mon-level-badge" style="display:none; align-items:center; font-weight:800; font-size:0.75rem; margin-left:2px; margin-right:2px;"></span>
                         <div class="monitor-divider"></div>
                         <span class="monitor-song-text" id="mon-song-text">🎵 Wipeout</span>
@@ -1605,8 +1620,13 @@
             if (avatarEl) avatarEl.textContent = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || "🏃";
             if (breaksEl) breaksEl.textContent = `Breaks: ${localTabSwitches}`;
             
-            const elapsedMins = Math.floor((Date.now() - sessionStartTime) / 60000);
-            if (timeEl) timeEl.textContent = `${elapsedMins}m / 60m`;
+            const elapsedMs = Date.now() - sessionStartTime;
+            const totalSecs = Math.floor(elapsedMs / 1000);
+            const mins = Math.floor(totalSecs / 60);
+            const secs = (totalSecs % 60).toString().padStart(2, '0');
+            const elapsedMins = Math.floor(elapsedMs / 60000);
+            
+            if (timeEl) timeEl.textContent = `${mins}:${secs} / 60:00min`;
             if (songEl) songEl.textContent = `🎵 ${currentSongTitle || 'Wipeout'}`;
 
             let barColor = '#22c55e'; // default green
@@ -1714,6 +1734,11 @@
                 syncStudentToFirebase("away");
             } else {
                 syncStudentToFirebase("active");
+                if (localTabSwitches > 0) {
+                    const fName = (sessionStudentName || localStorage.getItem('pianopad_name') || "Student").split(' ')[0];
+                    document.getElementById('tab-switch-title').textContent = `${fName.toUpperCase()} - TAB SWITCH RECORDED!`;
+                    document.getElementById('tab-switch-modal').classList.add('open');
+                }
             }
             updateMonitorWidget();
         });
@@ -5093,6 +5118,9 @@
             } else {
                 window.addEventListener('firebase-initialized', () => syncStudentToFirebase(), { once: true });
             }
+
+            // Start updating the monitor widget global timer every second
+            setInterval(updateMonitorWidget, 1000);
         });
     </script>
 </body>
