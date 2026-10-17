@@ -2117,7 +2117,10 @@
                 calibStep = 1;
                 document.getElementById('btn-calib-skip').style.display = 'inline-flex';
                 document.getElementById('btn-calib-cancel').style.display = 'none';
-                document.getElementById('calib-instructions').innerHTML = "Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
+                document.getElementById('calib-instructions').innerHTML = 'Step 1: 
+                Press the <span style="background-color: #ef4444; color: #ffffff; padding: 
+                2px 8px; border-radius: 4px; font-weight: 900; font-size: 1.1em; letter-spacing:
+                0.05em;">LOWEST</span> "C" key on your external MIDI Keyboard...';
                 calibModal.classList.add('open');
             }
         }
@@ -3513,7 +3516,7 @@ function startCalibration() {
                 if (lowCKey) lowCKey.classList.add('blue-highlight');
 
                 calibStep = 2;
-                document.getElementById('calib-instructions').textContent = "Recognized Lowest C! Step 2: Now press the HIGHEST 'C' key on your external MIDI Keyboard...";
+                document.getElementById('calib-instructions').innerHTML = 'Recognized Lowest C! Step 2: Now press the <span style="background-color: #22c55e; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: 900; font-size: 1.1em; letter-spacing: 0.05em;">HIGHEST</span> "C" key on your external MIDI Keyboard...';
             } else if (calibStep === 2) {
                 calibHighestRawMIDI = rawMidi;
 
