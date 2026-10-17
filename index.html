@@ -5102,38 +5102,8 @@ function exportPerformanceToWAV(fileName = 'PianoPad_Song') {
         document.getElementById('status').textContent = "WAV Export failed.";
     });
 }
-            offlineCtx.startRendering().then(renderedBuffer => {
-                const wavBlob = bufferToWavBlob(renderedBuffer);
-                const url = URL.createObjectURL(wavBlob);
 
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${fileName}.wav`;
-                a.click();
-
-                document.getElementById('status').textContent = `WAV Audio exported as "${fileName}.wav"!`;
-            }).catch(err => {
-                console.error("WAV Export Error:", err);
-                document.getElementById('status').textContent = "WAV Export failed.";
-            });
-        }
-
-        function bufferToWavBlob(buffer) {
-            const numOfChan = buffer.numberOfChannels;
-            const length = buffer.length * numOfChan * 2 + 44;
-            const outBuffer = new ArrayBuffer(length);
-            const view = new DataView(outBuffer);
-            const channels = [];
-            let sample = 0;
-            let offset = 0;
-            let pos = 0;
-
-            function writeString(str) {
-                for (let i = 0; i < str.length; i++) {
-                    view.setUint8(pos++, str.charCodeAt(i));
-                }
-            }
-
+function bufferToWavBlob(buffer) {
             function setUint16(data) {
                 view.setUint16(pos, data, true);
                 pos += 2;
