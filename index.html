@@ -189,6 +189,22 @@
             color: #f3f4f6;
         }
 
+        /* Song Rank Badge Styling */
+        .song-rank-badge-box {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background-color: #0b0f19;
+            border: 1px solid #eab308;
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: #facc15;
+            box-shadow: 0 0 8px rgba(234, 179, 8, 0.3);
+            white-space: nowrap;
+        }
+
         button, .btn-link, .btn-file-label {
             display: inline-flex;
             align-items: center;
@@ -576,381 +592,29 @@
             z-index: 2;
         }
 
-        .calib-piano-container {
-            width: 100%;
-            overflow-x: auto;
-            background: #000;
-            padding: 10px;
-            border-radius: 8px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .calib-piano {
-            display: flex;
-            position: relative;
-            user-select: none;
-        }
-
-        .calib-key {
-            border-radius: 0 0 3px 3px;
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            font-size: 0.55rem;
-            font-weight: bold;
-            padding-bottom: 2px;
-        }
-
-        .calib-key.white {
-            width: 12px;
-            height: 55px;
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            color: #0f172a;
-            z-index: 1;
-        }
-
-        .calib-key.black {
-            width: 8px;
-            height: 35px;
-            background: #0f172a;
-            margin-left: -4px;
-            margin-right: -4px;
-            z-index: 2;
-        }
-
-        .calib-key.blue-highlight {
-            background-color: #3b82f6 !important;
-            color: white !important;
-            box-shadow: 0 0 8px #3b82f6;
-        }
-
-        .graph-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            margin-top: 10px;
-            width: 100%;
-        }
-
-        .bar-chart-wrapper {
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            height: 160px;
-            width: 100px;
-            background: #0b0f19;
-            border: 1px solid #374151;
-            border-radius: 8px;
-            padding: 8px;
-            position: relative;
-        }
-
-        .multi-bar-container {
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            gap: 16px;
-            width: 100%;
-            max-width: 100%;
-            overflow-x: auto;
-            padding: 12px;
-            background: #0b0f19;
-            border: 1px solid #374151;
-            border-radius: 8px;
-            min-height: 180px;
-        }
-
-        .multi-bar-column {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            flex-shrink: 0;
-            min-width: 58px;
-        }
-
-        .rank-medal-badge {
-            font-size: 0.85rem;
-            font-weight: 800;
-            color: #facc15;
-        }
-
-        .stacked-bar {
-            width: 38px;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            height: 130px;
-            border-radius: 4px;
-            overflow: hidden;
-            background: #181f2e;
-        }
-
-        .bar-part-red {
-            background-color: #ef4444;
-            width: 100%;
-            transition: height 0.4s ease;
-        }
-
-        .bar-part-orange {
-            background-color: #f97316;
-            width: 100%;
-            transition: height 0.4s ease;
-        }
-
-        .bar-part-green {
-            background-color: #22c55e;
-            width: 100%;
-            transition: height 0.4s ease;
-        }
-
-        .badge-box {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 700;
-            margin-top: 6px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
-        }
-
-        .badge-gold { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #000; }
-        .badge-silver { background: linear-gradient(135deg, #94a3b8, #cbd5e1); color: #000; }
-        .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
-
-        .rank-display-box {
-            font-size: 1.1rem;
-            font-weight: 800;
-            color: #facc15;
-            margin-top: 8px;
-            padding: 6px 12px;
-            background: #0b0f19;
-            border: 1px solid #eab308;
-            border-radius: 8px;
-            display: inline-block;
-        }
-
-        .arcade-hub-overlay {
-            display: none;
-            flex-direction: column;
-            gap: 16px;
-            background: #090814;
-            border: 2px solid #8b5cf6;
-            border-radius: 12px;
-            padding: 16px;
-            box-shadow: inset 0 0 25px rgba(139, 92, 246, 0.3);
-        }
-
-        .arcade-hub-overlay.open {
-            display: flex;
-        }
-
-        .arcade-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 14px;
-        }
-
-        .game-card {
-            background: #141226;
-            border: 1px solid #374151;
-            border-radius: 10px;
-            padding: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            cursor: pointer;
-            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
-        }
-
-        .game-card:hover {
-            transform: translateY(-4px);
-            border-color: #ec4899;
-            box-shadow: 0 8px 20px rgba(236, 72, 153, 0.3);
-        }
-
-        .game-card h3 {
-            font-size: 1.05rem;
-            color: #f3f4f6;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .game-card p {
-            font-size: 0.78rem;
-            color: #9ca3af;
-            line-height: 1.3;
-            flex: 1;
-        }
-
-        .runner-track-wrapper {
-            position: relative;
-            width: 100%;
-            max-height: 240px;
-            overflow-y: auto;
-            background: #0b0f19;
-            border: 1px solid #374151;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            padding: 6px;
-            margin-top: 6px;
-        }
-
-        .runner-lane {
-            position: relative;
-            width: 100%;
-            height: 28px;
-            background: #131927;
-            border-radius: 4px;
-            overflow: hidden;
-            border: 1px solid #1f2937;
-            flex-shrink: 0;
-        }
-
-        .runner-lane.my-lane {
-            border: 2px solid #22c55e !important;
-            background: #0f2318 !important;
-            box-shadow: inset 0 0 10px rgba(34, 197, 94, 0.4);
-        }
-
-        .runner-track-scroll {
-            position: absolute;
-            left: 0;
-            top: 0;
-            height: 100%;
-            width: 100%;
-        }
-
-        .runner-avatar {
-            position: absolute;
-            left: 10px;
-            bottom: 0px;
-            font-size: 1.2rem;
-            transition: transform 0.2s ease-out;
-            user-select: none;
-            transform: scaleX(-1);
-            z-index: 5;
-        }
-
-        .runner-avatar.jumping {
-            transform: scaleX(-1) translateY(-12px) rotate(-10deg);
-        }
-
-        .hurdle-obstacle {
-            position: absolute;
-            bottom: 2px;
-            width: 20px;
-            height: 22px;
-            background: #ef4444;
-            border: 1px solid #ffffff;
-            border-radius: 3px 3px 0 0;
-            color: #ffffff;
-            font-weight: 900;
-            font-size: 0.65rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
-            z-index: 2;
-        }
-
-        .runner-finish-line {
-            position: absolute;
-            left: 3600px;
-            top: 0;
-            bottom: 0;
-            width: 12px;
-            background: repeating-linear-gradient(0deg, #fff, #fff 8px, #000 8px, #000 16px);
-            z-index: 4;
-        }
-
-        .lane-label {
-            position: absolute;
-            right: 6px;
-            top: 2px;
-            font-size: 0.6rem;
-            font-weight: 800;
-            color: #cbd5e1;
-            z-index: 6;
-            background: rgba(0,0,0,0.65);
-            padding: 1px 5px;
-            border-radius: 3px;
-        }
-
-        .countdown-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.85);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 200;
-        }
-
-        .countdown-number {
-            font-size: 8rem;
-            font-weight: 900;
-            color: #facc15;
-            text-shadow: 0 0 30px #facc15;
-            animation: pulseCount 0.8s ease-in-out infinite;
-        }
-
-        @keyframes pulseCount {
-            0% { transform: scale(0.6); opacity: 0; }
-            50% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); opacity: 0.8; }
-        }
-
-        .lobby-players-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 6px;
-            margin: 10px 0;
-            text-align: left;
-        }
-
-        .lobby-player-card {
-            background: #0b0f19;
-            border: 1px solid #374151;
-            border-radius: 6px;
-            padding: 6px 10px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .race-results-table {
+        .ranks-summary-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
-            font-size: 0.85rem;
+            font-size: 0.82rem;
+            margin-top: 8px;
         }
 
-        .race-results-table th {
-            background: #181f2e;
-            color: #9ca3af;
+        .ranks-summary-table th {
+            background-color: #111827;
+            color: #facc15;
             padding: 6px 10px;
-            border-bottom: 1px solid #374151;
-            font-size: 0.75rem;
-            text-transform: uppercase;
+            text-align: left;
+            border-bottom: 2px solid #374151;
         }
 
-        .race-results-table td {
+        .ranks-summary-table td {
             padding: 6px 10px;
             border-bottom: 1px solid #1f2937;
             color: #f3f4f6;
+        }
+
+        .ranks-summary-table tr:hover {
+            background-color: #1e293b;
         }
     </style>
 </head>
@@ -973,7 +637,6 @@
            
         try {
             const app = initializeApp(firebaseConfig);
-            // Explicitly pass databaseURL for regional servers
             window.firebaseDb = getDatabase(app, firebaseConfig.databaseURL);
             window.firebaseSet = set;
             window.firebaseRef = ref;
@@ -997,6 +660,35 @@
             <button type="button" style="width: 100%; padding: 14px; font-size: 1.1rem; justify-content: center; text-transform: uppercase; font-weight: 800; background: linear-gradient(to bottom, #ef4444, #991b1b); color: white; border: none; border-radius: 8px; cursor: pointer;" onclick="document.getElementById('tab-switch-modal').classList.remove('open')">
                 I UNDERSTAND - BACK TO TASK
             </button>
+        </div>
+    </div>
+
+    <!-- User Rankings Summary Modal -->
+    <div class="modal-overlay" id="user-ranks-modal" style="z-index: 400;">
+        <div class="modal" style="max-width: 580px;">
+            <h2 style="color: #facc15; display: flex; align-items: center; gap: 8px;">
+                🏆 <span id="user-ranks-modal-title">Your Game Mode Rankings</span>
+            </h2>
+            <p style="font-size: 0.85rem; color: #cbd5e1;">Here are your recorded song high scores, ranks, and attempts from the spreadsheet:</p>
+            <div style="max-height: 280px; overflow-y: auto;">
+                <table class="ranks-summary-table">
+                    <thead>
+                        <tr>
+                            <th>Badge</th>
+                            <th>Song Title</th>
+                            <th>Rank</th>
+                            <th>High Score</th>
+                            <th>Attempts</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-ranks-table-body">
+                        <tr><td colspan="5" style="text-align:center; color:#9ca3af;">Loading rankings...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn-success" onclick="document.getElementById('user-ranks-modal').classList.remove('open')">Awesome, Let's Play!</button>
+            </div>
         </div>
     </div>
 
@@ -1047,6 +739,14 @@
                 <select id="song-select">
                     <option value="">Choose a Song</option>
                 </select>
+
+                <!-- Selected Song Current Rank Display Badge -->
+                <div id="song-rank-badge-display" class="song-rank-badge-box" style="display: none;">
+                    <span id="song-rank-medal">🥇</span>
+                    <span id="song-rank-text">Rank #1</span>
+                    <span id="song-rank-score" style="color: #22c55e;">Best: 100%</span>
+                    <span id="song-rank-attempts" style="color: #cbd5e1; font-weight: 500;">(1 attempt)</span>
+                </div>
 
                 <select id="instrument-select">
                     <option value="piano">Grand Piano</option>
@@ -1122,10 +822,9 @@
                     <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 </button>
 
-                <a href="https://pianopadshare.blogspot.com/" target="_blank" rel="noopener noreferrer" class="btn-link btn-secondary">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-                    Get Songs
-                </a>
+                <button type="button" id="btn-view-ranks" class="btn-warning" title="View My Current Rankings">
+                    🏆 My Ranks
+                </button>
 
                 <a href="https://sites.google.com/erc.nsw.edu.au/pianopad-leaderboard/home" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M12 15l-3 4-3-4"></path><path d="M5 6v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"></path><path d="M3 6h18"></path><path d="M5 2h14"></path></svg>
@@ -1465,6 +1164,7 @@
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
+        const GAMEMODERANKS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?sheet=GameModeRanks&single=true&output=csv';
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw2APy5AWBzHl0Y4HbcC3iwhxhRiHbDJ5LnRoub_usPqHPGxUC0sSO1_mWm7jA35UgPiQ/exec';
 
         let audioCtx = null;
@@ -1488,6 +1188,9 @@
         let sessionStartTime = Date.now();
         let breakMarkerPositions = [];
         let sessionStudentAvatar = "🏃";
+
+        // GameModeRanks Cached Data
+        let gameModeRanksList = [];
 
         // Sheet Music State
         let showSheetMusic = localStorage.getItem('pianopad_sheet_music') !== 'false';
@@ -1604,6 +1307,152 @@
         const arcadeControlsBar = document.getElementById('arcade-controls-bar');
         const timelineBox = document.getElementById('timeline-box');
         const runnerTrack = document.getElementById('runner-track');
+
+        /* --- GAMEMODERANKS FETCH & USER DISPLAY SYSTEM --- */
+        async function fetchAndShowGameModeRanks(autoOpenModal = false) {
+            let ranksData = [];
+
+            try {
+                // Try JSONP Apps Script endpoint first
+                const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_GAMEMODERANKS&t=${Date.now()}`);
+                if (res && res.ranks && res.ranks.length > 0) {
+                    ranksData = res.ranks;
+                }
+            } catch (e) {
+                console.warn("Apps script ranks error, trying direct CSV...", e);
+            }
+
+            if (ranksData.length === 0) {
+                try {
+                    const response = await fetch(GAMEMODERANKS_CSV_URL);
+                    if (response.ok) {
+                        const csvText = await response.text();
+                        ranksData = parseGameModeRanksCSV(csvText);
+                    }
+                } catch (err) {
+                    console.warn("Could not fetch GameModeRanks published CSV:", err);
+                }
+            }
+
+            if (ranksData.length > 0) {
+                gameModeRanksList = ranksData;
+                updateSelectedSongRankDisplay();
+                if (autoOpenModal) {
+                    displayUserRankingsModal();
+                }
+            }
+        }
+
+        function parseGameModeRanksCSV(csvText) {
+            const ranks = [];
+            const lines = csvText.split(/\r?\n/);
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                const row = [];
+                let insideQuote = false;
+                let entry = '';
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"' && line[j + 1] === '"') {
+                        entry += '"'; j++;
+                    } else if (char === '"') {
+                        insideQuote = !insideQuote;
+                    } else if (char === ',' && !insideQuote) {
+                        row.push(entry); entry = '';
+                    } else {
+                        entry += char;
+                    }
+                }
+                row.push(entry);
+
+                if (row.length >= 5) {
+                    ranks.push({
+                        songTitle: row[0].trim().replace(/^"|"$/g, ''),
+                        studentName: row[1].trim().replace(/^"|"$/g, ''),
+                        highScore: parseFloat(row[2]) || 0,
+                        rank: parseInt(row[3]) || 0,
+                        attempts: parseInt(row[4]) || 0,
+                        lastActive: row[5] ? row[5].trim().replace(/^"|"$/g, '') : ''
+                    });
+                }
+            }
+            return ranks;
+        }
+
+        function getBadgeIcon(rankNum) {
+            if (rankNum === 1) return '🥇';
+            if (rankNum === 2) return '🥈';
+            if (rankNum === 3) return '🥉';
+            return '🎖️';
+        }
+
+        function displayUserRankingsModal() {
+            const activeName = (sessionStudentName || localStorage.getItem('pianopad_name') || '').trim();
+            if (!activeName) return;
+
+            const modalTitle = document.getElementById('user-ranks-modal-title');
+            const tbody = document.getElementById('user-ranks-table-body');
+            modalTitle.textContent = `Rankings for ${activeName}`;
+
+            const userRanks = gameModeRanksList.filter(r => r.studentName.toLowerCase().trim() === activeName.toLowerCase());
+
+            if (userRanks.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#9ca3af; padding:12px;">No GameModeRanks recorded yet for <strong>${activeName}</strong>. Play Game Mode on any song to get ranked!</td></tr>`;
+            } else {
+                userRanks.sort((a, b) => a.rank - b.rank);
+                tbody.innerHTML = userRanks.map(r => {
+                    const badge = getBadgeIcon(r.rank);
+                    return `<tr>
+                        <td style="font-size:1.1rem; text-align:center;">${badge}</td>
+                        <td style="font-weight:700; color:#ffffff;">${r.songTitle}</td>
+                        <td style="font-weight:800; color:#facc15;">Rank #${r.rank}</td>
+                        <td style="color:#22c55e; font-weight:700;">${r.highScore}%</td>
+                        <td style="color:#cbd5e1;">${r.attempts}</td>
+                    </tr>`;
+                }).join('');
+            }
+
+            document.getElementById('user-ranks-modal').classList.add('open');
+        }
+
+        function updateSelectedSongRankDisplay() {
+            const badgeBox = document.getElementById('song-rank-badge-display');
+            const medalEl = document.getElementById('song-rank-medal');
+            const rankTextEl = document.getElementById('song-rank-text');
+            const scoreEl = document.getElementById('song-rank-score');
+            const attemptsEl = document.getElementById('song-rank-attempts');
+
+            if (!currentSongTitle) {
+                badgeBox.style.display = 'none';
+                return;
+            }
+
+            const activeName = (sessionStudentName || localStorage.getItem('pianopad_name') || '').trim();
+
+            const record = gameModeRanksList.find(r => 
+                r.songTitle.toLowerCase().trim() === currentSongTitle.toLowerCase().trim() &&
+                r.studentName.toLowerCase().trim() === activeName.toLowerCase()
+            );
+
+            badgeBox.style.display = 'inline-flex';
+
+            if (record) {
+                medalEl.textContent = getBadgeIcon(record.rank);
+                rankTextEl.textContent = `Rank #${record.rank}`;
+                scoreEl.textContent = `Best: ${record.highScore}%`;
+                attemptsEl.textContent = `(${record.attempts} attempt${record.attempts === 1 ? '' : 's'})`;
+            } else {
+                medalEl.textContent = '🎵';
+                rankTextEl.textContent = 'Unranked';
+                scoreEl.textContent = 'Best: --';
+                attemptsEl.textContent = '(0 attempts)';
+            }
+        }
+
+        document.getElementById('btn-view-ranks').addEventListener('click', () => {
+            fetchAndShowGameModeRanks(true);
+        });
 
         /* --- MONITOR WIDGET UPDATER FUNCTION --- */
         function updateMonitorWidget() {
@@ -1722,6 +1571,7 @@
            
             syncStudentToFirebase("active");
             updateMonitorWidget();
+            fetchAndShowGameModeRanks(true);
             checkFirstTimeCalibration();
         });
 
@@ -1746,6 +1596,7 @@
         function updateRosterSong() {
             syncStudentToFirebase();
             updateMonitorWidget();
+            updateSelectedSongRankDisplay();
         }
 
         document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
@@ -3023,6 +2874,7 @@
                 } else {
                     document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
                 }
+                fetchAndShowGameModeRanks();
             } catch (err) {
                 console.warn("Could not post score to Google Apps Script.", err);
                 document.getElementById('status').textContent = `Failed to submit score for ${sessionStudentName}.`;
@@ -4501,6 +4353,7 @@
                 document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
             }
             updateMonitorWidget();
+            updateSelectedSongRankDisplay();
         }
 
         function buildTimeline() {
@@ -5089,6 +4942,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             initMIDIHardware();
             syncSongsWithGoogleSheet();
+            fetchAndShowGameModeRanks(true);
             setTimeout(updateKeyPositions, 100);
 
             const savedName = localStorage.getItem('pianopad_name');
