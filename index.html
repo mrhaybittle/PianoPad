@@ -5088,11 +5088,16 @@ function processConfirmedClassUpload() {
 
     const fullClassCode = (yearVal === '7' || yearVal === '8') ? `${yearVal}${letterVal}` : `Year${yearVal}`;
     const studentName = (sessionStudentName || localStorage.getItem('pianopad_name') || 'Student').replace(/\s+/g, '');
-    const fullFormattedName = `${fullClassCode}_${pendingExportFileName}_${studentName}`;
+    
+    // 1. Read student avatar (or fallback to runner)
+    const avatar = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || '🏃';
+
+    // 2. Append the avatar emoji to the end of the filename
+    const fullFormattedName = `${fullClassCode}_${pendingExportFileName}_${studentName}_${avatar}`;
 
     document.getElementById('class-select-modal').classList.remove('open');
 
-    // Handle Local Download
+    // 1. Handle Local Download
     if (pendingExportMode === 'download' || pendingExportMode === 'both') {
         const url = URL.createObjectURL(pendingExportBlob);
         const a = document.createElement('a');
@@ -5102,7 +5107,7 @@ function processConfirmedClassUpload() {
         showFlashingStatus(`✅ DOWNLOAD COMPLETE: "${fullFormattedName}.wav" saved locally!`);
     }
 
-    // Handle Google Drive Upload
+    // 2. Handle Google Drive Upload
     if (pendingExportMode === 'drive' || pendingExportMode === 'both') {
         uploadAudioToGoogleDrive(pendingExportBlob, fullFormattedName, fullClassCode, studentName);
     }
