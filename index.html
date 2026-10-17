@@ -3394,9 +3394,9 @@
         const calibModal = document.getElementById('calib-modal');
         const gameResultsModal = document.getElementById('game-results-modal');
 
-        document.getElementById('btn-settings').addEventListener('click', () => {
-            initAudio();
-            settingsModal.classList.add('open');
+          document.getElementById('btn-settings').addEventListener('click', () => {
+        initAudio();
+        startCalibration();
         });
         document.getElementById('btn-settings-close').addEventListener('click', () => settingsModal.classList.remove('open'));
         document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
