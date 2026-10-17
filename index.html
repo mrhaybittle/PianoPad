@@ -3479,14 +3479,22 @@
             container.appendChild(topC);
         }
 
-        function startCalibration() {
+       function startCalibration() {
     settingsModal.classList.remove('open');
     buildCalibrationKeyboard();
     isCalibrating = true;
-    calibStep = 1;
+    
+    // Jump directly to Step 2 (Highest C)
+    calibStep = 2;
+    calibLowestRawMIDI = 36; // Set default lowest C (C1 = 36)
+    
+    // Highlight C1 visually on the calibration keyboard overlay
+    const lowCKey = document.querySelector('.calib-key[data-calib-note="c1"]');
+    if (lowCKey) lowCKey.classList.add('blue-highlight');
+
     document.getElementById('btn-calib-skip').style.display = 'inline-flex';
     document.getElementById('btn-calib-cancel').style.display = 'none';
-    document.getElementById('calib-instructions').innerHTML = 'Step 1: Press the <span style="color: #ef4444; font-weight: 800;">LOWEST</span> \'C\' key on your external MIDI Keyboard...';
+    document.getElementById('calib-instructions').innerHTML = 'Step 2: Press the <span style="color: #22c55e; font-weight: 800;">HIGHEST</span> \'C\' key on your external MIDI Keyboard...';
     calibModal.classList.add('open');
 }
 
