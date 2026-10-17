@@ -5074,12 +5074,30 @@ function uploadAudioToGoogleDrive(wavBlob, fileName) {
     };
 }
 
+// Pending export state
+let pendingExportBlob = null;
+let pendingExportFileName = null;
+let pendingExportMode = 'download'; // 'download', 'drive', or 'both'
+
 function exportPerformanceToWAV(fileName = 'PianoPad_Song') {
     if (recordedNotes.length === 0) {
         alert("No recorded note sequence found.");
         return;
     }
 
+    // 1. Ensure student name is set
+    let studentName = sessionStudentName || localStorage.getItem('pianopad_name');
+    if (!studentName || studentName === "Student" || !studentName.trim()) {
+        const inputName = prompt("Please enter your First Name and Last Initial before exporting (e.g. Alex M):", "Student A");
+        if (inputName && inputName.trim()) {
+            sessionStudentName = sanitizeName(inputName);
+            localStorage.setItem('pianopad_name', sessionStudentName);
+        } else {
+            sessionStudentName = "Student";
+        }
+    }
+
+    // 2. Ask user which export mode they want
     const choice = prompt(
         "Choose an export option:\n\nType '1' or 'WAV' to Download WAV file\nType '2' or 'DRIVE' to Upload directly to Drive Folder\nType '3' or 'BOTH' to do Both",
         "1"
@@ -5096,7 +5114,11 @@ function exportPerformanceToWAV(fileName = 'PianoPad_Song') {
         return;
     }
 
-    document.getElementById('status').textContent = "Generating WAV audio file...";
+    if (shouldDownload && shouldUpload) pendingExportMode = 'both';
+    else if (shouldUpload) pendingExportMode = 'drive';
+    else pendingExportMode = 'download';
+
+    document.getElementById('status').textContent = "Rendering WAV audio...";
 
     let totalMs = 0;
     recordedRests.forEach(r => totalMs += r);
@@ -5137,28 +5159,19 @@ function exportPerformanceToWAV(fileName = 'PianoPad_Song') {
     offlineCtx.startRendering().then(renderedBuffer => {
         const wavBlob = bufferToWavBlob(renderedBuffer);
 
-        // 1. Close export modal dialog automatically
+        // Hide export popup
         const expModal = document.getElementById('export-modal');
         if (expModal) expModal.classList.remove('open');
 
-        // 2. Handle Local WAV Download
-        if (shouldDownload) {
-            const url = URL.createObjectURL(wavBlob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${fileName}.wav`;
-            a.click();
+        // Store state and open class selection modal for ALL export types
+        pendingExportBlob = wavBlob;
+        pendingExportFileName = fileName;
 
-            if (!shouldUpload) {
-                showFlashingStatus(`✅ DOWNLOAD COMPLETE: "${fileName}.wav" saved locally!`);
-            }
-        }
+        // Reset dropdowns in modal
+        document.getElementById('upload-year-select').selectedIndex = 0;
+        document.getElementById('class-letter-group').style.display = 'none';
 
-        // 3. Handle Google Drive Folder Upload
-        if (shouldUpload) {
-            uploadAudioToGoogleDrive(wavBlob, fileName);
-        }
-
+        document.getElementById('class-select-modal').classList.add('open');
     }).catch(err => {
         console.error("WAV Export Error:", err);
         document.getElementById('status').textContent = "WAV Export failed.";
