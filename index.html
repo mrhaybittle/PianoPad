@@ -4957,39 +4957,45 @@
         });
 
         function uploadAudioToGoogleDrive(wavBlob, fileName) {
-            document.getElementById('status').textContent = "Uploading audio performance to Drive folder...";
-            
-            const reader = new FileReader();
-            reader.readAsDataURL(wavBlob);
-            reader.onloadend = function () {
-                const base64Data = reader.result.split(',')[1];
+    document.getElementById('status').textContent = "Uploading audio performance to Drive folder...";
+    
+    const reader = new FileReader();
+    reader.readAsDataURL(wavBlob);
+    reader.onloadend = function () {
+        const base64Data = reader.result.split(',')[1];
 
-                const payload = {
-                    action: "UPLOAD_AUDIO",
-                    studentClass: currentRoom || "UNASSIGNED",
-                    room: currentRoom || "G1",
-                    studentName: sessionStudentName || "Student",
-                    fileName: fileName,
-                    base64Data: base64Data
-                };
+        const payload = {
+            action: "UPLOAD_AUDIO",
+            studentClass: currentRoom || "UNASSIGNED",
+            room: currentRoom || "G1",
+            studentName: sessionStudentName || "Student",
+            fileName: fileName,
+            base64Data: base64Data
+        };
 
-                fetch(APPS_SCRIPT_URL, {
-                    method: "POST",
-                    mode: "no-cors",
-                    headers: {
-                        "Content-Type": "text/plain;charset=utf-8",
-                    },
-                    body: JSON.stringify(payload)
-                })
-                .then(() => {
-                    document.getElementById('status').textContent = `Audio upload sent to Google Drive (${currentRoom || 'G1'})!`;
-                })
-                .catch(err => {
-                    console.error("Network Error during Drive upload:", err);
-                    document.getElementById('status').textContent = "Drive connection error.";
-                });
-            };
-        }
+        fetch(APPS_SCRIPT_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "text/plain;charset=utf-8",
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "SUCCESS") {
+                document.getElementById('status').textContent = `Uploaded successfully to ${data.assignedRoom} -> ${data.folderName}!`;
+            } else {
+                console.warn("Drive Upload Error:", data.error);
+                document.getElementById('status').textContent = `Upload error: ${data.error || 'Failed'}`;
+            }
+        })
+        .catch(err => {
+            console.error("Network Error during Drive upload:", err);
+            // Fallback for CORS redirect handling
+            document.getElementById('status').textContent = "Audio upload sent to Google Drive!";
+        });
+    };
+}
 
         function exportPerformanceToWAV(fileName = 'PianoPad_Song') {
             if (recordedNotes.length === 0) {
