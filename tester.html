@@ -3839,42 +3839,117 @@
             gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
         }
 
-        function updateGameStatus() {
-            const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
-            const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
-            document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}`;
+                function updateGameStatus() {
+            const total = gameStats.perfect
+                + gameStats.earlyLate
+                + gameStats.miss;
+
+            const accuracy = total > 0
+                ? (
+                    (
+                        gameStats.perfect
+                        + gameStats.earlyLate * 0.5
+                    ) / total * 100
+                ).toFixed(1)
+                : '100.0';
+
+            document.getElementById('status').textContent =
+                `Accuracy: ${accuracy}% | ` +
+                `Perfect: ${gameStats.perfect} | ` +
+                `Early/Late: ${gameStats.earlyLate} | ` +
+                `Missed: ${gameStats.miss}`;
         }
 
-        const titleLower = currentSongTitle.toLowerCase();
-                const isAscending = titleLower.includes('mystery note') || titleLower.includes('finger sprint');
 
+        // Calculate a student's position on the global leaderboard.
+        // Pass in the scores, the student's score and speed, and the rank display element.
+        function updateGlobalRank(
+            songScores,
+            accuracyNum,
+            currentSpeedNum,
+            rankDiv
+        ) {
+            try {
+                if (!Array.isArray(songScores)) {
+                    throw new Error("Leaderboard scores are not an array.");
+                }
+
+                if (!rankDiv) {
+                    console.warn("Leaderboard rank display element was not found.");
+                    return;
+                }
+
+                const titleLower = (
+                    currentSongTitle || ""
+                ).toLowerCase();
+
+                const isAscending =
+                    titleLower.includes("mystery note") ||
+                    titleLower.includes("finger sprint");
+
+                // Sort scores according to the game's scoring rules.
                 songScores.sort((a, b) => {
                     if (isAscending) {
-                        if (a.accuracy !== b.accuracy) return a.accuracy - b.accuracy;
+                        if (a.accuracy !== b.accuracy) {
+                            return a.accuracy - b.accuracy;
+                        }
                     } else {
-                        if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+                        if (b.accuracy !== a.accuracy) {
+                            return b.accuracy - a.accuracy;
+                        }
                     }
+
                     return b.speed - a.speed;
                 });
 
+                // Find the student's rank.
                 let myRank = 1;
+
                 for (let i = 0; i < songScores.length; i++) {
-                    if (songScores[i].accuracy === accuracyNum && songScores[i].speed === currentSpeedNum) {
+                    if (
+                        songScores[i].accuracy === accuracyNum &&
+                        songScores[i].speed === currentSpeedNum
+                    ) {
                         myRank = i + 1;
                         break;
                     }
                 }
 
                 const totalEntries = songScores.length;
-                let rankSuffix = "th";
-                if (myRank % 10 === 1 && myRank % 100 !== 11) rankSuffix = "st";
-                else if (myRank % 10 === 2 && myRank % 100 !== 12) rankSuffix = "nd";
-                else if (myRank % 10 === 3 && myRank % 100 !== 13) rankSuffix = "rd";
 
-                rankDiv.textContent = `Global Rank: ${myRank}${rankSuffix} of ${totalEntries} Players`;
+                // Add the correct ordinal suffix.
+                let rankSuffix = "th";
+
+                if (
+                    myRank % 10 === 1 &&
+                    myRank % 100 !== 11
+                ) {
+                    rankSuffix = "st";
+                } else if (
+                    myRank % 10 === 2 &&
+                    myRank % 100 !== 12
+                ) {
+                    rankSuffix = "nd";
+                } else if (
+                    myRank % 10 === 3 &&
+                    myRank % 100 !== 13
+                ) {
+                    rankSuffix = "rd";
+                }
+
+                rankDiv.textContent =
+                    `Global Rank: ${myRank}${rankSuffix} ` +
+                    `of ${totalEntries} Players`;
+
             } catch (err) {
-                console.warn("Could not fetch leaderboard for rank calculation.", err);
-                rankDiv.textContent = "Rank: Logged Live!";
+                console.warn(
+                    "Could not calculate leaderboard rank.",
+                    err
+                );
+
+                if (rankDiv) {
+                    rankDiv.textContent = "Rank: Logged Live!";
+                }
             }
         }
 
