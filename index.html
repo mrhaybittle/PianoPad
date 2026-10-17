@@ -5034,9 +5034,86 @@ function showFlashingStatus(message, durationMs = 6000) {
     }, durationMs);
 }
 
-function uploadAudioToGoogleDrive(wavBlob, fileName) {
+// ==========================================
+// EXPORT & UPLOAD SECTION REPLACEMENT
+// ==========================================
+
+// Pending export state
+let pendingExportBlob = null;
+let pendingExportFileName = null;
+let pendingExportMode = 'download'; // 'download', 'drive', or 'both'
+
+// 1. Event Listeners for the Class Modal
+document.addEventListener('DOMContentLoaded', () => {
+    const yearSelect = document.getElementById('upload-year-select');
+    const letterGroup = document.getElementById('class-letter-group');
+    const letterSelect = document.getElementById('upload-class-letter-select');
+
+    if (yearSelect) {
+        yearSelect.addEventListener('change', () => {
+            const val = yearSelect.value;
+            if (val === '7' || val === '8') {
+                letterGroup.style.display = 'flex';
+                letterSelect.selectedIndex = 0;
+            } else {
+                letterGroup.style.display = 'none';
+                letterSelect.value = '';
+            }
+        });
+    }
+
+    document.getElementById('btn-cancel-class-select')?.addEventListener('click', () => {
+        document.getElementById('class-select-modal').classList.remove('open');
+        pendingExportBlob = null;
+    });
+
+    // This hooks the "Confirm & Upload" button to the missing function!
+    document.getElementById('btn-confirm-class-select')?.addEventListener('click', processConfirmedClassUpload);
+});
+
+// 2. Process Confirmed Class Upload (THIS WAS MISSING!)
+function processConfirmedClassUpload() {
+    const yearVal = document.getElementById('upload-year-select').value;
+    const letterVal = document.getElementById('upload-class-letter-select').value;
+
+    if (!yearVal) {
+        alert("Please select your Year Group!");
+        return;
+    }
+
+    if ((yearVal === '7' || yearVal === '8') && !letterVal) {
+        alert("Please select your Class Letter!");
+        return;
+    }
+
+    const fullClassCode = (yearVal === '7' || yearVal === '8') ? `${yearVal}${letterVal}` : `Year${yearVal}`;
+    const studentName = (sessionStudentName || localStorage.getItem('pianopad_name') || 'Student').replace(/\s+/g, '');
+    const fullFormattedName = `${fullClassCode}_${pendingExportFileName}_${studentName}`;
+
+    document.getElementById('class-select-modal').classList.remove('open');
+
+    // Handle Local Download
+    if (pendingExportMode === 'download' || pendingExportMode === 'both') {
+        const url = URL.createObjectURL(pendingExportBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${fullFormattedName}.wav`;
+        a.click();
+        showFlashingStatus(`✅ DOWNLOAD COMPLETE: "${fullFormattedName}.wav" saved locally!`);
+    }
+
+    // Handle Google Drive Upload
+    if (pendingExportMode === 'drive' || pendingExportMode === 'both') {
+        uploadAudioToGoogleDrive(pendingExportBlob, fullFormattedName, fullClassCode, studentName);
+    }
+
+    pendingExportBlob = null;
+}
+
+// 3. Updated Upload to Drive Function
+function uploadAudioToGoogleDrive(wavBlob, fullFormattedName, fullClassCode, studentName) {
     document.getElementById('status').textContent = "Uploading audio performance to Drive folder...";
-    
+
     const reader = new FileReader();
     reader.readAsDataURL(wavBlob);
     reader.onloadend = function () {
@@ -5044,10 +5121,10 @@ function uploadAudioToGoogleDrive(wavBlob, fileName) {
 
         const payload = {
             action: "UPLOAD_AUDIO",
-            studentClass: currentRoom || "UNASSIGNED",
+            studentClass: fullClassCode,
             room: currentRoom || "G1",
-            studentName: sessionStudentName || "Student",
-            fileName: fileName,
+            studentName: studentName,
+            fileName: fullFormattedName,
             base64Data: base64Data
         };
 
@@ -5061,24 +5138,19 @@ function uploadAudioToGoogleDrive(wavBlob, fileName) {
         .then(response => response.json())
         .then(data => {
             if (data.status === "SUCCESS") {
-                showFlashingStatus(`✅ UPLOAD SUCCESSFUL! Saved to ${data.assignedRoom} -> ${data.folderName}`);
+                showFlashingStatus(`✅ UPLOAD SUCCESSFUL! Saved as "${fullFormattedName}.wav" in ${data.assignedRoom} -> ${data.folderName}`);
             } else {
-                console.warn("Drive Upload Error:", data.error);
                 showFlashingStatus(`⚠️ Upload Notice: ${data.error || 'Check Drive setup'}`);
             }
         })
         .catch(err => {
-            console.error("Network Error during Drive upload:", err);
-            showFlashingStatus("✅ Audio upload sent to Google Drive!");
+            console.error("Network notice:", err);
+            showFlashingStatus(`✅ Audio saved as "${fullFormattedName}.wav"!`);
         });
     };
 }
 
-// Pending export state
-let pendingExportBlob = null;
-let pendingExportFileName = null;
-let pendingExportMode = 'download'; // 'download', 'drive', or 'both'
-
+// 4. Export Performance to WAV
 function exportPerformanceToWAV(fileName = 'PianoPad_Song') {
     if (recordedNotes.length === 0) {
         alert("No recorded note sequence found.");
