@@ -4978,50 +4978,130 @@
             exportPerformanceToWAV(cleanFileName);
         });
 
-        function exportPerformanceToWAV(fileName = 'PianoPad_Song') {
-            if (recordedNotes.length === 0) {
-                alert("No recorded note sequence found.");
-                return;
+        function uploadAudioToGoogleDrive(wavBlob, fileName) {
+    document.getElementById('status').textContent = "Uploading audio performance to Drive folder...";
+    
+    const reader = new FileReader();
+    reader.readAsDataURL(wavBlob);
+    reader.onloadend = function () {
+        const base64Data = reader.result.split(',')[1];
+
+        const payload = {
+            action: "UPLOAD_AUDIO",
+            studentClass: currentRoom || "UNASSIGNED",
+            room: currentRoom || "G1",
+            studentName: sessionStudentName || "Student",
+            fileName: fileName,
+            base64Data: base64Data
+        };
+
+        fetch(APPS_SCRIPT_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "text/plain;charset=utf-8",
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "SUCCESS") {
+                document.getElementById('status').textContent = `Uploaded successfully to ${data.assignedRoom} -> ${data.folderName}!`;
+            } else {
+                console.warn("Drive Upload Error:", data.error);
+                document.getElementById('status').textContent = "Drive upload failed.";
             }
+        })
+        .catch(err => {
+            console.error("Network Error during Drive upload:", err);
+            document.getElementById('status').textContent = "Drive connection error.";
+        });
+    };
+}
 
-            document.getElementById('status').textContent = "Generating WAV audio file...";
+function exportPerformanceToWAV(fileName = 'PianoPad_Song') {
+    if (recordedNotes.length === 0) {
+        alert("No recorded note sequence found.");
+        return;
+    }
 
-            let totalMs = 0;
-            recordedRests.forEach(r => totalMs += r);
-            const totalSeconds = Math.max(1.5, (totalMs + 1000) / 1000);
+    // Ask user for preferred save action
+    const choice = prompt(
+        "Choose an export option:\n\nType '1' or 'WAV' to Download WAV file\nType '2' or 'DRIVE' to Upload directly to Drive Folder\nType '3' or 'BOTH' to do Both",
+        "1"
+    );
 
-            const sampleRate = 44100;
-            const offlineCtx = new OfflineAudioContext(1, Math.ceil(sampleRate * totalSeconds), sampleRate);
+    if (!choice) return; // User canceled
 
-            let cumulativeTime = 0;
-            for (let i = 0; i < recordedNotes.length; i++) {
-                const noteToken = recordedNotes[i];
-                const restMs = recordedRests[i] || 250;
-                cumulativeTime += (restMs / 1000);
+    const cleanChoice = choice.trim().toLowerCase();
+    const shouldDownload = cleanChoice === '1' || cleanChoice === 'wav' || cleanChoice === '3' || cleanChoice === 'both';
+    const shouldUpload = cleanChoice === '2' || cleanChoice === 'drive' || cleanChoice === '3' || cleanChoice === 'both';
 
-                const noteList = noteToken.split('+').filter(Boolean);
-                noteList.forEach(noteStr => {
-                    const freq = getNoteFrequency(noteStr);
-                    if (freq) {
-                        const osc = offlineCtx.createOscillator();
-                        const gain = offlineCtx.createGain();
+    if (!shouldDownload && !shouldUpload) {
+        alert("Invalid selection. Please choose 1, 2, or 3.");
+        return;
+    }
 
-                        osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(freq, cumulativeTime);
+    document.getElementById('status').textContent = "Generating WAV audio file...";
 
-                        gain.gain.setValueAtTime(0, cumulativeTime);
-                        gain.gain.linearRampToValueAtTime(0.4, cumulativeTime + 0.01);
-                        gain.gain.exponentialRampToValueAtTime(0.0001, cumulativeTime + 0.4);
+    let totalMs = 0;
+    recordedRests.forEach(r => totalMs += r);
+    const totalSeconds = Math.max(1.5, (totalMs + 1000) / 1000);
 
-                        osc.connect(gain);
-                        gain.connect(offlineCtx.destination);
+    const sampleRate = 44100;
+    const offlineCtx = new OfflineAudioContext(1, Math.ceil(sampleRate * totalSeconds), sampleRate);
 
-                        osc.start(cumulativeTime);
-                        osc.stop(cumulativeTime + 0.4);
-                    }
-                });
+    let cumulativeTime = 0;
+    for (let i = 0; i < recordedNotes.length; i++) {
+        const noteToken = recordedNotes[i];
+        const restMs = recordedRests[i] || 250;
+        cumulativeTime += (restMs / 1000);
+
+        const noteList = noteToken.split('+').filter(Boolean);
+        noteList.forEach(noteStr => {
+            const freq = getNoteFrequency(noteStr);
+            if (freq) {
+                const osc = offlineCtx.createOscillator();
+                const gain = offlineCtx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, cumulativeTime);
+
+                gain.gain.setValueAtTime(0, cumulativeTime);
+                gain.gain.linearRampToValueAtTime(0.4, cumulativeTime + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.0001, cumulativeTime + 0.4);
+
+                osc.connect(gain);
+                gain.connect(offlineCtx.destination);
+
+                osc.start(cumulativeTime);
+                osc.stop(cumulativeTime + 0.4);
             }
+        });
+    }
 
+    offlineCtx.startRendering().then(renderedBuffer => {
+        const wavBlob = bufferToWavBlob(renderedBuffer);
+
+        // Option 1 or 3: Local WAV Download
+        if (shouldDownload) {
+            const url = URL.createObjectURL(wavBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${fileName}.wav`;
+            a.click();
+            document.getElementById('status').textContent = `Downloaded "${fileName}.wav" locally.`;
+        }
+
+        // Option 2 or 3: Upload directly to Drive Folder
+        if (shouldUpload) {
+            uploadAudioToGoogleDrive(wavBlob, fileName);
+        }
+
+    }).catch(err => {
+        console.error("WAV Export Error:", err);
+        document.getElementById('status').textContent = "WAV Export failed.";
+    });
+}
             offlineCtx.startRendering().then(renderedBuffer => {
                 const wavBlob = bufferToWavBlob(renderedBuffer);
                 const url = URL.createObjectURL(wavBlob);
