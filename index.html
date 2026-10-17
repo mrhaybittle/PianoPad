@@ -952,6 +952,24 @@
             border-bottom: 1px solid #1f2937;
             color: #f3f4f6;
         }
+
+        @keyframes statusFlash {
+    0%, 100% {
+        color: #22c55e;
+        text-shadow: 0 0 12px #22c55e;
+        transform: scale(1.03);
+    }
+    50% {
+        color: #ffffff;
+        text-shadow: 0 0 20px #ffffff;
+        transform: scale(1);
+    }
+}
+
+.status-flash-success {
+    animation: statusFlash 0.6s ease-in-out 5; /* Flashes 5 times (~3 seconds) */
+    font-weight: 800 !important;
+}
     </style>
 </head>
 <body>
