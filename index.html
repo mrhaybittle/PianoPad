@@ -1013,7 +1013,6 @@
            
         try {
             const app = initializeApp(firebaseConfig);
-            // Explicitly pass databaseURL for regional servers
             window.firebaseDb = getDatabase(app, firebaseConfig.databaseURL);
             window.firebaseSet = set;
             window.firebaseRef = ref;
@@ -1681,6 +1680,11 @@
         const timelineBox = document.getElementById('timeline-box');
         const runnerTrack = document.getElementById('runner-track');
 
+        function normalizeStudentName(nameStr) {
+            if (!nameStr) return '';
+            return nameStr.replace(/\./g, '').trim().toLowerCase();
+        }
+
         /* --- GAMEMODERANKS FETCH & USER DISPLAY SYSTEM --- */
         async function fetchAndShowGameModeRanks(autoOpenModal = false) {
             let ranksData = [];
@@ -1767,7 +1771,8 @@
             const tbody = document.getElementById('user-ranks-table-body');
             modalTitle.textContent = `Rankings for ${activeName}`;
 
-            const userRanks = gameModeRanksList.filter(r => r.studentName.toLowerCase().trim() === activeName.toLowerCase());
+            const normalizedActive = normalizeStudentName(activeName);
+            const userRanks = gameModeRanksList.filter(r => normalizeStudentName(r.studentName) === normalizedActive);
 
             if (userRanks.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#9ca3af; padding:12px;">No GameModeRanks recorded yet for <strong>${activeName}</strong>. Play Game Mode on any song to get ranked!</td></tr>`;
@@ -1801,10 +1806,11 @@
             }
 
             const activeName = (sessionStudentName || localStorage.getItem('pianopad_name') || '').trim();
+            const normalizedActive = normalizeStudentName(activeName);
 
             const record = gameModeRanksList.find(r => 
                 r.songTitle.toLowerCase().trim() === currentSongTitle.toLowerCase().trim() &&
-                r.studentName.toLowerCase().trim() === activeName.toLowerCase()
+                normalizeStudentName(r.studentName) === normalizedActive
             );
 
             badgeBox.style.display = 'inline-flex';
@@ -4721,7 +4727,7 @@
                 document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
             }
             updateMonitorWidget();
-            updateSelectedSongRankDisplay();
+            fetchAndShowGameModeRanks(false);
         }
 
         function buildTimeline() {
@@ -5310,7 +5316,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             initMIDIHardware();
             syncSongsWithGoogleSheet();
-            fetchAndShowGameModeRanks(true);
             setTimeout(updateKeyPositions, 100);
 
             const savedName = localStorage.getItem('pianopad_name');
@@ -5328,6 +5333,7 @@
             if (isOOS) {
                 currentRoom = "Outside";
                 updateMonitorWidget();
+                fetchAndShowGameModeRanks(true);
                 checkFirstTimeCalibration();
             } else {
                 document.getElementById('student-join-name').value = savedName || "";
