@@ -3496,37 +3496,37 @@
         }
 
         function processCalibrationNote(rawMidi) {
-            if (!isCalibrating) return;
+    if (!isCalibrating) return;
 
-            if (calibStep === 1) {
-                calibLowestRawMIDI = rawMidi;
-                midiOctaveOffset = 36 - rawMidi;
+    if (calibStep === 1) {
+        calibLowestRawMIDI = rawMidi;
+        midiOctaveOffset = 36 - rawMidi;
 
-                const lowCKey = document.querySelector('.calib-key[data-calib-note="c1"]');
-                if (lowCKey) lowCKey.classList.add('blue-highlight');
+        const lowCKey = document.querySelector('.calib-key[data-calib-note="c1"]');
+        if (lowCKey) lowCKey.classList.add('blue-highlight');
 
-                calibStep = 2;
-                document.getElementById('calib-instructions').textContent = "Recognized Lowest C! Step 2: Now press the HIGHEST 'C' key on your external MIDI Keyboard...";
-            } else if (calibStep === 2) {
-                calibHighestRawMIDI = rawMidi;
+        calibStep = 2;
+        document.getElementById('calib-instructions').innerHTML = 'Recognized Lowest C! Step 2: Now press the <span style="color: #22c55e; font-weight: 800;">HIGHEST</span> \'C\' key on your external MIDI Keyboard...';
+    } else if (calibStep === 2) {
+        calibHighestRawMIDI = rawMidi;
 
-                const rawDiff = calibHighestRawMIDI - calibLowestRawMIDI;
-                const octaveDistance = Math.round(rawDiff / 12);
-               
-                const targetOctave = Math.min(7, 1 + octaveDistance);
-                const highCKey = document.querySelector(`.calib-key[data-calib-note="c${targetOctave}"]`);
-                if (highCKey) highCKey.classList.add('blue-highlight');
+        const rawDiff = calibHighestRawMIDI - calibLowestRawMIDI;
+        const octaveDistance = Math.round(rawDiff / 12);
+        
+        const targetOctave = Math.min(7, 1 + octaveDistance);
+        const highCKey = document.querySelector(`.calib-key[data-calib-note="c${targetOctave}"]`);
+        if (highCKey) highCKey.classList.add('blue-highlight');
 
-                document.getElementById('calib-instructions').textContent = `Calibration Complete! Detected a ${octaveDistance}-Octave Keyboard (${octaveDistance * 12 + 1} keys).`;
-                setTimeout(() => {
-                    isCalibrating = false;
-                    localStorage.setItem('pianopad_calib_done', 'true');
-                    calibModal.classList.remove('open');
-                    updateKeyPositions();
-                    document.getElementById('status').textContent = `MIDI Keyboard calibrated! Lowest key now maps directly to C1 on-screen.`;
-                }, 1200);
-            }
-        }
+        document.getElementById('calib-instructions').textContent = `Calibration Complete! Detected a ${octaveDistance}-Octave Keyboard (${octaveDistance * 12 + 1} keys).`;
+        setTimeout(() => {
+            isCalibrating = false;
+            localStorage.setItem('pianopad_calib_done', 'true');
+            calibModal.classList.remove('open');
+            updateKeyPositions();
+            document.getElementById('status').textContent = `MIDI Keyboard calibrated! Lowest key now maps directly to C1 on-screen.`;
+        }, 1200);
+    }
+}
 
         function openTeacherModal() {
             initAudio();
