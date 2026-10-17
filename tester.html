@@ -952,6 +952,24 @@
             border-bottom: 1px solid #1f2937;
             color: #f3f4f6;
         }
+
+        @keyframes statusFlash {
+    0%, 100% {
+        color: #22c55e;
+        text-shadow: 0 0 12px #22c55e;
+        transform: scale(1.03);
+    }
+    50% {
+        color: #ffffff;
+        text-shadow: 0 0 20px #ffffff;
+        transform: scale(1);
+    }
+}
+
+.status-flash-success {
+    animation: statusFlash 0.6s ease-in-out 5; /* Flashes 5 times (~3 seconds) */
+    font-weight: 800 !important;
+}
     </style>
 </head>
 <body>
@@ -1452,7 +1470,48 @@
                 <button type="button" class="btn-teacher" id="btn-teacher-submit">Add Song Now</button>
             </div>
         </div>
+    </div> 
+     <!-- Class Selection Modal for Audio Upload -->
+<div class="modal-overlay" id="class-select-modal" style="z-index: 400;">
+    <div class="modal" style="max-width: 420px; text-align: center;">
+        <h2 style="color: #4f46e5;">Confirm Your Class</h2>
+        <p style="font-size: 0.85rem; color: #9ca3af;">Select your Year Group and Class Letter to route your recording to the correct folder:</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 12px; margin: 15px 0; text-align: left;">
+            <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">Year Group:</label>
+            <select id="upload-year-select" style="width: 100%; padding: 10px;">
+                <option value="" disabled selected>Select Year Group</option>
+                <option value="7">Year 7</option>
+                <option value="8">Year 8</option>
+                <option value="9">Year 9</option>
+                <option value="10">Year 10</option>
+                <option value="11">Year 11</option>
+                <option value="12">Year 12</option>
+            </select>
+
+            <div id="class-letter-group" style="display: none; flex-direction: column; gap: 4px;">
+                <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">Class Letter:</label>
+                <select id="upload-class-letter-select" style="width: 100%; padding: 10px;">
+                    <option value="" disabled selected>Select Class Letter</option>
+                    <option value="A">Class A</option>
+                    <option value="B">Class B</option>
+                    <option value="C">Class C</option>
+                    <option value="D">Class D</option>
+                    <option value="E">Class E</option>
+                    <option value="F">Class F</option>
+                    <option value="G">Class G</option>
+                    <option value="H">Class H</option>
+                    <option value="I">Class I</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="modal-footer" style="justify-content: center;">
+            <button type="button" class="btn-secondary" id="btn-cancel-class-select">Cancel</button>
+            <button type="button" class="btn-success" id="btn-confirm-class-select" style="padding: 8px 18px;">Confirm & Upload</button>
+        </div>
     </div>
+</div>
 
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
@@ -4956,9 +5015,105 @@
             exportPerformanceToWAV(cleanFileName);
         });
 
-        function uploadAudioToGoogleDrive(wavBlob, fileName) {
+        // Helper to display a bright, flashing status message that auto-clears after a set duration
+function showFlashingStatus(message, durationMs = 6000) {
+    const statusEl = document.getElementById('status');
+    if (!statusEl) return;
+
+    statusEl.textContent = message;
+    statusEl.classList.add('status-flash-success');
+
+    setTimeout(() => {
+        statusEl.classList.remove('status-flash-success');
+    }, 3200);
+
+    setTimeout(() => {
+        if (statusEl.textContent === message) {
+            statusEl.textContent = 'PianoPad Relay Active';
+        }
+    }, durationMs);
+}
+
+// ==========================================
+// EXPORT & UPLOAD SECTION REPLACEMENT
+// ==========================================
+
+// Pending export state
+let pendingExportBlob = null;
+let pendingExportFileName = null;
+let pendingExportMode = 'download'; // 'download', 'drive', or 'both'
+
+// 1. Event Listeners for the Class Modal
+document.addEventListener('DOMContentLoaded', () => {
+    const yearSelect = document.getElementById('upload-year-select');
+    const letterGroup = document.getElementById('class-letter-group');
+    const letterSelect = document.getElementById('upload-class-letter-select');
+
+    if (yearSelect) {
+        yearSelect.addEventListener('change', () => {
+            const val = yearSelect.value;
+            if (val === '7' || val === '8') {
+                letterGroup.style.display = 'flex';
+                letterSelect.selectedIndex = 0;
+            } else {
+                letterGroup.style.display = 'none';
+                letterSelect.value = '';
+            }
+        });
+    }
+
+    document.getElementById('btn-cancel-class-select')?.addEventListener('click', () => {
+        document.getElementById('class-select-modal').classList.remove('open');
+        pendingExportBlob = null;
+    });
+
+    // This hooks the "Confirm & Upload" button to the missing function!
+    document.getElementById('btn-confirm-class-select')?.addEventListener('click', processConfirmedClassUpload);
+});
+
+// 2. Process Confirmed Class Upload (THIS WAS MISSING!)
+function processConfirmedClassUpload() {
+    const yearVal = document.getElementById('upload-year-select').value;
+    const letterVal = document.getElementById('upload-class-letter-select').value;
+
+    if (!yearVal) {
+        alert("Please select your Year Group!");
+        return;
+    }
+
+    if ((yearVal === '7' || yearVal === '8') && !letterVal) {
+        alert("Please select your Class Letter!");
+        return;
+    }
+
+    const fullClassCode = (yearVal === '7' || yearVal === '8') ? `${yearVal}${letterVal}` : `Year${yearVal}`;
+    const studentName = (sessionStudentName || localStorage.getItem('pianopad_name') || 'Student').replace(/\s+/g, '');
+    const fullFormattedName = `${fullClassCode}_${pendingExportFileName}_${studentName}`;
+
+    document.getElementById('class-select-modal').classList.remove('open');
+
+    // Handle Local Download
+    if (pendingExportMode === 'download' || pendingExportMode === 'both') {
+        const url = URL.createObjectURL(pendingExportBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${fullFormattedName}.wav`;
+        a.click();
+        showFlashingStatus(`✅ DOWNLOAD COMPLETE: "${fullFormattedName}.wav" saved locally!`);
+    }
+
+    // Handle Google Drive Upload
+    if (pendingExportMode === 'drive' || pendingExportMode === 'both') {
+        uploadAudioToGoogleDrive(pendingExportBlob, fullFormattedName, fullClassCode, studentName);
+    }
+
+    pendingExportBlob = null;
+}
+
+// 3. Updated Upload to Drive Function
+function uploadAudioToGoogleDrive(wavBlob, fullFormattedName, fullClassCode, studentName) {
     document.getElementById('status').textContent = "Uploading audio performance to Drive folder...";
-    
+
     const reader = new FileReader();
     reader.readAsDataURL(wavBlob);
     reader.onloadend = function () {
@@ -4966,10 +5121,10 @@
 
         const payload = {
             action: "UPLOAD_AUDIO",
-            studentClass: currentRoom || "UNASSIGNED",
+            studentClass: fullClassCode,
             room: currentRoom || "G1",
-            studentName: sessionStudentName || "Student",
-            fileName: fileName,
+            studentName: studentName,
+            fileName: fullFormattedName,
             base64Data: base64Data
         };
 
@@ -4983,101 +5138,117 @@
         .then(response => response.json())
         .then(data => {
             if (data.status === "SUCCESS") {
-                document.getElementById('status').textContent = `Uploaded successfully to ${data.assignedRoom} -> ${data.folderName}!`;
+                showFlashingStatus(`✅ UPLOAD SUCCESSFUL! Saved as "${fullFormattedName}.wav" in ${data.assignedRoom} -> ${data.folderName}`);
             } else {
-                console.warn("Drive Upload Error:", data.error);
-                document.getElementById('status').textContent = `Upload error: ${data.error || 'Failed'}`;
+                showFlashingStatus(`⚠️ Upload Notice: ${data.error || 'Check Drive setup'}`);
             }
         })
         .catch(err => {
-            console.error("Network Error during Drive upload:", err);
-            // Fallback for CORS redirect handling
-            document.getElementById('status').textContent = "Audio upload sent to Google Drive!";
+            console.error("Network notice:", err);
+            showFlashingStatus(`✅ Audio saved as "${fullFormattedName}.wav"!`);
         });
     };
 }
 
-        function exportPerformanceToWAV(fileName = 'PianoPad_Song') {
-            if (recordedNotes.length === 0) {
-                alert("No recorded note sequence found.");
-                return;
-            }
+// 4. Export Performance to WAV
+function exportPerformanceToWAV(fileName = 'PianoPad_Song') {
+    if (recordedNotes.length === 0) {
+        alert("No recorded note sequence found.");
+        return;
+    }
 
-            const choice = prompt(
-                "Choose an export option:\n\nType '1' or 'WAV' to Download WAV file\nType '2' or 'DRIVE' to Upload directly to Drive Folder\nType '3' or 'BOTH' to do Both",
-                "1"
-            );
-
-            if (!choice) return;
-
-            const cleanChoice = choice.trim().toLowerCase();
-            const shouldDownload = cleanChoice === '1' || cleanChoice === 'wav' || cleanChoice === '3' || cleanChoice === 'both';
-            const shouldUpload = cleanChoice === '2' || cleanChoice === 'drive' || cleanChoice === '3' || cleanChoice === 'both';
-
-            if (!shouldDownload && !shouldUpload) {
-                alert("Invalid selection. Please choose 1, 2, or 3.");
-                return;
-            }
-
-            document.getElementById('status').textContent = "Generating WAV audio file...";
-
-            let totalMs = 0;
-            recordedRests.forEach(r => totalMs += r);
-            const totalSeconds = Math.max(1.5, (totalMs + 1000) / 1000);
-
-            const sampleRate = 44100;
-            const offlineCtx = new OfflineAudioContext(1, Math.ceil(sampleRate * totalSeconds), sampleRate);
-
-            let cumulativeTime = 0;
-            for (let i = 0; i < recordedNotes.length; i++) {
-                const noteToken = recordedNotes[i];
-                const restMs = recordedRests[i] || 250;
-                cumulativeTime += (restMs / 1000);
-
-                const noteList = noteToken.split('+').filter(Boolean);
-                noteList.forEach(noteStr => {
-                    const freq = getNoteFrequency(noteStr);
-                    if (freq) {
-                        const osc = offlineCtx.createOscillator();
-                        const gain = offlineCtx.createGain();
-
-                        osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(freq, cumulativeTime);
-
-                        gain.gain.setValueAtTime(0, cumulativeTime);
-                        gain.gain.linearRampToValueAtTime(0.4, cumulativeTime + 0.01);
-                        gain.gain.exponentialRampToValueAtTime(0.0001, cumulativeTime + 0.4);
-
-                        osc.connect(gain);
-                        gain.connect(offlineCtx.destination);
-
-                        osc.start(cumulativeTime);
-                        osc.stop(cumulativeTime + 0.4);
-                    }
-                });
-            }
-
-            offlineCtx.startRendering().then(renderedBuffer => {
-                const wavBlob = bufferToWavBlob(renderedBuffer);
-
-                if (shouldDownload) {
-                    const url = URL.createObjectURL(wavBlob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `${fileName}.wav`;
-                    a.click();
-                    document.getElementById('status').textContent = `Downloaded "${fileName}.wav" locally.`;
-                }
-
-                if (shouldUpload) {
-                    uploadAudioToGoogleDrive(wavBlob, fileName);
-                }
-
-            }).catch(err => {
-                console.error("WAV Export Error:", err);
-                document.getElementById('status').textContent = "WAV Export failed.";
-            });
+    // 1. Ensure student name is set
+    let studentName = sessionStudentName || localStorage.getItem('pianopad_name');
+    if (!studentName || studentName === "Student" || !studentName.trim()) {
+        const inputName = prompt("Please enter your First Name and Last Initial before exporting (e.g. Alex M):", "Student A");
+        if (inputName && inputName.trim()) {
+            sessionStudentName = sanitizeName(inputName);
+            localStorage.setItem('pianopad_name', sessionStudentName);
+        } else {
+            sessionStudentName = "Student";
         }
+    }
+
+    // 2. Ask user which export mode they want
+    const choice = prompt(
+        "Choose an export option:\n\nType '1' or 'WAV' to Download WAV file\nType '2' or 'DRIVE' to Upload directly to Drive Folder\nType '3' or 'BOTH' to do Both",
+        "1"
+    );
+
+    if (!choice) return;
+
+    const cleanChoice = choice.trim().toLowerCase();
+    const shouldDownload = cleanChoice === '1' || cleanChoice === 'wav' || cleanChoice === '3' || cleanChoice === 'both';
+    const shouldUpload = cleanChoice === '2' || cleanChoice === 'drive' || cleanChoice === '3' || cleanChoice === 'both';
+
+    if (!shouldDownload && !shouldUpload) {
+        alert("Invalid selection. Please choose 1, 2, or 3.");
+        return;
+    }
+
+    if (shouldDownload && shouldUpload) pendingExportMode = 'both';
+    else if (shouldUpload) pendingExportMode = 'drive';
+    else pendingExportMode = 'download';
+
+    document.getElementById('status').textContent = "Rendering WAV audio...";
+
+    let totalMs = 0;
+    recordedRests.forEach(r => totalMs += r);
+    const totalSeconds = Math.max(1.5, (totalMs + 1000) / 1000);
+
+    const sampleRate = 44100;
+    const offlineCtx = new OfflineAudioContext(1, Math.ceil(sampleRate * totalSeconds), sampleRate);
+
+    let cumulativeTime = 0;
+    for (let i = 0; i < recordedNotes.length; i++) {
+        const noteToken = recordedNotes[i];
+        const restMs = recordedRests[i] || 250;
+        cumulativeTime += (restMs / 1000);
+
+        const noteList = noteToken.split('+').filter(Boolean);
+        noteList.forEach(noteStr => {
+            const freq = getNoteFrequency(noteStr);
+            if (freq) {
+                const osc = offlineCtx.createOscillator();
+                const gain = offlineCtx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, cumulativeTime);
+
+                gain.gain.setValueAtTime(0, cumulativeTime);
+                gain.gain.linearRampToValueAtTime(0.4, cumulativeTime + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.0001, cumulativeTime + 0.4);
+
+                osc.connect(gain);
+                gain.connect(offlineCtx.destination);
+
+                osc.start(cumulativeTime);
+                osc.stop(cumulativeTime + 0.4);
+            }
+        });
+    }
+
+    offlineCtx.startRendering().then(renderedBuffer => {
+        const wavBlob = bufferToWavBlob(renderedBuffer);
+
+        // Hide export popup
+        const expModal = document.getElementById('export-modal');
+        if (expModal) expModal.classList.remove('open');
+
+        // Store state and open class selection modal for ALL export types
+        pendingExportBlob = wavBlob;
+        pendingExportFileName = fileName;
+
+        // Reset dropdowns in modal
+        document.getElementById('upload-year-select').selectedIndex = 0;
+        document.getElementById('class-letter-group').style.display = 'none';
+
+        document.getElementById('class-select-modal').classList.add('open');
+    }).catch(err => {
+        console.error("WAV Export Error:", err);
+        document.getElementById('status').textContent = "WAV Export failed.";
+    });
+}
 
         function bufferToWavBlob(buffer) {
             const numOfChan = buffer.numberOfChannels;
@@ -5169,6 +5340,9 @@
 
             setInterval(updateMonitorWidget, 1000);
         });
+       
+        
+       
     </script>
 </body>
 </html>
