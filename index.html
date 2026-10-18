@@ -5440,6 +5440,107 @@ function exportPerformanceToWAV(fileName = 'PianoPad_Song') {
 
             setInterval(updateMonitorWidget, 1000);
         });
+        async function loadStudentTickerStats(studentName) {
+    if (!studentName || studentName === "Student" || studentName === "Anonymous") return;
+
+    const tickerContainer = document.getElementById('student-ticker-tape');
+    const tickerTrack = document.getElementById('ticker-track');
+    if (!tickerContainer || !tickerTrack) return;
+
+    try {
+        const response = await fetch(GAMEMODE_RANKS_CSV_URL);
+        if (!response.ok) throw new Error('Failed to fetch GameModeRanks CSV');
+        const csvText = await response.text();
+
+        const lines = csvText.split(/\r?\n/);
+        const stats = [];
+
+        // Parse CSV handling commas inside quoted song titles (e.g. "Row, Row, Row Your Boat")
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+
+            const row = [];
+            let insideQuote = false;
+            let entry = '';
+
+            for (let j = 0; j < line.length; j++) {
+                const char = line[j];
+                if (char === '"' && line[j + 1] === '"') {
+                    entry += '"';
+                    j++;
+                } else if (char === '"') {
+                    insideQuote = !insideQuote;
+                } else if (char === ',' && !insideQuote) {
+                    row.push(entry);
+                    entry = '';
+                } else {
+                    entry += char;
+                }
+            }
+            row.push(entry);
+
+            // Columns: 0: Song Title, 1: Student Name, 2: High Score, 3: Rank, 4: Attempts, 5: Last Active
+            if (row.length >= 5) {
+                const rowStudent = (row[1] || '').trim().replace(/^"|"$/g, '');
+                if (rowStudent.toLowerCase() === studentName.toLowerCase().trim()) {
+                    stats.push({
+                        title: (row[0] || '').trim().replace(/^"|"$/g, ''),
+                        score: parseFloat((row[2] || '0').replace(/^"|"$/g, '')) || 0,
+                        rank: parseInt((row[3] || '999').replace(/^"|"$/g, ''), 10),
+                        attempts: parseInt((row[4] || '1').replace(/^"|"$/g, ''), 10)
+                    });
+                }
+            }
+        }
+
+        // Sort by best rank first (1, 2, 3...), then by highest score
+        stats.sort((a, b) => a.rank !== b.rank ? a.rank - b.rank : b.score - a.score);
+
+        if (stats.length === 0) {
+            tickerTrack.innerHTML = `<span class="ticker-item">Welcome <span class="ticker-item-title">${studentName}</span>! No Game Mode scores logged yet. Play songs in Game Mode to earn your ranks!</span>`;
+            tickerContainer.style.display = 'flex';
+            return;
+        }
+
+        // Calculate medal counts
+        const rank1Count = stats.filter(s => s.rank === 1).length;
+        const rank2Count = stats.filter(s => s.rank === 2).length;
+        const rank3Count = stats.filter(s => s.rank === 3).length;
+
+        let itemsHtml = `
+            <span class="ticker-item" style="color:#38bdf8;">
+                Logged in as <strong>${studentName}</strong> | Ranked in ${stats.length} Songs (${rank1Count > 0 ? '🥇x' + rank1Count + ' ' : ''}${rank2Count > 0 ? '🥈x' + rank2Count + ' ' : ''}${rank3Count > 0 ? '🥉x' + rank3Count : ''})
+            </span>
+            <span style="color:#64748b;">•</span>
+        `;
+
+        itemsHtml += stats.map(s => {
+            const medal = s.rank === 1 ? '🥇' : s.rank === 2 ? '🥈' : s.rank === 3 ? '🥉' : `#${s.rank}`;
+            const unit = s.title.toLowerCase().includes('finger sprint') ? 's' : (s.title.toLowerCase().includes('simon taps') ? ' lvl' : '%');
+            return `
+                <span class="ticker-item">
+                    <span>${medal}</span>
+                    <span class="ticker-item-title">${s.title}</span>:
+                    <span class="ticker-item-rank">Rank #${s.rank}</span>
+                    <span class="ticker-item-score">(${s.score}${unit})</span>
+                    <span style="color:#94a3b8; font-size:0.68rem;">[${s.attempts} plays]</span>
+                </span>
+            `;
+        }).join('<span style="color:#64748b;"> • </span>');
+
+        // Duplicate the string once so scrolling wraps smoothly
+        tickerTrack.innerHTML = itemsHtml + `<span style="color:#64748b;"> • </span>` + itemsHtml;
+        tickerContainer.style.display = 'flex';
+
+        // Set animation duration proportional to how many songs the student has
+        const dynamicDuration = Math.max(30, stats.length * 6);
+        tickerTrack.style.animationDuration = `${dynamicDuration}s`;
+
+    } catch (err) {
+        console.warn("Could not load GameModeRanks ticker stats:", err);
+    }
+}
        
         
        
