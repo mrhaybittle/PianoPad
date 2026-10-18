@@ -2372,114 +2372,67 @@
     }
 }
 
+// Launches calibration manually from settings
 function startCalibration() {
-    initAudio();
-    if (settingsModal) settingsModal.classList.remove('open');
+    settingsModal.classList.remove('open');
     buildCalibrationKeyboard();
-    
-    // 1. Force state to Step 1 and reset recorded MIDI bounds
     isCalibrating = true;
     calibStep = 1;
-    calibLowestRawMIDI = null;
-    calibHighestRawMIDI = null;
-
-    // 2. Clear previous highlights and highlight the lowest C (C1)
-    document.querySelectorAll('.calib-key').forEach(k => k.classList.remove('blue-highlight'));
-    const lowCKey = document.querySelector('.calib-key[data-calib-note="c1"]');
-    if (lowCKey) lowCKey.classList.add('blue-highlight');
-
-    // 3. Update Modal Instructions for Step 1
     document.getElementById('btn-calib-skip').style.display = 'inline-flex';
-    document.getElementById('btn-calib-cancel').style.display = 'inline-flex';
-    document.getElementById('calib-instructions').innerHTML = 
-        'Step 1: Press the <span style="color: #38bdf8; font-weight: 800;">LOWEST C</span> key on your external MIDI Keyboard...';
-    
+    document.getElementById('btn-calib-cancel').style.display = 'none';
+    document.getElementById('calib-instructions').innerHTML = "Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
     calibModal.classList.add('open');
 }
 
+// Handles user skipping calibration
 function skipCalibration() {
     isCalibrating = false;
-    calibStep = 1;
     localStorage.setItem('pianopad_calib_done', 'true');
     calibModal.classList.remove('open');
     document.getElementById('status').textContent = 'Calibration skipped. Default key map active.';
 }
 
+// Handles user canceling calibration
 function cancelCalibration() {
     isCalibrating = false;
-    calibStep = 1;
     calibModal.classList.remove('open');
-    document.getElementById('status').textContent = 'Calibration canceled.';
 }
 
+// Processes incoming raw MIDI note numbers during Step 1 (Lowest C) and Step 2 (Highest C)
 function processCalibrationNote(rawMidi) {
     if (!isCalibrating) return;
 
-    // A 'C' key in MIDI has a note number evenly divisible by 12 (e.g., 24, 36, 48, 60, 72...)
-    const isCKey = (rawMidi % 12 === 0);
-
-    // --- STEP 1: Capture Lowest C ---
     if (calibStep === 1) {
-        if (!isCKey) {
-            document.getElementById('calib-instructions').innerHTML = 
-                '<span style="color: #ef4444; font-weight: 800;">That was not a C key!</span> Please press your keyboard\'s <span style="color: #38bdf8; font-weight: 800;">LOWEST C</span>...';
-            playErrorClackSound();
-            return;
-        }
-
         calibLowestRawMIDI = rawMidi;
-        midiOctaveOffset = 36 - rawMidi; // Maps lowest key to C1 (MIDI 36) in PianoPad
+        midiOctaveOffset = 36 - rawMidi;
 
-        // Advance to Step 2
+        const lowCKey = document.querySelector('.calib-key[data-calib-note="c1"]');
+        if (lowCKey) lowCKey.classList.add('blue-highlight');
+
         calibStep = 2;
+        document.getElementById('calib-instructions').textContent = "Recognized Lowest C! Step 2: Now press the HIGHEST 'C' key on your external MIDI Keyboard...";
+    } else if (calibStep === 2) {
+        calibHighestRawMIDI = rawMidi;
 
-        document.querySelectorAll('.calib-key').forEach(k => k.classList.remove('blue-highlight'));
-        const highCKey = document.querySelector('.calib-key[data-calib-note="c7"]');
+        const rawDiff = calibHighestRawMIDI - calibLowestRawMIDI;
+        const octaveDistance = Math.round(rawDiff / 12);
+        
+        const targetOctave = Math.min(7, 1 + octaveDistance);
+        const highCKey = document.querySelector(`.calib-key[data-calib-note="c${targetOctave}"]`);
         if (highCKey) highCKey.classList.add('blue-highlight');
 
-        document.getElementById('calib-instructions').innerHTML = 
-            '✅ Lowest C captured! Step 2: Now press the <span style="color: #22c55e; font-weight: 800;">HIGHEST C</span> key on your keyboard...';
-
-    // --- STEP 2: Capture Highest C ---
-    } else if (calibStep === 2) {
-        if (!isCKey) {
-            document.getElementById('calib-instructions').innerHTML = 
-                '<span style="color: #ef4444; font-weight: 800;">That was not a C key!</span> Please press your keyboard\'s <span style="color: #22c55e; font-weight: 800;">HIGHEST C</span>...';
-            playErrorClackSound();
-            return;
-        }
-
-        if (rawMidi <= calibLowestRawMIDI) {
-            document.getElementById('calib-instructions').innerHTML = 
-                '<span style="color: #ef4444; font-weight: 800;">Invalid Key!</span> Highest C must be higher than Lowest C. Try again...';
-            playErrorClackSound();
-            return;
-        }
-
-        calibHighestRawMIDI = rawMidi;
-        const octaveDistance = Math.round((calibHighestRawMIDI - calibLowestRawMIDI) / 12);
-        const totalKeys = octaveDistance * 12 + 1;
-
-        document.getElementById('calib-instructions').innerHTML = 
-            `🎉 <span style="color: #22c55e; font-weight: 800;">Calibration Complete!</span> ${octaveDistance}-Octave Keyboard (${totalKeys} keys) detected.`;
-
+        document.getElementById('calib-instructions').textContent = `Calibration Complete! Detected a ${octaveDistance}-Octave Keyboard (${octaveDistance * 12 + 1} keys).`;
         setTimeout(() => {
             isCalibrating = false;
-            calibStep = 1;
             localStorage.setItem('pianopad_calib_done', 'true');
             calibModal.classList.remove('open');
             updateKeyPositions();
-            document.getElementById('status').textContent = 'MIDI Keyboard calibrated successfully!';
+            document.getElementById('status').textContent = `MIDI Keyboard calibrated! Lowest key now maps directly to C1 on-screen.`;
         }, 1200);
     }
 }
 
-        function skipCalibration() {
-            isCalibrating = false;
-            localStorage.setItem('pianopad_calib_done', 'true');
-            calibModal.classList.remove('open');
-            document.getElementById('status').textContent = 'Calibration skipped. Default key map active.';
-        }
+     
 
         function unlockBonusSounds(reasonText) {
             if (bonusSoundsUnlocked) return;
