@@ -1168,7 +1168,100 @@
                     <option value="gold">Theme: Classic Gold</option>
                 </select>
 
-                <div class="controls" id="arcade-controls-bar" style="display: none;">
+                <div class="speed-control">
+                    <label for="speed-slider">Speed: <span id="speed-label">100%</span></label>
+                    <input type="range" id="speed-slider" min="10" max="500" value="100" step="5">
+                </div>
+
+                <button type="button" id="btn-mic-toggle" class="btn-secondary" title="Listen for Acoustic Piano Notes">
+                    🎙️ MIC INPUT: OFF
+                </button>
+
+                <button type="button" id="btn-sheet-toggle" class="btn-secondary" style="background-color: #0d9488; font-weight: 700;" title="Toggle Sheet Music Display">
+                    🎼 Sheet: ON
+                </button>
+
+                <button type="button" id="btn-game" class="btn-secondary">
+                    <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    Game Mode: OFF
+                </button>
+
+                <button type="button" id="btn-loop" class="btn-secondary">
+                    <svg class="icon" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                    Loop: OFF
+                </button>
+
+                <button type="button" id="btn-step" class="btn-step">
+                    <svg class="icon" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+                    Step Mode
+                </button>
+
+                <button type="button" id="btn-record" class="btn-secondary">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
+                    <span id="record-btn-text">Record</span>
+                </button>
+
+                <button type="button" id="btn-add-teacher-song" class="btn-teacher">
+                    <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Add SONG (Teacher)
+                </button>
+
+                <button type="button" id="btn-share" class="btn-share" style="display: none;">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                    Share Haycode
+                </button>
+
+                <label class="btn-file-label btn-midi">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                    Import MIDI
+                    <input type="file" id="midi-input" accept=".mid,.midi" style="display: none;">
+                </label>
+
+                <button type="button" id="btn-import">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Import Code
+                </button>
+
+                <button type="button" id="btn-settings" class="btn-settings" title="Settings">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </button>
+
+                <a href="https://sites.google.com/erc.nsw.edu.au/pianopad-leaderboard/home" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 15l-3 4-3-4"></path><path d="M5 6v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"></path><path d="M3 6h18"></path><path d="M5 2h14"></path></svg>
+                    Leaderboard
+                </a>
+
+                <button type="button" id="btn-play" class="btn-success">
+                    <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Play
+                </button>
+                <button type="button" id="btn-pause" class="btn-warning">
+                    <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                    Pause
+                </button>
+                <button type="button" id="btn-stop" class="btn-danger">
+                    <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
+                    Stop
+                </button>
+
+                <button type="button" id="btn-open-arcade" class="btn-arcade">
+                    🕹️ MINI-GAMES
+                </button>
+
+                <button type="button" id="btn-song-battle" class="btn-song-battle">
+                    ⚔️ SONG BATTLE
+                </button>
+
+                <div class="timeline-container-inline" id="timeline-box">
+                    <span>Trim:</span>
+                    <input type="range" id="loop-start" min="0" max="100" value="0" title="Loop Start %">
+                    <span>-</span>
+                    <input type="range" id="loop-end" min="0" max="100" value="100" title="Loop End %">
+                    <span id="loop-range-label" style="display:none;">0%-100%</span>
+                </div>
+            </div>
+
+            <div class="controls" id="arcade-controls-bar" style="display: none;">
                 <button type="button" id="btn-home-screen" class="btn-success" style="font-weight: 800;">
                     🏠 Return to Player
                 </button>
@@ -1188,8 +1281,9 @@
 
         <div class="arcade-hub-overlay" id="arcade-hub">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #374151; padding-bottom: 8px;">
-
-                <div class="speed-control">
+                <h2 style="font-size: 1.2rem; color: #ec4899; display: flex; align-items: center; gap: 8px;">🕹️ PianoPad Arcade Mini-Games</h2>
+                <span style="font-size: 0.8rem; color: #cbd5e1; font-weight: 600;">Choose a Mini-Game to Play!</span>
+            </div>
                     <label for="speed-slider">Speed: <span id="speed-label">100%</span></label>
                     <input type="range" id="speed-slider" min="10" max="500" value="100" step="5">
                 </div>
