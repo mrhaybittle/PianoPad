@@ -736,13 +736,6 @@
             display: inline-block;
         }
 
-        <!-- Student Leaderboard Stats Ticker Tape -->
-<div class="ticker-tape-container" id="student-ticker-tape" style="display: none;">
-    <div class="ticker-tape-badge" id="ticker-badge">🏆 MY RANKS</div>
-    <div class="ticker-tape-wrapper">
-        <div class="ticker-tape-track" id="ticker-track">Loading leaderboard stats...</div>
-    </div>
-</div>
 
         .arcade-hub-overlay {
             display: none;
@@ -1174,6 +1167,27 @@
                     <option value="matrix">Theme: Matrix Green</option>
                     <option value="gold">Theme: Classic Gold</option>
                 </select>
+
+                <div class="controls" id="arcade-controls-bar" style="display: none;">
+                <button type="button" id="btn-home-screen" class="btn-success" style="font-weight: 800;">
+                    🏠 Return to Player
+                </button>
+                <button type="button" id="btn-stop-arcade" class="btn-danger">
+                    ⏹️ Exit Active Game
+                </button>
+            </div>
+        </header>
+
+        <!-- Student Leaderboard Stats Ticker Tape -->
+        <div class="ticker-tape-container" id="student-ticker-tape" style="display: none;">
+            <div class="ticker-tape-badge" id="ticker-badge">🏆 MY RANKS</div>
+            <div class="ticker-tape-wrapper">
+                <div class="ticker-tape-track" id="ticker-track">Loading leaderboard stats...</div>
+            </div>
+        </div>
+
+        <div class="arcade-hub-overlay" id="arcade-hub">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #374151; padding-bottom: 8px;">
 
                 <div class="speed-control">
                     <label for="speed-slider">Speed: <span id="speed-label">100%</span></label>
