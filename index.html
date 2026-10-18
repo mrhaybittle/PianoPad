@@ -4028,6 +4028,8 @@ function processCalibrationNote(rawMidi) {
 
             postScoreToLeaderboard(accuracyNum);
             calculateAndDisplayRank(accuracyNum);
+            // Refresh the ticker tape stats for the current student
+            loadStudentTickerStats(sessionStudentName);
         }
 
         function toggleLoopMode() {
