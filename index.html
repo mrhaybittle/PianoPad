@@ -5562,7 +5562,8 @@ if (isOOS) {
     if (!tickerContainer || !tickerTrack) return;
 
     try {
-        const response = await fetch(GAMEMODE_RANKS_CSV_URL);
+        
+        const response = await fetch(`${GAMEMODE_RANKS_CSV_URL}&_nocache=${Date.now()}`);
         if (!response.ok) throw new Error('Failed to fetch GameModeRanks CSV');
         const csvText = await response.text();
 
