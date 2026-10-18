@@ -2359,18 +2359,12 @@
             document.getElementById('status').textContent = 'Arcade Mini-Game stopped. Select another game or return Home.';
         }
 
-       function checkFirstTimeCalibration() {
-            const calibDone = localStorage.getItem('pianopad_calib_done');
-            if (!calibDone) {
-                buildCalibrationKeyboard();
-                isCalibrating = true;
-                calibStep = 1; // Explicitly set to Step 1
-                document.getElementById('btn-calib-skip').style.display = 'inline-flex';
-                document.getElementById('btn-calib-cancel').style.display = 'none';
-                document.getElementById('calib-instructions').innerHTML = "Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
-                calibModal.classList.add('open');
-            }
-        }
+      function checkFirstTimeCalibration() {
+    const calibDone = localStorage.getItem('pianopad_calib_done');
+    if (!calibDone) {
+        startCalibration();
+    }
+}
 
 function startCalibration() {
     settingsModal.classList.remove('open');
@@ -3785,22 +3779,7 @@ function processCalibrationNote(rawMidi) {
             container.appendChild(topC);
         }
 
-        function startCalibration() {
-            settingsModal.classList.remove('open');
-            buildCalibrationKeyboard();
-            isCalibrating = true;
-            
-            calibStep = 2;
-            calibLowestRawMIDI = 36;
-
-            const lowCKey = document.querySelector('.calib-key[data-calib-note="c1"]');
-            if (lowCKey) lowCKey.classList.add('blue-highlight');
-
-            document.getElementById('btn-calib-skip').style.display = 'inline-flex';
-            document.getElementById('btn-calib-cancel').style.display = 'none';
-            document.getElementById('calib-instructions').innerHTML = 'Step 2: Press the <span style="color: #22c55e; font-weight: 800;">HIGHEST</span> \'C\' key on your external MIDI Keyboard...';
-            calibModal.classList.add('open');
-        }
+        
 
         function cancelCalibration() {
             isCalibrating = false;
