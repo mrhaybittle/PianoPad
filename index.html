@@ -5561,86 +5561,143 @@ if (isOOS) {
     const tickerTrack = document.getElementById('ticker-track');
     if (!tickerContainer || !tickerTrack) return;
 
-    // Normalize student name (strips dots, removes extra spaces, converts to lowercase)
+    // Helper to clean and normalize names (ignores periods and whitespace differences)
     const cleanName = (str) => String(str || '').replace(/\./g, '').replace(/\s+/g, ' ').trim().toLowerCase();
     const targetName = cleanName(studentName);
 
-    // Direct public export endpoints for GameModeRanks & Leaderboard
-    const urls = [
-        'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=191904617',
-        'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv',
-        'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?tqx=out:csv&sheet=GameModeRanks'
-    ];
+    let stats = [];
 
-    let csvText = '';
-    for (let u of urls) {
+    // 1. TRY APPS SCRIPT JSONP FIRST (Bypasses CORS & Sheet Auth Blocks)
+    if (typeof APPS_SCRIPT_URL !== 'undefined' && APPS_SCRIPT_URL) {
         try {
-            const res = await fetch(`${u}&_ts=${Date.now()}`);
-            if (res.ok) {
-                const text = await res.text();
-                if (text && text.includes(',')) {
-                    csvText = text;
-                    break;
-                }
+            const scriptUrl = `${APPS_SCRIPT_URL}?action=GET_STUDENT_RANKS&name=${encodeURIComponent(studentName)}&t=${Date.now()}`;
+            const res = await sendJSONP(scriptUrl);
+            if (res && res.ranks && Array.isArray(res.ranks)) {
+                stats = res.ranks.map(r => ({
+                    title: r.title || r.songTitle || 'Song',
+                    score: parseFloat(r.score || r.highScore) || 0,
+                    rank: parseInt(r.rank, 10) || 1,
+                    attempts: parseInt(r.attempts, 10) || 1
+                }));
             }
         } catch (e) {
-            console.warn("Failed loading ticker CSV from:", u);
+            console.warn("JSONP Ticker fetch notice:", e);
         }
     }
 
-    if (!csvText) {
-        console.warn("Unable to reach Google Sheets GameModeRanks endpoint.");
+    // 2. CSV FALLBACK IF APPS SCRIPT DID NOT RETURN DATA
+    if (stats.length === 0) {
+        const urls = [
+            'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv',
+            'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=191904617'
+        ];
+
+        let csvText = '';
+        for (let u of urls) {
+            try {
+                const res = await fetch(`${u}&_ts=${Date.now()}`);
+                if (res.ok) {
+                    const text = await res.text();
+                    // Ensure it returned actual CSV and not an HTML error page
+                    if (text && !text.includes('<!DOCTYPE') && text.includes(',')) {
+                        csvText = text;
+                        break;
+                    }
+                }
+            } catch (e) {
+                console.warn("CSV fetch notice:", e);
+            }
+        }
+
+        if (csvText) {
+            const lines = csvText.split(/\r?\n/);
+
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                const row = [];
+                let insideQuote = false;
+                let entry = '';
+
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"' && line[j + 1] === '"') {
+                        entry += '"';
+                        j++;
+                    } else if (char === '"') {
+                        insideQuote = !insideQuote;
+                    } else if (char === ',' && !insideQuote) {
+                        row.push(entry);
+                        entry = '';
+                    } else {
+                        entry += char;
+                    }
+                }
+                row.push(entry);
+
+                if (row.length >= 3) {
+                    const isTimestampFirst = /\d{2,4}[\/-]\d{1,2}[\/-]\d{1,2}/.test(row[0] || '');
+                    const titleIdx = isTimestampFirst ? 1 : 0;
+                    const nameIdx = isTimestampFirst ? 2 : 1;
+                    const scoreIdx = isTimestampFirst ? 3 : 2;
+                    const rankIdx = isTimestampFirst ? 4 : 3;
+                    const attemptsIdx = isTimestampFirst ? 5 : 4;
+
+                    const rowStudent = (row[nameIdx] || '').trim().replace(/^"|"$/g, '');
+
+                    if (cleanName(rowStudent) === targetName) {
+                        stats.push({
+                            title: (row[titleIdx] || '').trim().replace(/^"|"$/g, ''),
+                            score: parseFloat((row[scoreIdx] || '0').replace(/^"|"$/g, '')) || 0,
+                            rank: parseInt((row[rankIdx] || '1').replace(/^"|"$/g, ''), 10) || 1,
+                            attempts: parseInt((row[attemptsIdx] || '1').replace(/^"|"$/g, ''), 10) || 1
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort by best rank first (#1, #2...), then highest score
+    stats.sort((a, b) => a.rank !== b.rank ? a.rank - b.rank : b.score - a.score);
+
+    if (stats.length === 0) {
+        tickerTrack.innerHTML = `<span class="ticker-item">Welcome <span class="ticker-item-title">${studentName}</span>! No Game Mode scores logged yet. Play songs in Game Mode to earn your ranks!</span>`;
+        tickerContainer.style.display = 'flex';
         return;
     }
 
-    const lines = csvText.split(/\r?\n/);
-    const stats = [];
+    const rank1Count = stats.filter(s => s.rank === 1).length;
+    const rank2Count = stats.filter(s => s.rank === 2).length;
+    const rank3Count = stats.filter(s => s.rank === 3).length;
 
-    // Parse CSV rows safely and handle potential Timestamp column shifts
-for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
+    let itemsHtml = `
+        <span class="ticker-item" style="color:#38bdf8;">
+            Logged in as <strong>${studentName}</strong> | Ranked in ${stats.length} Songs (${rank1Count > 0 ? '🥇x' + rank1Count + ' ' : ''}${rank2Count > 0 ? '🥈x' + rank2Count + ' ' : ''}${rank3Count > 0 ? '🥉x' + rank3Count : ''})
+        </span>
+        <span style="color:#64748b;">•</span>
+    `;
 
-    const row = [];
-    let insideQuote = false;
-    let entry = '';
+    itemsHtml += stats.map(s => {
+        const medal = s.rank === 1 ? '🥇' : s.rank === 2 ? '🥈' : s.rank === 3 ? '🥉' : `#${s.rank}`;
+        const unit = s.title.toLowerCase().includes('finger sprint') ? 's' : (s.title.toLowerCase().includes('simon taps') ? ' lvl' : '%');
+        return `
+            <span class="ticker-item">
+                <span>${medal}</span>
+                <span class="ticker-item-title">${s.title}</span>:
+                <span class="ticker-item-rank">Rank #${s.rank}</span>
+                <span class="ticker-item-score">(${s.score}${unit})</span>
+                <span style="color:#94a3b8; font-size:0.68rem;">[${s.attempts} plays]</span>
+            </span>
+        `;
+    }).join('<span style="color:#64748b;"> • </span>');
 
-    for (let j = 0; j < line.length; j++) {
-        const char = line[j];
-        if (char === '"' && line[j + 1] === '"') {
-            entry += '"';
-            j++;
-        } else if (char === '"') {
-            insideQuote = !insideQuote;
-        } else if (char === ',' && !insideQuote) {
-            row.push(entry);
-            entry = '';
-        } else {
-            entry += char;
-        }
-    }
-    row.push(entry);
+    tickerTrack.innerHTML = itemsHtml + `<span style="color:#64748b;"> • </span>` + itemsHtml;
+    tickerContainer.style.display = 'flex';
 
-    if (row.length >= 4) {
-        // Detect if row[0] is a Timestamp (contains dates like 2026-09-23 or 05/09/2026)
-        const isFirstColTimestamp = /\d{2,4}[\/-]\d{1,2}[\/-]\d{1,2}/.test(row[0] || '');
-        const titleIdx = isFirstColTimestamp ? 1 : 0;
-        const nameIdx = isFirstColTimestamp ? 2 : 1;
-        const scoreIdx = isFirstColTimestamp ? 3 : 2;
-        const rankIdx = isFirstColTimestamp ? 4 : 3;
-        const attemptsIdx = isFirstColTimestamp ? 5 : 4;
-
-        const rowStudent = (row[nameIdx] || '').trim().replace(/^"|"$/g, '');
-        
-        if (cleanName(rowStudent) === targetName) {
-            stats.push({
-                title: (row[titleIdx] || '').trim().replace(/^"|"$/g, ''),
-                score: parseFloat((row[scoreIdx] || '0').replace(/^"|"$/g, '')) || 0,
-                rank: parseInt((row[rankIdx] || '1').replace(/^"|"$/g, ''), 10) || 1,
-                attempts: parseInt((row[attemptsIdx] || '1').replace(/^"|"$/g, ''), 10) || 1
-            });
-        }
-    }
+    const dynamicDuration = Math.max(30, stats.length * 6);
+    tickerTrack.style.animationDuration = `${dynamicDuration}s`;
 }
 
     // Sort by best rank first (#1, #2...), then highest score
