@@ -5554,107 +5554,122 @@ if (isOOS) {
 
             setInterval(updateMonitorWidget, 1000);
         });
-       async function loadStudentTickerStats(studentName) {
+      async function loadStudentTickerStats(studentName) {
     if (!studentName || studentName === "Student" || studentName === "Anonymous") return;
 
     const tickerContainer = document.getElementById('student-ticker-tape');
     const tickerTrack = document.getElementById('ticker-track');
     if (!tickerContainer || !tickerTrack) return;
 
-    // Helper to clean and normalize names (ignores periods and whitespace differences)
+    // Normalize student name (strips dots, removes extra spaces, lowercase)
     const cleanName = (str) => String(str || '').replace(/\./g, '').replace(/\s+/g, ' ').trim().toLowerCase();
     const targetName = cleanName(studentName);
 
-    let stats = [];
+    // Google Visualization API JSONP URL (Bypasses CORS completely via script injection)
+    const gvizJsonpUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?tqx=responseHandler:handleGvizTickerResponse;out:csv&sheet=GameModeRanks&_ts=${Date.now()}`;
 
-    // 1. TRY APPS SCRIPT JSONP FIRST (Bypasses CORS & Sheet Auth Blocks)
-    if (typeof APPS_SCRIPT_URL !== 'undefined' && APPS_SCRIPT_URL) {
-        try {
-            const scriptUrl = `${APPS_SCRIPT_URL}?action=GET_STUDENT_RANKS&name=${encodeURIComponent(studentName)}&t=${Date.now()}`;
-            const res = await sendJSONP(scriptUrl);
-            if (res && res.ranks && Array.isArray(res.ranks)) {
-                stats = res.ranks.map(r => ({
-                    title: r.title || r.songTitle || 'Song',
-                    score: parseFloat(r.score || r.highScore) || 0,
-                    rank: parseInt(r.rank, 10) || 1,
-                    attempts: parseInt(r.attempts, 10) || 1
-                }));
-            }
-        } catch (e) {
-            console.warn("JSONP Ticker fetch notice:", e);
+    let csvText = '';
+
+    // Create a JSONP fetch promise for GViz
+    const fetchGvizCsv = () => new Promise((resolve) => {
+        const script = document.createElement('script');
+        window.handleGvizTickerResponse = function(data) {
+            delete window.handleGvizTickerResponse;
+            if (document.body.contains(script)) document.body.removeChild(script);
+            resolve(data);
+        };
+        script.src = gvizJsonpUrl;
+        script.onerror = function() {
+            delete window.handleGvizTickerResponse;
+            if (document.body.contains(script)) document.body.removeChild(script);
+            resolve('');
+        };
+        document.body.appendChild(script);
+    });
+
+    try {
+        // Try JSONP GViz fetch first
+        const response = await fetchGvizCsv();
+        if (typeof response === 'string' && response.length > 20) {
+            csvText = response;
         }
+    } catch (e) {
+        console.warn("GViz JSONP fetch notice:", e);
     }
 
-    // 2. CSV FALLBACK IF APPS SCRIPT DID NOT RETURN DATA
-    if (stats.length === 0) {
-        const urls = [
+    // Direct CSV Fallbacks if JSONP GViz is unavailable
+    if (!csvText) {
+        const fallbackUrls = [
             'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv',
             'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=191904617'
         ];
 
-        let csvText = '';
-        for (let u of urls) {
+        for (let u of fallbackUrls) {
             try {
                 const res = await fetch(`${u}&_ts=${Date.now()}`);
                 if (res.ok) {
                     const text = await res.text();
-                    // Ensure it returned actual CSV and not an HTML error page
                     if (text && !text.includes('<!DOCTYPE') && text.includes(',')) {
                         csvText = text;
                         break;
                     }
                 }
             } catch (e) {
-                console.warn("CSV fetch notice:", e);
+                console.warn("Fallback fetch notice:", e);
             }
         }
+    }
 
-        if (csvText) {
-            const lines = csvText.split(/\r?\n/);
+    if (!csvText) {
+        console.warn("Unable to fetch GameModeRanks CSV data.");
+        return;
+    }
 
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
+    const lines = csvText.split(/\r?\n/);
+    const stats = [];
 
-                const row = [];
-                let insideQuote = false;
-                let entry = '';
+    // Parse CSV rows safely
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
 
-                for (let j = 0; j < line.length; j++) {
-                    const char = line[j];
-                    if (char === '"' && line[j + 1] === '"') {
-                        entry += '"';
-                        j++;
-                    } else if (char === '"') {
-                        insideQuote = !insideQuote;
-                    } else if (char === ',' && !insideQuote) {
-                        row.push(entry);
-                        entry = '';
-                    } else {
-                        entry += char;
-                    }
-                }
+        const row = [];
+        let insideQuote = false;
+        let entry = '';
+
+        for (let j = 0; j < line.length; j++) {
+            const char = line[j];
+            if (char === '"' && line[j + 1] === '"') {
+                entry += '"';
+                j++;
+            } else if (char === '"') {
+                insideQuote = !insideQuote;
+            } else if (char === ',' && !insideQuote) {
                 row.push(entry);
+                entry = '';
+            } else {
+                entry += char;
+            }
+        }
+        row.push(entry);
 
-                if (row.length >= 3) {
-                    const isTimestampFirst = /\d{2,4}[\/-]\d{1,2}[\/-]\d{1,2}/.test(row[0] || '');
-                    const titleIdx = isTimestampFirst ? 1 : 0;
-                    const nameIdx = isTimestampFirst ? 2 : 1;
-                    const scoreIdx = isTimestampFirst ? 3 : 2;
-                    const rankIdx = isTimestampFirst ? 4 : 3;
-                    const attemptsIdx = isTimestampFirst ? 5 : 4;
+        if (row.length >= 3) {
+            const isTimestampFirst = /\d{2,4}[\/-]\d{1,2}[\/-]\d{1,2}/.test(row[0] || '');
+            const titleIdx = isTimestampFirst ? 1 : 0;
+            const nameIdx = isTimestampFirst ? 2 : 1;
+            const scoreIdx = isTimestampFirst ? 3 : 2;
+            const rankIdx = isTimestampFirst ? 4 : 3;
+            const attemptsIdx = isTimestampFirst ? 5 : 4;
 
-                    const rowStudent = (row[nameIdx] || '').trim().replace(/^"|"$/g, '');
+            const rowStudent = (row[nameIdx] || '').trim().replace(/^"|"$/g, '');
 
-                    if (cleanName(rowStudent) === targetName) {
-                        stats.push({
-                            title: (row[titleIdx] || '').trim().replace(/^"|"$/g, ''),
-                            score: parseFloat((row[scoreIdx] || '0').replace(/^"|"$/g, '')) || 0,
-                            rank: parseInt((row[rankIdx] || '1').replace(/^"|"$/g, ''), 10) || 1,
-                            attempts: parseInt((row[attemptsIdx] || '1').replace(/^"|"$/g, ''), 10) || 1
-                        });
-                    }
-                }
+            if (cleanName(rowStudent) === targetName) {
+                stats.push({
+                    title: (row[titleIdx] || '').trim().replace(/^"|"$/g, ''),
+                    score: parseFloat((row[scoreIdx] || '0').replace(/^"|"$/g, '')) || 0,
+                    rank: parseInt((row[rankIdx] || '1').replace(/^"|"$/g, ''), 10) || 1,
+                    attempts: parseInt((row[attemptsIdx] || '1').replace(/^"|"$/g, ''), 10) || 1
+                });
             }
         }
     }
