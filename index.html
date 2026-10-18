@@ -5700,47 +5700,7 @@ if (isOOS) {
     tickerTrack.style.animationDuration = `${dynamicDuration}s`;
 }
 
-    // Sort by best rank first (#1, #2...), then highest score
-    stats.sort((a, b) => a.rank !== b.rank ? a.rank - b.rank : b.score - a.score);
-
-    if (stats.length === 0) {
-        tickerTrack.innerHTML = `<span class="ticker-item">Welcome <span class="ticker-item-title">${studentName}</span>! No Game Mode scores logged yet. Play songs in Game Mode to earn your ranks!</span>`;
-        tickerContainer.style.display = 'flex';
-        return;
-    }
-
-    const rank1Count = stats.filter(s => s.rank === 1).length;
-    const rank2Count = stats.filter(s => s.rank === 2).length;
-    const rank3Count = stats.filter(s => s.rank === 3).length;
-
-    let itemsHtml = `
-        <span class="ticker-item" style="color:#38bdf8;">
-            Logged in as <strong>${studentName}</strong> | Ranked in ${stats.length} Songs (${rank1Count > 0 ? '🥇x' + rank1Count + ' ' : ''}${rank2Count > 0 ? '🥈x' + rank2Count + ' ' : ''}${rank3Count > 0 ? '🥉x' + rank3Count : ''})
-        </span>
-        <span style="color:#64748b;">•</span>
-    `;
-
-    itemsHtml += stats.map(s => {
-        const medal = s.rank === 1 ? '🥇' : s.rank === 2 ? '🥈' : s.rank === 3 ? '🥉' : `#${s.rank}`;
-        const unit = s.title.toLowerCase().includes('finger sprint') ? 's' : (s.title.toLowerCase().includes('simon taps') ? ' lvl' : '%');
-        return `
-            <span class="ticker-item">
-                <span>${medal}</span>
-                <span class="ticker-item-title">${s.title}</span>:
-                <span class="ticker-item-rank">Rank #${s.rank}</span>
-                <span class="ticker-item-score">(${s.score}${unit})</span>
-                <span style="color:#94a3b8; font-size:0.68rem;">[${s.attempts} plays]</span>
-            </span>
-        `;
-    }).join('<span style="color:#64748b;"> • </span>');
-
-    // Repeat items once to fill width and scroll smoothly
-    tickerTrack.innerHTML = itemsHtml + `<span style="color:#64748b;"> • </span>` + itemsHtml;
-    tickerContainer.style.display = 'flex';
-
-    const dynamicDuration = Math.max(30, stats.length * 6);
-    tickerTrack.style.animationDuration = `${dynamicDuration}s`;
-}
+    
        
     </script>
 </body>
