@@ -3211,6 +3211,7 @@ function processCalibrationNote(rawMidi) {
                 ensureStudentName();
                 postScoreToLeaderboard(parseFloat(localPlayer.finishTime));
             }
+            loadStudentTickerStats(sessionStudentName);
             activeMiniGame = null;
         }
 
@@ -3304,6 +3305,8 @@ function processCalibrationNote(rawMidi) {
             document.getElementById('game-summary-text').innerHTML = `<div style="font-size:1.2rem; font-weight:800; color:#facc15;">⚔️ Song Battle Standings: ${currentSongTitle}</div>`;
             document.getElementById('game-rank-text').textContent = `Song Battle Logged!`;
             gameResultsModal.classList.add('open');
+
+            loadStudentTickerStats(sessionStudentName);
         }
 
         async function postScoreToLeaderboard(accuracyNum) {
