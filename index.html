@@ -1942,6 +1942,7 @@
                 if (inputName && inputName.trim()) {
                     sessionStudentName = sanitizeName(inputName);
                     localStorage.setItem('pianopad_name', sessionStudentName);
+                    loadStudentTickerStats(sessionStudentName);
                     syncStudentToFirebase();
                 } else {
                     sessionStudentName = "Anonymous";
