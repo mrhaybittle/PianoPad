@@ -5561,38 +5561,42 @@ if (isOOS) {
     const tickerTrack = document.getElementById('ticker-track');
     if (!tickerContainer || !tickerTrack) return;
 
-    // Helper to normalize names by removing dots, extra spaces, and lowercase
-    const normalizeName = (str) => str.replace(/\./g, '').replace(/\s+/g, ' ').trim().toLowerCase();
-    const targetCleanName = normalizeName(studentName);
+    // Normalize student name (strips dots, removes extra spaces, converts to lowercase)
+    const cleanName = (str) => String(str || '').replace(/\./g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const targetName = cleanName(studentName);
 
-    // Fallback URLs to handle CORS and Google Sheet Caching
-    const urlsToTry = [
-        'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?tqx=out:csv&sheet=GameModeRanks',
-        'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958'
+    // Direct public export endpoints for GameModeRanks & Leaderboard
+    const urls = [
+        'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=191904617',
+        'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv',
+        'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?tqx=out:csv&sheet=GameModeRanks'
     ];
 
     let csvText = '';
-    for (let url of urlsToTry) {
+    for (let u of urls) {
         try {
-            const response = await fetch(`${url}&_nocache=${Date.now()}`);
-            if (response.ok) {
-                csvText = await response.text();
-                if (csvText && csvText.length > 50) break;
+            const res = await fetch(`${u}&_ts=${Date.now()}`);
+            if (res.ok) {
+                const text = await res.text();
+                if (text && text.includes(',')) {
+                    csvText = text;
+                    break;
+                }
             }
         } catch (e) {
-            console.warn("Ticker fetch failed for URL:", url);
+            console.warn("Failed loading ticker CSV from:", u);
         }
     }
 
     if (!csvText) {
-        console.warn("Could not load GameModeRanks sheet.");
+        console.warn("Unable to reach Google Sheets GameModeRanks endpoint.");
         return;
     }
 
     const lines = csvText.split(/\r?\n/);
     const stats = [];
 
-    // Parse CSV handling commas and double quotes in titles
+    // Parse CSV rows safely
     for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
@@ -5617,20 +5621,20 @@ if (isOOS) {
         }
         row.push(entry);
 
-        if (row.length >= 4) {
-            const rawStudentName = (row[1] || '').trim().replace(/^"|"$/g, '');
-            if (normalizeName(rawStudentName) === targetCleanName) {
+        if (row.length >= 3) {
+            const rowStudent = (row[1] || '').trim().replace(/^"|"$/g, '');
+            if (cleanName(rowStudent) === targetName) {
                 stats.push({
                     title: (row[0] || '').trim().replace(/^"|"$/g, ''),
                     score: parseFloat((row[2] || '0').replace(/^"|"$/g, '')) || 0,
-                    rank: parseInt((row[3] || '999').replace(/^"|"$/g, ''), 10),
-                    attempts: parseInt((row[4] || '1').replace(/^"|"$/g, ''), 10)
+                    rank: parseInt((row[3] || '1').replace(/^"|"$/g, ''), 10) || 1,
+                    attempts: parseInt((row[4] || '1').replace(/^"|"$/g, ''), 10) || 1
                 });
             }
         }
     }
 
-    // Sort by best rank first (1, 2, 3...), then by highest score
+    // Sort by best rank first (#1, #2...), then highest score
     stats.sort((a, b) => a.rank !== b.rank ? a.rank - b.rank : b.score - a.score);
 
     if (stats.length === 0) {
@@ -5639,7 +5643,6 @@ if (isOOS) {
         return;
     }
 
-    // Calculate medal counts
     const rank1Count = stats.filter(s => s.rank === 1).length;
     const rank2Count = stats.filter(s => s.rank === 2).length;
     const rank3Count = stats.filter(s => s.rank === 3).length;
@@ -5665,15 +5668,13 @@ if (isOOS) {
         `;
     }).join('<span style="color:#64748b;"> • </span>');
 
-    // Duplicate string for smooth continuous infinite scrolling
+    // Repeat items once to fill width and scroll smoothly
     tickerTrack.innerHTML = itemsHtml + `<span style="color:#64748b;"> • </span>` + itemsHtml;
     tickerContainer.style.display = 'flex';
 
     const dynamicDuration = Math.max(30, stats.length * 6);
     tickerTrack.style.animationDuration = `${dynamicDuration}s`;
 }
-       
-        
        
     </script>
 </body>
