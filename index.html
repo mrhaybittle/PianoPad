@@ -5424,10 +5424,13 @@ function exportPerformanceToWAV(fileName = 'PianoPad_Song') {
             const timeMins = now.getHours() * 60 + now.getMinutes();
             const isOOS = (day === 0 || day === 6) || (timeMins < 8 * 60) || (timeMins >= 14 * 60 + 5);
 
-            if (isOOS) {
+if (isOOS) {
                 currentRoom = "Outside";
                 updateMonitorWidget();
                 checkFirstTimeCalibration();
+                if (savedName) {
+                    loadStudentTickerStats(savedName);
+                }
             } else {
                 document.getElementById('student-join-name').value = savedName || "";
                 if (savedAvatar) document.getElementById('student-join-avatar').value = savedAvatar;
