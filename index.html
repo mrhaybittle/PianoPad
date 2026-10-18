@@ -5596,43 +5596,52 @@ if (isOOS) {
     const lines = csvText.split(/\r?\n/);
     const stats = [];
 
-    // Parse CSV rows safely
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
+    // Parse CSV rows safely and handle potential Timestamp column shifts
+for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
 
-        const row = [];
-        let insideQuote = false;
-        let entry = '';
+    const row = [];
+    let insideQuote = false;
+    let entry = '';
 
-        for (let j = 0; j < line.length; j++) {
-            const char = line[j];
-            if (char === '"' && line[j + 1] === '"') {
-                entry += '"';
-                j++;
-            } else if (char === '"') {
-                insideQuote = !insideQuote;
-            } else if (char === ',' && !insideQuote) {
-                row.push(entry);
-                entry = '';
-            } else {
-                entry += char;
-            }
-        }
-        row.push(entry);
-
-        if (row.length >= 3) {
-            const rowStudent = (row[1] || '').trim().replace(/^"|"$/g, '');
-            if (cleanName(rowStudent) === targetName) {
-                stats.push({
-                    title: (row[0] || '').trim().replace(/^"|"$/g, ''),
-                    score: parseFloat((row[2] || '0').replace(/^"|"$/g, '')) || 0,
-                    rank: parseInt((row[3] || '1').replace(/^"|"$/g, ''), 10) || 1,
-                    attempts: parseInt((row[4] || '1').replace(/^"|"$/g, ''), 10) || 1
-                });
-            }
+    for (let j = 0; j < line.length; j++) {
+        const char = line[j];
+        if (char === '"' && line[j + 1] === '"') {
+            entry += '"';
+            j++;
+        } else if (char === '"') {
+            insideQuote = !insideQuote;
+        } else if (char === ',' && !insideQuote) {
+            row.push(entry);
+            entry = '';
+        } else {
+            entry += char;
         }
     }
+    row.push(entry);
+
+    if (row.length >= 4) {
+        // Detect if row[0] is a Timestamp (contains dates like 2026-09-23 or 05/09/2026)
+        const isFirstColTimestamp = /\d{2,4}[\/-]\d{1,2}[\/-]\d{1,2}/.test(row[0] || '');
+        const titleIdx = isFirstColTimestamp ? 1 : 0;
+        const nameIdx = isFirstColTimestamp ? 2 : 1;
+        const scoreIdx = isFirstColTimestamp ? 3 : 2;
+        const rankIdx = isFirstColTimestamp ? 4 : 3;
+        const attemptsIdx = isFirstColTimestamp ? 5 : 4;
+
+        const rowStudent = (row[nameIdx] || '').trim().replace(/^"|"$/g, '');
+        
+        if (cleanName(rowStudent) === targetName) {
+            stats.push({
+                title: (row[titleIdx] || '').trim().replace(/^"|"$/g, ''),
+                score: parseFloat((row[scoreIdx] || '0').replace(/^"|"$/g, '')) || 0,
+                rank: parseInt((row[rankIdx] || '1').replace(/^"|"$/g, ''), 10) || 1,
+                attempts: parseInt((row[attemptsIdx] || '1').replace(/^"|"$/g, ''), 10) || 1
+            });
+        }
+    }
+}
 
     // Sort by best rank first (#1, #2...), then highest score
     stats.sort((a, b) => a.rank !== b.rank ? a.rank - b.rank : b.score - a.score);
