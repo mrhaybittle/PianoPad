@@ -5554,7 +5554,7 @@ if (isOOS) {
 
             setInterval(updateMonitorWidget, 1000);
         });
-      async function loadStudentTickerStats(studentName) {
+     async function loadStudentTickerStats(studentName) {
     if (!studentName || studentName === "Student" || studentName === "Anonymous") return;
 
     const tickerContainer = document.getElementById('student-ticker-tape');
@@ -5565,113 +5565,71 @@ if (isOOS) {
     const cleanName = (str) => String(str || '').replace(/\./g, '').replace(/\s+/g, ' ').trim().toLowerCase();
     const targetName = cleanName(studentName);
 
-    // Google Visualization API JSONP URL (Bypasses CORS completely via script injection)
-    const gvizJsonpUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?tqx=responseHandler:handleGvizTickerResponse;out:csv&sheet=GameModeRanks&_ts=${Date.now()}`;
+    // Google Visualization Query URL for GameModeRanks
+    const gvizUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?sheet=GameModeRanks&tqx=responseHandler:parseTickerGvizResponse&_ts=${Date.now()}`;
 
-    let csvText = '';
-
-    // Create a JSONP fetch promise for GViz
-    const fetchGvizCsv = () => new Promise((resolve) => {
+    // Fetch via JSONP script injection to bypass CORS completely
+    const fetchGvizData = () => new Promise((resolve) => {
         const script = document.createElement('script');
-        window.handleGvizTickerResponse = function(data) {
-            delete window.handleGvizTickerResponse;
+        
+        window.parseTickerGvizResponse = function(gvizData) {
+            delete window.parseTickerGvizResponse;
             if (document.body.contains(script)) document.body.removeChild(script);
-            resolve(data);
+            
+            if (gvizData && gvizData.table && gvizData.table.rows) {
+                resolve(gvizData.table);
+            } else {
+                resolve(null);
+            }
         };
-        script.src = gvizJsonpUrl;
+
+        script.src = gvizUrl;
         script.onerror = function() {
-            delete window.handleGvizTickerResponse;
+            delete window.parseTickerGvizResponse;
             if (document.body.contains(script)) document.body.removeChild(script);
-            resolve('');
+            resolve(null);
         };
+
         document.body.appendChild(script);
     });
 
-    try {
-        // Try JSONP GViz fetch first
-        const response = await fetchGvizCsv();
-        if (typeof response === 'string' && response.length > 20) {
-            csvText = response;
-        }
-    } catch (e) {
-        console.warn("GViz JSONP fetch notice:", e);
-    }
-
-    // Direct CSV Fallbacks if JSONP GViz is unavailable
-    if (!csvText) {
-        const fallbackUrls = [
-            'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv',
-            'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=191904617'
-        ];
-
-        for (let u of fallbackUrls) {
-            try {
-                const res = await fetch(`${u}&_ts=${Date.now()}`);
-                if (res.ok) {
-                    const text = await res.text();
-                    if (text && !text.includes('<!DOCTYPE') && text.includes(',')) {
-                        csvText = text;
-                        break;
-                    }
-                }
-            } catch (e) {
-                console.warn("Fallback fetch notice:", e);
-            }
-        }
-    }
-
-    if (!csvText) {
-        console.warn("Unable to fetch GameModeRanks CSV data.");
-        return;
-    }
-
-    const lines = csvText.split(/\r?\n/);
+    const tableData = await fetchGvizData();
     const stats = [];
 
-    // Parse CSV rows safely
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
+    if (tableData) {
+        // Find column indices dynamically by header label
+        const cols = tableData.cols || [];
+        let titleIdx = 0, nameIdx = 1, scoreIdx = 2, rankIdx = 3, attemptsIdx = 4;
 
-        const row = [];
-        let insideQuote = false;
-        let entry = '';
+        cols.forEach((col, idx) => {
+            const label = (col.label || '').toLowerCase();
+            if (label.includes('title') || label.includes('song')) titleIdx = idx;
+            else if (label.includes('student') || label.includes('name')) nameIdx = idx;
+            else if (label.includes('score')) scoreIdx = idx;
+            else if (label.includes('rank')) rankIdx = idx;
+            else if (label.includes('attempt') || label.includes('play')) attemptsIdx = idx;
+        });
 
-        for (let j = 0; j < line.length; j++) {
-            const char = line[j];
-            if (char === '"' && line[j + 1] === '"') {
-                entry += '"';
-                j++;
-            } else if (char === '"') {
-                insideQuote = !insideQuote;
-            } else if (char === ',' && !insideQuote) {
-                row.push(entry);
-                entry = '';
-            } else {
-                entry += char;
+        tableData.rows.forEach(r => {
+            const cells = r.c || [];
+            if (cells[nameIdx] && cells[nameIdx].v !== null) {
+                const rowStudentName = String(cells[nameIdx].v || '');
+                
+                if (cleanName(rowStudentName) === targetName) {
+                    const titleVal = cells[titleIdx] ? String(cells[titleIdx].v || '') : 'Song';
+                    const scoreVal = cells[scoreIdx] ? parseFloat(cells[scoreIdx].v) || 0 : 0;
+                    const rankVal = cells[rankIdx] ? parseInt(cells[rankIdx].v, 10) || 1 : 1;
+                    const attemptsVal = cells[attemptsIdx] ? parseInt(cells[attemptsIdx].v, 10) || 1 : 1;
+
+                    stats.push({
+                        title: titleVal,
+                        score: scoreVal,
+                        rank: rankVal,
+                        attempts: attemptsVal
+                    });
+                }
             }
-        }
-        row.push(entry);
-
-        if (row.length >= 3) {
-            const isTimestampFirst = /\d{2,4}[\/-]\d{1,2}[\/-]\d{1,2}/.test(row[0] || '');
-            const titleIdx = isTimestampFirst ? 1 : 0;
-            const nameIdx = isTimestampFirst ? 2 : 1;
-            const scoreIdx = isTimestampFirst ? 3 : 2;
-            const rankIdx = isTimestampFirst ? 4 : 3;
-            const attemptsIdx = isTimestampFirst ? 5 : 4;
-
-            const rowStudent = (row[nameIdx] || '').trim().replace(/^"|"$/g, '');
-
-            if (cleanName(rowStudent) === targetName) {
-                stats.push({
-                    title: (row[titleIdx] || '').trim().replace(/^"|"$/g, ''),
-                    score: parseFloat((row[scoreIdx] || '0').replace(/^"|"$/g, '')) || 0,
-                    rank: parseInt((row[rankIdx] || '1').replace(/^"|"$/g, ''), 10) || 1,
-                    attempts: parseInt((row[attemptsIdx] || '1').replace(/^"|"$/g, ''), 10) || 1
-                });
-            }
-        }
+        });
     }
 
     // Sort by best rank first (#1, #2...), then highest score
