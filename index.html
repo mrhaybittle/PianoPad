@@ -2359,25 +2359,33 @@
             document.getElementById('status').textContent = 'Arcade Mini-Game stopped. Select another game or return Home.';
         }
 
-         function checkFirstTimeCalibration() {
+        function checkFirstTimeCalibration() {
     const calibDone = localStorage.getItem('pianopad_calib_done');
     if (!calibDone) {
         buildCalibrationKeyboard();
         isCalibrating = true;
-        calibStep = 1;
+        calibStep = 1; // Explicitly set to Step 1
         document.getElementById('btn-calib-skip').style.display = 'inline-flex';
         document.getElementById('btn-calib-cancel').style.display = 'none';
         document.getElementById('calib-instructions').innerHTML = "Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
         calibModal.classList.add('open');
     }
 }
+}
 
-// Launches calibration manually from settings
 function startCalibration() {
     settingsModal.classList.remove('open');
     buildCalibrationKeyboard();
+    
+    // Explicitly reset calibration variables to Step 1
     isCalibrating = true;
-    calibStep = 1;
+    calibStep = 1; 
+    calibLowestRawMIDI = null;
+    calibHighestRawMIDI = null;
+
+    // Reset keyboard key highlights
+    document.querySelectorAll('.calib-key').forEach(k => k.classList.remove('blue-highlight'));
+
     document.getElementById('btn-calib-skip').style.display = 'inline-flex';
     document.getElementById('btn-calib-cancel').style.display = 'none';
     document.getElementById('calib-instructions').innerHTML = "Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
@@ -2398,7 +2406,6 @@ function cancelCalibration() {
     calibModal.classList.remove('open');
 }
 
-// Processes incoming raw MIDI note numbers during Step 1 (Lowest C) and Step 2 (Highest C)
 function processCalibrationNote(rawMidi) {
     if (!isCalibrating) return;
 
@@ -2409,6 +2416,7 @@ function processCalibrationNote(rawMidi) {
         const lowCKey = document.querySelector('.calib-key[data-calib-note="c1"]');
         if (lowCKey) lowCKey.classList.add('blue-highlight');
 
+        // Transition to Step 2
         calibStep = 2;
         document.getElementById('calib-instructions').textContent = "Recognized Lowest C! Step 2: Now press the HIGHEST 'C' key on your external MIDI Keyboard...";
     } else if (calibStep === 2) {
@@ -2424,6 +2432,7 @@ function processCalibrationNote(rawMidi) {
         document.getElementById('calib-instructions').textContent = `Calibration Complete! Detected a ${octaveDistance}-Octave Keyboard (${octaveDistance * 12 + 1} keys).`;
         setTimeout(() => {
             isCalibrating = false;
+            calibStep = 1; // Reset back to Step 1 for next time
             localStorage.setItem('pianopad_calib_done', 'true');
             calibModal.classList.remove('open');
             updateKeyPositions();
