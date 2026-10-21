@@ -7,77 +7,35 @@
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    
     <!-- ABCjs (ABC notation) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/abcjs/6.2.2/abcjs-basic-min.js"></script>
-    
     <!-- PDF.js (PDF rendering) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    
     <!-- OpenSheetMusicDisplay (MusicXML) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/opensheetmusicdisplay/1.8.6/opensheetmusicdisplay.min.js"></script>
-    
     <!-- SortableJS (Drag & Drop Rearranging) -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-    
     <!-- CropperJS (Image Cropping) -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <!-- FabricJS (Annotations Layer) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
 
     <style>
-        html, body {
-            height: 100%;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: #f8fafc;
-            font-family: system-ui, -apple-system, sans-serif;
-        }
-
-        /* Paper Canvas now handles centered active pages */
-        .paper-canvas {
-            width: 100%;
-            height: 100%;
-            position: relative;
-            transition: transform 0.15s ease-out;
-            transform-origin: center center; /* Better for paginated view */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Single Page styling - maximizing space */
-        .sheet-page {
-            display: none; /* Hidden by default for pagination */
-            width: 100%;
-            height: 100%;
-            background: #fff;
-            position: absolute;
-            inset: 0;
-            align-items: center;
-            justify-content: center;
-            overflow: auto; /* Fallback for massive SVGs */
-        }
+        html, body { height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
         
-        .sheet-page.active {
-            display: flex; /* Show only the active page */
-        }
-
-        /* Auto stretch SVG / Images to fill maximum space without distorting */
-        .sheet-page img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
+        .paper-canvas { width: 100%; height: 100%; position: relative; transition: transform 0.15s ease-out; transform-origin: center center; display: flex; align-items: center; justify-content: center; }
         
-        .sheet-page svg, .osmd-container {
-            max-width: 100%;
-            height: auto;
-        }
+        .sheet-page { display: none; width: 100%; height: 100%; position: absolute; inset: 0; align-items: center; justify-content: center; overflow: auto; padding: 16px; }
+        .sheet-page.active { display: flex; }
+
+        .doc-wrapper { position: relative; display: inline-block; background: #fff; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); max-width: 100%; max-height: 100%; }
+        .doc-wrapper img, .doc-wrapper > div.abc-osmd-container { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+        
+        .canvas-container { position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; z-index: 10; }
+        .lower-canvas, .upper-canvas { width: 100% !important; height: 100% !important; }
 
         .abcjs-highlight { fill: #2563eb !important; stroke: #1d4ed8 !important; }
         .abcjs-cursor { stroke: #dc2626; stroke-width: 2.5px; }
@@ -91,15 +49,76 @@
         .sortable-drag { cursor: grabbing !important; }
         .page-thumb-container { cursor: grab; }
         .page-thumb-container:active { cursor: grabbing; }
+
+        .tool-btn.active { background-color: #3b82f6; color: white; border-color: #2563eb; }
+        .color-btn.active { transform: scale(1.3); outline: 2px solid #3b82f6; outline-offset: 2px; }
+
+        /* =========================================================
+           Oversized, Highly Accessible Crop Handles & Borders
+           ========================================================= */
+        .cropper-view-box {
+            outline: 3px solid #3b82f6 !important;
+            outline-color: rgba(59, 130, 246, 0.95) !important;
+        }
+
+        /* Thicker edges to grab lines easily */
+        .cropper-line {
+            background-color: #3b82f6 !important;
+            opacity: 0.7 !important;
+        }
+        .cropper-line.line-e, .cropper-line.line-w {
+            width: 12px !important;
+            cursor: ew-resize !important;
+        }
+        .cropper-line.line-e { right: -6px !important; }
+        .cropper-line.line-w { left: -6px !important; }
+        
+        .cropper-line.line-n, .cropper-line.line-s {
+            height: 12px !important;
+            cursor: ns-resize !important;
+        }
+        .cropper-line.line-n { top: -6px !important; }
+        .cropper-line.line-s { bottom: -6px !important; }
+
+        /* Big 32px handles for corners and edges */
+        .cropper-point {
+            width: 32px !important;
+            height: 32px !important;
+            opacity: 1 !important;
+            background-color: #2563eb !important;
+            border: 3.5px solid #ffffff !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+            z-index: 30 !important;
+        }
+
+        /* Large invisible 60px touch hitbox around every handle */
+        .cropper-point::after {
+            content: '';
+            position: absolute;
+            top: -16px;
+            left: -16px;
+            right: -16px;
+            bottom: -16px;
+        }
+
+        /* Centering offsets for 32px handles */
+        .cropper-point.point-e { margin-top: -16px !important; right: -16px !important; cursor: ew-resize !important; }
+        .cropper-point.point-w { margin-top: -16px !important; left: -16px !important; cursor: ew-resize !important; }
+        .cropper-point.point-n { margin-left: -16px !important; top: -16px !important; cursor: ns-resize !important; }
+        .cropper-point.point-s { margin-left: -16px !important; bottom: -16px !important; cursor: ns-resize !important; }
+        .cropper-point.point-ne { top: -16px !important; right: -16px !important; cursor: nesw-resize !important; }
+        .cropper-point.point-nw { top: -16px !important; left: -16px !important; cursor: nwse-resize !important; }
+        .cropper-point.point-se { bottom: -16px !important; right: -16px !important; cursor: nwse-resize !important; }
+        .cropper-point.point-sw { bottom: -16px !important; left: -16px !important; cursor: nesw-resize !important; }
     </style>
 </head>
 <body class="h-full flex flex-col antialiased text-slate-800 bg-slate-100">
 
     <!-- Header Toolbar -->
-    <header class="w-full bg-slate-900 text-slate-100 px-4 py-2 shadow-md border-b border-slate-800 flex-none z-30">
+    <header class="w-full bg-slate-900 text-slate-100 px-4 py-2 shadow-md border-b border-slate-800 flex-none z-40 relative">
         <div class="w-full flex flex-wrap items-center justify-between gap-2 text-sm">
             
-            <!-- Left: Controls -->
             <div class="flex items-center gap-2">
                 <div class="flex items-center gap-2 font-bold text-white text-base mr-2">
                     <i data-lucide="music-4" class="w-5 h-5 text-blue-400"></i>
@@ -123,16 +142,13 @@
                 </button>
             </div>
 
-            <!-- Center: Pagination & Audio Playback -->
             <div class="flex items-center gap-3">
-                <!-- Pagination Controls -->
                 <div class="flex items-center gap-1 bg-slate-950/80 px-2 py-1 rounded-xl border border-slate-800">
                     <button id="btnPrev" class="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors" title="Previous Page (Left Arrow)"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
                     <span id="pageIndicator" class="text-xs font-mono text-slate-300 min-w-[3rem] text-center">0 / 0</span>
                     <button id="btnNext" class="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors" title="Next Page (Right Arrow)"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
                 </div>
 
-                <!-- Audio Controls -->
                 <div class="flex items-center gap-2 bg-slate-950/80 px-3 py-1 rounded-xl border border-slate-800 hidden md:flex">
                     <button id="btnPlay" class="bg-blue-600 hover:bg-blue-500 text-white p-1.5 rounded-full transition-all disabled:opacity-40" disabled>
                         <i id="playIcon" data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
@@ -141,12 +157,10 @@
                         <i data-lucide="square" class="w-3.5 h-3.5"></i>
                     </button>
                     <div class="h-4 w-px bg-slate-800 mx-1"></div>
-                    <input type="range" id="tempoSlider" min="40" max="240" value="120" class="w-16 accent-blue-500 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer">
-                    <span id="bpmDisplay" class="text-xs font-mono w-14 text-slate-300">120 BPM</span>
+                    <input type="range" id="tempoSlider" min="40" max="240" value="120" class="w-16 accent-blue-500 bg-slate-800 h-1.5 rounded-lg cursor-pointer">
                 </div>
             </div>
 
-            <!-- Right: Zoom, Pages, Clear -->
             <div class="flex items-center gap-1 sm:gap-2">
                 <div class="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700 hidden sm:flex">
                     <button id="btnZoomOut" class="p-1.5 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
@@ -154,12 +168,10 @@
                     <button id="btnZoomIn" class="p-1.5 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
                     <button id="btnFit" class="px-2 py-1 text-slate-300 hover:text-white hover:bg-slate-700 rounded text-xs font-medium border-l border-slate-700">Reset</button>
                 </div>
-
                 <button id="btnTogglePages" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-colors">
                     <i data-lucide="gallery-vertical-end" class="w-3.5 h-3.5 text-amber-400"></i>
                     <span class="hidden lg:inline">Pages</span>
                 </button>
-
                 <button id="btnClear" class="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors" title="Clear All">
                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                 </button>
@@ -167,12 +179,38 @@
         </div>
     </header>
 
+    <!-- Floating Annotation Toolbar -->
+    <div id="annotationToolbar" class="absolute top-[60px] left-1/2 -translate-x-1/2 bg-white px-4 py-2 rounded-2xl shadow-xl border border-slate-200 z-30 flex items-center gap-4 hidden">
+        <div class="flex items-center gap-1 border-r border-slate-200 pr-4">
+            <button class="tool-btn active p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" data-tool="navigate" title="Navigate (Read Only)">
+                <i data-lucide="mouse-pointer-2" class="w-4 h-4"></i>
+            </button>
+            <button class="tool-btn p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" data-tool="pen" title="Pen (Draw)">
+                <i data-lucide="pen-tool" class="w-4 h-4"></i>
+            </button>
+            <button class="tool-btn p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" data-tool="highlight" title="Highlighter">
+                <i data-lucide="highlighter" class="w-4 h-4"></i>
+            </button>
+            <button class="tool-btn p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" data-tool="text" title="Add Text">
+                <i data-lucide="type" class="w-4 h-4"></i>
+            </button>
+            <button class="tool-btn p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" data-tool="erase" title="Eraser (Click item to delete)">
+                <i data-lucide="eraser" class="w-4 h-4"></i>
+            </button>
+            <button id="btnUndo" class="p-2 text-slate-600 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-1" title="Undo Last Annotation">
+                <i data-lucide="undo" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-8 gap-1.5" id="colorPalette"></div>
+    </div>
+
     <!-- Main Workspace -->
     <div class="flex-1 w-full relative flex overflow-hidden bg-slate-200">
         
-        <!-- Left: ABC Editor Drawer -->
+        <!-- ABC Editor Drawer -->
         <div id="editorDrawer" class="hidden absolute left-0 top-0 bottom-0 w-80 md:w-96 bg-slate-900 border-r border-slate-800 z-20 flex flex-col shadow-2xl transition-all">
-            <div class="p-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between text-xs font-semibold text-slate-300">
+            <div class="p-3 bg-slate-950 border-b border-slate-800 flex justify-between text-xs font-semibold text-slate-300">
                 <span class="flex items-center gap-1.5"><i data-lucide="file-code" class="w-4 h-4 text-blue-400"></i> ABC Editor</span>
                 <button id="btnCloseEditor" class="text-slate-400 hover:text-white p-1 rounded"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
@@ -182,46 +220,38 @@
             </div>
         </div>
 
-        <!-- Right: Pages Manager Drawer -->
+        <!-- Pages Manager Drawer -->
         <div id="pagesDrawer" class="hidden absolute right-0 top-0 bottom-0 w-64 bg-slate-900 border-l border-slate-800 z-20 flex flex-col shadow-2xl transition-all">
-            <div class="p-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between text-xs font-semibold text-slate-300">
+            <div class="p-3 bg-slate-950 border-b border-slate-800 flex justify-between text-xs font-semibold text-slate-300">
                 <span class="flex items-center gap-1.5"><i data-lucide="arrow-up-down" class="w-4 h-4 text-amber-400"></i> Rearrange Pages</span>
                 <button id="btnClosePages" class="text-slate-400 hover:text-white p-1 rounded"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
             <div class="p-2 text-[10px] text-slate-400 text-center border-b border-slate-800 bg-slate-900/50 uppercase tracking-wide">Drag items to reorder</div>
-            <ul id="pagesList" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-900">
-                <!-- Thumbnails populate here -->
-            </ul>
+            <ul id="pagesList" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-900"></ul>
         </div>
 
         <!-- Document Viewer Area -->
-        <main class="flex-1 w-full h-full overflow-hidden p-2 sm:p-4">
+        <main class="flex-1 w-full h-full overflow-hidden">
             <div id="paperWrapper" class="paper-canvas">
                 
                 <!-- Empty State -->
                 <div id="dropZone" class="w-full max-w-2xl border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center p-12 text-center bg-white hover:bg-blue-50/50 transition-colors cursor-pointer shadow-sm">
                     <div class="flex gap-4 mb-6">
-                        <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center shadow-sm"><i data-lucide="file-audio" class="w-6 h-6"></i></div>
-                        <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center shadow-sm"><i data-lucide="file-image" class="w-6 h-6"></i></div>
-                        <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shadow-sm"><i data-lucide="camera" class="w-6 h-6"></i></div>
+                        <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center"><i data-lucide="file-audio" class="w-6 h-6"></i></div>
+                        <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center"><i data-lucide="file-image" class="w-6 h-6"></i></div>
+                        <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center"><i data-lucide="camera" class="w-6 h-6"></i></div>
                     </div>
                     <h2 class="text-2xl font-bold text-slate-800 mb-2">Build Your Setlist</h2>
-                    <p class="text-sm text-slate-500 max-w-md mb-2 leading-relaxed">
-                        Drag & Drop or Import:<br>
-                        <strong>PDFs, MusicXML, ABC notation, or Images.</strong>
-                    </p>
-                    <p class="text-xs text-slate-400 mt-4 bg-slate-50 p-2 rounded border border-slate-100">Use <kbd class="font-mono bg-slate-200 px-1 rounded text-slate-600">&larr;</kbd> and <kbd class="font-mono bg-slate-200 px-1 rounded text-slate-600">&rarr;</kbd> to turn pages.<br>Long press <kbd class="font-mono bg-slate-200 px-1 rounded text-slate-600">&larr;</kbd> to jump to Page 1.</p>
+                    <p class="text-sm text-slate-500 max-w-md mb-2">Drag & Drop or Import:<br><strong>PDFs, MusicXML, ABC notation, or Images.</strong></p>
                 </div>
 
-                <!-- Paginated sheets will be injected here as absolute .sheet-page divs -->
             </div>
         </main>
     </div>
 
-    <!-- Hidden Audio Player -->
     <div id="audio-player" class="hidden"></div>
 
-    <!-- Crop Modal Wrapper (Full Screen overlay) -->
+    <!-- Crop Modal Wrapper -->
     <div id="cropModal" class="hidden fixed inset-0 z-50 bg-slate-900/95 flex flex-col p-4 sm:p-8 backdrop-blur-sm">
         <div class="flex-1 w-full relative bg-black rounded-xl overflow-hidden shadow-2xl flex items-center justify-center">
             <img id="cropImage" class="max-w-full max-h-full block" src="">
@@ -229,11 +259,11 @@
         <div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div class="text-white">
                 <h3 class="text-xl font-bold">Crop Blank Space</h3>
-                <p class="text-sm text-slate-400">Drag the edges to fit the sheet music.</p>
+                <p class="text-sm text-slate-400">Grab the large blue handles or thick edges to crop.</p>
             </div>
             <div class="flex items-center gap-3">
-                <button id="btnCropCancel" class="px-5 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors">Cancel</button>
-                <button id="btnCropConfirm" class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg transition-colors flex items-center gap-2">
+                <button id="btnCropCancel" class="px-5 py-2.5 rounded-lg bg-slate-700 text-white font-medium hover:bg-slate-600 transition-colors">Cancel</button>
+                <button id="btnCropConfirm" class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold flex items-center gap-2 shadow-lg transition-colors">
                     <i data-lucide="crop" class="w-4 h-4"></i> Cropped Correctly
                 </button>
             </div>
@@ -241,453 +271,420 @@
     </div>
 
     <script>
-        // Setup PDF.js Worker
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-        // Globals
-        let currentScale = 1.0;
-        let pagesData = []; // Store page metadata
-        let currentPageIndex = 0; 
-        
-        // ABC Audio Globals
-        let visualObj = null;
-        let synthControl = null;
-        let timingCallbacks = null;
-        let isPlaying = false;
-        let currentBpm = 120;
-
-        // Key Press Logic Variables
-        let leftArrowTimer;
-        let leftArrowPressed = false;
-
-        // Cropper Logic Variables
-        let cropper = null;
-        let cropResolve = null;
-
-        // DOM Elements
-        const paperWrapper = document.getElementById('paperWrapper');
-        const dropZone = document.getElementById('dropZone');
-        const pagesList = document.getElementById('pagesList');
-        const pageIndicator = document.getElementById('pageIndicator');
-        
-        // Init Lucide
         lucide.createIcons();
 
-        // ---------------------------------------------------------
-        // Pagination Logic
-        // ---------------------------------------------------------
-        function updatePageIndicator() {
-            const total = pagesData.length;
-            const current = total === 0 ? 0 : currentPageIndex + 1;
-            pageIndicator.textContent = `${current} / ${total}`;
+        // Core App Globals
+        let currentScale = 1.0;
+        let pagesData = [];
+        let currentPageIndex = 0;
+        let leftArrowTimer; let leftArrowPressed = false;
+        let cropper = null; let cropResolve = null;
+
+        // Audio Globals
+        let visualObj = null; let synthControl = null; let timingCallbacks = null; let isPlaying = false; let currentBpm = 120;
+
+        // --- Annotation Engine State ---
+        const fabricCanvases = {}; 
+        let activeTool = 'navigate';
+        let activeColor = '#ef4444';
+
+        const colors = [
+            '#000000', '#4b5563', '#9ca3af', '#ffffff', 
+            '#ef4444', '#f97316', '#eab308', '#22c55e',
+            '#3b82f6', '#06b6d4', '#a855f7', '#ec4899',
+            '#78350f', '#14b8a6', '#1e3a8a', '#d946ef'
+        ];
+
+        const paletteContainer = document.getElementById('colorPalette');
+        colors.forEach(hex => {
+            const btn = document.createElement('button');
+            btn.className = `color-btn w-5 h-5 rounded-full shadow-sm transition-transform ${hex === activeColor ? 'active' : ''}`;
+            btn.style.backgroundColor = hex;
+            btn.dataset.color = hex;
+            if(hex === '#ffffff') btn.style.border = '1px solid #e2e8f0';
+            btn.onclick = () => selectColor(hex, btn);
+            paletteContainer.appendChild(btn);
+        });
+
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                activeTool = e.currentTarget.dataset.tool;
+                updateAllCanvasesMode();
+            });
+        });
+
+        document.getElementById('btnUndo').addEventListener('click', () => {
+            if (pagesData.length === 0) return;
+            const pageId = pagesData[currentPageIndex].id;
+            const canvas = fabricCanvases[pageId];
+            if (!canvas) return;
+            const objects = canvas.getObjects();
+            if (objects.length > 0) {
+                canvas.remove(objects[objects.length - 1]);
+                canvas.renderAll();
+            }
+        });
+
+        function selectColor(hex, btnElement) {
+            activeColor = hex;
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
             
-            if (total === 0) {
-                dropZone.style.display = 'flex';
-            } else {
-                dropZone.style.display = 'none';
+            const activeCanvas = fabricCanvases[pagesData[currentPageIndex]?.id];
+            if (activeCanvas && activeCanvas.getActiveObject()) {
+                activeCanvas.getActiveObject().set('fill', activeColor);
+                activeCanvas.renderAll();
+            }
+            updateAllCanvasesMode();
+        }
+
+        function hexToRgba(hex, alpha) {
+            const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        function updateAllCanvasesMode() {
+            Object.values(fabricCanvases).forEach(canvas => {
+                canvas.isDrawingMode = false;
+                canvas.selection = false;
+                canvas.forEachObject(o => o.selectable = false);
+                canvas.defaultCursor = 'default';
+                canvas.hoverCursor = 'default';
+
+                canvas.off('mouse:down', eraserHandler);
+                canvas.off('mouse:down', textHandler);
+
+                if (activeTool === 'navigate') {
+                    // Navigate only
+                } 
+                else if (activeTool === 'pen') {
+                    canvas.isDrawingMode = true;
+                    canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+                    canvas.freeDrawingBrush.color = activeColor;
+                    canvas.freeDrawingBrush.width = 3;
+                } 
+                else if (activeTool === 'highlight') {
+                    canvas.isDrawingMode = true;
+                    canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+                    canvas.freeDrawingBrush.color = hexToRgba(activeColor, 0.35);
+                    canvas.freeDrawingBrush.width = 24;
+                } 
+                else if (activeTool === 'text') {
+                    canvas.defaultCursor = 'text';
+                    canvas.hoverCursor = 'text';
+                    canvas.on('mouse:down', textHandler);
+                } 
+                else if (activeTool === 'erase') {
+                    canvas.defaultCursor = 'cell';
+                    canvas.hoverCursor = 'not-allowed';
+                    canvas.on('mouse:down', eraserHandler);
+                }
+            });
+        }
+
+        function textHandler(options) {
+            if (activeTool !== 'text' || options.target) return;
+            const canvas = this;
+            const pointer = canvas.getPointer(options.e);
+            const text = new fabric.IText('Type here...', {
+                left: pointer.x,
+                top: pointer.y,
+                fontFamily: 'sans-serif',
+                fontSize: 24,
+                fill: activeColor,
+                selectable: true
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+            text.enterEditing();
+            text.selectAll();
+            canvas.renderAll();
+        }
+
+        function eraserHandler(options) {
+            if (activeTool === 'erase' && options.target) {
+                this.remove(options.target);
+                this.renderAll();
             }
         }
 
+        // --- Core Page Logic ---
+        function generateId() { return 'page-' + Math.random().toString(36).substr(2, 9); }
+
+        function updatePageIndicator() {
+            const total = pagesData.length;
+            document.getElementById('pageIndicator').textContent = `${total === 0 ? 0 : currentPageIndex + 1} / ${total}`;
+            document.getElementById('dropZone').style.display = total === 0 ? 'flex' : 'none';
+            document.getElementById('annotationToolbar').style.display = total === 0 ? 'none' : 'flex';
+        }
+
         function showPage(index) {
-            if (pagesData.length === 0) {
-                updatePageIndicator();
-                return;
-            }
-            if (index < 0) index = 0;
-            if (index >= pagesData.length) index = pagesData.length - 1;
+            if (pagesData.length === 0) { updatePageIndicator(); return; }
+            index = Math.max(0, Math.min(index, pagesData.length - 1));
             currentPageIndex = index;
             
-            // Loop over all pages in DOM and toggle active state
             pagesData.forEach((p, i) => {
                 const el = document.getElementById(p.id);
-                if (el) {
-                    if (i === index) el.classList.add('active');
-                    else el.classList.remove('active');
-                }
+                if (el) el.classList.toggle('active', i === index);
                 
-                // Highlight active item in the sidebar
                 const li = document.querySelector(`li[data-id="${p.id}"]`);
                 if(li) {
-                    if(i === index) {
-                        li.classList.add('border-blue-500', 'bg-slate-700');
-                        li.classList.remove('border-slate-700', 'bg-slate-800');
-                    } else {
-                        li.classList.remove('border-blue-500', 'bg-slate-700');
-                        li.classList.add('border-slate-700', 'bg-slate-800');
-                    }
+                    li.classList.toggle('border-blue-500', i === index);
+                    li.classList.toggle('bg-slate-700', i === index);
+                    li.classList.toggle('border-slate-700', i !== index);
+                    li.classList.toggle('bg-slate-800', i !== index);
                 }
             });
             updatePageIndicator();
         }
 
-        function nextPage() { showPage(currentPageIndex + 1); }
-        function prevPage() { showPage(currentPageIndex - 1); }
+        document.getElementById('btnNext').addEventListener('click', () => showPage(currentPageIndex + 1));
+        document.getElementById('btnPrev').addEventListener('click', () => showPage(currentPageIndex - 1));
 
-        document.getElementById('btnNext').addEventListener('click', nextPage);
-        document.getElementById('btnPrev').addEventListener('click', prevPage);
-
-        // ---------------------------------------------------------
-        // Keyboard Controls (Arrows + Long Press)
-        // ---------------------------------------------------------
         window.addEventListener('keydown', (e) => {
-            // Ignore if typing in text box
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            const activeCanvas = fabricCanvases[pagesData[currentPageIndex]?.id];
+            const isEditingCanvasText = activeCanvas && activeCanvas.getActiveObject()?.isEditing;
+            
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || isEditingCanvasText) return;
 
-            if (e.key === 'ArrowRight') {
-                e.preventDefault();
-                nextPage();
-            } 
+            if (e.key === 'ArrowRight') { e.preventDefault(); showPage(currentPageIndex + 1); } 
             else if (e.key === 'ArrowLeft') {
                 e.preventDefault();
                 if (!leftArrowPressed) {
                     leftArrowPressed = true;
-                    leftArrowTimer = setTimeout(() => {
-                        // Trigger Long Press Action (Go to Page 1)
-                        showPage(0);
-                        leftArrowPressed = false; // Prevent keyup from firing prevPage
-                    }, 500); // 500ms for long press
+                    leftArrowTimer = setTimeout(() => { showPage(0); leftArrowPressed = false; }, 500);
                 }
             }
         });
 
         window.addEventListener('keyup', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-            if (e.key === 'ArrowLeft') {
-                if (leftArrowPressed) {
-                    clearTimeout(leftArrowTimer);
-                    prevPage(); // Short press action
-                    leftArrowPressed = false;
-                }
+            if (e.key === 'ArrowLeft' && leftArrowPressed) {
+                clearTimeout(leftArrowTimer);
+                showPage(currentPageIndex - 1);
+                leftArrowPressed = false;
             }
         });
 
-        // ---------------------------------------------------------
-        // Core Engine: Add and Render Pages
-        // ---------------------------------------------------------
-        function generateId() { return 'page-' + Math.random().toString(36).substr(2, 9); }
-
-        async function addPage(type, content, filename = "Unknown") {
+        async function addPage(type, content, filename = "Page") {
             const pageId = generateId();
-            
-            const pageMeta = {
-                id: pageId,
-                type: type,
-                content: content,
-                filename: filename
-            };
-            pagesData.push(pageMeta);
+            pagesData.push({ id: pageId, type: type, content: content, filename: filename });
 
-            // 1. Create Main Viewer Container
             const pageDiv = document.createElement('div');
             pageDiv.id = pageId;
-            pageDiv.className = 'sheet-page shadow-xl rounded-md overflow-hidden';
-            paperWrapper.appendChild(pageDiv);
-
-            // 2. Create Thumbnail List Item
-            const li = document.createElement('li');
-            li.className = 'page-thumb-container bg-slate-800 p-2 rounded border border-slate-700 flex items-center gap-3 transition-colors hover:bg-slate-700';
-            li.dataset.id = pageId;
+            pageDiv.className = 'sheet-page';
             
-            let iconStr = 'file'; let iconColor = 'text-slate-400';
-            if(type === 'image') { iconStr = 'image'; iconColor = 'text-rose-400'; }
-            if(type === 'pdf') { iconStr = 'file-text'; iconColor = 'text-red-500'; }
-            if(type === 'abc') { iconStr = 'music'; iconColor = 'text-blue-400'; }
-            if(type === 'musicxml') { iconStr = 'music-4'; iconColor = 'text-emerald-400'; }
+            const wrapperDiv = document.createElement('div');
+            wrapperDiv.className = 'doc-wrapper';
+            wrapperDiv.id = `wrap-${pageId}`;
+            pageDiv.appendChild(wrapperDiv);
 
+            document.getElementById('paperWrapper').appendChild(pageDiv);
+
+            const li = document.createElement('li');
+            li.className = 'page-thumb-container bg-slate-800 p-2 rounded border border-slate-700 flex items-center gap-3 hover:bg-slate-700';
+            li.dataset.id = pageId;
+            let iconStr = type==='image'?'image':type==='pdf'?'file-text':type==='abc'?'music':'music-4';
+            
             li.innerHTML = `
                 <i data-lucide="grip-vertical" class="w-4 h-4 text-slate-500"></i>
                 <div class="w-8 h-8 rounded bg-slate-900 flex items-center justify-center shrink-0">
-                    <i data-lucide="${iconStr}" class="w-4 h-4 ${iconColor}"></i>
+                    <i data-lucide="${iconStr}" class="w-4 h-4 text-blue-400"></i>
                 </div>
                 <div class="flex-1 overflow-hidden" onclick="showPage(${pagesData.length - 1})" style="cursor:pointer;">
                     <div class="text-xs text-slate-200 truncate font-medium">${filename}</div>
                     <div class="text-[10px] text-slate-500 uppercase">${type}</div>
                 </div>
-                <button onclick="removePage('${pageId}')" class="p-1 hover:text-red-400 text-slate-500 transition-colors"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
+                <button onclick="removePage('${pageId}')" class="p-1 hover:text-red-400 text-slate-500"><i data-lucide="trash" class="w-3.5 h-3.5"></i></button>
             `;
-            pagesList.appendChild(li);
+            document.getElementById('pagesList').appendChild(li);
             lucide.createIcons();
 
-            // 3. Render Content
+            const setupFabric = (width, height) => {
+                const canvasEl = document.createElement('canvas');
+                canvasEl.id = `canvas-${pageId}`;
+                wrapperDiv.appendChild(canvasEl);
+                
+                const fCanvas = new fabric.Canvas(canvasEl.id, {
+                    width: width, height: height, isDrawingMode: false
+                });
+                fabricCanvases[pageId] = fCanvas;
+                updateAllCanvasesMode();
+            };
+
             if (type === 'image' || type === 'pdf') {
-                const img = document.createElement('img');
+                const img = new Image();
+                img.onload = () => setupFabric(img.naturalWidth, img.naturalHeight);
                 img.src = content;
-                pageDiv.appendChild(img);
+                wrapperDiv.appendChild(img);
             } 
             else if (type === 'abc') {
                 const abcContainer = document.createElement('div');
                 abcContainer.id = `abc-${pageId}`;
-                abcContainer.className = "w-full max-w-4xl bg-white p-4"; // ensure it has a background if sheet is wide
-                pageDiv.appendChild(abcContainer);
+                abcContainer.className = "abc-osmd-container w-full max-w-4xl bg-white p-4";
+                wrapperDiv.appendChild(abcContainer);
                 
-                let localVisualObj = ABCJS.renderAbc(abcContainer.id, content, {
-                    responsive: 'resize', add_classes: true,
-                    paddingtop: 10, paddingbottom: 20, paddingright: 10, paddingleft: 10
-                })[0];
+                let localVisualObj = ABCJS.renderAbc(abcContainer.id, content, { responsive: 'resize', paddingtop: 10, paddingbottom: 20 })[0];
+                setupFabric(wrapperDiv.clientWidth || 800, wrapperDiv.clientHeight || 1000);
 
                 if (!visualObj) {
                     visualObj = localVisualObj;
                     document.getElementById('btnPlay').disabled = false;
                     document.getElementById('btnStop').disabled = false;
-                    
-                    if (visualObj.metaText && visualObj.metaText.tempo && visualObj.metaText.tempo.bpm) {
+                    if (visualObj.metaText?.tempo?.bpm) {
                         currentBpm = visualObj.metaText.tempo.bpm;
                         document.getElementById('tempoSlider').value = currentBpm;
-                        document.getElementById('bpmDisplay').textContent = `${currentBpm} BPM`;
                     }
                     setupAudio();
                 }
             }
             else if (type === 'musicxml') {
                 const osmdContainer = document.createElement('div');
-                osmdContainer.className = "w-full max-w-4xl bg-white p-4";
-                pageDiv.appendChild(osmdContainer);
-                const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(osmdContainer, {
-                    autoResize: true, backend: "svg", drawTitle: true,
-                });
+                osmdContainer.className = "abc-osmd-container w-full max-w-4xl bg-white p-4";
+                wrapperDiv.appendChild(osmdContainer);
+                const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(osmdContainer, { autoResize: true, backend: "svg" });
                 await osmd.load(content);
                 osmd.render();
+                setupFabric(wrapperDiv.clientWidth || 800, wrapperDiv.clientHeight || 1000);
             }
 
-            // Immediately switch to the newly added page
             showPage(pagesData.length - 1);
         }
 
         function removePage(id) {
             document.getElementById(id)?.remove();
             document.querySelector(`li[data-id="${id}"]`)?.remove();
+            if(fabricCanvases[id]) { fabricCanvases[id].dispose(); delete fabricCanvases[id]; }
+            
             pagesData = pagesData.filter(p => p.id !== id);
+            currentPageIndex = Math.min(currentPageIndex, Math.max(0, pagesData.length - 1));
             
-            // Adjust current index if needed
-            if (currentPageIndex >= pagesData.length) {
-                currentPageIndex = Math.max(0, pagesData.length - 1);
-            }
-            
-            if (pagesData.length === 0) {
-                stopPlay();
-                visualObj = null;
-                document.getElementById('btnPlay').disabled = true;
-                document.getElementById('btnStop').disabled = true;
-            }
+            if (pagesData.length === 0) { stopPlay(); visualObj = null; document.getElementById('btnPlay').disabled = true; document.getElementById('btnStop').disabled = true; }
             showPage(currentPageIndex);
         }
 
-        function clearAll() {
-            // Remove DOM children ignoring dropzone
-            Array.from(paperWrapper.children).forEach(child => {
-                if (child.id !== 'dropZone') child.remove();
-            });
-            pagesList.innerHTML = '';
-            pagesData = [];
-            currentPageIndex = 0;
-            removePage('dummy'); // trigger cleanup checks
-        }
-
-        // ---------------------------------------------------------
-        // Drag & Drop Sorting (SortableJS) synced with Pagination
-        // ---------------------------------------------------------
-        new Sortable(pagesList, {
-            animation: 150,
-            ghostClass: 'sortable-ghost',
-            onEnd: function () {
-                // Sync the pagesData array order with the new DOM list order
-                const newOrderIds = Array.from(pagesList.children).map(li => li.dataset.id);
-                const newPagesData = [];
-                newOrderIds.forEach(id => {
-                    const page = pagesData.find(p => p.id === id);
-                    if (page) newPagesData.push(page);
-                });
-                
-                pagesData = newPagesData;
-                // Re-render the current index visually
+        new Sortable(document.getElementById('pagesList'), {
+            animation: 150, ghostClass: 'sortable-ghost',
+            onEnd: () => {
+                const newOrderIds = Array.from(document.getElementById('pagesList').children).map(li => li.dataset.id);
+                pagesData = newOrderIds.map(id => pagesData.find(p => p.id === id)).filter(Boolean);
                 showPage(currentPageIndex);
             }
         });
 
-        // ---------------------------------------------------------
-        // CropperJS Flow for Camera Scans & Images
-        // ---------------------------------------------------------
+        // --- CropperJS Logic ---
         function openCropper(dataUrl) {
             return new Promise((resolve) => {
                 const cropModal = document.getElementById('cropModal');
                 const cropImage = document.getElementById('cropImage');
-                
                 cropImage.src = dataUrl;
                 cropModal.classList.remove('hidden');
-                
                 if (cropper) cropper.destroy();
                 
-                // Init Cropper
-                cropper = new Cropper(cropImage, {
-                    viewMode: 1, // Keep crop box within image
+                cropper = new Cropper(cropImage, { 
+                    viewMode: 1, 
                     autoCropArea: 0.95, 
-                    background: false,
-                    zoomable: false,
+                    background: false, 
+                    zoomable: true,
+                    movable: true
                 });
-                
                 cropResolve = resolve;
             });
         }
 
         document.getElementById('btnCropConfirm').addEventListener('click', () => {
             if (!cropper) return;
-            const croppedCanvas = cropper.getCroppedCanvas();
-            const resultUrl = croppedCanvas.toDataURL('image/jpeg', 0.9);
-            
+            const res = cropper.getCroppedCanvas().toDataURL('image/jpeg', 0.9);
             document.getElementById('cropModal').classList.add('hidden');
-            cropper.destroy();
-            cropper = null;
-            
-            if (cropResolve) {
-                cropResolve(resultUrl);
-                cropResolve = null;
-            }
+            cropper.destroy(); cropper = null;
+            if (cropResolve) { cropResolve(res); cropResolve = null; }
         });
 
         document.getElementById('btnCropCancel').addEventListener('click', () => {
             document.getElementById('cropModal').classList.add('hidden');
             if (cropper) { cropper.destroy(); cropper = null; }
-            if (cropResolve) {
-                cropResolve(null); // Return null so we don't proceed
-                cropResolve = null;
-            }
+            if (cropResolve) { cropResolve(null); cropResolve = null; }
         });
 
-        // ---------------------------------------------------------
-        // File Handlers & Parsers
-        // ---------------------------------------------------------
         async function processFile(file) {
             if (!file) return;
             const ext = file.name.split('.').pop().toLowerCase();
             
-            if (['abc', 'txt'].includes(ext)) {
-                const text = await file.text();
-                addPage('abc', text, file.name);
+            if (['abc', 'txt'].includes(ext)) { 
+                const entered = prompt("Enter a name for this ABC score:", "");
+                const name = (entered && entered.trim()) ? entered.trim() : `Page ${pagesData.length + 1}`;
+                addPage('abc', await file.text(), name); 
             } 
-            else if (['xml', 'mxl', 'musicxml'].includes(ext)) {
-                const text = await file.text();
-                addPage('musicxml', text, file.name);
+            else if (['xml', 'mxl', 'musicxml'].includes(ext)) { 
+                const entered = prompt("Enter a name for this MusicXML score:", "");
+                const name = (entered && entered.trim()) ? entered.trim() : `Page ${pagesData.length + 1}`;
+                addPage('musicxml', await file.text(), name); 
             }
             else if (file.type === 'application/pdf' || ext === 'pdf') {
-                const arrayBuffer = await file.arrayBuffer();
-                await renderPdfToImages(arrayBuffer, file.name);
+                const entered = prompt("Enter title for this PDF:", "");
+                const baseName = (entered && entered.trim()) ? entered.trim() : `Page`;
+                const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const viewport = page.getViewport({ scale: 2.0 }); 
+                    const canvas = document.createElement('canvas');
+                    canvas.width = viewport.width; canvas.height = viewport.height;
+                    await page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
+                    await addPage('pdf', canvas.toDataURL('image/jpeg', 0.8), `${baseName} (p.${i})`);
+                }
             }
             else if (file.type.startsWith('image/')) {
-                const dataUrl = await readAsDataURL(file);
-                // 1. Open Cropper Modal
+                const dataUrl = await new Promise((r) => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(file); });
                 const croppedDataUrl = await openCropper(dataUrl);
-                
-                // 2. If user clicks OK on Cropper
                 if (croppedDataUrl) {
-                    // Prompt for Song Name
-                    const suggestedName = file.name || "Scanned Sheet";
-                    const customName = prompt("Enter a name for this song/page:", suggestedName) || suggestedName;
-                    
-                    // Add Page and navigate to it
-                    await addPage('image', croppedDataUrl, customName);
+                    // Blank prompt: no date or long filename to delete
+                    const enteredName = prompt("Enter a name for this song / page:", "");
+                    const finalName = (enteredName && enteredName.trim()) ? enteredName.trim() : `Page ${pagesData.length + 1}`;
+                    await addPage('image', croppedDataUrl, finalName);
                 }
             }
         }
 
-        function readAsDataURL(file) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
-                reader.readAsDataURL(file);
-            });
-        }
-
-        async function renderPdfToImages(arrayBuffer, filename) {
-            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const viewport = page.getViewport({ scale: 2.0 }); 
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-
-                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                // Bypass crop for massive PDFs - just inject directly
-                await addPage('pdf', dataUrl, `${filename} (Pg ${i})`);
-            }
-        }
-
-        // ---------------------------------------------------------
-        // Event Listeners (Inputs, Drop)
-        // ---------------------------------------------------------
-        document.getElementById('fileInput').addEventListener('change', async (e) => {
-            // Process files one by one awaiting so cropper doesn't overlap weirdly
-            for(let f of Array.from(e.target.files)) { await processFile(f); }
-            e.target.value = ''; 
-        });
-
-        document.getElementById('cameraInput').addEventListener('change', async (e) => {
-            if (e.target.files.length > 0) await processFile(e.target.files[0]);
-            e.target.value = '';
-        });
-
+        document.getElementById('fileInput').addEventListener('change', async (e) => { for(let f of e.target.files) await processFile(f); e.target.value=''; });
+        document.getElementById('cameraInput').addEventListener('change', async (e) => { if(e.target.files[0]) await processFile(e.target.files[0]); e.target.value=''; });
         window.addEventListener('dragover', (e) => e.preventDefault());
-        window.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            if (e.dataTransfer.files.length > 0) {
-                for(let f of Array.from(e.dataTransfer.files)) { await processFile(f); }
-            }
-        });
-        
-        dropZone.addEventListener('click', () => document.getElementById('fileInput').click());
+        window.addEventListener('drop', async (e) => { e.preventDefault(); if (e.dataTransfer.files.length) for(let f of e.dataTransfer.files) await processFile(f); });
+        document.getElementById('dropZone').addEventListener('click', () => document.getElementById('fileInput').click());
 
-        // ---------------------------------------------------------
-        // UI & Zoom Controls
-        // ---------------------------------------------------------
+        // --- Zoom & Drawers ---
         function updateZoom() {
-            paperWrapper.style.transform = `scale(${currentScale})`;
+            document.getElementById('paperWrapper').style.transform = `scale(${currentScale})`;
             document.getElementById('zoomDisplay').textContent = `${Math.round(currentScale * 100)}%`;
         }
-
         document.getElementById('btnZoomIn').addEventListener('click', () => { if (currentScale < 2.5) { currentScale += 0.1; updateZoom(); }});
         document.getElementById('btnZoomOut').addEventListener('click', () => { if (currentScale > 0.4) { currentScale -= 0.1; updateZoom(); }});
         document.getElementById('btnFit').addEventListener('click', () => { currentScale = 1.0; updateZoom(); });
-        document.getElementById('btnClear').addEventListener('click', clearAll);
+        document.getElementById('btnClear').addEventListener('click', () => { pagesData.forEach(p => removePage(p.id)); });
 
-        const editorDrawer = document.getElementById('editorDrawer');
-        const pagesDrawer = document.getElementById('pagesDrawer');
-        
-        document.getElementById('btnToggleEditor').addEventListener('click', () => {
-            editorDrawer.classList.toggle('hidden');
-            pagesDrawer.classList.add('hidden');
-        });
-        document.getElementById('btnCloseEditor').addEventListener('click', () => editorDrawer.classList.add('hidden'));
-        document.getElementById('btnApplyAbc').addEventListener('click', () => {
-            const text = document.getElementById('abcEditorText').value;
-            if(text.trim()) {
-                const name = prompt("Enter a name for this ABC notation:", "New ABC Document") || "New ABC Document";
-                addPage('abc', text, name);
+        document.getElementById('btnToggleEditor').addEventListener('click', () => { document.getElementById('editorDrawer').classList.toggle('hidden'); document.getElementById('pagesDrawer').classList.add('hidden'); });
+        document.getElementById('btnCloseEditor').addEventListener('click', () => document.getElementById('editorDrawer').classList.add('hidden'));
+        document.getElementById('btnApplyAbc').addEventListener('click', () => { 
+            const t = document.getElementById('abcEditorText').value; 
+            if(t.trim()) {
+                const entered = prompt("Enter a name for this ABC notation:", "");
+                const name = (entered && entered.trim()) ? entered.trim() : `Page ${pagesData.length + 1}`;
+                addPage('abc', t, name); 
             }
-            editorDrawer.classList.add('hidden');
+            document.getElementById('editorDrawer').classList.add('hidden'); 
         });
+        document.getElementById('btnTogglePages').addEventListener('click', () => { document.getElementById('pagesDrawer').classList.toggle('hidden'); document.getElementById('editorDrawer').classList.add('hidden'); });
+        document.getElementById('btnClosePages').addEventListener('click', () => document.getElementById('pagesDrawer').classList.add('hidden'));
 
-        document.getElementById('btnTogglePages').addEventListener('click', () => {
-            pagesDrawer.classList.toggle('hidden');
-            editorDrawer.classList.add('hidden');
-        });
-        document.getElementById('btnClosePages').addEventListener('click', () => pagesDrawer.classList.add('hidden'));
-
-        // ---------------------------------------------------------
-        // ABC Audio & Synth Logic
-        // ---------------------------------------------------------
+        // --- Audio Fallbacks ---
         function setupAudio() {
             if (!ABCJS.synth.supportsAudio() || !visualObj) return;
             synthControl = new ABCJS.synth.SynthController();
             synthControl.load('#audio-player', { displayLoop: false, displayRestart: false, displayPlay: false, displayProgress: false });
-
-            const createSynth = new ABCJS.synth.CreateSynth();
-            createSynth.init({ visualObj: visualObj, options: { midiBuffer: true, bpm: currentBpm } })
+            new ABCJS.synth.CreateSynth().init({ visualObj: visualObj, options: { midiBuffer: true, bpm: currentBpm } })
             .then(() => synthControl.setTune(visualObj, false, { bpm: currentBpm }));
         }
-
         function togglePlay() {
             if (!visualObj) return;
             if (isPlaying) stopPlay();
@@ -695,42 +692,20 @@
                 timingCallbacks = new ABCJS.TimingCallbacks(visualObj, {
                     eventCallback: function (ev) {
                         if (ev === null) { stopPlay(); return; }
-                        clearHighlights();
+                        document.querySelectorAll('.abcjs-highlight').forEach(el => el.classList.remove('abcjs-highlight'));
                         if (ev.elements) ev.elements.forEach(arr => arr.forEach(el => el.classList.add('abcjs-highlight')));
-                    },
-                    bpm: currentBpm
+                    }, bpm: currentBpm
                 });
-
-                ABCJS.synth.play().then(() => {
-                    timingCallbacks.start();
-                    isPlaying = true;
-                    document.getElementById('playIcon').setAttribute('data-lucide', 'pause');
-                    lucide.createIcons();
-                });
+                ABCJS.synth.play().then(() => { timingCallbacks.start(); isPlaying = true; document.getElementById('playIcon').setAttribute('data-lucide', 'pause'); lucide.createIcons(); });
             }
         }
-
         function stopPlay() {
-            if(ABCJS.synth) ABCJS.synth.stop();
-            if (timingCallbacks) timingCallbacks.stop();
-            isPlaying = false;
-            document.getElementById('playIcon').setAttribute('data-lucide', 'play');
-            lucide.createIcons();
-            clearHighlights();
-        }
-
-        function clearHighlights() {
+            if(ABCJS.synth) ABCJS.synth.stop(); if (timingCallbacks) timingCallbacks.stop(); isPlaying = false;
+            document.getElementById('playIcon').setAttribute('data-lucide', 'play'); lucide.createIcons();
             document.querySelectorAll('.abcjs-highlight').forEach(el => el.classList.remove('abcjs-highlight'));
         }
-
         document.getElementById('btnPlay').addEventListener('click', togglePlay);
         document.getElementById('btnStop').addEventListener('click', stopPlay);
-        document.getElementById('tempoSlider').addEventListener('input', (e) => {
-            currentBpm = parseInt(e.target.value, 10);
-            document.getElementById('bpmDisplay').textContent = `${currentBpm} BPM`;
-            if (visualObj && !isPlaying) setupAudio();
-        });
-
     </script>
 </body>
 </html>
