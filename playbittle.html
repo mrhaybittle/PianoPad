@@ -28,6 +28,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <!-- FabricJS (Annotations Layer) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <style>
         html, body { height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
@@ -46,7 +48,7 @@
         .abcjs-highlight { fill: #2563eb !important; stroke: #1d4ed8 !important; }
         .abcjs-cursor { stroke: #dc2626; stroke-width: 2.5px; }
 
-        /* Custom scrollbars for side panels & workspace */
+        /* Custom scrollbars */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -85,25 +87,38 @@
 </head>
 <body class="h-full flex flex-col antialiased text-slate-800 bg-slate-100">
 
-    <!-- HEADER TOOLBAR OPTIMIZED FOR PHONE PORTRAIT MODE -->
+    <!-- HEADER TOOLBAR OPTIMIZED FOR PHONE & TABLET -->
     <header class="w-full bg-slate-900 text-slate-100 shadow-md border-b border-slate-800 flex-none z-40 relative">
         <div class="flex items-center justify-between gap-2 px-3 py-2 text-sm w-full min-h-[52px]">
             
-            <!-- Logo -->
-            <div class="flex items-center gap-1.5 shrink-0">
+            <!-- Logo & Drive Status -->
+            <div class="flex items-center gap-2 shrink-0">
                 <i data-lucide="music-4" class="w-5 h-5 text-blue-400"></i>
                 <span class="font-bold text-white text-sm sm:text-base tracking-tight">SheetReader</span>
+                
+                <!-- Drive Status Badge -->
+                <div id="driveStatusBadge" class="hidden sm:flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400">
+                    <span id="driveDot" class="w-2 h-2 rounded-full bg-amber-500"></span>
+                    <span id="driveText">Drive Off</span>
+                </div>
             </div>
 
-            <!-- Page Navigation - Always Visible -->
+            <!-- Page Navigation -->
             <div class="flex items-center gap-1 bg-slate-950/90 px-1.5 py-1 rounded-xl border border-slate-800 shadow-inner shrink-0">
                 <button id="btnPrev" class="p-1 text-slate-300 hover:text-white active:bg-slate-800 rounded-lg transition-colors" title="Previous Page"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
                 <span id="pageIndicator" class="text-xs font-mono text-slate-200 min-w-[2.5rem] text-center font-semibold">0 / 0</span>
                 <button id="btnNext" class="p-1 text-slate-300 hover:text-white active:bg-slate-800 rounded-lg transition-colors" title="Next Page"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
             </div>
 
-            <!-- Main Toolbar Actions (Visible on larger screens) -->
+            <!-- Desktop Actions -->
             <div class="hidden lg:flex items-center gap-2 shrink-0">
+                
+                <!-- Google Drive Sync Button -->
+                <button id="btnConnectDrive" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-colors" title="Connect Google Drive">
+                    <i data-lucide="cloud" class="w-3.5 h-3.5 text-cyan-400"></i>
+                    <span>Drive</span>
+                </button>
+
                 <label class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-colors">
                     <i data-lucide="folder-plus" class="w-3.5 h-3.5 text-blue-400"></i>
                     <span>Import</span>
@@ -148,7 +163,7 @@
                 </button>
             </div>
 
-            <!-- Quick Access Buttons for Mobile/Tablet Top Bar -->
+            <!-- Mobile Quick Access Buttons -->
             <div class="flex lg:hidden items-center gap-1.5 shrink-0">
                 <button id="btnMobileDraw" class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-1.5 rounded-lg border border-slate-700 transition-colors" title="Draw">
                     <i data-lucide="pencil" class="w-4 h-4 text-pink-400"></i>
@@ -158,7 +173,7 @@
                     <i data-lucide="gallery-vertical-end" class="w-4 h-4 text-amber-400"></i>
                 </button>
 
-                <!-- Phone Overflow Menu Button -->
+                <!-- Overflow Menu Button -->
                 <button id="btnOverflowMenu" class="bg-blue-600 hover:bg-blue-500 text-white p-1.5 rounded-lg font-medium transition-colors shadow-sm" title="More Tools">
                     <i data-lucide="more-vertical" class="w-4 h-4"></i>
                 </button>
@@ -169,10 +184,26 @@
 
     <!-- PORTRAIT PHONE / TABLET OVERFLOW DROPDOWN MENU -->
     <div id="overflowDropdown" class="hidden absolute top-[54px] right-2 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-50 p-2 w-64 flex-col gap-1 text-xs text-slate-200">
-        
+        <button id="menuBtnDrive" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left font-medium">
+            <i data-lucide="cloud" class="w-4 h-4 text-cyan-400"></i>
+            <span>Google Drive Sync & Backup</span>
+        </button>
+
+        <button id="menuBtnSaveToDrive" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left font-medium">
+            <i data-lucide="cloud-upload" class="w-4 h-4 text-emerald-400"></i>
+            <span>Save Current Page to Drive</span>
+        </button>
+
+        <button id="menuBtnBrowseDrive" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left font-medium">
+            <i data-lucide="folder-search" class="w-4 h-4 text-amber-400"></i>
+            <span>Browse Google Drive Files</span>
+        </button>
+
+        <div class="h-px bg-slate-800 my-1"></div>
+
         <label class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer font-medium">
             <i data-lucide="folder-plus" class="w-4 h-4 text-blue-400"></i>
-            <span>Import Document (.pdf, .xml, .abc)</span>
+            <span>Import Local File (.pdf, .xml, .abc)</span>
             <input type="file" id="menuFileInput" accept=".abc,.txt,.pdf,image/*,.xml,.mxl,.musicxml" multiple class="hidden" />
         </label>
 
@@ -225,8 +256,6 @@
 
     <!-- POPUP ANNOTATION TOOLBAR -->
     <div id="annotationToolbar" class="fixed top-[60px] left-1/2 -translate-x-1/2 w-[95%] max-w-[650px] bg-white p-2.5 sm:p-3 rounded-2xl shadow-2xl border border-slate-200 z-50 hidden flex-col sm:flex-row items-center justify-between gap-2.5 max-h-[85vh] overflow-y-auto">
-        
-        <!-- Tools Group -->
         <div class="flex items-center gap-1 border-b sm:border-b-0 sm:border-r border-slate-200 pb-2 sm:pb-0 sm:pr-3 flex-wrap justify-center w-full sm:w-auto">
             <button class="tool-btn active p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" data-tool="navigate" title="Read Only / Pan">
                 <i data-lucide="mouse-pointer-2" class="w-4 h-4"></i>
@@ -248,10 +277,8 @@
             </button>
         </div>
 
-        <!-- Color Palette -->
         <div class="grid grid-cols-8 gap-1.5" id="colorPalette"></div>
 
-        <!-- Close Button -->
         <div class="sm:border-l border-slate-200 sm:pl-3 w-full sm:w-auto flex justify-end pt-1 sm:pt-0">
             <button id="btnCloseDraw" class="flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors">
                 <i data-lucide="x" class="w-3.5 h-3.5"></i> Close
@@ -274,12 +301,19 @@
             </div>
         </div>
 
-        <!-- Pages Manager Drawer (Rearrange Pages Sidebar) -->
+        <!-- Pages Manager Drawer -->
         <div id="pagesDrawer" class="hidden absolute right-0 top-0 bottom-0 w-72 sm:w-80 bg-slate-900 border-l border-slate-800 z-30 flex flex-col shadow-2xl transition-all">
             <div class="p-3.5 bg-slate-950 border-b border-slate-800 flex justify-between items-center text-xs font-semibold text-slate-300">
                 <span class="flex items-center gap-1.5"><i data-lucide="arrow-up-down" class="w-4 h-4 text-amber-400"></i> Rearrange Setlist Pages</span>
                 <button id="btnClosePages" class="text-slate-400 hover:text-white p-1 rounded"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
+            
+            <div class="p-2 flex gap-1.5 bg-slate-950/80 border-b border-slate-800">
+                <button id="btnSaveCurrentDrive" class="flex-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 py-1.5 px-2 rounded border border-slate-700 text-[11px] font-medium flex items-center justify-center gap-1 transition-colors">
+                    <i data-lucide="cloud-upload" class="w-3.5 h-3.5"></i> Save Page to Drive
+                </button>
+            </div>
+
             <div class="p-2 text-[10px] text-slate-400 text-center border-b border-slate-800 bg-slate-900/50 uppercase tracking-wider font-medium">Drag thumbnails below to reorder</div>
             <ul id="pagesList" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-900"></ul>
         </div>
@@ -323,6 +357,24 @@
         </div>
     </div>
 
+    <!-- Drive File Browser Modal -->
+    <div id="driveModal" class="hidden fixed inset-0 z-50 bg-slate-900/80 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+            <div class="p-3.5 bg-slate-950 border-b border-slate-800 flex justify-between items-center text-xs font-semibold text-slate-200">
+                <span class="flex items-center gap-2"><i data-lucide="folder-search" class="w-4 h-4 text-cyan-400"></i> Google Drive Browser</span>
+                <button id="btnCloseDriveModal" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div class="p-3 border-b border-slate-800 flex items-center gap-2 bg-slate-900">
+                <button id="btnCreateDriveFolder" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 text-xs font-medium flex items-center gap-1.5 transition-colors">
+                    <i data-lucide="folder-plus" class="w-3.5 h-3.5 text-blue-400"></i> New Folder
+                </button>
+            </div>
+            <div id="driveFileList" class="flex-1 overflow-y-auto p-3 space-y-2 text-xs text-slate-300">
+                <!-- Google Drive items list -->
+            </div>
+        </div>
+    </div>
+
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         lucide.createIcons();
@@ -337,7 +389,210 @@
         // Audio Globals
         let visualObj = null; let synthControl = null; let timingCallbacks = null; let isPlaying = false; let currentBpm = 120;
 
-        // --- Fullscreen API Logic ---
+        // --- Google Drive Credentials & OAuth State ---
+        // Insert your OAuth 2.0 Client ID generated from Google Cloud Console below
+        const DRIVE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+        const DRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
+        let tokenClient = null;
+        let driveAccessToken = null;
+        let currentDriveFolderId = null;
+
+        function updateDriveBadge(connected) {
+            const dot = document.getElementById('driveDot');
+            const txt = document.getElementById('driveText');
+            if (connected) {
+                dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+                txt.textContent = 'Drive Sync';
+            } else {
+                dot.className = 'w-2 h-2 rounded-full bg-amber-500';
+                txt.textContent = 'Drive Off';
+            }
+        }
+
+        function initGoogleDrive() {
+            if (typeof google === 'undefined' || !google.accounts) return;
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: DRIVE_CLIENT_ID,
+                scope: DRIVE_SCOPES,
+                callback: (tokenResponse) => {
+                    if (tokenResponse && tokenResponse.access_token) {
+                        driveAccessToken = tokenResponse.access_token;
+                        updateDriveBadge(true);
+                    }
+                },
+            });
+        }
+
+        function connectDrive() {
+            if (DRIVE_CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID')) {
+                const customId = prompt("Enter your Google Cloud Client ID (ending in .apps.googleusercontent.com):", "");
+                if (customId && customId.trim()) {
+                    window.CUSTOM_CLIENT_ID = customId.trim();
+                } else {
+                    alert("Please provide a valid Google Cloud Client ID to connect Google Drive.");
+                    return;
+                }
+            }
+
+            const activeClientId = window.CUSTOM_CLIENT_ID || DRIVE_CLIENT_ID;
+
+            if (typeof google === 'undefined' || !google.accounts) {
+                alert("Google Identity Library failed to load. Please check your internet connection.");
+                return;
+            }
+
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: activeClientId,
+                scope: DRIVE_SCOPES,
+                callback: (tokenResponse) => {
+                    if (tokenResponse && tokenResponse.access_token) {
+                        driveAccessToken = tokenResponse.access_token;
+                        updateDriveBadge(true);
+                        alert("Google Drive connected successfully!");
+                    }
+                },
+            });
+            tokenClient.requestAccessToken();
+        }
+
+        async function createDriveFolder(folderName) {
+            if (!driveAccessToken) { connectDrive(); return null; }
+            const metadata = {
+                name: folderName,
+                mimeType: 'application/vnd.google-apps.folder',
+            };
+            try {
+                const res = await fetch('https://www.googleapis.com/drive/v3/files', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${driveAccessToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(metadata)
+                });
+                const data = await res.json();
+                return data.id;
+            } catch (err) {
+                console.error("Folder creation failed:", err);
+                return null;
+            }
+        }
+
+        async function saveCurrentPageToDrive() {
+            if (pagesData.length === 0) return;
+            if (!driveAccessToken) { connectDrive(); return; }
+
+            const page = pagesData[currentPageIndex];
+            const canvas = fabricCanvases[page.id];
+            
+            let blobToUpload = null;
+            let filename = `${page.filename || 'Score_Page'}.jpg`;
+
+            if (canvas) {
+                // Flatten annotation canvas + lower view to data url
+                const dataUrl = canvas.toDataURL({ format: 'jpeg', quality: 0.85 });
+                const res = await fetch(dataUrl);
+                blobToUpload = await res.blob();
+            } else if (page.type === 'image' || page.type === 'pdf') {
+                const res = await fetch(page.content);
+                blobToUpload = await res.blob();
+            } else {
+                blobToUpload = new Blob([page.content], { type: 'text/plain' });
+                filename = `${page.filename || 'Score'}.txt`;
+            }
+
+            const folderNamePrompt = prompt("Save to Google Drive Folder (leave empty for Root):", "Sheet Music");
+            let targetFolderId = null;
+
+            if (folderNamePrompt && folderNamePrompt.trim()) {
+                targetFolderId = await createDriveFolder(folderNamePrompt.trim());
+            }
+
+            const metadata = { name: filename };
+            if (targetFolderId) metadata.parents = [targetFolderId];
+
+            const formData = new FormData();
+            formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+            formData.append('file', blobToUpload);
+
+            try {
+                const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${driveAccessToken}` },
+                    body: formData
+                });
+                const result = await res.json();
+                if (result.id) alert(`Successfully saved "${filename}" to Google Drive!`);
+            } catch (err) {
+                alert("Failed to upload to Google Drive.");
+            }
+        }
+
+        async function browseDriveFiles() {
+            if (!driveAccessToken) { connectDrive(); return; }
+            const modal = document.getElementById('driveModal');
+            const fileList = document.getElementById('driveFileList');
+            fileList.innerHTML = `<div class="text-slate-400 text-center py-4">Loading Drive Files...</div>`;
+            modal.classList.remove('hidden');
+
+            try {
+                const res = await fetch(`https://www.googleapis.com/drive/v3/files?fields=files(id,name,mimeType)&pageSize=20`, {
+                    headers: { 'Authorization': `Bearer ${driveAccessToken}` }
+                });
+                const data = await res.json();
+                fileList.innerHTML = '';
+                
+                if (!data.files || data.files.length === 0) {
+                    fileList.innerHTML = `<div class="text-slate-400 text-center py-4">No files found in Drive.</div>`;
+                    return;
+                }
+
+                data.files.forEach(f => {
+                    const item = document.createElement('div');
+                    item.className = 'p-2 rounded bg-slate-800 border border-slate-700 flex items-center justify-between hover:bg-slate-700 cursor-pointer transition-colors';
+                    item.innerHTML = `
+                        <span class="truncate font-medium text-slate-200">${f.name}</span>
+                        <span class="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-900 text-slate-400">${f.mimeType.includes('folder') ? 'Folder' : 'File'}</span>
+                    `;
+                    item.onclick = async () => {
+                        if (!f.mimeType.includes('folder')) {
+                            modal.classList.add('hidden');
+                            await loadFileFromDrive(f.id, f.name);
+                        }
+                    };
+                    fileList.appendChild(item);
+                });
+            } catch (err) {
+                fileList.innerHTML = `<div class="text-red-400 text-center py-4">Error loading drive contents.</div>`;
+            }
+        }
+
+        async function loadFileFromDrive(fileId, filename) {
+            try {
+                const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+                    headers: { 'Authorization': `Bearer ${driveAccessToken}` }
+                });
+                const blob = await res.blob();
+                const file = new File([blob], filename, { type: blob.type });
+                await processFile(file);
+            } catch (err) {
+                alert("Failed to download file from Drive.");
+            }
+        }
+
+        document.getElementById('btnConnectDrive').addEventListener('click', connectDrive);
+        document.getElementById('menuBtnDrive').addEventListener('click', () => { overflowDropdown.classList.add('hidden'); connectDrive(); });
+        document.getElementById('menuBtnSaveToDrive').addEventListener('click', () => { overflowDropdown.classList.add('hidden'); saveCurrentPageToDrive(); });
+        document.getElementById('btnSaveCurrentDrive').addEventListener('click', saveCurrentPageToDrive);
+        document.getElementById('menuBtnBrowseDrive').addEventListener('click', () => { overflowDropdown.classList.add('hidden'); browseDriveFiles(); });
+        document.getElementById('btnCloseDriveModal').addEventListener('click', () => document.getElementById('driveModal').classList.add('hidden'));
+        document.getElementById('btnCreateDriveFolder').addEventListener('click', async () => {
+            const name = prompt("Enter new folder name:", "Setlist Folder");
+            if (name && name.trim()) {
+                await createDriveFolder(name.trim());
+                alert(`Folder "${name.trim()}" created!`);
+                browseDriveFiles();
+            }
+        });
+
+        // Fullscreen API Logic
         const btnFullscreen = document.getElementById('btnFullscreen');
         const fullscreenIcon = document.getElementById('fullscreenIcon');
 
@@ -357,7 +612,7 @@
             }
         });
 
-        // --- Overflow Dropdown Menu Logic ---
+        // Overflow Dropdown Menu Logic
         const btnOverflowMenu = document.getElementById('btnOverflowMenu');
         const overflowDropdown = document.getElementById('overflowDropdown');
 
@@ -425,7 +680,7 @@
             document.getElementById('cameraInput').dispatchEvent(new Event('change'));
         });
 
-        // --- Annotation Engine State ---
+        // Annotation Engine State
         const fabricCanvases = {}; 
         let activeTool = 'navigate';
         let activeColor = '#ef4444';
@@ -522,7 +777,7 @@
                 canvas.off('mouse:down', textHandler);
 
                 if (activeTool === 'navigate') {
-                    // Read-only pan mode
+                    // Read-only
                 } 
                 else if (activeTool === 'pen') {
                     canvas.isDrawingMode = true;
@@ -575,7 +830,7 @@
             }
         }
 
-        // --- Core Page Logic ---
+        // Core Page Logic
         function generateId() { return 'page-' + Math.random().toString(36).substr(2, 9); }
 
         function updatePageIndicator() {
@@ -735,7 +990,7 @@
             }
         });
 
-        // --- CropperJS Logic ---
+        // CropperJS Logic
         function openCropper(dataUrl) {
             return new Promise((resolve) => {
                 const cropModal = document.getElementById('cropModal');
@@ -807,7 +1062,7 @@
         window.addEventListener('drop', async (e) => { e.preventDefault(); if (e.dataTransfer.files.length) for(let f of e.dataTransfer.files) await processFile(f); });
         document.getElementById('dropZone').addEventListener('click', () => document.getElementById('fileInput').click());
 
-        // --- Zoom Logic ---
+        // Zoom Logic
         function updateZoom() {
             document.getElementById('paperWrapper').style.transform = `scale(${currentScale})`;
             const displayStr = `${Math.round(currentScale * 100)}%`;
@@ -837,7 +1092,7 @@
             document.getElementById('editorDrawer').classList.add('hidden'); 
         });
 
-        // --- Audio Synthesizer Fallbacks ---
+        // Audio Synthesizer Fallbacks
         function setupAudio() {
             if (!ABCJS.synth.supportsAudio() || !visualObj) return;
             synthControl = new ABCJS.synth.SynthController();
@@ -853,8 +1108,3 @@
     </script>
 </body>
 </html>
-```
-
-### Summary of Changes:
-- **Phone Portrait Optimization**: The header toolbar is trimmed down in phone portrait mode so that only essential controls (`SheetReader` logo, `< X / Y >` pagination, quick-draw pencil button, page drawer icon, and the blue **`...` More Tools button**) appear on screen.
-- **Complete Tool Availability**: Opening the `...` menu on a phone gives 100% access to file importing, camera scanning, page reordering, zoom controls, ABC notation editing, and fullscreen mode without breaking page layouts.
