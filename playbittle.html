@@ -390,8 +390,7 @@
         let visualObj = null; let synthControl = null; let timingCallbacks = null; let isPlaying = false; let currentBpm = 120;
 
         // --- Google Drive Credentials & OAuth State ---
-        // Insert your OAuth 2.0 Client ID generated from Google Cloud Console below
-        const DRIVE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+        const DRIVE_CLIENT_ID = '1086834950344-qce6cl6d57ufu1hpkq1pq9th5quo19kg.apps.googleusercontent.com';
         const DRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
         let tokenClient = null;
         let driveAccessToken = null;
@@ -424,25 +423,13 @@
         }
 
         function connectDrive() {
-            if (DRIVE_CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID')) {
-                const customId = prompt("Enter your Google Cloud Client ID (ending in .apps.googleusercontent.com):", "");
-                if (customId && customId.trim()) {
-                    window.CUSTOM_CLIENT_ID = customId.trim();
-                } else {
-                    alert("Please provide a valid Google Cloud Client ID to connect Google Drive.");
-                    return;
-                }
-            }
-
-            const activeClientId = window.CUSTOM_CLIENT_ID || DRIVE_CLIENT_ID;
-
             if (typeof google === 'undefined' || !google.accounts) {
                 alert("Google Identity Library failed to load. Please check your internet connection.");
                 return;
             }
 
             tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: activeClientId,
+                client_id: DRIVE_CLIENT_ID,
                 scope: DRIVE_SCOPES,
                 callback: (tokenResponse) => {
                     if (tokenResponse && tokenResponse.access_token) {
