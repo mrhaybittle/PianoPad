@@ -4617,7 +4617,8 @@
     let remoteSongs = [];
 
     try {
-        const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_SONGS&t=${Date.now()}`);
+  
+        const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_SONGS&v=2&t=${Date.now()}`);
 
         if (res && res.songs && res.songs.length > 0) {
             // Ensure difficulty property is mapped from Apps Script response
