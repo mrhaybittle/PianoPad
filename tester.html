@@ -4556,7 +4556,7 @@
     return songs;
 }
 
-        function renderSongSelect() {
+       function renderSongSelect() {
     const uniqueMap = new Map();
     songList.forEach(s => {
         const key = s.title.toLowerCase().trim();
@@ -4569,19 +4569,25 @@
     sortedList.forEach(song => {
         const opt = document.createElement('option');
         opt.value = song.code;
-        opt.textContent = song.title;
 
-        // Set data attribute for CSS targeting
+        // Determine difficulty indicator badge
+        let badge = '⚪ ';
         if (song.difficulty) {
             const diff = song.difficulty.toLowerCase().trim();
+            if (diff === 'easy') {
+                badge = '🟢 ';
+                opt.style.color = '#22c55e';
+            } else if (diff === 'medium') {
+                badge = '🟠 ';
+                opt.style.color = '#f97316';
+            } else if (diff === 'hard') {
+                badge = '🔴 ';
+                opt.style.color = '#ef4444';
+            }
             opt.dataset.diff = diff;
-            
-            // Fallback inline style
-            if (diff === 'easy') opt.style.color = '#22c55e';
-            else if (diff === 'medium') opt.style.color = '#f97316';
-            else if (diff === 'hard') opt.style.color = '#ef4444';
         }
 
+        opt.textContent = badge + song.title;
         songSelect.appendChild(opt);
     });
 }
