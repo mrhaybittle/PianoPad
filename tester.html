@@ -184,10 +184,21 @@
             box-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
         }
 
-        #song-select option {
-            background-color: #0b0f19;
-            color: #f3f4f6;
-        }
+      #song-select option {
+    background-color: #0b0f19;
+}
+
+#song-select option[data-diff="easy"] {
+    color: #22c55e !important;
+}
+
+#song-select option[data-diff="medium"] {
+    color: #f97316 !important;
+}
+
+#song-select option[data-diff="hard"] {
+    color: #ef4444 !important;
+}
 
         button, .btn-link, .btn-file-label {
             display: inline-flex;
@@ -4560,16 +4571,15 @@
         opt.value = song.code;
         opt.textContent = song.title;
 
-        // Apply difficulty color coding
+        // Set data attribute for CSS targeting
         if (song.difficulty) {
             const diff = song.difficulty.toLowerCase().trim();
-            if (diff === 'easy') {
-                opt.style.color = '#22c55e'; // Green
-            } else if (diff === 'medium') {
-                opt.style.color = '#f97316'; // Orange
-            } else if (diff === 'hard') {
-                opt.style.color = '#ef4444'; // Red
-            }
+            opt.dataset.diff = diff;
+            
+            // Fallback inline style
+            if (diff === 'easy') opt.style.color = '#22c55e';
+            else if (diff === 'medium') opt.style.color = '#f97316';
+            else if (diff === 'hard') opt.style.color = '#ef4444';
         }
 
         songSelect.appendChild(opt);
