@@ -4586,7 +4586,10 @@
     });
 }
 
-        async function syncSongsWithGoogleSheet() {
+ async function syncSongsWithGoogleSheet() {
+    // Clear legacy song cache that lacks difficulty fields
+    localStorage.removeItem('pianopad_sheet_songs');
+
     let localCache = [];
     const cachedData = localStorage.getItem('pianopad_sheet_songs');
     if (cachedData) {
