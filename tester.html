@@ -4506,60 +4506,74 @@
         }
 
         function parseCSVToSongs(csvText) {
-            const songs = [];
-            const lines = csvText.split(/\r?\n/);
-            
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
+    const songs = [];
+    const lines = csvText.split(/\r?\n/);
+    
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
 
-                const row = [];
-                let insideQuote = false;
-                let entry = '';
+        const row = [];
+        let insideQuote = false;
+        let entry = '';
 
-                for (let j = 0; j < line.length; j++) {
-                    const char = line[j];
-                    if (char === '"' && line[j + 1] === '"') {
-                        entry += '"';
-                        j++;
-                    } else if (char === '"') {
-                        insideQuote = !insideQuote;
-                    } else if (char === ',' && !insideQuote) {
-                        row.push(entry);
-                        entry = '';
-                    } else {
-                        entry += char;
-                    }
-                }
+        for (let j = 0; j < line.length; j++) {
+            const char = line[j];
+            if (char === '"' && line[j + 1] === '"') {
+                entry += '"';
+                j++;
+            } else if (char === '"') {
+                insideQuote = !insideQuote;
+            } else if (char === ',' && !insideQuote) {
                 row.push(entry);
-
-                if (row.length >= 2 && row[0].trim()) {
-                    songs.push({
-                        title: row[0].trim().replace(/^"|"$/g, ''),
-                        code: row[1].trim().replace(/^"|"$/g, '')
-                    });
-                }
+                entry = '';
+            } else {
+                entry += char;
             }
-            return songs;
         }
+        row.push(entry);
+
+        if (row.length >= 2 && row[0].trim()) {
+            songs.push({
+                title: row[0].trim().replace(/^"|"$/g, ''),
+                code: row[1].trim().replace(/^"|"$/g, ''),
+                difficulty: row[2] ? row[2].trim().replace(/^"|"$/g, '') : ''
+            });
+        }
+    }
+    return songs;
+}
 
         function renderSongSelect() {
-            const uniqueMap = new Map();
-            songList.forEach(s => {
-                const key = s.title.toLowerCase().trim();
-                if (!uniqueMap.has(key)) uniqueMap.set(key, s);
-            });
-            const sortedList = Array.from(uniqueMap.values());
-            sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
+    const uniqueMap = new Map();
+    songList.forEach(s => {
+        const key = s.title.toLowerCase().trim();
+        if (!uniqueMap.has(key)) uniqueMap.set(key, s);
+    });
+    const sortedList = Array.from(uniqueMap.values());
+    sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
 
-            songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
-            sortedList.forEach(song => {
-                const opt = document.createElement('option');
-                opt.value = song.code;
-                opt.textContent = song.title;
-                songSelect.appendChild(opt);
-            });
+    songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
+    sortedList.forEach(song => {
+        const opt = document.createElement('option');
+        opt.value = song.code;
+        opt.textContent = song.title;
+
+        // Apply difficulty color coding
+        if (song.difficulty) {
+            const diff = song.difficulty.toLowerCase().trim();
+            if (diff === 'easy') {
+                opt.style.color = '#22c55e'; // Green
+            } else if (diff === 'medium') {
+                opt.style.color = '#f97316'; // Orange
+            } else if (diff === 'hard') {
+                opt.style.color = '#ef4444'; // Red
+            }
         }
+
+        songSelect.appendChild(opt);
+    });
+}
 
         async function syncSongsWithGoogleSheet() {
             let localCache = [];
