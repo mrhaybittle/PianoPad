@@ -184,10 +184,21 @@
             box-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
         }
 
-        #song-select option {
-            background-color: #0b0f19;
-            color: #f3f4f6;
-        }
+      #song-select option {
+    background-color: #0b0f19;
+}
+
+#song-select option[data-diff="easy"] {
+    color: #22c55e !important;
+}
+
+#song-select option[data-diff="medium"] {
+    color: #f97316 !important;
+}
+
+#song-select option[data-diff="hard"] {
+    color: #ef4444 !important;
+}
 
         button, .btn-link, .btn-file-label {
             display: inline-flex;
@@ -3669,62 +3680,63 @@
         }
 
         async function submitTeacherSong() {
-            const pass = teacherPassInput.value;
-            const title = teacherTitleInput.value.trim();
-            const code = teacherCodeTextarea.value.trim();
+    const pass = teacherPassInput.value;
+    const title = teacherTitleInput.value.trim();
+    const code = teacherCodeTextarea.value.trim();
 
-            if (pass !== "Rocky") {
-                teacherErrorDiv.textContent = "Incorrect Teacher Password!";
-                teacherErrorDiv.style.display = "block";
-                return;
-            }
+    if (pass !== "Rocky") {
+        teacherErrorDiv.textContent = "Incorrect Teacher Password!";
+        teacherErrorDiv.style.display = "block";
+        return;
+    }
 
-            if (!title) {
-                teacherErrorDiv.textContent = "Please enter a Song Title / Piece Name!";
-                teacherErrorDiv.style.display = "block";
-                return;
-            }
+    if (!title) {
+        teacherErrorDiv.textContent = "Please enter a Song Title / Piece Name!";
+        teacherErrorDiv.style.display = "block";
+        return;
+    }
 
-            if (!code) {
-                teacherErrorDiv.textContent = "Please enter or record a HayCode string!";
-                teacherErrorDiv.style.display = "block";
-                return;
-            }
+    if (!code) {
+        teacherErrorDiv.textContent = "Please enter or record a HayCode string!";
+        teacherErrorDiv.style.display = "block";
+        return;
+    }
 
-            const parsed = parsePianoPad(code);
-            if (parsed.length === 0) {
-                teacherErrorDiv.textContent = "Invalid HayCode format!";
-                teacherErrorDiv.style.display = "block";
-                return;
-            }
+    const parsed = parsePianoPad(code);
+    if (parsed.length === 0) {
+        teacherErrorDiv.textContent = "Invalid HayCode format!";
+        teacherErrorDiv.style.display = "block";
+        return;
+    }
 
-            songList.push({ title: title, code: code });
-            localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
-            renderSongSelect();
-            
-            songSelect.value = code;
-            currentSongTitle = title;
-            currentSong = autoTransposeSong(parsed);
+    // Include default difficulty property when adding teacher song
+    songList.push({ title: title, code: code, difficulty: 'Medium' });
+    localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
+    renderSongSelect();
+    
+    songSelect.value = code;
+    currentSongTitle = title;
+    currentSong = autoTransposeSong(parsed);
 
-            teacherModal.classList.remove('open');
-            document.getElementById('status').textContent = `Adding "${title}" to PianoPad & Google Sheet...`;
+    teacherModal.classList.remove('open');
+    document.getElementById('status').textContent = `Adding "${title}" to PianoPad & Google Sheet...`;
 
-            if (APPS_SCRIPT_URL) {
-                try {
-                    const addUrl = `${APPS_SCRIPT_URL}?action=ADD_SONG&title=${encodeURIComponent(title)}&code=${encodeURIComponent(code)}&t=${Date.now()}`;
-                    await sendJSONP(addUrl);
-                    document.getElementById('status').textContent = ` "${title}" successfully added to PianoPad & Google Sheet!`;
-                } catch (e) {
-                    console.warn("Could not post to Apps Script endpoint.", e);
-                    document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
-                }
-            } else {
-                document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
-            }
-            
-            updateRosterSong();
-            playSong();
+    if (APPS_SCRIPT_URL) {
+        try {
+            const addUrl = `${APPS_SCRIPT_URL}?action=ADD_SONG&title=${encodeURIComponent(title)}&code=${encodeURIComponent(code)}&t=${Date.now()}`;
+            await sendJSONP(addUrl);
+            document.getElementById('status').textContent = ` "${title}" successfully added to PianoPad & Google Sheet!`;
+        } catch (e) {
+            console.warn("Could not post to Apps Script endpoint.", e);
+            document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
         }
+    } else {
+        document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
+    }
+    
+    updateRosterSong();
+    playSong();
+}
 
         function toggleGameMode() {
             initAudio();
@@ -4506,131 +4518,159 @@
         }
 
         function parseCSVToSongs(csvText) {
-            const songs = [];
-            const lines = csvText.split(/\r?\n/);
-            
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
+    const songs = [];
+    const lines = csvText.split(/\r?\n/);
+    
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
 
-                const row = [];
-                let insideQuote = false;
-                let entry = '';
+        const row = [];
+        let insideQuote = false;
+        let entry = '';
 
-                for (let j = 0; j < line.length; j++) {
-                    const char = line[j];
-                    if (char === '"' && line[j + 1] === '"') {
-                        entry += '"';
-                        j++;
-                    } else if (char === '"') {
-                        insideQuote = !insideQuote;
-                    } else if (char === ',' && !insideQuote) {
-                        row.push(entry);
-                        entry = '';
-                    } else {
-                        entry += char;
-                    }
-                }
+        for (let j = 0; j < line.length; j++) {
+            const char = line[j];
+            if (char === '"' && line[j + 1] === '"') {
+                entry += '"';
+                j++;
+            } else if (char === '"') {
+                insideQuote = !insideQuote;
+            } else if (char === ',' && !insideQuote) {
                 row.push(entry);
-
-                if (row.length >= 2 && row[0].trim()) {
-                    songs.push({
-                        title: row[0].trim().replace(/^"|"$/g, ''),
-                        code: row[1].trim().replace(/^"|"$/g, '')
-                    });
-                }
-            }
-            return songs;
-        }
-
-        function renderSongSelect() {
-            const uniqueMap = new Map();
-            songList.forEach(s => {
-                const key = s.title.toLowerCase().trim();
-                if (!uniqueMap.has(key)) uniqueMap.set(key, s);
-            });
-            const sortedList = Array.from(uniqueMap.values());
-            sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
-
-            songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
-            sortedList.forEach(song => {
-                const opt = document.createElement('option');
-                opt.value = song.code;
-                opt.textContent = song.title;
-                songSelect.appendChild(opt);
-            });
-        }
-
-        async function syncSongsWithGoogleSheet() {
-            let localCache = [];
-            const cachedData = localStorage.getItem('pianopad_sheet_songs');
-            if (cachedData) {
-                try {
-                    localCache = JSON.parse(cachedData);
-                    songList = [...localCache];
-                    renderSongSelect();
-                    const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
-                    if (defaultObj) {
-                        currentSongTitle = defaultObj.title;
-                        currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
-                    }
-                    document.getElementById('status').textContent = `Loaded ${songList.length} cached songs. Syncing live Google Sheet...`;
-                } catch (e) {
-                    console.warn("Cache parse error");
-                }
-            }
-
-            let remoteSongs = [];
-
-            try {
-                const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_SONGS&t=${Date.now()}`);
-
-                if (res && res.songs && res.songs.length > 0) {
-                    remoteSongs = res.songs;
-                } else {
-                    throw new Error(res ? res.error : "No songs returned from JSONP");
-                }
-            } catch (err) {
-                console.warn("Apps Script fetch error, trying CSV fallback...", err);
-                try {
-                    const response = await fetch(SPREADSHEET_CSV_URL);
-                    if (response.ok) {
-                        const csvText = await response.text();
-                        remoteSongs = parseCSVToSongs(csvText);
-                    }
-                } catch (csvErr) {
-                    console.warn("CSV Fallback error:", csvErr);
-                }
-            }
-
-            if (remoteSongs.length > 0) {
-                const songMap = new Map();
-                remoteSongs.forEach(s => songMap.set(s.title.toLowerCase().trim(), s));
-                localCache.forEach(s => {
-                    const key = s.title.toLowerCase().trim();
-                    if (!songMap.has(key)) {
-                        songMap.set(key, s);
-                    }
-                });
-
-                songList = Array.from(songMap.values());
-                localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
-                renderSongSelect();
-
-                const defaultObj = songList.find(s => s.title === currentSongTitle) || songList.find(s => s.title === 'Wipeout') || songList[0];
-                if (defaultObj) {
-                    currentSongTitle = defaultObj.title;
-                    songSelect.value = defaultObj.code;
-                    currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
-                }
-                document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
-            } else if (songList.length > 0) {
-                document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
+                entry = '';
             } else {
-                document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
+                entry += char;
             }
-            updateMonitorWidget();
         }
+        row.push(entry);
+
+        if (row.length >= 2 && row[0].trim()) {
+            songs.push({
+                title: row[0].trim().replace(/^"|"$/g, ''),
+                code: row[1].trim().replace(/^"|"$/g, ''),
+                difficulty: row[2] ? row[2].trim().replace(/^"|"$/g, '') : ''
+            });
+        }
+    }
+    return songs;
+}
+
+       function renderSongSelect() {
+    const uniqueMap = new Map();
+    songList.forEach(s => {
+        const key = s.title.toLowerCase().trim();
+        if (!uniqueMap.has(key)) uniqueMap.set(key, s);
+    });
+    const sortedList = Array.from(uniqueMap.values());
+    sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
+
+    songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
+    sortedList.forEach(song => {
+        const opt = document.createElement('option');
+        opt.value = song.code;
+
+        // Determine difficulty indicator badge
+        let badge = '⚪ ';
+        if (song.difficulty) {
+            const diff = song.difficulty.toLowerCase().trim();
+            if (diff === 'easy') {
+                badge = '🟢 ';
+                opt.style.color = '#22c55e';
+            } else if (diff === 'medium') {
+                badge = '🟠 ';
+                opt.style.color = '#f97316';
+            } else if (diff === 'hard') {
+                badge = '🔴 ';
+                opt.style.color = '#ef4444';
+            }
+            opt.dataset.diff = diff;
+        }
+
+        opt.textContent = badge + song.title;
+        songSelect.appendChild(opt);
+    });
+}
+
+ async function syncSongsWithGoogleSheet() {
+    // Clear legacy song cache that lacks difficulty fields
+    localStorage.removeItem('pianopad_sheet_songs');
+
+    let localCache = [];
+    const cachedData = localStorage.getItem('pianopad_sheet_songs');
+    if (cachedData) {
+        try {
+            localCache = JSON.parse(cachedData);
+            songList = [...localCache];
+            renderSongSelect();
+            const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
+            if (defaultObj) {
+                currentSongTitle = defaultObj.title;
+                currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
+            }
+            document.getElementById('status').textContent = `Loaded ${songList.length} cached songs. Syncing live Google Sheet...`;
+        } catch (e) {
+            console.warn("Cache parse error");
+        }
+    }
+
+    let remoteSongs = [];
+
+    try {
+  
+        const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_SONGS&v=2&t=${Date.now()}`);
+
+        if (res && res.songs && res.songs.length > 0) {
+            // Ensure difficulty property is mapped from Apps Script response
+            remoteSongs = res.songs.map(s => ({
+                title: s.title || s[0],
+                code: s.code || s[1],
+                difficulty: s.difficulty || s[2] || ''
+            }));
+        } else {
+            throw new Error(res ? res.error : "No songs returned from JSONP");
+        }
+    } catch (err) {
+        console.warn("Apps Script fetch error, trying CSV fallback...", err);
+        try {
+            const response = await fetch(SPREADSHEET_CSV_URL);
+            if (response.ok) {
+                const csvText = await response.text();
+                remoteSongs = parseCSVToSongs(csvText);
+            }
+        } catch (csvErr) {
+            console.warn("CSV Fallback error:", csvErr);
+        }
+    }
+
+    if (remoteSongs.length > 0) {
+        const songMap = new Map();
+        remoteSongs.forEach(s => songMap.set(s.title.toLowerCase().trim(), s));
+        localCache.forEach(s => {
+            const key = s.title.toLowerCase().trim();
+            if (!songMap.has(key)) {
+                songMap.set(key, s);
+            }
+        });
+
+        songList = Array.from(songMap.values());
+        localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
+        renderSongSelect();
+
+        const defaultObj = songList.find(s => s.title === currentSongTitle) || songList.find(s => s.title === 'Wipeout') || songList[0];
+        if (defaultObj) {
+            currentSongTitle = defaultObj.title;
+            songSelect.value = defaultObj.code;
+            currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
+        }
+        document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
+    } else if (songList.length > 0) {
+        document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
+    } else {
+        document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
+    }
+    updateMonitorWidget();
+}
 
         function buildTimeline() {
             noteTimeline = [];
