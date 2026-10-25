@@ -153,10 +153,15 @@
             color: #cbd5e1;
         }
 
-        .speed-control input[type="range"] {
-            width: 70px;
-            accent-color: var(--accent-color);
-            cursor: pointer;
+        #speed-input::-webkit-outer-spin-button,
+        #speed-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        #speed-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            background: #111827;
         }
 
         select {
@@ -1177,9 +1182,15 @@
                 </select>
 
                 <div class="speed-control">
-                    <label for="speed-slider">Speed: <span id="speed-label">100%</span></label>
-                    <input type="range" id="speed-slider" min="10" max="500" value="100" step="5">
-                </div>
+    <label for="speed-input" style="cursor: pointer;">Speed: </label>
+    <div style="display: inline-flex; align-items: center;">
+        <input type="number" id="speed-input" min="10" max="500" value="100" 
+               style="width: 48px; background: transparent; border: 1px solid #4b5563; border-radius: 4px; color: #facc15; font-weight: 700; font-size: 0.78rem; text-align: center; padding: 1px 2px; -moz-appearance: textfield;"
+               title="Click to type a set speed (10% - 500%)">
+        <span style="color: #cbd5e1; margin-left: 2px;">%</span>
+    </div>
+    <input type="range" id="speed-slider" min="10" max="500" value="100" step="1">
+</div>
 
                 <button type="button" id="btn-mic-toggle" class="btn-secondary" title="Listen for Acoustic Piano Notes">
                     🎙️ MIC INPUT: OFF
@@ -3561,7 +3572,34 @@
         const canvas = document.getElementById('waterfall-canvas');
         const ctx = canvas.getContext('2d');
 
-        const speedSlider = document.getElementById('speed-slider');
+      const speedSlider = document.getElementById('speed-slider');
+const speedInput = document.getElementById('speed-input');
+
+function updateSpeed(newVal, restartPlayback = true) {
+    let val = Math.max(10, Math.min(500, Math.round(Number(newVal) || 100)));
+    speedSlider.value = val;
+    if (speedInput) speedInput.value = val;
+    if (restartPlayback && isPlaying && !isPaused && !isStepMode) {
+        playSong();
+    }
+}
+
+if (speedSlider) {
+    speedSlider.addEventListener('input', () => {
+        updateSpeed(speedSlider.value, true);
+    });
+}
+
+if (speedInput) {
+    speedInput.addEventListener('change', () => {
+        updateSpeed(speedInput.value, true);
+    });
+    speedInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            speedInput.blur();
+        }
+    });
+}
         const speedLabel = document.getElementById('speed-label');
         const songSelect = document.getElementById('song-select');
         const instrumentSelect = document.getElementById('instrument-select');
@@ -4846,15 +4884,32 @@
                 const loopEndMs = firstHit + (totalDuration * endPct);
 
                 if (effectiveElapsed >= loopEndMs) {
-                    playbackStartTime = now - loopStartMs - accumulatedPauseMs;
-                    effectiveElapsed = loopStartMs;
-                    noteTimeline.forEach(n => {
-                        if (n.hitTime >= loopStartMs) {
-                            n.played = false;
-                            n.gameStatus = 'pending';
-                        }
-                    });
-                }
+        // Accelerate tempo by 2% on each replay
+        const currentSpeedVal = parseFloat(speedSlider.value);
+        const acceleratedSpeed = Math.min(500, Math.round(currentSpeedVal * 1.02));
+        
+        if (acceleratedSpeed !== currentSpeedVal) {
+            updateSpeed(acceleratedSpeed, false);
+            buildTimeline(); // Rebuild note timestamps scaled to the new 2% faster tempo
+        }
+
+        // Restart replay from loop start position
+        const updatedFirstHit = noteTimeline[0].hitTime;
+        const updatedLastHit = noteTimeline[noteTimeline.length - 1].hitTime + noteTimeline[noteTimeline.length - 1].duration;
+        const updatedTotalDuration = updatedLastHit - updatedFirstHit;
+        const newLoopStartMs = updatedFirstHit + (updatedTotalDuration * startPct);
+
+        playbackStartTime = now - newLoopStartMs - accumulatedPauseMs;
+        effectiveElapsed = newLoopStartMs;
+        noteTimeline.forEach(n => {
+            if (n.hitTime >= newLoopStartMs) {
+                n.played = false;
+                n.gameStatus = 'pending';
+            }
+        });
+
+        document.getElementById('status').textContent = `🔁 Loop accelerated by +2% (Now ${acceleratedSpeed}%)`;
+    }
             }
 
             if (activeMiniGame === 'simon') {
