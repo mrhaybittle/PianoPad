@@ -1335,7 +1335,7 @@
 
         <div class="footer-bar">
             <div class="version-stamp">v26.10.19 | Mon 11:34 AEDT (West Wollongong)</div>
-            <div class="status-bar" id="status">Connecting to Google Sheet song database...</div>
+          <div class="status-bar" id="status">🎮 GAME MODE READY | Connecting to song database...</div>
             
             <div class="footer-right-group">
                 <div class="monitor-widget-box" id="monitor-widget">
@@ -1633,7 +1633,7 @@
         let isStepMode = false;
         let isLooping = false;
         let isRecording = false;
-        let isGameMode = false;
+        let isGameMode = true;
         let currentTheme = 'default';
         let bonusSoundsUnlocked = false;
 
@@ -5416,6 +5416,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             initMIDIHardware();
+            resetGameStats();
             syncSongsWithGoogleSheet();
             setTimeout(updateKeyPositions, 100);
 
