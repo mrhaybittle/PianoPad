@@ -189,21 +189,21 @@
             box-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
         }
 
-      #song-select option {
-    background-color: #0b0f19;
-}
+        #song-select option {
+            background-color: #0b0f19;
+        }
 
-#song-select option[data-diff="easy"] {
-    color: #22c55e !important;
-}
+        #song-select option[data-diff="easy"] {
+            color: #22c55e !important;
+        }
 
-#song-select option[data-diff="medium"] {
-    color: #f97316 !important;
-}
+        #song-select option[data-diff="medium"] {
+            color: #f97316 !important;
+        }
 
-#song-select option[data-diff="hard"] {
-    color: #ef4444 !important;
-}
+        #song-select option[data-diff="hard"] {
+            color: #ef4444 !important;
+        }
 
         button, .btn-link, .btn-file-label {
             display: inline-flex;
@@ -1182,15 +1182,15 @@
                 </select>
 
                 <div class="speed-control">
-    <label for="speed-input" style="cursor: pointer;">Speed: </label>
-    <div style="display: inline-flex; align-items: center;">
-        <input type="number" id="speed-input" min="10" max="500" value="100" 
-               style="width: 48px; background: transparent; border: 1px solid #4b5563; border-radius: 4px; color: #facc15; font-weight: 700; font-size: 0.78rem; text-align: center; padding: 1px 2px; -moz-appearance: textfield;"
-               title="Click to type a set speed (10% - 500%)">
-        <span style="color: #cbd5e1; margin-left: 2px;">%</span>
-    </div>
-    <input type="range" id="speed-slider" min="10" max="500" value="100" step="1">
-</div>
+                    <label for="speed-input" style="cursor: pointer;">Speed: </label>
+                    <div style="display: inline-flex; align-items: center;">
+                        <input type="number" id="speed-input" min="10" max="500" value="100" 
+                               style="width: 48px; background: transparent; border: 1px solid #4b5563; border-radius: 4px; color: #facc15; font-weight: 700; font-size: 0.78rem; text-align: center; padding: 1px 2px; -moz-appearance: textfield;"
+                               title="Click to type a set speed (10% - 500%)">
+                        <span style="color: #cbd5e1; margin-left: 2px;">%</span>
+                    </div>
+                    <input type="range" id="speed-slider" min="10" max="500" value="100" step="1">
+                </div>
 
                 <button type="button" id="btn-mic-toggle" class="btn-secondary" title="Listen for Acoustic Piano Notes">
                     🎙️ MIC INPUT: OFF
@@ -1200,10 +1200,10 @@
                     🎼 Sheet: ON
                 </button>
 
-<button type="button" id="btn-game" class="btn-game-active">
-    <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-    Game Mode: ON
-</button>
+                <button type="button" id="btn-game" class="btn-game-active">
+                    <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    Game Mode: ON
+                </button>
 
                 <button type="button" id="btn-loop" class="btn-secondary">
                     <svg class="icon" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
@@ -1346,7 +1346,7 @@
 
         <div class="footer-bar">
             <div class="version-stamp">v26.10.19 | Mon 11:34 AEDT (West Wollongong)</div>
-          <div class="status-bar" id="status">🎮 GAME MODE READY | Connecting to song database...</div>
+            <div class="status-bar" id="status">🎮 GAME MODE READY | Connecting to song database...</div>
             
             <div class="footer-right-group">
                 <div class="monitor-widget-box" id="monitor-widget">
@@ -2253,6 +2253,7 @@
             isPlaying = false;
             raceActive = false;
             stopBattlePolling();
+            setSpeedControlsLocked(false);
             runnerTrack.style.display = 'none';
             runnerTrack.innerHTML = '';
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2569,6 +2570,7 @@
 
             buildTimeline();
             isPlaying = true;
+            setSpeedControlsLocked(true);
             playbackStartTime = performance.now();
             lastFrameTime = performance.now();
             document.getElementById('status').textContent = `🛡️ DROP DODGE ACTIVE! Lives: ❤️ ${dodgeLives} | Dodges: 0`;
@@ -2598,6 +2600,7 @@
 
             buildTimeline();
             isPlaying = true;
+            setSpeedControlsLocked(true);
             playbackStartTime = performance.now();
             lastFrameTime = performance.now();
             document.getElementById('status').textContent = '⚡ TWO-NOTE COMBO STRIKE! Strike falling note intervals simultaneously!';
@@ -2743,6 +2746,7 @@
             renderSprintLanes();
             startCountdown(() => {
                 raceActive = true;
+                setSpeedControlsLocked(true);
                 sprintStartTime = performance.now();
                 sprintKeystrokeCount = 0;
                 sprintIndex = 0;
@@ -2889,6 +2893,7 @@
                         renderSprintLanes();
                         startCountdown(() => {
                             raceActive = true;
+                            setSpeedControlsLocked(true);
                             sprintStartTime = performance.now();
                             sprintKeystrokeCount = 0;
                             sprintIndex = 0;
@@ -2898,6 +2903,7 @@
 
                 if (res.status === "finished" && raceActive) {
                     raceActive = false;
+                    setSpeedControlsLocked(false);
                     if (isSongBattle) renderSongBattleResults();
                     else finishSprintRace();
                 }
@@ -2939,6 +2945,7 @@
                 renderSprintLanes();
                 startCountdown(() => {
                     raceActive = true;
+                    setSpeedControlsLocked(true);
                     sprintStartTime = performance.now();
                     sprintKeystrokeCount = 0;
                     sprintIndex = 0;
@@ -3039,6 +3046,7 @@
             if (allFinished) {
                 if (raceActive) {
                     raceActive = false;
+                    setSpeedControlsLocked(false);
                     finishSprintRace();
                 } else if (isSongBattle) {
                     renderSongBattleResults();
@@ -3048,6 +3056,7 @@
 
         function finishSprintRace() {
             raceActive = false;
+            setSpeedControlsLocked(false);
             currentSongTitle = "Finger Sprint";
 
             const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
@@ -3572,35 +3581,57 @@
         const canvas = document.getElementById('waterfall-canvas');
         const ctx = canvas.getContext('2d');
 
-      const speedSlider = document.getElementById('speed-slider');
-const speedInput = document.getElementById('speed-input');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedInput = document.getElementById('speed-input');
 
-function updateSpeed(newVal, restartPlayback = true) {
-    let val = Math.max(10, Math.min(500, Math.round(Number(newVal) || 100)));
-    speedSlider.value = val;
-    if (speedInput) speedInput.value = val;
-    if (restartPlayback && isPlaying && !isPaused && !isStepMode) {
-        playSong();
-    }
-}
-
-if (speedSlider) {
-    speedSlider.addEventListener('input', () => {
-        updateSpeed(speedSlider.value, true);
-    });
-}
-
-if (speedInput) {
-    speedInput.addEventListener('change', () => {
-        updateSpeed(speedInput.value, true);
-    });
-    speedInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            speedInput.blur();
+        function setSpeedControlsLocked(locked) {
+            if (speedSlider) {
+                speedSlider.disabled = locked;
+                speedSlider.style.cursor = locked ? 'not-allowed' : 'pointer';
+                speedSlider.style.opacity = locked ? '0.5' : '1';
+            }
+            if (speedInput) {
+                speedInput.disabled = locked;
+                speedInput.style.cursor = locked ? 'not-allowed' : 'text';
+                speedInput.style.opacity = locked ? '0.5' : '1';
+            }
         }
-    });
-}
-        const speedLabel = document.getElementById('speed-label');
+
+        function updateSpeed(newVal, restartPlayback = true, allowDuringPlayback = false) {
+            // Lock tempo during active playback unless explicitly bypassed
+            if (isPlaying && !allowDuringPlayback) {
+                if (speedInput) speedInput.value = speedSlider.value;
+                if (document.getElementById('status')) {
+                    document.getElementById('status').textContent = '⚠️ Tempo is locked during playback!';
+                }
+                return;
+            }
+
+            let val = Math.max(10, Math.min(500, Math.round(Number(newVal) || 100)));
+            speedSlider.value = val;
+            if (speedInput) speedInput.value = val;
+            if (restartPlayback && isPlaying && !isPaused && !isStepMode) {
+                playSong();
+            }
+        }
+
+        if (speedSlider) {
+            speedSlider.addEventListener('input', () => {
+                updateSpeed(speedSlider.value, true);
+            });
+        }
+
+        if (speedInput) {
+            speedInput.addEventListener('change', () => {
+                updateSpeed(speedInput.value, true);
+            });
+            speedInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    speedInput.blur();
+                }
+            });
+        }
+
         const songSelect = document.getElementById('song-select');
         const instrumentSelect = document.getElementById('instrument-select');
         const themeSelect = document.getElementById('theme-select');
@@ -3609,7 +3640,7 @@ if (speedInput) {
         const btnPause = document.getElementById('btn-pause');
         const btnLoop = document.getElementById('btn-loop');
         const btnRecord = document.getElementById('btn-record');
-        const btnAddTeacherSong = document.getElementById('btnAddTeacherSong');
+        const btnAddTeacherSong = document.getElementById('btn-add-teacher-song');
         const recordBtnText = document.getElementById('record-btn-text');
         const btnShare = document.getElementById('btn-share');
 
@@ -3634,11 +3665,6 @@ if (speedInput) {
         document.getElementById('btn-settings-close').addEventListener('click', () => settingsModal.classList.remove('open'));
         document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
         document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
-
-        speedSlider.addEventListener('input', () => {
-            speedLabel.textContent = `${speedSlider.value}%`;
-            if (isPlaying && !isPaused && !isStepMode) playSong();
-        });
 
         themeSelect.addEventListener('change', (e) => {
             currentTheme = e.target.value;
@@ -3718,63 +3744,62 @@ if (speedInput) {
         }
 
         async function submitTeacherSong() {
-    const pass = teacherPassInput.value;
-    const title = teacherTitleInput.value.trim();
-    const code = teacherCodeTextarea.value.trim();
+            const pass = teacherPassInput.value;
+            const title = teacherTitleInput.value.trim();
+            const code = teacherCodeTextarea.value.trim();
 
-    if (pass !== "Rocky") {
-        teacherErrorDiv.textContent = "Incorrect Teacher Password!";
-        teacherErrorDiv.style.display = "block";
-        return;
-    }
+            if (pass !== "Rocky") {
+                teacherErrorDiv.textContent = "Incorrect Teacher Password!";
+                teacherErrorDiv.style.display = "block";
+                return;
+            }
 
-    if (!title) {
-        teacherErrorDiv.textContent = "Please enter a Song Title / Piece Name!";
-        teacherErrorDiv.style.display = "block";
-        return;
-    }
+            if (!title) {
+                teacherErrorDiv.textContent = "Please enter a Song Title / Piece Name!";
+                teacherErrorDiv.style.display = "block";
+                return;
+            }
 
-    if (!code) {
-        teacherErrorDiv.textContent = "Please enter or record a HayCode string!";
-        teacherErrorDiv.style.display = "block";
-        return;
-    }
+            if (!code) {
+                teacherErrorDiv.textContent = "Please enter or record a HayCode string!";
+                teacherErrorDiv.style.display = "block";
+                return;
+            }
 
-    const parsed = parsePianoPad(code);
-    if (parsed.length === 0) {
-        teacherErrorDiv.textContent = "Invalid HayCode format!";
-        teacherErrorDiv.style.display = "block";
-        return;
-    }
+            const parsed = parsePianoPad(code);
+            if (parsed.length === 0) {
+                teacherErrorDiv.textContent = "Invalid HayCode format!";
+                teacherErrorDiv.style.display = "block";
+                return;
+            }
 
-    // Include default difficulty property when adding teacher song
-    songList.push({ title: title, code: code, difficulty: 'Medium' });
-    localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
-    renderSongSelect();
-    
-    songSelect.value = code;
-    currentSongTitle = title;
-    currentSong = autoTransposeSong(parsed);
+            songList.push({ title: title, code: code, difficulty: 'Medium' });
+            localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
+            renderSongSelect();
+            
+            songSelect.value = code;
+            currentSongTitle = title;
+            currentSong = autoTransposeSong(parsed);
 
-    teacherModal.classList.remove('open');
-    document.getElementById('status').textContent = `Adding "${title}" to PianoPad & Google Sheet...`;
+            teacherModal.classList.remove('open');
+            document.getElementById('status').textContent = `Adding "${title}" to PianoPad & Google Sheet...`;
 
-    if (APPS_SCRIPT_URL) {
-        try {
-            const addUrl = `${APPS_SCRIPT_URL}?action=ADD_SONG&title=${encodeURIComponent(title)}&code=${encodeURIComponent(code)}&t=${Date.now()}`;
-            await sendJSONP(addUrl);
-            document.getElementById('status').textContent = ` "${title}" successfully added to PianoPad & Google Sheet!`;
-        } catch (e) {
-            console.warn("Could not post to Apps Script endpoint.", e);
-            document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
+            if (APPS_SCRIPT_URL) {
+                try {
+                    const addUrl = `${APPS_SCRIPT_URL}?action=ADD_SONG&title=${encodeURIComponent(title)}&code=${encodeURIComponent(code)}&t=${Date.now()}`;
+                    await sendJSONP(addUrl);
+                    document.getElementById('status').textContent = ` "${title}" successfully added to PianoPad & Google Sheet!`;
+                } catch (e) {
+                    console.warn("Could not post to Apps Script endpoint.", e);
+                    document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
+                }
+            } else {
+                document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
+            }
+            
+            updateRosterSong();
+            playSong();
         }
-    } else {
-        document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
-    }
-    
-    updateRosterSong();
-    playSong();
-}
 
         function toggleGameMode() {
             initAudio();
@@ -4441,6 +4466,7 @@ if (speedInput) {
 
                         if (dodgeLives <= 0) {
                             isPlaying = false;
+                            setSpeedControlsLocked(false);
                             currentSongTitle = "Drop Dodge";
                             showGameResultsPopUp();
                             activeMiniGame = null;
@@ -4556,159 +4582,155 @@ if (speedInput) {
         }
 
         function parseCSVToSongs(csvText) {
-    const songs = [];
-    const lines = csvText.split(/\r?\n/);
-    
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
+            const songs = [];
+            const lines = csvText.split(/\r?\n/);
+            
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
 
-        const row = [];
-        let insideQuote = false;
-        let entry = '';
+                const row = [];
+                let insideQuote = false;
+                let entry = '';
 
-        for (let j = 0; j < line.length; j++) {
-            const char = line[j];
-            if (char === '"' && line[j + 1] === '"') {
-                entry += '"';
-                j++;
-            } else if (char === '"') {
-                insideQuote = !insideQuote;
-            } else if (char === ',' && !insideQuote) {
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"' && line[j + 1] === '"') {
+                        entry += '"';
+                        j++;
+                    } else if (char === '"') {
+                        insideQuote = !insideQuote;
+                    } else if (char === ',' && !insideQuote) {
+                        row.push(entry);
+                        entry = '';
+                    } else {
+                        entry += char;
+                    }
+                }
                 row.push(entry);
-                entry = '';
-            } else {
-                entry += char;
-            }
-        }
-        row.push(entry);
 
-        if (row.length >= 2 && row[0].trim()) {
-            songs.push({
-                title: row[0].trim().replace(/^"|"$/g, ''),
-                code: row[1].trim().replace(/^"|"$/g, ''),
-                difficulty: row[2] ? row[2].trim().replace(/^"|"$/g, '') : ''
+                if (row.length >= 2 && row[0].trim()) {
+                    songs.push({
+                        title: row[0].trim().replace(/^"|"$/g, ''),
+                        code: row[1].trim().replace(/^"|"$/g, ''),
+                        difficulty: row[2] ? row[2].trim().replace(/^"|"$/g, '') : ''
+                    });
+                }
+            }
+            return songs;
+        }
+
+        function renderSongSelect() {
+            const uniqueMap = new Map();
+            songList.forEach(s => {
+                const key = s.title.toLowerCase().trim();
+                if (!uniqueMap.has(key)) uniqueMap.set(key, s);
+            });
+            const sortedList = Array.from(uniqueMap.values());
+            sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
+
+            songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
+            sortedList.forEach(song => {
+                const opt = document.createElement('option');
+                opt.value = song.code;
+
+                let badge = '⚪ ';
+                if (song.difficulty) {
+                    const diff = song.difficulty.toLowerCase().trim();
+                    if (diff === 'easy') {
+                        badge = '🟢 ';
+                        opt.style.color = '#22c55e';
+                    } else if (diff === 'medium') {
+                        badge = '🟠 ';
+                        opt.style.color = '#f97316';
+                    } else if (diff === 'hard') {
+                        badge = '🔴 ';
+                        opt.style.color = '#ef4444';
+                    }
+                    opt.dataset.diff = diff;
+                }
+
+                opt.textContent = badge + song.title;
+                songSelect.appendChild(opt);
             });
         }
-    }
-    return songs;
-}
 
-       function renderSongSelect() {
-    const uniqueMap = new Map();
-    songList.forEach(s => {
-        const key = s.title.toLowerCase().trim();
-        if (!uniqueMap.has(key)) uniqueMap.set(key, s);
-    });
-    const sortedList = Array.from(uniqueMap.values());
-    sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
+        async function syncSongsWithGoogleSheet() {
+            localStorage.removeItem('pianopad_sheet_songs');
 
-    songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
-    sortedList.forEach(song => {
-        const opt = document.createElement('option');
-        opt.value = song.code;
-
-        // Determine difficulty indicator badge
-        let badge = '⚪ ';
-        if (song.difficulty) {
-            const diff = song.difficulty.toLowerCase().trim();
-            if (diff === 'easy') {
-                badge = '🟢 ';
-                opt.style.color = '#22c55e';
-            } else if (diff === 'medium') {
-                badge = '🟠 ';
-                opt.style.color = '#f97316';
-            } else if (diff === 'hard') {
-                badge = '🔴 ';
-                opt.style.color = '#ef4444';
+            let localCache = [];
+            const cachedData = localStorage.getItem('pianopad_sheet_songs');
+            if (cachedData) {
+                try {
+                    localCache = JSON.parse(cachedData);
+                    songList = [...localCache];
+                    renderSongSelect();
+                    const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
+                    if (defaultObj) {
+                        currentSongTitle = defaultObj.title;
+                        currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
+                    }
+                    document.getElementById('status').textContent = `Loaded ${songList.length} cached songs. Syncing live Google Sheet...`;
+                } catch (e) {
+                    console.warn("Cache parse error");
+                }
             }
-            opt.dataset.diff = diff;
-        }
 
-        opt.textContent = badge + song.title;
-        songSelect.appendChild(opt);
-    });
-}
+            let remoteSongs = [];
 
- async function syncSongsWithGoogleSheet() {
-    // Clear legacy song cache that lacks difficulty fields
-    localStorage.removeItem('pianopad_sheet_songs');
+            try {
+                const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_SONGS&v=2&t=${Date.now()}`);
 
-    let localCache = [];
-    const cachedData = localStorage.getItem('pianopad_sheet_songs');
-    if (cachedData) {
-        try {
-            localCache = JSON.parse(cachedData);
-            songList = [...localCache];
-            renderSongSelect();
-            const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
-            if (defaultObj) {
-                currentSongTitle = defaultObj.title;
-                currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
+                if (res && res.songs && res.songs.length > 0) {
+                    remoteSongs = res.songs.map(s => ({
+                        title: s.title || s[0],
+                        code: s.code || s[1],
+                        difficulty: s.difficulty || s[2] || ''
+                    }));
+                } else {
+                    throw new Error(res ? res.error : "No songs returned from JSONP");
+                }
+            } catch (err) {
+                console.warn("Apps Script fetch error, trying CSV fallback...", err);
+                try {
+                    const response = await fetch(SPREADSHEET_CSV_URL);
+                    if (response.ok) {
+                        const csvText = await response.text();
+                        remoteSongs = parseCSVToSongs(csvText);
+                    }
+                } catch (csvErr) {
+                    console.warn("CSV Fallback error:", csvErr);
+                }
             }
-            document.getElementById('status').textContent = `Loaded ${songList.length} cached songs. Syncing live Google Sheet...`;
-        } catch (e) {
-            console.warn("Cache parse error");
-        }
-    }
 
-    let remoteSongs = [];
+            if (remoteSongs.length > 0) {
+                const songMap = new Map();
+                remoteSongs.forEach(s => songMap.set(s.title.toLowerCase().trim(), s));
+                localCache.forEach(s => {
+                    const key = s.title.toLowerCase().trim();
+                    if (!songMap.has(key)) {
+                        songMap.set(key, s);
+                    }
+                });
 
-    try {
-  
-        const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_SONGS&v=2&t=${Date.now()}`);
+                songList = Array.from(songMap.values());
+                localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
+                renderSongSelect();
 
-        if (res && res.songs && res.songs.length > 0) {
-            // Ensure difficulty property is mapped from Apps Script response
-            remoteSongs = res.songs.map(s => ({
-                title: s.title || s[0],
-                code: s.code || s[1],
-                difficulty: s.difficulty || s[2] || ''
-            }));
-        } else {
-            throw new Error(res ? res.error : "No songs returned from JSONP");
-        }
-    } catch (err) {
-        console.warn("Apps Script fetch error, trying CSV fallback...", err);
-        try {
-            const response = await fetch(SPREADSHEET_CSV_URL);
-            if (response.ok) {
-                const csvText = await response.text();
-                remoteSongs = parseCSVToSongs(csvText);
+                const defaultObj = songList.find(s => s.title === currentSongTitle) || songList.find(s => s.title === 'Wipeout') || songList[0];
+                if (defaultObj) {
+                    currentSongTitle = defaultObj.title;
+                    songSelect.value = defaultObj.code;
+                    currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
+                }
+                document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
+            } else if (songList.length > 0) {
+                document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
+            } else {
+                document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
             }
-        } catch (csvErr) {
-            console.warn("CSV Fallback error:", csvErr);
+            updateMonitorWidget();
         }
-    }
-
-    if (remoteSongs.length > 0) {
-        const songMap = new Map();
-        remoteSongs.forEach(s => songMap.set(s.title.toLowerCase().trim(), s));
-        localCache.forEach(s => {
-            const key = s.title.toLowerCase().trim();
-            if (!songMap.has(key)) {
-                songMap.set(key, s);
-            }
-        });
-
-        songList = Array.from(songMap.values());
-        localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
-        renderSongSelect();
-
-        const defaultObj = songList.find(s => s.title === currentSongTitle) || songList.find(s => s.title === 'Wipeout') || songList[0];
-        if (defaultObj) {
-            currentSongTitle = defaultObj.title;
-            songSelect.value = defaultObj.code;
-            currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
-        }
-        document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
-    } else if (songList.length > 0) {
-        document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
-    } else {
-        document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
-    }
-    updateMonitorWidget();
-}
 
         function buildTimeline() {
             noteTimeline = [];
@@ -4749,6 +4771,7 @@ if (speedInput) {
         function stopSong() {
             isPlaying = false;
             isPaused = false;
+            setSpeedControlsLocked(false);
             btnPause.textContent = 'Pause';
             btnPause.classList.remove('btn-success');
             btnPause.classList.add('btn-warning');
@@ -4774,6 +4797,7 @@ if (speedInput) {
                 return;
             }
 
+            setSpeedControlsLocked(true);
             updateKeyPositions();
             buildTimeline();
             resetGameStats();
@@ -4884,32 +4908,30 @@ if (speedInput) {
                 const loopEndMs = firstHit + (totalDuration * endPct);
 
                 if (effectiveElapsed >= loopEndMs) {
-        // Accelerate tempo by 2% on each replay
-        const currentSpeedVal = parseFloat(speedSlider.value);
-        const acceleratedSpeed = Math.min(500, Math.round(currentSpeedVal * 1.02));
-        
-        if (acceleratedSpeed !== currentSpeedVal) {
-            updateSpeed(acceleratedSpeed, false);
-            buildTimeline(); // Rebuild note timestamps scaled to the new 2% faster tempo
-        }
+                    const currentSpeedVal = parseFloat(speedSlider.value);
+                    const acceleratedSpeed = Math.min(500, Math.round(currentSpeedVal * 1.02));
+                    
+                    if (acceleratedSpeed !== currentSpeedVal) {
+                        updateSpeed(acceleratedSpeed, false, true);
+                        buildTimeline();
+                    }
 
-        // Restart replay from loop start position
-        const updatedFirstHit = noteTimeline[0].hitTime;
-        const updatedLastHit = noteTimeline[noteTimeline.length - 1].hitTime + noteTimeline[noteTimeline.length - 1].duration;
-        const updatedTotalDuration = updatedLastHit - updatedFirstHit;
-        const newLoopStartMs = updatedFirstHit + (updatedTotalDuration * startPct);
+                    const updatedFirstHit = noteTimeline[0].hitTime;
+                    const updatedLastHit = noteTimeline[noteTimeline.length - 1].hitTime + noteTimeline[noteTimeline.length - 1].duration;
+                    const updatedTotalDuration = updatedLastHit - updatedFirstHit;
+                    const newLoopStartMs = updatedFirstHit + (updatedTotalDuration * startPct);
 
-        playbackStartTime = now - newLoopStartMs - accumulatedPauseMs;
-        effectiveElapsed = newLoopStartMs;
-        noteTimeline.forEach(n => {
-            if (n.hitTime >= newLoopStartMs) {
-                n.played = false;
-                n.gameStatus = 'pending';
-            }
-        });
+                    playbackStartTime = now - newLoopStartMs - accumulatedPauseMs;
+                    effectiveElapsed = newLoopStartMs;
+                    noteTimeline.forEach(n => {
+                        if (n.hitTime >= newLoopStartMs) {
+                            n.played = false;
+                            n.gameStatus = 'pending';
+                        }
+                    });
 
-        document.getElementById('status').textContent = `🔁 Loop accelerated by +2% (Now ${acceleratedSpeed}%)`;
-    }
+                    document.getElementById('status').textContent = `🔁 Loop accelerated by +2% (Now ${acceleratedSpeed}%)`;
+                }
             }
 
             if (activeMiniGame === 'simon') {
@@ -5058,6 +5080,7 @@ if (speedInput) {
                 const lastNote = noteTimeline[noteTimeline.length - 1];
                 if (lastNote && effectiveElapsed > lastNote.hitTime + lastNote.duration + 500) {
                     isPlaying = false;
+                    setSpeedControlsLocked(false);
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                     if (isSongBattle) {
