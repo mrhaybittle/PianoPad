@@ -1650,6 +1650,7 @@
 
         let localStudentId = "stu_" + Math.random().toString(36).substr(2, 9);
         let localTabSwitches = 0;
+let tabSwitchAwayTimestamp = null; 
         let currentRoom = "";
         let sessionStartTime = Date.now();
         let breakMarkerPositions = [];
@@ -1884,12 +1885,50 @@
         document.addEventListener("visibilitychange", () => {
             if (document.hidden) {
                 localTabSwitches++;
+                tabSwitchAwayTimestamp = new Date(); // Record the exact time they left
+                
                 const elapsedMs = Date.now() - sessionStartTime;
                 const posPct = Math.min(100, (elapsedMs / (60 * 60000)) * 100);
                 breakMarkerPositions.push(posPct);
                 syncStudentToFirebase("away");
             } else {
                 syncStudentToFirebase("active");
+
+                // --- NEW: Calculate duration & send data to Google Sheets ---
+                if (tabSwitchAwayTimestamp) {
+                    const returnTimestamp = new Date();
+                    const durationSec = Math.round((returnTimestamp - tabSwitchAwayTimestamp) / 1000);
+
+                    // Ignore accidental micro-flutters under 1 second
+                    if (durationSec >= 1) {
+                        const formatSec = (s) => `${Math.floor(s / 60)}m ${s % 60}s`;
+                        const sessionElapsed = Math.round((Date.now() - sessionStartTime) / 1000);
+
+                        const payload = {
+                            action: "LOG_BREAK",
+                            studentName: sessionStudentName || localStorage.getItem('pianopad_name') || "Student",
+                            year: "", 
+                            class: currentRoom || "", // Pushes G1/G2/G3 etc.
+                            awayTime: tabSwitchAwayTimestamp.toLocaleTimeString(),
+                            returnTime: returnTimestamp.toLocaleTimeString(),
+                            durationSec: durationSec,
+                            durationFormatted: formatSec(durationSec),
+                            breakCount: localTabSwitches,
+                            songTitle: currentSongTitle || "Free Play",
+                            sessionTime: formatSec(sessionElapsed)
+                        };
+
+                        // Send silently to Apps Script using text/plain to avoid CORS errors
+                        fetch(APPS_SCRIPT_URL, {
+                            method: "POST",
+                            headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            body: JSON.stringify(payload)
+                        }).catch(e => console.log("Sheet log error:", e));
+                    }
+                    tabSwitchAwayTimestamp = null;
+                }
+                // ------------------------------------------------------------
+
                 if (localTabSwitches > 0) {
                     const fName = (sessionStudentName || localStorage.getItem('pianopad_name') || "Student").split(' ')[0];
                     document.getElementById('tab-switch-title').textContent = `${fName.toUpperCase()} - TAB SWITCH RECORDED!`;
