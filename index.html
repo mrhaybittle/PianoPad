@@ -189,21 +189,21 @@
             box-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
         }
 
-      #song-select option {
-    background-color: #0b0f19;
-}
+        #song-select option {
+            background-color: #0b0f19;
+        }
 
-#song-select option[data-diff="easy"] {
-    color: #22c55e !important;
-}
+        #song-select option[data-diff="easy"] {
+            color: #22c55e !important;
+        }
 
-#song-select option[data-diff="medium"] {
-    color: #f97316 !important;
-}
+        #song-select option[data-diff="medium"] {
+            color: #f97316 !important;
+        }
 
-#song-select option[data-diff="hard"] {
-    color: #ef4444 !important;
-}
+        #song-select option[data-diff="hard"] {
+            color: #ef4444 !important;
+        }
 
         button, .btn-link, .btn-file-label {
             display: inline-flex;
@@ -529,6 +529,16 @@
             font-weight: 800;
             color: #ffffff;
             font-size: 0.82rem;
+        }
+
+        .monitor-class-badge {
+            background-color: #374151;
+            color: #facc15;
+            font-weight: 800;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.68rem;
+            border: 1px solid #4b5563;
         }
 
         .monitor-badge-breaks {
@@ -1106,7 +1116,7 @@
     <div class="modal-overlay" id="tab-switch-modal" style="z-index: 10000;">
         <div class="modal" style="max-width: 480px; text-align: center; border: 3px solid #ef4444; box-shadow: 0 0 25px rgba(239, 68, 68, 0.8); background-color: #1f2937;">
             <h2 style="color: #ef4444; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; gap: 10px; text-transform: uppercase; margin-bottom: 5px;">
-                ⚠️ <span id="tab-switch-title">TAB SWITCH RECORDED!</span>
+                 <span id="tab-switch-title">TAB SWITCH RECORDED!</span>
             </h2>
             <p style="font-size: 1.05rem; color: #ffffff; font-weight: 600; margin: 15px 0;">
                 You switched tabs - stay on task please. Break recorded.
@@ -1117,11 +1127,11 @@
         </div>
     </div>
 
-    <!-- Room Join Modal -->
+    <!-- Room & Class Join Modal -->
     <div class="modal-overlay" id="room-join-modal" style="z-index: 300;">
-        <div class="modal" style="max-width: 400px; text-align: center;">
+        <div class="modal" style="max-width: 420px; text-align: center;">
             <h2 style="color: #4f46e5;">Welcome to PianoPad 26</h2>
-            <p style="font-size: 0.9rem; color: #9ca3af;">Please choose an avatar and join a room to begin playing:</p>
+            <p style="font-size: 0.9rem; color: #9ca3af;">Please enter your details, select your class, and room to begin:</p>
             <div style="display: flex; flex-direction: column; gap: 12px; margin: 15px 0;">
                 <input type="text" id="student-join-name" placeholder="Your First Name & Last Initial" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 0.9rem;">
                 
@@ -1144,11 +1154,43 @@
                     <option value="🥷">🥷 Ninja</option>
                 </select>
 
+                <select id="student-join-class" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#facc15; font-weight:700; font-size: 0.9rem;">
+                    <option value="" disabled selected>Select Your Class</option>
+                    <optgroup label="Year 7 Classes">
+                        <option value="7A">7A</option>
+                        <option value="7B">7B</option>
+                        <option value="7C">7C</option>
+                        <option value="7D">7D</option>
+                        <option value="7E">7E</option>
+                        <option value="7F">7F</option>
+                        <option value="7G">7G</option>
+                        <option value="7H">7H</option>
+                        <option value="7I">7I</option>
+                    </optgroup>
+                    <optgroup label="Year 8 Classes">
+                        <option value="8A">8A</option>
+                        <option value="8B">8B</option>
+                        <option value="8C">8C</option>
+                        <option value="8D">8D</option>
+                        <option value="8E">8E</option>
+                        <option value="8F">8F</option>
+                        <option value="8G">8G</option>
+                        <option value="8H">8H</option>
+                        <option value="8I">8I</option>
+                    </optgroup>
+                    <optgroup label="Elective Music">
+                        <option value="9">Year 9 Music</option>
+                        <option value="10">Year 10 Music</option>
+                        <option value="11">Year 11 Music</option>
+                        <option value="12">Year 12 Music</option>
+                    </optgroup>
+                </select>
+
                 <select id="student-join-room" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 0.9rem;">
                     <option value="" disabled selected>Select Room</option>
-                    <option value="G1">G1</option>
-                    <option value="G2">G2</option>
-                    <option value="G3">G3</option>
+                    <option value="G1">Room G1</option>
+                    <option value="G2">Room G2</option>
+                    <option value="G3">Room G3</option>
                 </select>
             </div>
             <div class="modal-footer" style="justify-content: center;">
@@ -1182,28 +1224,28 @@
                 </select>
 
                 <div class="speed-control">
-    <label for="speed-input" style="cursor: pointer;">Speed: </label>
-    <div style="display: inline-flex; align-items: center;">
-        <input type="number" id="speed-input" min="10" max="500" value="100" 
-               style="width: 48px; background: transparent; border: 1px solid #4b5563; border-radius: 4px; color: #facc15; font-weight: 700; font-size: 0.78rem; text-align: center; padding: 1px 2px; -moz-appearance: textfield;"
-               title="Click to type a set speed (10% - 500%)">
-        <span style="color: #cbd5e1; margin-left: 2px;">%</span>
-    </div>
-    <input type="range" id="speed-slider" min="10" max="500" value="100" step="1">
-</div>
+                    <label for="speed-input" style="cursor: pointer;">Speed: </label>
+                    <div style="display: inline-flex; align-items: center;">
+                        <input type="number" id="speed-input" min="10" max="500" value="100" 
+                               style="width: 48px; background: transparent; border: 1px solid #4b5563; border-radius: 4px; color: #facc15; font-weight: 700; font-size: 0.78rem; text-align: center; padding: 1px 2px; -moz-appearance: textfield;"
+                               title="Click to type a set speed (10% - 500%)">
+                        <span style="color: #cbd5e1; margin-left: 2px;">%</span>
+                    </div>
+                    <input type="range" id="speed-slider" min="10" max="500" value="100" step="1">
+                </div>
 
                 <button type="button" id="btn-mic-toggle" class="btn-secondary" title="Listen for Acoustic Piano Notes">
-                    🎙️ MIC INPUT: OFF
+                     MIC INPUT: OFF
                 </button>
 
                 <button type="button" id="btn-sheet-toggle" class="btn-secondary" style="background-color: #0d9488; font-weight: 700;" title="Toggle Sheet Music Display">
-                    🎼 Sheet: ON
+                     Sheet: ON
                 </button>
 
-<button type="button" id="btn-game" class="btn-game-active">
-    <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-    Game Mode: ON
-</button>
+                <button type="button" id="btn-game" class="btn-game-active">
+                    <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    Game Mode: ON
+                </button>
 
                 <button type="button" id="btn-loop" class="btn-secondary">
                     <svg class="icon" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
@@ -1242,7 +1284,7 @@
                 </button>
 
                 <button type="button" id="btn-settings" class="btn-settings" title="Settings">
-                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 </button>
 
                 <a href="https://sites.google.com/erc.nsw.edu.au/pianopad-leaderboard/home" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
@@ -1264,11 +1306,11 @@
                 </button>
 
                 <button type="button" id="btn-open-arcade" class="btn-arcade">
-                    🕹️ MINI-GAMES
+                     MINI-GAMES
                 </button>
 
                 <button type="button" id="btn-song-battle" class="btn-song-battle">
-                    ⚔️ SONG BATTLE
+                     SONG BATTLE
                 </button>
 
                 <div class="timeline-container-inline" id="timeline-box">
@@ -1282,17 +1324,17 @@
 
             <div class="controls" id="arcade-controls-bar" style="display: none;">
                 <button type="button" id="btn-home-screen" class="btn-success" style="font-weight: 800;">
-                    🏠 Return to Player
+                     Return to Player
                 </button>
                 <button type="button" id="btn-stop-arcade" class="btn-danger">
-                    ⏹️ Exit Active Game
+                     Exit Active Game
                 </button>
             </div>
         </header>
 
         <!-- Student Leaderboard Stats Ticker Tape -->
         <div class="ticker-tape-container" id="student-ticker-tape" style="display: none;">
-            <div class="ticker-tape-badge" id="ticker-badge">🏆 MY RANKS</div>
+            <div class="ticker-tape-badge" id="ticker-badge"> MY RANKS</div>
             <div class="ticker-tape-wrapper">
                 <div class="ticker-tape-track" id="ticker-track">Loading leaderboard stats...</div>
             </div>
@@ -1300,37 +1342,37 @@
 
         <div class="arcade-hub-overlay" id="arcade-hub">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #374151; padding-bottom: 8px;">
-                <h2 style="font-size: 1.2rem; color: #ec4899; display: flex; align-items: center; gap: 8px;">🕹️ PianoPad Arcade Mini-Games</h2>
+                <h2 style="font-size: 1.2rem; color: #ec4899; display: flex; align-items: center; gap: 8px;"> PianoPad Arcade Mini-Games</h2>
                 <span style="font-size: 0.8rem; color: #cbd5e1; font-weight: 600;">Choose a Mini-Game to Play!</span>
             </div>
 
             <div class="arcade-grid">
                 <div class="game-card" onclick="startSimonTaps()">
-                    <h3>🧠 Simon Taps</h3>
+                    <h3> Simon Taps</h3>
                     <p>Watch the stepwise C Major sequence and climb the multi-colored level staircase step-by-step!</p>
                     <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Simon Taps</button>
                 </div>
 
                 <div class="game-card" onclick="startMysteryNote()">
-                    <h3>🔍 Mystery Note</h3>
+                    <h3> Mystery Note</h3>
                     <p>Listen to the hidden note! Use Warm/Cold proximity cues to find and hit the secret key.</p>
                     <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Mystery Note</button>
                 </div>
 
                 <div class="game-card" onclick="startDropDodge()">
-                    <h3>🛡️ Drop Dodge</h3>
+                    <h3> Drop Dodge</h3>
                     <p>Wide walls fall slowly! You have 5 Lives to dodge blocks by hitting the safe empty key gap.</p>
                     <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Drop Dodge</button>
                 </div>
 
                 <div class="game-card" onclick="startComboStrike()">
-                    <h3>⚡ Two-Note Combo</h3>
+                    <h3> Two-Note Combo</h3>
                     <p>Pairs of notes fall together! Hit two-note intervals simultaneously with timing feedback.</p>
                     <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Combo Strike</button>
                 </div>
 
                 <div class="game-card" onclick="openSprintModeSelector()">
-                    <h3>🏃 Finger Sprint Race</h3>
+                    <h3> Finger Sprint Race</h3>
                     <p>Challenge Robo-Opponent (🤖) or Host/Join Live Multi-Player Races with custom Room Codes!</p>
                     <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Finger Sprint</button>
                 </div>
@@ -1345,19 +1387,20 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.10.19 | Mon 11:34 AEDT (West Wollongong)</div>
-          <div class="status-bar" id="status">🎮 GAME MODE READY | Connecting to song database...</div>
+            <div class="version-stamp">v26.10.27 | 27-Oct 12:48 AEDT (West Wollongong)</div>
+            <div class="status-bar" id="status"> GAME MODE READY | Connecting to song database...</div>
             
             <div class="footer-right-group">
                 <div class="monitor-widget-box" id="monitor-widget">
                     <div class="monitor-top-row">
                         <span id="mon-student-avatar" style="font-size: 0.82rem;">🏃</span>
                         <span class="monitor-student-name" id="mon-student-name">Student</span>
+                        <span class="monitor-class-badge" id="mon-class-badge">7G</span>
                         <span class="monitor-badge-breaks" id="mon-breaks-badge">Breaks: 0</span>
                         <span class="monitor-time-text" id="mon-time-text">0:00 / 60:00min</span>
                         <span id="mon-level-badge" style="display:none; align-items:center; font-weight:800; font-size:0.75rem; margin-left:2px; margin-right:2px;"></span>
                         <div class="monitor-divider"></div>
-                        <span class="monitor-song-text" id="mon-song-text">🎵 Wipeout</span>
+                        <span class="monitor-song-text" id="mon-song-text"> Wipeout</span>
                     </div>
                     <div class="monitor-progress-bar-track" id="mon-bar-track">
                         <div class="monitor-progress-bar-fill" id="mon-bar-fill"></div>
@@ -1372,12 +1415,12 @@
     <!-- Live Sprint & Song Battle Setup Modal -->
     <div class="modal-overlay" id="sprint-option-modal">
         <div class="modal" style="text-align: center;">
-            <h2 id="battle-modal-title">🏃 Setup Mode</h2>
+            <h2 id="battle-modal-title"> Setup Mode</h2>
             <p style="font-size: 0.85rem; color: #9ca3af;" id="battle-modal-subtitle">Select your battle option:</p>
             <div style="display: flex; flex-direction: column; gap: 10px; margin: 10px 0;" id="sprint-menu-buttons">
-                <button type="button" class="btn-arcade" id="btn-sprint-bot-opt" onclick="initSinglePlayerSprint()">🤖 Challenge Robot Opponent</button>
-                <button type="button" class="btn-success" onclick="openHostNamePrompt()">👑 Host Live Session</button>
-                <button type="button" class="btn-midi" onclick="openJoinNamePrompt()">🎮 Join Live Session</button>
+                <button type="button" class="btn-arcade" id="btn-sprint-bot-opt" onclick="initSinglePlayerSprint()"> Challenge Robot Opponent</button>
+                <button type="button" class="btn-success" onclick="openHostNamePrompt()"> Host Live Session</button>
+                <button type="button" class="btn-midi" onclick="openJoinNamePrompt()"> Join Live Session</button>
             </div>
             
             <div id="sprint-form-container" style="display: none; flex-direction: column; gap: 8px; text-align: left;">
@@ -1389,7 +1432,7 @@
                     <select id="host-battle-song-select" style="width:100%; max-width:100%;"></select>
                 </div>
 
-                <div id="inline-name-error" style="color:#ef4444; font-size:0.75rem; font-weight:700; display:none;">⚠️ Please enter your First Name & Surname Initial before continuing!</div>
+                <div id="inline-name-error" style="color:#ef4444; font-size:0.75rem; font-weight:700; display:none;"> Please enter your First Name & Surname Initial before continuing!</div>
 
                 <div id="code-input-group" style="display:none; flex-direction:column; gap:4px;">
                     <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Enter Host Join Code:</label>
@@ -1399,7 +1442,7 @@
                 <div id="host-lobby-group" style="display:none; flex-direction:column; gap:4px; text-align:center;">
                     <div style="font-size:1.1rem; color:#facc15; font-weight:800;" id="generated-room-code-display">Room Code: Generating...</div>
                     <div class="lobby-players-grid" id="lobby-players-grid"></div>
-                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-content:center;" onclick="triggerHostStartRace()">🚀 START LIVE SESSION FOR ALL PLAYERS</button>
+                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-content:center;" onclick="triggerHostStartRace()"> START LIVE SESSION FOR ALL PLAYERS</button>
                 </div>
 
                 <div id="client-waiting-group" style="display:none; flex-direction:column; gap:6px; text-align:center;">
@@ -1420,16 +1463,16 @@
     <!-- Bonus Sound Unlock Notification Modal -->
     <div class="modal-overlay" id="unlock-modal">
         <div class="modal" style="text-align: center; border: 2px solid #22c55e; box-shadow: 0 0 25px rgba(34, 197, 94, 0.5);">
-            <h2 style="color: #facc15; font-size: 1.5rem;">🎉 BONUS SOUNDS UNLOCKED!</h2>
+            <h2 style="color: #facc15; font-size: 1.5rem;"> BONUS SOUNDS UNLOCKED!</h2>
             <p id="unlock-modal-text" style="font-size: 0.95rem; color: #e5e7eb; line-height: 1.4;">
                 Outstanding accuracy! You scored <strong>>80%</strong> and unlocked 5 additional instrument sound engines:
             </p>
             <div style="background: #0b0f19; border: 1px solid #374151; border-radius: 8px; padding: 10px; margin: 10px 0; text-align: left; font-size: 0.85rem; color: #38bdf8;">
-                ● 🎹 Electric Piano<br>
-                ● 🎼 Harpsichord<br>
-                ● 🎛️ 80s Synth Lead<br>
-                ● 🪵 Xylophone<br>
-                ● 🪗 Accordion
+                  Electric Piano<br>
+                  Harpsichord<br>
+                  80s Synth Lead<br>
+                  Xylophone<br>
+                  Accordion
             </div>
             <p style="font-size: 0.8rem; color: #9ca3af;">Try them out now in the Instrument selector dropdown at the top bar!</p>
             <div class="modal-footer" style="justify-content: center;">
@@ -1529,15 +1572,15 @@
                 </div>
                 
                 <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 600; margin-top: 4px;">
-                    <span style="color: #22c55e;">● Perfect</span>
-                    <span style="color: #f97316;">● Early/Late</span>
-                    <span style="color: #ef4444;">● Missed</span>
+                    <span style="color: #22c55e;"> Perfect</span>
+                    <span style="color: #f97316;"> Early/Late</span>
+                    <span style="color: #ef4444;"> Missed</span>
                 </div>
             </div>
 
             <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
                 <a href="leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">View Entire Leaderboard</a>
-                <button type="button" class="btn-warning" id="btn-battle-again" style="display: none;" onclick="triggerBattleAgain()">⚔️ Battle Again</button>
+                <button type="button" class="btn-warning" id="btn-battle-again" style="display: none;" onclick="triggerBattleAgain()"> Battle Again</button>
                 <button type="button" class="btn-warning" id="btn-game-try-again">Play Again</button>
                 <button type="button" class="btn-arcade" id="btn-game-arcade-menu">Mini-Game Menu</button>
                 <button type="button" class="btn-success" id="btn-game-results-close">Continue</button>
@@ -1650,8 +1693,9 @@
 
         let localStudentId = "stu_" + Math.random().toString(36).substr(2, 9);
         let localTabSwitches = 0;
-let tabSwitchAwayTimestamp = null; 
+        let tabSwitchAwayTimestamp = null; 
         let currentRoom = "";
+        let currentStudentClass = "";
         let sessionStartTime = Date.now();
         let breakMarkerPositions = [];
         let sessionStudentAvatar = "🏃";
@@ -1671,10 +1715,10 @@ let tabSwitchAwayTimestamp = null;
         function updateSheetToggleButton() {
             if (!btnSheetToggle) return;
             if (showSheetMusic) {
-                btnSheetToggle.textContent = '🎼 Sheet: ON';
+                btnSheetToggle.textContent = ' Sheet: ON';
                 btnSheetToggle.style.backgroundColor = '#0d9488';
             } else {
-                btnSheetToggle.textContent = '🎼 Sheet: OFF';
+                btnSheetToggle.textContent = ' Sheet: OFF';
                 btnSheetToggle.style.backgroundColor = '#4b5563';
             }
         }
@@ -1768,6 +1812,7 @@ let tabSwitchAwayTimestamp = null;
         function updateMonitorWidget() {
             const studentEl = document.getElementById('mon-student-name');
             const avatarEl = document.getElementById('mon-student-avatar');
+            const classEl = document.getElementById('mon-class-badge');
             const breaksEl = document.getElementById('mon-breaks-badge');
             const timeEl = document.getElementById('mon-time-text');
             const songEl = document.getElementById('mon-song-text');
@@ -1775,8 +1820,11 @@ let tabSwitchAwayTimestamp = null;
             const trackEl = document.getElementById('mon-bar-track');
             const badgeEl = document.getElementById('mon-level-badge');
 
+            const activeClass = currentStudentClass || localStorage.getItem('pianopad_class') || "7G";
+
             if (studentEl) studentEl.textContent = sessionStudentName || localStorage.getItem('pianopad_name') || "Mr H";
             if (avatarEl) avatarEl.textContent = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || "🏃";
+            if (classEl) classEl.textContent = activeClass;
             if (breaksEl) breaksEl.textContent = `Breaks: ${localTabSwitches}`;
             
             const elapsedMs = Date.now() - sessionStartTime;
@@ -1786,7 +1834,7 @@ let tabSwitchAwayTimestamp = null;
             const elapsedMins = Math.floor(elapsedMs / 60000);
             
             if (timeEl) timeEl.textContent = `${mins}:${secs} / 60:00min`;
-            if (songEl) songEl.textContent = `🎵 ${currentSongTitle || 'Wipeout'}`;
+            if (songEl) songEl.textContent = ` ${currentSongTitle || 'Wipeout'}`;
 
             let barColor = '#22c55e';
 
@@ -1798,15 +1846,15 @@ let tabSwitchAwayTimestamp = null;
 
                 if (elapsedMins >= 30) {
                     displayBadge = true;
-                    badgeHtml = `<span style="color:#facc15;">🥇 Gold Level</span>${x2Tag}`;
+                    badgeHtml = `<span style="color:#facc15;"> Gold Level</span>${x2Tag}`;
                     barColor = '#facc15';
                 } else if (elapsedMins >= 20) {
                     displayBadge = true;
-                    badgeHtml = `<span style="color:#cbd5e1;">🥈 Silver Level</span>${x2Tag}`;
+                    badgeHtml = `<span style="color:#cbd5e1;"> Silver Level</span>${x2Tag}`;
                     barColor = '#cbd5e1';
                 } else if (elapsedMins >= 10) {
                     displayBadge = true;
-                    badgeHtml = `<span style="color:#f97316;">🥉 Bronze Level</span>${x2Tag}`;
+                    badgeHtml = `<span style="color:#f97316;"> Bronze Level</span>${x2Tag}`;
                     barColor = '#f97316';
                 }
 
@@ -1842,6 +1890,7 @@ let tabSwitchAwayTimestamp = null;
             const activeName = sessionStudentName || localStorage.getItem('pianopad_name') || "Student";
             const activeAvatar = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || "🏃";
             const activeRoom = currentRoom || "Outside";
+            const activeClass = currentStudentClass || localStorage.getItem('pianopad_class') || "7G";
             const activeStatus = statusOverride || (document.hidden ? "away" : "active");
 
             const myRef = window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}`);
@@ -1850,6 +1899,8 @@ let tabSwitchAwayTimestamp = null;
                 studentName: activeName,
                 avatar: activeAvatar,
                 room: activeRoom,
+                class: activeClass,
+                studentClass: activeClass,
                 song: currentSongTitle || "Wipeout",
                 status: activeStatus,
                 tabSwitches: localTabSwitches,
@@ -1862,17 +1913,22 @@ let tabSwitchAwayTimestamp = null;
         document.getElementById('btn-join-room').addEventListener('click', () => {
             const name = document.getElementById('student-join-name').value.trim();
             const avatar = document.getElementById('student-join-avatar').value;
+            const chosenClass = document.getElementById('student-join-class').value;
             const room = document.getElementById('student-join-room').value;
-            if(!name || !room) {
-                alert('Please enter your First Name and Last Initial, and select a room.');
+            
+            if(!name || !room || !chosenClass) {
+                alert('Please enter your Name, select your Class, and select a Room.');
                 return;
             }
             sessionStudentName = sanitizeName(name);
             sessionStudentAvatar = avatar;
+            currentStudentClass = chosenClass;
             currentRoom = room;
 
             localStorage.setItem('pianopad_name', sessionStudentName);
             localStorage.setItem('pianopad_avatar', sessionStudentAvatar);
+            localStorage.setItem('pianopad_class', currentStudentClass);
+            localStorage.setItem('pianopad_room', currentRoom);
 
             document.getElementById('room-join-modal').classList.remove('open');
             
@@ -1885,7 +1941,7 @@ let tabSwitchAwayTimestamp = null;
         document.addEventListener("visibilitychange", () => {
             if (document.hidden) {
                 localTabSwitches++;
-                tabSwitchAwayTimestamp = new Date(); // Record the exact time they left
+                tabSwitchAwayTimestamp = new Date();
                 
                 const elapsedMs = Date.now() - sessionStartTime;
                 const posPct = Math.min(100, (elapsedMs / (60 * 60000)) * 100);
@@ -1894,12 +1950,10 @@ let tabSwitchAwayTimestamp = null;
             } else {
                 syncStudentToFirebase("active");
 
-                // --- NEW: Calculate duration & send data to Google Sheets ---
                 if (tabSwitchAwayTimestamp) {
                     const returnTimestamp = new Date();
                     const durationSec = Math.round((returnTimestamp - tabSwitchAwayTimestamp) / 1000);
 
-                    // Ignore accidental micro-flutters under 1 second
                     if (durationSec >= 1) {
                         const formatSec = (s) => `${Math.floor(s / 60)}m ${s % 60}s`;
                         const sessionElapsed = Math.round((Date.now() - sessionStartTime) / 1000);
@@ -1908,7 +1962,7 @@ let tabSwitchAwayTimestamp = null;
                             action: "LOG_BREAK",
                             studentName: sessionStudentName || localStorage.getItem('pianopad_name') || "Student",
                             year: "", 
-                            class: currentRoom || "", // Pushes G1/G2/G3 etc.
+                            class: currentStudentClass || localStorage.getItem('pianopad_class') || currentRoom || "",
                             awayTime: tabSwitchAwayTimestamp.toLocaleTimeString(),
                             returnTime: returnTimestamp.toLocaleTimeString(),
                             durationSec: durationSec,
@@ -1918,7 +1972,6 @@ let tabSwitchAwayTimestamp = null;
                             sessionTime: formatSec(sessionElapsed)
                         };
 
-                        // Send silently to Apps Script using text/plain to avoid CORS errors
                         fetch(APPS_SCRIPT_URL, {
                             method: "POST",
                             headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -1927,7 +1980,6 @@ let tabSwitchAwayTimestamp = null;
                     }
                     tabSwitchAwayTimestamp = null;
                 }
-                // ------------------------------------------------------------
 
                 if (localTabSwitches > 0) {
                     const fName = (sessionStudentName || localStorage.getItem('pianopad_name') || "Student").split(' ')[0];
@@ -2151,7 +2203,7 @@ let tabSwitchAwayTimestamp = null;
 
             if (isMicListening) {
                 stopMicrophoneListening();
-                btn.textContent = '🎙️ MIC INPUT: OFF';
+                btn.textContent = ' MIC INPUT: OFF';
                 btn.classList.remove('btn-mic-active');
                 btn.classList.add('btn-secondary');
                 document.getElementById('status').textContent = 'Microphone Pitch Detection stopped.';
@@ -2164,10 +2216,10 @@ let tabSwitchAwayTimestamp = null;
                     micSource.connect(micAnalyser);
 
                     isMicListening = true;
-                    btn.textContent = '🎙️ MIC INPUT: ON';
+                    btn.textContent = ' MIC INPUT: ON';
                     btn.classList.remove('btn-secondary');
                     btn.classList.add('btn-mic-active');
-                    document.getElementById('status').textContent = '🎙️ Listening to acoustic piano notes... Play near your computer microphone!';
+                    document.getElementById('status').textContent = ' Listening to acoustic piano notes... Play near your computer microphone!';
 
                     processMicrophonePitch();
                 } catch (err) {
@@ -2274,7 +2326,7 @@ let tabSwitchAwayTimestamp = null;
             timelineBox.style.display = 'none';
             arcadeControlsBar.style.display = 'flex';
             arcadeHub.classList.add('open');
-            document.getElementById('status').textContent = '🕹️ PianoPad Arcade Active! Choose a Mini-Game above.';
+            document.getElementById('status').textContent = ' PianoPad Arcade Active! Choose a Mini-Game above.';
         }
 
         function returnToPlayerHome() {
@@ -2379,11 +2431,11 @@ let tabSwitchAwayTimestamp = null;
 
             const instSelect = document.getElementById('instrument-select');
             const bonusOptions = [
-                { val: 'epiano', text: '🎹 Electric Piano' },
-                { val: 'harpsichord', text: '🎼 Harpsichord' },
-                { val: 'synth80s', text: '🎛️ 80s Synth Lead' },
-                { val: 'xylophone', text: '🪵 Xylophone' },
-                { val: 'accordion', text: '🪗 Accordion' }
+                { val: 'epiano', text: ' Electric Piano' },
+                { val: 'harpsichord', text: ' Harpsichord' },
+                { val: 'synth80s', text: ' 80s Synth Lead' },
+                { val: 'xylophone', text: ' Xylophone' },
+                { val: 'accordion', text: ' Accordion' }
             ];
 
             bonusOptions.forEach(opt => {
@@ -2410,7 +2462,7 @@ let tabSwitchAwayTimestamp = null;
             activeMiniGame = 'simon';
             simonSequence = [];
             resetGameStats();
-            document.getElementById('status').textContent = '🧠 Simon Taps: Watch and listen to the pattern...';
+            document.getElementById('status').textContent = ' Simon Taps: Watch and listen to the pattern...';
             nextSimonRound();
         }
 
@@ -2468,7 +2520,7 @@ let tabSwitchAwayTimestamp = null;
             }
 
             drawSimonStaircase(simonSequence.length);
-            document.getElementById('status').textContent = `🧠 Simon Taps (Level ${simonSequence.length}): Memorize pattern...`;
+            document.getElementById('status').textContent = ` Simon Taps (Level ${simonSequence.length}): Memorize pattern...`;
 
             let step = 0;
             const interval = setInterval(() => {
@@ -2481,7 +2533,7 @@ let tabSwitchAwayTimestamp = null;
                 } else {
                     clearInterval(interval);
                     simonIsPrompting = false;
-                    document.getElementById('status').textContent = `🧠 Your Turn! Play back Level ${simonSequence.length}...`;
+                    document.getElementById('status').textContent = ` Your Turn! Play back Level ${simonSequence.length}...`;
                 }
             }, 600);
         }
@@ -2494,7 +2546,7 @@ let tabSwitchAwayTimestamp = null;
                 simonPlayerIndex++;
                 if (simonPlayerIndex >= simonSequence.length) {
                     spawnConfetti(canvas.width / 2, canvas.height / 2, '#8b5cf6');
-                    document.getElementById('status').textContent = `🎉 Level ${simonSequence.length} Complete! Escalating to Level ${simonSequence.length + 1}...`;
+                    document.getElementById('status').textContent = ` Level ${simonSequence.length} Complete! Escalating to Level ${simonSequence.length + 1}...`;
                     setTimeout(nextSimonRound, 1200);
                 }
             } else {
@@ -2533,7 +2585,7 @@ let tabSwitchAwayTimestamp = null;
             const freq = getNoteFrequency(mysteryTargetPitch);
             if (freq) playTone(freq, 0.6, 1.0);
 
-            document.getElementById('status').textContent = '🔍 Mystery Note chosen! Tap keys to guess...';
+            document.getElementById('status').textContent = ' Mystery Note chosen! Tap keys to guess...';
         }
 
         function handleMysteryInput(noteStr) {
@@ -2571,13 +2623,13 @@ let tabSwitchAwayTimestamp = null;
                 activeMiniGame = null;
             } else if (diff <= 2) {
                 highlightKey(noteStr, 250, '#ef4444');
-                document.getElementById('status').textContent = `🔥 Sizzle HOT! You are right next to it! (Guesses: ${mysteryGuessCount})`;
+                document.getElementById('status').textContent = ` Sizzle HOT! You are right next to it! (Guesses: ${mysteryGuessCount})`;
             } else if (diff <= 6) {
                 highlightKey(noteStr, 250, '#f97316');
-                document.getElementById('status').textContent = `⚡ Warm... Getting closer! (Guesses: ${mysteryGuessCount})`;
+                document.getElementById('status').textContent = ` Warm... Getting closer! (Guesses: ${mysteryGuessCount})`;
             } else {
                 highlightKey(noteStr, 250, '#38bdf8');
-                document.getElementById('status').textContent = `❄️ Ice COLD! Far away... (Guesses: ${mysteryGuessCount})`;
+                document.getElementById('status').textContent = ` Ice COLD! Far away... (Guesses: ${mysteryGuessCount})`;
             }
         }
 
@@ -2610,7 +2662,7 @@ let tabSwitchAwayTimestamp = null;
             isPlaying = true;
             playbackStartTime = performance.now();
             lastFrameTime = performance.now();
-            document.getElementById('status').textContent = `🛡️ DROP DODGE ACTIVE! Lives: ❤️ ${dodgeLives} | Dodges: 0`;
+            document.getElementById('status').textContent = ` DROP DODGE ACTIVE! Lives: ❤️ ${dodgeLives} | Dodges: 0`;
             requestAnimationFrame(renderLoop);
         }
 
@@ -2639,14 +2691,14 @@ let tabSwitchAwayTimestamp = null;
             isPlaying = true;
             playbackStartTime = performance.now();
             lastFrameTime = performance.now();
-            document.getElementById('status').textContent = '⚡ TWO-NOTE COMBO STRIKE! Strike falling note intervals simultaneously!';
+            document.getElementById('status').textContent = ' TWO-NOTE COMBO STRIKE! Strike falling note intervals simultaneously!';
             requestAnimationFrame(renderLoop);
         }
 
         function openSprintModeSelector() {
             initAudio();
             isSongBattle = false;
-            document.getElementById('battle-modal-title').textContent = "🏃 Finger Sprint Setup";
+            document.getElementById('battle-modal-title').textContent = " Finger Sprint Setup";
             document.getElementById('battle-modal-subtitle').textContent = "Select your race mode:";
             document.getElementById('btn-sprint-bot-opt').style.display = 'inline-flex';
             document.getElementById('host-song-selector-group').style.display = 'none';
@@ -2680,7 +2732,7 @@ let tabSwitchAwayTimestamp = null;
                 btnStep.classList.add('btn-step');
             }
 
-            document.getElementById('battle-modal-title').textContent = `⚔️ Song Battle Setup`;
+            document.getElementById('battle-modal-title').textContent = ` Song Battle Setup`;
             document.getElementById('battle-modal-subtitle').textContent = "Host or join a live song battle:";
             document.getElementById('btn-sprint-bot-opt').style.display = 'none';
             document.getElementById('sprint-menu-buttons').style.display = 'flex';
@@ -3093,7 +3145,7 @@ let tabSwitchAwayTimestamp = null;
             const winner = [...playersList].sort((a,b) => parseFloat(a.finishTime || 999) - parseFloat(b.finishTime || 999))[0];
             const isWinner = winner && winner.id === localPlayerIdRoom;
 
-            const popUpHeader = isWinner ? `🎉 YOU WON! (${localPlayer ? localPlayer.finishTime : ''}s)` : `❌ YOU LOST! Winner: ${winner ? winner.name : 'Opponent'}`;
+            const popUpHeader = isWinner ? ` YOU WON! (${localPlayer ? localPlayer.finishTime : ''}s)` : ` YOU LOST! Winner: ${winner ? winner.name : 'Opponent'}`;
 
             const sortedResults = [...playersList].sort((a, b) => {
                 if (a.finishTime && b.finishTime) return parseFloat(a.finishTime) - parseFloat(b.finishTime);
@@ -3170,7 +3222,7 @@ let tabSwitchAwayTimestamp = null;
             const allPlayersFinished = playersList.every(p => p.finished === true || p.finished === "true");
             
             if (!allPlayersFinished) {
-                document.getElementById('status').textContent = `🏁 Battle finished for you! Waiting for remaining players to complete...`;
+                document.getElementById('status').textContent = ` Battle finished for you! Waiting for remaining players to complete...`;
                 return;
             }
 
@@ -3239,7 +3291,7 @@ let tabSwitchAwayTimestamp = null;
                 postBattleToSpreadsheet(battlePayload);
             }
 
-            document.getElementById('game-summary-text').innerHTML = `<div style="font-size:1.2rem; font-weight:800; color:#facc15;">⚔️ Song Battle Standings: ${currentSongTitle}</div>`;
+            document.getElementById('game-summary-text').innerHTML = `<div style="font-size:1.2rem; font-weight:800; color:#facc15;"> Song Battle Standings: ${currentSongTitle}</div>`;
             document.getElementById('game-rank-text').textContent = `Song Battle Logged!`;
             gameResultsModal.classList.add('open');
 
@@ -3251,11 +3303,12 @@ let tabSwitchAwayTimestamp = null;
 
             ensureStudentName();
             const speedText = speedSlider.value + '%';
+            const studentClass = currentStudentClass || localStorage.getItem('pianopad_class') || currentRoom || '';
 
             try {
-                document.getElementById('status').textContent = `Submitting score (${accuracyNum}) for ${sessionStudentName}...`;
+                document.getElementById('status').textContent = `Submitting score (${accuracyNum}) for ${sessionStudentName} (${studentClass || 'No Class'})...`;
 
-                const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&t=${Date.now()}`;
+                const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&class=${encodeURIComponent(studentClass)}&studentClass=${encodeURIComponent(studentClass)}&t=${Date.now()}`;
                 const res = await sendJSONP(url);
                 
                 if (res && res.status === "SCORE_SUBMITTED") {
@@ -3318,13 +3371,13 @@ let tabSwitchAwayTimestamp = null;
                             }, 450);
                         }
                         
-                        document.getElementById('status').textContent = `🤸 Jumped Hurdle ${expectedHurdleNote}!`;
+                        document.getElementById('status').textContent = ` Jumped Hurdle ${expectedHurdleNote}!`;
                         spawnConfetti(canvas.width / 2, canvas.height / 2, '#22c55e');
                         pushPlayerState();
                         return;
                     } else if (letter === expectedHurdleNote && octave < 2) {
                         playErrorClackSound();
-                        document.getElementById('status').textContent = `⚠️ Play a HIGH ${expectedHurdleNote} (Octave 2+) to jump!`;
+                        document.getElementById('status').textContent = ` Play a HIGH ${expectedHurdleNote} (Octave 2+) to jump!`;
                         return;
                     }
                 }
@@ -3611,35 +3664,35 @@ let tabSwitchAwayTimestamp = null;
         const canvas = document.getElementById('waterfall-canvas');
         const ctx = canvas.getContext('2d');
 
-      const speedSlider = document.getElementById('speed-slider');
-const speedInput = document.getElementById('speed-input');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedInput = document.getElementById('speed-input');
 
-function updateSpeed(newVal, restartPlayback = true) {
-    let val = Math.max(10, Math.min(500, Math.round(Number(newVal) || 100)));
-    speedSlider.value = val;
-    if (speedInput) speedInput.value = val;
-    if (restartPlayback && isPlaying && !isPaused && !isStepMode) {
-        playSong();
-    }
-}
-
-if (speedSlider) {
-    speedSlider.addEventListener('input', () => {
-        updateSpeed(speedSlider.value, true);
-    });
-}
-
-if (speedInput) {
-    speedInput.addEventListener('change', () => {
-        updateSpeed(speedInput.value, true);
-    });
-    speedInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            speedInput.blur();
+        function updateSpeed(newVal, restartPlayback = true) {
+            let val = Math.max(10, Math.min(500, Math.round(Number(newVal) || 100)));
+            speedSlider.value = val;
+            if (speedInput) speedInput.value = val;
+            if (restartPlayback && isPlaying && !isPaused && !isStepMode) {
+                playSong();
+            }
         }
-    });
-}
-        const speedLabel = document.getElementById('speed-label');
+
+        if (speedSlider) {
+            speedSlider.addEventListener('input', () => {
+                updateSpeed(speedSlider.value, true);
+            });
+        }
+
+        if (speedInput) {
+            speedInput.addEventListener('change', () => {
+                updateSpeed(speedInput.value, true);
+            });
+            speedInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    speedInput.blur();
+                }
+            });
+        }
+
         const songSelect = document.getElementById('song-select');
         const instrumentSelect = document.getElementById('instrument-select');
         const themeSelect = document.getElementById('theme-select');
@@ -3648,7 +3701,7 @@ if (speedInput) {
         const btnPause = document.getElementById('btn-pause');
         const btnLoop = document.getElementById('btn-loop');
         const btnRecord = document.getElementById('btn-record');
-        const btnAddTeacherSong = document.getElementById('btnAddTeacherSong');
+        const btnAddTeacherSong = document.getElementById('btn-add-teacher-song');
         const recordBtnText = document.getElementById('record-btn-text');
         const btnShare = document.getElementById('btn-share');
 
@@ -3673,11 +3726,6 @@ if (speedInput) {
         document.getElementById('btn-settings-close').addEventListener('click', () => settingsModal.classList.remove('open'));
         document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
         document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
-
-        speedSlider.addEventListener('input', () => {
-            speedLabel.textContent = `${speedSlider.value}%`;
-            if (isPlaying && !isPaused && !isStepMode) playSong();
-        });
 
         themeSelect.addEventListener('change', (e) => {
             currentTheme = e.target.value;
@@ -3757,63 +3805,62 @@ if (speedInput) {
         }
 
         async function submitTeacherSong() {
-    const pass = teacherPassInput.value;
-    const title = teacherTitleInput.value.trim();
-    const code = teacherCodeTextarea.value.trim();
+            const pass = teacherPassInput.value;
+            const title = teacherTitleInput.value.trim();
+            const code = teacherCodeTextarea.value.trim();
 
-    if (pass !== "Rocky") {
-        teacherErrorDiv.textContent = "Incorrect Teacher Password!";
-        teacherErrorDiv.style.display = "block";
-        return;
-    }
+            if (pass !== "Rocky") {
+                teacherErrorDiv.textContent = "Incorrect Teacher Password!";
+                teacherErrorDiv.style.display = "block";
+                return;
+            }
 
-    if (!title) {
-        teacherErrorDiv.textContent = "Please enter a Song Title / Piece Name!";
-        teacherErrorDiv.style.display = "block";
-        return;
-    }
+            if (!title) {
+                teacherErrorDiv.textContent = "Please enter a Song Title / Piece Name!";
+                teacherErrorDiv.style.display = "block";
+                return;
+            }
 
-    if (!code) {
-        teacherErrorDiv.textContent = "Please enter or record a HayCode string!";
-        teacherErrorDiv.style.display = "block";
-        return;
-    }
+            if (!code) {
+                teacherErrorDiv.textContent = "Please enter or record a HayCode string!";
+                teacherErrorDiv.style.display = "block";
+                return;
+            }
 
-    const parsed = parsePianoPad(code);
-    if (parsed.length === 0) {
-        teacherErrorDiv.textContent = "Invalid HayCode format!";
-        teacherErrorDiv.style.display = "block";
-        return;
-    }
+            const parsed = parsePianoPad(code);
+            if (parsed.length === 0) {
+                teacherErrorDiv.textContent = "Invalid HayCode format!";
+                teacherErrorDiv.style.display = "block";
+                return;
+            }
 
-    // Include default difficulty property when adding teacher song
-    songList.push({ title: title, code: code, difficulty: 'Medium' });
-    localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
-    renderSongSelect();
-    
-    songSelect.value = code;
-    currentSongTitle = title;
-    currentSong = autoTransposeSong(parsed);
+            songList.push({ title: title, code: code, difficulty: 'Medium' });
+            localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
+            renderSongSelect();
+            
+            songSelect.value = code;
+            currentSongTitle = title;
+            currentSong = autoTransposeSong(parsed);
 
-    teacherModal.classList.remove('open');
-    document.getElementById('status').textContent = `Adding "${title}" to PianoPad & Google Sheet...`;
+            teacherModal.classList.remove('open');
+            document.getElementById('status').textContent = `Adding "${title}" to PianoPad & Google Sheet...`;
 
-    if (APPS_SCRIPT_URL) {
-        try {
-            const addUrl = `${APPS_SCRIPT_URL}?action=ADD_SONG&title=${encodeURIComponent(title)}&code=${encodeURIComponent(code)}&t=${Date.now()}`;
-            await sendJSONP(addUrl);
-            document.getElementById('status').textContent = ` "${title}" successfully added to PianoPad & Google Sheet!`;
-        } catch (e) {
-            console.warn("Could not post to Apps Script endpoint.", e);
-            document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
+            if (APPS_SCRIPT_URL) {
+                try {
+                    const addUrl = `${APPS_SCRIPT_URL}?action=ADD_SONG&title=${encodeURIComponent(title)}&code=${encodeURIComponent(code)}&t=${Date.now()}`;
+                    await sendJSONP(addUrl);
+                    document.getElementById('status').textContent = ` "${title}" successfully added to PianoPad & Google Sheet!`;
+                } catch (e) {
+                    console.warn("Could not post to Apps Script endpoint.", e);
+                    document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
+                }
+            } else {
+                document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
+            }
+            
+            updateRosterSong();
+            playSong();
         }
-    } else {
-        document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
-    }
-    
-    updateRosterSong();
-    playSong();
-}
 
         function toggleGameMode() {
             initAudio();
@@ -3939,11 +3986,11 @@ if (speedInput) {
             const badgeContainer = document.getElementById('badge-container');
             
             if (currentSpeed >= 100) {
-                badgeContainer.innerHTML = `<div class="badge-box badge-gold">🏆 GOLD BADGE: Full Master Speed (${currentSpeed}%)</div>`;
+                badgeContainer.innerHTML = `<div class="badge-box badge-gold"> GOLD BADGE: Full Master Speed (${currentSpeed}%)</div>`;
             } else if (currentSpeed >= 75) {
-                badgeContainer.innerHTML = `<div class="badge-box badge-silver">🥈 SILVER BADGE: Intermediate Tempo (${currentSpeed}%)</div>`;
+                badgeContainer.innerHTML = `<div class="badge-box badge-silver"> SILVER BADGE: Intermediate Tempo (${currentSpeed}%)</div>`;
             } else if (currentSpeed >= 50) {
-                badgeContainer.innerHTML = `<div class="badge-box badge-bronze">🥉 BRONZE BADGE: Practice Pace (${currentSpeed}%)</div>`;
+                badgeContainer.innerHTML = `<div class="badge-box badge-bronze"> BRONZE BADGE: Practice Pace (${currentSpeed}%)</div>`;
             } else {
                 badgeContainer.innerHTML = `<div style="font-size:0.8rem; color:#9ca3af; margin-top:4px;">Practice Speed: ${currentSpeed}% (Reach 50%+ for Practice Badges)</div>`;
             }
@@ -3982,7 +4029,7 @@ if (speedInput) {
                 recordedRests = [];
                 lastRecordNoteTime = 0;
                 
-                recordBtnText.textContent = '● RECORDING (Click to Stop)';
+                recordBtnText.textContent = ' RECORDING (Click to Stop)';
                 btnRecord.classList.remove('btn-secondary');
                 btnRecord.classList.add('btn-rec-active');
                 btnShare.style.display = 'none';
@@ -4015,8 +4062,14 @@ if (speedInput) {
                 if (localStorage.getItem('pianopad_avatar')) {
                     document.getElementById('student-join-avatar').value = localStorage.getItem('pianopad_avatar');
                 }
+                if (localStorage.getItem('pianopad_class')) {
+                    document.getElementById('student-join-class').value = localStorage.getItem('pianopad_class');
+                }
+                if (localStorage.getItem('pianopad_room')) {
+                    document.getElementById('student-join-room').value = localStorage.getItem('pianopad_room');
+                }
                 document.getElementById('room-join-modal').classList.add('open');
-                document.getElementById('status').textContent = '🔑 Room Login modal opened via "(" hotkey.';
+                document.getElementById('status').textContent = ' Room Login modal opened via "(" hotkey.';
                 return;
             }
 
@@ -4047,7 +4100,7 @@ if (speedInput) {
             initAudio();
             
             if (isSongBattle) {
-                document.getElementById('status').textContent = '⚠️ Step Mode is NOT permitted during Song Battles!';
+                document.getElementById('status').textContent = ' Step Mode is NOT permitted during Song Battles!';
                 return;
             }
 
@@ -4466,7 +4519,7 @@ if (speedInput) {
                         dodgeDodgedCount++;
                         gameStats.perfect++;
                         highlightKey(noteStr, 220, '#22c55e');
-                        document.getElementById('status').textContent = `🛡️ Safe Dodge! Total Dodges: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
+                        document.getElementById('status').textContent = ` Safe Dodge! Total Dodges: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
                         
                         const safePos = keyPosMap[noteStr.toLowerCase().trim()];
                         if (safePos) spawnConfetti(safePos.left + safePos.width / 2, canvas.height, '#22c55e');
@@ -4476,7 +4529,7 @@ if (speedInput) {
                         gameStats.miss++;
                         playErrorClackSound();
                         highlightKey(noteStr, 220, '#ef4444');
-                        document.getElementById('status').textContent = `💥 Wall Impact! Lives left: ❤️ ${dodgeLives} | Dodges: ${dodgeDodgedCount}`;
+                        document.getElementById('status').textContent = ` Wall Impact! Lives left: ❤️ ${dodgeLives} | Dodges: ${dodgeDodgedCount}`;
 
                         if (dodgeLives <= 0) {
                             isPlaying = false;
@@ -4595,159 +4648,155 @@ if (speedInput) {
         }
 
         function parseCSVToSongs(csvText) {
-    const songs = [];
-    const lines = csvText.split(/\r?\n/);
-    
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
+            const songs = [];
+            const lines = csvText.split(/\r?\n/);
+            
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
 
-        const row = [];
-        let insideQuote = false;
-        let entry = '';
+                const row = [];
+                let insideQuote = false;
+                let entry = '';
 
-        for (let j = 0; j < line.length; j++) {
-            const char = line[j];
-            if (char === '"' && line[j + 1] === '"') {
-                entry += '"';
-                j++;
-            } else if (char === '"') {
-                insideQuote = !insideQuote;
-            } else if (char === ',' && !insideQuote) {
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"' && line[j + 1] === '"') {
+                        entry += '"';
+                        j++;
+                    } else if (char === '"') {
+                        insideQuote = !insideQuote;
+                    } else if (char === ',' && !insideQuote) {
+                        row.push(entry);
+                        entry = '';
+                    } else {
+                        entry += char;
+                    }
+                }
                 row.push(entry);
-                entry = '';
-            } else {
-                entry += char;
-            }
-        }
-        row.push(entry);
 
-        if (row.length >= 2 && row[0].trim()) {
-            songs.push({
-                title: row[0].trim().replace(/^"|"$/g, ''),
-                code: row[1].trim().replace(/^"|"$/g, ''),
-                difficulty: row[2] ? row[2].trim().replace(/^"|"$/g, '') : ''
+                if (row.length >= 2 && row[0].trim()) {
+                    songs.push({
+                        title: row[0].trim().replace(/^"|"$/g, ''),
+                        code: row[1].trim().replace(/^"|"$/g, ''),
+                        difficulty: row[2] ? row[2].trim().replace(/^"|"$/g, '') : ''
+                    });
+                }
+            }
+            return songs;
+        }
+
+        function renderSongSelect() {
+            const uniqueMap = new Map();
+            songList.forEach(s => {
+                const key = s.title.toLowerCase().trim();
+                if (!uniqueMap.has(key)) uniqueMap.set(key, s);
+            });
+            const sortedList = Array.from(uniqueMap.values());
+            sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
+
+            songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
+            sortedList.forEach(song => {
+                const opt = document.createElement('option');
+                opt.value = song.code;
+
+                let badge = ' ';
+                if (song.difficulty) {
+                    const diff = song.difficulty.toLowerCase().trim();
+                    if (diff === 'easy') {
+                        badge = ' ';
+                        opt.style.color = '#22c55e';
+                    } else if (diff === 'medium') {
+                        badge = ' ';
+                        opt.style.color = '#f97316';
+                    } else if (diff === 'hard') {
+                        badge = ' ';
+                        opt.style.color = '#ef4444';
+                    }
+                    opt.dataset.diff = diff;
+                }
+
+                opt.textContent = badge + song.title;
+                songSelect.appendChild(opt);
             });
         }
-    }
-    return songs;
-}
 
-       function renderSongSelect() {
-    const uniqueMap = new Map();
-    songList.forEach(s => {
-        const key = s.title.toLowerCase().trim();
-        if (!uniqueMap.has(key)) uniqueMap.set(key, s);
-    });
-    const sortedList = Array.from(uniqueMap.values());
-    sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
+        async function syncSongsWithGoogleSheet() {
+            localStorage.removeItem('pianopad_sheet_songs');
 
-    songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
-    sortedList.forEach(song => {
-        const opt = document.createElement('option');
-        opt.value = song.code;
-
-        // Determine difficulty indicator badge
-        let badge = '⚪ ';
-        if (song.difficulty) {
-            const diff = song.difficulty.toLowerCase().trim();
-            if (diff === 'easy') {
-                badge = '🟢 ';
-                opt.style.color = '#22c55e';
-            } else if (diff === 'medium') {
-                badge = '🟠 ';
-                opt.style.color = '#f97316';
-            } else if (diff === 'hard') {
-                badge = '🔴 ';
-                opt.style.color = '#ef4444';
+            let localCache = [];
+            const cachedData = localStorage.getItem('pianopad_sheet_songs');
+            if (cachedData) {
+                try {
+                    localCache = JSON.parse(cachedData);
+                    songList = [...localCache];
+                    renderSongSelect();
+                    const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
+                    if (defaultObj) {
+                        currentSongTitle = defaultObj.title;
+                        currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
+                    }
+                    document.getElementById('status').textContent = `Loaded ${songList.length} cached songs. Syncing live Google Sheet...`;
+                } catch (e) {
+                    console.warn("Cache parse error");
+                }
             }
-            opt.dataset.diff = diff;
-        }
 
-        opt.textContent = badge + song.title;
-        songSelect.appendChild(opt);
-    });
-}
+            let remoteSongs = [];
 
- async function syncSongsWithGoogleSheet() {
-    // Clear legacy song cache that lacks difficulty fields
-    localStorage.removeItem('pianopad_sheet_songs');
+            try {
+                const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_SONGS&v=2&t=${Date.now()}`);
 
-    let localCache = [];
-    const cachedData = localStorage.getItem('pianopad_sheet_songs');
-    if (cachedData) {
-        try {
-            localCache = JSON.parse(cachedData);
-            songList = [...localCache];
-            renderSongSelect();
-            const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
-            if (defaultObj) {
-                currentSongTitle = defaultObj.title;
-                currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
+                if (res && res.songs && res.songs.length > 0) {
+                    remoteSongs = res.songs.map(s => ({
+                        title: s.title || s[0],
+                        code: s.code || s[1],
+                        difficulty: s.difficulty || s[2] || ''
+                    }));
+                } else {
+                    throw new Error(res ? res.error : "No songs returned from JSONP");
+                }
+            } catch (err) {
+                console.warn("Apps Script fetch error, trying CSV fallback...", err);
+                try {
+                    const response = await fetch(SPREADSHEET_CSV_URL);
+                    if (response.ok) {
+                        const csvText = await response.text();
+                        remoteSongs = parseCSVToSongs(csvText);
+                    }
+                } catch (csvErr) {
+                    console.warn("CSV Fallback error:", csvErr);
+                }
             }
-            document.getElementById('status').textContent = `Loaded ${songList.length} cached songs. Syncing live Google Sheet...`;
-        } catch (e) {
-            console.warn("Cache parse error");
-        }
-    }
 
-    let remoteSongs = [];
+            if (remoteSongs.length > 0) {
+                const songMap = new Map();
+                remoteSongs.forEach(s => songMap.set(s.title.toLowerCase().trim(), s));
+                localCache.forEach(s => {
+                    const key = s.title.toLowerCase().trim();
+                    if (!songMap.has(key)) {
+                        songMap.set(key, s);
+                    }
+                });
 
-    try {
-  
-        const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_SONGS&v=2&t=${Date.now()}`);
+                songList = Array.from(songMap.values());
+                localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
+                renderSongSelect();
 
-        if (res && res.songs && res.songs.length > 0) {
-            // Ensure difficulty property is mapped from Apps Script response
-            remoteSongs = res.songs.map(s => ({
-                title: s.title || s[0],
-                code: s.code || s[1],
-                difficulty: s.difficulty || s[2] || ''
-            }));
-        } else {
-            throw new Error(res ? res.error : "No songs returned from JSONP");
-        }
-    } catch (err) {
-        console.warn("Apps Script fetch error, trying CSV fallback...", err);
-        try {
-            const response = await fetch(SPREADSHEET_CSV_URL);
-            if (response.ok) {
-                const csvText = await response.text();
-                remoteSongs = parseCSVToSongs(csvText);
+                const defaultObj = songList.find(s => s.title === currentSongTitle) || songList.find(s => s.title === 'Wipeout') || songList[0];
+                if (defaultObj) {
+                    currentSongTitle = defaultObj.title;
+                    songSelect.value = defaultObj.code;
+                    currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
+                }
+                document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
+            } else if (songList.length > 0) {
+                document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
+            } else {
+                document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
             }
-        } catch (csvErr) {
-            console.warn("CSV Fallback error:", csvErr);
+            updateMonitorWidget();
         }
-    }
-
-    if (remoteSongs.length > 0) {
-        const songMap = new Map();
-        remoteSongs.forEach(s => songMap.set(s.title.toLowerCase().trim(), s));
-        localCache.forEach(s => {
-            const key = s.title.toLowerCase().trim();
-            if (!songMap.has(key)) {
-                songMap.set(key, s);
-            }
-        });
-
-        songList = Array.from(songMap.values());
-        localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
-        renderSongSelect();
-
-        const defaultObj = songList.find(s => s.title === currentSongTitle) || songList.find(s => s.title === 'Wipeout') || songList[0];
-        if (defaultObj) {
-            currentSongTitle = defaultObj.title;
-            songSelect.value = defaultObj.code;
-            currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
-        }
-        document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
-    } else if (songList.length > 0) {
-        document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
-    } else {
-        document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
-    }
-    updateMonitorWidget();
-}
 
         function buildTimeline() {
             noteTimeline = [];
@@ -4923,32 +4972,30 @@ if (speedInput) {
                 const loopEndMs = firstHit + (totalDuration * endPct);
 
                 if (effectiveElapsed >= loopEndMs) {
-        // Accelerate tempo by 2% on each replay
-        const currentSpeedVal = parseFloat(speedSlider.value);
-        const acceleratedSpeed = Math.min(500, Math.round(currentSpeedVal * 1.02));
-        
-        if (acceleratedSpeed !== currentSpeedVal) {
-            updateSpeed(acceleratedSpeed, false);
-            buildTimeline(); // Rebuild note timestamps scaled to the new 2% faster tempo
-        }
+                    const currentSpeedVal = parseFloat(speedSlider.value);
+                    const acceleratedSpeed = Math.min(500, Math.round(currentSpeedVal * 1.02));
+                    
+                    if (acceleratedSpeed !== currentSpeedVal) {
+                        updateSpeed(acceleratedSpeed, false);
+                        buildTimeline();
+                    }
 
-        // Restart replay from loop start position
-        const updatedFirstHit = noteTimeline[0].hitTime;
-        const updatedLastHit = noteTimeline[noteTimeline.length - 1].hitTime + noteTimeline[noteTimeline.length - 1].duration;
-        const updatedTotalDuration = updatedLastHit - updatedFirstHit;
-        const newLoopStartMs = updatedFirstHit + (updatedTotalDuration * startPct);
+                    const updatedFirstHit = noteTimeline[0].hitTime;
+                    const updatedLastHit = noteTimeline[noteTimeline.length - 1].hitTime + noteTimeline[noteTimeline.length - 1].duration;
+                    const updatedTotalDuration = updatedLastHit - updatedFirstHit;
+                    const newLoopStartMs = updatedFirstHit + (updatedTotalDuration * startPct);
 
-        playbackStartTime = now - newLoopStartMs - accumulatedPauseMs;
-        effectiveElapsed = newLoopStartMs;
-        noteTimeline.forEach(n => {
-            if (n.hitTime >= newLoopStartMs) {
-                n.played = false;
-                n.gameStatus = 'pending';
-            }
-        });
+                    playbackStartTime = now - newLoopStartMs - accumulatedPauseMs;
+                    effectiveElapsed = newLoopStartMs;
+                    noteTimeline.forEach(n => {
+                        if (n.hitTime >= newLoopStartMs) {
+                            n.played = false;
+                            n.gameStatus = 'pending';
+                        }
+                    });
 
-        document.getElementById('status').textContent = `🔁 Loop accelerated by +2% (Now ${acceleratedSpeed}%)`;
-    }
+                    document.getElementById('status').textContent = ` Loop accelerated by +2% (Now ${acceleratedSpeed}%)`;
+                }
             }
 
             if (activeMiniGame === 'simon') {
@@ -5296,7 +5343,7 @@ if (speedInput) {
             const fullClassCode = (yearVal === '7' || yearVal === '8') ? `${yearVal}${letterVal}` : `Year${yearVal}`;
             const studentName = (sessionStudentName || localStorage.getItem('pianopad_name') || 'Student').replace(/\s+/g, '');
             
-            const avatar = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || '🏃';
+            const avatar = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || '';
 
             const fullFormattedName = `${fullClassCode}_${pendingExportFileName}_${studentName}_${avatar}`;
 
@@ -5308,7 +5355,7 @@ if (speedInput) {
                 a.href = url;
                 a.download = `${fullFormattedName}.wav`;
                 a.click();
-                showFlashingStatus(`✅ DOWNLOAD COMPLETE: "${fullFormattedName}.wav" saved locally!`);
+                showFlashingStatus(` DOWNLOAD COMPLETE: "${fullFormattedName}.wav" saved locally!`);
             }
 
             if (pendingExportMode === 'drive' || pendingExportMode === 'both') {
@@ -5345,14 +5392,14 @@ if (speedInput) {
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === "SUCCESS") {
-                        showFlashingStatus(`✅ UPLOAD SUCCESSFUL! Saved as "${fullFormattedName}.wav" in ${data.assignedRoom} -> ${data.folderName}`);
+                        showFlashingStatus(` UPLOAD SUCCESSFUL! Saved as "${fullFormattedName}.wav" in ${data.assignedRoom} -> ${data.folderName}`);
                     } else {
-                        showFlashingStatus(`⚠️ Upload Notice: ${data.error || 'Check Drive setup'}`);
+                        showFlashingStatus(` Upload Notice: ${data.error || 'Check Drive setup'}`);
                     }
                 })
                 .catch(err => {
                     console.error("Network notice:", err);
-                    showFlashingStatus(`✅ Audio saved as "${fullFormattedName}.wav"!`);
+                    showFlashingStatus(` Audio saved as "${fullFormattedName}.wav"!`);
                 });
             };
         }
@@ -5516,8 +5563,12 @@ if (speedInput) {
 
             const savedName = localStorage.getItem('pianopad_name');
             const savedAvatar = localStorage.getItem('pianopad_avatar');
+            const savedClass = localStorage.getItem('pianopad_class');
+            const savedRoom = localStorage.getItem('pianopad_room');
             if (savedName) sessionStudentName = savedName;
             if (savedAvatar) sessionStudentAvatar = savedAvatar;
+            if (savedClass) currentStudentClass = savedClass;
+            if (savedRoom) currentRoom = savedRoom;
 
             const now = new Date();
             const day = now.getDay();
@@ -5534,6 +5585,8 @@ if (speedInput) {
             } else {
                 document.getElementById('student-join-name').value = savedName || "";
                 if (savedAvatar) document.getElementById('student-join-avatar').value = savedAvatar;
+                if (savedClass) document.getElementById('student-join-class').value = savedClass;
+                if (savedRoom) document.getElementById('student-join-room').value = savedRoom;
                 document.getElementById('room-join-modal').classList.add('open');
             }
 
