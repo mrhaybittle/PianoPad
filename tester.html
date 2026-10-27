@@ -1859,7 +1859,7 @@ let tabSwitchAwayTimestamp = null;
             window.firebaseOnDisconnect(myRef).remove();
         }
 
-        document.getElementById('btn-join-room').addEventListener('click', () => {
+       document.getElementById('btn-join-room').addEventListener('click', () => {
             const name = document.getElementById('student-join-name').value.trim();
             const avatar = document.getElementById('student-join-avatar').value;
             const room = document.getElementById('student-join-room').value;
@@ -1873,6 +1873,7 @@ let tabSwitchAwayTimestamp = null;
 
             localStorage.setItem('pianopad_name', sessionStudentName);
             localStorage.setItem('pianopad_avatar', sessionStudentAvatar);
+            localStorage.setItem('pianopad_class', currentRoom);
 
             document.getElementById('room-join-modal').classList.remove('open');
             
@@ -3251,11 +3252,12 @@ let tabSwitchAwayTimestamp = null;
 
             ensureStudentName();
             const speedText = speedSlider.value + '%';
+            const studentClass = currentRoom || localStorage.getItem('pianopad_class') || localStorage.getItem('pianopad_student_class') || '';
 
             try {
-                document.getElementById('status').textContent = `Submitting score (${accuracyNum}) for ${sessionStudentName}...`;
+                document.getElementById('status').textContent = `Submitting score (${accuracyNum}) for ${sessionStudentName} (${studentClass || 'No Class'})...`;
 
-                const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&t=${Date.now()}`;
+                const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&class=${encodeURIComponent(studentClass)}&studentClass=${encodeURIComponent(studentClass)}&t=${Date.now()}`;
                 const res = await sendJSONP(url);
                 
                 if (res && res.status === "SCORE_SUBMITTED") {
@@ -5516,8 +5518,10 @@ if (speedInput) {
 
             const savedName = localStorage.getItem('pianopad_name');
             const savedAvatar = localStorage.getItem('pianopad_avatar');
+            const savedClass = localStorage.getItem('pianopad_class');
             if (savedName) sessionStudentName = savedName;
             if (savedAvatar) sessionStudentAvatar = savedAvatar;
+            if (savedClass) currentRoom = savedClass;
 
             const now = new Date();
             const day = now.getDay();
