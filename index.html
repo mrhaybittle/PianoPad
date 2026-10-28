@@ -4687,40 +4687,39 @@
         }
 
         function renderSongSelect() {
-            const uniqueMap = new Map();
-            songList.forEach(s => {
-                const key = s.title.toLowerCase().trim();
-                if (!uniqueMap.has(key)) uniqueMap.set(key, s);
-            });
-            const sortedList = Array.from(uniqueMap.values());
-            sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
+    const uniqueMap = new Map();
+    songList.forEach(s => {
+        const key = s.title.toLowerCase().trim();
+        if (!uniqueMap.has(key)) uniqueMap.set(key, s);
+    });
+    const sortedList = Array.from(uniqueMap.values());
+    sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
 
-            songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
-            sortedList.forEach(song => {
-                const opt = document.createElement('option');
-                opt.value = song.code;
+    songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
+    sortedList.forEach(song => {
+        const opt = document.createElement('option');
+        opt.value = song.code;
 
-                let badge = ' ';
-                if (song.difficulty) {
-                    const diff = song.difficulty.toLowerCase().trim();
-                    if (diff === 'easy') {
-                        badge = ' ';
-                        opt.style.color = '#22c55e';
-                    } else if (diff === 'medium') {
-                        badge = ' ';
-                        opt.style.color = '#f97316';
-                    } else if (diff === 'hard') {
-                        badge = ' ';
-                        opt.style.color = '#ef4444';
-                    }
-                    opt.dataset.diff = diff;
-                }
-
-                opt.textContent = badge + song.title;
-                songSelect.appendChild(opt);
-            });
+        let badge = '';
+        if (song.difficulty) {
+            const diff = song.difficulty.toLowerCase().trim();
+            if (diff === 'easy') {
+                badge = '🟢 ';
+                opt.style.color = '#22c55e';
+            } else if (diff === 'medium') {
+                badge = '🟠 ';
+                opt.style.color = '#f97316';
+            } else if (diff === 'hard') {
+                badge = '🔴 ';
+                opt.style.color = '#ef4444';
+            }
+            opt.dataset.diff = diff;
         }
 
+        opt.textContent = badge + song.title;
+        songSelect.appendChild(opt);
+    });
+}
         async function syncSongsWithGoogleSheet() {
             localStorage.removeItem('pianopad_sheet_songs');
 
