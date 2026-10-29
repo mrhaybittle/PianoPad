@@ -3354,7 +3354,10 @@ function checkIsOutsideSchoolHours() {
                 document.getElementById('status').textContent = `Failed to submit score for ${sessionStudentName}.`;
             }
         }
-
+function checkSprintTurboZone(pxProgress) {
+            const isTurboPad = (pxProgress % 640) >= 300 && (pxProgress % 640) <= 360;
+            return isTurboPad;
+        }
         function handleSprintInput(noteStr) {
             if (!raceActive) return;
 
@@ -3420,12 +3423,20 @@ function checkIsOutsideSchoolHours() {
                 sprintIndex++;
                 sprintKeystrokeCount++;
 
+                const isTurbo = checkSprintTurboZone(localPlayer.pxProgress);
+                const stepBoost = isTurbo ? 60 : 36;
+
                 const avatarEl = document.getElementById(`avatar-${localPlayer.id}`);
                 if (avatarEl && !avatarEl.classList.contains('jumping')) {
-                    avatarEl.textContent = (sprintKeystrokeCount % 2 === 0) ? '🏃‍♂️' : (sessionStudentAvatar || '🏃');
+                    avatarEl.textContent = isTurbo ? '⚡' : ((sprintKeystrokeCount % 2 === 0) ? '🏃‍♂️' : (sessionStudentAvatar || '🏃'));
                 }
 
-                localPlayer.pxProgress = sprintKeystrokeCount * 36;
+                if (isTurbo) {
+                    document.getElementById('status').textContent = '⚡ TURBO BOOST ACTIVATED! +Bonus Speed!';
+                    spawnConfetti(canvas.width / 2, canvas.height / 2, '#facc15');
+                }
+
+                localPlayer.pxProgress += stepBoost;
                 updateMultiplayerLanesUI();
 
                 if (localPlayer.pxProgress >= 3600 && !localPlayer.finishTime) {
@@ -3445,7 +3456,6 @@ function checkIsOutsideSchoolHours() {
                 gameStats.miss++;
                 playErrorClackSound();
             }
-        }
 
         function initAudio() {
             if (!audioCtx) {
