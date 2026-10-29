@@ -4980,27 +4980,28 @@ let keyRipples = [];
                 const rip = keyRipples[i];
                 targetCtx.save();
                 targetCtx.strokeStyle = rip.color;
-                targetCtx.lineWidth = 2.5;
+                targetCtx.lineWidth = 3;
                 targetCtx.globalAlpha = Math.max(0, rip.alpha);
                 targetCtx.beginPath();
                 targetCtx.arc(rip.x, rip.y, rip.r, 0, Math.PI * 2);
                 targetCtx.stroke();
                 targetCtx.restore();
-                rip.r += 2.2;
-                rip.alpha -= 0.04;
+                rip.r += 2.8;
+                rip.alpha -= 0.035;
                 if (rip.alpha <= 0) keyRipples.splice(i, 1);
             }
         }
 
         function drawMiniRadar(ctx, currentProgressPct) {
-            const radarH = 4;
+            const radarH = 6;
+            const radarY = (showSheetMusic && !activeMiniGame) ? 75 : 0;
             ctx.save();
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.fillRect(0, 0, ctx.canvas.width, radarH);
-            ctx.fillStyle = 'var(--accent-color, #38bdf8)';
-            ctx.shadowColor = '#38bdf8';
-            ctx.shadowBlur = 6;
-            ctx.fillRect(0, 0, ctx.canvas.width * (Math.max(0, Math.min(100, currentProgressPct)) / 100), radarH);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+            ctx.fillRect(0, radarY, ctx.canvas.width, radarH);
+            ctx.fillStyle = '#38bdf8';
+            ctx.shadowColor = '#00f0ff';
+            ctx.shadowBlur = 8;
+            ctx.fillRect(0, radarY, ctx.canvas.width * (Math.max(0, Math.min(100, currentProgressPct)) / 100), radarH);
             ctx.restore();
         }
         function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending') {
