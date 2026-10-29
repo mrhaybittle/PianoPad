@@ -5100,7 +5100,7 @@
                 }
             }
 
-            noteTimeline.forEach(item => {
+            noteTimeline.forEach((item, itemIdx) => {
                 const backgroundVol = (isGameMode || activeMiniGame) ? 0.2 : 1.0;
 
                 if (!isStepMode && effectiveElapsed >= item.hitTime && !item.played) {
@@ -5130,21 +5130,41 @@
                     if (isGameMode) updateGameStatus();
                 }
 
-                item.notes.forEach(noteStr => {
-                    const normNote = noteStr.toLowerCase().trim();
+                const normNotes = item.notes.map(n => n.toLowerCase().trim());
+
+                normNotes.forEach((normNote, noteSubIdx) => {
+                    const origNoteStr = item.notes[noteSubIdx];
                     const pos = keyPosMap[normNote];
 
                     if (pos) {
                         const timeUntilHit = item.hitTime - effectiveElapsed;
                         const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * waterfallHeight;
-                        const blockHeight = (item.duration / currentFallSpeed) * waterfallHeight;
+                        let blockHeight = (item.duration / currentFallSpeed) * waterfallHeight;
+
+                        // Check if a subsequent event shares this exact pitch
+                        let nextSamePitchItem = null;
+                        for (let k = itemIdx + 1; k < noteTimeline.length; k++) {
+                            if (noteTimeline[k].notes.some(n => n.toLowerCase().trim() === normNote)) {
+                                nextSamePitchItem = noteTimeline[k];
+                                break;
+                            }
+                        }
+
+                        // Enforce at least 6px clear separation before the next rectangle of identical pitch
+                        if (nextSamePitchItem) {
+                            const timeGap = nextSamePitchItem.hitTime - item.hitTime;
+                            const distanceToNext = (timeGap / currentFallSpeed) * waterfallHeight;
+                            const separationPx = 6;
+                            blockHeight = Math.min(blockHeight, Math.max(6, distanceToNext - separationPx));
+                        }
+
                         const yTop = yBottom - blockHeight;
 
                         if (yBottom > waterfallTop && yTop < canvasHeight) {
                             const drawY = Math.max(waterfallTop, yTop);
                             const drawH = Math.min(canvasHeight - drawY, yBottom - drawY);
                             const active = effectiveElapsed >= item.hitTime && effectiveElapsed <= (item.hitTime + item.duration);
-                            drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, noteStr, active, item.gameStatus);
+                            drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, origNoteStr, active, item.gameStatus);
                         }
                     }
                 });
