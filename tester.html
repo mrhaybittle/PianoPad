@@ -2101,7 +2101,7 @@ function checkIsOutsideSchoolHours() {
 
                 const del = url.includes('?') ? '&' : '?';
                 script.src = `${url}${del}callback=${cbName}`;
-                script.onerror = function() {
+               script.onerror = function() {
                     delete window[cbName];
                     if (document.body.contains(script)) document.body.removeChild(script);
                     resolve({ error: "SCRIPT_LOAD_ERROR" });
