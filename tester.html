@@ -2109,7 +2109,16 @@ function checkIsOutsideSchoolHours() {
                 document.body.appendChild(script);
             });
         }
-
+function foldNoteIntoVisibleRange(noteStr) {
+            if (!noteStr) return noteStr;
+            const match = noteStr.trim().toLowerCase().match(/^([a-g]#?)([0-9]+)$/);
+            if (!match) return noteStr;
+            const letter = match[1];
+            let octave = parseInt(match[2], 10);
+            while (octave < 1) octave++;
+            while (octave > 4) octave--;
+            return `${letter}${octave}`;
+        }
         function getDiatonicStepAndShift(noteStr) {
             noteStr = noteStr.trim().toLowerCase();
             const match = noteStr.match(/^([a-g])(#?)([0-9]+)$/);
