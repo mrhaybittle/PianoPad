@@ -2105,7 +2105,7 @@ function checkIsOutsideSchoolHours() {
                     delete window[cbName];
                     if (document.body.contains(script)) document.body.removeChild(script);
                     resolve({ error: "SCRIPT_LOAD_ERROR" });
-                };
+                };parsePianoPad(hayCode)
                 document.body.appendChild(script);
             });
         }
@@ -4698,7 +4698,7 @@ function checkSprintTurboZone(pxProgress) {
             const song = [];
             for (let i = 0; i < rawNotes.length; i++) {
                 song.push({
-                    notes: rawNotes[i].split('+').filter(Boolean),
+                    notes: rawNotes[i].split('+').filter(Boolean).map(n => foldNoteIntoVisibleRange(n.trim().toLowerCase())),
                     rest: parseInt(rests[i] || '250', 10)
                 });
             }
