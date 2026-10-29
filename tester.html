@@ -4992,6 +4992,18 @@ let keyRipples = [];
                 if (rip.alpha <= 0) keyRipples.splice(i, 1);
             }
         }
+
+        function drawMiniRadar(ctx, currentProgressPct) {
+            const radarH = 4;
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillRect(0, 0, ctx.canvas.width, radarH);
+            ctx.fillStyle = 'var(--accent-color, #38bdf8)';
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 6;
+            ctx.fillRect(0, 0, ctx.canvas.width * (Math.max(0, Math.min(100, currentProgressPct)) / 100), radarH);
+            ctx.restore();
+        }
         function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending') {
             ctx.save();
             
@@ -5126,6 +5138,13 @@ let keyRipples = [];
                 drawSimonStaircase(simonSequence.length);
             } else {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+
+            if (isPlaying && noteTimeline.length > 0 && !activeMiniGame) {
+                const firstHit = noteTimeline[0].hitTime;
+                const lastHit = noteTimeline[noteTimeline.length - 1].hitTime + noteTimeline[noteTimeline.length - 1].duration;
+                const progressPct = ((effectiveElapsed - firstHit) / Math.max(1, lastHit - firstHit)) * 100;
+                drawMiniRadar(ctx, progressPct);
             }
 
             const canvasHeight = canvas.height;
