@@ -1745,7 +1745,8 @@
         let lastDetectedNote = null;
         let noteHoldCounter = 0;
 
-        let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+       let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+        let currentPerfectStreak = 0;
         let sessionStudentName = "";
 
         let currentStepIndex = 0;
@@ -3896,14 +3897,16 @@
             }
         }
 
-        function resetGameStats() {
+    function resetGameStats() {
             gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+            currentPerfectStreak = 0;
         }
 
-        function updateGameStatus() {
+       function updateGameStatus() {
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
-            document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}`;
+            const streakLabel = currentPerfectStreak >= 10 ? ` | 🔥 STREAK (${currentPerfectStreak})` : '';
+            document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}${streakLabel}`;
         }
 
         async function calculateAndDisplayRank(accuracyNum) {
@@ -4599,6 +4602,7 @@
                     if (diff <= 140) {
                         target.gameStatus = 'perfect';
                         gameStats.perfect++;
+                        currentPerfectStreak++;
                         highlightKey(noteStr, 220, '#22c55e');
                         
                         const normNote = noteStr.toLowerCase().trim();
@@ -4607,6 +4611,7 @@
                     } else {
                         target.gameStatus = 'earlyLate';
                         gameStats.earlyLate++;
+                        currentPerfectStreak = 0;
                         highlightKey(noteStr, 220, '#f97316');
                     }
 
@@ -4621,6 +4626,7 @@
                     if (isGameMode) updateGameStatus();
                 } else {
                     gameStats.miss++;
+                    currentPerfectStreak = 0;
                     playErrorClackSound();
                     highlightKey(noteStr, 200, '#ef4444');
 
@@ -4631,6 +4637,7 @@
                             pushPlayerState();
                         }
                     }
+                    if (isGameMode) updateGameStatus();
                 }
             } else {
                 highlightKey(noteStr);
@@ -5107,6 +5114,7 @@
                 if ((isGameMode || activeMiniGame) && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 280)) {
                     item.gameStatus = 'miss';
                     gameStats.miss++;
+                    currentPerfectStreak = 0;
                     if (isSongBattle) {
                         const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
                         if (localPlayer) {
