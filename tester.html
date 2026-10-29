@@ -4123,6 +4123,28 @@ function checkSprintTurboZone(pxProgress) {
                 return;
             }
 
+            if (e.key === '[' || e.key === ']') {
+                if (isPlaying && noteTimeline.length > 0) {
+                    const firstHit = noteTimeline[0].hitTime;
+                    const lastHit = noteTimeline[noteTimeline.length - 1].hitTime + noteTimeline[noteTimeline.length - 1].duration;
+                    const totalDuration = Math.max(1, lastHit - firstHit);
+                    const effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
+                    const currentPct = Math.max(0, Math.min(100, Math.round(((effectiveElapsed - firstHit) / totalDuration) * 100)));
+
+                    if (e.key === '[') {
+                        loopStartSlider.value = Math.min(currentPct, parseInt(loopEndSlider.value, 10) - 1);
+                        updateLoopRange();
+                        document.getElementById('status').textContent = `🔁 Loop Start Marker set to ${loopStartSlider.value}%`;
+                    } else if (e.key === ']') {
+                        loopEndSlider.value = Math.max(currentPct, parseInt(loopStartSlider.value, 10) + 1);
+                        updateLoopRange();
+                        document.getElementById('status').textContent = `🔁 Loop End Marker set to ${loopEndSlider.value}%`;
+                    }
+                    if (!isLooping) toggleLoopMode();
+                }
+                return;
+            }
+
             if (e.code === 'ArrowDown') {
                 e.preventDefault();
                 playSong();
