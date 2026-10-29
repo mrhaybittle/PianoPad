@@ -1965,19 +1965,23 @@ function checkIsOutsideSchoolHours() {
             const timeMins = now.getHours() * 60 + now.getMinutes();
             return (day === 0 || day === 6) || (timeMins < 8 * 60) || (timeMins >= 14 * 60 + 5);
         }
-        document.addEventListener("visibilitychange", () => {
+       document.addEventListener("visibilitychange", () => {
+            const isOOS = checkIsOutsideSchoolHours();
+
             if (document.hidden) {
-                localTabSwitches++;
-                tabSwitchAwayTimestamp = new Date();
-                
-                const elapsedMs = Date.now() - sessionStartTime;
-                const posPct = Math.min(100, (elapsedMs / (60 * 60000)) * 100);
-                breakMarkerPositions.push(posPct);
+                if (!isOOS) {
+                    localTabSwitches++;
+                    tabSwitchAwayTimestamp = new Date();
+                    
+                    const elapsedMs = Date.now() - sessionStartTime;
+                    const posPct = Math.min(100, (elapsedMs / (60 * 60000)) * 100);
+                    breakMarkerPositions.push(posPct);
+                }
                 syncStudentToFirebase("away");
             } else {
                 syncStudentToFirebase("active");
 
-                if (tabSwitchAwayTimestamp) {
+                if (!isOOS && tabSwitchAwayTimestamp) {
                     const returnTimestamp = new Date();
                     const durationSec = Math.round((returnTimestamp - tabSwitchAwayTimestamp) / 1000);
 
@@ -2008,7 +2012,7 @@ function checkIsOutsideSchoolHours() {
                     tabSwitchAwayTimestamp = null;
                 }
 
-                if (localTabSwitches > 0) {
+                if (!isOOS && localTabSwitches > 0) {
                     const fName = (sessionStudentName || localStorage.getItem('pianopad_name') || "Student").split(' ')[0];
                     document.getElementById('tab-switch-title').textContent = `${fName.toUpperCase()} - TAB SWITCH RECORDED!`;
                     document.getElementById('tab-switch-modal').classList.add('open');
