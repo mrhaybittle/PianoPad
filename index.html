@@ -1935,10 +1935,11 @@
             const name = document.getElementById('student-join-name').value.trim();
             const avatar = document.getElementById('student-join-avatar').value;
             const chosenClass = document.getElementById('student-join-class').value;
-            const room = document.getElementById('student-join-room').value;
+            const roomSelect = document.getElementById('student-join-room');
+            const room = (roomSelect && roomSelect.style.display === 'none') ? "Outside" : (roomSelect ? roomSelect.value : "Outside");
             
-            if(!name || !room || !chosenClass) {
-                alert('Please enter your Name, select your Class, and select a Room.');
+            if (!name || !chosenClass || (roomSelect && roomSelect.style.display !== 'none' && !room)) {
+                alert('Please enter your Name and select your Class.');
                 return;
             }
             sessionStudentName = sanitizeName(name);
@@ -5640,25 +5641,27 @@
             if (savedClass) currentStudentClass = savedClass;
             if (savedRoom) currentRoom = savedRoom;
 
-            const now = new Date();
+           const now = new Date();
             const day = now.getDay();
             const timeMins = now.getHours() * 60 + now.getMinutes();
             const isOOS = (day === 0 || day === 6) || (timeMins < 8 * 60) || (timeMins >= 14 * 60 + 5);
 
+            const roomSelect = document.getElementById('student-join-room');
+            document.getElementById('student-join-name').value = savedName || "";
+            if (savedAvatar) document.getElementById('student-join-avatar').value = savedAvatar;
+            if (savedClass) document.getElementById('student-join-class').value = savedClass;
+
             if (isOOS) {
                 currentRoom = "Outside";
-                updateMonitorWidget();
-                checkFirstTimeCalibration();
-                if (savedName) {
-                    loadStudentTickerStats(savedName);
-                }
+                if (roomSelect) roomSelect.style.display = 'none';
             } else {
-                document.getElementById('student-join-name').value = savedName || "";
-                if (savedAvatar) document.getElementById('student-join-avatar').value = savedAvatar;
-                if (savedClass) document.getElementById('student-join-class').value = savedClass;
-                if (savedRoom) document.getElementById('student-join-room').value = savedRoom;
-                document.getElementById('room-join-modal').classList.add('open');
+                if (roomSelect) {
+                    roomSelect.style.display = '';
+                    if (savedRoom) roomSelect.value = savedRoom;
+                }
             }
+
+            document.getElementById('room-join-modal').classList.add('open');
 
             if (window.firebaseSet) {
                 syncStudentToFirebase();
