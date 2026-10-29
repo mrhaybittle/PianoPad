@@ -4921,7 +4921,24 @@
             ctx.save();
             
             const palette = themePalettes[currentTheme] || themePalettes.default;
-            let blockColor = palette.normal;
+
+            // Pitch colour mapping (C: Red, D: Orange, E: Yellow, F: Green, G: Blue, A: Purple, B: Pink)
+            const pitchColorMap = {
+                'c': '#ef4444',
+                'd': '#f97316',
+                'e': '#eab308',
+                'f': '#22c55e',
+                'g': '#3b82f6',
+                'a': '#8b5cf6',
+                'b': '#ec4899'
+            };
+
+            const noteLetterMatch = (noteName || '').trim().toLowerCase().match(/^([a-g])/);
+            const defaultPitchColor = noteLetterMatch && pitchColorMap[noteLetterMatch[1]] 
+                ? pitchColorMap[noteLetterMatch[1]] 
+                : palette.normal;
+
+            let blockColor = defaultPitchColor;
             let shadowColor = palette.shadowNormal;
 
             if (isGameMode || activeMiniGame) {
@@ -4935,7 +4952,7 @@
                     blockColor = '#ef4444';
                     shadowColor = 'rgba(239, 68, 68, 0.8)';
                 } else {
-                    blockColor = palette.pending;
+                    blockColor = defaultPitchColor;
                     shadowColor = palette.shadowActive;
                 }
             } else if (active) {
