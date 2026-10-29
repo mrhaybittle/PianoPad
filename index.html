@@ -281,11 +281,26 @@
         .btn-game-active { background-color: var(--game-active) !important; color: #fff; box-shadow: 0 0 12px var(--game-active); }
         .btn-game-active:hover { background-color: #db2777 !important; }
 
-        .btn-rec-active {
-            background-color: var(--recording-active) !important;
-            color: #ffffff !important;
-            box-shadow: 0 0 14px rgba(239, 68, 68, 0.8);
-        }
+        #btn-record {
+    background-color: var(--recording-active) !important;
+    color: #ffffff !important;
+}
+
+#btn-record:hover {
+    background-color: #dc2626 !important;
+}
+
+.btn-rec-active {
+    background-color: var(--recording-active) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.8) !important;
+    animation: btnRecordFlash 0.8s infinite ease-in-out;
+}
+
+@keyframes btnRecordFlash {
+    0%, 100% { opacity: 1; filter: brightness(1); }
+    50% { opacity: 0.45; filter: brightness(1.4); }
+}
 
         .btn-rec-active span {
             animation: textBlink 0.8s infinite ease-in-out;
@@ -4030,7 +4045,6 @@
                 lastRecordNoteTime = 0;
                 
                 recordBtnText.textContent = ' RECORDING (Click to Stop)';
-                btnRecord.classList.remove('btn-secondary');
                 btnRecord.classList.add('btn-rec-active');
                 btnShare.style.display = 'none';
                 
@@ -4038,7 +4052,6 @@
             } else {
                 recordBtnText.textContent = 'Record';
                 btnRecord.classList.remove('btn-rec-active');
-                btnRecord.classList.add('btn-secondary');
 
                 if (recordedNotes.length > 0) {
                     generatedHaycode = `${recordedNotes.join(',')},RESTS,${recordedRests.join(',')}`;
@@ -4079,8 +4092,12 @@
                 return;
             }
 
-            if (e.code === 'Space') {
+           if (e.code === 'Space') {
                 e.preventDefault();
+                if (isRecording) {
+                    toggleRecording();
+                    return;
+                }
                 if (!isStepMode) {
                     toggleStepMode();
                 } else {
@@ -4839,6 +4856,10 @@
             btnPause.textContent = 'Pause';
             btnPause.classList.remove('btn-success');
             btnPause.classList.add('btn-warning');
+
+            if (isRecording) {
+                toggleRecording();
+            }
 
             if (animationFrameId !== null) {
                 cancelAnimationFrame(animationFrameId);
