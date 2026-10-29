@@ -180,6 +180,11 @@
         select:focus {
             border-color: var(--accent-color);
         }
+        #theme-select {
+            max-width: 95px;
+            padding: 5px 6px;
+            font-size: 0.75rem;
+        }
 
         #song-select {
             color: #facc15 !important;
@@ -281,11 +286,26 @@
         .btn-game-active { background-color: var(--game-active) !important; color: #fff; box-shadow: 0 0 12px var(--game-active); }
         .btn-game-active:hover { background-color: #db2777 !important; }
 
-        .btn-rec-active {
-            background-color: var(--recording-active) !important;
-            color: #ffffff !important;
-            box-shadow: 0 0 14px rgba(239, 68, 68, 0.8);
-        }
+        #btn-record {
+    background-color: var(--recording-active) !important;
+    color: #ffffff !important;
+}
+
+#btn-record:hover {
+    background-color: #dc2626 !important;
+}
+
+.btn-rec-active {
+    background-color: var(--recording-active) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.8) !important;
+    animation: btnRecordFlash 0.8s infinite ease-in-out;
+}
+
+@keyframes btnRecordFlash {
+    0%, 100% { opacity: 1; filter: brightness(1); }
+    50% { opacity: 0.45; filter: brightness(1.4); }
+}
 
         .btn-rec-active span {
             animation: textBlink 0.8s infinite ease-in-out;
@@ -1216,11 +1236,11 @@
                 </select>
 
                 <select id="theme-select">
-                    <option value="default">Theme: Default Dark</option>
-                    <option value="cyberpunk">Theme: Cyberpunk Neon</option>
-                    <option value="synthwave">Theme: Retro Synthwave</option>
-                    <option value="matrix">Theme: Matrix Green</option>
-                    <option value="gold">Theme: Classic Gold</option>
+                    <option value="default">Dark</option>
+                    <option value="cyberpunk">Neon</option>
+                    <option value="synthwave">Retro</option>
+                    <option value="matrix">Green</option>
+                    <option value="gold">Gold</option>
                 </select>
 
                 <div class="speed-control">
@@ -1284,8 +1304,8 @@
                 </button>
 
                 <button type="button" id="btn-settings" class="btn-settings" title="Settings">
-                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                </button>
+    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+</button>
 
                 <a href="https://sites.google.com/erc.nsw.edu.au/pianopad-leaderboard/home" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M12 15l-3 4-3-4"></path><path d="M5 6v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"></path><path d="M3 6h18"></path><path d="M5 2h14"></path></svg>
@@ -1730,7 +1750,8 @@
         let lastDetectedNote = null;
         let noteHoldCounter = 0;
 
-        let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+       let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+        let currentPerfectStreak = 0;
         let sessionStudentName = "";
 
         let currentStepIndex = 0;
@@ -1914,10 +1935,11 @@
             const name = document.getElementById('student-join-name').value.trim();
             const avatar = document.getElementById('student-join-avatar').value;
             const chosenClass = document.getElementById('student-join-class').value;
-            const room = document.getElementById('student-join-room').value;
+            const roomSelect = document.getElementById('student-join-room');
+            const room = (roomSelect && roomSelect.style.display === 'none') ? "Outside" : (roomSelect ? roomSelect.value : "Outside");
             
-            if(!name || !room || !chosenClass) {
-                alert('Please enter your Name, select your Class, and select a Room.');
+            if (!name || !chosenClass || (roomSelect && roomSelect.style.display !== 'none' && !room)) {
+                alert('Please enter your Name and select your Class.');
                 return;
             }
             sessionStudentName = sanitizeName(name);
@@ -1937,20 +1959,29 @@
             loadStudentTickerStats(sessionStudentName);
             checkFirstTimeCalibration();
         });
+function checkIsOutsideSchoolHours() {
+            const now = new Date();
+            const day = now.getDay(); // 0 = Sunday, 6 = Saturday
+            const timeMins = now.getHours() * 60 + now.getMinutes();
+            return (day === 0 || day === 6) || (timeMins < 8 * 60) || (timeMins >= 14 * 60 + 5);
+        }
+       document.addEventListener("visibilitychange", () => {
+            const isOOS = checkIsOutsideSchoolHours();
 
-        document.addEventListener("visibilitychange", () => {
             if (document.hidden) {
-                localTabSwitches++;
-                tabSwitchAwayTimestamp = new Date();
-                
-                const elapsedMs = Date.now() - sessionStartTime;
-                const posPct = Math.min(100, (elapsedMs / (60 * 60000)) * 100);
-                breakMarkerPositions.push(posPct);
+                if (!isOOS) {
+                    localTabSwitches++;
+                    tabSwitchAwayTimestamp = new Date();
+                    
+                    const elapsedMs = Date.now() - sessionStartTime;
+                    const posPct = Math.min(100, (elapsedMs / (60 * 60000)) * 100);
+                    breakMarkerPositions.push(posPct);
+                }
                 syncStudentToFirebase("away");
             } else {
                 syncStudentToFirebase("active");
 
-                if (tabSwitchAwayTimestamp) {
+                if (!isOOS && tabSwitchAwayTimestamp) {
                     const returnTimestamp = new Date();
                     const durationSec = Math.round((returnTimestamp - tabSwitchAwayTimestamp) / 1000);
 
@@ -1981,7 +2012,7 @@
                     tabSwitchAwayTimestamp = null;
                 }
 
-                if (localTabSwitches > 0) {
+                if (!isOOS && localTabSwitches > 0) {
                     const fName = (sessionStudentName || localStorage.getItem('pianopad_name') || "Student").split(' ')[0];
                     document.getElementById('tab-switch-title').textContent = `${fName.toUpperCase()} - TAB SWITCH RECORDED!`;
                     document.getElementById('tab-switch-modal').classList.add('open');
@@ -3881,14 +3912,16 @@
             }
         }
 
-        function resetGameStats() {
+    function resetGameStats() {
             gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+            currentPerfectStreak = 0;
         }
 
-        function updateGameStatus() {
+       function updateGameStatus() {
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
-            document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}`;
+            const streakLabel = currentPerfectStreak >= 10 ? ` | 🔥 STREAK (${currentPerfectStreak})` : '';
+            document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}${streakLabel}`;
         }
 
         async function calculateAndDisplayRank(accuracyNum) {
@@ -4030,7 +4063,6 @@
                 lastRecordNoteTime = 0;
                 
                 recordBtnText.textContent = ' RECORDING (Click to Stop)';
-                btnRecord.classList.remove('btn-secondary');
                 btnRecord.classList.add('btn-rec-active');
                 btnShare.style.display = 'none';
                 
@@ -4038,7 +4070,6 @@
             } else {
                 recordBtnText.textContent = 'Record';
                 btnRecord.classList.remove('btn-rec-active');
-                btnRecord.classList.add('btn-secondary');
 
                 if (recordedNotes.length > 0) {
                     generatedHaycode = `${recordedNotes.join(',')},RESTS,${recordedRests.join(',')}`;
@@ -4079,8 +4110,12 @@
                 return;
             }
 
-            if (e.code === 'Space') {
+           if (e.code === 'Space') {
                 e.preventDefault();
+                if (isRecording) {
+                    toggleRecording();
+                    return;
+                }
                 if (!isStepMode) {
                     toggleStepMode();
                 } else {
@@ -4582,6 +4617,7 @@
                     if (diff <= 140) {
                         target.gameStatus = 'perfect';
                         gameStats.perfect++;
+                        currentPerfectStreak++;
                         highlightKey(noteStr, 220, '#22c55e');
                         
                         const normNote = noteStr.toLowerCase().trim();
@@ -4590,6 +4626,7 @@
                     } else {
                         target.gameStatus = 'earlyLate';
                         gameStats.earlyLate++;
+                        currentPerfectStreak = 0;
                         highlightKey(noteStr, 220, '#f97316');
                     }
 
@@ -4604,6 +4641,7 @@
                     if (isGameMode) updateGameStatus();
                 } else {
                     gameStats.miss++;
+                    currentPerfectStreak = 0;
                     playErrorClackSound();
                     highlightKey(noteStr, 200, '#ef4444');
 
@@ -4614,6 +4652,7 @@
                             pushPlayerState();
                         }
                     }
+                    if (isGameMode) updateGameStatus();
                 }
             } else {
                 highlightKey(noteStr);
@@ -4687,40 +4726,39 @@
         }
 
         function renderSongSelect() {
-            const uniqueMap = new Map();
-            songList.forEach(s => {
-                const key = s.title.toLowerCase().trim();
-                if (!uniqueMap.has(key)) uniqueMap.set(key, s);
-            });
-            const sortedList = Array.from(uniqueMap.values());
-            sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
+    const uniqueMap = new Map();
+    songList.forEach(s => {
+        const key = s.title.toLowerCase().trim();
+        if (!uniqueMap.has(key)) uniqueMap.set(key, s);
+    });
+    const sortedList = Array.from(uniqueMap.values());
+    sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
 
-            songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
-            sortedList.forEach(song => {
-                const opt = document.createElement('option');
-                opt.value = song.code;
+    songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
+    sortedList.forEach(song => {
+        const opt = document.createElement('option');
+        opt.value = song.code;
 
-                let badge = ' ';
-                if (song.difficulty) {
-                    const diff = song.difficulty.toLowerCase().trim();
-                    if (diff === 'easy') {
-                        badge = ' ';
-                        opt.style.color = '#22c55e';
-                    } else if (diff === 'medium') {
-                        badge = ' ';
-                        opt.style.color = '#f97316';
-                    } else if (diff === 'hard') {
-                        badge = ' ';
-                        opt.style.color = '#ef4444';
-                    }
-                    opt.dataset.diff = diff;
-                }
-
-                opt.textContent = badge + song.title;
-                songSelect.appendChild(opt);
-            });
+        let badge = '';
+        if (song.difficulty) {
+            const diff = song.difficulty.toLowerCase().trim();
+            if (diff === 'easy') {
+                badge = '🟢 ';
+                opt.style.color = '#22c55e';
+            } else if (diff === 'medium') {
+                badge = '🟠 ';
+                opt.style.color = '#f97316';
+            } else if (diff === 'hard') {
+                badge = '🔴 ';
+                opt.style.color = '#ef4444';
+            }
+            opt.dataset.diff = diff;
         }
 
+        opt.textContent = badge + song.title;
+        songSelect.appendChild(opt);
+    });
+}
         async function syncSongsWithGoogleSheet() {
             localStorage.removeItem('pianopad_sheet_songs');
 
@@ -4841,6 +4879,10 @@
             btnPause.classList.remove('btn-success');
             btnPause.classList.add('btn-warning');
 
+            if (isRecording) {
+                toggleRecording();
+            }
+
             if (animationFrameId !== null) {
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = null;
@@ -4889,7 +4931,24 @@
             ctx.save();
             
             const palette = themePalettes[currentTheme] || themePalettes.default;
-            let blockColor = palette.normal;
+
+            // Pitch colour mapping (C: Red, D: Orange, E: Yellow, F: Green, G: Blue, A: Purple, B: Pink)
+            const pitchColorMap = {
+                'c': '#ef4444',
+                'd': '#f97316',
+                'e': '#eab308',
+                'f': '#22c55e',
+                'g': '#3b82f6',
+                'a': '#8b5cf6',
+                'b': '#ec4899'
+            };
+
+            const noteLetterMatch = (noteName || '').trim().toLowerCase().match(/^([a-g])/);
+            const defaultPitchColor = noteLetterMatch && pitchColorMap[noteLetterMatch[1]] 
+                ? pitchColorMap[noteLetterMatch[1]] 
+                : palette.normal;
+
+            let blockColor = defaultPitchColor;
             let shadowColor = palette.shadowNormal;
 
             if (isGameMode || activeMiniGame) {
@@ -4903,7 +4962,7 @@
                     blockColor = '#ef4444';
                     shadowColor = 'rgba(239, 68, 68, 0.8)';
                 } else {
-                    blockColor = palette.pending;
+                    blockColor = defaultPitchColor;
                     shadowColor = palette.shadowActive;
                 }
             } else if (active) {
@@ -5068,7 +5127,7 @@
                 }
             }
 
-            noteTimeline.forEach(item => {
+            noteTimeline.forEach((item, itemIdx) => {
                 const backgroundVol = (isGameMode || activeMiniGame) ? 0.2 : 1.0;
 
                 if (!isStepMode && effectiveElapsed >= item.hitTime && !item.played) {
@@ -5087,6 +5146,7 @@
                 if ((isGameMode || activeMiniGame) && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 280)) {
                     item.gameStatus = 'miss';
                     gameStats.miss++;
+                    currentPerfectStreak = 0;
                     if (isSongBattle) {
                         const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
                         if (localPlayer) {
@@ -5097,21 +5157,41 @@
                     if (isGameMode) updateGameStatus();
                 }
 
-                item.notes.forEach(noteStr => {
-                    const normNote = noteStr.toLowerCase().trim();
+                const normNotes = item.notes.map(n => n.toLowerCase().trim());
+
+                normNotes.forEach((normNote, noteSubIdx) => {
+                    const origNoteStr = item.notes[noteSubIdx];
                     const pos = keyPosMap[normNote];
 
                     if (pos) {
                         const timeUntilHit = item.hitTime - effectiveElapsed;
                         const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * waterfallHeight;
-                        const blockHeight = (item.duration / currentFallSpeed) * waterfallHeight;
+                        let blockHeight = (item.duration / currentFallSpeed) * waterfallHeight;
+
+                        // Check if a subsequent event shares this exact pitch
+                        let nextSamePitchItem = null;
+                        for (let k = itemIdx + 1; k < noteTimeline.length; k++) {
+                            if (noteTimeline[k].notes.some(n => n.toLowerCase().trim() === normNote)) {
+                                nextSamePitchItem = noteTimeline[k];
+                                break;
+                            }
+                        }
+
+                        // Enforce at least 6px clear separation before the next rectangle of identical pitch
+                        if (nextSamePitchItem) {
+                            const timeGap = nextSamePitchItem.hitTime - item.hitTime;
+                            const distanceToNext = (timeGap / currentFallSpeed) * waterfallHeight;
+                            const separationPx = 6;
+                            blockHeight = Math.min(blockHeight, Math.max(6, distanceToNext - separationPx));
+                        }
+
                         const yTop = yBottom - blockHeight;
 
                         if (yBottom > waterfallTop && yTop < canvasHeight) {
                             const drawY = Math.max(waterfallTop, yTop);
                             const drawH = Math.min(canvasHeight - drawY, yBottom - drawY);
                             const active = effectiveElapsed >= item.hitTime && effectiveElapsed <= (item.hitTime + item.duration);
-                            drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, noteStr, active, item.gameStatus);
+                            drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, origNoteStr, active, item.gameStatus);
                         }
                     }
                 });
@@ -5570,25 +5650,27 @@
             if (savedClass) currentStudentClass = savedClass;
             if (savedRoom) currentRoom = savedRoom;
 
-            const now = new Date();
+           const now = new Date();
             const day = now.getDay();
             const timeMins = now.getHours() * 60 + now.getMinutes();
             const isOOS = (day === 0 || day === 6) || (timeMins < 8 * 60) || (timeMins >= 14 * 60 + 5);
 
+            const roomSelect = document.getElementById('student-join-room');
+            document.getElementById('student-join-name').value = savedName || "";
+            if (savedAvatar) document.getElementById('student-join-avatar').value = savedAvatar;
+            if (savedClass) document.getElementById('student-join-class').value = savedClass;
+
             if (isOOS) {
                 currentRoom = "Outside";
-                updateMonitorWidget();
-                checkFirstTimeCalibration();
-                if (savedName) {
-                    loadStudentTickerStats(savedName);
-                }
+                if (roomSelect) roomSelect.style.display = 'none';
             } else {
-                document.getElementById('student-join-name').value = savedName || "";
-                if (savedAvatar) document.getElementById('student-join-avatar').value = savedAvatar;
-                if (savedClass) document.getElementById('student-join-class').value = savedClass;
-                if (savedRoom) document.getElementById('student-join-room').value = savedRoom;
-                document.getElementById('room-join-modal').classList.add('open');
+                if (roomSelect) {
+                    roomSelect.style.display = '';
+                    if (savedRoom) roomSelect.value = savedRoom;
+                }
             }
+
+            document.getElementById('room-join-modal').classList.add('open');
 
             if (window.firebaseSet) {
                 syncStudentToFirebase();
