@@ -4664,7 +4664,10 @@ function checkSprintTurboZone(pxProgress) {
                         
                         const normNote = noteStr.toLowerCase().trim();
                         const pos = keyPosMap[normNote];
-                        if (pos) spawnConfetti(pos.left + pos.width / 2, canvas.height, '#22c55e');
+                        if (pos) {
+                            spawnConfetti(pos.left + pos.width / 2, canvas.height, '#22c55e');
+                            addKeyRipple(pos.left + pos.width / 2, canvas.height - 4, '#22c55e');
+                        }
                     } else {
                         target.gameStatus = 'earlyLate';
                         gameStats.earlyLate++;
@@ -4968,7 +4971,27 @@ function checkSprintTurboZone(pxProgress) {
 
             requestAnimationFrame(renderLoop);
         }
+let keyRipples = [];
+        function addKeyRipple(x, y, color = '#22c55e') {
+            keyRipples.push({ x: x, y: y, r: 4, alpha: 1.0, color: color });
+        }
 
+        function renderRipples(targetCtx) {
+            for (let i = keyRipples.length - 1; i >= 0; i--) {
+                const rip = keyRipples[i];
+                targetCtx.save();
+                targetCtx.strokeStyle = rip.color;
+                targetCtx.lineWidth = 2.5;
+                targetCtx.globalAlpha = Math.max(0, rip.alpha);
+                targetCtx.beginPath();
+                targetCtx.arc(rip.x, rip.y, rip.r, 0, Math.PI * 2);
+                targetCtx.stroke();
+                targetCtx.restore();
+                rip.r += 2.2;
+                rip.alpha -= 0.04;
+                if (rip.alpha <= 0) keyRipples.splice(i, 1);
+            }
+        }
         function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending') {
             ctx.save();
             
