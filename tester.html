@@ -2105,7 +2105,7 @@ function checkIsOutsideSchoolHours() {
                     delete window[cbName];
                     if (document.body.contains(script)) document.body.removeChild(script);
                     resolve({ error: "SCRIPT_LOAD_ERROR" });
-                };parsePianoPad(hayCode)
+                };
                 document.body.appendChild(script);
             });
         }
