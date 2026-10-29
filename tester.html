@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PianoPad - by Haybittle</title>
@@ -3459,13 +3458,13 @@ function checkSprintTurboZone(pxProgress) {
                     return;
                 }
 
-                const nextExpected = sprintSequence[sprintIndex % 2];
+               const nextExpected = sprintSequence[sprintIndex % 2];
                 highlightKey(nextExpected, 300, '#eab308');
             } else {
                 gameStats.miss++;
                 playErrorClackSound();
             }
-            }
+        }
 
         function initAudio() {
             if (!audioCtx) {
