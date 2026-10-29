@@ -1959,7 +1959,12 @@
             loadStudentTickerStats(sessionStudentName);
             checkFirstTimeCalibration();
         });
-
+function checkIsOutsideSchoolHours() {
+            const now = new Date();
+            const day = now.getDay(); // 0 = Sunday, 6 = Saturday
+            const timeMins = now.getHours() * 60 + now.getMinutes();
+            return (day === 0 || day === 6) || (timeMins < 8 * 60) || (timeMins >= 14 * 60 + 5);
+        }
         document.addEventListener("visibilitychange", () => {
             if (document.hidden) {
                 localTabSwitches++;
