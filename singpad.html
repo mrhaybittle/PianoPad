@@ -448,8 +448,8 @@
         let currentDetectedFreq = 0;
         let currentDetectedMidi = 0; // Fractional MIDI note
         
-        // Default range if not calibrated (C3 to C4)
-        let vocalRange = { min: 48, max: 60 }; 
+        // Default range: Teenage male (A2 = 45 to E4 = 64)
+        let vocalRange = { min: 45, max: 64 }; 
         let isCalibrated = false;
 
         // --- Game State ---
@@ -704,6 +704,25 @@
                 }
             }, 50);
         }
+
+        // --- Secret Shortcut Handler: "(" Key ---
+        window.addEventListener('keydown', (e) => {
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+
+            if (e.key === '(') {
+                e.preventDefault();
+                // Set default teenage male vocal range (A2 = 45 to E4 = 64)
+                vocalRange = { min: 45, max: 64 };
+                isCalibrated = true;
+                
+                // Close calibration modal if open
+                if (calibInterval) clearInterval(calibInterval);
+                calibModal.classList.remove('open');
+                
+                document.getElementById('status').textContent = ` Calibration Bypassed: Teenage Male Range Active (${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)})`;
+                spawnConfetti(HIT_ZONE_X, canvas.height / 2);
+            }
+        });
 
         // --- Melody Generator ---
         const DIATONIC_STEPS = [0, 2, 4, 5, 7, 9, 11];
@@ -1052,7 +1071,7 @@
         // --- UI Listeners ---
         document.getElementById('btn-play').addEventListener('click', () => {
             if (!isCalibrated) {
-                alert("Please calibrate your vocal range first!");
+                alert("Please calibrate your vocal range first (or press '(' to use default range)!");
                 return;
             }
             if (!isMicListening) toggleMicrophone();
