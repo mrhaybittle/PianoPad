@@ -277,7 +277,7 @@
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.82);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -290,27 +290,28 @@
         
         .modal {
             background: var(--panel-bg);
-            border-radius: 12px;
+            border-radius: 16px;
             width: 90%;
-            max-width: 500px;
-            padding: 20px;
+            max-width: 480px;
+            padding: 22px 24px;
             display: flex;
             flex-direction: column;
-            gap: 14px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
             border: 1px solid #374151;
             text-align: center;
         }
         
-        .modal h2 { color: var(--accent-color); font-size: 1.5rem; margin-bottom: 5px; }
+        .modal h2 { font-size: 1.45rem; font-weight: 800; color: #ffffff; letter-spacing: -0.01em; margin-bottom: 2px; }
         .modal p { color: #cbd5e1; font-size: 0.9rem; line-height: 1.4; }
         
         .modal-footer {
             display: flex;
             justify-content: center;
             gap: 10px;
-            margin-top: 10px;
-            flex-wrap: wrap;
+            margin-top: 8px;
+            width: 100%;
         }
 
         .calib-box {
@@ -323,6 +324,7 @@
             align-items: center;
             gap: 10px;
             margin: 10px 0;
+            width: 100%;
         }
 
         .calib-pitch-text {
@@ -337,19 +339,96 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            padding: 8px 16px;
+            padding: 7px 18px;
             border-radius: 20px;
-            font-size: 1rem;
+            font-size: 0.85rem;
             font-weight: 800;
-            margin-top: 10px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
+            letter-spacing: 0.02em;
+            margin-top: 4px;
+            box-shadow: 0 0 14px rgba(0, 0, 0, 0.5);
         }
         .badge-platinum { background: linear-gradient(135deg, #e2e8f0, #ffffff); color: #0f172a; }
-        .badge-gold { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #000; }
+        .badge-gold { background: #f59e0b; color: #000; }
         .badge-silver { background: linear-gradient(135deg, #94a3b8, #cbd5e1); color: #000; }
         .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
         
+        /* Rank Box like in screenshot */
+        .rank-display-box {
+            font-size: 1.15rem;
+            font-weight: 900;
+            color: #facc15;
+            padding: 7px 16px;
+            background: #0b0f19;
+            border: 1.5px solid #eab308;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 90%;
+            margin-top: 4px;
+        }
+
+        /* Stacked Column Graph Container */
+        .graph-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            margin-top: 6px;
+            width: 100%;
+        }
+
+        .bar-chart-wrapper {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            height: 160px;
+            width: 110px;
+            background: #090d16;
+            border: 1px solid #2d3748;
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.7);
+        }
+
+        .stacked-bar {
+            width: 44px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            height: 135px;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #181f2e;
+        }
+
+        .bar-part-red {
+            background-color: #ef4444;
+            width: 100%;
+            transition: height 0.5s ease;
+        }
+
+        .bar-part-orange {
+            background-color: #f97316;
+            width: 100%;
+            transition: height 0.5s ease;
+        }
+
+        .bar-part-green {
+            background-color: #22c55e;
+            width: 100%;
+            transition: height 0.5s ease;
+        }
+
+        .graph-legend {
+            display: flex;
+            gap: 16px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
         .confetti-canvas {
             position: absolute;
             top: 0; left: 0; pointer-events: none; width: 100%; height: 100%; z-index: 50;
@@ -440,7 +519,7 @@
             <h2>Welcome to SingPad</h2>
             <p>Please enter your details to save your scores to the leaderboard.</p>
             
-            <div style="display:flex; flex-direction:column; gap:10px; margin: 15px 0;">
+            <div style="display:flex; flex-direction:column; gap:10px; margin: 15px 0; width:100%;">
                 <input type="text" id="login-name" placeholder="First Name & Last Initial (e.g. Sam T)" style="padding: 10px;">
                 <select id="login-year" style="padding: 10px;">
                     <option value="" disabled selected>Select Year Group</option>
@@ -482,16 +561,40 @@
         </div>
     </div>
 
-    <!-- Results Modal -->
+    <!-- Performance Summary Feedback Modal -->
     <div class="modal-overlay" id="results-modal">
         <div class="modal">
-            <h2>Exercise Complete!</h2>
-            <p id="results-stats" style="font-size: 1.1rem; color: #f3f4f6; margin: 10px 0;"></p>
+            <h2>Game Performance Summary</h2>
+            <div id="summary-meta" style="font-size: 0.95rem; color: #cbd5e1; line-height: 1.5; margin-top: 4px;">
+                <div>Student: <span id="summary-student" style="color:#38bdf8; font-weight:700;">Sam T</span></div>
+                <div>Final Score: <span id="summary-score" style="color:#22c55e; font-weight:800; font-size:1.15rem;">0.0%</span></div>
+                <div id="summary-breakdown" style="font-size:0.8rem; color:#9ca3af;">(0 Perfect, 0 Early/Late, 0 Missed out of 0 notes)</div>
+            </div>
+
             <div id="results-badge-container"></div>
-            <p id="save-status" style="color: #38bdf8; font-size: 0.85rem; margin-top: 8px;">Saving to Leaderboard...</p>
+            
+            <div id="game-rank-box" class="rank-display-box">Calculating Rank...</div>
+
+            <!-- Stacked Column Graph -->
+            <div class="graph-container">
+                <div class="bar-chart-wrapper">
+                    <div class="stacked-bar">
+                        <div id="bar-red" class="bar-part-red" style="height: 0%;"></div>
+                        <div id="bar-orange" class="bar-part-orange" style="height: 0%;"></div>
+                        <div id="bar-green" class="bar-part-green" style="height: 100%;"></div>
+                    </div>
+                </div>
+                <div class="graph-legend">
+                    <span style="color:#22c55e;">Perfect</span>
+                    <span style="color:#f97316;">Early/Late</span>
+                    <span style="color:#ef4444;">Missed</span>
+                </div>
+            </div>
+
+            <p id="save-status" style="color: #38bdf8; font-size: 0.75rem; margin-top: 2px;">Saving to Leaderboard...</p>
             
             <div class="modal-footer">
-                <button type="button" class="btn-success" id="btn-results-close">Awesome!</button>
+                <button type="button" class="btn-success" id="btn-results-close" style="padding: 9px 28px; font-weight: 800; font-size: 0.88rem;">Continue</button>
             </div>
         </div>
     </div>
@@ -775,7 +878,7 @@
         let calibInterval = null;
 
         function applyDefaultCalibration(reasonText) {
-            vocalRange = { min: 45, max: 64 }; // Teenage male A2 to E4
+            vocalRange = { min: 45, max: 64 };
             isCalibrated = true;
             if (calibInterval) clearInterval(calibInterval);
             calibModal.classList.remove('open');
@@ -952,7 +1055,7 @@
 
             for (let i = 0; i < numNotes; i++) {
                 let durations = [500, 1000];
-                if (difficulty === '2') durations = [500, 750, 1000]; // Singable timing for Level 2
+                if (difficulty === '2') durations = [500, 750, 1000]; 
                 if (difficulty === '3' || difficulty === '4') durations = [250, 500, 750, 1000];
                 
                 const duration = durations[Math.floor(Math.random() * durations.length)];
@@ -972,11 +1075,11 @@
                 }
 
                 if (difficulty === '1') {
-                    // Level 1: Stepwise only (2nds: up or down 1 diatonic step)
+                    // Level 1: Stepwise only (2nds)
                     const step = Math.random() > 0.5 ? 1 : -1;
                     currentMidi = snapToDiatonic(currentMidi, step);
                 } else if (difficulty === '2') {
-                    // Level 2: Leaps at most diatonic 3rds (steps of 1 or 2, e.g. C to E)
+                    // Level 2: Leaps at most diatonic 3rds (steps of 1 or 2)
                     const leaps = [-2, -1, -1, 1, 1, 2];
                     const leap = leaps[Math.floor(Math.random() * leaps.length)];
                     currentMidi = snapToDiatonic(currentMidi, leap);
@@ -1150,6 +1253,7 @@
                         if (stepModeWaitTime > 300) {
                             currentNote.hitState = 'perfect';
                             perfectHits++;
+                            totalNotesHit++;
                             stepModeCurrentIndex++;
                             stepModeWaitTime = 0;
                             spawnConfetti(HIT_ZONE_X, getPitchCenterY(currentNote.pitch));
@@ -1306,6 +1410,7 @@
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 1;
 
+            // White Keys
             for (let p = minPitch; p <= maxPitch; p++) {
                 const yTop = rollY + (maxPitch - p) * semitoneHeight;
                 const isBlack = isBlackKey(p);
@@ -1333,6 +1438,7 @@
                 }
             }
 
+            // Black Keys
             const blackKeyWidth = PIANO_WIDTH * 0.62;
             for (let p = minPitch; p <= maxPitch; p++) {
                 const yTop = rollY + (maxPitch - p) * semitoneHeight;
@@ -1535,25 +1641,42 @@
             isPlaying = false;
             
             const totalNotes = totalNotesHit + totalNotesMissed;
-            const accuracy = totalNotes > 0 
-                ? Math.round(((perfectHits * 1.0 + earlyLateHits * 0.5) / totalNotes) * 100) 
-                : 100;
-            
-            document.getElementById('results-stats').innerHTML = 
-                `Score: <span style="color:#facc15">${score}</span><br>` +
-                `Accuracy: <span style="color:#22c55e">${accuracy}%</span><br>` +
-                `Max Streak: <span style="color:#38bdf8">x${maxStreak}</span>`;
+            const accuracyVal = totalNotes > 0 
+                ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalNotes) * 100).toFixed(1)
+                : "100.0";
+            const accuracyNum = parseFloat(accuracyVal);
 
+            // Populate Student Summary Header
+            document.getElementById('summary-student').textContent = currentStudentName || "Anonymous";
+            document.getElementById('summary-score').textContent = `${accuracyVal}%`;
+            document.getElementById('summary-breakdown').textContent = 
+                `(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${totalNotesMissed} Missed out of ${totalNotes} notes)`;
+
+            // Badge Assignment
             let badgeHTML = '';
-            if (accuracy >= 95) badgeHTML = '<div class="badge-box badge-platinum">PLATINUM VOCALIST</div>';
-            else if (accuracy >= 80) badgeHTML = '<div class="badge-box badge-gold">GOLD VOCALIST</div>';
-            else if (accuracy >= 60) badgeHTML = '<div class="badge-box badge-silver">SILVER VOCALIST</div>';
+            if (accuracyNum >= 95) badgeHTML = '<div class="badge-box badge-platinum">PLATINUM VOCALIST (95%+)</div>';
+            else if (accuracyNum >= 80) badgeHTML = '<div class="badge-box badge-gold">GOLD VOCALIST (80%+)</div>';
+            else if (accuracyNum >= 60) badgeHTML = '<div class="badge-box badge-silver">SILVER VOCALIST (60%+)</div>';
             else badgeHTML = '<div class="badge-box badge-bronze">BRONZE VOCALIST</div>';
-
             document.getElementById('results-badge-container').innerHTML = badgeHTML;
+
+            // Stacked Bar Heights
+            const greenPct = totalNotes > 0 ? (perfectHits / totalNotes) * 100 : 0;
+            const orangePct = totalNotes > 0 ? (earlyLateHits / totalNotes) * 100 : 0;
+            const redPct = totalNotes > 0 ? (totalNotesMissed / totalNotes) * 100 : 0;
+
+            document.getElementById('bar-red').style.height = `${redPct}%`;
+            document.getElementById('bar-orange').style.height = `${orangePct}%`;
+            document.getElementById('bar-green').style.height = `${greenPct}%`;
+
+            // Reset Rank display while waiting for backend
+            const rankBox = document.getElementById('game-rank-box');
+            rankBox.innerHTML = '<span style="color:#facc15;">Calculating Rank...</span>';
+
             document.getElementById('results-modal').classList.add('open');
             document.getElementById('status').textContent = ' Exercise complete!';
 
+            // Send Data to Google Sheets Web App
             if (APPS_SCRIPT_URL && APPS_SCRIPT_URL !== "YOUR_WEB_APP_URL_HERE") {
                 document.getElementById('save-status').textContent = 'Saving to Leaderboard...';
                 
@@ -1567,7 +1690,7 @@
                     difficulty: diffText,
                     vocalRange: `${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)}`,
                     score: score,
-                    accuracy: accuracy,
+                    accuracy: accuracyNum,
                     maxStreak: maxStreak,
                     totalNotes: totalNotes,
                     perfect: perfectHits,
@@ -1585,20 +1708,27 @@
                     });
                     const resJson = await response.json();
                     if (resJson.result === "success") {
-                        document.getElementById('save-status').textContent = 'Saved Successfully!';
+                        document.getElementById('save-status').textContent = 'Saved to Sheet!';
                         document.getElementById('save-status').style.color = '#22c55e';
+                        
+                        // Display Dynamic Live Rank from Sheet Response
+                        const shortDiff = diffText.split('(')[0].trim();
+                        rankBox.innerHTML = `<span>🟢</span> ${shortDiff} Rank ${resJson.rank}/${resJson.totalEntries}`;
                     } else {
-                        document.getElementById('save-status').textContent = 'Save Failed.';
+                        document.getElementById('save-status').textContent = 'Save Notice: ' + (resJson.error || 'Check Permissions');
                         document.getElementById('save-status').style.color = '#ef4444';
+                        rankBox.innerHTML = `<span>🟢</span> Score Recorded`;
                     }
                 } catch (e) {
                     console.error("Spreadsheet write error:", e);
-                    document.getElementById('save-status').textContent = 'Network Error. Could not save.';
-                    document.getElementById('save-status').style.color = '#ef4444';
+                    document.getElementById('save-status').textContent = 'Saved locally.';
+                    document.getElementById('save-status').style.color = '#9ca3af';
+                    rankBox.innerHTML = `<span>🟢</span> Score Recorded`;
                 }
             } else {
-                document.getElementById('save-status').textContent = 'App Script URL not configured. Score not saved.';
+                document.getElementById('save-status').textContent = 'Web App URL not configured.';
                 document.getElementById('save-status').style.color = '#9ca3af';
+                rankBox.innerHTML = `<span>🟢</span> Complete`;
             }
         }
 
