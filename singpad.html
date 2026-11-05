@@ -16,7 +16,6 @@
             --recording-active: #ef4444;
             --game-active: #ec4899;
             --tuner-active: #06b6d4;
-            --arcade-active: #8b5cf6;
             --canvas-bg: #0a0a10;
             --hitline-color: #ef4444;
             --lane-light: #161622;
@@ -30,13 +29,11 @@
             --accent-color: #00f0ff;
             --accent-hover: #70f3ff;
             --text-main: #f0f8ff;
-            --highlight: #ff007f;
             --canvas-bg: #050212;
             --hitline-color: #ff007f;
             --lane-light: #0d061c;
             --lane-dark: #070312;
             --tuner-active: #00f0ff;
-            --arcade-active: #b829ea;
         }
 
         body[data-theme="synthwave"] {
@@ -45,13 +42,11 @@
             --accent-color: #ff007f;
             --accent-hover: #ff3399;
             --text-main: #fce7f3;
-            --highlight: #ff7700;
             --canvas-bg: #0f0421;
             --hitline-color: #ff007f;
             --lane-light: #16062b;
             --lane-dark: #0f0421;
             --tuner-active: #fcee0a;
-            --arcade-active: #ff007f;
         }
 
         body[data-theme="matrix"] {
@@ -60,13 +55,11 @@
             --accent-color: #00ff41;
             --accent-hover: #33ff67;
             --text-main: #e6ffe8;
-            --highlight: #00ff41;
             --canvas-bg: #010801;
             --hitline-color: #00ff41;
             --lane-light: #041204;
             --lane-dark: #020a02;
             --tuner-active: #33ff67;
-            --arcade-active: #00ff41;
         }
 
         * {
@@ -114,244 +107,84 @@
             flex-shrink: 0;
         }
 
-        h1 {
-            font-size: 1.25rem;
-            font-weight: 700;
-            letter-spacing: -0.025em;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+        h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.025em; display: flex; align-items: center; gap: 8px; }
 
-        .controls {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
+        .controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
         .audio-playback-control, .mic-gain-meter-box {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: #0b0f19;
-            border: 1px solid #374151;
-            border-radius: 6px;
-            padding: 3px 8px;
-            height: 28px;
+            display: inline-flex; align-items: center; gap: 6px; background: #0b0f19; border: 1px solid #374151; border-radius: 6px; padding: 3px 8px; height: 28px;
         }
-
         .audio-playback-control input[type="range"], .mic-gain-meter-box input[type="range"] {
-            width: 55px;
-            accent-color: #22c55e;
-            cursor: pointer;
-            height: 4px;
+            width: 55px; accent-color: #22c55e; cursor: pointer; height: 4px;
         }
 
         .vu-meter {
-            display: inline-flex;
-            align-items: flex-end;
-            gap: 2px;
-            height: 16px;
-            padding: 1px 3px;
-            background: #04070d;
-            border-radius: 3px;
-            border: 1px solid #1f2937;
+            display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; padding: 1px 3px; background: #04070d; border-radius: 3px; border: 1px solid #1f2937;
         }
-
-        .vu-bar {
-            width: 3px;
-            height: 100%;
-            background-color: #0f2d18;
-            border-radius: 1px;
-            transition: background-color 0.04s ease, box-shadow 0.04s ease;
-        }
-
+        .vu-bar { width: 3px; height: 100%; background-color: #0f2d18; border-radius: 1px; transition: background-color 0.04s ease, box-shadow 0.04s ease; }
         .vu-bar.lit-green { background-color: #22c55e !important; box-shadow: 0 0 3px #22c55e; }
         .vu-bar.lit-yellow { background-color: #facc15 !important; box-shadow: 0 0 4px #facc15; }
         .vu-bar.lit-red { background-color: #ef4444 !important; box-shadow: 0 0 4px #ef4444; }
-
-        .vu-meter-large {
-            height: 26px;
-            gap: 4px;
-            padding: 3px 6px;
-            background: #050811;
-        }
+        .vu-meter-large { height: 26px; gap: 4px; padding: 3px 6px; background: #050811; }
         .vu-meter-large .vu-bar { width: 7px; border-radius: 2px; }
 
         select, button, .btn-link, input[type="text"] {
-            padding: 5px 8px;
-            border-radius: 6px;
-            border: 1px solid #374151;
-            background-color: #0b0f19;
-            color: var(--text-main);
-            font-weight: 600;
-            font-size: 0.78rem;
-            outline: none;
-            transition: background-color 0.2s, transform 0.1s;
+            padding: 5px 8px; border-radius: 6px; border: 1px solid #374151; background-color: #0b0f19; color: var(--text-main); font-weight: 600; font-size: 0.78rem; outline: none; transition: background-color 0.2s, transform 0.1s;
         }
-
-        button, .btn-link {
-            border: none;
-            background-color: var(--accent-color);
-            color: white;
-            text-decoration: none;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-
+        button, .btn-link { border: none; background-color: var(--accent-color); color: white; text-decoration: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
         button:hover, .btn-link:hover { background-color: var(--accent-hover); }
         button:active, .btn-link:active { transform: scale(0.98); }
-
         select:focus, input:focus { border-color: var(--accent-color); }
         #theme-select { max-width: 95px; padding: 5px 6px; font-size: 0.75rem; }
         
         #difficulty-select {
-            color: #facc15 !important;
-            border: 2px solid #eab308 !important;
-            background-color: #181504 !important;
-            font-weight: 700 !important;
-            box-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
+            color: #facc15 !important; border: 2px solid #eab308 !important; background-color: #181504 !important; font-weight: 700 !important; box-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
         }
         #difficulty-select option { background-color: #0b0f19; }
 
-        .btn-secondary { background-color: #4b5563; }
-        .btn-secondary:hover { background-color: #6b7280; }
-        .btn-success { background-color: #10b981; }
-        .btn-success:hover { background-color: #059669; }
-        .btn-danger { background-color: #ef4444; }
-        .btn-danger:hover { background-color: #dc2626; }
-        .btn-calib { background-color: #8b5cf6; }
-        .btn-calib:hover { background-color: #7c3aed; }
+        .btn-secondary { background-color: #4b5563; } .btn-secondary:hover { background-color: #6b7280; }
+        .btn-success { background-color: #10b981; } .btn-success:hover { background-color: #059669; }
+        .btn-danger { background-color: #ef4444; } .btn-danger:hover { background-color: #dc2626; }
+        .btn-calib { background-color: #8b5cf6; } .btn-calib:hover { background-color: #7c3aed; }
         .btn-arcade { background: linear-gradient(135deg, #8b5cf6, #ec4899); font-weight: 800; box-shadow: 0 0 8px rgba(236, 72, 153, 0.5); }
         .btn-arcade:hover { background: linear-gradient(135deg, #7c3aed, #db2777); }
 
-        .btn-mic-active {
-            background-color: #10b981 !important;
-            color: #ffffff !important;
-            box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
-        }
-
-        .btn-tuner-active {
-            background-color: var(--tuner-active) !important;
-            color: #000000 !important;
-            font-weight: 800 !important;
-            box-shadow: 0 0 14px var(--tuner-active);
-        }
-
-        .btn-muted {
-            background-color: #ef4444 !important;
-            color: #ffffff !important;
-        }
-
+        .btn-mic-active { background-color: #10b981 !important; color: #ffffff !important; box-shadow: 0 0 10px rgba(16, 185, 129, 0.6); }
+        .btn-tuner-active { background-color: var(--tuner-active) !important; color: #000000 !important; font-weight: 800 !important; box-shadow: 0 0 14px var(--tuner-active); }
+        .btn-muted { background-color: #ef4444 !important; color: #ffffff !important; }
         .btn-step { background-color: #ec4899 !important; color: #ffffff !important; font-weight: 700; }
         .btn-step:hover { background-color: #db2777 !important; }
         .btn-step-active { background-color: #f43f5e !important; color: #ffffff !important; box-shadow: 0 0 12px #f43f5e; }
-        
         .btn-game-active { background-color: var(--game-active) !important; color: #fff; box-shadow: 0 0 12px var(--game-active); }
 
-        .icon {
-            width: 13px;
-            height: 13px;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
+        .icon { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
         .visualizer-wrapper {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #000;
-            border-radius: 10px;
-            padding: 4px;
-            box-shadow: inset 0 2px 8px rgba(0,0,0,0.9);
-            width: 100%;
-            flex: 1;
-            min-height: 400px;
+            position: relative; display: flex; flex-direction: column; align-items: center; background-color: #000; border-radius: 10px; padding: 4px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.9); width: 100%; flex: 1; min-height: 400px;
         }
+        #vocal-canvas { background-color: var(--canvas-bg); display: block; width: 100%; flex: 1; border-radius: 6px; }
 
-        #vocal-canvas {
-            background-color: var(--canvas-bg);
-            display: block;
-            width: 100%;
-            flex: 1;
-            border-radius: 6px;
-        }
-
-        .footer-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding-top: 4px;
-            flex-shrink: 0;
-            gap: 10px;
-        }
-
-        .status-bar {
-            font-size: 0.82rem;
-            color: #9ca3af;
-            text-align: center;
-            min-height: 1.6rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            flex: 1;
-            font-weight: 600;
-        }
-
+        .footer-bar { display: flex; align-items: center; justify-content: space-between; padding-top: 4px; flex-shrink: 0; gap: 10px; }
+        .status-bar { font-size: 0.82rem; color: #9ca3af; text-align: center; min-height: 1.6rem; display: flex; align-items: center; justify-content: center; gap: 10px; flex: 1; font-weight: 600; }
         .score-display {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            background: rgba(30, 15, 20, 0.85);
-            border: 1px solid #374151;
-            border-radius: 8px;
-            padding: 4px 12px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #f3f4f6;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+            display: flex; align-items: center; gap: 15px; background: rgba(30, 15, 20, 0.85); border: 1px solid #374151; border-radius: 8px; padding: 4px 12px; font-size: 0.8rem; font-weight: 700; color: #f3f4f6; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
         }
-
         .score-points { color: var(--highlight); font-size: 0.9rem; }
         .score-streak { color: #f59e0b; }
 
         .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0, 0, 0, 0.82);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.82); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
         }
         .modal-overlay.open { opacity: 1; pointer-events: auto; }
         
         .modal {
-            background: var(--panel-bg);
-            border-radius: 16px;
-            width: 90%;
-            max-width: 490px;
-            padding: 22px 24px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
-            border: 1px solid #374151;
-            text-align: center;
+            background: var(--panel-bg); border-radius: 16px; width: 90%; max-width: 490px; padding: 22px 24px; display: flex; flex-direction: column; align-items: center; gap: 10px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8); border: 1px solid #374151; text-align: center;
         }
+        .modal h2 { font-size: 1.45rem; font-weight: 800; color: #ffffff; letter-spacing: -0.01em; margin-bottom: 2px; }
+        .modal p { color: #cbd5e1; font-size: 0.9rem; line-height: 1.4; }
+        .modal-footer { display: flex; justify-content: center; gap: 12px; margin-top: 8px; width: 100%; flex-wrap: wrap; }
 
+        /* Arcade Hub Modal Styling */
         .arcade-hub-modal {
             max-width: 750px !important;
             padding: 30px !important;
@@ -359,7 +192,6 @@
             border: 2px solid #8b5cf6 !important;
             box-shadow: inset 0 0 30px rgba(139, 92, 246, 0.3), 0 25px 50px -12px rgba(0, 0, 0, 0.9) !important;
         }
-
         .arcade-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -367,142 +199,33 @@
             width: 100%;
             margin-top: 10px;
         }
-
         .game-card {
-            background: #141226;
-            border: 1px solid #374151;
-            border-radius: 10px;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            cursor: pointer;
-            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
-            text-align: left;
+            background: #141226; border: 1px solid #374151; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; text-align: left;
         }
-        .game-card:hover {
-            transform: translateY(-5px);
-            border-color: #ec4899;
-            box-shadow: 0 8px 20px rgba(236, 72, 153, 0.4);
-        }
+        .game-card:hover { transform: translateY(-5px); border-color: #ec4899; box-shadow: 0 8px 20px rgba(236, 72, 153, 0.4); }
         .game-card h3 { font-size: 1.1rem; color: #f3f4f6; margin-bottom: 2px; }
         .game-card p { font-size: 0.8rem; color: #9ca3af; line-height: 1.4; flex: 1; }
+
+        .calib-box { background: #0b0f19; border: 1px solid #374151; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 10px 0; width: 100%; }
+        .calib-pitch-text { font-size: 2rem; font-weight: 800; color: #22c55e; text-shadow: 0 0 10px rgba(34, 197, 94, 0.4); height: 40px; }
         
-        .modal h2 { font-size: 1.45rem; font-weight: 800; color: #ffffff; letter-spacing: -0.01em; margin-bottom: 2px; }
-        .modal p { color: #cbd5e1; font-size: 0.9rem; line-height: 1.4; }
-        
-        .modal-footer {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            margin-top: 8px;
-            width: 100%;
-            flex-wrap: wrap;
-        }
-
-        .calib-box {
-            background: #0b0f19;
-            border: 1px solid #374151;
-            border-radius: 8px;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            margin: 10px 0;
-            width: 100%;
-        }
-
-        .calib-pitch-text {
-            font-size: 2rem;
-            font-weight: 800;
-            color: #22c55e;
-            text-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
-            height: 40px;
-        }
-
-        .badge-box {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 7px 18px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 800;
-            letter-spacing: 0.02em;
-            margin-top: 4px;
-            box-shadow: 0 0 14px rgba(0, 0, 0, 0.5);
-        }
+        .badge-box { display: inline-flex; align-items: center; justify-content: center; padding: 7px 18px; border-radius: 20px; font-size: 0.85rem; font-weight: 800; letter-spacing: 0.02em; margin-top: 4px; box-shadow: 0 0 14px rgba(0, 0, 0, 0.5); }
         .badge-platinum { background: linear-gradient(135deg, #e2e8f0, #ffffff); color: #0f172a; }
         .badge-gold { background: #f59e0b; color: #000; }
         .badge-silver { background: linear-gradient(135deg, #94a3b8, #cbd5e1); color: #000; }
         .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
         
-        .rank-display-box {
-            font-size: 1.15rem;
-            font-weight: 900;
-            color: #facc15;
-            padding: 7px 16px;
-            background: #0b0f19;
-            border: 1.5px solid #eab308;
-            border-radius: 8px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 90%;
-            margin-top: 4px;
-        }
-
-        .graph-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            margin-top: 6px;
-            width: 100%;
-        }
-
-        .bar-chart-wrapper {
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            height: 160px;
-            width: 110px;
-            background: #090d16;
-            border: 1px solid #2d3748;
-            border-radius: 12px;
-            padding: 10px;
-            box-shadow: inset 0 0 15px rgba(0,0,0,0.7);
-        }
-
-        .stacked-bar {
-            width: 44px;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            height: 135px;
-            border-radius: 6px;
-            overflow: hidden;
-            background: #181f2e;
-        }
-
+        .rank-display-box { font-size: 1.15rem; font-weight: 900; color: #facc15; padding: 7px 16px; background: #0b0f19; border: 1.5px solid #eab308; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 90%; margin-top: 4px; }
+        
+        .graph-container { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 6px; width: 100%; }
+        .bar-chart-wrapper { display: flex; align-items: flex-end; justify-content: center; height: 160px; width: 110px; background: #090d16; border: 1px solid #2d3748; border-radius: 12px; padding: 10px; box-shadow: inset 0 0 15px rgba(0,0,0,0.7); }
+        .stacked-bar { width: 44px; display: flex; flex-direction: column; justify-content: flex-end; height: 135px; border-radius: 6px; overflow: hidden; background: #181f2e; }
         .bar-part-red { background-color: #ef4444; width: 100%; transition: height 0.5s ease; }
         .bar-part-orange { background-color: #f97316; width: 100%; transition: height 0.5s ease; }
         .bar-part-green { background-color: #22c55e; width: 100%; transition: height 0.5s ease; }
+        .graph-legend { display: flex; gap: 16px; font-size: 0.78rem; font-weight: 700; margin-top: 4px; }
 
-        .graph-legend {
-            display: flex;
-            gap: 16px;
-            font-size: 0.78rem;
-            font-weight: 700;
-            margin-top: 4px;
-        }
-
-        .confetti-canvas {
-            position: absolute;
-            top: 0; left: 0; pointer-events: none; width: 100%; height: 100%; z-index: 50;
-        }
+        .confetti-canvas { position: absolute; top: 0; left: 0; pointer-events: none; width: 100%; height: 100%; z-index: 50; }
     </style>
 </head>
 <body>
@@ -534,6 +257,7 @@
                     MIC: OFF
                 </button>
 
+                <!-- Live Sound Meter & Mic Volume Boost -->
                 <div class="mic-gain-meter-box" title="Microphone Input Sound Meter & Sensitivity Boost">
                     <span style="font-size:0.68rem; color:#9ca3af; font-weight:700;">MIC</span>
                     <div class="vu-meter" id="header-vu-meter">
@@ -544,34 +268,41 @@
                     </div>
                     <span style="font-size:0.68rem; color:#cbd5e1; font-weight:700; margin-left:2px;">BOOST:</span>
                     <input type="range" id="mic-gain-slider" min="1" max="10" step="0.5" value="3.5" title="Boost Mic Sensitivity (1x - 10x)">
+                    <span id="mic-gain-display" style="font-size:0.72rem; color:#22c55e; font-weight:800; min-width:24px;">3.5x</span>
                 </div>
 
+                <!-- Audio Playback Reference Mute & Volume -->
                 <div class="audio-playback-control" title="Guide tone & metronome volume">
                     <button type="button" id="btn-tone-mute" class="btn-secondary" style="padding: 3px 6px;">
                         <svg id="icon-sound" class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
                         <svg id="icon-muted" class="icon" style="display:none;" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
                         <span id="tone-mute-text">TONE</span>
                     </button>
-                    <input type="range" id="tone-volume" min="0" max="100" value="35">
+                    <input type="range" id="tone-volume" min="0" max="100" value="35" title="Adjust Volume (Recommended 30-40% on speakers)">
                 </div>
 
-                <button type="button" id="btn-tuner-mode" class="btn-secondary" title="Live Pitch Tuner">
-                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 3v4M12 17v4M3 12h4M17 12h4"></path></svg>
+                <!-- LIVE TUNER / ARCADE BUTTONS -->
+                <button type="button" id="btn-tuner-mode" class="btn-secondary" title="Live Pitch Tuner & Free Sing Mode">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 3v4M12 17v4M3 12h4M17 12h4"></path><circle cx="12" cy="12" r="2"></circle></svg>
                     Live Tuner: OFF
                 </button>
 
-                <button type="button" id="btn-arcade" class="btn-arcade">
-                    MINI-GAMES
+                <button type="button" id="btn-arcade" class="btn-arcade" title="Open Arcade Mini-Games">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path><path d="M12 6v6l4 2"></path></svg>
+                    Mini-Games
                 </button>
 
-                <button type="button" id="btn-calib" class="btn-calib" title="Calibrate Range">
+                <button type="button" id="btn-calib" class="btn-calib" title="Calibrate Lowest & Highest Pitch">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                     Calibrate
                 </button>
 
                 <button type="button" id="btn-step" class="btn-step">
+                    <svg class="icon" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
                     Step Mode
                 </button>
                 <button type="button" id="btn-game" class="btn-game-active">
+                    <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                     Game Mode: ON
                 </button>
 
@@ -605,6 +336,7 @@
         <div class="modal">
             <h2>Welcome to SingPad</h2>
             <p>Please enter your details to save your scores to the leaderboard.</p>
+            
             <div style="display:flex; flex-direction:column; gap:10px; margin: 15px 0; width:100%;">
                 <input type="text" id="login-name" placeholder="First Name & Last Initial (e.g. Sam T)" style="padding: 10px;">
                 <select id="login-year" style="padding: 10px;">
@@ -618,6 +350,7 @@
                 </select>
                 <input type="text" id="login-class" placeholder="Class Name (e.g. 7A, 8 Music)" style="padding: 10px;">
             </div>
+
             <div class="modal-footer">
                 <button type="button" class="btn-success" id="btn-login-start" style="width: 100%; padding: 10px; justify-content:center;">Enter SingPad</button>
             </div>
@@ -637,17 +370,17 @@
                 <div class="game-card" id="card-slalom">
                     <h3>🏂 Pitch Slalom</h3>
                     <p>Surf the neon track! Smoothly glide your pitch up and down to weave perfectly through the slalom gates. Don't crash!</p>
-                    <button type="button" class="btn-arcade" style="justify-content:center; margin-top:auto;">Play Slalom</button>
+                    <button type="button" class="btn-arcade" style="justify-content:center; margin-top:auto; padding:6px; border-radius:6px;">Play Slalom</button>
                 </div>
                 <div class="game-card" id="card-shatter">
                     <h3>💎 Shatter Glass</h3>
                     <p>Find the hidden resonant frequency! Lock onto the exact pitch and hold it rock-steady to shatter the target.</p>
-                    <button type="button" class="btn-arcade" style="justify-content:center; margin-top:auto;">Play Shatter</button>
+                    <button type="button" class="btn-arcade" style="justify-content:center; margin-top:auto; padding:6px; border-radius:6px;">Play Shatter</button>
                 </div>
                 <div class="game-card" id="card-cannon">
                     <h3>🛸 Sonic Cannon</h3>
                     <p>Defend the base! Sing the exact pitch of incoming alien drones to fire your vocal laser cannon and destroy them.</p>
-                    <button type="button" class="btn-arcade" style="justify-content:center; margin-top:auto;">Play Cannon</button>
+                    <button type="button" class="btn-arcade" style="justify-content:center; margin-top:auto; padding:6px; border-radius:6px;">Play Cannon</button>
                 </div>
             </div>
 
@@ -662,9 +395,11 @@
         <div class="modal">
             <h2>Daily Vocal Calibration</h2>
             <p id="calib-instructions">Let's find your healthy vocal range for today. We will use this to generate melodies that fit your voice perfectly.</p>
+            
             <div class="calib-box">
                 <span id="calib-step-text" style="color:#facc15; font-weight:bold;">Step 1: Sing your LOWEST comfortable note</span>
                 <div class="calib-pitch-text" id="calib-live-pitch">--</div>
+                
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 4px; width: 100%;">
                     <span style="font-size:0.7rem; color:#9ca3af; font-weight:700;">MIC SOUND LEVEL</span>
                     <div class="vu-meter vu-meter-large" id="calib-vu-meter">
@@ -675,10 +410,12 @@
                         <div class="vu-bar"></div><div class="vu-bar"></div>
                     </div>
                 </div>
+
                 <div style="width: 100%; height: 8px; background: #1e293b; border-radius: 4px; overflow: hidden; margin-top: 8px;">
                     <div id="calib-progress" style="width: 0%; height: 100%; background: #22c55e; transition: width 0.1s;"></div>
                 </div>
             </div>
+
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" id="btn-calib-cancel">Cancel</button>
                 <button type="button" class="btn-warning" id="btn-calib-skip">Skip (Default Range)</button>
@@ -700,7 +437,6 @@
             <div id="results-badge-container"></div>
             <div id="game-rank-box" class="rank-display-box" style="display:none;">Calculating Rank...</div>
 
-            <!-- Stacked Column Graph -->
             <div class="graph-container" id="results-graph-container">
                 <div class="bar-chart-wrapper">
                     <div class="stacked-bar">
@@ -909,7 +645,6 @@
         function playShatterSound() {
             initAudio();
             const now = audioCtx.currentTime;
-            // White noise burst
             const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 1.5, audioCtx.sampleRate);
             const output = noiseBuffer.getChannelData(0);
             for (let i = 0; i < noiseBuffer.length; i++) output[i] = Math.random() * 2 - 1;
@@ -918,7 +653,6 @@
             const noiseGain = audioCtx.createGain(); noiseGain.gain.setValueAtTime(0.8, now); noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
             noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(audioCtx.destination);
             
-            // Metallic clanks (FM synthesis approx)
             for(let j=0; j<4; j++) {
                 const o = audioCtx.createOscillator(); o.type = 'square';
                 o.frequency.setValueAtTime(800 + Math.random()*2000, now);
@@ -950,6 +684,7 @@
                 btn.classList.add('btn-secondary');
             } else {
                 try {
+                    // Turn off browser echoCancellation so it doesn't kill the mic when guide tones play
                     micStream = await navigator.mediaDevices.getUserMedia({
                         audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, video: false
                     });
@@ -1077,6 +812,7 @@
             return pc === 1 || pc === 3 || pc === 6 || pc === 8 || pc === 10;
         }
 
+        // Returns distance regardless of octave sung
         function getPitchClassDistance(detectedMidi, targetMidi) {
             if (!detectedMidi || detectedMidi <= 0) return 999;
             const detPitchClass = ((detectedMidi % 12) + 12) % 12;
@@ -1324,10 +1060,10 @@
 
             ctx.save();
             ctx.strokeStyle = tuneColor; ctx.lineWidth = 3; ctx.shadowColor = tuneColor; ctx.shadowBlur = 8;
-            ctx.beginPath(); ctx.moveTo(PIANO_WIDTH, detectedY); ctx.lineTo(canvas.width - 410, detectedY); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(PIANO_WIDTH, detectedY); ctx.lineTo(isLiveTuner ? canvas.width - 410 : canvas.width, detectedY); ctx.stroke();
             
             const badgeW = 205; const badgeH = 26;
-            const badgeX = Math.min(canvas.width - badgeW - 420, Math.max(PIANO_WIDTH + 10, HIT_ZONE_X - 10));
+            const badgeX = Math.min(canvas.width - badgeW - (isLiveTuner ? 420 : 10), Math.max(PIANO_WIDTH + 10, HIT_ZONE_X - 10));
             const badgeY = Math.max(rollY + 6, Math.min(canvas.height - badgeH - 6, detectedY - badgeH / 2));
 
             ctx.fillStyle = 'rgba(11, 15, 25, 0.9)'; ctx.strokeStyle = tuneColor; ctx.lineWidth = 1.5;
@@ -1454,20 +1190,16 @@
 
         // --- Arcade Mini Game Rendering ---
         function renderSlalom(now, elapsed, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch) {
-            // Skier avatar bounds checking and physics
             if (!minigameState.skierY) minigameState.skierY = rollY + rollHeight / 2;
             
-            // Map pitch to Y smoothly
             if (currentDetectedMidi > 0) {
                 const targetY = rollY + (viewMaxPitch - currentDetectedMidi) * semitoneHeight;
-                minigameState.skierY += (targetY - minigameState.skierY) * 0.2; // Smooth tracking
+                minigameState.skierY += (targetY - minigameState.skierY) * 0.2;
             } else {
-                // Gravity pulling down if no sound
                 minigameState.skierY += 1.5; 
                 if (minigameState.skierY > rollY + rollHeight - 20) minigameState.skierY = rollY + rollHeight - 20;
             }
 
-            // Draw Background Grids
             for (let p = viewMinPitch; p <= viewMaxPitch; p++) {
                 const yTop = rollY + (viewMaxPitch - p) * semitoneHeight;
                 ctx.fillStyle = isBlackKey(p) ? '#0d0d14' : '#161622';
@@ -1475,66 +1207,43 @@
                 ctx.strokeStyle = '#222230'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(PIANO_WIDTH, yTop); ctx.lineTo(canvas.width, yTop); ctx.stroke();
             }
 
-            // Draw Gates
             noteTimeline.forEach(gate => {
                 const gateX = HIT_ZONE_X + (gate.startTime - elapsed) * PIXELS_PER_MS;
-                const gateWidth = gate.duration * PIXELS_PER_MS; // Width of block = gate width
+                const gateWidth = gate.duration * PIXELS_PER_MS;
                 
                 if (gateX < canvas.width && gateX + gateWidth > PIANO_WIDTH) {
                     const drawX = Math.max(PIANO_WIDTH, gateX);
                     const drawW = (gateX + gateWidth) - drawX;
                     const gapCenterY = rollY + (viewMaxPitch - gate.pitch) * semitoneHeight;
-                    const gapRadius = semitoneHeight * 1.8; // Safe gap
+                    const gapRadius = semitoneHeight * 1.8;
 
-                    // Top Wall
                     ctx.fillStyle = '#ef4444';
                     ctx.fillRect(drawX, rollY, drawW, gapCenterY - gapRadius - rollY);
-                    
-                    // Bottom Wall
                     ctx.fillRect(drawX, gapCenterY + gapRadius, drawW, (rollY + rollHeight) - (gapCenterY + gapRadius));
-
-                    // Gate Gap Highlight
                     ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
                     ctx.fillRect(drawX, gapCenterY - gapRadius, drawW, gapRadius * 2);
 
-                    // Collision Logic
                     const inGateX = (HIT_ZONE_X + 20 >= gateX && HIT_ZONE_X - 10 <= gateX + gateWidth);
                     if (inGateX && gate.hitState === 'pending') {
-                        // Check Y collision
                         if (minigameState.skierY < gapCenterY - gapRadius + 5 || minigameState.skierY > gapCenterY + gapRadius - 5) {
-                            // CRASH!
-                            gate.hitState = 'miss';
-                            playBloodSplatSound();
-                            spawnBlood(HIT_ZONE_X, minigameState.skierY);
-                            minigameState.crashed = true;
-                            isPlaying = false; // End game loop
+                            gate.hitState = 'miss'; playBloodSplatSound(); spawnBlood(HIT_ZONE_X, minigameState.skierY);
+                            minigameState.crashed = true; isPlaying = false; 
                             setTimeout(() => {
                                 document.getElementById('results-stats').innerHTML = `<span style="color:#ef4444; font-size:1.4rem; font-weight:800;">WIPEOUT!</span><br>You survived for ${Math.floor(elapsed/1000)} seconds.`;
-                                document.getElementById('results-badge-container').innerHTML = '';
-                                document.getElementById('results-graph-container').style.display = 'none';
-                                document.getElementById('results-modal').classList.add('open');
+                                document.getElementById('results-badge-container').innerHTML = ''; document.getElementById('results-graph-container').style.display = 'none'; document.getElementById('results-modal').classList.add('open');
                             }, 1200);
-                        } else {
-                            score += 5;
-                            updateScoreUI();
-                        }
-                    } else if (elapsed > gate.startTime + gate.duration && gate.hitState === 'pending') {
-                        gate.hitState = 'perfect'; // Cleared gate
-                    }
+                        } else { score += 5; updateScoreUI(); }
+                    } else if (elapsed > gate.startTime + gate.duration && gate.hitState === 'pending') { gate.hitState = 'perfect'; }
                 }
             });
 
-            // Draw Skier Avatar
             if (!minigameState.crashed) {
-                ctx.font = '24px sans-serif';
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText('🏂', HIT_ZONE_X, minigameState.skierY);
+                ctx.font = '24px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🏂', HIT_ZONE_X, minigameState.skierY);
             }
         }
 
         function renderShatter(now, elapsed, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch) {
-            ctx.fillStyle = '#050811';
-            ctx.fillRect(PIANO_WIDTH, rollY, canvas.width - PIANO_WIDTH, rollHeight);
+            ctx.fillStyle = '#050811'; ctx.fillRect(PIANO_WIDTH, rollY, canvas.width - PIANO_WIDTH, rollHeight);
 
             if (!minigameState.targetPitch) {
                 minigameState.targetPitch = Math.floor(Math.random() * (vocalRange.max - vocalRange.min)) + vocalRange.min;
@@ -1542,137 +1251,75 @@
             }
 
             let shakeX = 0, shakeY = 0;
-            let isVibrating = false;
-
             if (currentDetectedMidi > 0) {
                 const diff = getPitchClassDistance(currentDetectedMidi, minigameState.targetPitch);
                 if (diff < 1.0) {
-                    minigameState.shatterProgress += (0.012 + (1.0 - diff)*0.02); // Faster fill if closer
-                    isVibrating = true;
+                    minigameState.shatterProgress += (0.012 + (1.0 - diff)*0.02);
                     shakeX = (Math.random() - 0.5) * (15 * minigameState.shatterProgress);
                     shakeY = (Math.random() - 0.5) * (15 * minigameState.shatterProgress);
                     
                     if (minigameState.shatterProgress > 1.0) {
-                        // SHATTER!
-                        playShatterSound();
-                        spawnConfetti(canvas.width/2, rollY + rollHeight/2);
-                        spawnConfetti(canvas.width/2, rollY + rollHeight/2);
-                        minigameState.targetPitch = null; // resets for next
-                        score += 50;
-                        updateScoreUI();
+                        playShatterSound(); spawnConfetti(canvas.width/2, rollY + rollHeight/2); spawnConfetti(canvas.width/2, rollY + rollHeight/2);
+                        minigameState.targetPitch = null; score += 50; updateScoreUI();
                     }
-                } else {
-                    minigameState.shatterProgress = Math.max(0, minigameState.shatterProgress - 0.03);
-                }
-            } else {
-                minigameState.shatterProgress = Math.max(0, minigameState.shatterProgress - 0.01);
-            }
+                } else { minigameState.shatterProgress = Math.max(0, minigameState.shatterProgress - 0.03); }
+            } else { minigameState.shatterProgress = Math.max(0, minigameState.shatterProgress - 0.01); }
 
-            const cx = (canvas.width + PIANO_WIDTH) / 2;
-            const cy = rollY + rollHeight / 2;
+            const cx = (canvas.width + PIANO_WIDTH) / 2; const cy = rollY + rollHeight / 2;
+            ctx.save(); ctx.translate(shakeX, shakeY);
+            ctx.shadowColor = `rgba(34, 197, 94, ${minigameState.shatterProgress})`; ctx.shadowBlur = 30;
+            ctx.fillStyle = `rgba(56, 189, 248, ${0.1 + minigameState.shatterProgress * 0.5})`; ctx.strokeStyle = '#0ea5e9'; ctx.lineWidth = 3;
             
-            // Draw Hidden Glass Polygon
-            ctx.save();
-            ctx.translate(shakeX, shakeY);
-            
-            // Glow based on progress
-            ctx.shadowColor = `rgba(34, 197, 94, ${minigameState.shatterProgress})`;
-            ctx.shadowBlur = 30;
-            
-            ctx.fillStyle = `rgba(56, 189, 248, ${0.1 + minigameState.shatterProgress * 0.5})`;
-            ctx.strokeStyle = '#0ea5e9';
-            ctx.lineWidth = 3;
-            
-            ctx.beginPath();
-            ctx.moveTo(cx, cy - 100);
-            ctx.lineTo(cx + 80, cy);
-            ctx.lineTo(cx, cy + 100);
-            ctx.lineTo(cx - 80, cy);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(cx, cy - 100); ctx.lineTo(cx + 80, cy); ctx.lineTo(cx, cy + 100); ctx.lineTo(cx - 80, cy); ctx.closePath(); ctx.fill(); ctx.stroke();
 
-            // Cracks
-            if (minigameState.shatterProgress > 0.3) {
-                ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + 40, cy - 60); ctx.stroke();
-            }
-            if (minigameState.shatterProgress > 0.6) {
-                ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - 50, cy + 30); ctx.stroke();
-            }
-            if (minigameState.shatterProgress > 0.8) {
-                ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + 60, cy + 20); ctx.stroke();
-            }
+            if (minigameState.shatterProgress > 0.3) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + 40, cy - 60); ctx.stroke(); }
+            if (minigameState.shatterProgress > 0.6) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - 50, cy + 30); ctx.stroke(); }
+            if (minigameState.shatterProgress > 0.8) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + 60, cy + 20); ctx.stroke(); }
 
             ctx.restore();
-
-            // Draw Tuner Line for Feedback
-            if (currentDetectedMidi > 0) {
-                drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch);
-            }
+            if (currentDetectedMidi > 0) drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch);
         }
 
         function renderCannon(now, elapsed, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch) {
-            ctx.fillStyle = '#0f0421';
-            ctx.fillRect(PIANO_WIDTH, rollY, canvas.width - PIANO_WIDTH, rollHeight);
+            ctx.fillStyle = '#0f0421'; ctx.fillRect(PIANO_WIDTH, rollY, canvas.width - PIANO_WIDTH, rollHeight);
 
-            // Spawn Enemies
             if (!minigameState.enemies) minigameState.enemies = [];
             if (Math.random() < 0.02) {
                 const pitch = snapToDiatonic(Math.floor(Math.random() * (vocalRange.max - vocalRange.min)) + vocalRange.min);
                 minigameState.enemies.push({ x: canvas.width, pitch: pitch, active: true });
             }
 
-            // Draw Cannon Base (Left)
-            ctx.fillStyle = '#374151';
-            ctx.fillRect(PIANO_WIDTH, rollY, 40, rollHeight);
+            ctx.fillStyle = '#374151'; ctx.fillRect(PIANO_WIDTH, rollY, 40, rollHeight);
 
-            // Fire Laser!
             let firedPitch = null;
             if (currentDetectedMidi > 0) {
                 firedPitch = Math.round(currentDetectedMidi);
                 const lY = rollY + (viewMaxPitch - firedPitch) * semitoneHeight + semitoneHeight/2;
                 ctx.strokeStyle = '#00f0ff'; ctx.lineWidth = 6; ctx.shadowColor = '#00f0ff'; ctx.shadowBlur = 10;
-                ctx.beginPath(); ctx.moveTo(PIANO_WIDTH + 40, lY); ctx.lineTo(canvas.width, lY); ctx.stroke();
-                ctx.shadowBlur = 0;
+                ctx.beginPath(); ctx.moveTo(PIANO_WIDTH + 40, lY); ctx.lineTo(canvas.width, lY); ctx.stroke(); ctx.shadowBlur = 0;
             }
 
-            // Draw & Update Enemies
             minigameState.enemies.forEach(en => {
                 if (!en.active) return;
-                en.x -= 2.5; // Move left
-
+                en.x -= 2.5; 
                 const eY = rollY + (viewMaxPitch - en.pitch) * semitoneHeight + semitoneHeight/2;
                 
-                // Collision
                 if (firedPitch) {
                     const diff = getPitchClassDistance(firedPitch, en.pitch);
                     if (diff === 0 && en.x < canvas.width) {
-                        en.active = false;
-                        playLaserSound();
-                        spawnConfetti(en.x, eY);
-                        score += 15;
-                        updateScoreUI();
+                        en.active = false; playLaserSound(); spawnConfetti(en.x, eY); score += 15; updateScoreUI();
                     }
                 }
 
                 if (en.active) {
-                    ctx.font = '24px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                    ctx.fillText('👾', en.x, eY);
-                    
-                    // Note label on enemy
-                    ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif';
-                    ctx.fillText(getNoteName(en.pitch), en.x, eY - 20);
+                    ctx.font = '24px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('👾', en.x, eY);
+                    ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'; ctx.fillText(getNoteName(en.pitch), en.x, eY - 20);
 
-                    // Base collision
                     if (en.x < PIANO_WIDTH + 40) {
-                        en.active = false;
-                        playBloodSplatSound();
-                        isPlaying = false; // Game Over
+                        en.active = false; playBloodSplatSound(); isPlaying = false; 
                         setTimeout(() => {
                             document.getElementById('results-stats').innerHTML = `<span style="color:#ef4444; font-size:1.4rem; font-weight:800;">BASE BREACHED!</span><br>Final Score: ${score}`;
-                            document.getElementById('results-badge-container').innerHTML = '';
-                            document.getElementById('results-graph-container').style.display = 'none';
-                            document.getElementById('results-modal').classList.add('open');
+                            document.getElementById('results-badge-container').innerHTML = ''; document.getElementById('results-graph-container').style.display = 'none'; document.getElementById('results-modal').classList.add('open');
                         }, 1200);
                     }
                 }
@@ -1699,9 +1346,7 @@
             } else if (activeMiniGame === 'cannon') {
                 renderCannon(now, elapsed, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch);
             } else {
-                // Standard Melody Game
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
                 function getPitchTop(midiNum) { return rollY + (viewMaxPitch - midiNum) * semitoneHeight; }
                 function getPitchCenterY(midiNum) { return getPitchTop(midiNum) + semitoneHeight / 2; }
 
@@ -1723,19 +1368,14 @@
                         playbackStartTime = now - virtualElapsed;
                         activeNoteMidi = currentNote.pitch;
 
-                        if (!currentNote.soundPlayed) {
-                            currentNote.soundPlayed = true;
-                            playGuideTone(midiToFreq(currentNote.pitch), 600);
-                        }
+                        if (!currentNote.soundPlayed) { currentNote.soundPlayed = true; playGuideTone(midiToFreq(currentNote.pitch), 600); }
                         
                         if (currentDetectedMidi > 0) {
                             const pitchDiff = getPitchClassDistance(currentDetectedMidi, currentNote.pitch);
                             if (pitchDiff <= HIT_TOLERANCE_SEMITONES) {
                                 stepModeWaitTime += (now - lastFrameTime);
                                 if (stepModeWaitTime > 200) {
-                                    currentNote.hitState = 'perfect'; perfectHits++; totalNotesHit++;
-                                    stepModeCurrentIndex++; stepModeWaitTime = 0;
-                                    spawnConfetti(HIT_ZONE_X, getPitchCenterY(currentNote.pitch));
+                                    currentNote.hitState = 'perfect'; perfectHits++; totalNotesHit++; stepModeCurrentIndex++; stepModeWaitTime = 0; spawnConfetti(HIT_ZONE_X, getPitchCenterY(currentNote.pitch));
                                 }
                             } else { stepModeWaitTime = 0; }
                         } else { stepModeWaitTime = 0; }
@@ -1746,8 +1386,7 @@
                     const currentBeat = Math.floor(virtualElapsed / BEAT_MS);
                     if (currentBeat > lastPlayedBeatIndex) {
                         for (let b = Math.max(0, lastPlayedBeatIndex + 1); b <= currentBeat; b++) {
-                            if (b < 4) playCountInClick(b === 0);
-                            else playBassDrum(((b - 4) % 4) === 0);
+                            if (b < 4) playCountInClick(b === 0); else playBassDrum(((b - 4) % 4) === 0);
                         }
                         lastPlayedBeatIndex = currentBeat;
                     }
@@ -1763,8 +1402,7 @@
                     const bx = HIT_ZONE_X + (beatTime - virtualElapsed) * PIXELS_PER_MS;
                     if (bx >= PIANO_WIDTH && bx <= canvas.width) {
                         const isBarLine = (((b % 4) + 4) % 4 === 0);
-                        ctx.save();
-                        ctx.strokeStyle = isBarLine ? 'rgba(180, 180, 200, 0.32)' : 'rgba(120, 120, 140, 0.14)';
+                        ctx.save(); ctx.strokeStyle = isBarLine ? 'rgba(180, 180, 200, 0.32)' : 'rgba(120, 120, 140, 0.14)';
                         ctx.lineWidth = isBarLine ? 2 : 1;
                         ctx.beginPath(); ctx.moveTo(bx, rollY); ctx.lineTo(bx, canvas.height); ctx.stroke();
                         if (isBarLine) {
@@ -1788,9 +1426,7 @@
                     const noteY = getPitchTop(note.pitch) + 2;
                     const noteHeight = Math.max(14, semitoneHeight - 4);
                     
-                    if (!isStepMode && virtualElapsed >= note.startTime && !note.soundPlayed) {
-                        note.soundPlayed = true; playGuideTone(midiToFreq(note.pitch), note.duration);
-                    }
+                    if (!isStepMode && virtualElapsed >= note.startTime && !note.soundPlayed) { note.soundPlayed = true; playGuideTone(midiToFreq(note.pitch), note.duration); }
 
                     if (noteX < canvas.width && noteX + noteWidth > PIANO_WIDTH) {
                         const drawX = Math.max(PIANO_WIDTH, noteX); const drawW = (noteX + noteWidth) - drawX;
@@ -1866,7 +1502,6 @@
                 } else if (isStepMode && stepModeCurrentIndex >= noteTimeline.length) { endGame(); return; }
             }
 
-            // Draw Global Overlays
             drawVerticalPiano(ctx, rollY, semitoneHeight, viewMinPitch, viewMaxPitch, activeMiniGame ? null : null, currentDetectedMidi);
             drawTrebleClef(ctx, clefHeight, null);
             drawBloodAndConfetti();
@@ -1875,15 +1510,10 @@
             if (isPlaying) requestAnimationFrame(renderLoop);
         }
 
-        // --- Custom Particle Engine for Mini Games ---
         let bloodParticles = [];
         function spawnBlood(x, y) {
             for(let i=0; i<40; i++) {
-                bloodParticles.push({
-                    x: x, y: y,
-                    vx: (Math.random()-0.5)*15, vy: (Math.random()-0.5)*15 - 5,
-                    life: 1.0, size: Math.random() * 8 + 4
-                });
+                bloodParticles.push({ x: x, y: y, vx: (Math.random()-0.5)*15, vy: (Math.random()-0.5)*15 - 5, life: 1.0, size: Math.random() * 8 + 4 });
             }
         }
         
@@ -1891,22 +1521,22 @@
             drawConfetti();
             bloodParticles.forEach(p => {
                 p.x += p.vx; p.y += p.vy; p.vy += 0.8; p.life -= 0.02;
-                ctx.fillStyle = `rgba(220, 38, 38, ${p.life})`;
-                ctx.fillRect(p.x, p.y, p.size, p.size);
+                ctx.fillStyle = `rgba(220, 38, 38, ${p.life})`; ctx.fillRect(p.x, p.y, p.size, p.size);
             });
             bloodParticles = bloodParticles.filter(p => p.life > 0);
         }
 
-        // --- Mini-Games Launchers ---
         const btnArcade = document.getElementById('btn-arcade');
         const arcadeHubModal = document.getElementById('arcade-hub-modal');
         
-        btnArcade.addEventListener('click', () => {
-            initAudio();
-            isPlaying = false;
-            activeMiniGame = null;
-            arcadeHubModal.classList.add('open');
-        });
+        if(btnArcade) {
+            btnArcade.addEventListener('click', () => {
+                initAudio();
+                isPlaying = false;
+                activeMiniGame = null;
+                arcadeHubModal.classList.add('open');
+            });
+        }
         
         document.getElementById('btn-close-arcade').addEventListener('click', () => {
             arcadeHubModal.classList.remove('open');
@@ -1920,10 +1550,9 @@
             activeMiniGame = 'slalom';
             minigameState = { skierY: null, crashed: false };
             score = 0; updateScoreUI();
-            generateMelody('1'); // Use stepwise melody for smooth gates
+            generateMelody('1'); 
             isPlaying = true;
-            playbackStartTime = performance.now();
-            lastFrameTime = performance.now();
+            playbackStartTime = performance.now(); lastFrameTime = performance.now();
             requestAnimationFrame(renderLoop);
         });
 
@@ -1935,8 +1564,7 @@
             minigameState = { targetPitch: null, shatterProgress: 0 };
             score = 0; updateScoreUI();
             isPlaying = true;
-            playbackStartTime = performance.now();
-            lastFrameTime = performance.now();
+            playbackStartTime = performance.now(); lastFrameTime = performance.now();
             requestAnimationFrame(renderLoop);
         });
 
@@ -1948,16 +1576,14 @@
             minigameState = { enemies: [] };
             score = 0; updateScoreUI();
             isPlaying = true;
-            playbackStartTime = performance.now();
-            lastFrameTime = performance.now();
+            playbackStartTime = performance.now(); lastFrameTime = performance.now();
             requestAnimationFrame(renderLoop);
         });
 
-        // --- Standard UI Listeners ---
         document.getElementById('btn-play').addEventListener('click', async () => {
             if (!isCalibrated) { alert("Please calibrate your vocal range first (or press '(' to use default range)!"); return; }
             if (!isMicListening) toggleMicrophone();
-            activeMiniGame = null; // Standard melody mode
+            activeMiniGame = null;
             
             if (isLiveTuner) {
                 isLiveTuner = false;
@@ -1985,24 +1611,18 @@
         document.getElementById('btn-results-retry').addEventListener('click', async () => {
             document.getElementById('results-modal').classList.remove('open');
             
-            // Allow retry of arcade games!
             if (activeMiniGame) {
                 if (activeMiniGame === 'slalom') {
-                    minigameState = { skierY: null, crashed: false };
-                    score = 0; updateScoreUI();
-                    isPlaying = true; playbackStartTime = performance.now(); lastFrameTime = performance.now();
-                    requestAnimationFrame(renderLoop);
+                    minigameState = { skierY: null, crashed: false }; score = 0; updateScoreUI();
+                    isPlaying = true; playbackStartTime = performance.now(); lastFrameTime = performance.now(); requestAnimationFrame(renderLoop);
                 } else if (activeMiniGame === 'shatter' || activeMiniGame === 'cannon') {
-                    // these are infinite, so restarting them generates new state
                     score = 0; updateScoreUI();
                     minigameState = (activeMiniGame === 'shatter') ? { targetPitch: null, shatterProgress: 0 } : { enemies: [] };
-                    isPlaying = true; playbackStartTime = performance.now(); lastFrameTime = performance.now();
-                    requestAnimationFrame(renderLoop);
+                    isPlaying = true; playbackStartTime = performance.now(); lastFrameTime = performance.now(); requestAnimationFrame(renderLoop);
                 }
                 return;
             }
             
-            // Standard retry
             if (noteTimeline.length === 0) return;
             if (!isMicListening) toggleMicrophone();
 
@@ -2021,6 +1641,43 @@
             requestAnimationFrame(renderLoop);
         });
 
+        document.getElementById('btn-stop').addEventListener('click', () => {
+            isPlaying = false; previewScaleActiveNote = null; lastPlayedBeatIndex = -1;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('status').textContent = ' Stopped.';
+            drawScene();
+        });
+
+        document.getElementById('btn-mic-toggle').addEventListener('click', toggleMicrophone);
+
+        const btnStep = document.getElementById('btn-step');
+        const btnGame = document.getElementById('btn-game');
+
+        btnStep.addEventListener('click', () => {
+            isStepMode = true; isGameMode = false;
+            btnStep.classList.replace('btn-step', 'btn-step-active');
+            btnGame.classList.replace('btn-game-active', 'btn-secondary');
+            if (isPlaying) document.getElementById('status').textContent = ' Switched to Step Mode.';
+        });
+
+        btnGame.addEventListener('click', () => {
+            isGameMode = true; isStepMode = false;
+            btnGame.classList.replace('btn-secondary', 'btn-game-active');
+            btnStep.classList.replace('btn-step-active', 'btn-step');
+            if (isPlaying) document.getElementById('status').textContent = ' Switched to Game Mode.';
+        });
+
+        document.getElementById('theme-select').addEventListener('change', (e) => {
+            currentTheme = e.target.value;
+            if (currentTheme === 'default') document.body.removeAttribute('data-theme');
+            else document.body.setAttribute('data-theme', currentTheme);
+            if (!isPlaying) drawScene();
+        });
+
+        document.getElementById('btn-results-close').addEventListener('click', () => {
+            document.getElementById('results-modal').classList.remove('open');
+            if (!isPlaying) drawScene();
+        });
     </script>
 </body>
 </html>
