@@ -310,6 +310,7 @@
             justify-content: center;
             gap: 10px;
             margin-top: 10px;
+            flex-wrap: wrap;
         }
 
         .calib-box {
@@ -368,7 +369,7 @@
                 
                 <select id="difficulty-select">
                     <option value="1">Level 1 (Easy - Stepwise)</option>
-                    <option value="2">Level 2 (Medium - Leaps)</option>
+                    <option value="2">Level 2 (Medium - Leaps up to 3rds)</option>
                     <option value="3">Level 3 (Hard - Accidentals)</option>
                     <option value="4">Endless Mode</option>
                 </select>
@@ -475,6 +476,7 @@
 
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" id="btn-calib-cancel">Cancel</button>
+                <button type="button" class="btn-warning" id="btn-calib-skip">Skip (Default Range)</button>
                 <button type="button" class="btn-success" id="btn-calib-action">Start Recording Lowest Note</button>
             </div>
         </div>
@@ -496,7 +498,7 @@
 
     <script>
         // =========================================================================
-        // IMPORTANT: PASTE YOUR DEPLOYED GOOGLE APPS SCRIPT WEB APP URL HERE
+        // GOOGLE APPS SCRIPT WEB APP ENDPOINT FOR SPREADSHEET SUBMISSION
         // =========================================================================
         const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzAo05vJwNnIDbFUKEfbRETBzTORNsZKQ1y8rqnXKbhBuYA31x2LkN4EDMR6NYOAq8P/exec"; 
         
@@ -515,6 +517,7 @@
         let currentDetectedFreq = 0;
         let currentDetectedMidi = 0;
         
+        // Default range: Teenage male (A2 = 45 to E4 = 64)
         let vocalRange = { min: 45, max: 64 }; 
         let isCalibrated = false;
 
@@ -570,9 +573,9 @@
         // --- Identity Login Modal ---
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('login-modal').classList.add('open');
-            if(localStorage.getItem('singpad_name')) document.getElementById('login-name').value = localStorage.getItem('singpad_name');
-            if(localStorage.getItem('singpad_year')) document.getElementById('login-year').value = localStorage.getItem('singpad_year');
-            if(localStorage.getItem('singpad_class')) document.getElementById('login-class').value = localStorage.getItem('singpad_class');
+            if (localStorage.getItem('singpad_name')) document.getElementById('login-name').value = localStorage.getItem('singpad_name');
+            if (localStorage.getItem('singpad_year')) document.getElementById('login-year').value = localStorage.getItem('singpad_year');
+            if (localStorage.getItem('singpad_class')) document.getElementById('login-class').value = localStorage.getItem('singpad_class');
         });
 
         document.getElementById('btn-login-start').addEventListener('click', () => {
@@ -596,7 +599,6 @@
             document.getElementById('header-student-label').textContent = currentStudentName;
             document.getElementById('login-modal').classList.remove('open');
         });
-
 
         function initAudio() {
             if (!audioCtx) {
@@ -764,12 +766,22 @@
         // --- Calibration Logic ---
         const calibModal = document.getElementById('calib-modal');
         const btnCalibAction = document.getElementById('btn-calib-action');
+        const btnCalibSkip = document.getElementById('btn-calib-skip');
         const calibLivePitch = document.getElementById('calib-live-pitch');
         const calibProgress = document.getElementById('calib-progress');
         
         let calibPhase = 0;
         let calibSamples = [];
         let calibInterval = null;
+
+        function applyDefaultCalibration(reasonText) {
+            vocalRange = { min: 45, max: 64 }; // Teenage male A2 to E4
+            isCalibrated = true;
+            if (calibInterval) clearInterval(calibInterval);
+            calibModal.classList.remove('open');
+            document.getElementById('status').textContent = reasonText || ` Calibration Active: Default Range (${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)})`;
+            spawnConfetti(HIT_ZONE_X, canvas.height / 2);
+        }
 
         document.getElementById('btn-calib').addEventListener('click', () => {
             initAudio();
@@ -787,6 +799,10 @@
         document.getElementById('btn-calib-cancel').addEventListener('click', () => {
             clearInterval(calibInterval);
             calibModal.classList.remove('open');
+        });
+
+        btnCalibSkip.addEventListener('click', () => {
+            applyDefaultCalibration(` Calibration Skipped: Teenage Male Range Active (${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)})`);
         });
 
         btnCalibAction.addEventListener('click', () => {
@@ -860,14 +876,7 @@
 
             if (e.key === '(') {
                 e.preventDefault();
-                vocalRange = { min: 45, max: 64 };
-                isCalibrated = true;
-                
-                if (calibInterval) clearInterval(calibInterval);
-                calibModal.classList.remove('open');
-                
-                document.getElementById('status').textContent = ` Calibration Bypassed: Teenage Male Range Active (${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)})`;
-                spawnConfetti(HIT_ZONE_X, canvas.height / 2);
+                applyDefaultCalibration(` Calibration Bypassed: Teenage Male Range Active (${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)})`);
             }
         });
 
@@ -943,7 +952,7 @@
 
             for (let i = 0; i < numNotes; i++) {
                 let durations = [500, 1000];
-                if (difficulty === '2') durations = [250, 500, 1000, 1500];
+                if (difficulty === '2') durations = [500, 750, 1000]; // Singable timing for Level 2
                 if (difficulty === '3' || difficulty === '4') durations = [250, 500, 750, 1000];
                 
                 const duration = durations[Math.floor(Math.random() * durations.length)];
@@ -963,13 +972,16 @@
                 }
 
                 if (difficulty === '1') {
+                    // Level 1: Stepwise only (2nds: up or down 1 diatonic step)
                     const step = Math.random() > 0.5 ? 1 : -1;
                     currentMidi = snapToDiatonic(currentMidi, step);
                 } else if (difficulty === '2') {
-                    const leaps = [-4, -3, -2, -1, 1, 2, 3, 4];
+                    // Level 2: Leaps at most diatonic 3rds (steps of 1 or 2, e.g. C to E)
+                    const leaps = [-2, -1, -1, 1, 1, 2];
                     const leap = leaps[Math.floor(Math.random() * leaps.length)];
                     currentMidi = snapToDiatonic(currentMidi, leap);
                 } else {
+                    // Level 3 / Endless: Chromatic jumps with accidentals
                     const semitoneLeap = Math.floor(Math.random() * 9) - 4;
                     currentMidi += semitoneLeap;
                 }
@@ -1294,7 +1306,6 @@
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 1;
 
-            // White Keys
             for (let p = minPitch; p <= maxPitch; p++) {
                 const yTop = rollY + (maxPitch - p) * semitoneHeight;
                 const isBlack = isBlackKey(p);
@@ -1322,7 +1333,6 @@
                 }
             }
 
-            // Black Keys
             const blackKeyWidth = PIANO_WIDTH * 0.62;
             for (let p = minPitch; p <= maxPitch; p++) {
                 const yTop = rollY + (maxPitch - p) * semitoneHeight;
@@ -1544,7 +1554,6 @@
             document.getElementById('results-modal').classList.add('open');
             document.getElementById('status').textContent = ' Exercise complete!';
 
-            // --- Send Data to Google Sheets via Web App ---
             if (APPS_SCRIPT_URL && APPS_SCRIPT_URL !== "YOUR_WEB_APP_URL_HERE") {
                 document.getElementById('save-status').textContent = 'Saving to Leaderboard...';
                 
