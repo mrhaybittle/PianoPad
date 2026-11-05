@@ -249,7 +249,7 @@
             background-color: var(--tuner-active) !important;
             color: #000000 !important;
             font-weight: 800 !important;
-            box-shadow: 0 0 12px var(--tuner-active);
+            box-shadow: 0 0 14px var(--tuner-active);
         }
 
         .btn-muted {
@@ -722,11 +722,12 @@
         let isCalibrated = false;
 
         let isToneMuted = false;
-        let toneVolume = 0.35; // Gentle 35% default so speakers don't acoustically bleed into mic
+        let toneVolume = 0.35; // Gentle 35% default to prevent speaker bleed into mic
 
         // --- Live Tuner & Free Sing Mode ---
         let isLiveTuner = false;
         let idleAnimationFrameId = null;
+        let tunerNeedleAngle = Math.PI * 1.5; // Damped swinging needle (starts at 12 o'clock)
 
         // --- 4/4 Timing Configuration ---
         const BEAT_MS = 750; // 80 BPM
@@ -820,7 +821,7 @@
             }
         }
 
-        // --- Count-In Percussion (Woodblock / Rimshot Click) ---
+        // --- Count-In Percussion (Woodblock Click) ---
         function playCountInClick(isAccented = false) {
             if (isToneMuted || toneVolume <= 0) return;
             initAudio();
@@ -934,7 +935,7 @@
                 btn.classList.add('btn-secondary');
             } else {
                 try {
-                    // CRUCIAL: echoCancellation=false ensures browser WebRTC doesn't cancel out the student's voice when guide tones are playing
+                    // echoCancellation=false ensures WebRTC doesn't cancel student singing when audio plays
                     micStream = await navigator.mediaDevices.getUserMedia({
                         audio: {
                             echoCancellation: false,
@@ -1015,7 +1016,7 @@
             }
         }
 
-        // --- Clean, High-Precision Bounded Autocorrelation Pitch Detector ---
+        // Clean Bounded Autocorrelation Pitch Detector
         function autoCorrelate(buf, sampleRate) {
             const SIZE = buf.length;
             let rms = 0;
@@ -1025,11 +1026,10 @@
 
             updateVUMeters(rms);
 
-            // Very sensitive threshold to detect quiet vocal singing
             if (rms < 0.004) return -1;
 
-            const minLag = Math.floor(sampleRate / 1400); // 1400 Hz max
-            let maxLag = Math.floor(sampleRate / 50);      // 50 Hz min
+            const minLag = Math.floor(sampleRate / 1400); 
+            let maxLag = Math.floor(sampleRate / 50);      
             if (maxLag >= SIZE) maxLag = SIZE - 1;
 
             const c = new Float32Array(maxLag + 1);
@@ -1111,14 +1111,13 @@
             return pc === 1 || pc === 3 || pc === 6 || pc === 8 || pc === 10;
         }
 
-        // Pitch-Class (Octave-Invariant) Difference:
-        // Automatically accommodates students singing in higher/lower octaves (male baritone vs soprano/tenor)
+        // Pitch-Class (Octave-Invariant) Difference
         function getPitchClassDistance(detectedMidi, targetMidi) {
             if (!detectedMidi || detectedMidi <= 0) return 999;
             const detPitchClass = ((detectedMidi % 12) + 12) % 12;
             const tgtPitchClass = ((targetMidi % 12) + 12) % 12;
             let diff = Math.abs(detPitchClass - tgtPitchClass);
-            if (diff > 6) diff = 12 - diff; // Wrap-around circle of semitones
+            if (diff > 6) diff = 12 - diff; 
             return diff;
         }
 
@@ -1488,15 +1487,19 @@
             drawVerticalPiano(ctx, rollY, semitoneHeight, viewMinPitch, viewMaxPitch, activeStaffNote, currentDetectedMidi);
             drawTrebleClef(ctx, clefHeight, activeStaffNote);
 
-            // Draw live tuner laser beam across canvas
+            // Draw Live Laser Line on Piano Roll
             if (currentDetectedMidi > 0 && !previewScaleActiveNote) {
                 drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch);
+            }
+
+            // LARGE GUITAR-STYLE TUNER DISPLAY ON THE RIGHT SIDE
+            if (isLiveTuner) {
+                drawLargeGuitarTunerDisplay(ctx, rollY, rollHeight);
             }
         }
 
         // Draws the live tuner line, frequency tag, and cents indicator across piano roll and staff
         function drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch) {
-            // Fold detected pitch into visible display bounds if needed
             let displayMidi = currentDetectedMidi;
             while (displayMidi < viewMinPitch) displayMidi += 12;
             while (displayMidi > viewMaxPitch) displayMidi -= 12;
@@ -1511,7 +1514,7 @@
             let tuneColor = '#22c55e'; // In tune
             if (absCents > 30) {
                 tuneColor = '#ef4444'; // Off pitch
-            } else if (absCents > 12) {
+            } else if (absCents > 18) {
                 tuneColor = '#facc15'; // Slightly off
             }
 
@@ -1524,13 +1527,13 @@
             ctx.shadowBlur = 8;
             ctx.beginPath();
             ctx.moveTo(PIANO_WIDTH, detectedY);
-            ctx.lineTo(canvas.width, detectedY);
+            ctx.lineTo(isLiveTuner ? canvas.width - 410 : canvas.width, detectedY);
             ctx.stroke();
 
             // Live Pill Badge at Target Line
             const badgeW = 205;
             const badgeH = 26;
-            const badgeX = Math.min(canvas.width - badgeW - 10, Math.max(PIANO_WIDTH + 10, HIT_ZONE_X - 10));
+            const badgeX = Math.min(canvas.width - badgeW - (isLiveTuner ? 420 : 10), Math.max(PIANO_WIDTH + 10, HIT_ZONE_X - 10));
             const badgeY = Math.max(rollY + 6, Math.min(canvas.height - badgeH - 6, detectedY - badgeH / 2));
 
             ctx.fillStyle = 'rgba(11, 15, 25, 0.9)';
@@ -1548,45 +1551,287 @@
             const centsTag = cents >= 0 ? `+${cents}¢` : `${cents}¢`;
             ctx.fillText(`🎤 ${noteName} (${currentDetectedFreq.toFixed(1)}Hz) ${centsTag}`, badgeX + badgeW / 2, badgeY + badgeH / 2);
 
-            // Top HUD Cents Tuning Needle Gauge
-            const gaugeW = 240;
-            const gaugeH = 24;
-            const gaugeX = canvas.width - gaugeW - 16;
-            const gaugeY = 16;
+            ctx.restore();
+        }
 
-            ctx.fillStyle = 'rgba(11, 15, 25, 0.92)';
+        // =========================================================================
+        // LARGE GUITAR-STYLE TUNER DISPLAY (SWEEPS FROM 9 O'CLOCK TO 3 O'CLOCK)
+        // Midpoint at 12 o'clock = Perfect Pitch. Flashes green with vocal vibrato tolerance (±20¢)
+        // =========================================================================
+        function drawLargeGuitarTunerDisplay(ctx, rollY, rollHeight) {
+            ctx.save();
+
+            const tunerW = Math.min(390, Math.max(320, canvas.width * 0.30));
+            const tunerH = Math.min(290, rollHeight - 20);
+            const tunerX = canvas.width - tunerW - 14;
+            const tunerY = rollY + (rollHeight - tunerH) / 2;
+
+            // 1. Outer Heavy-Duty Metallic / Stage Tuner Housing
+            const housingGrad = ctx.createLinearGradient(tunerX, tunerY, tunerX, tunerY + tunerH);
+            housingGrad.addColorStop(0, '#1c2234');
+            housingGrad.addColorStop(0.5, '#101422');
+            housingGrad.addColorStop(1, '#090c15');
+
+            ctx.fillStyle = housingGrad;
             ctx.strokeStyle = '#374151';
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.roundRect(gaugeX, gaugeY, gaugeW, gaugeH, 6);
+            ctx.roundRect(tunerX, tunerY, tunerW, tunerH, 14);
             ctx.fill();
             ctx.stroke();
 
-            // Center zero line
-            ctx.strokeStyle = '#22c55e';
+            // Screw rivets at four corners for vintage pedal aesthetic
+            const cornerDist = 10;
+            const corners = [
+                [tunerX + cornerDist, tunerY + cornerDist],
+                [tunerX + tunerW - cornerDist, tunerY + cornerDist],
+                [tunerX + cornerDist, tunerY + tunerH - cornerDist],
+                [tunerX + tunerW - cornerDist, tunerY + tunerH - cornerDist]
+            ];
+            ctx.fillStyle = '#4b5563';
+            corners.forEach(([cx, cy]) => {
+                ctx.beginPath();
+                ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Tuner Header Label
+            ctx.fillStyle = '#9ca3af';
+            ctx.font = '800 10px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("CHROMATIC VOCAL GUITAR TUNER", tunerX + tunerW / 2, tunerY + 16);
+
+            // 2. Inner Recessed Glass Meter Display Window
+            const meterPadX = 14;
+            const meterPadY = 28;
+            const meterW = tunerW - meterPadX * 2;
+            const meterH = tunerH - meterPadY - 14;
+            const meterX = tunerX + meterPadX;
+            const meterY = tunerY + meterPadY;
+
+            ctx.fillStyle = '#060810';
+            ctx.strokeStyle = '#22293a';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(meterX, meterY, meterW, meterH, 8);
+            ctx.fill();
+            ctx.stroke();
+
+            // 3. Pitch & Cents Mathematics
+            let cents = 0;
+            let noteName = "--";
+            let freqText = "-- Hz";
+            let hasSignal = (currentDetectedMidi > 0 && currentDetectedFreq > 0);
+
+            if (hasSignal) {
+                const roundedMidi = Math.round(currentDetectedMidi);
+                noteName = getNoteName(roundedMidi);
+                const targetFreq = midiToFreq(roundedMidi);
+                cents = 1200 * Math.log2(currentDetectedFreq / targetFreq);
+                freqText = `${currentDetectedFreq.toFixed(1)} Hz`;
+            }
+
+            // Clamped cents (-50 to +50 cents covers the full 9 o'clock to 3 o'clock sweep)
+            const clampedCents = Math.max(-50, Math.min(50, cents));
+            
+            // Vocal vibrato tolerance window: +/- 20 cents
+            const isWithinTolerance = (hasSignal && Math.abs(cents) <= 20.0);
+            const isFlat = (hasSignal && cents < -20.0);
+            const isSharp = (hasSignal && cents > 20.0);
+
+            // Compute target angle: 
+            // 9 o'clock = Math.PI rad (180 deg, flat)
+            // 12 o'clock = 1.5 * Math.PI rad (270 deg, perfect pitch)
+            // 3 o'clock = 2.0 * Math.PI rad (360 deg, sharp)
+            let targetAngle = Math.PI * 1.5; // Rest at 12 o'clock when silent
+            if (hasSignal) {
+                const sweepFraction = (clampedCents + 50) / 100; // 0.0 (flat) to 1.0 (sharp)
+                targetAngle = Math.PI + sweepFraction * Math.PI;
+            }
+
+            // Smooth swinging arm needle movement (simulates analog physical galvanometer damping)
+            tunerNeedleAngle += (targetAngle - tunerNeedleAngle) * 0.22;
+
+            // 4. Dial Geometry
+            const pivotX = meterX + meterW / 2;
+            const pivotY = meterY + meterH * 0.82;
+            const arcR = meterH * 0.62;
+
+            // Ambient Green Flash Backlight Glow when within acceptable pitch range!
+            if (isWithinTolerance) {
+                const pulse = 0.22 + 0.14 * Math.sin(Date.now() / 90);
+                const glowGrad = ctx.createRadialGradient(pivotX, pivotY - arcR * 0.6, 10, pivotX, pivotY - arcR * 0.6, arcR * 1.2);
+                glowGrad.addColorStop(0, `rgba(34, 197, 94, ${pulse * 1.6})`);
+                glowGrad.addColorStop(0.5, `rgba(34, 197, 94, ${pulse * 0.8})`);
+                glowGrad.addColorStop(1, 'rgba(34, 197, 94, 0)');
+
+                ctx.fillStyle = glowGrad;
+                ctx.beginPath();
+                ctx.roundRect(meterX + 1, meterY + 1, meterW - 2, meterH - 2, 7);
+                ctx.fill();
+            }
+
+            // 5. Draw Vocal Tolerance Band (Green highlight arc between -20¢ and +20¢)
+            const tolAngleStart = Math.PI + (30 / 100) * Math.PI; // -20 cents
+            const tolAngleEnd = Math.PI + (70 / 100) * Math.PI;   // +20 cents
+
+            ctx.strokeStyle = isWithinTolerance ? 'rgba(34, 197, 94, 0.85)' : 'rgba(34, 197, 94, 0.45)';
+            ctx.lineWidth = 10;
+            ctx.beginPath();
+            ctx.arc(pivotX, pivotY, arcR - 5, tolAngleStart, tolAngleEnd);
+            ctx.stroke();
+
+            // Main Arc Line (9 o'clock to 3 o'clock)
+            ctx.strokeStyle = '#374151';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(gaugeX + gaugeW / 2, gaugeY + 3);
-            ctx.lineTo(gaugeX + gaugeW / 2, gaugeY + gaugeH - 3);
+            ctx.arc(pivotX, pivotY, arcR, Math.PI, Math.PI * 2);
             ctx.stroke();
 
-            // Needle
-            const needleOffset = Math.max(-1, Math.min(1, cents / 50)) * (gaugeW / 2 - 12);
-            ctx.strokeStyle = tuneColor;
-            ctx.lineWidth = 3;
-            ctx.shadowColor = tuneColor;
-            ctx.shadowBlur = 8;
-            ctx.beginPath();
-            ctx.moveTo(gaugeX + gaugeW / 2 + needleOffset, gaugeY + 2);
-            ctx.lineTo(gaugeX + gaugeW / 2 + needleOffset, gaugeY + gaugeH - 2);
-            ctx.stroke();
+            // 6. Draw Ticks & Labels (-50¢ to +50¢)
+            for (let cVal = -50; cVal <= 50; cVal += 5) {
+                const frac = (cVal + 50) / 100;
+                const ang = Math.PI + frac * Math.PI;
+                const isMajor = (cVal % 10 === 0);
+                const isCenter = (cVal === 0);
+                const isTolBound = (cVal === -20 || cVal === 20);
 
-            ctx.fillStyle = '#9ca3af';
-            ctx.font = 'bold 9px sans-serif';
+                const rInner = arcR - (isCenter ? 14 : (isMajor ? 10 : 5));
+                const rOuter = arcR + (isCenter ? 3 : 0);
+
+                const x1 = pivotX + rInner * Math.cos(ang);
+                const y1 = pivotY + rInner * Math.sin(ang);
+                const x2 = pivotX + rOuter * Math.cos(ang);
+                const y2 = pivotY + rOuter * Math.sin(ang);
+
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+
+                if (isCenter) {
+                    ctx.strokeStyle = isWithinTolerance ? '#22c55e' : '#facc15';
+                    ctx.lineWidth = 3;
+                } else if (Math.abs(cVal) <= 20) {
+                    ctx.strokeStyle = '#22c55e';
+                    ctx.lineWidth = isMajor ? 2 : 1;
+                } else {
+                    ctx.strokeStyle = isMajor ? '#94a3b8' : '#475569';
+                    ctx.lineWidth = 1;
+                }
+                ctx.stroke();
+
+                // Numbers at key points
+                if (cVal === -50 || cVal === -20 || cVal === 0 || cVal === 20 || cVal === 50) {
+                    const labelR = arcR - 22;
+                    const lx = pivotX + labelR * Math.cos(ang);
+                    const ly = pivotY + labelR * Math.sin(ang);
+
+                    ctx.fillStyle = isCenter ? (isWithinTolerance ? '#22c55e' : '#facc15') : '#94a3b8';
+                    ctx.font = isCenter ? '800 11px monospace' : '700 9px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(cVal === 0 ? "0" : (cVal > 0 ? `+${cVal}` : `${cVal}`), lx, ly);
+                }
+            }
+
+            // 7. Status LEDs & Directional Arrows Across Top
+            const ledY = meterY + 16;
+            
+            // Flat Arrow / LED (Left)
+            ctx.fillStyle = isFlat ? '#ef4444' : '#1e293b';
+            if (isFlat) { ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 10; }
+            ctx.font = 'bold 12px sans-serif';
             ctx.textAlign = 'left';
-            ctx.fillText('♭ FLAT', gaugeX + 8, gaugeY + gaugeH / 2 + 1);
+            ctx.fillText("◀ ♭ FLAT", meterX + 10, ledY);
+            ctx.shadowBlur = 0;
+
+            // Center IN TUNE Flashing Strobe LED (12 o'clock)
+            ctx.fillStyle = isWithinTolerance ? '#22c55e' : '#1e293b';
+            if (isWithinTolerance) { ctx.shadowColor = '#22c55e'; ctx.shadowBlur = 14; }
+            ctx.beginPath();
+            ctx.arc(pivotX, ledY - 1, isWithinTolerance ? 7 : 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Sharp Arrow / LED (Right)
+            ctx.fillStyle = isSharp ? '#ef4444' : '#1e293b';
+            if (isSharp) { ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 10; }
             ctx.textAlign = 'right';
-            ctx.fillText('SHARP ♯', gaugeX + gaugeW - 8, gaugeY + gaugeH / 2 + 1);
+            ctx.fillText("SHARP ♯ ▶", meterX + meterW - 10, ledY);
+            ctx.shadowBlur = 0;
+
+            // 8. The Swinging Needle Arm
+            const needleR = arcR + 2;
+            const needleTipX = pivotX + needleR * Math.cos(tunerNeedleAngle);
+            const needleTipY = pivotY + needleR * Math.sin(tunerNeedleAngle);
+
+            let needleColor = '#94a3b8';
+            if (hasSignal) {
+                if (isWithinTolerance) needleColor = '#22c55e';
+                else if (Math.abs(cents) <= 30) needleColor = '#facc15';
+                else needleColor = '#ef4444';
+            }
+
+            // Needle Shadow & Glow
+            ctx.save();
+            ctx.strokeStyle = needleColor;
+            ctx.lineWidth = 3.5;
+            ctx.lineCap = 'round';
+            if (isWithinTolerance) {
+                ctx.shadowColor = '#22c55e';
+                ctx.shadowBlur = 12;
+            }
+            ctx.beginPath();
+            ctx.moveTo(pivotX, pivotY);
+            ctx.lineTo(needleTipX, needleTipY);
+            ctx.stroke();
+            ctx.restore();
+
+            // Center Pivot Hub
+            ctx.fillStyle = '#0f172a';
+            ctx.strokeStyle = isWithinTolerance ? '#22c55e' : '#475569';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(pivotX, pivotY, 9, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Inner Hub Screw
+            ctx.fillStyle = '#cbd5e1';
+            ctx.beginPath();
+            ctx.arc(pivotX, pivotY, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 9. Digital Center Displays (Large Note Name, Frequency, Cents)
+            const infoY = meterY + meterH - 26;
+
+            // Large Note Name
+            ctx.fillStyle = isWithinTolerance ? '#22c55e' : (hasSignal ? '#facc15' : '#475569');
+            ctx.font = '900 28px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.shadowColor = isWithinTolerance ? '#22c55e' : 'transparent';
+            ctx.shadowBlur = isWithinTolerance ? 14 : 0;
+            ctx.fillText(noteName, pivotX, infoY - 8);
+            ctx.shadowBlur = 0;
+
+            // Exact Cents & In-Tune Tag
+            ctx.font = '700 11px monospace';
+            ctx.textBaseline = 'middle';
+            if (hasSignal) {
+                const sign = cents >= 0 ? `+${Math.round(cents)}` : `${Math.round(cents)}`;
+                if (isWithinTolerance) {
+                    ctx.fillStyle = '#22c55e';
+                    ctx.fillText(`★ IN TUNE ★  (${sign}¢)`, pivotX, infoY + 10);
+                } else {
+                    ctx.fillStyle = '#94a3af';
+                    ctx.fillText(`${freqText}   [${sign} cents]`, pivotX, infoY + 10);
+                }
+            } else {
+                ctx.fillStyle = '#475569';
+                ctx.fillText("SING TO TUNE", pivotX, infoY + 10);
+            }
 
             ctx.restore();
         }
@@ -1787,7 +2032,6 @@
 
                 // Robust Pitch-Class Invariant Hit Recognition
                 if (isGameMode && note.hitState === 'pending') {
-                    // Generous 120ms leeway around note window to catch attack latency
                     const inTargetWindow = (virtualElapsed >= note.startTime - 120 && virtualElapsed <= note.startTime + note.duration + 80);
                     
                     if (inTargetWindow) {
@@ -1799,7 +2043,6 @@
                             if (pitchDiff <= HIT_TOLERANCE_SEMITONES) {
                                 note.accumulatedHitFrames = (note.accumulatedHitFrames || 0) + 1;
                                 
-                                // Once pitch is sustained for ~100-150ms (~3-4 frames)
                                 if (note.accumulatedHitFrames >= 3) {
                                     const timeOffset = virtualElapsed - note.startTime;
                                     const isEarlyLate = (timeOffset < -30 || timeOffset > note.duration * 0.90);
@@ -1824,7 +2067,6 @@
                             }
                         }
                     } else if (virtualElapsed > note.startTime + note.duration + 80) {
-                        // Fully expired without being matched
                         note.hitState = 'miss';
                         streak = 0;
                         totalNotesMissed++;
