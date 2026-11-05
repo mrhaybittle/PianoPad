@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SingSync - Vocal Trainer</title>
+    <title>SingPad - Vocal Trainer</title>
     <style>
         :root {
             --bg-color: #121218;
@@ -343,7 +343,7 @@
         <header>
             <h1>
                 <svg class="icon" style="width:20px; height:20px; color:#ec4899;" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
-                SingSync
+                SingPad
             </h1>
             <div class="controls">
                 <select id="difficulty-select">
@@ -364,8 +364,8 @@
                     MIC: OFF
                 </button>
 
-                <button type="button" id="btn-calib" class="btn-calib">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                <button type="button" id="btn-calib" class="btn-calib" title="Calibrate Lowest & Highest Pitch">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                     Calibrate Voice
                 </button>
 
@@ -471,11 +471,11 @@
         let playbackStartTime = 0;
         let lastFrameTime = 0;
         let stepModeCurrentIndex = 0;
-        let stepModeWaitTime = 0; // Tracks how long we've been hovering over the correct pitch
+        let stepModeWaitTime = 0;
 
-        const PIXELS_PER_MS = 0.15; // Scroll speed
-        const HIT_ZONE_X = 150; // X coordinate where the user should sing the note
-        const HIT_TOLERANCE_SEMITONES = 0.7; // How far off pitch is acceptable
+        const PIXELS_PER_MS = 0.15;
+        const HIT_ZONE_X = 150;
+        const HIT_TOLERANCE_SEMITONES = 0.7;
 
         // Canvas Setup
         const canvas = document.getElementById('vocal-canvas');
@@ -550,7 +550,7 @@
             let rms = 0;
             for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
             rms = Math.sqrt(rms / SIZE);
-            if (rms < 0.015) return -1; // Not enough signal
+            if (rms < 0.015) return -1;
 
             let r1 = 0, r2 = SIZE - 1, thres = 0.2;
             for (let i = 0; i < SIZE / 2; i++) if (Math.abs(buf[i]) < thres) { r1 = i; break; }
@@ -592,11 +592,9 @@
                 currentDetectedFreq = freq;
                 currentDetectedMidi = freqToMidi(freq);
                 
-                // Add to trace history if playing
                 if (isPlaying) {
                     const elapsed = performance.now() - playbackStartTime;
                     pitchTraceHistory.push({ time: elapsed, pitch: currentDetectedMidi });
-                    // Keep history tidy
                     if (pitchTraceHistory.length > 300) pitchTraceHistory.shift();
                 }
             } else {
@@ -619,7 +617,7 @@
         const calibLivePitch = document.getElementById('calib-live-pitch');
         const calibProgress = document.getElementById('calib-progress');
         
-        let calibPhase = 0; // 0=idle, 1=recording low, 2=ready high, 3=recording high
+        let calibPhase = 0;
         let calibSamples = [];
         let calibInterval = null;
 
@@ -643,7 +641,6 @@
 
         btnCalibAction.addEventListener('click', () => {
             if (calibPhase === 0) {
-                // Start low record
                 calibPhase = 1;
                 calibSamples = [];
                 btnCalibAction.disabled = true;
@@ -656,7 +653,6 @@
                     btnCalibAction.textContent = 'Start Recording Highest Note';
                 });
             } else if (calibPhase === 2) {
-                // Start high record
                 calibPhase = 3;
                 calibSamples = [];
                 btnCalibAction.disabled = true;
@@ -667,9 +663,8 @@
                     clearInterval(calibInterval);
                     calibModal.classList.remove('open');
                     
-                    // Validate
                     if (vocalRange.max <= vocalRange.min) {
-                        vocalRange.max = vocalRange.min + 12; // fallback 1 octave
+                        vocalRange.max = vocalRange.min + 12;
                     }
                     
                     document.getElementById('status').textContent = ` Calibration Complete! Range: ${getNoteName(vocalRange.min)} to ${getNoteName(vocalRange.max)}`;
@@ -702,7 +697,6 @@
                         btnCalibAction.disabled = false;
                         return;
                     }
-                    // Sort and drop outliers, average the rest
                     calibSamples.sort((a,b) => a-b);
                     const midSamples = calibSamples.slice(Math.floor(calibSamples.length*0.2), Math.ceil(calibSamples.length*0.8));
                     const sum = midSamples.reduce((a,b)=>a+b, 0);
@@ -712,22 +706,19 @@
         }
 
         // --- Melody Generator ---
-        const DIATONIC_STEPS = [0, 2, 4, 5, 7, 9, 11]; // Major scale steps
+        const DIATONIC_STEPS = [0, 2, 4, 5, 7, 9, 11];
 
         function generateMelody(difficulty) {
             noteTimeline = [];
             pitchTraceHistory = [];
-            let currentMidi = Math.round((vocalRange.min + vocalRange.max) / 2); // Start in middle
-            
-            // Snap to nearest diatonic in C
+            let currentMidi = Math.round((vocalRange.min + vocalRange.max) / 2);
             currentMidi = snapToDiatonic(currentMidi);
             
-            let timeAccumulator = 1000; // 1s start buffer
-            const numNotes = (difficulty === '4') ? 50 : 16; // Endless generates a long batch for now
+            let timeAccumulator = 1000;
+            const numNotes = (difficulty === '4') ? 50 : 16;
 
             for (let i = 0; i < numNotes; i++) {
-                // Pick duration
-                let durations = [500, 1000]; // Easy
+                let durations = [500, 1000];
                 if (difficulty === '2') durations = [250, 500, 1000, 1500];
                 if (difficulty === '3' || difficulty === '4') durations = [250, 500, 750, 1000];
                 
@@ -737,33 +728,27 @@
                     pitch: currentMidi,
                     startTime: timeAccumulator,
                     duration: duration,
-                    hitState: 'pending' // pending, hit, miss
+                    hitState: 'pending'
                 });
 
                 timeAccumulator += duration;
                 
-                // Add rest?
                 if (Math.random() > 0.7) {
                     timeAccumulator += (Math.random() > 0.5 ? 250 : 500);
                 }
 
-                // Pick next note
                 if (difficulty === '1') {
-                    // Stepwise only
                     const step = Math.random() > 0.5 ? 1 : -1;
                     currentMidi = snapToDiatonic(currentMidi, step);
                 } else if (difficulty === '2') {
-                    // Leaps up to 5th
-                    const leaps = [-4, -3, -2, -1, 1, 2, 3, 4]; // step indices, not semitones
+                    const leaps = [-4, -3, -2, -1, 1, 2, 3, 4];
                     const leap = leaps[Math.floor(Math.random() * leaps.length)];
                     currentMidi = snapToDiatonic(currentMidi, leap);
                 } else {
-                    // Hard / Endless: Accidentals allowed (chromatic movement)
-                    const semitoneLeap = Math.floor(Math.random() * 9) - 4; // -4 to +4 semitones
+                    const semitoneLeap = Math.floor(Math.random() * 9) - 4;
                     currentMidi += semitoneLeap;
                 }
 
-                // Bound to vocal range
                 if (currentMidi > vocalRange.max) currentMidi = vocalRange.max - 2;
                 if (currentMidi < vocalRange.min) currentMidi = vocalRange.min + 2;
             }
@@ -773,7 +758,6 @@
             const octave = Math.floor(midi / 12);
             const noteClass = midi % 12;
             
-            // Find closest diatonic step index
             let closestStepIdx = 0;
             let minDiff = 99;
             for (let i = 0; i < DIATONIC_STEPS.length; i++) {
@@ -802,23 +786,19 @@
             
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Divide Canvas: Top 35% Treble Clef, Bottom 65% Piano Roll
             const clefHeight = canvas.height * 0.35;
             const rollY = clefHeight;
             const rollHeight = canvas.height - clefHeight;
             
-            // --- View Bounds for Piano Roll ---
             const viewMinPitch = vocalRange.min - 3;
             const viewMaxPitch = vocalRange.max + 3;
             const pitchRange = viewMaxPitch - viewMinPitch;
             
             function getPitchY(midiNum) {
-                // Map pitch to Y, inverted (high pitch = low Y)
                 const normalized = (midiNum - viewMinPitch) / pitchRange;
                 return rollY + rollHeight - (normalized * rollHeight);
             }
 
-            // Draw Roll Background / Lanes
             ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--lane-dark').trim() || '#12121a';
             ctx.fillRect(0, rollY, canvas.width, rollHeight);
             
@@ -832,7 +812,6 @@
                 ctx.stroke();
             }
 
-            // Draw Hit Line
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--hitline-color').trim() || '#ef4444';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -840,45 +819,27 @@
             ctx.lineTo(HIT_ZONE_X, canvas.height);
             ctx.stroke();
 
-            // --- Game/Step Logic & Drawing Blocks ---
             let activeNoteMidi = null;
-
-            if (isStepMode) {
-                // In step mode, 'elapsed' doesn't move forward continuously. 
-                // We freeze time right when a note hits the HIT_ZONE_X.
-                if (stepModeCurrentIndex < noteTimeline.length) {
-                    const currentNote = noteTimeline[stepModeCurrentIndex];
-                    const targetTime = currentNote.startTime;
-                    
-                    // If we haven't reached the note yet, let time flow normally until we hit it
-                    // To fake this, we adjust playbackStartTime to keep 'elapsed' bounded.
-                    // But actually, it's easier to use a dedicated variable for 'virtualElapsed'
-                    // For simplicity in this adaptation: if elapsed > targetTime, force elapsed = targetTime.
-                    // We handle this below.
-                }
-            }
-
             let virtualElapsed = elapsed;
             
             if (isStepMode && stepModeCurrentIndex < noteTimeline.length) {
                 const currentNote = noteTimeline[stepModeCurrentIndex];
                 if (virtualElapsed >= currentNote.startTime) {
-                    virtualElapsed = currentNote.startTime; // Freeze!
-                    playbackStartTime = now - virtualElapsed; // Hold timeline
+                    virtualElapsed = currentNote.startTime;
+                    playbackStartTime = now - virtualElapsed;
                     
                     activeNoteMidi = currentNote.pitch;
                     
-                    // Check pitch
                     if (currentDetectedMidi > 0 && Math.abs(currentDetectedMidi - currentNote.pitch) <= HIT_TOLERANCE_SEMITONES) {
                         stepModeWaitTime += (now - lastFrameTime);
-                        if (stepModeWaitTime > 300) { // Held for 300ms
+                        if (stepModeWaitTime > 300) {
                             currentNote.hitState = 'hit';
                             stepModeCurrentIndex++;
                             stepModeWaitTime = 0;
                             spawnConfetti(HIT_ZONE_X, getPitchY(currentNote.pitch));
                         }
                     } else {
-                        stepModeWaitTime = 0; // Reset if pitch drops
+                        stepModeWaitTime = 0;
                     }
                 }
             }
@@ -886,23 +847,20 @@
             noteTimeline.forEach(note => {
                 const noteX = HIT_ZONE_X + (note.startTime - virtualElapsed) * PIXELS_PER_MS;
                 const noteWidth = note.duration * PIXELS_PER_MS;
-                const noteY = getPitchY(note.pitch) - 10; // Center block
+                const noteY = getPitchY(note.pitch) - 10;
                 
-                // Draw Block
                 if (noteX < canvas.width && noteX + noteWidth > 0) {
-                    ctx.fillStyle = '#4f46e5'; // default
+                    ctx.fillStyle = '#4f46e5';
                     if (note.hitState === 'hit') ctx.fillStyle = '#22c55e';
                     else if (note.hitState === 'miss') ctx.fillStyle = '#ef4444';
-                    else if (activeNoteMidi === note.pitch) ctx.fillStyle = '#eab308'; // Active step target
+                    else if (activeNoteMidi === note.pitch) ctx.fillStyle = '#eab308';
                     
                     ctx.beginPath();
                     ctx.roundRect(noteX, noteY, noteWidth, 20, 6);
                     ctx.fill();
                 }
 
-                // Game Mode Logic
                 if (isGameMode && note.hitState === 'pending') {
-                    // If block is currently in hit zone
                     if (virtualElapsed >= note.startTime && virtualElapsed <= note.startTime + note.duration) {
                         activeNoteMidi = note.pitch;
                         
@@ -910,10 +868,10 @@
                             if (Math.abs(currentDetectedMidi - note.pitch) <= HIT_TOLERANCE_SEMITONES) {
                                 score += 10 + streak;
                                 streak++;
-                                if(streak > maxStreak) maxStreak = streak;
+                                if (streak > maxStreak) maxStreak = streak;
                                 totalNotesHit++;
                                 updateScoreUI();
-                                note.hitState = 'hit'; // mark hit so we don't spam score, though typically games grade at the end. For this, we'll mark it hit immediately.
+                                note.hitState = 'hit';
                                 spawnConfetti(HIT_ZONE_X, getPitchY(note.pitch));
                             }
                         }
@@ -926,7 +884,6 @@
                 }
             });
 
-            // --- Draw Pitch Trace ---
             if (pitchTraceHistory.length > 0) {
                 ctx.lineWidth = 4;
                 ctx.lineCap = 'round';
@@ -939,18 +896,17 @@
                     const x1 = HIT_ZONE_X - (virtualElapsed - pt1.time) * PIXELS_PER_MS;
                     const x2 = HIT_ZONE_X - (virtualElapsed - pt2.time) * PIXELS_PER_MS;
                     
-                    if (x2 < 0) continue; // Off screen
+                    if (x2 < 0) continue;
                     
                     const y1 = getPitchY(pt1.pitch);
                     const y2 = getPitchY(pt2.pitch);
                     
-                    // Color based on active note proximity
-                    ctx.strokeStyle = '#eab308'; // Default yellow
+                    ctx.strokeStyle = '#eab308';
                     if (activeNoteMidi) {
                         const diff = Math.abs(pt1.pitch - activeNoteMidi);
-                        if (diff <= HIT_TOLERANCE_SEMITONES) ctx.strokeStyle = '#22c55e'; // Green hit
-                        else if (diff <= 2) ctx.strokeStyle = '#f97316'; // Orange warm
-                        else ctx.strokeStyle = '#ef4444'; // Red miss
+                        if (diff <= HIT_TOLERANCE_SEMITONES) ctx.strokeStyle = '#22c55e';
+                        else if (diff <= 2) ctx.strokeStyle = '#f97316';
+                        else ctx.strokeStyle = '#ef4444';
                     }
 
                     ctx.beginPath();
@@ -960,13 +916,9 @@
                 }
             }
 
-            // --- Draw Treble Clef View (Top section) ---
             drawTrebleClef(ctx, clefHeight, activeNoteMidi);
-
-            // --- Draw Confetti ---
             drawConfetti();
 
-            // End Condition
             if (!isStepMode && noteTimeline.length > 0) {
                 const lastNote = noteTimeline[noteTimeline.length - 1];
                 if (virtualElapsed > lastNote.startTime + lastNote.duration + 2000) {
@@ -1000,30 +952,21 @@
                 ctx.stroke();
             }
 
-            // Draw Clef Symbol (Simple Text Approx)
             ctx.fillStyle = '#000000';
             ctx.font = '72px "Segoe UI Symbol", "Apple Symbols", sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText('𝄞', 50, staffCenterY - 6);
 
-            // Highlight Active Note on Staff
             if (activeMidi) {
-                // Diatonic mapping approx for C major visual
-                // Middle C (C4) = MIDI 60. Rests on 1st ledger line below staff.
-                const diatonicStepsFromC4 = Math.round(activeMidi) - 60; // rough
-                // Actually need proper diatonic mapping.
                 const noteClass = Math.round(activeMidi) % 12;
                 const octave = Math.floor(activeMidi / 12) - 1;
                 
-                // Map C major scale to line steps (C=0, D=1, E=2, F=3, G=4, A=5, B=6)
                 const cMajMap = { 0:0, 2:1, 4:2, 5:3, 7:4, 9:5, 11:6 };
                 let step = cMajMap[noteClass];
-                if (step === undefined) step = cMajMap[noteClass-1] + 0.5; // Sharp
+                if (step === undefined) step = cMajMap[noteClass-1] + 0.5;
                 
                 const totalStepsFromC4 = (octave - 4) * 7 + step;
-                
-                // C4 is 2 steps below E4 (bottom line of treble).
                 const yOffset = -totalStepsFromC4 * (lineSpacing / 2);
                 const noteY = (staffTop + (lineSpacing * 4)) + (2 * (lineSpacing / 2)) + yOffset;
 
@@ -1032,7 +975,6 @@
                 ctx.ellipse(HIT_ZONE_X, noteY, 8, 6, -0.2, 0, 2 * Math.PI);
                 ctx.fill();
 
-                // Draw Ledger lines if needed
                 if (noteY > staffTop + (lineSpacing * 4)) {
                     ctx.strokeStyle = '#000';
                     ctx.lineWidth = 2;
@@ -1066,7 +1008,7 @@
                 let p = confetti[i];
                 p.x += p.vx;
                 p.y += p.vy;
-                p.vy += 0.2; // gravity
+                p.vy += 0.2;
                 p.life -= 0.02;
                 
                 if (p.life <= 0) {
@@ -1146,14 +1088,14 @@
             isStepMode = true; isGameMode = false;
             btnStep.classList.replace('btn-step', 'btn-step-active');
             btnGame.classList.replace('btn-game-active', 'btn-secondary');
-            if(isPlaying) document.getElementById('status').textContent = ' Switched to Step Mode.';
+            if (isPlaying) document.getElementById('status').textContent = ' Switched to Step Mode.';
         });
 
         btnGame.addEventListener('click', () => {
             isGameMode = true; isStepMode = false;
             btnGame.classList.replace('btn-secondary', 'btn-game-active');
             btnStep.classList.replace('btn-step-active', 'btn-step');
-            if(isPlaying) document.getElementById('status').textContent = ' Switched to Game Mode.';
+            if (isPlaying) document.getElementById('status').textContent = ' Switched to Game Mode.';
         });
 
         document.getElementById('theme-select').addEventListener('change', (e) => {
