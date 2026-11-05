@@ -472,7 +472,7 @@
         let stepModeWaitTime = 0;
 
         const PIXELS_PER_MS = 0.15;
-        const HIT_ZONE_X = 220; // Hit line placed just right of piano roll
+        const HIT_ZONE_X = 220; // Hit line position
         const HIT_TOLERANCE_SEMITONES = 0.7;
         const PIANO_WIDTH = 68;
 
@@ -747,7 +747,7 @@
                     pitch: currentMidi,
                     startTime: timeAccumulator,
                     duration: duration,
-                    hitState: 'pending'
+                    hitState: 'pending' // 'pending', 'perfect', 'earlyLate', 'miss'
                 });
 
                 timeAccumulator += duration;
@@ -809,7 +809,6 @@
             const rollY = clefHeight;
             const rollHeight = canvas.height - clefHeight;
             
-            // Vertical pitch bounds
             const viewMinPitch = vocalRange.min - 3;
             const viewMaxPitch = vocalRange.max + 3;
             const totalPitches = (viewMaxPitch - viewMinPitch) + 1;
@@ -875,7 +874,7 @@
                     if (currentDetectedMidi > 0 && Math.abs(currentDetectedMidi - currentNote.pitch) <= HIT_TOLERANCE_SEMITONES) {
                         stepModeWaitTime += (now - lastFrameTime);
                         if (stepModeWaitTime > 300) {
-                            currentNote.hitState = 'hit';
+                            currentNote.hitState = 'perfect';
                             stepModeCurrentIndex++;
                             stepModeWaitTime = 0;
                             spawnConfetti(HIT_ZONE_X, getPitchCenterY(currentNote.pitch));
@@ -897,22 +896,33 @@
                     const drawX = Math.max(PIANO_WIDTH, noteX);
                     const drawW = (noteX + noteWidth) - drawX;
 
-                    ctx.fillStyle = '#10b981'; // Greenish cyan like DAW roll
-                    if (note.hitState === 'hit') ctx.fillStyle = '#22c55e';
-                    else if (note.hitState === 'miss') ctx.fillStyle = '#ef4444';
-                    else if (activeNoteMidi === note.pitch) ctx.fillStyle = '#eab308';
+                    // STRICT COLORING RULE:
+                    // While scrolling to the left (before reaching target line and unassigned): ALWAYS YELLOW (#eab308).
+                    // Once assigned at/past target line:
+                    // Green = perfect hit
+                    // Orange = early or late timing
+                    // Red = wrong pitch / missed
+                    if (note.hitState === 'perfect') {
+                        ctx.fillStyle = '#22c55e'; // Green
+                    } else if (note.hitState === 'earlyLate') {
+                        ctx.fillStyle = '#f97316'; // Orange
+                    } else if (note.hitState === 'miss') {
+                        ctx.fillStyle = '#ef4444'; // Red
+                    } else {
+                        ctx.fillStyle = '#eab308'; // Scrolling left: YELLOW
+                    }
                     
                     ctx.beginPath();
                     ctx.roundRect(drawX, noteY, drawW, noteHeight, 4);
                     ctx.fill();
 
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
                     ctx.lineWidth = 1;
                     ctx.stroke();
 
                     // Note Name Text inside block
                     if (drawW > 25) {
-                        ctx.fillStyle = '#052e16';
+                        ctx.fillStyle = (note.hitState === 'perfect' || note.hitState === 'miss' || note.hitState === 'earlyLate') ? '#ffffff' : '#000000';
                         ctx.font = 'bold 11px sans-serif';
                         ctx.textAlign = 'left';
                         ctx.textBaseline = 'middle';
@@ -920,23 +930,44 @@
                     }
                 }
 
+                // Check evaluation when note reaches the target line
                 if (isGameMode && note.hitState === 'pending') {
-                    if (virtualElapsed >= note.startTime && virtualElapsed <= note.startTime + note.duration) {
+                    const timeDiff = virtualElapsed - note.startTime;
+                    const inTargetWindow = (virtualElapsed >= note.startTime && virtualElapsed <= note.startTime + note.duration);
+                    
+                    if (inTargetWindow) {
                         activeNoteMidi = note.pitch;
                         
                         if (currentDetectedMidi > 0) {
-                            if (Math.abs(currentDetectedMidi - note.pitch) <= HIT_TOLERANCE_SEMITONES) {
-                                score += 10 + streak;
-                                streak++;
-                                if (streak > maxStreak) maxStreak = streak;
-                                totalNotesHit++;
+                            const pitchDiff = Math.abs(currentDetectedMidi - note.pitch);
+                            
+                            if (pitchDiff <= HIT_TOLERANCE_SEMITONES) {
+                                // Right pitch! Check timing: early/late or perfect
+                                if (timeDiff < note.duration * 0.15 || timeDiff > note.duration * 0.85) {
+                                    note.hitState = 'earlyLate'; // Orange (early/late)
+                                    score += 5;
+                                    totalNotesHit++;
+                                    updateScoreUI();
+                                } else {
+                                    note.hitState = 'perfect'; // Green (accurate)
+                                    score += 10 + streak;
+                                    streak++;
+                                    if (streak > maxStreak) maxStreak = streak;
+                                    totalNotesHit++;
+                                    updateScoreUI();
+                                    spawnConfetti(HIT_ZONE_X, getPitchCenterY(note.pitch));
+                                }
+                            } else if (pitchDiff > 1.2) {
+                                // Explicitly sung a wrong pitch at the line
+                                note.hitState = 'miss'; // Red (wrong pitch)
+                                streak = 0;
+                                totalNotesMissed++;
                                 updateScoreUI();
-                                note.hitState = 'hit';
-                                spawnConfetti(HIT_ZONE_X, getPitchCenterY(note.pitch));
                             }
                         }
                     } else if (virtualElapsed > note.startTime + note.duration) {
-                        note.hitState = 'miss';
+                        // Fully passed target line without being hit
+                        note.hitState = 'miss'; // Red
                         streak = 0;
                         totalNotesMissed++;
                         updateScoreUI();
@@ -1021,14 +1052,12 @@
                     ctx.fillStyle = isPitchHit ? '#22c55e' : (isTarget ? '#fef08a' : '#ffffff');
                     ctx.fillRect(0, yTop, PIANO_WIDTH, semitoneHeight);
 
-                    // Key divider
                     ctx.strokeStyle = '#cbd5e1';
                     ctx.beginPath();
                     ctx.moveTo(0, yTop);
                     ctx.lineTo(PIANO_WIDTH, yTop);
                     ctx.stroke();
 
-                    // Label 'C' notes (C3, C4, C5, C6) like FL Studio/Logic
                     const pc = p % 12;
                     if (pc === 0) {
                         ctx.fillStyle = '#0f172a';
@@ -1068,7 +1097,7 @@
             ctx.restore();
         }
 
-        // --- Corrected Treble Clef Notation Engine ---
+        // --- Treble Clef Notation Engine ---
         function midiToStaffInfo(midi) {
             const roundedMidi = Math.round(midi);
             let displayMidi = roundedMidi;
