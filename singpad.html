@@ -17,8 +17,9 @@
             --game-active: #ec4899;
             --canvas-bg: #0a0a10;
             --hitline-color: #ef4444;
-            --lane-light: #181824;
-            --lane-dark: #12121a;
+            --lane-light: #161622;
+            --lane-dark: #0d0d14;
+            --piano-width: 65px;
         }
 
         body[data-theme="cyberpunk"] {
@@ -471,8 +472,9 @@
         let stepModeWaitTime = 0;
 
         const PIXELS_PER_MS = 0.15;
-        const HIT_ZONE_X = 150;
+        const HIT_ZONE_X = 220; // Hit line placed just right of piano roll
         const HIT_TOLERANCE_SEMITONES = 0.7;
+        const PIANO_WIDTH = 68;
 
         // Canvas Setup
         const canvas = document.getElementById('vocal-canvas');
@@ -606,6 +608,11 @@
             return `${note}${octave}`;
         }
 
+        function isBlackKey(midiNum) {
+            const pc = Math.round(midiNum) % 12;
+            return pc === 1 || pc === 3 || pc === 6 || pc === 8 || pc === 10;
+        }
+
         // --- Calibration Logic ---
         const calibModal = document.getElementById('calib-modal');
         const btnCalibAction = document.getElementById('btn-calib-action');
@@ -706,7 +713,7 @@
 
             if (e.key === '(') {
                 e.preventDefault();
-                vocalRange = { min: 45, max: 64 }; // A2 to E4
+                vocalRange = { min: 45, max: 64 };
                 isCalibrated = true;
                 
                 if (calibInterval) clearInterval(calibInterval);
@@ -802,28 +809,51 @@
             const rollY = clefHeight;
             const rollHeight = canvas.height - clefHeight;
             
+            // Vertical pitch bounds
             const viewMinPitch = vocalRange.min - 3;
             const viewMaxPitch = vocalRange.max + 3;
-            const pitchRange = viewMaxPitch - viewMinPitch;
+            const totalPitches = (viewMaxPitch - viewMinPitch) + 1;
+            const semitoneHeight = rollHeight / totalPitches;
             
-            function getPitchY(midiNum) {
-                const normalized = (midiNum - viewMinPitch) / pitchRange;
-                return rollY + rollHeight - (normalized * rollHeight);
+            function getPitchTop(midiNum) {
+                return rollY + (viewMaxPitch - midiNum) * semitoneHeight;
             }
 
-            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--lane-dark').trim() || '#12121a';
-            ctx.fillRect(0, rollY, canvas.width, rollHeight);
-            
-            ctx.strokeStyle = '#2d2d3a';
-            ctx.lineWidth = 1;
-            for (let p = Math.floor(viewMinPitch); p <= Math.ceil(viewMaxPitch); p++) {
-                const y = getPitchY(p);
+            function getPitchCenterY(midiNum) {
+                return getPitchTop(midiNum) + semitoneHeight / 2;
+            }
+
+            // Draw Background Grid Lanes
+            for (let p = viewMinPitch; p <= viewMaxPitch; p++) {
+                const yTop = getPitchTop(p);
+                const isBlack = isBlackKey(p);
+                
+                ctx.fillStyle = isBlack 
+                    ? (getComputedStyle(document.body).getPropertyValue('--lane-dark').trim() || '#0d0d14')
+                    : (getComputedStyle(document.body).getPropertyValue('--lane-light').trim() || '#161622');
+                ctx.fillRect(PIANO_WIDTH, yTop, canvas.width - PIANO_WIDTH, semitoneHeight);
+                
+                ctx.strokeStyle = '#222230';
+                ctx.lineWidth = 1;
                 ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
+                ctx.moveTo(PIANO_WIDTH, yTop);
+                ctx.lineTo(canvas.width, yTop);
                 ctx.stroke();
             }
 
+            // Draw Vertical Beat Subdivisions
+            ctx.strokeStyle = '#252535';
+            ctx.lineWidth = 1;
+            const beatSpacingPx = 400 * PIXELS_PER_MS;
+            const offset = (virtualElapsed => (HIT_ZONE_X - virtualElapsed * PIXELS_PER_MS) % beatSpacingPx)(elapsed);
+            for (let x = PIANO_WIDTH + ((offset - PIANO_WIDTH) % beatSpacingPx + beatSpacingPx) % beatSpacingPx; x < canvas.width; x += beatSpacingPx) {
+                ctx.beginPath();
+                ctx.moveTo(x, rollY);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+
+            // Draw Hit Zone Target Line
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--hitline-color').trim() || '#ef4444';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -848,7 +878,7 @@
                             currentNote.hitState = 'hit';
                             stepModeCurrentIndex++;
                             stepModeWaitTime = 0;
-                            spawnConfetti(HIT_ZONE_X, getPitchY(currentNote.pitch));
+                            spawnConfetti(HIT_ZONE_X, getPitchCenterY(currentNote.pitch));
                         }
                     } else {
                         stepModeWaitTime = 0;
@@ -856,20 +886,38 @@
                 }
             }
 
+            // Draw Melody Blocks
             noteTimeline.forEach(note => {
                 const noteX = HIT_ZONE_X + (note.startTime - virtualElapsed) * PIXELS_PER_MS;
                 const noteWidth = note.duration * PIXELS_PER_MS;
-                const noteY = getPitchY(note.pitch) - 10;
+                const noteY = getPitchTop(note.pitch) + 2;
+                const noteHeight = Math.max(14, semitoneHeight - 4);
                 
-                if (noteX < canvas.width && noteX + noteWidth > 0) {
-                    ctx.fillStyle = '#4f46e5';
+                if (noteX < canvas.width && noteX + noteWidth > PIANO_WIDTH) {
+                    const drawX = Math.max(PIANO_WIDTH, noteX);
+                    const drawW = (noteX + noteWidth) - drawX;
+
+                    ctx.fillStyle = '#10b981'; // Greenish cyan like DAW roll
                     if (note.hitState === 'hit') ctx.fillStyle = '#22c55e';
                     else if (note.hitState === 'miss') ctx.fillStyle = '#ef4444';
                     else if (activeNoteMidi === note.pitch) ctx.fillStyle = '#eab308';
                     
                     ctx.beginPath();
-                    ctx.roundRect(noteX, noteY, noteWidth, 20, 6);
+                    ctx.roundRect(drawX, noteY, drawW, noteHeight, 4);
                     ctx.fill();
+
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    // Note Name Text inside block
+                    if (drawW > 25) {
+                        ctx.fillStyle = '#052e16';
+                        ctx.font = 'bold 11px sans-serif';
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(getNoteName(note.pitch), drawX + 6, noteY + noteHeight / 2);
+                    }
                 }
 
                 if (isGameMode && note.hitState === 'pending') {
@@ -884,7 +932,7 @@
                                 totalNotesHit++;
                                 updateScoreUI();
                                 note.hitState = 'hit';
-                                spawnConfetti(HIT_ZONE_X, getPitchY(note.pitch));
+                                spawnConfetti(HIT_ZONE_X, getPitchCenterY(note.pitch));
                             }
                         }
                     } else if (virtualElapsed > note.startTime + note.duration) {
@@ -896,6 +944,7 @@
                 }
             });
 
+            // Pitch Trace Continuous Glow Line
             if (pitchTraceHistory.length > 0) {
                 ctx.lineWidth = 4;
                 ctx.lineCap = 'round';
@@ -908,10 +957,10 @@
                     const x1 = HIT_ZONE_X - (virtualElapsed - pt1.time) * PIXELS_PER_MS;
                     const x2 = HIT_ZONE_X - (virtualElapsed - pt2.time) * PIXELS_PER_MS;
                     
-                    if (x2 < 0) continue;
+                    if (x2 < PIANO_WIDTH) continue;
                     
-                    const y1 = getPitchY(pt1.pitch);
-                    const y2 = getPitchY(pt2.pitch);
+                    const y1 = getPitchCenterY(pt1.pitch);
+                    const y2 = getPitchCenterY(pt2.pitch);
                     
                     ctx.strokeStyle = '#eab308';
                     if (activeNoteMidi) {
@@ -922,13 +971,16 @@
                     }
 
                     ctx.beginPath();
-                    ctx.moveTo(x1, y1);
-                    ctx.lineTo(x2, y2);
+                    ctx.moveTo(Math.max(PIANO_WIDTH, x1), y1);
+                    ctx.lineTo(Math.max(PIANO_WIDTH, x2), y2);
                     ctx.stroke();
                 }
             }
 
-            // Draw Treble Clef View
+            // Draw Side Vertical Piano Keyboard
+            drawVerticalPiano(ctx, rollY, semitoneHeight, viewMinPitch, viewMaxPitch, activeNoteMidi, currentDetectedMidi);
+
+            // Draw Top Treble Clef View
             drawTrebleClef(ctx, clefHeight, activeNoteMidi);
             drawConfetti();
 
@@ -947,20 +999,87 @@
             if (isPlaying) requestAnimationFrame(renderLoop);
         }
 
+        // --- Vertical DAW Piano Roll Keyboard on the Side ---
+        function drawVerticalPiano(ctx, rollY, semitoneHeight, minPitch, maxPitch, activeMidi, detectedMidi) {
+            ctx.save();
+
+            // Background & Border
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, rollY, PIANO_WIDTH, canvas.height - rollY);
+
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+
+            // Draw White Keys First
+            for (let p = minPitch; p <= maxPitch; p++) {
+                const yTop = rollY + (maxPitch - p) * semitoneHeight;
+                const isBlack = isBlackKey(p);
+                const isPitchHit = (detectedMidi > 0 && Math.abs(detectedMidi - p) <= 0.6);
+                const isTarget = (activeMidi && Math.round(activeMidi) === p);
+
+                if (!isBlack) {
+                    ctx.fillStyle = isPitchHit ? '#22c55e' : (isTarget ? '#fef08a' : '#ffffff');
+                    ctx.fillRect(0, yTop, PIANO_WIDTH, semitoneHeight);
+
+                    // Key divider
+                    ctx.strokeStyle = '#cbd5e1';
+                    ctx.beginPath();
+                    ctx.moveTo(0, yTop);
+                    ctx.lineTo(PIANO_WIDTH, yTop);
+                    ctx.stroke();
+
+                    // Label 'C' notes (C3, C4, C5, C6) like FL Studio/Logic
+                    const pc = p % 12;
+                    if (pc === 0) {
+                        ctx.fillStyle = '#0f172a';
+                        ctx.font = 'bold 10px sans-serif';
+                        ctx.textAlign = 'right';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(`C${Math.floor(p/12)-1}`, PIANO_WIDTH - 6, yTop + semitoneHeight / 2);
+                    }
+                }
+            }
+
+            // Draw Black Keys (layered on top)
+            const blackKeyWidth = PIANO_WIDTH * 0.62;
+            for (let p = minPitch; p <= maxPitch; p++) {
+                const yTop = rollY + (maxPitch - p) * semitoneHeight;
+                const isBlack = isBlackKey(p);
+                const isPitchHit = (detectedMidi > 0 && Math.abs(detectedMidi - p) <= 0.6);
+                const isTarget = (activeMidi && Math.round(activeMidi) === p);
+
+                if (isBlack) {
+                    ctx.fillStyle = isPitchHit ? '#15803d' : (isTarget ? '#ca8a04' : '#000000');
+                    ctx.fillRect(0, yTop + 1, blackKeyWidth, semitoneHeight - 1);
+
+                    ctx.strokeStyle = '#334155';
+                    ctx.strokeRect(0, yTop + 1, blackKeyWidth, semitoneHeight - 1);
+                }
+            }
+
+            // Right vertical piano divider line
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(PIANO_WIDTH, rollY);
+            ctx.lineTo(PIANO_WIDTH, canvas.height);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
         // --- Corrected Treble Clef Notation Engine ---
         function midiToStaffInfo(midi) {
             const roundedMidi = Math.round(midi);
             let displayMidi = roundedMidi;
             let octaveMark = null;
 
-            // Middle C (C4) = MIDI 60. Lowest standard treble note is Middle C.
-            // Notes below C4 use 8vb (or 8ba)
             if (displayMidi < 60) {
                 while (displayMidi < 60) {
                     displayMidi += 12;
                 }
                 octaveMark = '8vb';
-            } else if (displayMidi > 79) { // Above G5/A5 (G5 = 79), shift down for 8va
+            } else if (displayMidi > 79) {
                 while (displayMidi > 79) {
                     displayMidi -= 12;
                 }
@@ -970,17 +1089,12 @@
             const pitchClass = displayMidi % 12;
             const octave = Math.floor(displayMidi / 12) - 1;
 
-            // Diatonic step mappings: C=0, D=1, E=2, F=3, G=4, A=5, B=6
             const diatonicStepMap = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
             const isAccidental = [false, true, false, true, false, false, true, false, true, false, true, false];
 
             const baseStep = diatonicStepMap[pitchClass];
             const hasSharp = isAccidental[pitchClass];
 
-            // E4 is the bottom line of the Treble staff (Line 1).
-            // E4 has total diatonic index = 4 * 7 + 2 = 30.
-            // Relative step: E4 = 0 (Line 1), F4 = 1 (Space 1), G4 = 2 (Line 2)...
-            // Middle C (C4) has baseStep = 0, octave = 4 -> total = 28. Relative step = -2 (First ledger line below).
             const e4Diatonic = 4 * 7 + 2;
             const currentDiatonic = octave * 7 + baseStep;
             const staffStep = currentDiatonic - e4Diatonic;
@@ -997,11 +1111,10 @@
             ctx.fillRect(0, 0, canvas.width, height);
 
             const lineSpacing = 10;
-            // Staff sits centered nicely in the upper white band
-            const line1_y = 75; // Line 1 = bottom line (E4)
+            const line1_y = 75;
             const staffLines = 5;
 
-            // Draw Staff Lines (E4, G4, B4, D5, F5)
+            // Staff Lines
             ctx.strokeStyle = '#1e293b';
             ctx.lineWidth = 1.2;
             for (let i = 0; i < staffLines; i++) {
@@ -1012,14 +1125,14 @@
                 ctx.stroke();
             }
 
-            // Draw Treble Clef
+            // Treble Clef Icon
             ctx.fillStyle = '#000000';
             ctx.font = '54px "Segoe UI Symbol", "Apple Symbols", sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('𝄞', 45, line1_y - 20);
+            ctx.fillText('𝄞', 50, line1_y - 20);
 
-            // Bottom Divider
+            // Bottom Border
             ctx.strokeStyle = '#374151';
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -1033,11 +1146,11 @@
                 const noteY = line1_y - (noteInfo.staffStep * halfStep);
                 const noteX = HIT_ZONE_X;
 
-                // Draw Ledger Lines
+                // Ledger lines
                 ctx.strokeStyle = '#1e293b';
                 ctx.lineWidth = 1.5;
 
-                // Below staff: Middle C (C4) is staffStep -2. Single ledger line.
+                // Below staff: Middle C (C4) = staffStep -2
                 if (noteInfo.staffStep <= -2) {
                     for (let s = -2; s >= noteInfo.staffStep; s -= 2) {
                         const ly = line1_y - (s * halfStep);
@@ -1048,9 +1161,9 @@
                     }
                 }
 
-                // Above staff: Top line is F5 (staffStep 8). G5 is space (9), A5 is ledger (10), etc.
+                // Above staff: F5 = staffStep 8, A5 = 10
                 if (noteInfo.staffStep >= 10) {
-                    for (let s = 10; s <= noteInfo.staffStep; s += 2) {
+                    for (let s = 10; s <= noteInfo.staffStep; s -= 2) {
                         const ly = line1_y - (s * halfStep);
                         ctx.beginPath();
                         ctx.moveTo(noteX - 12, ly);
@@ -1059,13 +1172,13 @@
                     }
                 }
 
-                // Draw Notehead
+                // Notehead
                 ctx.fillStyle = '#22c55e';
                 ctx.beginPath();
                 ctx.ellipse(noteX, noteY, 6.5, 4.8, -0.22, 0, 2 * Math.PI);
                 ctx.fill();
 
-                // Draw Sharp Accidental if needed
+                // Sharp symbol
                 if (noteInfo.hasSharp) {
                     ctx.fillStyle = '#0f172a';
                     ctx.font = 'bold 13px sans-serif';
@@ -1074,7 +1187,7 @@
                     ctx.fillText('♯', noteX - 8, noteY);
                 }
 
-                // Draw 8vb / 8va markings
+                // 8vb / 8va markings
                 if (noteInfo.octaveMark) {
                     ctx.fillStyle = '#ec4899';
                     ctx.font = 'italic bold 11px sans-serif';
