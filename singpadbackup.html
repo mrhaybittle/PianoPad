@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SingPad - Vocal Trainer</title>
+    <style>
+        :root {
+            --bg-color: #121218;
+            --panel-bg: #1f1f2e;
+            --accent-color: #4f46e5;
+            --accent-hover: #6366f1;
+            --text-main: #f3f4f6;
+            --highlight: #22c55e;
+            --step-active: #eab308;
+            --recording-active: #ef4444;
+            --game-active: #ec4899;
+            --tuner-active: #06b6d4;
+            --arcade-active: #8b5cf6;
+            --canvas-bg: #0a0a10;
+            --hitline-color: #ef4444;
+            --lane-light: #161622;
+            --lane-dark: #0d0d14;
+            --piano-width: 65px;
+        }
+
+        body[data-theme="cyberpunk"] {
+            --bg-color: #0c0721;
+            --panel-bg: #180e36;
+            --accent-color: #00f0ff;
+            --accent-hover: #70f3ff;
+            --text-main: #f0f8ff;
+            --canvas-bg: #050212;
+            --hitline-color: #ff007f;
+            --lane-light: #0d061c;
+            --lane-dark: #070312;
+            --tuner-active: #00f0ff;
+            --arcade-active: #b829ea;
+        }
+
+        body[data-theme="synthwave"] {
+            --bg-color: #1a0933;
+            --panel-bg: #2b0938;
+            --accent-color: #ff007f;
+            --accent-hover: #ff3399;
+            --text-main: #fce7f3;
+            --canvas-bg: #0f0421;
+            --hitline-color: #ff007f;
+            --lane-light: #16062b;
+            --lane-dark: #0f0421;
+            --tuner-active: #fcee0a;
+            --arcade-active: #ff007f;
+        }
+
+        body[data-theme="matrix"] {
+            --bg-color: #020b02;
+            --panel-bg: #081808;
+            --accent-color: #00ff41;
+            --accent-hover: #33ff67;
+            --text-main: #e6ffe8;
+            --canvas-bg: #010801;
+            --hitline-color: #00ff41;
+            --lane-light: #041204;
+            --lane-dark: #020a02;
+            --tuner-active: #33ff67;
+            --arcade-active: #00ff41;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 12px;
+            transition: background-color 0.3s, color 0.3s;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            height: calc(100vh - 16px);
+            background-color: var(--panel-bg);
+            border-radius: 14px;
+            box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.6);
+            padding: 10px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: background-color 0.3s;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            border-bottom: 1px solid #374151;
+            padding-bottom: 6px;
+            flex-shrink: 0;
+        }
+
+        h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.025em; display: flex; align-items: center; gap: 8px; }
+
+        .controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+        .audio-playback-control, .mic-gain-meter-box {
+            display: inline-flex; align-items: center; gap: 6px; background: #0b0f19; border: 1px solid #374151; border-radius: 6px; padding: 3px 8px; height: 28px;
+        }
+        .audio-playback-control input[type="range"], .mic-gain-meter-box input[type="range"] {
+            width: 55px; accent-color: #22c55e; cursor: pointer; height: 4px;
+        }
+
+        .vu-meter {
+            display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; padding: 1px 3px; background: #04070d; border-radius: 3px; border: 1px solid #1f2937;
+        }
+        .vu-bar { width: 3px; height: 100%; background-color: #0f2d18; border-radius: 1px; transition: background-color 0.04s ease, box-shadow 0.04s ease; }
+        .vu-bar.lit-green { background-color: #22c55e !important; box-shadow: 0 0 3px #22c55e; }
+        .vu-bar.lit-yellow { background-color: #facc15 !important; box-shadow: 0 0 4px #facc15; }
+        .vu-bar.lit-red { background-color: #ef4444 !important; box-shadow: 0 0 4px #ef4444; }
+        .vu-meter-large { height: 26px; gap: 4px; padding: 3px 6px; background: #050811; }
+        .vu-meter-large .vu-bar { width: 7px; border-radius: 2px; }
+
+        select, button, .btn-link, input[type="text"] {
+            padding: 5px 8px; border-radius: 6px; border: 1px solid #374151; background-color: #0b0f19; color: var(--text-main); font-weight: 600; font-size: 0.78rem; outline: none; transition: background-color 0.2s, transform 0.1s;
+        }
+        button, .btn-link { border: none; background-color: var(--accent-color); color: white; text-decoration: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+        button:hover, .btn-link:hover { background-color: var(--accent-hover); }
+        button:active, .btn-link:active { transform: scale(0.98); }
+        select:focus, input:focus { border-color: var(--accent-color); }
+        #theme-select { max-width: 95px; padding: 5px 6px; font-size: 0.75rem; }
+        
+        #difficulty-select {
+            color: #facc15 !important; border: 2px solid #eab308 !important; background-color: #181504 !important; font-weight: 700 !important; box-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
+        }
+        #difficulty-select option { background-color: #0b0f19; }
+
+        .btn-secondary { background-color: #4b5563; } .btn-secondary:hover { background-color: #6b7280; }
+        .btn-success { background-color: #10b981; } .btn-success:hover { background-color: #059669; }
+        .btn-danger { background-color: #ef4444; } .btn-danger:hover { background-color: #dc2626; }
+        .btn-calib { background-color: #8b5cf6; } .btn-calib:hover { background-color: #7c3aed; }
+        .btn-arcade { background: linear-gradient(135deg, #8b5cf6, #ec4899); font-weight: 800; box-shadow: 0 0 8px rgba(236, 72, 153, 0.5); }
+        .btn-arcade:hover { background: linear-gradient(135deg, #7c3aed, #db2777); }
+
+        .btn-mic-active { background-color: #10b981 !important; color: #ffffff !important; box-shadow: 0 0 10px rgba(16, 185, 129, 0.6); }
+        .btn-tuner-active { background-color: var(--tuner-active) !important; color: #000000 !important; font-weight: 800 !important; box-shadow: 0 0 14px var(--tuner-active); }
+        .btn-muted { background-color: #ef4444 !important; color: #ffffff !important; }
+        .btn-step { background-color: #ec4899 !important; color: #ffffff !important; font-weight: 700; }
+        .btn-step:hover { background-color: #db2777 !important; }
+        .btn-step-active { background-color: #f43f5e !important; color: #ffffff !important; box-shadow: 0 0 12px #f43f5e; }
+        .btn-game-active { background-color: var(--game-active) !important; color: #fff; box-shadow: 0 0 12px var(--game-active); }
+
+        .icon { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+        .visualizer-wrapper {
+            position: relative; display: flex; flex-direction: column; align-items: center; background-color: #000; border-radius: 10px; padding: 4px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.9); width: 100%; flex: 1; min-height: 400px;
+        }
+        #vocal-canvas { background-color: var(--canvas-bg); display: block; width: 100%; flex: 1; border-radius: 6px; }
+
+        .footer-bar { display: flex; align-items: center; justify-content: space-between; padding-top: 4px; flex-shrink: 0; gap: 10px; }
+        .status-bar { font-size: 0.82rem; color: #9ca3af; text-align: center; min-height: 1.6rem; display: flex; align-items: center; justify-content: center; gap: 10px; flex: 1; font-weight: 600; }
+        .score-display {
+            display: flex; align-items: center; gap: 15px; background: rgba(30, 15, 20, 0.85); border: 1px solid #374151; border-radius: 8px; padding: 4px 12px; font-size: 0.8rem; font-weight: 700; color: #f3f4f6; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+        .score-points { color: var(--highlight); font-size: 0.9rem; }
+        .score-streak { color: #f59e0b; }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.82); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+        }
+        .modal-overlay.open { opacity: 1; pointer-events: auto; }
+        
+        .modal {
+            background: var(--panel-bg); border-radius: 16px; width: 90%; max-width: 490px; padding: 22px 24px; display: flex; flex-direction: column; align-items: center; gap: 10px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8); border: 1px solid #374151; text-align: center;
+        }
+        .modal h2 { font-size: 1.45rem; font-weight: 800; color: #ffffff; letter-spacing: -0.01em; margin-bottom: 2px; }
+        .modal p { color: #cbd5e1; font-size: 0.9rem; line-height: 1.4; }
+        .modal-footer { display: flex; justify-content: center; gap: 12px; margin-top: 8px; width: 100%; flex-wrap: wrap; }
+
+        /* Arcade Hub Modal Styling */
+        .arcade-hub-modal {
+            max-width: 750px !important;
+            padding: 30px !important;
+            background: #090814 !important;
+            border: 2px solid #8b5cf6 !important;
+            box-shadow: inset 0 0 30px rgba(139, 92, 246, 0.3), 0 25px 50px -12px rgba(0, 0, 0, 0.9) !important;
+        }
+        .arcade-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .game-card {
+            background: #141226; border: 1px solid #374151; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; text-align: left;
+        }
+        .game-card:hover { transform: translateY(-5px); border-color: #ec4899; box-shadow: 0 8px 20px rgba(236, 72, 153, 0.4); }
+        .game-card h3 { font-size: 1.1rem; color: #f3f4f6; margin-bottom: 2px; }
+        .game-card p { font-size: 0.8rem; color: #9ca3af; line-height: 1.4; flex: 1; }
+
+        .calib-box { background: #0b0f19; border: 1px solid #374151; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 10px 0; width: 100%; }
+        .calib-pitch-text { font-size: 2rem; font-weight: 800; color: #22c55e; text-shadow: 0 0 10px rgba(34, 197, 94, 0.4); height: 40px; }
+        
+        .badge-box { display: inline-flex; align-items: center; justify-content: center; padding: 7px 18px; border-radius: 20px; font-size: 0.85rem; font-weight: 800; letter-spacing: 0.02em; margin-top: 4px; box-shadow: 0 0 14px rgba(0, 0, 0, 0.5); }
+        .badge-platinum { background: linear-gradient(135deg, #e2e8f0, #ffffff); color: #0f172a; }
+        .badge-gold { background: #f59e0b; color: #000; }
+        .badge-silver { background: linear-gradient(135deg, #94a3b8, #cbd5e1); color: #000; }
+        .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
+        
+        .rank-display-box { font-size: 1.15rem; font-weight: 900; color: #facc15; padding: 7px 16px; background: #0b0f19; border: 1.5px solid #eab308; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 90%; margin-top: 4px; }
+        
+        .graph-container { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 6px; width: 100%; }
+        .bar-chart-wrapper { display: flex; align-items: flex-end; justify-content: center; height: 160px; width: 110px; background: #090d16; border: 1px solid #2d3748; border-radius: 12px; padding: 10px; box-shadow: inset 0 0 15px rgba(0,0,0,0.7); }
+        .stacked-bar { width: 44px; display: flex; flex-direction: column; justify-content: flex-end; height: 135px; border-radius: 6px; overflow: hidden; background: #181f2e; }
+        .bar-part-red { background-color: #ef4444; width: 100%; transition: height 0.5s ease; }
+        .bar-part-orange { background-color: #f97316; width: 100%; transition: height 0.5s ease; }
+        .bar-part-green { background-color: #22c55e; width: 100%; transition: height 0.5s ease; }
+        .graph-legend { display: flex; gap: 16px; font-size: 0.78rem; font-weight: 700; margin-top: 4px; }
+
+        .confetti-canvas { position: absolute; top: 0; left: 0; pointer-events: none; width: 100%; height: 100%; z-index: 50; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>
+                <svg class="icon" style="width:20px; height:20px; color:#ec4899;" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+                SingPad
+            </h1>
+            <div class="controls">
+                <span id="header-student-label" style="font-size: 0.8rem; font-weight: 700; color: #facc15; margin-right: 6px;">Guest</span>
+                
+                <select id="difficulty-select">
+                    <option value="1">Level 1 (Easy - Stepwise)</option>
+                    <option value="2">Level 2 (Medium - Leaps up to 3rds)</option>
+                    <option value="3">Level 3 (Hard - Accidentals & 16ths)</option>
+                    <option value="4">Endless Mode</option>
+                </select>
+
+                <select id="theme-select">
+                    <option value="default">Dark</option>
+                    <option value="cyberpunk">Neon</option>
+                    <option value="synthwave">Retro</option>
+                    <option value="matrix">Green</option>
+                </select>
+
+                <button type="button" id="btn-mic-toggle" class="btn-secondary" title="Toggle Microphone">
+                    MIC: OFF
+                </button>
+
+                <!-- LIVE TUNER / FREE SING BUTTON -->
+                <button type="button" id="btn-tuner-mode" class="btn-secondary" title="Live Pitch Tuner & Free Sing Mode">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 3v4M12 17v4M3 12h4M17 12h4"></path><circle cx="12" cy="12" r="2"></circle></svg>
+                    Live Tuner: OFF
+                </button>
+
+                <!-- Live Sound Meter & Mic Volume Boost -->
+                <div class="mic-gain-meter-box" title="Microphone Input Sound Meter & Sensitivity Boost">
+                    <span style="font-size:0.68rem; color:#9ca3af; font-weight:700;">MIC</span>
+                    <div class="vu-meter" id="header-vu-meter">
+                        <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+                        <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+                        <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+                        <div class="vu-bar"></div>
+                    </div>
+                    <span style="font-size:0.68rem; color:#cbd5e1; font-weight:700; margin-left:2px;">BOOST:</span>
+                    <input type="range" id="mic-gain-slider" min="1" max="10" step="0.5" value="3.5" title="Boost Mic Sensitivity (1x - 10x)">
+                    <span id="mic-gain-display" style="font-size:0.72rem; color:#22c55e; font-weight:800; min-width:24px;">3.5x</span>
+                </div>
+
+                <!-- Audio Playback Reference Mute & Volume -->
+                <div class="audio-playback-control" title="Guide tone & metronome volume">
+                    <button type="button" id="btn-tone-mute" class="btn-secondary" style="padding: 3px 6px;">
+                        <svg id="icon-sound" class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                        <svg id="icon-muted" class="icon" style="display:none;" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+                        <span id="tone-mute-text">TONE</span>
+                    </button>
+                    <input type="range" id="tone-volume" min="0" max="100" value="35" title="Adjust Volume (Recommended 30-40% on speakers)">
+                </div>
+
+                <!-- MINI GAMES HUB -->
+                <button type="button" id="btn-arcade" class="btn-arcade" title="Open Arcade Mini-Games">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path><path d="M12 6v6l4 2"></path></svg>
+                    Mini-Games
+                </button>
+
+                <button type="button" id="btn-calib" class="btn-calib" title="Calibrate Lowest & Highest Pitch">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    Calibrate
+                </button>
+
+                <button type="button" id="btn-step" class="btn-step">
+                    <svg class="icon" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+                    Step Mode
+                </button>
+                <button type="button" id="btn-game" class="btn-game-active">
+                    <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    Game Mode: ON
+                </button>
+
+                <button type="button" id="btn-play" class="btn-success">
+                    <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Generate & Play
+                </button>
+                <button type="button" id="btn-stop" class="btn-danger">
+                    <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
+                    Stop
+                </button>
+            </div>
+        </header>
+
+        <div class="visualizer-wrapper">
+            <canvas id="vocal-canvas"></canvas>
+            <canvas id="confetti-canvas" class="confetti-canvas"></canvas>
+        </div>
+
+        <div class="footer-bar">
+            <div class="status-bar" id="status"> Calibrate your voice first to generate melodies within your range!</div>
+            <div class="score-display">
+                <span>Score: <span id="score-text" class="score-points">0</span></span>
+                <span>Streak: <span id="streak-text" class="score-streak">x1</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="login-modal">
+        <div class="modal">
+            <h2>Welcome to SingPad</h2>
+            <p>Please enter your details to save your scores to the leaderboard.</p>
+            <div style="display:flex; flex-direction:column; gap:10px; margin: 15px 0; width:100%;">
+                <input type="text" id="login-name" placeholder="First Name & Last Initial (e.g. Sam T)" style="padding: 10px;">
+                <select id="login-year" style="padding: 10px;">
+                    <option value="" disabled selected>Select Year Group</option>
+                    <option value="7">Year 7</option>
+                    <option value="8">Year 8</option>
+                    <option value="9">Year 9</option>
+                    <option value="10">Year 10</option>
+                    <option value="11">Year 11</option>
+                    <option value="12">Year 12</option>
+                </select>
+                <input type="text" id="login-class" placeholder="Class Name (e.g. 7A, 8 Music)" style="padding: 10px;">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-success" id="btn-login-start" style="width: 100%; padding: 10px; justify-content:center;">Enter SingPad</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Arcade Hub Modal -->
+    <div class="modal-overlay" id="arcade-hub-modal">
+        <div class="modal arcade-hub-modal">
+            <h2 style="color: #ec4899; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path><path d="M12 6v6l4 2"></path></svg>
+                Arcade Mini-Games
+            </h2>
+            <p style="font-size:0.85rem;">Select a vocal challenge to test your pitch agility, stability, and speed!</p>
+            
+            <div class="arcade-grid">
+                <div class="game-card" id="card-slalom">
+                    <h3>🏂 Pitch Slalom</h3>
+                    <p>Surf the neon track! Smoothly glide your pitch up and down to weave perfectly through the slalom gates. Don't crash!</p>
+                    <button type="button" class="btn-arcade" style="justify-content:center; margin-top:auto; padding:6px; border-radius:6px;">Play Slalom</button>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="margin-top:20px;">
+                <button type="button" class="btn-secondary" id="btn-close-arcade">Return to Player</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calibration Modal -->
+    <div class="modal-overlay" id="calib-modal">
+        <div class="modal">
+            <h2>Daily Vocal Calibration</h2>
+            <p id="calib-instructions">Let's find your healthy vocal range for today. We will use this to generate melodies that fit your voice perfectly.</p>
+            <div class="calib-box">
+                <span id="calib-step-text" style="color:#facc15; font-weight:bold;">Step 1: Sing your LOWEST comfortable note</span>
+                <div class="calib-pitch-text" id="calib-live-pitch">--</div>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 4px; width: 100%;">
+                    <span style="font-size:0.7rem; color:#9ca3af; font-weight:700;">MIC SOUND LEVEL</span>
+                    <div class="vu-meter vu-meter-large" id="calib-vu-meter">
+                        <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+                        <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+                        <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+                        <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+                        <div class="vu-bar"></div><div class="vu-bar"></div>
+                    </div>
+                </div>
+                <div style="width: 100%; height: 8px; background: #1e293b; border-radius: 4px; overflow: hidden; margin-top: 8px;">
+                    <div id="calib-progress" style="width: 0%; height: 100%; background: #22c55e; transition: width 0.1s;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="btn-calib-cancel">Cancel</button>
+                <button type="button" class="btn-warning" id="btn-calib-skip">Skip (Default Range)</button>
+                <button type="button" class="btn-success" id="btn-calib-action">Start Recording Lowest Note</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Summary Feedback Modal -->
+    <div class="modal-overlay" id="results-modal">
+        <div class="modal">
+            <h2>Game Performance Summary</h2>
+            <div id="summary-meta" style="font-size: 0.95rem; color: #cbd5e1; line-height: 1.5; margin-top: 4px;">
+                <div>Student: <span id="summary-student" style="color:#38bdf8; font-weight:700;">Sam T</span></div>
+                <div>Final Score: <span id="summary-score" style="color:#22c55e; font-weight:800; font-size:1.15rem;">0.0%</span></div>
+                <div id="summary-breakdown" style="font-size:0.8rem; color:#9ca3af;"></div>
+            </div>
+
+            <div id="results-badge-container"></div>
+            <div id="game-rank-box" class="rank-display-box" style="display:none;">Calculating Rank...</div>
+
+            <div class="graph-container" id="results-graph-container">
+                <div class="bar-chart-wrapper">
+                    <div class="stacked-bar">
+                        <div id="bar-red" class="bar-part-red" style="height: 0%;"></div>
+                        <div id="bar-orange" class="bar-part-orange" style="height: 0%;"></div>
+                        <div id="bar-green" class="bar-part-green" style="height: 100%;"></div>
+                    </div>
+                </div>
+                <div class="graph-legend">
+                    <span style="color:#22c55e;">Perfect</span>
+                    <span style="color:#f97316;">Early/Late</span>
+                    <span style="color:#ef4444;">Missed</span>
+                </div>
+            </div>
+
+            <p id="save-status" style="color: #38bdf8; font-size: 0.75rem; margin-top: 2px;">Saving to Leaderboard...</p>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-warning" id="btn-results-retry" style="padding: 9px 24px; font-weight: 800; font-size: 0.88rem;">Try Again</button>
+                <button type="button" class="btn-success" id="btn-results-close" style="padding: 9px 24px; font-weight: 800; font-size: 0.88rem;">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =========================================================================
+        // GOOGLE APPS SCRIPT WEB APP ENDPOINT FOR SPREADSHEET SUBMISSION
+        // =========================================================================
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzAo05vJwNnIDbFUKEfbRETBzTORNsZKQ1y8rqnXKbhBuYA31x2LkN4EDMR6NYOAq8P/exec"; 
+        
+        let currentStudentName = "Anonymous";
+        let currentYearGroup = "N/A";
+        let currentStudentClass = "N/A";
+
+        let audioCtx = null;
+        let micStream = null;
+        let micSource = null;
+        let micGainNode = null;
+        let micAnalyser = null;
+        let isMicListening = false;
+        let pitchDetectionFrameId = null;
+        
+        let micBoostGain = 3.5;
+        let currentDetectedFreq = 0;
+        let currentDetectedMidi = 0;
+        let currentInputRMS = 0;
+        
+        let vocalRange = { min: 45, max: 64 }; 
+        let isCalibrated = false;
+
+        let isToneMuted = false;
+        let toneVolume = 0.35; 
+
+        // Live Tuner State
+        let isLiveTuner = false;
+        let idleAnimationFrameId = null;
+        let tunerNeedleAngle = Math.PI * 1.5; 
+
+        // Arcade State
+        let activeMiniGame = null; // null | 'slalom'
+        let minigameState = {};
+        
+        // General Game State
+        const BEAT_MS = 750;
+        let lastPlayedBeatIndex = -1;
+        let isPlaying = false;
+        let isGameMode = true;
+        let isStepMode = false;
+        let currentTheme = 'default';
+        
+        let score = 0;
+        let streak = 0;
+        let maxStreak = 0;
+        let totalNotesHit = 0;
+        let totalNotesMissed = 0;
+        let earlyLateHits = 0;
+        let perfectHits = 0;
+
+        let noteTimeline = [];
+        let pitchTraceHistory = [];
+        let playbackStartTime = 0;
+        let lastFrameTime = 0;
+        let stepModeCurrentIndex = 0;
+        let stepModeWaitTime = 0;
+
+        const PIXELS_PER_MS = 0.15;
+        const HIT_ZONE_X = 220;
+        const HIT_TOLERANCE_SEMITONES = 1.05;
+        const PIANO_WIDTH = 68;
+
+        const canvas = document.getElementById('vocal-canvas');
+        const ctx = canvas.getContext('2d');
+        const confettiCanvas = document.getElementById('confetti-canvas');
+        const confettiCtx = confettiCanvas.getContext('2d');
+
+        const standardTreblePath = new Path2D("M 0,0 C -3.6,0 -6.5,2.9 -6.5,6.5 C -6.5,10.2 -3.4,13.1 0.4,13.1 C 4.2,13.1 7.2,10.0 7.2,5.8 C 7.2,0.4 2.8,-4.2 -2.6,-4.2 C -9.8,-4.2 -15.6,1.8 -15.6,9.2 C -15.6,18.0 -7.8,24.8 1.8,24.8 C 11.2,24.8 18.6,17.4 18.6,7.5 C 18.6,-5.5 8.2,-15.8 -4.8,-15.8 C -11.2,-15.8 -16.5,-12.0 -19.4,-6.2 C -20.4,-4.2 -20.9,-1.9 -20.9,0.5 C -20.9,4.8 -18.2,8.8 -14.2,10.2 C -13.2,10.6 -12.4,9.8 -12.4,8.8 C -12.4,8.0 -12.9,7.4 -13.5,6.9 C -15.8,4.8 -16.8,2.2 -16.5,-0.6 C -16.0,-4.5 -12.4,-7.8 -7.5,-8.5 C -6.5,-8.6 -5.6,-8.7 -4.6,-8.7 C 4.5,-8.7 11.8,-1.5 11.8,7.5 C 11.8,14.2 6.5,19.5 0.2,19.5 C -6.2,19.5 -11.4,14.6 -11.4,8.5 C -11.4,4.2 -8.5,0.8 -4.5,0.2 C -3.8,0.1 -2.2,0.0 0,0 Z M 1.2,-15.8 C 2.5,-23.5 3.5,-31.2 3.5,-38.5 C 3.5,-45.8 1.5,-51.2 -1.8,-51.2 C -4.2,-51.2 -6.2,-48.2 -6.5,-42.5 C -6.8,-36.2 -4.8,-26.8 1.2,-15.8 Z M 3.2,-13.2 C -2.8,-24.5 -5.2,-34.5 -4.8,-41.8 C -4.5,-46.8 -3.2,-49.2 -1.8,-49.2 C 0.5,-49.2 1.8,-45.2 1.8,-38.5 C 1.8,-31.5 1.0,-23.8 3.2,-13.2 Z M -0.8,25.2 L -0.8,42.5 C -0.8,48.2 -2.5,53.5 -5.8,56.8 C -8.5,59.5 -12.2,60.8 -16.2,60.2 C -20.8,59.5 -24.2,55.8 -24.8,51.2 C -25.2,47.8 -23.5,44.5 -20.5,43.2 C -17.5,41.9 -14.2,42.8 -12.5,45.5 C -11.5,47.2 -11.5,49.2 -12.2,50.8 C -12.8,52.2 -14.2,53.2 -15.8,53.5 C -15.2,54.8 -13.8,55.8 -12.2,55.8 C -8.8,55.8 -6.2,51.8 -6.2,44.5 L -6.2,24.5 C -4.5,25.0 -2.5,25.2 -0.8,25.2 Z");
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            confettiCanvas.width = rect.width;
+            confettiCanvas.height = rect.height;
+            if (!isPlaying) drawScene();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            resizeCanvas();
+            document.getElementById('login-modal').classList.add('open');
+            if (localStorage.getItem('singpad_name')) document.getElementById('login-name').value = localStorage.getItem('singpad_name');
+            if (localStorage.getItem('singpad_year')) document.getElementById('login-year').value = localStorage.getItem('singpad_year');
+            if (localStorage.getItem('singpad_class')) document.getElementById('login-class').value = localStorage.getItem('singpad_class');
+            drawScene();
+        });
+
+        document.getElementById('btn-login-start').addEventListener('click', () => {
+            const n = document.getElementById('login-name').value.trim();
+            const y = document.getElementById('login-year').value;
+            const c = document.getElementById('login-class').value.trim();
+            if (!n || !y || !c) { alert("Please fill in all details to continue."); return; }
+            currentStudentName = n; currentYearGroup = y; currentStudentClass = c;
+            localStorage.setItem('singpad_name', n); localStorage.setItem('singpad_year', y); localStorage.setItem('singpad_class', c);
+            document.getElementById('header-student-label').textContent = currentStudentName;
+            document.getElementById('login-modal').classList.remove('open');
+        });
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playCountInClick(isAccented = false) {
+            if (isToneMuted || toneVolume <= 0) return;
+            initAudio();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+            osc.type = 'triangle';
+            const freq = isAccented ? 1200 : 850;
+            osc.frequency.setValueAtTime(freq, now);
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.6, now + 0.04);
+            filter.type = 'bandpass'; filter.frequency.setValueAtTime(freq, now); filter.Q.setValueAtTime(3.0, now);
+            const vol = (isAccented ? 0.28 : 0.18) * toneVolume;
+            gain.gain.setValueAtTime(0.0001, now); gain.gain.linearRampToValueAtTime(vol, now + 0.003); gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+            osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(now); osc.stop(now + 0.07);
+        }
+
+        function playBassDrum(isAccented = false) {
+            if (isToneMuted || toneVolume <= 0) return;
+            initAudio();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+            osc.type = 'sine';
+            const startFreq = isAccented ? 115 : 95;
+            const endFreq = isAccented ? 48 : 42;
+            osc.frequency.setValueAtTime(startFreq, now);
+            osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.08);
+            filter.type = 'lowpass'; filter.frequency.setValueAtTime(140, now);
+            const peakVol = (isAccented ? 0.15 : 0.07) * toneVolume;
+            gain.gain.setValueAtTime(0.0001, now); gain.gain.linearRampToValueAtTime(peakVol, now + 0.007); gain.gain.exponentialRampToValueAtTime(0.0001, now + (isAccented ? 0.22 : 0.16));
+            osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(now); osc.stop(now + 0.25);
+        }
+
+        function playGuideTone(freq, durationMs) {
+            if (isToneMuted || !freq || toneVolume <= 0) return;
+            initAudio();
+            const now = audioCtx.currentTime;
+            const dur = Math.max(0.1, durationMs / 1000);
+            const osc1 = audioCtx.createOscillator(); const osc2 = audioCtx.createOscillator();
+            const filter = audioCtx.createBiquadFilter(); const gain = audioCtx.createGain();
+            osc1.type = 'triangle'; osc1.frequency.setValueAtTime(freq, now);
+            osc2.type = 'sine'; osc2.frequency.setValueAtTime(freq * 2, now);
+            filter.type = 'lowpass'; filter.frequency.setValueAtTime(Math.min(2500, freq * 3), now);
+            const targetGain = toneVolume * 0.22;
+            gain.gain.setValueAtTime(0.0001, now); gain.gain.linearRampToValueAtTime(targetGain, now + 0.04);
+            gain.gain.setValueAtTime(targetGain, now + dur - 0.04); gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+            osc1.connect(filter); osc2.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+            osc1.start(now); osc2.start(now); osc1.stop(now + dur + 0.05); osc2.stop(now + dur + 0.05);
+        }
+
+        function playBloodSplatSound() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.5, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < noiseBuffer.length; i++) output[i] = Math.random() * 2 - 1;
+            const noise = audioCtx.createBufferSource(); noise.buffer = noiseBuffer;
+            const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.setValueAtTime(800, now);
+            const gain = audioCtx.createGain(); gain.gain.setValueAtTime(1.0, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(120, now); osc.frequency.exponentialRampToValueAtTime(20, now + 0.2);
+            const oscGain = audioCtx.createGain(); oscGain.gain.setValueAtTime(0.8, now); oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            
+            noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+            osc.connect(oscGain); oscGain.connect(audioCtx.destination);
+            noise.start(now); osc.start(now);
+        }
+
+        async function toggleMicrophone() {
+            initAudio();
+            const btn = document.getElementById('btn-mic-toggle');
+
+            if (isMicListening) {
+                stopMicrophone();
+                btn.textContent = ' MIC: OFF';
+                btn.classList.remove('btn-mic-active');
+                btn.classList.add('btn-secondary');
+            } else {
+                try {
+                    micStream = await navigator.mediaDevices.getUserMedia({
+                        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, video: false
+                    });
+                    micSource = audioCtx.createMediaStreamSource(micStream);
+                    micGainNode = audioCtx.createGain();
+                    micGainNode.gain.setValueAtTime(micBoostGain, audioCtx.currentTime);
+                    micAnalyser = audioCtx.createAnalyser();
+                    micAnalyser.fftSize = 2048;
+                    micSource.connect(micGainNode);
+                    micGainNode.connect(micAnalyser);
+                    isMicListening = true;
+                    btn.textContent = ' MIC: ON';
+                    btn.classList.remove('btn-secondary');
+                    btn.classList.add('btn-mic-active');
+                    processPitch();
+                    startIdleRenderLoop();
+                } catch (err) {
+                    console.error("Mic access error:", err);
+                    alert("Unable to access microphone. Please check browser microphone permissions.");
+                }
+            }
+        }
+
+        function stopMicrophone() {
+            isMicListening = false;
+            if (pitchDetectionFrameId) cancelAnimationFrame(pitchDetectionFrameId);
+            if (micStream) { micStream.getTracks().forEach(track => track.stop()); micStream = null; }
+            currentDetectedFreq = 0; currentDetectedMidi = 0; currentInputRMS = 0;
+            updateVUMeters(0);
+            if (!isPlaying && !isLiveTuner) drawScene();
+        }
+
+        function updateVUMeters(rms) {
+            const normalized = Math.min(1.0, Math.max(0.0, (rms - 0.003) * 4.2));
+            const headerMeter = document.getElementById('header-vu-meter');
+            if (headerMeter) {
+                const bars = headerMeter.children;
+                const litCount = Math.round(normalized * bars.length);
+                for (let i = 0; i < bars.length; i++) {
+                    bars[i].className = 'vu-bar';
+                    if (i < litCount) {
+                        if (i >= 8) bars[i].classList.add('lit-red');
+                        else if (i >= 6) bars[i].classList.add('lit-yellow');
+                        else bars[i].classList.add('lit-green');
+                    }
+                }
+            }
+            const calibMeter = document.getElementById('calib-vu-meter');
+            if (calibMeter) {
+                const cBars = calibMeter.children;
+                const cLitCount = Math.round(normalized * cBars.length);
+                for (let i = 0; i < cBars.length; i++) {
+                    cBars[i].className = 'vu-bar';
+                    if (i < cLitCount) {
+                        if (i >= 12) cBars[i].classList.add('lit-red');
+                        else if (i >= 9) cBars[i].classList.add('lit-yellow');
+                        else cBars[i].classList.add('lit-green');
+                    }
+                }
+            }
+        }
+
+        function autoCorrelate(buf, sampleRate) {
+            const SIZE = buf.length;
+            let rms = 0;
+            for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
+            rms = Math.sqrt(rms / SIZE);
+            currentInputRMS = rms;
+            updateVUMeters(rms);
+            if (rms < 0.004) return -1;
+            const minLag = Math.floor(sampleRate / 1400); 
+            let maxLag = Math.floor(sampleRate / 50);      
+            if (maxLag >= SIZE) maxLag = SIZE - 1;
+            const c = new Float32Array(maxLag + 1);
+            for (let lag = minLag; lag <= maxLag; lag++) {
+                let sum = 0; const end = SIZE - lag;
+                for (let j = 0; j < end; j++) sum += buf[j] * buf[j + lag];
+                c[lag] = sum;
+            }
+            let bestLag = -1; let maxVal = -1;
+            for (let lag = minLag + 1; lag < maxLag; lag++) {
+                if (c[lag] > c[lag - 1] && c[lag] > c[lag + 1]) {
+                    if (c[lag] > maxVal) { maxVal = c[lag]; bestLag = lag; }
+                }
+            }
+            if (bestLag === -1 || maxVal <= 0) return -1;
+            let T0 = bestLag;
+            if (bestLag > minLag && bestLag < maxLag) {
+                const x1 = c[bestLag - 1]; const x2 = c[bestLag]; const x3 = c[bestLag + 1];
+                const denom = 2 * (2 * x2 - x1 - x3);
+                if (denom !== 0) T0 = bestLag + (x3 - x1) / denom;
+            }
+            return sampleRate / T0;
+        }
+
+        function freqToMidi(freq) { return 69 + 12 * Math.log2(freq / 440); }
+        function midiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+
+        function processPitch() {
+            if (!isMicListening || !micAnalyser) return;
+            const buf = new Float32Array(micAnalyser.fftSize);
+            micAnalyser.getFloatTimeDomainData(buf);
+            const freq = autoCorrelate(buf, audioCtx.sampleRate);
+            if (freq !== -1 && freq >= 50 && freq <= 1600) {
+                currentDetectedFreq = freq; currentDetectedMidi = freqToMidi(freq);
+                if (isPlaying) {
+                    const elapsed = performance.now() - playbackStartTime;
+                    pitchTraceHistory.push({ time: elapsed, pitch: currentDetectedMidi });
+                    if (pitchTraceHistory.length > 300) pitchTraceHistory.shift();
+                }
+            } else {
+                currentDetectedFreq = 0; currentDetectedMidi = 0;
+            }
+            pitchDetectionFrameId = requestAnimationFrame(processPitch);
+        }
+
+        function getNoteName(midiNum) {
+            const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const octave = Math.floor(midiNum / 12) - 1;
+            const note = notes[Math.round(midiNum) % 12];
+            return `${note}${octave}`;
+        }
+        function isBlackKey(midiNum) {
+            const pc = Math.round(midiNum) % 12;
+            return pc === 1 || pc === 3 || pc === 6 || pc === 8 || pc === 10;
+        }
+
+        function getPitchClassDistance(detectedMidi, targetMidi) {
+            if (!detectedMidi || detectedMidi <= 0) return 999;
+            const detPitchClass = ((detectedMidi % 12) + 12) % 12;
+            const tgtPitchClass = ((targetMidi % 12) + 12) % 12;
+            let diff = Math.abs(detPitchClass - tgtPitchClass);
+            if (diff > 6) diff = 12 - diff; 
+            return diff;
+        }
+
+        // --- Calibration Logic ---
+        const calibModal = document.getElementById('calib-modal');
+        const btnCalibAction = document.getElementById('btn-calib-action');
+        const calibLivePitch = document.getElementById('calib-live-pitch');
+        const calibProgress = document.getElementById('calib-progress');
+        let calibPhase = 0; let calibSamples = []; let calibInterval = null;
+
+        function applyDefaultCalibration(reasonText) {
+            vocalRange = { min: 45, max: 64 };
+            isCalibrated = true;
+            if (calibInterval) clearInterval(calibInterval);
+            calibModal.classList.remove('open');
+            document.getElementById('status').textContent = reasonText || ` Calibration Active: Default Range (${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)})`;
+            spawnConfetti(HIT_ZONE_X, canvas.height / 2);
+            if (!isPlaying) drawScene();
+        }
+
+        document.getElementById('btn-calib').addEventListener('click', () => {
+            initAudio(); if (!isMicListening) toggleMicrophone();
+            calibPhase = 0; calibSamples = [];
+            document.getElementById('calib-step-text').textContent = 'Step 1: Sing your LOWEST comfortable note';
+            calibLivePitch.textContent = '--'; calibProgress.style.width = '0%';
+            btnCalibAction.textContent = 'Start Recording Lowest Note';
+            calibModal.classList.add('open');
+        });
+
+        document.getElementById('btn-calib-cancel').addEventListener('click', () => { clearInterval(calibInterval); calibModal.classList.remove('open'); });
+        document.getElementById('btn-calib-skip').addEventListener('click', () => { applyDefaultCalibration(` Calibration Skipped: Teenage Male Range Active`); });
+
+        btnCalibAction.addEventListener('click', () => {
+            if (calibPhase === 0) {
+                calibPhase = 1; calibSamples = []; btnCalibAction.disabled = true; btnCalibAction.textContent = 'Recording...';
+                recordPitchFor(2000, (avgMidi) => {
+                    vocalRange.min = avgMidi; calibPhase = 2; btnCalibAction.disabled = false;
+                    document.getElementById('calib-step-text').textContent = 'Step 2: Sing your HIGHEST comfortable note';
+                    btnCalibAction.textContent = 'Start Recording Highest Note';
+                });
+            } else if (calibPhase === 2) {
+                calibPhase = 3; calibSamples = []; btnCalibAction.disabled = true; btnCalibAction.textContent = 'Recording...';
+                recordPitchFor(2000, (avgMidi) => {
+                    vocalRange.max = avgMidi; isCalibrated = true; clearInterval(calibInterval); calibModal.classList.remove('open');
+                    if (vocalRange.max <= vocalRange.min) vocalRange.max = vocalRange.min + 12;
+                    document.getElementById('status').textContent = ` Calibration Complete! Range: ${getNoteName(vocalRange.min)} to ${getNoteName(vocalRange.max)}`;
+                    btnCalibAction.disabled = false; if (!isPlaying) drawScene();
+                });
+            }
+        });
+
+        function recordPitchFor(ms, callback) {
+            let elapsed = 0; calibProgress.style.width = '0%';
+            calibInterval = setInterval(() => {
+                elapsed += 50; calibProgress.style.width = `${(elapsed / ms) * 100}%`;
+                if (currentDetectedMidi > 0) {
+                    calibSamples.push(currentDetectedMidi); calibLivePitch.textContent = getNoteName(currentDetectedMidi);
+                } else { calibLivePitch.textContent = '--'; }
+
+                if (elapsed >= ms) {
+                    clearInterval(calibInterval); calibLivePitch.textContent = 'Done!';
+                    if (calibSamples.length === 0) {
+                        alert("No pitch detected! Check that your microphone is on and that the sound meter shows green bars.");
+                        calibModal.classList.remove('open'); btnCalibAction.disabled = false; return;
+                    }
+                    calibSamples.sort((a,b) => a-b);
+                    const midSamples = calibSamples.slice(Math.floor(calibSamples.length*0.2), Math.ceil(calibSamples.length*0.8));
+                    const sum = midSamples.reduce((a,b)=>a+b, 0); callback(Math.round(sum / midSamples.length));
+                }
+            }, 50);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+            if (e.key === '(') { e.preventDefault(); applyDefaultCalibration(` Calibration Bypassed: Teenage Male Range Active`); }
+        });
+
+        const DIATONIC_STEPS = [0, 2, 4, 5, 7, 9, 11];
+
+        function determineScaleNotes(timeline) {
+            const pitchClasses = new Set(timeline.map(n => Math.round(n.pitch) % 12));
+            const candidateKeys = [0, 7, 2, 9, 4, 5, 10]; 
+            let bestRoot = 0; let bestScore = -1;
+            candidateKeys.forEach(root => {
+                const scaleSet = new Set(DIATONIC_STEPS.map(iv => (root + iv) % 12));
+                let matches = 0; let penalty = 0;
+                pitchClasses.forEach(pc => { if (scaleSet.has(pc)) matches++; else penalty += 2; });
+                const score = matches - penalty;
+                if (score > bestScore) { bestScore = score; bestRoot = root; }
+            });
+
+            const allMidis = timeline.map(n => Math.round(n.pitch));
+            const minMidi = Math.min(...allMidis); const maxMidi = Math.max(...allMidis);
+
+            let startRoot = bestRoot;
+            while (startRoot < minMidi - 2) startRoot += 12;
+            while (startRoot > minMidi + 2) startRoot -= 12;
+
+            const scaleNotes = [];
+            const fullSpan = Math.max(12, maxMidi - startRoot + 2);
+            let octaveCount = Math.ceil(fullSpan / 12);
+            for (let oct = 0; oct < octaveCount; oct++) {
+                DIATONIC_STEPS.forEach(iv => {
+                    const note = startRoot + (oct * 12) + iv;
+                    if (note <= maxMidi + 2) scaleNotes.push(note);
+                });
+            }
+            const topTonic = startRoot + (octaveCount * 12);
+            if (topTonic <= maxMidi + 4 && !scaleNotes.includes(topTonic)) scaleNotes.push(topTonic);
+
+            const ascending = [...scaleNotes];
+            const descending = [...scaleNotes].reverse().slice(1);
+            return {
+                rootNoteName: ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'][bestRoot],
+                sequence: ascending.concat(descending)
+            };
+        }
+
+        function snapToDiatonic(midi, stepOffset = 0) {
+            const octave = Math.floor(midi / 12); const noteClass = midi % 12;
+            let closestStepIdx = 0; let minDiff = 99;
+            for (let i = 0; i < DIATONIC_STEPS.length; i++) {
+                const diff = Math.abs(noteClass - DIATONIC_STEPS[i]);
+                if (diff < minDiff) { minDiff = diff; closestStepIdx = i; }
+            }
+            closestStepIdx += stepOffset; let targetOctave = octave;
+            while (closestStepIdx < 0) { closestStepIdx += 7; targetOctave--; }
+            while (closestStepIdx >= 7) { closestStepIdx -= 7; targetOctave++; }
+            return (targetOctave * 12) + DIATONIC_STEPS[closestStepIdx];
+        }
+
+        function generateMelody(difficulty) {
+            noteTimeline = []; pitchTraceHistory = [];
+            let currentMidi = Math.round((vocalRange.min + vocalRange.max) / 2);
+            currentMidi = snapToDiatonic(currentMidi);
+
+            const patternsLevel1 = [[4], [2, 2], [2, 1, 1], [1, 1, 2], [1, 1, 1, 1], [1, 2, 1]];
+            const patternsLevel2 = patternsLevel1.concat([[1, 1, 1, 0.5, 0.5], [0.5, 0.5, 1, 2], [2, 1, 0.5, 0.5], [1, 0.5, 0.5, 1, 1], [0.5, 0.5, 0.5, 0.5, 2], [1, 0.5, 0.5, 2], [0.5, 0.5, 1, 0.5, 0.5, 1]]);
+            const patternsLevel3 = patternsLevel2.concat([[0.25, 0.25, 0.25, 0.25, 1, 2], [1, 0.25, 0.25, 0.25, 0.25, 2], [0.5, 0.25, 0.25, 1, 2], [1, 0.5, 0.25, 0.25, 1, 1], [0.25, 0.25, 0.5, 1, 2], [2, 1, 0.5, 0.25, 0.25], [1, 1, 1, 0.25, 0.25, 0.25, 0.25]]);
+
+            let activePatterns = patternsLevel1; let totalBars = 4;
+            if (difficulty === '2') { activePatterns = patternsLevel2; totalBars = 4; } 
+            else if (difficulty === '3') { activePatterns = patternsLevel3; totalBars = 6; } 
+            else if (difficulty === '4') { activePatterns = patternsLevel3; totalBars = 16; }
+
+            let timeAccumulator = 1 * (4 * BEAT_MS);
+            for (let bar = 0; bar < totalBars; bar++) {
+                const pattern = activePatterns[Math.floor(Math.random() * activePatterns.length)];
+                for (let n = 0; n < pattern.length; n++) {
+                    const durationMs = pattern[n] * BEAT_MS;
+                    noteTimeline.push({ pitch: currentMidi, startTime: timeAccumulator, duration: durationMs, hitState: 'pending', soundPlayed: false, accumulatedHitFrames: 0 });
+                    timeAccumulator += durationMs;
+
+                    if (difficulty === '1') { currentMidi = snapToDiatonic(currentMidi, Math.random() > 0.5 ? 1 : -1); } 
+                    else if (difficulty === '2') { const leaps = [-2, -1, -1, 1, 1, 2]; currentMidi = snapToDiatonic(currentMidi, leaps[Math.floor(Math.random() * leaps.length)]); } 
+                    else { currentMidi += Math.floor(Math.random() * 9) - 4; }
+
+                    if (currentMidi > vocalRange.max) currentMidi = vocalRange.max - 2;
+                    if (currentMidi < vocalRange.min) currentMidi = vocalRange.min + 2;
+                }
+            }
+        }
+
+        async function playScalePreRoll(scaleData) {
+            const { rootNoteName, sequence } = scaleData;
+            const noteDuration = 280;
+            document.getElementById('status').textContent = ` Reference scale: ${rootNoteName} Major... Listen carefully!`;
+            for (let i = 0; i < sequence.length; i++) {
+                if (!isPlaying) return;
+                previewScaleActiveNote = sequence[i];
+                playGuideTone(midiToFreq(previewScaleActiveNote), noteDuration * 0.92);
+                drawScene();
+                await new Promise(r => setTimeout(r, noteDuration));
+            }
+            previewScaleActiveNote = null;
+            drawScene();
+            document.getElementById('status').textContent = isStepMode ? ' Step Mode: Match pitch to advance!' : ' Count in starting... Get ready to sing!';
+        }
+
+        function startIdleRenderLoop() {
+            if (idleAnimationFrameId) cancelAnimationFrame(idleAnimationFrameId);
+            function loop() {
+                if (!isPlaying) drawScene();
+                idleAnimationFrameId = requestAnimationFrame(loop);
+            }
+            idleAnimationFrameId = requestAnimationFrame(loop);
+        }
+
+        function drawScene() {
+            const clefHeight = 110;
+            const rollY = clefHeight;
+            const rollHeight = canvas.height - clefHeight;
+            const viewMinPitch = vocalRange.min - 3;
+            const viewMaxPitch = vocalRange.max + 3;
+            const totalPitches = (viewMaxPitch - viewMinPitch) + 1;
+            const semitoneHeight = rollHeight / totalPitches;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let p = viewMinPitch; p <= viewMaxPitch; p++) {
+                const yTop = rollY + (viewMaxPitch - p) * semitoneHeight;
+                ctx.fillStyle = isBlackKey(p) ? '#0d0d14' : '#161622';
+                ctx.fillRect(PIANO_WIDTH, yTop, canvas.width - PIANO_WIDTH, semitoneHeight);
+                ctx.strokeStyle = '#222230'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(PIANO_WIDTH, yTop); ctx.lineTo(canvas.width, yTop); ctx.stroke();
+            }
+
+            if (!activeMiniGame || activeMiniGame === 'slalom') {
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--hitline-color').trim() || '#ef4444';
+                ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(HIT_ZONE_X, 0); ctx.lineTo(HIT_ZONE_X, canvas.height); ctx.stroke();
+            }
+
+            const activeStaffNote = previewScaleActiveNote || (currentDetectedMidi > 0 ? Math.round(currentDetectedMidi) : null);
+            drawVerticalPiano(ctx, rollY, semitoneHeight, viewMinPitch, viewMaxPitch, activeStaffNote, currentDetectedMidi);
+            drawTrebleClef(ctx, clefHeight, activeStaffNote);
+
+            if (isLiveTuner && currentDetectedMidi > 0 && !previewScaleActiveNote) {
+                drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch);
+                drawLargeGuitarTunerDisplay(ctx, rollY, rollHeight);
+            }
+
+            drawBloodAndConfetti();
+        }
+
+        function drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch) {
+            let displayMidi = currentDetectedMidi;
+            while (displayMidi < viewMinPitch) displayMidi += 12;
+            while (displayMidi > viewMaxPitch) displayMidi -= 12;
+
+            const detectedY = rollY + (viewMaxPitch - displayMidi) * semitoneHeight + semitoneHeight / 2;
+            const roundedMidi = Math.round(currentDetectedMidi);
+            const targetFreq = midiToFreq(roundedMidi);
+            const cents = Math.round(1200 * Math.log2(currentDetectedFreq / targetFreq));
+            const absCents = Math.abs(cents);
+
+            let tuneColor = '#22c55e'; 
+            if (absCents > 30) tuneColor = '#ef4444'; 
+            else if (absCents > 18) tuneColor = '#facc15'; 
+
+            ctx.save();
+            ctx.strokeStyle = tuneColor; ctx.lineWidth = 3; ctx.shadowColor = tuneColor; ctx.shadowBlur = 8;
+            ctx.beginPath(); ctx.moveTo(PIANO_WIDTH, detectedY); ctx.lineTo(isLiveTuner ? canvas.width - 410 : canvas.width, detectedY); ctx.stroke();
+            
+            const badgeW = 205; const badgeH = 26;
+            const badgeX = Math.min(canvas.width - badgeW - (isLiveTuner ? 420 : 10), Math.max(PIANO_WIDTH + 10, HIT_ZONE_X - 10));
+            const badgeY = Math.max(rollY + 6, Math.min(canvas.height - badgeH - 6, detectedY - badgeH / 2));
+
+            ctx.fillStyle = 'rgba(11, 15, 25, 0.9)'; ctx.strokeStyle = tuneColor; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 6); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(`🎤 ${getNoteName(roundedMidi)} (${currentDetectedFreq.toFixed(1)}Hz) ${cents >= 0 ? '+'+cents : cents}¢`, badgeX + badgeW / 2, badgeY + badgeH / 2);
+            ctx.restore();
+        }
+
+        function drawLargeGuitarTunerDisplay(ctx, rollY, rollHeight) {
+            ctx.save();
+            const tunerW = Math.min(390, Math.max(320, canvas.width * 0.30));
+            const tunerH = Math.min(290, rollHeight - 20);
+            const tunerX = canvas.width - tunerW - 14;
+            const tunerY = rollY + (rollHeight - tunerH) / 2;
+
+            const housingGrad = ctx.createLinearGradient(tunerX, tunerY, tunerX, tunerY + tunerH);
+            housingGrad.addColorStop(0, '#1c2234'); housingGrad.addColorStop(0.5, '#101422'); housingGrad.addColorStop(1, '#090c15');
+            ctx.fillStyle = housingGrad; ctx.strokeStyle = '#374151'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.roundRect(tunerX, tunerY, tunerW, tunerH, 14); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = '#4b5563';
+            [[10,10], [tunerW-10,10], [10,tunerH-10], [tunerW-10,tunerH-10]].forEach(([dx, dy]) => {
+                ctx.beginPath(); ctx.arc(tunerX + dx, tunerY + dy, 2.5, 0, Math.PI * 2); ctx.fill();
+            });
+
+            ctx.fillStyle = '#9ca3af'; ctx.font = '800 10px -apple-system, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText("CHROMATIC VOCAL GUITAR TUNER", tunerX + tunerW / 2, tunerY + 16);
+
+            const meterW = tunerW - 28; const meterH = tunerH - 42;
+            const meterX = tunerX + 14; const meterY = tunerY + 28;
+            ctx.fillStyle = '#060810'; ctx.strokeStyle = '#22293a'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.roundRect(meterX, meterY, meterW, meterH, 8); ctx.fill(); ctx.stroke();
+
+            let cents = 0; let noteName = "--"; let freqText = "-- Hz";
+            let hasSignal = (currentDetectedMidi > 0 && currentDetectedFreq > 0);
+            if (hasSignal) {
+                const roundedMidi = Math.round(currentDetectedMidi);
+                noteName = getNoteName(roundedMidi);
+                cents = 1200 * Math.log2(currentDetectedFreq / midiToFreq(roundedMidi));
+                freqText = `${currentDetectedFreq.toFixed(1)} Hz`;
+            }
+
+            const clampedCents = Math.max(-50, Math.min(50, cents));
+            const isWithinTolerance = (hasSignal && Math.abs(cents) <= 20.0);
+            const isFlat = (hasSignal && cents < -20.0);
+            const isSharp = (hasSignal && cents > 20.0);
+
+            let targetAngle = Math.PI * 1.5;
+            if (hasSignal) targetAngle = Math.PI + ((clampedCents + 50) / 100) * Math.PI;
+            tunerNeedleAngle += (targetAngle - tunerNeedleAngle) * 0.22;
+
+            const pivotX = meterX + meterW / 2; const pivotY = meterY + meterH * 0.82; const arcR = meterH * 0.62;
+
+            if (isWithinTolerance) {
+                const pulse = 0.22 + 0.14 * Math.sin(Date.now() / 90);
+                const glowGrad = ctx.createRadialGradient(pivotX, pivotY - arcR * 0.6, 10, pivotX, pivotY - arcR * 0.6, arcR * 1.2);
+                glowGrad.addColorStop(0, `rgba(34, 197, 94, ${pulse * 1.6})`); glowGrad.addColorStop(0.5, `rgba(34, 197, 94, ${pulse * 0.8})`); glowGrad.addColorStop(1, 'rgba(34, 197, 94, 0)');
+                ctx.fillStyle = glowGrad; ctx.beginPath(); ctx.roundRect(meterX + 1, meterY + 1, meterW - 2, meterH - 2, 7); ctx.fill();
+            }
+
+            ctx.strokeStyle = isWithinTolerance ? 'rgba(34, 197, 94, 0.85)' : 'rgba(34, 197, 94, 0.45)';
+            ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(pivotX, pivotY, arcR - 5, Math.PI + 0.3 * Math.PI, Math.PI + 0.7 * Math.PI); ctx.stroke();
+
+            ctx.strokeStyle = '#374151'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(pivotX, pivotY, arcR, Math.PI, Math.PI * 2); ctx.stroke();
+
+            for (let cVal = -50; cVal <= 50; cVal += 5) {
+                const ang = Math.PI + ((cVal + 50) / 100) * Math.PI;
+                const isCenter = (cVal === 0); const isMajor = (cVal % 10 === 0);
+                const rInner = arcR - (isCenter ? 14 : (isMajor ? 10 : 5)); const rOuter = arcR + (isCenter ? 3 : 0);
+                
+                ctx.beginPath(); ctx.moveTo(pivotX + rInner * Math.cos(ang), pivotY + rInner * Math.sin(ang));
+                ctx.lineTo(pivotX + rOuter * Math.cos(ang), pivotY + rOuter * Math.sin(ang));
+                if (isCenter) { ctx.strokeStyle = isWithinTolerance ? '#22c55e' : '#facc15'; ctx.lineWidth = 3; } 
+                else if (Math.abs(cVal) <= 20) { ctx.strokeStyle = '#22c55e'; ctx.lineWidth = isMajor ? 2 : 1; } 
+                else { ctx.strokeStyle = isMajor ? '#94a3b8' : '#475569'; ctx.lineWidth = 1; }
+                ctx.stroke();
+
+                if ([ -50, -20, 0, 20, 50 ].includes(cVal)) {
+                    ctx.fillStyle = isCenter ? (isWithinTolerance ? '#22c55e' : '#facc15') : '#94a3b8';
+                    ctx.font = isCenter ? '800 11px monospace' : '700 9px monospace';
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText(cVal === 0 ? "0" : (cVal > 0 ? `+${cVal}` : `${cVal}`), pivotX + (arcR - 22) * Math.cos(ang), pivotY + (arcR - 22) * Math.sin(ang));
+                }
+            }
+
+            const ledY = meterY + 16;
+            ctx.fillStyle = isFlat ? '#ef4444' : '#1e293b'; if (isFlat) { ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 10; }
+            ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'left'; ctx.fillText("◀ ♭ FLAT", meterX + 10, ledY); ctx.shadowBlur = 0;
+
+            ctx.fillStyle = isWithinTolerance ? '#22c55e' : '#1e293b'; if (isWithinTolerance) { ctx.shadowColor = '#22c55e'; ctx.shadowBlur = 14; }
+            ctx.beginPath(); ctx.arc(pivotX, ledY - 1, isWithinTolerance ? 7 : 5, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+
+            ctx.fillStyle = isSharp ? '#ef4444' : '#1e293b'; if (isSharp) { ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 10; }
+            ctx.textAlign = 'right'; ctx.fillText("SHARP ♯ ▶", meterX + meterW - 10, ledY); ctx.shadowBlur = 0;
+
+            let needleColor = '#94a3b8';
+            if (hasSignal) { if (isWithinTolerance) needleColor = '#22c55e'; else if (Math.abs(cents) <= 30) needleColor = '#facc15'; else needleColor = '#ef4444'; }
+            
+            ctx.strokeStyle = needleColor; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
+            if (isWithinTolerance) { ctx.shadowColor = '#22c55e'; ctx.shadowBlur = 12; }
+            ctx.beginPath(); ctx.moveTo(pivotX, pivotY); ctx.lineTo(pivotX + (arcR + 2) * Math.cos(tunerNeedleAngle), pivotY + (arcR + 2) * Math.sin(tunerNeedleAngle)); ctx.stroke();
+            
+            ctx.shadowBlur = 0; ctx.fillStyle = '#0f172a'; ctx.strokeStyle = isWithinTolerance ? '#22c55e' : '#475569'; ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.arc(pivotX, pivotY, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.arc(pivotX, pivotY, 3, 0, Math.PI * 2); ctx.fill();
+
+            const infoY = meterY + meterH - 26;
+            ctx.fillStyle = isWithinTolerance ? '#22c55e' : (hasSignal ? '#facc15' : '#475569');
+            ctx.font = '900 28px -apple-system, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+            if (isWithinTolerance) { ctx.shadowColor = '#22c55e'; ctx.shadowBlur = 14; }
+            ctx.fillText(noteName, pivotX, infoY - 8); ctx.shadowBlur = 0;
+
+            ctx.font = '700 11px monospace'; ctx.textBaseline = 'middle';
+            if (hasSignal) {
+                const sign = cents >= 0 ? `+${Math.round(cents)}` : `${Math.round(cents)}`;
+                if (isWithinTolerance) { ctx.fillStyle = '#22c55e'; ctx.fillText(`★ IN TUNE ★  (${sign}¢)`, pivotX, infoY + 10); } 
+                else { ctx.fillStyle = '#94a3af'; ctx.fillText(`${freqText}   [${sign} cents]`, pivotX, infoY + 10); }
+            } else {
+                ctx.fillStyle = '#475569'; ctx.fillText("SING TO TUNE", pivotX, infoY + 10);
+            }
+            ctx.restore();
+        }
+
+        // --- Arcade Mini Game Rendering ---
+        function renderSlalom(now, elapsed, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch) {
+            if (!minigameState.skierY) minigameState.skierY = rollY + rollHeight / 2;
+            
+            if (currentDetectedMidi > 0) {
+                const targetY = rollY + (viewMaxPitch - currentDetectedMidi) * semitoneHeight;
+                minigameState.skierY += (targetY - minigameState.skierY) * 0.2;
+            } else {
+                minigameState.skierY += 1.5; 
+                if (minigameState.skierY > rollY + rollHeight - 20) minigameState.skierY = rollY + rollHeight - 20;
+            }
+
+            for (let p = viewMinPitch; p <= viewMaxPitch; p++) {
+                const yTop = rollY + (viewMaxPitch - p) * semitoneHeight;
+                ctx.fillStyle = isBlackKey(p) ? '#0d0d14' : '#161622';
+                ctx.fillRect(PIANO_WIDTH, yTop, canvas.width - PIANO_WIDTH, semitoneHeight);
+                ctx.strokeStyle = '#222230'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(PIANO_WIDTH, yTop); ctx.lineTo(canvas.width, yTop); ctx.stroke();
+            }
+
+            noteTimeline.forEach(gate => {
+                const gateX = HIT_ZONE_X + (gate.startTime - elapsed) * PIXELS_PER_MS;
+                const gateWidth = gate.duration * PIXELS_PER_MS;
+                
+                if (gateX < canvas.width && gateX + gateWidth > PIANO_WIDTH) {
+                    const drawX = Math.max(PIANO_WIDTH, gateX);
+                    const drawW = (gateX + gateWidth) - drawX;
+                    const gapCenterY = rollY + (viewMaxPitch - gate.pitch) * semitoneHeight;
+                    const gapRadius = semitoneHeight * 1.8;
+
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fillRect(drawX, rollY, drawW, gapCenterY - gapRadius - rollY);
+                    ctx.fillRect(drawX, gapCenterY + gapRadius, drawW, (rollY + rollHeight) - (gapCenterY + gapRadius));
+                    ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
+                    ctx.fillRect(drawX, gapCenterY - gapRadius, drawW, gapRadius * 2);
+
+                    const inGateX = (HIT_ZONE_X + 20 >= gateX && HIT_ZONE_X - 10 <= gateX + gateWidth);
+                    if (inGateX && gate.hitState === 'pending') {
+                        if (minigameState.skierY < gapCenterY - gapRadius + 5 || minigameState.skierY > gapCenterY + gapRadius - 5) {
+                            gate.hitState = 'miss'; playBloodSplatSound(); spawnBlood(HIT_ZONE_X, minigameState.skierY);
+                            minigameState.crashed = true; isPlaying = false; 
+                            setTimeout(() => {
+                                document.getElementById('results-stats').innerHTML = `<span style="color:#ef4444; font-size:1.4rem; font-weight:800;">WIPEOUT!</span><br>You survived for ${Math.floor(elapsed/1000)} seconds.`;
+                                document.getElementById('results-badge-container').innerHTML = ''; document.getElementById('results-graph-container').style.display = 'none'; document.getElementById('results-modal').classList.add('open');
+                            }, 1200);
+                        } else { score += 5; updateScoreUI(); }
+                    } else if (elapsed > gate.startTime + gate.duration && gate.hitState === 'pending') { gate.hitState = 'perfect'; }
+                }
+            });
+
+            if (!minigameState.crashed) {
+                ctx.font = '24px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🏂', HIT_ZONE_X, minigameState.skierY);
+            }
+        }
+
+        // --- Main Rendering Selector ---
+        function renderLoop() {
+            if (!isPlaying) return;
+            const now = performance.now();
+            const elapsed = now - playbackStartTime;
+            
+            const clefHeight = 110;
+            const rollY = clefHeight;
+            const rollHeight = canvas.height - clefHeight;
+            const viewMinPitch = vocalRange.min - 3;
+            const viewMaxPitch = vocalRange.max + 3;
+            const semitoneHeight = rollHeight / ((viewMaxPitch - viewMinPitch) + 1);
+
+            if (activeMiniGame === 'slalom') {
+                renderSlalom(now, elapsed, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch);
+            } else {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                function getPitchTop(midiNum) { return rollY + (viewMaxPitch - midiNum) * semitoneHeight; }
+                function getPitchCenterY(midiNum) { return getPitchTop(midiNum) + semitoneHeight / 2; }
+
+                for (let p = viewMinPitch; p <= viewMaxPitch; p++) {
+                    const yTop = getPitchTop(p);
+                    ctx.fillStyle = isBlackKey(p) ? '#0d0d14' : '#161622';
+                    ctx.fillRect(PIANO_WIDTH, yTop, canvas.width - PIANO_WIDTH, semitoneHeight);
+                    ctx.strokeStyle = '#222230'; ctx.lineWidth = 1;
+                    ctx.beginPath(); ctx.moveTo(PIANO_WIDTH, yTop); ctx.lineTo(canvas.width, yTop); ctx.stroke();
+                }
+
+                let activeNoteMidi = null;
+                let virtualElapsed = elapsed;
+                
+                if (isStepMode && stepModeCurrentIndex < noteTimeline.length) {
+                    const currentNote = noteTimeline[stepModeCurrentIndex];
+                    if (virtualElapsed >= currentNote.startTime) {
+                        virtualElapsed = currentNote.startTime;
+                        playbackStartTime = now - virtualElapsed;
+                        activeNoteMidi = currentNote.pitch;
+
+                        if (!currentNote.soundPlayed) {
+                            currentNote.soundPlayed = true;
+                            playGuideTone(midiToFreq(currentNote.pitch), 600);
+                        }
+                        
+                        if (currentDetectedMidi > 0) {
+                            const pitchDiff = getPitchClassDistance(currentDetectedMidi, currentNote.pitch);
+                            if (pitchDiff <= HIT_TOLERANCE_SEMITONES) {
+                                stepModeWaitTime += (now - lastFrameTime);
+                                if (stepModeWaitTime > 200) {
+                                    currentNote.hitState = 'perfect'; perfectHits++; totalNotesHit++;
+                                    stepModeCurrentIndex++; stepModeWaitTime = 0;
+                                    spawnConfetti(HIT_ZONE_X, getPitchCenterY(currentNote.pitch));
+                                }
+                            } else { stepModeWaitTime = 0; }
+                        } else { stepModeWaitTime = 0; }
+                    }
+                }
+
+                if (!isStepMode) {
+                    const currentBeat = Math.floor(virtualElapsed / BEAT_MS);
+                    if (currentBeat > lastPlayedBeatIndex) {
+                        for (let b = Math.max(0, lastPlayedBeatIndex + 1); b <= currentBeat; b++) {
+                            if (b < 4) playCountInClick(b === 0); else playBassDrum(((b - 4) % 4) === 0);
+                        }
+                        lastPlayedBeatIndex = currentBeat;
+                    }
+                }
+
+                const visibleMinTime = virtualElapsed + (PIANO_WIDTH - HIT_ZONE_X) / PIXELS_PER_MS;
+                const visibleMaxTime = virtualElapsed + (canvas.width - HIT_ZONE_X) / PIXELS_PER_MS;
+                const startBeat = Math.floor(visibleMinTime / BEAT_MS);
+                const endBeat = Math.ceil(visibleMaxTime / BEAT_MS);
+
+                for (let b = startBeat; b <= endBeat; b++) {
+                    const beatTime = b * BEAT_MS;
+                    const bx = HIT_ZONE_X + (beatTime - virtualElapsed) * PIXELS_PER_MS;
+                    if (bx >= PIANO_WIDTH && bx <= canvas.width) {
+                        const isBarLine = (((b % 4) + 4) % 4 === 0);
+                        ctx.save();
+                        ctx.strokeStyle = isBarLine ? 'rgba(180, 180, 200, 0.32)' : 'rgba(120, 120, 140, 0.14)';
+                        ctx.lineWidth = isBarLine ? 2 : 1;
+                        ctx.beginPath(); ctx.moveTo(bx, rollY); ctx.lineTo(bx, canvas.height); ctx.stroke();
+                        if (isBarLine) {
+                            let label = "";
+                            if (b === 0) label = "COUNT IN"; else if (b >= 4) label = `BAR ${Math.floor((b - 4) / 4) + 1}`;
+                            if (label) {
+                                ctx.fillStyle = 'rgba(180, 180, 200, 0.65)'; ctx.font = 'bold 10px monospace';
+                                ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText(label, bx + 4, rollY + 4);
+                            }
+                        }
+                        ctx.restore();
+                    }
+                }
+
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--hitline-color').trim() || '#ef4444';
+                ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(HIT_ZONE_X, 0); ctx.lineTo(HIT_ZONE_X, canvas.height); ctx.stroke();
+
+                noteTimeline.forEach(note => {
+                    const noteX = HIT_ZONE_X + (note.startTime - virtualElapsed) * PIXELS_PER_MS;
+                    const noteWidth = note.duration * PIXELS_PER_MS;
+                    const noteY = getPitchTop(note.pitch) + 2;
+                    const noteHeight = Math.max(14, semitoneHeight - 4);
+                    
+                    if (!isStepMode && virtualElapsed >= note.startTime && !note.soundPlayed) {
+                        note.soundPlayed = true; playGuideTone(midiToFreq(note.pitch), note.duration);
+                    }
+
+                    if (noteX < canvas.width && noteX + noteWidth > PIANO_WIDTH) {
+                        const drawX = Math.max(PIANO_WIDTH, noteX); const drawW = (noteX + noteWidth) - drawX;
+                        if (note.hitState === 'perfect') ctx.fillStyle = '#22c55e'; 
+                        else if (note.hitState === 'earlyLate') ctx.fillStyle = '#f97316'; 
+                        else if (note.hitState === 'miss') ctx.fillStyle = '#ef4444'; 
+                        else ctx.fillStyle = '#eab308'; 
+                        
+                        ctx.beginPath(); ctx.roundRect(drawX, noteY, drawW, noteHeight, 4); ctx.fill();
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)'; ctx.lineWidth = 1; ctx.stroke();
+                        if (drawW > 25) {
+                            ctx.fillStyle = (note.hitState === 'perfect' || note.hitState === 'miss' || note.hitState === 'earlyLate') ? '#ffffff' : '#000000';
+                            
+                            // INCREASED FONT SIZE to 13px for scrolling blocks
+                            ctx.font = 'bold 13px sans-serif'; 
+                            ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+                            ctx.fillText(getNoteName(note.pitch), drawX + 6, noteY + noteHeight / 2);
+                        }
+                    }
+
+                    if (isGameMode && note.hitState === 'pending') {
+                        const inTargetWindow = (virtualElapsed >= note.startTime - 120 && virtualElapsed <= note.startTime + note.duration + 80);
+                        if (inTargetWindow) {
+                            activeNoteMidi = note.pitch;
+                            if (currentDetectedMidi > 0) {
+                                const pitchDiff = getPitchClassDistance(currentDetectedMidi, note.pitch);
+                                if (pitchDiff <= HIT_TOLERANCE_SEMITONES) {
+                                    note.accumulatedHitFrames = (note.accumulatedHitFrames || 0) + 1;
+                                    if (note.accumulatedHitFrames >= 3) {
+                                        const timeOffset = virtualElapsed - note.startTime;
+                                        if (timeOffset < -30 || timeOffset > note.duration * 0.90) {
+                                            note.hitState = 'earlyLate'; score += 5; totalNotesHit++; earlyLateHits++; updateScoreUI();
+                                        } else {
+                                            note.hitState = 'perfect'; score += 10 + streak; streak++; if (streak > maxStreak) maxStreak = streak;
+                                            totalNotesHit++; perfectHits++; updateScoreUI(); spawnConfetti(HIT_ZONE_X, getPitchCenterY(note.pitch));
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (virtualElapsed > note.startTime + note.duration + 80) {
+                            note.hitState = 'miss'; streak = 0; totalNotesMissed++; updateScoreUI();
+                        }
+                    }
+                });
+
+                if (pitchTraceHistory.length > 0) {
+                    ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+                    for (let i = 0; i < pitchTraceHistory.length - 1; i++) {
+                        const pt1 = pitchTraceHistory[i]; const pt2 = pitchTraceHistory[i+1];
+                        const x1 = HIT_ZONE_X - (virtualElapsed - pt1.time) * PIXELS_PER_MS;
+                        const x2 = HIT_ZONE_X - (virtualElapsed - pt2.time) * PIXELS_PER_MS;
+                        if (x2 < PIANO_WIDTH) continue;
+                        
+                        let dMidi1 = pt1.pitch; while (dMidi1 < viewMinPitch) dMidi1 += 12; while (dMidi1 > viewMaxPitch) dMidi1 -= 12;
+                        let dMidi2 = pt2.pitch; while (dMidi2 < viewMinPitch) dMidi2 += 12; while (dMidi2 > viewMaxPitch) dMidi2 -= 12;
+
+                        ctx.strokeStyle = '#eab308';
+                        if (activeNoteMidi) {
+                            const diff = getPitchClassDistance(pt1.pitch, activeNoteMidi);
+                            if (diff <= HIT_TOLERANCE_SEMITONES) ctx.strokeStyle = '#22c55e';
+                            else if (diff <= 2.2) ctx.strokeStyle = '#f97316';
+                            else ctx.strokeStyle = '#ef4444';
+                        }
+                        ctx.beginPath(); ctx.moveTo(Math.max(PIANO_WIDTH, x1), getPitchCenterY(dMidi1)); ctx.lineTo(Math.max(PIANO_WIDTH, x2), getPitchCenterY(dMidi2)); ctx.stroke();
+                    }
+                }
+                
+                if (virtualElapsed < 4 * BEAT_MS && !isStepMode) {
+                    const countNum = Math.min(4, Math.floor(virtualElapsed / BEAT_MS) + 1);
+                    ctx.save(); ctx.fillStyle = '#facc15'; ctx.font = 'bold 36px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.shadowColor = 'rgba(250, 204, 21, 0.75)'; ctx.shadowBlur = 14; ctx.fillText(`COUNT IN: ${countNum}`, (canvas.width + PIANO_WIDTH) / 2, rollY + 45); ctx.restore();
+                }
+
+                if (!isStepMode && noteTimeline.length > 0) {
+                    if (virtualElapsed > noteTimeline[noteTimeline.length - 1].startTime + noteTimeline[noteTimeline.length - 1].duration + 2000) { endGame(); return; }
+                } else if (isStepMode && stepModeCurrentIndex >= noteTimeline.length) { endGame(); return; }
+            }
+
+            drawVerticalPiano(ctx, rollY, semitoneHeight, viewMinPitch, viewMaxPitch, activeMiniGame ? null : null, currentDetectedMidi);
+            drawTrebleClef(ctx, clefHeight, null);
+            drawBloodAndConfetti();
+
+            lastFrameTime = now;
+            if (isPlaying) requestAnimationFrame(renderLoop);
+        }
+
+        let bloodParticles = [];
+        function spawnBlood(x, y) {
+            for(let i=0; i<40; i++) {
+                bloodParticles.push({ x: x, y: y, vx: (Math.random()-0.5)*15, vy: (Math.random()-0.5)*15 - 5, life: 1.0, size: Math.random() * 8 + 4 });
+            }
+        }
+        
+        function drawBloodAndConfetti() {
+            drawConfetti();
+            bloodParticles.forEach(p => {
+                p.x += p.vx; p.y += p.vy; p.vy += 0.8; p.life -= 0.02;
+                ctx.fillStyle = `rgba(220, 38, 38, ${p.life})`; ctx.fillRect(p.x, p.y, p.size, p.size);
+            });
+            bloodParticles = bloodParticles.filter(p => p.life > 0);
+        }
+
+        const btnArcade = document.getElementById('btn-arcade');
+        const arcadeHubModal = document.getElementById('arcade-hub-modal');
+        
+        if(btnArcade) {
+            btnArcade.addEventListener('click', () => {
+                initAudio();
+                isPlaying = false;
+                activeMiniGame = null;
+                arcadeHubModal.classList.add('open');
+            });
+        }
+        
+        document.getElementById('btn-close-arcade').addEventListener('click', () => {
+            arcadeHubModal.classList.remove('open');
+            drawScene();
+        });
+
+        document.getElementById('card-slalom').querySelector('button').addEventListener('click', () => {
+            if (!isCalibrated) { alert("Please calibrate vocal range first!"); return; }
+            arcadeHubModal.classList.remove('open');
+            if (!isMicListening) toggleMicrophone();
+            activeMiniGame = 'slalom';
+            minigameState = { skierY: null, crashed: false };
+            score = 0; updateScoreUI();
+            generateMelody('1'); 
+            isPlaying = true;
+            playbackStartTime = performance.now(); lastFrameTime = performance.now();
+            requestAnimationFrame(renderLoop);
+        });
+
+        document.getElementById('btn-play').addEventListener('click', async () => {
+            if (!isCalibrated) { alert("Please calibrate your vocal range first (or press '(' to use default range)!"); return; }
+            if (!isMicListening) toggleMicrophone();
+            activeMiniGame = null;
+            
+            if (isLiveTuner) {
+                isLiveTuner = false;
+                document.getElementById('btn-tuner-mode').classList.remove('btn-tuner-active');
+            }
+            
+            const diff = document.getElementById('difficulty-select').value;
+            generateMelody(diff);
+            
+            score = 0; streak = 0; maxStreak = 0; totalNotesHit = 0; totalNotesMissed = 0;
+            earlyLateHits = 0; perfectHits = 0; updateScoreUI();
+            
+            stepModeCurrentIndex = 0; stepModeWaitTime = 0; lastPlayedBeatIndex = -1;
+            
+            isPlaying = true;
+            const scaleData = determineScaleNotes(noteTimeline);
+            await playScalePreRoll(scaleData);
+
+            if (!isPlaying) return;
+
+            playbackStartTime = performance.now(); lastFrameTime = performance.now(); lastPlayedBeatIndex = -1;
+            requestAnimationFrame(renderLoop);
+        });
+
+        document.getElementById('btn-results-retry').addEventListener('click', async () => {
+            document.getElementById('results-modal').classList.remove('open');
+            
+            // Allow retry of arcade games!
+            if (activeMiniGame) {
+                if (activeMiniGame === 'slalom') {
+                    minigameState = { skierY: null, crashed: false };
+                    score = 0; updateScoreUI();
+                    isPlaying = true; playbackStartTime = performance.now(); lastFrameTime = performance.now();
+                    requestAnimationFrame(renderLoop);
+                }
+                return;
+            }
+            
+            if (noteTimeline.length === 0) return;
+            if (!isMicListening) toggleMicrophone();
+
+            score = 0; streak = 0; maxStreak = 0; totalNotesHit = 0; totalNotesMissed = 0;
+            earlyLateHits = 0; perfectHits = 0; updateScoreUI();
+            stepModeCurrentIndex = 0; stepModeWaitTime = 0; lastPlayedBeatIndex = -1; pitchTraceHistory = [];
+
+            noteTimeline.forEach(note => { note.hitState = 'pending'; note.soundPlayed = false; note.accumulatedHitFrames = 0; });
+
+            isPlaying = true;
+            const scaleData = determineScaleNotes(noteTimeline);
+            await playScalePreRoll(scaleData);
+            if (!isPlaying) return;
+
+            playbackStartTime = performance.now(); lastFrameTime = performance.now(); lastPlayedBeatIndex = -1;
+            requestAnimationFrame(renderLoop);
+        });
+
+        document.getElementById('btn-stop').addEventListener('click', () => {
+            isPlaying = false; previewScaleActiveNote = null; lastPlayedBeatIndex = -1;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('status').textContent = ' Stopped.';
+            drawScene();
+        });
+
+        document.getElementById('btn-mic-toggle').addEventListener('click', toggleMicrophone);
+
+        const btnStep = document.getElementById('btn-step');
+        const btnGame = document.getElementById('btn-game');
+
+        btnStep.addEventListener('click', () => {
+            isStepMode = true; isGameMode = false;
+            btnStep.classList.replace('btn-step', 'btn-step-active');
+            btnGame.classList.replace('btn-game-active', 'btn-secondary');
+            if (isPlaying) document.getElementById('status').textContent = ' Switched to Step Mode.';
+        });
+
+        btnGame.addEventListener('click', () => {
+            isGameMode = true; isStepMode = false;
+            btnGame.classList.replace('btn-secondary', 'btn-game-active');
+            btnStep.classList.replace('btn-step-active', 'btn-step');
+            if (isPlaying) document.getElementById('status').textContent = ' Switched to Game Mode.';
+        });
+
+        document.getElementById('theme-select').addEventListener('change', (e) => {
+            currentTheme = e.target.value;
+            if (currentTheme === 'default') document.body.removeAttribute('data-theme');
+            else document.body.setAttribute('data-theme', currentTheme);
+            if (!isPlaying) drawScene();
+        });
+
+        document.getElementById('btn-results-close').addEventListener('click', () => {
+            document.getElementById('results-modal').classList.remove('open');
+            if (!isPlaying) drawScene();
+        });
+    </script>
+</body>
+</html>
