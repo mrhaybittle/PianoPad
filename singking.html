@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SingPad - Vocal Trainer</title>
+    <title>SingKing - Vocal Trainer</title>
     <style>
         :root {
             --bg-color: #121218;
@@ -500,7 +500,7 @@
         <header>
             <h1>
                 <svg class="icon" style="width:20px; height:20px; color:#ec4899;" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
-                SingPad
+                SingKing
             </h1>
             <div class="controls">
                 <span id="header-student-label" style="font-size: 0.8rem; font-weight: 700; color: #facc15; margin-right: 6px;">Guest</span>
@@ -595,7 +595,7 @@
     <!-- Login Modal -->
     <div class="modal-overlay" id="login-modal">
         <div class="modal">
-            <h2>Welcome to SingPad</h2>
+            <h2>Welcome to SingKing</h2>
             <p>Please enter your details to save your scores to the leaderboard.</p>
             
             <div style="display:flex; flex-direction:column; gap:10px; margin: 15px 0; width:100%;">
@@ -613,7 +613,7 @@
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn-success" id="btn-login-start" style="width: 100%; padding: 10px; justify-content:center;">Enter SingPad</button>
+                <button type="button" class="btn-success" id="btn-login-start" style="width: 100%; padding: 10px; justify-content:center;">Enter SingKing</button>
             </div>
         </div>
     </div>
@@ -784,9 +784,9 @@
         document.addEventListener('DOMContentLoaded', () => {
             resizeCanvas();
             document.getElementById('login-modal').classList.add('open');
-            if (localStorage.getItem('singpad_name')) document.getElementById('login-name').value = localStorage.getItem('singpad_name');
-            if (localStorage.getItem('singpad_year')) document.getElementById('login-year').value = localStorage.getItem('singpad_year');
-            if (localStorage.getItem('singpad_class')) document.getElementById('login-class').value = localStorage.getItem('singpad_class');
+            if (localStorage.getItem('SingKing_name')) document.getElementById('login-name').value = localStorage.getItem('SingKing_name');
+            if (localStorage.getItem('SingKing_year')) document.getElementById('login-year').value = localStorage.getItem('SingKing_year');
+            if (localStorage.getItem('SingKing_class')) document.getElementById('login-class').value = localStorage.getItem('SingKing_class');
             drawScene();
         });
 
@@ -804,9 +804,9 @@
             currentYearGroup = y;
             currentStudentClass = c;
 
-            localStorage.setItem('singpad_name', n);
-            localStorage.setItem('singpad_year', y);
-            localStorage.setItem('singpad_class', c);
+            localStorage.setItem('SingKing_name', n);
+            localStorage.setItem('SingKing_year', y);
+            localStorage.setItem('SingKing_class', c);
 
             document.getElementById('header-student-label').textContent = currentStudentName;
             document.getElementById('login-modal').classList.remove('open');
