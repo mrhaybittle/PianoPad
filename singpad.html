@@ -550,7 +550,7 @@
                         <svg id="icon-muted" class="icon" style="display:none;" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
                         <span id="tone-mute-text">TONE</span>
                     </button>
-                    <input type="range" id="tone-volume" min="0" max="100" value="50" title="Adjust Volume">
+                    <input type="range" id="tone-volume" min="0" max="100" value="35" title="Adjust Volume (Recommended 30-40% on speakers)">
                 </div>
 
                 <button type="button" id="btn-calib" class="btn-calib" title="Calibrate Lowest & Highest Pitch">
@@ -712,7 +712,7 @@
         let isMicListening = false;
         let pitchDetectionFrameId = null;
         
-        let micBoostGain = 3.5; // High sensitivity default boost
+        let micBoostGain = 3.5;
         let currentDetectedFreq = 0;
         let currentDetectedMidi = 0;
         let currentInputRMS = 0;
@@ -722,14 +722,14 @@
         let isCalibrated = false;
 
         let isToneMuted = false;
-        let toneVolume = 0.5;
+        let toneVolume = 0.35; // Gentle 35% default so speakers don't acoustically bleed into mic
 
         // --- Live Tuner & Free Sing Mode ---
         let isLiveTuner = false;
         let idleAnimationFrameId = null;
 
         // --- 4/4 Timing Configuration ---
-        const BEAT_MS = 750; // 80 BPM quarter-note beat duration in milliseconds
+        const BEAT_MS = 750; // 80 BPM
         let lastPlayedBeatIndex = -1;
 
         // --- Game State ---
@@ -756,7 +756,7 @@
 
         const PIXELS_PER_MS = 0.15;
         const HIT_ZONE_X = 220;
-        const HIT_TOLERANCE_SEMITONES = 1.05; // Generous vocal tolerance (+/- 1 semitone)
+        const HIT_TOLERANCE_SEMITONES = 1.05; // Generous +/- 1 semitone
         const PIANO_WIDTH = 68;
 
         const canvas = document.getElementById('vocal-canvas');
@@ -820,7 +820,7 @@
             }
         }
 
-        // --- Distinct Count-In Percussion (Woodblock / Rimshot Click) ---
+        // --- Count-In Percussion (Woodblock / Rimshot Click) ---
         function playCountInClick(isAccented = false) {
             if (isToneMuted || toneVolume <= 0) return;
             initAudio();
@@ -839,7 +839,7 @@
             filter.frequency.setValueAtTime(freq, now);
             filter.Q.setValueAtTime(3.0, now);
 
-            const vol = (isAccented ? 0.32 : 0.22) * toneVolume;
+            const vol = (isAccented ? 0.28 : 0.18) * toneVolume;
             gain.gain.setValueAtTime(0.0001, now);
             gain.gain.linearRampToValueAtTime(vol, now + 0.003);
             gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
@@ -870,9 +870,9 @@
             osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.08);
 
             filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(150, now);
+            filter.frequency.setValueAtTime(140, now);
 
-            const peakVol = (isAccented ? 0.18 : 0.085) * toneVolume;
+            const peakVol = (isAccented ? 0.15 : 0.07) * toneVolume;
             gain.gain.setValueAtTime(0.0001, now);
             gain.gain.linearRampToValueAtTime(peakVol, now + 0.007);
             gain.gain.exponentialRampToValueAtTime(0.0001, now + (isAccented ? 0.22 : 0.16));
@@ -904,9 +904,9 @@
             osc2.frequency.setValueAtTime(freq * 2, now);
 
             filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(Math.min(3000, freq * 3.5), now);
+            filter.frequency.setValueAtTime(Math.min(2500, freq * 3), now);
 
-            const targetGain = toneVolume * 0.28;
+            const targetGain = toneVolume * 0.22;
             gain.gain.setValueAtTime(0.0001, now);
             gain.gain.linearRampToValueAtTime(targetGain, now + 0.04);
             gain.gain.setValueAtTime(targetGain, now + dur - 0.04);
@@ -934,7 +934,15 @@
                 btn.classList.add('btn-secondary');
             } else {
                 try {
-                    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false }, video: false });
+                    // CRUCIAL: echoCancellation=false ensures browser WebRTC doesn't cancel out the student's voice when guide tones are playing
+                    micStream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            echoCancellation: false,
+                            noiseSuppression: false,
+                            autoGainControl: false
+                        },
+                        video: false
+                    });
                     micSource = audioCtx.createMediaStreamSource(micStream);
                     
                     micGainNode = audioCtx.createGain();
@@ -1017,12 +1025,11 @@
 
             updateVUMeters(rms);
 
-            // Very sensitive threshold to detect even quiet sung pitches
+            // Very sensitive threshold to detect quiet vocal singing
             if (rms < 0.004) return -1;
 
-            // Constrain search to human singing range: 50 Hz to 1400 Hz
-            const minLag = Math.floor(sampleRate / 1400); // ~34 samples at 48k
-            let maxLag = Math.floor(sampleRate / 50);     // ~960 samples at 48k
+            const minLag = Math.floor(sampleRate / 1400); // 1400 Hz max
+            let maxLag = Math.floor(sampleRate / 50);      // 50 Hz min
             if (maxLag >= SIZE) maxLag = SIZE - 1;
 
             const c = new Float32Array(maxLag + 1);
@@ -1035,7 +1042,6 @@
                 c[lag] = sum;
             }
 
-            // Find global peak after initial slope drop
             let bestLag = -1;
             let maxVal = -1;
             for (let lag = minLag + 1; lag < maxLag; lag++) {
@@ -1049,7 +1055,6 @@
 
             if (bestLag === -1 || maxVal <= 0) return -1;
 
-            // Parabolic interpolation for sub-cent accuracy
             let T0 = bestLag;
             if (bestLag > minLag && bestLag < maxLag) {
                 const x1 = c[bestLag - 1];
@@ -1106,16 +1111,15 @@
             return pc === 1 || pc === 3 || pc === 6 || pc === 8 || pc === 10;
         }
 
-        // Multi-octave tolerance pitch comparator (-24, -12, 0, +12, +24 semitones)
-        function getOctaveInvariantDiff(detectedMidi, targetMidi) {
+        // Pitch-Class (Octave-Invariant) Difference:
+        // Automatically accommodates students singing in higher/lower octaves (male baritone vs soprano/tenor)
+        function getPitchClassDistance(detectedMidi, targetMidi) {
             if (!detectedMidi || detectedMidi <= 0) return 999;
-            const shifts = [-24, -12, 0, 12, 24];
-            let minDiff = 999;
-            for (let i = 0; i < shifts.length; i++) {
-                const diff = Math.abs((detectedMidi + shifts[i]) - targetMidi);
-                if (diff < minDiff) minDiff = diff;
-            }
-            return minDiff;
+            const detPitchClass = ((detectedMidi % 12) + 12) % 12;
+            const tgtPitchClass = ((targetMidi % 12) + 12) % 12;
+            let diff = Math.abs(detPitchClass - tgtPitchClass);
+            if (diff > 6) diff = 12 - diff; // Wrap-around circle of semitones
+            return diff;
         }
 
         // --- Calibration Logic ---
@@ -1215,7 +1219,7 @@
                     clearInterval(calibInterval);
                     calibLivePitch.textContent = 'Done!';
                     if (calibSamples.length === 0) {
-                        alert("No pitch detected! Check that your microphone is on and that the sound meter shows green bars.");
+                        alert("No pitch detected! Ensure microphone is on and the green sound meter is lighting up.");
                         calibModal.classList.remove('open');
                         btnCalibAction.disabled = false;
                         return;
@@ -1362,7 +1366,7 @@
                         duration: durationMs,
                         hitState: 'pending',
                         soundPlayed: false,
-                        consecutiveHits: 0
+                        accumulatedHitFrames: 0
                     });
 
                     timeAccumulator += durationMs;
@@ -1484,7 +1488,7 @@
             drawVerticalPiano(ctx, rollY, semitoneHeight, viewMinPitch, viewMaxPitch, activeStaffNote, currentDetectedMidi);
             drawTrebleClef(ctx, clefHeight, activeStaffNote);
 
-            // LIVE TUNER & SUNG PITCH VISUALIZER (Draws live laser beam on piano roll)
+            // Draw live tuner laser beam across canvas
             if (currentDetectedMidi > 0 && !previewScaleActiveNote) {
                 drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch);
             }
@@ -1492,38 +1496,39 @@
 
         // Draws the live tuner line, frequency tag, and cents indicator across piano roll and staff
         function drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch) {
-            const detectedY = rollY + (viewMaxPitch - currentDetectedMidi) * semitoneHeight + semitoneHeight / 2;
+            // Fold detected pitch into visible display bounds if needed
+            let displayMidi = currentDetectedMidi;
+            while (displayMidi < viewMinPitch) displayMidi += 12;
+            while (displayMidi > viewMaxPitch) displayMidi -= 12;
+
+            const detectedY = rollY + (viewMaxPitch - displayMidi) * semitoneHeight + semitoneHeight / 2;
             const roundedMidi = Math.round(currentDetectedMidi);
             const noteName = getNoteName(roundedMidi);
             const targetFreq = midiToFreq(roundedMidi);
             const cents = Math.round(1200 * Math.log2(currentDetectedFreq / targetFreq));
             const absCents = Math.abs(cents);
 
-            // Color based on tuning accuracy
             let tuneColor = '#22c55e'; // In tune
-            let tuneState = 'IN TUNE';
             if (absCents > 30) {
                 tuneColor = '#ef4444'; // Off pitch
-                tuneState = cents > 0 ? 'SHARP ♯' : 'FLAT ♭';
             } else if (absCents > 12) {
                 tuneColor = '#facc15'; // Slightly off
-                tuneState = cents > 0 ? 'SLIGHTLY SHARP' : 'SLIGHTLY FLAT';
             }
 
             ctx.save();
 
-            // Glowing Laser Guide Line across full piano roll
+            // Glowing Laser Guide Line
             ctx.strokeStyle = tuneColor;
-            ctx.lineWidth = 3.5;
+            ctx.lineWidth = 3;
             ctx.shadowColor = tuneColor;
-            ctx.shadowBlur = 10;
+            ctx.shadowBlur = 8;
             ctx.beginPath();
             ctx.moveTo(PIANO_WIDTH, detectedY);
             ctx.lineTo(canvas.width, detectedY);
             ctx.stroke();
 
-            // Live Pill Badge at Hitzone
-            const badgeW = 200;
+            // Live Pill Badge at Target Line
+            const badgeW = 205;
             const badgeH = 26;
             const badgeX = Math.min(canvas.width - badgeW - 10, Math.max(PIANO_WIDTH + 10, HIT_ZONE_X - 10));
             const badgeY = Math.max(rollY + 6, Math.min(canvas.height - badgeH - 6, detectedY - badgeH / 2));
@@ -1557,7 +1562,7 @@
             ctx.fill();
             ctx.stroke();
 
-            // Center target line
+            // Center zero line
             ctx.strokeStyle = '#22c55e';
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -1576,7 +1581,6 @@
             ctx.lineTo(gaugeX + gaugeW / 2 + needleOffset, gaugeY + gaugeH - 2);
             ctx.stroke();
 
-            // Labels
             ctx.fillStyle = '#9ca3af';
             ctx.font = 'bold 9px sans-serif';
             ctx.textAlign = 'left';
@@ -1613,6 +1617,7 @@
                 return getPitchTop(midiNum) + semitoneHeight / 2;
             }
 
+            // Draw Background Grid Horizontal Lanes
             for (let p = viewMinPitch; p <= viewMaxPitch; p++) {
                 const yTop = getPitchTop(p);
                 const isBlack = isBlackKey(p);
@@ -1648,11 +1653,11 @@
                     }
                     
                     if (currentDetectedMidi > 0) {
-                        const minDiff = getOctaveInvariantDiff(currentDetectedMidi, currentNote.pitch);
+                        const pitchDiff = getPitchClassDistance(currentDetectedMidi, currentNote.pitch);
 
-                        if (minDiff <= HIT_TOLERANCE_SEMITONES) {
+                        if (pitchDiff <= HIT_TOLERANCE_SEMITONES) {
                             stepModeWaitTime += (now - lastFrameTime);
-                            if (stepModeWaitTime > 250) {
+                            if (stepModeWaitTime > 200) {
                                 currentNote.hitState = 'perfect';
                                 perfectHits++;
                                 totalNotesHit++;
@@ -1760,7 +1765,7 @@
                     } else if (note.hitState === 'miss') {
                         ctx.fillStyle = '#ef4444'; // Red
                     } else {
-                        ctx.fillStyle = '#eab308'; // Scrolling left: Yellow
+                        ctx.fillStyle = '#eab308'; // Scrolling: Yellow
                     }
                     
                     ctx.beginPath();
@@ -1780,22 +1785,24 @@
                     }
                 }
 
-                // Robust Pitch Matching: Stays open for full note duration!
+                // Robust Pitch-Class Invariant Hit Recognition
                 if (isGameMode && note.hitState === 'pending') {
-                    const inTargetWindow = (virtualElapsed >= note.startTime && virtualElapsed <= note.startTime + note.duration);
+                    // Generous 120ms leeway around note window to catch attack latency
+                    const inTargetWindow = (virtualElapsed >= note.startTime - 120 && virtualElapsed <= note.startTime + note.duration + 80);
                     
                     if (inTargetWindow) {
                         activeNoteMidi = note.pitch;
                         
                         if (currentDetectedMidi > 0) {
-                            const pitchDiff = getOctaveInvariantDiff(currentDetectedMidi, note.pitch);
+                            const pitchDiff = getPitchClassDistance(currentDetectedMidi, note.pitch);
                             
                             if (pitchDiff <= HIT_TOLERANCE_SEMITONES) {
-                                note.consecutiveHits = (note.consecutiveHits || 0) + 1;
+                                note.accumulatedHitFrames = (note.accumulatedHitFrames || 0) + 1;
                                 
-                                if (note.consecutiveHits >= 2) {
+                                // Once pitch is sustained for ~100-150ms (~3-4 frames)
+                                if (note.accumulatedHitFrames >= 3) {
                                     const timeOffset = virtualElapsed - note.startTime;
-                                    const isEarlyLate = (timeOffset < note.duration * 0.10 || timeOffset > note.duration * 0.90);
+                                    const isEarlyLate = (timeOffset < -30 || timeOffset > note.duration * 0.90);
 
                                     if (isEarlyLate) {
                                         note.hitState = 'earlyLate';
@@ -1814,11 +1821,10 @@
                                         spawnConfetti(HIT_ZONE_X, getPitchCenterY(note.pitch));
                                     }
                                 }
-                            } else {
-                                note.consecutiveHits = 0;
                             }
                         }
-                    } else if (virtualElapsed > note.startTime + note.duration) {
+                    } else if (virtualElapsed > note.startTime + note.duration + 80) {
+                        // Fully expired without being matched
                         note.hitState = 'miss';
                         streak = 0;
                         totalNotesMissed++;
@@ -1842,14 +1848,22 @@
                     
                     if (x2 < PIANO_WIDTH) continue;
                     
-                    const y1 = getPitchCenterY(pt1.pitch);
-                    const y2 = getPitchCenterY(pt2.pitch);
+                    let dMidi1 = pt1.pitch;
+                    while (dMidi1 < viewMinPitch) dMidi1 += 12;
+                    while (dMidi1 > viewMaxPitch) dMidi1 -= 12;
+                    
+                    let dMidi2 = pt2.pitch;
+                    while (dMidi2 < viewMinPitch) dMidi2 += 12;
+                    while (dMidi2 > viewMaxPitch) dMidi2 -= 12;
+
+                    const y1 = getPitchCenterY(dMidi1);
+                    const y2 = getPitchCenterY(dMidi2);
                     
                     ctx.strokeStyle = '#eab308';
                     if (activeNoteMidi) {
-                        const diff = getOctaveInvariantDiff(pt1.pitch, activeNoteMidi);
+                        const diff = getPitchClassDistance(pt1.pitch, activeNoteMidi);
                         if (diff <= HIT_TOLERANCE_SEMITONES) ctx.strokeStyle = '#22c55e';
-                        else if (diff <= 2) ctx.strokeStyle = '#f97316';
+                        else if (diff <= 2.2) ctx.strokeStyle = '#f97316';
                         else ctx.strokeStyle = '#ef4444';
                     }
 
@@ -1863,7 +1877,7 @@
             drawVerticalPiano(ctx, rollY, semitoneHeight, viewMinPitch, viewMaxPitch, activeNoteMidi, currentDetectedMidi);
             drawTrebleClef(ctx, clefHeight, activeNoteMidi);
 
-            // Also draw live tuner line across canvas if active or testing
+            // Display Live Pitch Laser Line and Tag directly on canvas during gameplay
             if (currentDetectedMidi > 0) {
                 drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch);
             }
@@ -1909,10 +1923,16 @@
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 1;
 
+            let foldedDetected = detectedMidi > 0 ? detectedMidi : null;
+            if (foldedDetected) {
+                while (foldedDetected < minPitch) foldedDetected += 12;
+                while (foldedDetected > maxPitch) foldedDetected -= 12;
+            }
+
             for (let p = minPitch; p <= maxPitch; p++) {
                 const yTop = rollY + (maxPitch - p) * semitoneHeight;
                 const isBlack = isBlackKey(p);
-                const isPitchHit = (detectedMidi > 0 && Math.abs(detectedMidi - p) <= 0.6);
+                const isPitchHit = (foldedDetected && Math.abs(foldedDetected - p) <= 0.6);
                 const isTarget = (activeMidi && Math.round(activeMidi) === p);
 
                 if (!isBlack) {
@@ -1940,7 +1960,7 @@
             for (let p = minPitch; p <= maxPitch; p++) {
                 const yTop = rollY + (maxPitch - p) * semitoneHeight;
                 const isBlack = isBlackKey(p);
-                const isPitchHit = (detectedMidi > 0 && Math.abs(detectedMidi - p) <= 0.6);
+                const isPitchHit = (foldedDetected && Math.abs(foldedDetected - p) <= 0.6);
                 const isTarget = (activeMidi && Math.round(activeMidi) === p);
 
                 if (isBlack) {
@@ -2277,13 +2297,11 @@
                 btnTunerMode.classList.add('btn-tuner-active');
                 btnTunerMode.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 3v4M12 17v4M3 12h4M17 12h4"></path><circle cx="12" cy="12" r="2"></circle></svg> Live Tuner: ON`;
                 
-                // Stop playback if song was running
                 if (isPlaying) {
                     isPlaying = false;
                     previewScaleActiveNote = null;
                 }
 
-                // Ensure mic is on
                 if (!isMicListening) toggleMicrophone();
 
                 document.getElementById('status').textContent = '🎤 Live Tuner Active: Sing any note to test pitch detection in real time!';
@@ -2302,7 +2320,6 @@
             }
             if (!isMicListening) toggleMicrophone();
 
-            // Deactivate Live Tuner button UI when starting game
             if (isLiveTuner) {
                 isLiveTuner = false;
                 btnTunerMode.classList.remove('btn-tuner-active');
@@ -2386,7 +2403,7 @@
             noteTimeline.forEach(note => {
                 note.hitState = 'pending';
                 note.soundPlayed = false;
-                note.consecutiveHits = 0;
+                note.accumulatedHitFrames = 0;
             });
 
             isPlaying = true;
