@@ -122,7 +122,8 @@
             flex-wrap: wrap;
         }
 
-        .audio-playback-control {
+        /* Sound & Mic Control Boxes */
+        .audio-playback-control, .mic-gain-meter-box {
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -130,13 +131,61 @@
             border: 1px solid #374151;
             border-radius: 6px;
             padding: 3px 8px;
+            height: 28px;
         }
 
-        .audio-playback-control input[type="range"] {
-            width: 70px;
+        .audio-playback-control input[type="range"], .mic-gain-meter-box input[type="range"] {
+            width: 60px;
             accent-color: #22c55e;
             cursor: pointer;
             height: 4px;
+        }
+
+        /* Segmented LED Sound Meter */
+        .vu-meter {
+            display: inline-flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 16px;
+            padding: 1px 3px;
+            background: #04070d;
+            border-radius: 3px;
+            border: 1px solid #1f2937;
+        }
+
+        .vu-bar {
+            width: 3px;
+            height: 100%;
+            background-color: #0f2d18;
+            border-radius: 1px;
+            transition: background-color 0.04s ease, box-shadow 0.04s ease;
+        }
+
+        .vu-bar.lit-green {
+            background-color: #22c55e !important;
+            box-shadow: 0 0 3px #22c55e;
+        }
+
+        .vu-bar.lit-yellow {
+            background-color: #facc15 !important;
+            box-shadow: 0 0 4px #facc15;
+        }
+
+        .vu-bar.lit-red {
+            background-color: #ef4444 !important;
+            box-shadow: 0 0 4px #ef4444;
+        }
+
+        .vu-meter-large {
+            height: 26px;
+            gap: 4px;
+            padding: 3px 6px;
+            background: #050811;
+        }
+
+        .vu-meter-large .vu-bar {
+            width: 7px;
+            border-radius: 2px;
         }
 
         select, button, .btn-link, input[type="text"] {
@@ -179,8 +228,6 @@
 
         .btn-secondary { background-color: #4b5563; }
         .btn-secondary:hover { background-color: #6b7280; }
-        .btn-warning { background-color: #f59e0b; }
-        .btn-warning:hover { background-color: #d97706; }
         .btn-success { background-color: #10b981; }
         .btn-success:hover { background-color: #059669; }
         .btn-danger { background-color: #ef4444; }
@@ -294,7 +341,7 @@
             background: var(--panel-bg);
             border-radius: 16px;
             width: 90%;
-            max-width: 480px;
+            max-width: 490px;
             padding: 22px 24px;
             display: flex;
             flex-direction: column;
@@ -445,7 +492,7 @@
                 SingPad
             </h1>
             <div class="controls">
-                <span id="header-student-label" style="font-size: 0.8rem; font-weight: 700; color: #facc15; margin-right: 10px;">Guest</span>
+                <span id="header-student-label" style="font-size: 0.8rem; font-weight: 700; color: #facc15; margin-right: 6px;">Guest</span>
                 
                 <select id="difficulty-select">
                     <option value="1">Level 1 (Easy - Stepwise)</option>
@@ -464,6 +511,20 @@
                 <button type="button" id="btn-mic-toggle" class="btn-secondary" title="Toggle Microphone">
                     MIC: OFF
                 </button>
+
+                <!-- Live Sound Meter & Mic Volume Boost -->
+                <div class="mic-gain-meter-box" title="Microphone Input Sound Meter & Sensitivity Boost">
+                    <span style="font-size:0.68rem; color:#9ca3af; font-weight:700;">MIC</span>
+                    <div class="vu-meter" id="header-vu-meter">
+                        <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+                        <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+                        <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+                        <div class="vu-bar"></div>
+                    </div>
+                    <span style="font-size:0.68rem; color:#cbd5e1; font-weight:700; margin-left:2px;">BOOST:</span>
+                    <input type="range" id="mic-gain-slider" min="1" max="8" step="0.5" value="2.5" title="Boost Mic Sensitivity (1x - 8x)">
+                    <span id="mic-gain-display" style="font-size:0.72rem; color:#22c55e; font-weight:800; min-width:24px;">2.5x</span>
+                </div>
 
                 <!-- Audio Playback Reference Mute & Volume -->
                 <div class="audio-playback-control" title="Guide tone & metronome volume">
@@ -549,7 +610,20 @@
             <div class="calib-box">
                 <span id="calib-step-text" style="color:#facc15; font-weight:bold;">Step 1: Sing your LOWEST comfortable note</span>
                 <div class="calib-pitch-text" id="calib-live-pitch">--</div>
-                <div style="width: 100%; height: 8px; background: #1e293b; border-radius: 4px; overflow: hidden; margin-top: 10px;">
+                
+                <!-- Calibration Live Sound Meter -->
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 4px; width: 100%;">
+                    <span style="font-size:0.7rem; color:#9ca3af; font-weight:700;">MIC SOUND LEVEL</span>
+                    <div class="vu-meter vu-meter-large" id="calib-vu-meter">
+                        <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+                        <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+                        <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+                        <div class="vu-bar"></div><div class="vu-bar"></div><div class="vu-bar"></div>
+                        <div class="vu-bar"></div><div class="vu-bar"></div>
+                    </div>
+                </div>
+
+                <div style="width: 100%; height: 8px; background: #1e293b; border-radius: 4px; overflow: hidden; margin-top: 8px;">
                     <div id="calib-progress" style="width: 0%; height: 100%; background: #22c55e; transition: width 0.1s;"></div>
                 </div>
             </div>
@@ -615,12 +689,16 @@
         // --- Audio & Pitch Detection Setup ---
         let audioCtx = null;
         let micStream = null;
+        let micSource = null;
+        let micGainNode = null;
         let micAnalyser = null;
         let isMicListening = false;
         let pitchDetectionFrameId = null;
         
+        let micBoostGain = 2.5; // Default 2.5x amplification boost
         let currentDetectedFreq = 0;
         let currentDetectedMidi = 0;
+        let currentInputRMS = 0;
         
         // Default range: Teenage male (A2 = 45 to E4 = 64)
         let vocalRange = { min: 45, max: 64 }; 
@@ -657,7 +735,7 @@
 
         const PIXELS_PER_MS = 0.15;
         const HIT_ZONE_X = 220;
-        const HIT_TOLERANCE_SEMITONES = 0.7;
+        const HIT_TOLERANCE_SEMITONES = 0.85; // Generous vocal tolerance
         const PIANO_WIDTH = 68;
 
         const canvas = document.getElementById('vocal-canvas');
@@ -730,7 +808,6 @@
             const filter = audioCtx.createBiquadFilter();
 
             osc.type = 'triangle';
-            // Crisp, resonant woodblock pitch: 1200Hz on beat 1, 850Hz on beats 2, 3, 4
             const freq = isAccented ? 1200 : 850;
             osc.frequency.setValueAtTime(freq, now);
             osc.frequency.exponentialRampToValueAtTime(freq * 0.6, now + 0.04);
@@ -752,7 +829,7 @@
             osc.stop(now + 0.07);
         }
 
-        // --- Pleasing, Quiet Acoustic Bass Drum Metronome (Song Measures) ---
+        // --- Quiet Acoustic Bass Drum Metronome ---
         function playBassDrum(isAccented = false) {
             if (isToneMuted || toneVolume <= 0) return;
             initAudio();
@@ -764,7 +841,6 @@
 
             osc.type = 'sine';
 
-            // Pitch drop: 115Hz -> 48Hz for beat 1, 95Hz -> 42Hz for beats 2, 3, 4
             const startFreq = isAccented ? 115 : 95;
             const endFreq = isAccented ? 48 : 42;
             osc.frequency.setValueAtTime(startFreq, now);
@@ -835,11 +911,19 @@
                 btn.classList.add('btn-secondary');
             } else {
                 try {
-                    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
-                    const micSource = audioCtx.createMediaStreamSource(micStream);
+                    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false }, video: false });
+                    micSource = audioCtx.createMediaStreamSource(micStream);
+                    
+                    // Web Audio Gain Node for hardware/mic volume boost
+                    micGainNode = audioCtx.createGain();
+                    micGainNode.gain.setValueAtTime(micBoostGain, audioCtx.currentTime);
+
                     micAnalyser = audioCtx.createAnalyser();
                     micAnalyser.fftSize = 2048;
-                    micSource.connect(micAnalyser);
+
+                    // Chain: micSource -> micGainNode -> micAnalyser (never to destination to avoid feedback)
+                    micSource.connect(micGainNode);
+                    micGainNode.connect(micAnalyser);
 
                     isMicListening = true;
                     btn.textContent = ' MIC: ON';
@@ -849,7 +933,7 @@
                     processPitch();
                 } catch (err) {
                     console.error("Mic access error:", err);
-                    alert("Unable to access microphone. Please check permissions.");
+                    alert("Unable to access microphone. Please check browser microphone permissions.");
                 }
             }
         }
@@ -863,6 +947,44 @@
             }
             currentDetectedFreq = 0;
             currentDetectedMidi = 0;
+            currentInputRMS = 0;
+            updateVUMeters(0);
+        }
+
+        // Live VU Sound Meter Updater
+        function updateVUMeters(rms) {
+            // Scale RMS (typical post-boost range 0.005 to 0.45) to a normalized 0..1 range
+            const normalized = Math.min(1.0, Math.max(0.0, (rms - 0.004) * 3.8));
+
+            // Update Header 10-bar meter
+            const headerMeter = document.getElementById('header-vu-meter');
+            if (headerMeter) {
+                const bars = headerMeter.children;
+                const litCount = Math.round(normalized * bars.length);
+                for (let i = 0; i < bars.length; i++) {
+                    bars[i].className = 'vu-bar';
+                    if (i < litCount) {
+                        if (i >= 8) bars[i].classList.add('lit-red');
+                        else if (i >= 6) bars[i].classList.add('lit-yellow');
+                        else bars[i].classList.add('lit-green');
+                    }
+                }
+            }
+
+            // Update Calibration Modal 14-bar meter
+            const calibMeter = document.getElementById('calib-vu-meter');
+            if (calibMeter) {
+                const cBars = calibMeter.children;
+                const cLitCount = Math.round(normalized * cBars.length);
+                for (let i = 0; i < cBars.length; i++) {
+                    cBars[i].className = 'vu-bar';
+                    if (i < cLitCount) {
+                        if (i >= 12) cBars[i].classList.add('lit-red');
+                        else if (i >= 9) cBars[i].classList.add('lit-yellow');
+                        else cBars[i].classList.add('lit-green');
+                    }
+                }
+            }
         }
 
         function autoCorrelate(buf, sampleRate) {
@@ -870,7 +992,13 @@
             let rms = 0;
             for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
             rms = Math.sqrt(rms / SIZE);
-            if (rms < 0.015) return -1;
+            currentInputRMS = rms;
+
+            // Update both meters with the measured RMS
+            updateVUMeters(rms);
+
+            // Lowered RMS threshold: with mic boost, captures soft singing cleanly
+            if (rms < 0.008) return -1;
 
             let r1 = 0, r2 = SIZE - 1, thres = 0.2;
             for (let i = 0; i < SIZE / 2; i++) if (Math.abs(buf[i]) < thres) { r1 = i; break; }
@@ -912,7 +1040,7 @@
             micAnalyser.getFloatTimeDomainData(buf);
             let freq = autoCorrelate(buf, audioCtx.sampleRate);
             
-            if (freq !== -1 && freq > 50 && freq < 2000) {
+            if (freq !== -1 && freq > 55 && freq < 1800) {
                 currentDetectedFreq = freq;
                 currentDetectedMidi = freqToMidi(freq);
                 
@@ -1035,7 +1163,7 @@
                     clearInterval(calibInterval);
                     calibLivePitch.textContent = 'Done!';
                     if (calibSamples.length === 0) {
-                        alert("No pitch detected! Ensure microphone is on and try again.");
+                        alert("No pitch detected! Ensure microphone is on and the green sound meter is lighting up.");
                         calibModal.classList.remove('open');
                         btnCalibAction.disabled = false;
                         return;
@@ -1124,8 +1252,6 @@
             let currentMidi = Math.round((vocalRange.min + vocalRange.max) / 2);
             currentMidi = snapToDiatonic(currentMidi);
 
-            // 4/4 rhythmic measure templates (each measure sums to exactly 4.0 beats)
-            // 4 = Whole note | 2 = Half note | 1 = Quarter note
             const patternsLevel1 = [
                 [4],
                 [2, 2],
@@ -1135,7 +1261,6 @@
                 [1, 2, 1]
             ];
 
-            // Level 2 adds quavers / 8th notes (0.5)
             const patternsLevel2 = patternsLevel1.concat([
                 [1, 1, 1, 0.5, 0.5],
                 [0.5, 0.5, 1, 2],
@@ -1146,7 +1271,6 @@
                 [0.5, 0.5, 1, 0.5, 0.5, 1]
             ]);
 
-            // Level 3 & 4 add sixteenth notes (0.25)
             const patternsLevel3 = patternsLevel2.concat([
                 [0.25, 0.25, 0.25, 0.25, 1, 2],
                 [1, 0.25, 0.25, 0.25, 0.25, 2],
@@ -1171,7 +1295,7 @@
                 totalBars = 16;
             }
 
-            // Lead-in: Exactly 1 bar (4 beats) count-in
+            // Lead-in: 1 bar (4 beats) count-in
             let timeAccumulator = 1 * (4 * BEAT_MS);
 
             for (let bar = 0; bar < totalBars; bar++) {
@@ -1185,22 +1309,20 @@
                         startTime: timeAccumulator,
                         duration: durationMs,
                         hitState: 'pending',
-                        soundPlayed: false
+                        soundPlayed: false,
+                        consecutiveHits: 0
                     });
 
                     timeAccumulator += durationMs;
 
                     if (difficulty === '1') {
-                        // Level 1: Stepwise only (2nds)
                         const step = Math.random() > 0.5 ? 1 : -1;
                         currentMidi = snapToDiatonic(currentMidi, step);
                     } else if (difficulty === '2') {
-                        // Level 2: Leaps at most diatonic 3rds (steps of 1 or 2)
                         const leaps = [-2, -1, -1, 1, 1, 2];
                         const leap = leaps[Math.floor(Math.random() * leaps.length)];
                         currentMidi = snapToDiatonic(currentMidi, leap);
                     } else {
-                        // Level 3 / Endless: Chromatic jumps with accidentals
                         const semitoneLeap = Math.floor(Math.random() * 9) - 4;
                         currentMidi += semitoneLeap;
                     }
@@ -1242,7 +1364,7 @@
             const noteDuration = 280;
             const statusEl = document.getElementById('status');
 
-            statusEl.textContent = ` Playing reference scale: ${rootNoteName} Major... Listen carefully!`;
+            statusEl.textContent = ` Reference scale: ${rootNoteName} Major... Listen carefully!`;
 
             for (let i = 0; i < sequence.length; i++) {
                 if (!isPlaying) return;
@@ -1257,7 +1379,7 @@
 
             previewScaleActiveNote = null;
             drawScene();
-            statusEl.textContent = isStepMode ? ' Step Mode: Match pitch to advance!' : ' Count in starting... Get ready!';
+            statusEl.textContent = isStepMode ? ' Step Mode: Match pitch to advance!' : ' Count in starting... Get ready to sing!';
         }
 
         function drawScene() {
@@ -1288,7 +1410,7 @@
             drawTrebleClef(ctx, clefHeight, previewScaleActiveNote);
         }
 
-        // --- Main Rendering Loop ---
+        // --- Main Rendering Loop & Pitch Matching ---
         function renderLoop() {
             if (!isPlaying) return;
             
@@ -1335,7 +1457,7 @@
             let activeNoteMidi = null;
             let virtualElapsed = elapsed;
             
-            // Step Mode logic
+            // Step Mode: pauses time at target note until hit
             if (isStepMode && stepModeCurrentIndex < noteTimeline.length) {
                 const currentNote = noteTimeline[stepModeCurrentIndex];
                 if (virtualElapsed >= currentNote.startTime) {
@@ -1349,15 +1471,25 @@
                         playGuideTone(midiToFreq(currentNote.pitch), 600);
                     }
                     
-                    if (currentDetectedMidi > 0 && Math.abs(currentDetectedMidi - currentNote.pitch) <= HIT_TOLERANCE_SEMITONES) {
-                        stepModeWaitTime += (now - lastFrameTime);
-                        if (stepModeWaitTime > 300) {
-                            currentNote.hitState = 'perfect';
-                            perfectHits++;
-                            totalNotesHit++;
-                            stepModeCurrentIndex++;
+                    if (currentDetectedMidi > 0) {
+                        // Octave-tolerant pitch difference
+                        const dRaw = Math.abs(currentDetectedMidi - currentNote.pitch);
+                        const dDown = Math.abs((currentDetectedMidi - 12) - currentNote.pitch);
+                        const dUp = Math.abs((currentDetectedMidi + 12) - currentNote.pitch);
+                        const minDiff = Math.min(dRaw, dDown, dUp);
+
+                        if (minDiff <= HIT_TOLERANCE_SEMITONES) {
+                            stepModeWaitTime += (now - lastFrameTime);
+                            if (stepModeWaitTime > 250) { // Held for ~250ms
+                                currentNote.hitState = 'perfect';
+                                perfectHits++;
+                                totalNotesHit++;
+                                stepModeCurrentIndex++;
+                                stepModeWaitTime = 0;
+                                spawnConfetti(HIT_ZONE_X, getPitchCenterY(currentNote.pitch));
+                            }
+                        } else {
                             stepModeWaitTime = 0;
-                            spawnConfetti(HIT_ZONE_X, getPitchCenterY(currentNote.pitch));
                         }
                     } else {
                         stepModeWaitTime = 0;
@@ -1365,16 +1497,14 @@
                 }
             }
 
-            // --- Metronome Beat Trigger: Count-In Percussion (Beats 0-3) vs Bass Drum (Beats 4+) ---
+            // Metronome Beat Tracker
             if (!isStepMode) {
                 const currentBeat = Math.floor(virtualElapsed / BEAT_MS);
                 if (currentBeat > lastPlayedBeatIndex) {
                     for (let b = Math.max(0, lastPlayedBeatIndex + 1); b <= currentBeat; b++) {
                         if (b < 4) {
-                            // Count-in measure: crisp woodblock clicks (beat 0 high, beats 1-3 standard)
                             playCountInClick(b === 0);
                         } else {
-                            // Song measures: quiet bass drum (accent on beat 1)
                             const beatInBar = (b - 4) % 4;
                             playBassDrum(beatInBar === 0);
                         }
@@ -1383,7 +1513,7 @@
                 }
             }
 
-            // --- Faint Grey Vertical Grid: 4/4 Timing (Barlines 2px, Beats 1px) ---
+            // Faint Grey Vertical Grid Lines (Barlines 2px, Beats 1px)
             const visibleMinTime = virtualElapsed + (PIANO_WIDTH - HIT_ZONE_X) / PIXELS_PER_MS;
             const visibleMaxTime = virtualElapsed + (canvas.width - HIT_ZONE_X) / PIXELS_PER_MS;
             const startBeat = Math.floor(visibleMinTime / BEAT_MS);
@@ -1398,11 +1528,11 @@
 
                     ctx.save();
                     if (isBarLine) {
-                        ctx.strokeStyle = 'rgba(180, 180, 200, 0.32)'; // Faint grey barline
-                        ctx.lineWidth = 2; // 2 pixels wide
+                        ctx.strokeStyle = 'rgba(180, 180, 200, 0.32)';
+                        ctx.lineWidth = 2;
                     } else {
-                        ctx.strokeStyle = 'rgba(120, 120, 140, 0.14)'; // Fainter beat line
-                        ctx.lineWidth = 1; // 1 pixel wide
+                        ctx.strokeStyle = 'rgba(120, 120, 140, 0.14)';
+                        ctx.lineWidth = 1;
                     }
 
                     ctx.beginPath();
@@ -1410,7 +1540,6 @@
                     ctx.lineTo(bx, canvas.height);
                     ctx.stroke();
 
-                    // Measure labels at top of barline
                     if (isBarLine) {
                         let label = "";
                         if (b === 0) label = "COUNT IN";
@@ -1428,7 +1557,7 @@
                 }
             }
 
-            // Draw Hit Zone Target Line (Red)
+            // Hit Zone Target Line (Red)
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--hitline-color').trim() || '#ef4444';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -1436,7 +1565,7 @@
             ctx.lineTo(HIT_ZONE_X, canvas.height);
             ctx.stroke();
 
-            // Draw Melody Blocks & Trigger Audio Playback
+            // Draw Melody Blocks & Game Hit Recognition
             noteTimeline.forEach(note => {
                 const noteX = HIT_ZONE_X + (note.startTime - virtualElapsed) * PIXELS_PER_MS;
                 const noteWidth = note.duration * PIXELS_PER_MS;
@@ -1453,13 +1582,13 @@
                     const drawW = (noteX + noteWidth) - drawX;
 
                     if (note.hitState === 'perfect') {
-                        ctx.fillStyle = '#22c55e'; 
+                        ctx.fillStyle = '#22c55e'; // Green
                     } else if (note.hitState === 'earlyLate') {
-                        ctx.fillStyle = '#f97316'; 
+                        ctx.fillStyle = '#f97316'; // Orange
                     } else if (note.hitState === 'miss') {
-                        ctx.fillStyle = '#ef4444'; 
+                        ctx.fillStyle = '#ef4444'; // Red
                     } else {
-                        ctx.fillStyle = '#eab308'; // Scrolling left: YELLOW
+                        ctx.fillStyle = '#eab308'; // Scrolling left: Yellow
                     }
                     
                     ctx.beginPath();
@@ -1479,41 +1608,53 @@
                     }
                 }
 
+                // --- ROBUST GAMEPLAY HIT DETECTION ---
+                // Does NOT discard note if singer briefly wavers or slides into the pitch!
                 if (isGameMode && note.hitState === 'pending') {
-                    const timeDiff = virtualElapsed - note.startTime;
                     const inTargetWindow = (virtualElapsed >= note.startTime && virtualElapsed <= note.startTime + note.duration);
                     
                     if (inTargetWindow) {
                         activeNoteMidi = note.pitch;
                         
                         if (currentDetectedMidi > 0) {
-                            const pitchDiff = Math.abs(currentDetectedMidi - note.pitch);
+                            // Calculate minimal difference factoring octave shifts
+                            const dRaw = Math.abs(currentDetectedMidi - note.pitch);
+                            const dDown = Math.abs((currentDetectedMidi - 12) - note.pitch);
+                            const dUp = Math.abs((currentDetectedMidi + 12) - note.pitch);
+                            const pitchDiff = Math.min(dRaw, dDown, dUp);
                             
                             if (pitchDiff <= HIT_TOLERANCE_SEMITONES) {
-                                if (timeDiff < note.duration * 0.15 || timeDiff > note.duration * 0.85) {
-                                    note.hitState = 'earlyLate';
-                                    score += 5;
-                                    totalNotesHit++;
-                                    earlyLateHits++;
-                                    updateScoreUI();
-                                } else {
-                                    note.hitState = 'perfect';
-                                    score += 10 + streak;
-                                    streak++;
-                                    if (streak > maxStreak) maxStreak = streak;
-                                    totalNotesHit++;
-                                    perfectHits++;
-                                    updateScoreUI();
-                                    spawnConfetti(HIT_ZONE_X, getPitchCenterY(note.pitch));
+                                note.consecutiveHits = (note.consecutiveHits || 0) + 1;
+                                
+                                // Once matched for at least 2 consecutive frames, award success!
+                                if (note.consecutiveHits >= 2) {
+                                    const timeOffset = virtualElapsed - note.startTime;
+                                    const isEarlyLate = (timeOffset < note.duration * 0.12 || timeOffset > note.duration * 0.88);
+
+                                    if (isEarlyLate) {
+                                        note.hitState = 'earlyLate';
+                                        score += 5;
+                                        totalNotesHit++;
+                                        earlyLateHits++;
+                                        updateScoreUI();
+                                    } else {
+                                        note.hitState = 'perfect';
+                                        score += 10 + streak;
+                                        streak++;
+                                        if (streak > maxStreak) maxStreak = streak;
+                                        totalNotesHit++;
+                                        perfectHits++;
+                                        updateScoreUI();
+                                        spawnConfetti(HIT_ZONE_X, getPitchCenterY(note.pitch));
+                                    }
                                 }
-                            } else if (pitchDiff > 1.2) {
-                                note.hitState = 'miss';
-                                streak = 0;
-                                totalNotesMissed++;
-                                updateScoreUI();
+                            } else {
+                                // Pitch wavered; reset match counter but KEEP note open until window expires!
+                                note.consecutiveHits = 0;
                             }
                         }
                     } else if (virtualElapsed > note.startTime + note.duration) {
+                        // Note completely passed target line without being matched
                         note.hitState = 'miss';
                         streak = 0;
                         totalNotesMissed++;
@@ -1542,7 +1683,11 @@
                     
                     ctx.strokeStyle = '#eab308';
                     if (activeNoteMidi) {
-                        const diff = Math.abs(pt1.pitch - activeNoteMidi);
+                        const dRaw = Math.abs(pt1.pitch - activeNoteMidi);
+                        const dDown = Math.abs((pt1.pitch - 12) - activeNoteMidi);
+                        const dUp = Math.abs((pt1.pitch + 12) - activeNoteMidi);
+                        const diff = Math.min(dRaw, dDown, dUp);
+
                         if (diff <= HIT_TOLERANCE_SEMITONES) ctx.strokeStyle = '#22c55e';
                         else if (diff <= 2) ctx.strokeStyle = '#f97316';
                         else ctx.strokeStyle = '#ef4444';
@@ -1555,13 +1700,10 @@
                 }
             }
 
-            // Draw Side Vertical Piano Keyboard
             drawVerticalPiano(ctx, rollY, semitoneHeight, viewMinPitch, viewMaxPitch, activeNoteMidi, currentDetectedMidi);
-
-            // Draw Top Treble Clef View
             drawTrebleClef(ctx, clefHeight, activeNoteMidi);
 
-            // Draw Prominent Visual Count-In Banner during 4-beat lead-in
+            // Visual Count-In Banner during 4-beat count-in
             if (virtualElapsed < 4 * BEAT_MS && !isStepMode) {
                 const countNum = Math.min(4, Math.floor(virtualElapsed / BEAT_MS) + 1);
                 ctx.save();
@@ -1950,6 +2092,18 @@
             }
         });
 
+        // Microphone Sensitivity Boost Slider
+        const micGainSlider = document.getElementById('mic-gain-slider');
+        const micGainDisplay = document.getElementById('mic-gain-display');
+
+        micGainSlider.addEventListener('input', (e) => {
+            micBoostGain = parseFloat(e.target.value);
+            micGainDisplay.textContent = `${micBoostGain.toFixed(1)}x`;
+            if (micGainNode && audioCtx) {
+                micGainNode.gain.setValueAtTime(micBoostGain, audioCtx.currentTime);
+            }
+        });
+
         document.getElementById('btn-play').addEventListener('click', async () => {
             if (!isCalibrated) {
                 alert("Please calibrate your vocal range first (or press '(' to use default range)!");
@@ -2014,7 +2168,7 @@
             else document.body.setAttribute('data-theme', currentTheme);
         });
 
-        // "Try Again" Button: retries the exact same melody without regenerating
+        // "Try Again" Button: Retries the exact same melody without re-randomizing
         document.getElementById('btn-results-retry').addEventListener('click', async () => {
             document.getElementById('results-modal').classList.remove('open');
             if (noteTimeline.length === 0) return;
@@ -2029,10 +2183,11 @@
             lastPlayedBeatIndex = -1;
             pitchTraceHistory = [];
 
-            // Reset notes of current melody
+            // Reset note blocks
             noteTimeline.forEach(note => {
                 note.hitState = 'pending';
                 note.soundPlayed = false;
+                note.consecutiveHits = 0;
             });
 
             isPlaying = true;
