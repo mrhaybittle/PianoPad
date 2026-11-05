@@ -312,6 +312,7 @@
             gap: 10px;
             margin-top: 8px;
             width: 100%;
+            flex-wrap: wrap;
         }
 
         .calib-box {
@@ -352,7 +353,6 @@
         .badge-silver { background: linear-gradient(135deg, #94a3b8, #cbd5e1); color: #000; }
         .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
         
-        /* Rank Box like in screenshot */
         .rank-display-box {
             font-size: 1.15rem;
             font-weight: 900;
@@ -369,7 +369,6 @@
             margin-top: 4px;
         }
 
-        /* Stacked Column Graph Container */
         .graph-container {
             display: flex;
             flex-direction: column;
@@ -449,7 +448,7 @@
                 <select id="difficulty-select">
                     <option value="1">Level 1 (Easy - Stepwise)</option>
                     <option value="2">Level 2 (Medium - Leaps up to 3rds)</option>
-                    <option value="3">Level 3 (Hard - Accidentals)</option>
+                    <option value="3">Level 3 (Hard - Accidentals & 16ths)</option>
                     <option value="4">Endless Mode</option>
                 </select>
 
@@ -465,13 +464,13 @@
                 </button>
 
                 <!-- Audio Playback Reference Mute & Volume -->
-                <div class="audio-playback-control" title="Guide tone playback volume for students">
+                <div class="audio-playback-control" title="Guide tone & metronome volume">
                     <button type="button" id="btn-tone-mute" class="btn-secondary" style="padding: 3px 6px;">
                         <svg id="icon-sound" class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
                         <svg id="icon-muted" class="icon" style="display:none;" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
                         <span id="tone-mute-text">TONE</span>
                     </button>
-                    <input type="range" id="tone-volume" min="0" max="100" value="50" title="Adjust Guide Tone Volume">
+                    <input type="range" id="tone-volume" min="0" max="100" value="50" title="Adjust Volume">
                 </div>
 
                 <button type="button" id="btn-calib" class="btn-calib" title="Calibrate Lowest & Highest Pitch">
@@ -620,12 +619,15 @@
         let currentDetectedFreq = 0;
         let currentDetectedMidi = 0;
         
-        // Default range: Teenage male (A2 = 45 to E4 = 64)
         let vocalRange = { min: 45, max: 64 }; 
         let isCalibrated = false;
 
         let isToneMuted = false;
         let toneVolume = 0.5;
+
+        // --- 4/4 Timing Configuration ---
+        const BEAT_MS = 750; // 80 BPM quarter-note beat duration in milliseconds
+        let lastPlayedBeatIndex = -1;
 
         // --- Game State ---
         let isPlaying = false;
@@ -659,6 +661,7 @@
         const confettiCanvas = document.getElementById('confetti-canvas');
         const confettiCtx = confettiCanvas.getContext('2d');
 
+        // Classical Treble Clef Path2D aligned to G4
         const standardTreblePath = new Path2D(
             "M 0,0 C -3.6,0 -6.5,2.9 -6.5,6.5 C -6.5,10.2 -3.4,13.1 0.4,13.1 C 4.2,13.1 7.2,10.0 7.2,5.8 C 7.2,0.4 2.8,-4.2 -2.6,-4.2 C -9.8,-4.2 -15.6,1.8 -15.6,9.2 C -15.6,18.0 -7.8,24.8 1.8,24.8 C 11.2,24.8 18.6,17.4 18.6,7.5 C 18.6,-5.5 8.2,-15.8 -4.8,-15.8 C -11.2,-15.8 -16.5,-12.0 -19.4,-6.2 C -20.4,-4.2 -20.9,-1.9 -20.9,0.5 C -20.9,4.8 -18.2,8.8 -14.2,10.2 C -13.2,10.6 -12.4,9.8 -12.4,8.8 C -12.4,8.0 -12.9,7.4 -13.5,6.9 C -15.8,4.8 -16.8,2.2 -16.5,-0.6 C -16.0,-4.5 -12.4,-7.8 -7.5,-8.5 C -6.5,-8.6 -5.6,-8.7 -4.6,-8.7 C 4.5,-8.7 11.8,-1.5 11.8,7.5 C 11.8,14.2 6.5,19.5 0.2,19.5 C -6.2,19.5 -11.4,14.6 -11.4,8.5 C -11.4,4.2 -8.5,0.8 -4.5,0.2 C -3.8,0.1 -2.2,0.0 0,0 Z M 1.2,-15.8 C 2.5,-23.5 3.5,-31.2 3.5,-38.5 C 3.5,-45.8 1.5,-51.2 -1.8,-51.2 C -4.2,-51.2 -6.2,-48.2 -6.5,-42.5 C -6.8,-36.2 -4.8,-26.8 1.2,-15.8 Z M 3.2,-13.2 C -2.8,-24.5 -5.2,-34.5 -4.8,-41.8 C -4.5,-46.8 -3.2,-49.2 -1.8,-49.2 C 0.5,-49.2 1.8,-45.2 1.8,-38.5 C 1.8,-31.5 1.0,-23.8 3.2,-13.2 Z M -0.8,25.2 L -0.8,42.5 C -0.8,48.2 -2.5,53.5 -5.8,56.8 C -8.5,59.5 -12.2,60.8 -16.2,60.2 C -20.8,59.5 -24.2,55.8 -24.8,51.2 C -25.2,47.8 -23.5,44.5 -20.5,43.2 C -17.5,41.9 -14.2,42.8 -12.5,45.5 C -11.5,47.2 -11.5,49.2 -12.2,50.8 C -12.8,52.2 -14.2,53.2 -15.8,53.5 C -15.2,54.8 -13.8,55.8 -12.2,55.8 C -8.8,55.8 -6.2,51.8 -6.2,44.5 L -6.2,24.5 C -4.5,25.0 -2.5,25.2 -0.8,25.2 Z"
         );
@@ -710,6 +713,42 @@
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
+        }
+
+        // --- Pleasing, Quiet Acoustic Bass Drum Metronome ---
+        function playBassDrum(isAccented = false) {
+            if (isToneMuted || toneVolume <= 0) return;
+            initAudio();
+
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+
+            osc.type = 'sine';
+
+            // Gentle pitch drop: 115Hz -> 48Hz for beat 1, 95Hz -> 42Hz for beats 2, 3, 4
+            const startFreq = isAccented ? 115 : 95;
+            const endFreq = isAccented ? 48 : 42;
+            osc.frequency.setValueAtTime(startFreq, now);
+            osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.08);
+
+            // Warm low-pass filter eliminates clicks or high-frequency tapping
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(150, now);
+
+            // Volume: gentle, quiet, slightly accented on beat 1
+            const peakVol = (isAccented ? 0.18 : 0.085) * toneVolume;
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.linearRampToValueAtTime(peakVol, now + 0.007);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + (isAccented ? 0.22 : 0.16));
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(now);
+            osc.stop(now + 0.25);
         }
 
         function playGuideTone(freq, durationMs) {
@@ -1041,7 +1080,7 @@
             };
         }
 
-        // --- Melody Generator ---
+        // --- 4/4 Melody Generator with Musical Note Values ---
         const DIATONIC_STEPS = [0, 2, 4, 5, 7, 9, 11];
 
         function generateMelody(difficulty) {
@@ -1049,48 +1088,92 @@
             pitchTraceHistory = [];
             let currentMidi = Math.round((vocalRange.min + vocalRange.max) / 2);
             currentMidi = snapToDiatonic(currentMidi);
-            
-            let timeAccumulator = 1000;
-            const numNotes = (difficulty === '4') ? 50 : 16;
 
-            for (let i = 0; i < numNotes; i++) {
-                let durations = [500, 1000];
-                if (difficulty === '2') durations = [500, 750, 1000]; 
-                if (difficulty === '3' || difficulty === '4') durations = [250, 500, 750, 1000];
-                
-                const duration = durations[Math.floor(Math.random() * durations.length)];
-                
-                noteTimeline.push({
-                    pitch: currentMidi,
-                    startTime: timeAccumulator,
-                    duration: duration,
-                    hitState: 'pending',
-                    soundPlayed: false
-                });
+            // 4/4 rhythmic measure templates (each measure sums to exactly 4.0 beats)
+            // 4 = Whole note | 2 = Half note | 1 = Quarter note
+            const patternsLevel1 = [
+                [4],
+                [2, 2],
+                [2, 1, 1],
+                [1, 1, 2],
+                [1, 1, 1, 1],
+                [1, 2, 1]
+            ];
 
-                timeAccumulator += duration;
-                
-                if (Math.random() > 0.7) {
-                    timeAccumulator += (Math.random() > 0.5 ? 250 : 500);
+            // Level 2 adds quavers / 8th notes (0.5)
+            const patternsLevel2 = patternsLevel1.concat([
+                [1, 1, 1, 0.5, 0.5],
+                [0.5, 0.5, 1, 2],
+                [2, 1, 0.5, 0.5],
+                [1, 0.5, 0.5, 1, 1],
+                [0.5, 0.5, 0.5, 0.5, 2],
+                [1, 0.5, 0.5, 2],
+                [0.5, 0.5, 1, 0.5, 0.5, 1]
+            ]);
+
+            // Level 3 & 4 add sixteenth notes (0.25)
+            const patternsLevel3 = patternsLevel2.concat([
+                [0.25, 0.25, 0.25, 0.25, 1, 2],
+                [1, 0.25, 0.25, 0.25, 0.25, 2],
+                [0.5, 0.25, 0.25, 1, 2],
+                [1, 0.5, 0.25, 0.25, 1, 1],
+                [0.25, 0.25, 0.5, 1, 2],
+                [2, 1, 0.5, 0.25, 0.25],
+                [1, 1, 1, 0.25, 0.25, 0.25, 0.25]
+            ]);
+
+            let activePatterns = patternsLevel1;
+            let totalBars = 4;
+
+            if (difficulty === '2') {
+                activePatterns = patternsLevel2;
+                totalBars = 4;
+            } else if (difficulty === '3') {
+                activePatterns = patternsLevel3;
+                totalBars = 6;
+            } else if (difficulty === '4') {
+                activePatterns = patternsLevel3;
+                totalBars = 16;
+            }
+
+            // Lead-in: 1 bar (4 beats) count-in for the bass drum metronome
+            let timeAccumulator = 1 * (4 * BEAT_MS);
+
+            for (let bar = 0; bar < totalBars; bar++) {
+                const pattern = activePatterns[Math.floor(Math.random() * activePatterns.length)];
+                for (let n = 0; n < pattern.length; n++) {
+                    const beatVal = pattern[n];
+                    const durationMs = beatVal * BEAT_MS;
+
+                    noteTimeline.push({
+                        pitch: currentMidi,
+                        startTime: timeAccumulator,
+                        duration: durationMs,
+                        hitState: 'pending',
+                        soundPlayed: false
+                    });
+
+                    timeAccumulator += durationMs;
+
+                    // Next note pitch selection
+                    if (difficulty === '1') {
+                        // Level 1: Stepwise only (2nds)
+                        const step = Math.random() > 0.5 ? 1 : -1;
+                        currentMidi = snapToDiatonic(currentMidi, step);
+                    } else if (difficulty === '2') {
+                        // Level 2: Leaps at most diatonic 3rds (steps of 1 or 2)
+                        const leaps = [-2, -1, -1, 1, 1, 2];
+                        const leap = leaps[Math.floor(Math.random() * leaps.length)];
+                        currentMidi = snapToDiatonic(currentMidi, leap);
+                    } else {
+                        // Level 3 / Endless: Chromatic jumps with accidentals
+                        const semitoneLeap = Math.floor(Math.random() * 9) - 4;
+                        currentMidi += semitoneLeap;
+                    }
+
+                    if (currentMidi > vocalRange.max) currentMidi = vocalRange.max - 2;
+                    if (currentMidi < vocalRange.min) currentMidi = vocalRange.min + 2;
                 }
-
-                if (difficulty === '1') {
-                    // Level 1: Stepwise only (2nds)
-                    const step = Math.random() > 0.5 ? 1 : -1;
-                    currentMidi = snapToDiatonic(currentMidi, step);
-                } else if (difficulty === '2') {
-                    // Level 2: Leaps at most diatonic 3rds (steps of 1 or 2)
-                    const leaps = [-2, -1, -1, 1, 1, 2];
-                    const leap = leaps[Math.floor(Math.random() * leaps.length)];
-                    currentMidi = snapToDiatonic(currentMidi, leap);
-                } else {
-                    // Level 3 / Endless: Chromatic jumps with accidentals
-                    const semitoneLeap = Math.floor(Math.random() * 9) - 4;
-                    currentMidi += semitoneLeap;
-                }
-
-                if (currentMidi > vocalRange.max) currentMidi = vocalRange.max - 2;
-                if (currentMidi < vocalRange.min) currentMidi = vocalRange.min + 2;
             }
         }
 
@@ -1197,6 +1280,7 @@
                 return getPitchTop(midiNum) + semitoneHeight / 2;
             }
 
+            // Draw Background Grid Horizontal Lanes
             for (let p = viewMinPitch; p <= viewMaxPitch; p++) {
                 const yTop = getPitchTop(p);
                 const isBlack = isBlackKey(p);
@@ -1214,27 +1298,10 @@
                 ctx.stroke();
             }
 
-            ctx.strokeStyle = '#252535';
-            ctx.lineWidth = 1;
-            const beatSpacingPx = 400 * PIXELS_PER_MS;
-            const offset = (virtualElapsed => (HIT_ZONE_X - virtualElapsed * PIXELS_PER_MS) % beatSpacingPx)(elapsed);
-            for (let x = PIANO_WIDTH + ((offset - PIANO_WIDTH) % beatSpacingPx + beatSpacingPx) % beatSpacingPx; x < canvas.width; x += beatSpacingPx) {
-                ctx.beginPath();
-                ctx.moveTo(x, rollY);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
-            }
-
-            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--hitline-color').trim() || '#ef4444';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(HIT_ZONE_X, 0);
-            ctx.lineTo(HIT_ZONE_X, canvas.height);
-            ctx.stroke();
-
             let activeNoteMidi = null;
             let virtualElapsed = elapsed;
             
+            // Step Mode: pauses time at target note
             if (isStepMode && stepModeCurrentIndex < noteTimeline.length) {
                 const currentNote = noteTimeline[stepModeCurrentIndex];
                 if (virtualElapsed >= currentNote.startTime) {
@@ -1264,6 +1331,67 @@
                 }
             }
 
+            // --- Quiet Bass Drum Beat-Keeper (4/4 Time) ---
+            if (!isStepMode) {
+                const currentBeat = Math.floor(virtualElapsed / BEAT_MS);
+                if (currentBeat > lastPlayedBeatIndex) {
+                    for (let b = Math.max(0, lastPlayedBeatIndex + 1); b <= currentBeat; b++) {
+                        const beatInBar = ((b % 4) + 4) % 4; // 0 = Beat 1 (accented barline)
+                        playBassDrum(beatInBar === 0);
+                    }
+                    lastPlayedBeatIndex = currentBeat;
+                }
+            }
+
+            // --- Faint Grey Vertical Grid: 4/4 Timing (Barlines 2px, Beats 1px) ---
+            const visibleMinTime = virtualElapsed + (PIANO_WIDTH - HIT_ZONE_X) / PIXELS_PER_MS;
+            const visibleMaxTime = virtualElapsed + (canvas.width - HIT_ZONE_X) / PIXELS_PER_MS;
+            const startBeat = Math.floor(visibleMinTime / BEAT_MS);
+            const endBeat = Math.ceil(visibleMaxTime / BEAT_MS);
+
+            for (let b = startBeat; b <= endBeat; b++) {
+                const beatTime = b * BEAT_MS;
+                const bx = HIT_ZONE_X + (beatTime - virtualElapsed) * PIXELS_PER_MS;
+                if (bx >= PIANO_WIDTH && bx <= canvas.width) {
+                    const beatInBar = ((b % 4) + 4) % 4; // 0 = Beat 1 (Barline)
+                    const isBarLine = (beatInBar === 0);
+
+                    ctx.save();
+                    if (isBarLine) {
+                        ctx.strokeStyle = 'rgba(180, 180, 200, 0.32)'; // Faint grey barline
+                        ctx.lineWidth = 2; // 2 pixels wide
+                    } else {
+                        ctx.strokeStyle = 'rgba(120, 120, 140, 0.14)'; // Fainter beat line
+                        ctx.lineWidth = 1; // 1 pixel wide
+                    }
+
+                    ctx.beginPath();
+                    ctx.moveTo(bx, rollY);
+                    ctx.lineTo(bx, canvas.height);
+                    ctx.stroke();
+
+                    // Measure number at top of barline (like DAW view)
+                    if (isBarLine && b >= 0) {
+                        const measureNum = Math.floor(b / 4) + 1;
+                        ctx.fillStyle = 'rgba(180, 180, 200, 0.55)';
+                        ctx.font = 'bold 10px monospace';
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'top';
+                        ctx.fillText(measureNum, bx + 4, rollY + 4);
+                    }
+                    ctx.restore();
+                }
+            }
+
+            // Draw Hit Zone Target Line (Red)
+            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--hitline-color').trim() || '#ef4444';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(HIT_ZONE_X, 0);
+            ctx.lineTo(HIT_ZONE_X, canvas.height);
+            ctx.stroke();
+
+            // Draw Melody Blocks & Trigger Audio Playback
             noteTimeline.forEach(note => {
                 const noteX = HIT_ZONE_X + (note.startTime - virtualElapsed) * PIXELS_PER_MS;
                 const noteWidth = note.duration * PIXELS_PER_MS;
@@ -1286,7 +1414,7 @@
                     } else if (note.hitState === 'miss') {
                         ctx.fillStyle = '#ef4444'; 
                     } else {
-                        ctx.fillStyle = '#eab308'; 
+                        ctx.fillStyle = '#eab308'; // Scrolling left: YELLOW
                     }
                     
                     ctx.beginPath();
@@ -1349,6 +1477,7 @@
                 }
             });
 
+            // Pitch Trace Glow Line
             if (pitchTraceHistory.length > 0) {
                 ctx.lineWidth = 4;
                 ctx.lineCap = 'round';
@@ -1410,7 +1539,6 @@
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 1;
 
-            // White Keys
             for (let p = minPitch; p <= maxPitch; p++) {
                 const yTop = rollY + (maxPitch - p) * semitoneHeight;
                 const isBlack = isBlackKey(p);
@@ -1438,7 +1566,6 @@
                 }
             }
 
-            // Black Keys
             const blackKeyWidth = PIANO_WIDTH * 0.62;
             for (let p = minPitch; p <= maxPitch; p++) {
                 const yTop = rollY + (maxPitch - p) * semitoneHeight;
@@ -1711,7 +1838,6 @@
                         document.getElementById('save-status').textContent = 'Saved to Sheet!';
                         document.getElementById('save-status').style.color = '#22c55e';
                         
-                        // Display Dynamic Live Rank from Sheet Response
                         const shortDiff = diffText.split('(')[0].trim();
                         rankBox.innerHTML = `<span>🟢</span> ${shortDiff} Rank ${resJson.rank}/${resJson.totalEntries}`;
                     } else {
@@ -1782,6 +1908,7 @@
             
             stepModeCurrentIndex = 0;
             stepModeWaitTime = 0;
+            lastPlayedBeatIndex = -1;
             
             isPlaying = true;
 
@@ -1792,12 +1919,14 @@
 
             playbackStartTime = performance.now();
             lastFrameTime = performance.now();
+            lastPlayedBeatIndex = -1;
             requestAnimationFrame(renderLoop);
         });
 
         document.getElementById('btn-stop').addEventListener('click', () => {
             isPlaying = false;
             previewScaleActiveNote = null;
+            lastPlayedBeatIndex = -1;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.getElementById('status').textContent = ' Stopped.';
         });
