@@ -220,7 +220,7 @@
 
         select:focus, input:focus { border-color: var(--accent-color); }
         #theme-select { max-width: 95px; padding: 5px 6px; font-size: 0.75rem; }
-       
+        
         #difficulty-select {
             color: #facc15 !important;
             border: 2px solid #eab308 !important;
@@ -260,7 +260,7 @@
         .btn-step { background-color: #ec4899 !important; color: #ffffff !important; font-weight: 700; }
         .btn-step:hover { background-color: #db2777 !important; }
         .btn-step-active { background-color: #f43f5e !important; color: #ffffff !important; box-shadow: 0 0 12px #f43f5e; }
-       
+        
         .btn-game-active { background-color: var(--game-active) !important; color: #fff; box-shadow: 0 0 12px var(--game-active); }
 
         .icon {
@@ -347,7 +347,7 @@
             transition: opacity 0.2s ease;
         }
         .modal-overlay.open { opacity: 1; pointer-events: auto; }
-       
+        
         .modal {
             background: var(--panel-bg);
             border-radius: 16px;
@@ -362,10 +362,10 @@
             border: 1px solid #374151;
             text-align: center;
         }
-       
+        
         .modal h2 { font-size: 1.45rem; font-weight: 800; color: #ffffff; letter-spacing: -0.01em; margin-bottom: 2px; }
         .modal p { color: #cbd5e1; font-size: 0.9rem; line-height: 1.4; }
-       
+        
         .modal-footer {
             display: flex;
             justify-content: center;
@@ -412,7 +412,7 @@
         .badge-gold { background: #f59e0b; color: #000; }
         .badge-silver { background: linear-gradient(135deg, #94a3b8, #cbd5e1); color: #000; }
         .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
-       
+        
         .rank-display-box {
             font-size: 1.15rem;
             font-weight: 900;
@@ -504,7 +504,7 @@
             </h1>
             <div class="controls">
                 <span id="header-student-label" style="font-size: 0.8rem; font-weight: 700; color: #facc15; margin-right: 6px;">Guest</span>
-               
+                
                 <select id="difficulty-select">
                     <option value="1">Level 1 (Easy - Stepwise)</option>
                     <option value="2">Level 2 (Medium - Leaps up to 3rds)</option>
@@ -597,7 +597,7 @@
         <div class="modal">
             <h2>Welcome to SingPad</h2>
             <p>Please enter your details to save your scores to the leaderboard.</p>
-           
+            
             <div style="display:flex; flex-direction:column; gap:10px; margin: 15px 0; width:100%;">
                 <input type="text" id="login-name" placeholder="First Name & Last Initial (e.g. Sam T)" style="padding: 10px;">
                 <select id="login-year" style="padding: 10px;">
@@ -623,11 +623,11 @@
         <div class="modal">
             <h2>Daily Vocal Calibration</h2>
             <p id="calib-instructions">Let's find your healthy vocal range for today. We will use this to generate melodies that fit your voice perfectly.</p>
-           
+            
             <div class="calib-box">
                 <span id="calib-step-text" style="color:#facc15; font-weight:bold;">Step 1: Sing your LOWEST comfortable note</span>
                 <div class="calib-pitch-text" id="calib-live-pitch">--</div>
-               
+                
                 <!-- Calibration Live Sound Meter -->
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 4px; width: 100%;">
                     <span style="font-size:0.7rem; color:#9ca3af; font-weight:700;">MIC SOUND LEVEL</span>
@@ -664,7 +664,7 @@
             </div>
 
             <div id="results-badge-container"></div>
-           
+            
             <div id="game-rank-box" class="rank-display-box">Calculating Rank...</div>
 
             <!-- Stacked Column Graph -->
@@ -684,7 +684,7 @@
             </div>
 
             <p id="save-status" style="color: #38bdf8; font-size: 0.75rem; margin-top: 2px;">Saving to Leaderboard...</p>
-           
+            
             <div class="modal-footer">
                 <button type="button" class="btn-warning" id="btn-results-retry" style="padding: 9px 24px; font-weight: 800; font-size: 0.88rem;">Try Again</button>
                 <button type="button" class="btn-success" id="btn-results-close" style="padding: 9px 24px; font-weight: 800; font-size: 0.88rem;">Continue</button>
@@ -697,7 +697,7 @@
         // GOOGLE APPS SCRIPT WEB APP ENDPOINT FOR SPREADSHEET SUBMISSION
         // =========================================================================
         const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzAo05vJwNnIDbFUKEfbRETBzTORNsZKQ1y8rqnXKbhBuYA31x2LkN4EDMR6NYOAq8P/exec";
-       
+        
         // --- Identity Variables ---
         let currentStudentName = "Anonymous";
         let currentYearGroup = "N/A";
@@ -711,12 +711,12 @@
         let micAnalyser = null;
         let isMicListening = false;
         let pitchDetectionFrameId = null;
-       
+        
         let micBoostGain = 3.5;
         let currentDetectedFreq = 0;
         let currentDetectedMidi = 0;
         let currentInputRMS = 0;
-       
+        
         // Default range: Teenage male (A2 = 45 to E4 = 64)
         let vocalRange = { min: 45, max: 64 };
         let isCalibrated = false;
@@ -738,7 +738,7 @@
         let isGameMode = true;
         let isStepMode = false;
         let currentTheme = 'default';
-       
+        
         let score = 0;
         let streak = 0;
         let maxStreak = 0;
@@ -749,7 +749,7 @@
 
         let noteTimeline = [];
         let pitchTraceHistory = [];
-       
+        
         let playbackStartTime = 0;
         let lastFrameTime = 0;
         let stepModeCurrentIndex = 0;
@@ -945,7 +945,7 @@
                         video: false
                     });
                     micSource = audioCtx.createMediaStreamSource(micStream);
-                   
+                    
                     micGainNode = audioCtx.createGain();
                     micGainNode.gain.setValueAtTime(micBoostGain, audioCtx.currentTime);
 
@@ -959,7 +959,7 @@
                     btn.textContent = ' MIC: ON';
                     btn.classList.remove('btn-secondary');
                     btn.classList.add('btn-mic-active');
-                   
+                    
                     processPitch();
                     startIdleRenderLoop();
                 } catch (err) {
@@ -1082,11 +1082,11 @@
             const buf = new Float32Array(micAnalyser.fftSize);
             micAnalyser.getFloatTimeDomainData(buf);
             const freq = autoCorrelate(buf, audioCtx.sampleRate);
-           
+            
             if (freq !== -1 && freq >= 50 && freq <= 1600) {
                 currentDetectedFreq = freq;
                 currentDetectedMidi = freqToMidi(freq);
-               
+                
                 if (isPlaying) {
                     const elapsed = performance.now() - playbackStartTime;
                     pitchTraceHistory.push({ time: elapsed, pitch: currentDetectedMidi });
@@ -1127,7 +1127,7 @@
         const btnCalibSkip = document.getElementById('btn-calib-skip');
         const calibLivePitch = document.getElementById('calib-live-pitch');
         const calibProgress = document.getElementById('calib-progress');
-       
+        
         let calibPhase = 0;
         let calibSamples = [];
         let calibInterval = null;
@@ -1145,7 +1145,7 @@
         document.getElementById('btn-calib').addEventListener('click', () => {
             initAudio();
             if (!isMicListening) toggleMicrophone();
-           
+            
             calibPhase = 0;
             calibSamples = [];
             document.getElementById('calib-step-text').textContent = 'Step 1: Sing your LOWEST comfortable note';
@@ -1187,11 +1187,11 @@
                     isCalibrated = true;
                     clearInterval(calibInterval);
                     calibModal.classList.remove('open');
-                   
+                    
                     if (vocalRange.max <= vocalRange.min) {
                         vocalRange.max = vocalRange.min + 12;
                     }
-                   
+                    
                     document.getElementById('status').textContent = ` Calibration Complete! Range: ${getNoteName(vocalRange.min)} to ${getNoteName(vocalRange.max)}`;
                     btnCalibAction.disabled = false;
                     if (!isPlaying) drawScene();
@@ -1202,11 +1202,11 @@
         function recordPitchFor(ms, callback) {
             let elapsed = 0;
             calibProgress.style.width = '0%';
-           
+            
             calibInterval = setInterval(() => {
                 elapsed += 50;
                 calibProgress.style.width = `${(elapsed / ms) * 100}%`;
-               
+                
                 if (currentDetectedMidi > 0) {
                     calibSamples.push(currentDetectedMidi);
                     calibLivePitch.textContent = getNoteName(currentDetectedMidi);
@@ -1245,7 +1245,7 @@
             const pitchClasses = new Set(timeline.map(n => Math.round(n.pitch) % 12));
             const majorIntervals = [0, 2, 4, 5, 7, 9, 11];
             const candidateKeys = [0, 7, 2, 9, 4, 5, 10];
-           
+            
             let bestRoot = 0;
             let bestScore = -1;
 
@@ -1284,7 +1284,7 @@
                     }
                 });
             }
-           
+            
             const topTonic = startRoot + (octaveCount * 12);
             if (topTonic <= maxMidi + 4 && !scaleNotes.includes(topTonic)) {
                 scaleNotes.push(topTonic);
@@ -1391,7 +1391,7 @@
         function snapToDiatonic(midi, stepOffset = 0) {
             const octave = Math.floor(midi / 12);
             const noteClass = midi % 12;
-           
+            
             let closestStepIdx = 0;
             let minDiff = 99;
             for (let i = 0; i < DIATONIC_STEPS.length; i++) {
@@ -1401,13 +1401,13 @@
                     closestStepIdx = i;
                 }
             }
-           
+            
             closestStepIdx += stepOffset;
             let targetOctave = octave;
-           
+            
             while (closestStepIdx < 0) { closestStepIdx += 7; targetOctave--; }
             while (closestStepIdx >= 7) { closestStepIdx -= 7; targetOctave++; }
-           
+            
             return (targetOctave * 12) + DIATONIC_STEPS[closestStepIdx];
         }
 
@@ -1425,10 +1425,10 @@
                 if (!isPlaying) return;
                 const note = sequence[i];
                 previewScaleActiveNote = note;
-               
+                
                 playGuideTone(midiToFreq(note), noteDuration * 0.92);
                 drawScene();
-               
+                
                 await new Promise(r => setTimeout(r, noteDuration));
             }
 
@@ -1464,7 +1464,7 @@
             for (let p = viewMinPitch; p <= viewMaxPitch; p++) {
                 const yTop = rollY + (viewMaxPitch - p) * semitoneHeight;
                 const isBlack = isBlackKey(p);
-                ctx.fillStyle = isBlack ? '#0d0d14' : '#161622';
+                ctx.fillStyle = isBlack ? getComputedStyle(document.body).getPropertyValue('--lane-dark').trim() || '#0d0d14' : getComputedStyle(document.body).getPropertyValue('--lane-light').trim() || '#161622';
                 ctx.fillRect(PIANO_WIDTH, yTop, canvas.width - PIANO_WIDTH, semitoneHeight);
                 ctx.strokeStyle = '#222230';
                 ctx.lineWidth = 1;
@@ -1634,7 +1634,7 @@
 
             // Clamped cents (-50 to +50 cents covers the full 9 o'clock to 3 o'clock sweep)
             const clampedCents = Math.max(-50, Math.min(50, cents));
-           
+            
             // Vocal vibrato tolerance window: +/- 20 cents
             const isWithinTolerance = (hasSignal && Math.abs(cents) <= 20.0);
             const isFlat = (hasSignal && cents < -20.0);
@@ -1737,7 +1737,7 @@
 
             // 7. Status LEDs & Directional Arrows Across Top
             const ledY = meterY + 16;
-           
+            
             // Flat Arrow / LED (Left)
             ctx.fillStyle = isFlat ? '#ef4444' : '#1e293b';
             if (isFlat) { ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 10; }
@@ -1839,21 +1839,21 @@
         // --- Main Gameplay Rendering Loop ---
         function renderLoop() {
             if (!isPlaying) return;
-           
+            
             const now = performance.now();
             const elapsed = now - playbackStartTime;
-           
+            
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-           
+            
             const clefHeight = 110;
             const rollY = clefHeight;
             const rollHeight = canvas.height - clefHeight;
-           
+            
             const viewMinPitch = vocalRange.min - 3;
             const viewMaxPitch = vocalRange.max + 3;
             const totalPitches = (viewMaxPitch - viewMinPitch) + 1;
             const semitoneHeight = rollHeight / totalPitches;
-           
+            
             function getPitchTop(midiNum) {
                 return rollY + (viewMaxPitch - midiNum) * semitoneHeight;
             }
@@ -1866,12 +1866,12 @@
             for (let p = viewMinPitch; p <= viewMaxPitch; p++) {
                 const yTop = getPitchTop(p);
                 const isBlack = isBlackKey(p);
-               
+                
                 ctx.fillStyle = isBlack
                     ? (getComputedStyle(document.body).getPropertyValue('--lane-dark').trim() || '#0d0d14')
                     : (getComputedStyle(document.body).getPropertyValue('--lane-light').trim() || '#161622');
                 ctx.fillRect(PIANO_WIDTH, yTop, canvas.width - PIANO_WIDTH, semitoneHeight);
-               
+                
                 ctx.strokeStyle = '#222230';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
@@ -1882,21 +1882,21 @@
 
             let activeNoteMidi = null;
             let virtualElapsed = elapsed;
-           
+            
             // Step Mode: pauses time at target note
             if (isStepMode && stepModeCurrentIndex < noteTimeline.length) {
                 const currentNote = noteTimeline[stepModeCurrentIndex];
                 if (virtualElapsed >= currentNote.startTime) {
                     virtualElapsed = currentNote.startTime;
                     playbackStartTime = now - virtualElapsed;
-                   
+                    
                     activeNoteMidi = currentNote.pitch;
 
                     if (!currentNote.soundPlayed) {
                         currentNote.soundPlayed = true;
                         playGuideTone(midiToFreq(currentNote.pitch), 600);
                     }
-                   
+                    
                     if (currentDetectedMidi > 0) {
                         const pitchDiff = getPitchClassDistance(currentDetectedMidi, currentNote.pitch);
 
@@ -1993,7 +1993,7 @@
                 const noteWidth = note.duration * PIXELS_PER_MS;
                 const noteY = getPitchTop(note.pitch) + 2;
                 const noteHeight = Math.max(14, semitoneHeight - 4);
-               
+                
                 if (!isStepMode && virtualElapsed >= note.startTime && !note.soundPlayed) {
                     note.soundPlayed = true;
                     playGuideTone(midiToFreq(note.pitch), note.duration);
@@ -2012,7 +2012,7 @@
                     } else {
                         ctx.fillStyle = '#eab308'; // Scrolling: Yellow
                     }
-                   
+                    
                     ctx.beginPath();
                     ctx.roundRect(drawX, noteY, drawW, noteHeight, 4);
                     ctx.fill();
@@ -2033,16 +2033,16 @@
                 // Robust Pitch-Class Invariant Hit Recognition
                 if (isGameMode && note.hitState === 'pending') {
                     const inTargetWindow = (virtualElapsed >= note.startTime - 120 && virtualElapsed <= note.startTime + note.duration + 80);
-                   
+                    
                     if (inTargetWindow) {
                         activeNoteMidi = note.pitch;
-                       
+                        
                         if (currentDetectedMidi > 0) {
                             const pitchDiff = getPitchClassDistance(currentDetectedMidi, note.pitch);
-                           
+                            
                             if (pitchDiff <= HIT_TOLERANCE_SEMITONES) {
                                 note.accumulatedHitFrames = (note.accumulatedHitFrames || 0) + 1;
-                               
+                                
                                 if (note.accumulatedHitFrames >= 3) {
                                     const timeOffset = virtualElapsed - note.startTime;
                                     const isEarlyLate = (timeOffset < -30 || timeOffset > note.duration * 0.90);
@@ -2080,27 +2080,27 @@
                 ctx.lineWidth = 4;
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
-               
+                
                 for (let i = 0; i < pitchTraceHistory.length - 1; i++) {
                     const pt1 = pitchTraceHistory[i];
                     const pt2 = pitchTraceHistory[i+1];
-                   
+                    
                     const x1 = HIT_ZONE_X - (virtualElapsed - pt1.time) * PIXELS_PER_MS;
                     const x2 = HIT_ZONE_X - (virtualElapsed - pt2.time) * PIXELS_PER_MS;
-                   
+                    
                     if (x2 < PIANO_WIDTH) continue;
-                   
+                    
                     let dMidi1 = pt1.pitch;
                     while (dMidi1 < viewMinPitch) dMidi1 += 12;
                     while (dMidi1 > viewMaxPitch) dMidi1 -= 12;
-                   
+                    
                     let dMidi2 = pt2.pitch;
                     while (dMidi2 < viewMinPitch) dMidi2 += 12;
                     while (dMidi2 > viewMaxPitch) dMidi2 -= 12;
 
                     const y1 = getPitchCenterY(dMidi1);
                     const y2 = getPitchCenterY(dMidi2);
-                   
+                    
                     ctx.strokeStyle = '#eab308';
                     if (activeNoteMidi) {
                         const diff = getPitchClassDistance(pt1.pitch, activeNoteMidi);
@@ -2345,7 +2345,7 @@
                     ctx.font = 'italic bold 11px sans-serif';
                     ctx.textAlign = 'left';
                     ctx.textBaseline = 'middle';
-                   
+                    
                     if (noteInfo.octaveMark === '8vb') {
                         ctx.fillText('8vb (sing octave lower)', noteX + 16, line1_y + 14);
                     } else {
@@ -2379,7 +2379,7 @@
                 p.y += p.vy;
                 p.vy += 0.2;
                 p.life -= 0.02;
-               
+                
                 if (p.life <= 0) {
                     confetti.splice(i, 1);
                 } else {
@@ -2398,7 +2398,7 @@
 
         async function endGame() {
             isPlaying = false;
-           
+            
             const totalNotes = totalNotesHit + totalNotesMissed;
             const accuracyVal = totalNotes > 0
                 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalNotes) * 100).toFixed(1)
@@ -2433,23 +2433,25 @@
 
             if (APPS_SCRIPT_URL && APPS_SCRIPT_URL !== "YOUR_WEB_APP_URL_HERE") {
                 document.getElementById('save-status').textContent = 'Saving to Leaderboard...';
-               
+                
                 const difficultySelect = document.getElementById('difficulty-select');
                 const diffText = difficultySelect.options[difficultySelect.selectedIndex].text;
 
+                // Pass the requested lowest and highest notes along with difficulty.
                 const payload = {
                     studentName: currentStudentName,
                     yearGroup: currentYearGroup,
                     studentClass: currentStudentClass,
-                    difficulty: diffText,
-                    vocalRange: `${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)}`,
                     score: score,
                     accuracy: accuracyNum,
                     maxStreak: maxStreak,
                     totalNotes: totalNotes,
                     perfect: perfectHits,
                     earlyLate: earlyLateHits,
-                    missed: totalNotesMissed
+                    missed: totalNotesMissed,
+                    lowestNote: getNoteName(vocalRange.min), // mapped to column O
+                    highestNote: getNoteName(vocalRange.max), // mapped to column P
+                    difficultyLevel: diffText // mapped to column Q
                 };
 
                 try {
@@ -2464,7 +2466,7 @@
                     if (resJson.result === "success") {
                         document.getElementById('save-status').textContent = 'Saved to Sheet!';
                         document.getElementById('save-status').style.color = '#22c55e';
-                       
+                        
                         const shortDiff = diffText.split('(')[0].trim();
                         rankBox.innerHTML = `<span>🟢</span> ${shortDiff} Rank ${resJson.rank}/${resJson.totalEntries}`;
                     } else {
@@ -2538,7 +2540,7 @@
             if (isLiveTuner) {
                 btnTunerMode.classList.add('btn-tuner-active');
                 btnTunerMode.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 3v4M12 17v4M3 12h4M17 12h4"></path><circle cx="12" cy="12" r="2"></circle></svg> Live Tuner: ON`;
-               
+                
                 if (isPlaying) {
                     isPlaying = false;
                     previewScaleActiveNote = null;
@@ -2567,18 +2569,18 @@
                 btnTunerMode.classList.remove('btn-tuner-active');
                 btnTunerMode.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 3v4M12 17v4M3 12h4M17 12h4"></path><circle cx="12" cy="12" r="2"></circle></svg> Live Tuner: OFF`;
             }
-           
+            
             const diff = document.getElementById('difficulty-select').value;
             generateMelody(diff);
-           
+            
             score = 0; streak = 0; maxStreak = 0; totalNotesHit = 0; totalNotesMissed = 0;
             earlyLateHits = 0; perfectHits = 0;
             updateScoreUI();
-           
+            
             stepModeCurrentIndex = 0;
             stepModeWaitTime = 0;
             lastPlayedBeatIndex = -1;
-           
+            
             isPlaying = true;
 
             const scaleData = determineScaleNotes(noteTimeline);
