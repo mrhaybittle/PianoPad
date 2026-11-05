@@ -2438,21 +2438,22 @@
                 const diffText = difficultySelect.options[difficultySelect.selectedIndex].text;
 
                 // Pass the requested lowest and highest notes along with difficulty.
-                const payload = {
-                    studentName: currentStudentName,
-                    yearGroup: currentYearGroup,
-                    studentClass: currentStudentClass,
-                    score: score,
-                    accuracy: accuracyNum,
-                    maxStreak: maxStreak,
-                    totalNotes: totalNotes,
-                    perfect: perfectHits,
-                    earlyLate: earlyLateHits,
-                    missed: totalNotesMissed,
-                    lowestNote: getNoteName(vocalRange.min), // mapped to column O
-                    highestNote: getNoteName(vocalRange.max), // mapped to column P
-                    difficultyLevel: diffText // mapped to column Q
-                };
+             const payload = {
+    studentName: currentStudentName,
+    yearGroup: currentYearGroup,
+    studentClass: currentStudentClass,
+    score: score,
+    accuracy: accuracyNum,
+    maxStreak: maxStreak,
+    totalNotes: totalNotes,
+    perfect: perfectHits,
+    earlyLate: earlyLateHits,
+    missed: totalNotesMissed,
+    vocalRange: `${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)}`, // <--- ADD THIS
+    lowestNote: getNoteName(vocalRange.min),
+    highestNote: getNoteName(vocalRange.max),
+    difficultyLevel: diffText
+};
 
                 try {
                     const response = await fetch(APPS_SCRIPT_URL, {
