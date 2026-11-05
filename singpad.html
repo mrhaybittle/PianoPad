@@ -253,7 +253,6 @@
         .score-points { color: var(--highlight); font-size: 0.9rem; }
         .score-streak { color: #f59e0b; }
 
-        /* Modals */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -333,12 +332,10 @@
             position: absolute;
             top: 0; left: 0; pointer-events: none; width: 100%; height: 100%; z-index: 50;
         }
-
     </style>
 </head>
 <body>
 
-    <!-- Main App Container -->
     <div class="container">
         <header>
             <h1>
@@ -446,7 +443,7 @@
         let pitchDetectionFrameId = null;
         
         let currentDetectedFreq = 0;
-        let currentDetectedMidi = 0; // Fractional MIDI note
+        let currentDetectedMidi = 0;
         
         // Default range: Teenage male (A2 = 45 to E4 = 64)
         let vocalRange = { min: 45, max: 64 }; 
@@ -465,8 +462,8 @@
         let totalNotesMissed = 0;
 
         // --- Engine Variables ---
-        let noteTimeline = []; // { pitch (midi), startTime (ms), duration (ms), hitState: 'pending'|'hit'|'miss' }
-        let pitchTraceHistory = []; // { time (ms), pitch (midi) }
+        let noteTimeline = [];
+        let pitchTraceHistory = [];
         
         let playbackStartTime = 0;
         let lastFrameTime = 0;
@@ -493,7 +490,6 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // --- Core Audio Functions ---
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -544,7 +540,6 @@
             currentDetectedMidi = 0;
         }
 
-        // Autocorrelation algorithm for pitch tracking
         function autoCorrelate(buf, sampleRate) {
             let SIZE = buf.length;
             let rms = 0;
@@ -711,11 +706,9 @@
 
             if (e.key === '(') {
                 e.preventDefault();
-                // Set default teenage male vocal range (A2 = 45 to E4 = 64)
-                vocalRange = { min: 45, max: 64 };
+                vocalRange = { min: 45, max: 64 }; // A2 to E4
                 isCalibrated = true;
                 
-                // Close calibration modal if open
                 if (calibInterval) clearInterval(calibInterval);
                 calibModal.classList.remove('open');
                 
@@ -805,7 +798,7 @@
             
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            const clefHeight = canvas.height * 0.35;
+            const clefHeight = 110;
             const rollY = clefHeight;
             const rollHeight = canvas.height - clefHeight;
             
@@ -935,6 +928,7 @@
                 }
             }
 
+            // Draw Treble Clef View
             drawTrebleClef(ctx, clefHeight, activeNoteMidi);
             drawConfetti();
 
@@ -953,54 +947,145 @@
             if (isPlaying) requestAnimationFrame(renderLoop);
         }
 
+        // --- Corrected Treble Clef Notation Engine ---
+        function midiToStaffInfo(midi) {
+            const roundedMidi = Math.round(midi);
+            let displayMidi = roundedMidi;
+            let octaveMark = null;
+
+            // Middle C (C4) = MIDI 60. Lowest standard treble note is Middle C.
+            // Notes below C4 use 8vb (or 8ba)
+            if (displayMidi < 60) {
+                while (displayMidi < 60) {
+                    displayMidi += 12;
+                }
+                octaveMark = '8vb';
+            } else if (displayMidi > 79) { // Above G5/A5 (G5 = 79), shift down for 8va
+                while (displayMidi > 79) {
+                    displayMidi -= 12;
+                }
+                octaveMark = '8va';
+            }
+
+            const pitchClass = displayMidi % 12;
+            const octave = Math.floor(displayMidi / 12) - 1;
+
+            // Diatonic step mappings: C=0, D=1, E=2, F=3, G=4, A=5, B=6
+            const diatonicStepMap = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
+            const isAccidental = [false, true, false, true, false, false, true, false, true, false, true, false];
+
+            const baseStep = diatonicStepMap[pitchClass];
+            const hasSharp = isAccidental[pitchClass];
+
+            // E4 is the bottom line of the Treble staff (Line 1).
+            // E4 has total diatonic index = 4 * 7 + 2 = 30.
+            // Relative step: E4 = 0 (Line 1), F4 = 1 (Space 1), G4 = 2 (Line 2)...
+            // Middle C (C4) has baseStep = 0, octave = 4 -> total = 28. Relative step = -2 (First ledger line below).
+            const e4Diatonic = 4 * 7 + 2;
+            const currentDiatonic = octave * 7 + baseStep;
+            const staffStep = currentDiatonic - e4Diatonic;
+
+            return {
+                staffStep: staffStep,
+                hasSharp: hasSharp,
+                octaveMark: octaveMark
+            };
+        }
+
         function drawTrebleClef(ctx, height, activeMidi) {
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, height);
-            
-            const lineSpacing = 12;
-            const staffCenterY = height / 2;
-            const staffTop = staffCenterY - (lineSpacing * 2);
-            
+
+            const lineSpacing = 10;
+            // Staff sits centered nicely in the upper white band
+            const line1_y = 75; // Line 1 = bottom line (E4)
+            const staffLines = 5;
+
+            // Draw Staff Lines (E4, G4, B4, D5, F5)
             ctx.strokeStyle = '#1e293b';
-            ctx.lineWidth = 1.5;
-            for (let i = 0; i < 5; i++) {
-                const y = staffTop + (i * lineSpacing);
+            ctx.lineWidth = 1.2;
+            for (let i = 0; i < staffLines; i++) {
+                const y = line1_y - (i * lineSpacing);
                 ctx.beginPath();
                 ctx.moveTo(0, y);
                 ctx.lineTo(canvas.width, y);
                 ctx.stroke();
             }
 
+            // Draw Treble Clef
             ctx.fillStyle = '#000000';
-            ctx.font = '72px "Segoe UI Symbol", "Apple Symbols", sans-serif';
+            ctx.font = '54px "Segoe UI Symbol", "Apple Symbols", sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('𝄞', 50, staffCenterY - 6);
+            ctx.fillText('𝄞', 45, line1_y - 20);
+
+            // Bottom Divider
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, height);
+            ctx.lineTo(canvas.width, height);
+            ctx.stroke();
 
             if (activeMidi) {
-                const noteClass = Math.round(activeMidi) % 12;
-                const octave = Math.floor(activeMidi / 12) - 1;
-                
-                const cMajMap = { 0:0, 2:1, 4:2, 5:3, 7:4, 9:5, 11:6 };
-                let step = cMajMap[noteClass];
-                if (step === undefined) step = cMajMap[noteClass-1] + 0.5;
-                
-                const totalStepsFromC4 = (octave - 4) * 7 + step;
-                const yOffset = -totalStepsFromC4 * (lineSpacing / 2);
-                const noteY = (staffTop + (lineSpacing * 4)) + (2 * (lineSpacing / 2)) + yOffset;
+                const noteInfo = midiToStaffInfo(activeMidi);
+                const halfStep = lineSpacing / 2;
+                const noteY = line1_y - (noteInfo.staffStep * halfStep);
+                const noteX = HIT_ZONE_X;
 
+                // Draw Ledger Lines
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 1.5;
+
+                // Below staff: Middle C (C4) is staffStep -2. Single ledger line.
+                if (noteInfo.staffStep <= -2) {
+                    for (let s = -2; s >= noteInfo.staffStep; s -= 2) {
+                        const ly = line1_y - (s * halfStep);
+                        ctx.beginPath();
+                        ctx.moveTo(noteX - 12, ly);
+                        ctx.lineTo(noteX + 12, ly);
+                        ctx.stroke();
+                    }
+                }
+
+                // Above staff: Top line is F5 (staffStep 8). G5 is space (9), A5 is ledger (10), etc.
+                if (noteInfo.staffStep >= 10) {
+                    for (let s = 10; s <= noteInfo.staffStep; s += 2) {
+                        const ly = line1_y - (s * halfStep);
+                        ctx.beginPath();
+                        ctx.moveTo(noteX - 12, ly);
+                        ctx.lineTo(noteX + 12, ly);
+                        ctx.stroke();
+                    }
+                }
+
+                // Draw Notehead
                 ctx.fillStyle = '#22c55e';
                 ctx.beginPath();
-                ctx.ellipse(HIT_ZONE_X, noteY, 8, 6, -0.2, 0, 2 * Math.PI);
+                ctx.ellipse(noteX, noteY, 6.5, 4.8, -0.22, 0, 2 * Math.PI);
                 ctx.fill();
 
-                if (noteY > staffTop + (lineSpacing * 4)) {
-                    ctx.strokeStyle = '#000';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(HIT_ZONE_X - 14, noteY);
-                    ctx.lineTo(HIT_ZONE_X + 14, noteY);
-                    ctx.stroke();
+                // Draw Sharp Accidental if needed
+                if (noteInfo.hasSharp) {
+                    ctx.fillStyle = '#0f172a';
+                    ctx.font = 'bold 13px sans-serif';
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('♯', noteX - 8, noteY);
+                }
+
+                // Draw 8vb / 8va markings
+                if (noteInfo.octaveMark) {
+                    ctx.fillStyle = '#ec4899';
+                    ctx.font = 'italic bold 11px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    
+                    if (noteInfo.octaveMark === '8vb') {
+                        ctx.fillText('8vb (sing octave lower)', noteX + 16, line1_y + 14);
+                    } else {
+                        ctx.fillText('8va (sing octave higher)', noteX + 16, line1_y - (staffLines * lineSpacing) - 6);
+                    }
                 }
             }
         }
