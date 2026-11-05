@@ -179,6 +179,8 @@
 
         .btn-secondary { background-color: #4b5563; }
         .btn-secondary:hover { background-color: #6b7280; }
+        .btn-warning { background-color: #f59e0b; }
+        .btn-warning:hover { background-color: #d97706; }
         .btn-success { background-color: #10b981; }
         .btn-success:hover { background-color: #059669; }
         .btn-danger { background-color: #ef4444; }
@@ -309,7 +311,7 @@
         .modal-footer {
             display: flex;
             justify-content: center;
-            gap: 10px;
+            gap: 12px;
             margin-top: 8px;
             width: 100%;
             flex-wrap: wrap;
@@ -593,7 +595,8 @@
             <p id="save-status" style="color: #38bdf8; font-size: 0.75rem; margin-top: 2px;">Saving to Leaderboard...</p>
             
             <div class="modal-footer">
-                <button type="button" class="btn-success" id="btn-results-close" style="padding: 9px 28px; font-weight: 800; font-size: 0.88rem;">Continue</button>
+                <button type="button" class="btn-warning" id="btn-results-retry" style="padding: 9px 24px; font-weight: 800; font-size: 0.88rem;">Try Again</button>
+                <button type="button" class="btn-success" id="btn-results-close" style="padding: 9px 24px; font-weight: 800; font-size: 0.88rem;">Continue</button>
             </div>
         </div>
     </div>
@@ -619,6 +622,7 @@
         let currentDetectedFreq = 0;
         let currentDetectedMidi = 0;
         
+        // Default range: Teenage male (A2 = 45 to E4 = 64)
         let vocalRange = { min: 45, max: 64 }; 
         let isCalibrated = false;
 
@@ -715,7 +719,40 @@
             }
         }
 
-        // --- Pleasing, Quiet Acoustic Bass Drum Metronome ---
+        // --- Distinct Count-In Percussion (Woodblock / Rimshot Click) ---
+        function playCountInClick(isAccented = false) {
+            if (isToneMuted || toneVolume <= 0) return;
+            initAudio();
+
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+
+            osc.type = 'triangle';
+            // Crisp, resonant woodblock pitch: 1200Hz on beat 1, 850Hz on beats 2, 3, 4
+            const freq = isAccented ? 1200 : 850;
+            osc.frequency.setValueAtTime(freq, now);
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.6, now + 0.04);
+
+            filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(freq, now);
+            filter.Q.setValueAtTime(3.0, now);
+
+            const vol = (isAccented ? 0.32 : 0.22) * toneVolume;
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.linearRampToValueAtTime(vol, now + 0.003);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(now);
+            osc.stop(now + 0.07);
+        }
+
+        // --- Pleasing, Quiet Acoustic Bass Drum Metronome (Song Measures) ---
         function playBassDrum(isAccented = false) {
             if (isToneMuted || toneVolume <= 0) return;
             initAudio();
@@ -727,17 +764,15 @@
 
             osc.type = 'sine';
 
-            // Gentle pitch drop: 115Hz -> 48Hz for beat 1, 95Hz -> 42Hz for beats 2, 3, 4
+            // Pitch drop: 115Hz -> 48Hz for beat 1, 95Hz -> 42Hz for beats 2, 3, 4
             const startFreq = isAccented ? 115 : 95;
             const endFreq = isAccented ? 48 : 42;
             osc.frequency.setValueAtTime(startFreq, now);
             osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.08);
 
-            // Warm low-pass filter eliminates clicks or high-frequency tapping
             filter.type = 'lowpass';
             filter.frequency.setValueAtTime(150, now);
 
-            // Volume: gentle, quiet, slightly accented on beat 1
             const peakVol = (isAccented ? 0.18 : 0.085) * toneVolume;
             gain.gain.setValueAtTime(0.0001, now);
             gain.gain.linearRampToValueAtTime(peakVol, now + 0.007);
@@ -1136,7 +1171,7 @@
                 totalBars = 16;
             }
 
-            // Lead-in: 1 bar (4 beats) count-in for the bass drum metronome
+            // Lead-in: Exactly 1 bar (4 beats) count-in
             let timeAccumulator = 1 * (4 * BEAT_MS);
 
             for (let bar = 0; bar < totalBars; bar++) {
@@ -1155,7 +1190,6 @@
 
                     timeAccumulator += durationMs;
 
-                    // Next note pitch selection
                     if (difficulty === '1') {
                         // Level 1: Stepwise only (2nds)
                         const step = Math.random() > 0.5 ? 1 : -1;
@@ -1223,7 +1257,7 @@
 
             previewScaleActiveNote = null;
             drawScene();
-            statusEl.textContent = isStepMode ? ' Step Mode: Match pitch to advance!' : ' Game Mode: Sing along with the scrolling blocks!';
+            statusEl.textContent = isStepMode ? ' Step Mode: Match pitch to advance!' : ' Count in starting... Get ready!';
         }
 
         function drawScene() {
@@ -1301,7 +1335,7 @@
             let activeNoteMidi = null;
             let virtualElapsed = elapsed;
             
-            // Step Mode: pauses time at target note
+            // Step Mode logic
             if (isStepMode && stepModeCurrentIndex < noteTimeline.length) {
                 const currentNote = noteTimeline[stepModeCurrentIndex];
                 if (virtualElapsed >= currentNote.startTime) {
@@ -1331,13 +1365,19 @@
                 }
             }
 
-            // --- Quiet Bass Drum Beat-Keeper (4/4 Time) ---
+            // --- Metronome Beat Trigger: Count-In Percussion (Beats 0-3) vs Bass Drum (Beats 4+) ---
             if (!isStepMode) {
                 const currentBeat = Math.floor(virtualElapsed / BEAT_MS);
                 if (currentBeat > lastPlayedBeatIndex) {
                     for (let b = Math.max(0, lastPlayedBeatIndex + 1); b <= currentBeat; b++) {
-                        const beatInBar = ((b % 4) + 4) % 4; // 0 = Beat 1 (accented barline)
-                        playBassDrum(beatInBar === 0);
+                        if (b < 4) {
+                            // Count-in measure: crisp woodblock clicks (beat 0 high, beats 1-3 standard)
+                            playCountInClick(b === 0);
+                        } else {
+                            // Song measures: quiet bass drum (accent on beat 1)
+                            const beatInBar = (b - 4) % 4;
+                            playBassDrum(beatInBar === 0);
+                        }
                     }
                     lastPlayedBeatIndex = currentBeat;
                 }
@@ -1353,7 +1393,7 @@
                 const beatTime = b * BEAT_MS;
                 const bx = HIT_ZONE_X + (beatTime - virtualElapsed) * PIXELS_PER_MS;
                 if (bx >= PIANO_WIDTH && bx <= canvas.width) {
-                    const beatInBar = ((b % 4) + 4) % 4; // 0 = Beat 1 (Barline)
+                    const beatInBar = ((b % 4) + 4) % 4; 
                     const isBarLine = (beatInBar === 0);
 
                     ctx.save();
@@ -1370,14 +1410,19 @@
                     ctx.lineTo(bx, canvas.height);
                     ctx.stroke();
 
-                    // Measure number at top of barline (like DAW view)
-                    if (isBarLine && b >= 0) {
-                        const measureNum = Math.floor(b / 4) + 1;
-                        ctx.fillStyle = 'rgba(180, 180, 200, 0.55)';
-                        ctx.font = 'bold 10px monospace';
-                        ctx.textAlign = 'left';
-                        ctx.textBaseline = 'top';
-                        ctx.fillText(measureNum, bx + 4, rollY + 4);
+                    // Measure labels at top of barline
+                    if (isBarLine) {
+                        let label = "";
+                        if (b === 0) label = "COUNT IN";
+                        else if (b >= 4) label = `BAR ${Math.floor((b - 4) / 4) + 1}`;
+
+                        if (label) {
+                            ctx.fillStyle = 'rgba(180, 180, 200, 0.65)';
+                            ctx.font = 'bold 10px monospace';
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'top';
+                            ctx.fillText(label, bx + 4, rollY + 4);
+                        }
                     }
                     ctx.restore();
                 }
@@ -1510,8 +1555,26 @@
                 }
             }
 
+            // Draw Side Vertical Piano Keyboard
             drawVerticalPiano(ctx, rollY, semitoneHeight, viewMinPitch, viewMaxPitch, activeNoteMidi, currentDetectedMidi);
+
+            // Draw Top Treble Clef View
             drawTrebleClef(ctx, clefHeight, activeNoteMidi);
+
+            // Draw Prominent Visual Count-In Banner during 4-beat lead-in
+            if (virtualElapsed < 4 * BEAT_MS && !isStepMode) {
+                const countNum = Math.min(4, Math.floor(virtualElapsed / BEAT_MS) + 1);
+                ctx.save();
+                ctx.fillStyle = '#facc15';
+                ctx.font = 'bold 36px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'rgba(250, 204, 21, 0.75)';
+                ctx.shadowBlur = 14;
+                ctx.fillText(`COUNT IN: ${countNum}`, (canvas.width + PIANO_WIDTH) / 2, rollY + 45);
+                ctx.restore();
+            }
+
             drawConfetti();
 
             if (!isStepMode && noteTimeline.length > 0) {
@@ -1773,13 +1836,11 @@
                 : "100.0";
             const accuracyNum = parseFloat(accuracyVal);
 
-            // Populate Student Summary Header
             document.getElementById('summary-student').textContent = currentStudentName || "Anonymous";
             document.getElementById('summary-score').textContent = `${accuracyVal}%`;
             document.getElementById('summary-breakdown').textContent = 
                 `(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${totalNotesMissed} Missed out of ${totalNotes} notes)`;
 
-            // Badge Assignment
             let badgeHTML = '';
             if (accuracyNum >= 95) badgeHTML = '<div class="badge-box badge-platinum">PLATINUM VOCALIST (95%+)</div>';
             else if (accuracyNum >= 80) badgeHTML = '<div class="badge-box badge-gold">GOLD VOCALIST (80%+)</div>';
@@ -1787,7 +1848,6 @@
             else badgeHTML = '<div class="badge-box badge-bronze">BRONZE VOCALIST</div>';
             document.getElementById('results-badge-container').innerHTML = badgeHTML;
 
-            // Stacked Bar Heights
             const greenPct = totalNotes > 0 ? (perfectHits / totalNotes) * 100 : 0;
             const orangePct = totalNotes > 0 ? (earlyLateHits / totalNotes) * 100 : 0;
             const redPct = totalNotes > 0 ? (totalNotesMissed / totalNotes) * 100 : 0;
@@ -1796,14 +1856,12 @@
             document.getElementById('bar-orange').style.height = `${orangePct}%`;
             document.getElementById('bar-green').style.height = `${greenPct}%`;
 
-            // Reset Rank display while waiting for backend
             const rankBox = document.getElementById('game-rank-box');
             rankBox.innerHTML = '<span style="color:#facc15;">Calculating Rank...</span>';
 
             document.getElementById('results-modal').classList.add('open');
             document.getElementById('status').textContent = ' Exercise complete!';
 
-            // Send Data to Google Sheets Web App
             if (APPS_SCRIPT_URL && APPS_SCRIPT_URL !== "YOUR_WEB_APP_URL_HERE") {
                 document.getElementById('save-status').textContent = 'Saving to Leaderboard...';
                 
@@ -1954,6 +2012,40 @@
             currentTheme = e.target.value;
             if (currentTheme === 'default') document.body.removeAttribute('data-theme');
             else document.body.setAttribute('data-theme', currentTheme);
+        });
+
+        // "Try Again" Button: retries the exact same melody without regenerating
+        document.getElementById('btn-results-retry').addEventListener('click', async () => {
+            document.getElementById('results-modal').classList.remove('open');
+            if (noteTimeline.length === 0) return;
+            if (!isMicListening) toggleMicrophone();
+
+            score = 0; streak = 0; maxStreak = 0; totalNotesHit = 0; totalNotesMissed = 0;
+            earlyLateHits = 0; perfectHits = 0;
+            updateScoreUI();
+
+            stepModeCurrentIndex = 0;
+            stepModeWaitTime = 0;
+            lastPlayedBeatIndex = -1;
+            pitchTraceHistory = [];
+
+            // Reset notes of current melody
+            noteTimeline.forEach(note => {
+                note.hitState = 'pending';
+                note.soundPlayed = false;
+            });
+
+            isPlaying = true;
+
+            const scaleData = determineScaleNotes(noteTimeline);
+            await playScalePreRoll(scaleData);
+
+            if (!isPlaying) return;
+
+            playbackStartTime = performance.now();
+            lastFrameTime = performance.now();
+            lastPlayedBeatIndex = -1;
+            requestAnimationFrame(renderLoop);
         });
 
         document.getElementById('btn-results-close').addEventListener('click', () => {
