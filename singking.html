@@ -556,7 +556,7 @@
 
                 <button type="button" id="btn-play" class="btn-success">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                    Generate & Play
+                    Play Song
                 </button>
                 <button type="button" id="btn-stop" class="btn-danger">
                     <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
@@ -804,21 +804,65 @@
 
         async function fetchPianoPadSongs() {
             try {
-                const res = await fetch(PIANOPAD_SONGS_URL);
-                const data = await res.json();
+                let res = await fetch(PIANOPAD_SONGS_URL, { redirect: "follow" });
+                let text = await res.text();
+                let list = [];
                 
-                const list = Array.isArray(data) ? data : (data.data || data.songs || []);
-                
+                try {
+                    const data = JSON.parse(text);
+                    if (Array.isArray(data)) {
+                        list = data;
+                    } else if (typeof data === 'object') {
+                        // Dynamically find the first array in the payload
+                        for (let key in data) {
+                            if (Array.isArray(data[key])) {
+                                list = data[key];
+                                break;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // Not JSON. It might be a raw CSV response
+                    const rows = text.split('\n');
+                    for (let row of rows) {
+                        const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                        if (cols.length >= 2) {
+                            list.push([cols[0].replace(/(^"|"$)/g, ''), cols[1].replace(/(^"|"$)/g, '')]);
+                        }
+                    }
+                }
+
+                // Fallback: If Web App failed to give us > 50 songs, try the direct CSV export link
+                if (list.length < 50) {
+                    const csvUrl = "https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958";
+                    const csvRes = await fetch(csvUrl);
+                    const csvText = await csvRes.text();
+                    const rows = csvText.split('\n');
+                    list = []; // Clear and replace with direct sheet pull
+                    for (let row of rows) {
+                        const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                        if (cols.length >= 2) {
+                            list.push([cols[0].replace(/(^"|"$)/g, ''), cols[1].replace(/(^"|"$)/g, '')]);
+                        }
+                    }
+                }
+
                 if (list.length > 0) {
                     pianoPadSongs = [];
                     const select = document.getElementById('song-select');
                     select.innerHTML = '<option value="random">Random Melody</option>';
                     
                     list.forEach((item, idx) => {
-                        const title = item.Title || item.title || item.Name || item.name || item[0] || `Song ${idx+1}`;
-                        const notes = item.Notes || item.notes || item.Data || item.data || item[1] || "";
+                        let title, notes;
+                        if (Array.isArray(item)) {
+                            title = item[0];
+                            notes = item[1];
+                        } else {
+                            title = item.Title || item.title || item.Name || item.name || item.Song || item["Song Name"] || item[Object.keys(item)[0]];
+                            notes = item.Notes || item.notes || item.Data || item.data || item[Object.keys(item)[1]];
+                        }
                         
-                        if (notes && notes.includes("RESTS")) {
+                        if (title && notes && typeof notes === 'string' && notes.includes("RESTS")) {
                             pianoPadSongs.push({ title, notes });
                             const opt = document.createElement('option');
                             opt.value = pianoPadSongs.length - 1; 
@@ -828,7 +872,7 @@
                     });
                 }
             } catch (e) {
-                console.warn("Using fallback songs (fetch failed or blocked)", e);
+                console.warn("Fetch failed, using fallbacks:", e);
             }
         }
 
