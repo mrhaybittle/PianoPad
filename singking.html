@@ -549,7 +549,8 @@
                         <svg id="icon-muted" class="icon" style="display:none;" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
                         <span id="tone-mute-text">TONE</span>
                     </button>
-                    <input type="range" id="tone-volume" min="0" max="100" value="35" title="Adjust Volume (Recommended 30-40% on speakers)">
+                    <!-- Lowered default volume to 20 -->
+                    <input type="range" id="tone-volume" min="0" max="100" value="20" title="Adjust Volume (Recommended 20-30% on speakers)">
                 </div>
 
                 <button type="button" id="btn-calib" class="btn-calib" title="Calibrate Lowest & Highest Pitch">
@@ -723,8 +724,12 @@
         let isCalibrated = false;
 
         let isToneMuted = false;
-        let toneVolume = 0.35; // Gentle 35% default to prevent speaker bleed into mic
+        let toneVolume = 0.20; // Lowered default volume to prevent bleed and make user sing out
         let isOriginalKey = false; // Tracks if auto-transpose is disabled
+
+        // Dynamic View Range
+        let activeViewMinPitch = 42; // default
+        let activeViewMaxPitch = 67; // default
 
         // --- Live Tuner & Free Sing Mode ---
         let isLiveTuner = false;
@@ -795,6 +800,28 @@
             populateSongSelect();
             fetchPianoPadSongs();
         });
+
+        // --- View Logic Auto-Scroll ---
+        function updateViewRange() {
+            if (noteTimeline && noteTimeline.length > 0) {
+                const minMidi = Math.min(...noteTimeline.map(n => n.pitch));
+                const maxMidi = Math.max(...noteTimeline.map(n => n.pitch));
+                
+                // Add some padding to the view (e.g. 4 semitones top and bottom)
+                activeViewMinPitch = Math.floor(minMidi) - 4;
+                activeViewMaxPitch = Math.ceil(maxMidi) + 4;
+                
+                // Ensure at least a decent sized octave is shown so the UI doesn't look stretched or broken
+                if (activeViewMaxPitch - activeViewMinPitch < 14) {
+                    const diff = 14 - (activeViewMaxPitch - activeViewMinPitch);
+                    activeViewMinPitch -= Math.floor(diff / 2);
+                    activeViewMaxPitch += Math.ceil(diff / 2);
+                }
+            } else {
+                activeViewMinPitch = vocalRange.min - 3;
+                activeViewMaxPitch = vocalRange.max + 3;
+            }
+        }
 
         // --- PianoPad Song Database Parsing & Fetching ---
         const fallbackSongs = [
@@ -921,7 +948,9 @@
                         duration: dur,
                         hitState: 'pending',
                         soundPlayed: false,
-                        accumulatedHitFrames: 0
+                        accumulatedHitFrames: 0,
+                        showX2: false,
+                        x2Time: 0
                     });
                 }
                 timeAccumulator += dur;
@@ -1002,7 +1031,6 @@
 
         // --- Count-In Percussion (Woodblock Click) ---
         function playCountInClick(isAccented = false) {
-            if (isToneMuted || toneVolume <= 0) return;
             initAudio();
 
             const now = audioCtx.currentTime;
@@ -1019,7 +1047,8 @@
             filter.frequency.setValueAtTime(freq, now);
             filter.Q.setValueAtTime(3.0, now);
 
-            const vol = (isAccented ? 0.28 : 0.18) * toneVolume;
+            // Count-in uses fixed Loud Volume, ignoring toneVolume and isToneMuted settings
+            const vol = isAccented ? 0.8 : 0.5;
             gain.gain.setValueAtTime(0.0001, now);
             gain.gain.linearRampToValueAtTime(vol, now + 0.003);
             gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
@@ -1034,7 +1063,6 @@
 
         // --- Quiet Acoustic Bass Drum Metronome ---
         function playBassDrum(isAccented = false) {
-            if (isToneMuted || toneVolume <= 0) return;
             initAudio();
 
             const now = audioCtx.currentTime;
@@ -1052,7 +1080,8 @@
             filter.type = 'lowpass';
             filter.frequency.setValueAtTime(140, now);
 
-            const peakVol = (isAccented ? 0.15 : 0.07) * toneVolume;
+            // Metronome uses fixed Loud Volume, ignoring toneVolume and isToneMuted settings
+            const peakVol = isAccented ? 0.6 : 0.4;
             gain.gain.setValueAtTime(0.0001, now);
             gain.gain.linearRampToValueAtTime(peakVol, now + 0.007);
             gain.gain.exponentialRampToValueAtTime(0.0001, now + (isAccented ? 0.22 : 0.16));
@@ -1086,7 +1115,8 @@
             filter.type = 'lowpass';
             filter.frequency.setValueAtTime(Math.min(2500, freq * 3), now);
 
-            const targetGain = toneVolume * 0.22;
+            // Using lowered target multiplier so tone sits back in the mix
+            const targetGain = toneVolume * 0.15;
             gain.gain.setValueAtTime(0.0001, now);
             gain.gain.linearRampToValueAtTime(targetGain, now + 0.04);
             gain.gain.setValueAtTime(targetGain, now + dur - 0.04);
@@ -1315,6 +1345,7 @@
             calibModal.classList.remove('open');
             document.getElementById('status').textContent = reasonText || ` Calibration Active: Default Range (${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)})`;
             spawnConfetti(HIT_ZONE_X, canvas.height / 2);
+            updateViewRange();
             if (!isPlaying) drawScene();
         }
 
@@ -1370,6 +1401,7 @@
                     
                     document.getElementById('status').textContent = ` Calibration Complete! Range: ${getNoteName(vocalRange.min)} to ${getNoteName(vocalRange.max)}`;
                     btnCalibAction.disabled = false;
+                    updateViewRange();
                     if (!isPlaying) drawScene();
                 });
             }
@@ -1515,7 +1547,9 @@
                         duration: durationMs,
                         hitState: 'pending',
                         soundPlayed: false,
-                        accumulatedHitFrames: 0
+                        accumulatedHitFrames: 0,
+                        showX2: false,
+                        x2Time: 0
                     });
 
                     timeAccumulator += durationMs;
@@ -1602,16 +1636,15 @@
             const clefHeight = 110;
             const rollY = clefHeight;
             const rollHeight = canvas.height - clefHeight;
-            const viewMinPitch = vocalRange.min - 3;
-            const viewMaxPitch = vocalRange.max + 3;
-            const totalPitches = (viewMaxPitch - viewMinPitch) + 1;
+            
+            const totalPitches = (activeViewMaxPitch - activeViewMinPitch) + 1;
             const semitoneHeight = rollHeight / totalPitches;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // Lanes
-            for (let p = viewMinPitch; p <= viewMaxPitch; p++) {
-                const yTop = rollY + (viewMaxPitch - p) * semitoneHeight;
+            for (let p = activeViewMinPitch; p <= activeViewMaxPitch; p++) {
+                const yTop = rollY + (activeViewMaxPitch - p) * semitoneHeight;
                 const isBlack = isBlackKey(p);
                 ctx.fillStyle = isBlack ? getComputedStyle(document.body).getPropertyValue('--lane-dark').trim() || '#0d0d14' : getComputedStyle(document.body).getPropertyValue('--lane-light').trim() || '#161622';
                 ctx.fillRect(PIANO_WIDTH, yTop, canvas.width - PIANO_WIDTH, semitoneHeight);
@@ -1633,12 +1666,12 @@
 
             // Piano & Staff
             const activeStaffNote = previewScaleActiveNote || (currentDetectedMidi > 0 ? Math.round(currentDetectedMidi) : null);
-            drawVerticalPiano(ctx, rollY, semitoneHeight, viewMinPitch, viewMaxPitch, activeStaffNote, currentDetectedMidi);
+            drawVerticalPiano(ctx, rollY, semitoneHeight, activeViewMinPitch, activeViewMaxPitch, activeStaffNote, currentDetectedMidi);
             drawTrebleClef(ctx, clefHeight, activeStaffNote);
 
             // Laser Line
             if (currentDetectedMidi > 0 && !previewScaleActiveNote) {
-                drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch);
+                drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, activeViewMinPitch, activeViewMaxPitch);
             }
 
             // Tuner
@@ -1649,8 +1682,10 @@
 
         function drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch) {
             let displayMidi = currentDetectedMidi;
-            while (displayMidi < viewMinPitch) displayMidi += 12;
-            while (displayMidi > viewMaxPitch) displayMidi -= 12;
+            
+            // Limit drawing so laser line stays somewhat sane if completely out of range
+            if (displayMidi < viewMinPitch) displayMidi = viewMinPitch - 0.5;
+            if (displayMidi > viewMaxPitch) displayMidi = viewMaxPitch + 0.5;
 
             const detectedY = rollY + (viewMaxPitch - displayMidi) * semitoneHeight + semitoneHeight / 2;
             const roundedMidi = Math.round(currentDetectedMidi);
@@ -1956,20 +1991,18 @@
             const rollY = clefHeight;
             const rollHeight = canvas.height - clefHeight;
             
-            const viewMinPitch = vocalRange.min - 3;
-            const viewMaxPitch = vocalRange.max + 3;
-            const totalPitches = (viewMaxPitch - viewMinPitch) + 1;
+            const totalPitches = (activeViewMaxPitch - activeViewMinPitch) + 1;
             const semitoneHeight = rollHeight / totalPitches;
             
             function getPitchTop(midiNum) {
-                return rollY + (viewMaxPitch - midiNum) * semitoneHeight;
+                return rollY + (activeViewMaxPitch - midiNum) * semitoneHeight;
             }
 
             function getPitchCenterY(midiNum) {
                 return getPitchTop(midiNum) + semitoneHeight / 2;
             }
 
-            for (let p = viewMinPitch; p <= viewMaxPitch; p++) {
+            for (let p = activeViewMinPitch; p <= activeViewMaxPitch; p++) {
                 const yTop = getPitchTop(p);
                 const isBlack = isBlackKey(p);
                 
@@ -2130,6 +2163,33 @@
                         ctx.textBaseline = 'middle';
                         ctx.fillText(getNoteName(note.pitch), drawX + 6, noteY + noteHeight / 2);
                     }
+                    
+                    // Flash rewarding X2 visually over the note block if bonus earned
+                    if (note.showX2) {
+                        const age = now - note.x2Time;
+                        if (age < 1500) {
+                            const yOffset = Math.sin(age * 0.01) * 6; // bounce
+                            const scale = Math.max(1, 1.8 - (age/600)); // shrink slightly over time
+                            
+                            ctx.save();
+                            ctx.translate(drawX + Math.min(drawW, 40) / 2, noteY - 10 - yOffset);
+                            ctx.scale(scale, scale);
+                            
+                            // Rainbow color cycle for extra reward feel
+                            const hue = (age * 0.6) % 360;
+                            ctx.fillStyle = `hsl(${hue}, 100%, 65%)`;
+                            ctx.strokeStyle = '#000000';
+                            ctx.lineWidth = 3;
+                            
+                            ctx.font = '900 16px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'bottom';
+                            
+                            ctx.strokeText("x2", 0, 0); // border
+                            ctx.fillText("x2", 0, 0);   // text fill
+                            ctx.restore();
+                        }
+                    }
                 }
 
                 if (isGameMode && note.hitState === 'pending') {
@@ -2156,7 +2216,16 @@
                                         updateScoreUI();
                                     } else {
                                         note.hitState = 'perfect';
-                                        score += 10 + streak;
+                                        let points = 10 + streak;
+                                        
+                                        // Bonus for singing with Tone Muted
+                                        if (isToneMuted) {
+                                            points *= 2;
+                                            note.showX2 = true;
+                                            note.x2Time = now;
+                                        }
+
+                                        score += points;
                                         streak++;
                                         if (streak > maxStreak) maxStreak = streak;
                                         totalNotesHit++;
@@ -2191,12 +2260,14 @@
                     if (x2 < PIANO_WIDTH) continue;
                     
                     let dMidi1 = pt1.pitch;
-                    while (dMidi1 < viewMinPitch) dMidi1 += 12;
-                    while (dMidi1 > viewMaxPitch) dMidi1 -= 12;
-                    
                     let dMidi2 = pt2.pitch;
-                    while (dMidi2 < viewMinPitch) dMidi2 += 12;
-                    while (dMidi2 > viewMaxPitch) dMidi2 -= 12;
+                    
+                    // Clamp visual traces if out of bounds so they don't break the UI
+                    if (dMidi1 < activeViewMinPitch) dMidi1 = activeViewMinPitch - 0.5;
+                    if (dMidi1 > activeViewMaxPitch) dMidi1 = activeViewMaxPitch + 0.5;
+                    
+                    if (dMidi2 < activeViewMinPitch) dMidi2 = activeViewMinPitch - 0.5;
+                    if (dMidi2 > activeViewMaxPitch) dMidi2 = activeViewMaxPitch + 0.5;
 
                     const y1 = getPitchCenterY(dMidi1);
                     const y2 = getPitchCenterY(dMidi2);
@@ -2216,11 +2287,11 @@
                 }
             }
 
-            drawVerticalPiano(ctx, rollY, semitoneHeight, viewMinPitch, viewMaxPitch, activeNoteMidi, currentDetectedMidi);
+            drawVerticalPiano(ctx, rollY, semitoneHeight, activeViewMinPitch, activeViewMaxPitch, activeNoteMidi, currentDetectedMidi);
             drawTrebleClef(ctx, clefHeight, activeNoteMidi);
 
             if (currentDetectedMidi > 0) {
-                drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch);
+                drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, activeViewMinPitch, activeViewMaxPitch);
             }
 
             if (virtualElapsed < 4 * BEAT_MS && !isStepMode) {
@@ -2683,6 +2754,9 @@
                 }
             }
             
+            // Re-calculate the view range before starting so the piano roll wraps perfectly around the song's notes
+            updateViewRange();
+
             score = 0; streak = 0; maxStreak = 0; totalNotesHit = 0; totalNotesMissed = 0;
             earlyLateHits = 0; perfectHits = 0;
             updateScoreUI();
@@ -2754,6 +2828,8 @@
             if (noteTimeline.length === 0) return;
             if (!isMicListening) toggleMicrophone();
 
+            updateViewRange();
+            
             score = 0; streak = 0; maxStreak = 0; totalNotesHit = 0; totalNotesMissed = 0;
             earlyLateHits = 0; perfectHits = 0;
             updateScoreUI();
@@ -2767,6 +2843,7 @@
                 note.hitState = 'pending';
                 note.soundPlayed = false;
                 note.accumulatedHitFrames = 0;
+                note.showX2 = false;
             });
 
             isPlaying = true;
