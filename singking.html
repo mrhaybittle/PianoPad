@@ -549,7 +549,6 @@
                         <svg id="icon-muted" class="icon" style="display:none;" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
                         <span id="tone-mute-text">TONE</span>
                     </button>
-                    <!-- Lowered default volume to 20 -->
                     <input type="range" id="tone-volume" min="0" max="100" value="20" title="Adjust Volume (Recommended 20-30% on speakers)">
                 </div>
 
@@ -728,13 +727,13 @@
         let isOriginalKey = false; // Tracks if auto-transpose is disabled
 
         // Dynamic View Range
-        let activeViewMinPitch = 42; // default
-        let activeViewMaxPitch = 67; // default
+        let activeViewMinPitch = 42;
+        let activeViewMaxPitch = 67;
 
         // --- Live Tuner & Free Sing Mode ---
         let isLiveTuner = false;
         let idleAnimationFrameId = null;
-        let tunerNeedleAngle = Math.PI * 1.5; // Damped swinging needle (starts at 12 o'clock)
+        let tunerNeedleAngle = Math.PI * 1.5;
 
         // --- 4/4 Timing Configuration ---
         const BEAT_MS = 750; // 80 BPM
@@ -764,7 +763,7 @@
 
         const PIXELS_PER_MS = 0.15;
         const HIT_ZONE_X = 220;
-        const HIT_TOLERANCE_SEMITONES = 1.05; // Generous +/- 1 semitone
+        const HIT_TOLERANCE_SEMITONES = 1.05;
         const PIANO_WIDTH = 68;
 
         const canvas = document.getElementById('vocal-canvas');
@@ -796,22 +795,19 @@
             if (localStorage.getItem('SingKing_class')) document.getElementById('login-class').value = localStorage.getItem('SingKing_class');
             drawScene();
             
-            // Populate Fallbacks & Fetch PianoPad Songs
             populateSongSelect();
             fetchPianoPadSongs();
         });
 
-        // --- View Logic Auto-Scroll ---
+        // --- View Logic Auto-Scroll (Keeps notes centered and on-screen) ---
         function updateViewRange() {
             if (noteTimeline && noteTimeline.length > 0) {
                 const minMidi = Math.min(...noteTimeline.map(n => n.pitch));
                 const maxMidi = Math.max(...noteTimeline.map(n => n.pitch));
                 
-                // Add some padding to the view (e.g. 4 semitones top and bottom)
                 activeViewMinPitch = Math.floor(minMidi) - 4;
                 activeViewMaxPitch = Math.ceil(maxMidi) + 4;
                 
-                // Ensure at least a decent sized octave is shown so the UI doesn't look stretched or broken
                 if (activeViewMaxPitch - activeViewMinPitch < 14) {
                     const diff = 14 - (activeViewMaxPitch - activeViewMinPitch);
                     activeViewMinPitch -= Math.floor(diff / 2);
@@ -854,7 +850,6 @@
                     if (Array.isArray(data)) {
                         list = data;
                     } else if (typeof data === 'object') {
-                        // Dynamically find the first array in the payload
                         for (let key in data) {
                             if (Array.isArray(data[key])) {
                                 list = data[key];
@@ -863,7 +858,6 @@
                         }
                     }
                 } catch (e) {
-                    // Not JSON. It might be a raw CSV response
                     const rows = text.split('\n');
                     for (let row of rows) {
                         const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
@@ -873,13 +867,12 @@
                     }
                 }
 
-                // Fallback: If Web App failed to give us > 50 songs, try the direct CSV export link
                 if (list.length < 50) {
                     const csvUrl = "https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958";
                     const csvRes = await fetch(csvUrl);
                     const csvText = await csvRes.text();
                     const rows = csvText.split('\n');
-                    list = []; // Clear and replace with direct sheet pull
+                    list = [];
                     for (let row of rows) {
                         const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                         if (cols.length >= 2) {
@@ -997,7 +990,7 @@
             if (isPlaying) document.getElementById('status').textContent = ' Original key toggled! Stop & Play to apply changes.';
         });
 
-        // --- Rest of Application ---
+        // --- Login Modal Logic ---
         document.getElementById('btn-login-start').addEventListener('click', () => {
             const n = document.getElementById('login-name').value.trim();
             const y = document.getElementById('login-year').value;
@@ -1029,7 +1022,7 @@
             }
         }
 
-        // --- Count-In Percussion (Woodblock Click) ---
+        // --- Count-In Percussion (Loud, unaffected by mute) ---
         function playCountInClick(isAccented = false) {
             initAudio();
 
@@ -1047,7 +1040,6 @@
             filter.frequency.setValueAtTime(freq, now);
             filter.Q.setValueAtTime(3.0, now);
 
-            // Count-in uses fixed Loud Volume, ignoring toneVolume and isToneMuted settings
             const vol = isAccented ? 0.8 : 0.5;
             gain.gain.setValueAtTime(0.0001, now);
             gain.gain.linearRampToValueAtTime(vol, now + 0.003);
@@ -1061,7 +1053,7 @@
             osc.stop(now + 0.07);
         }
 
-        // --- Quiet Acoustic Bass Drum Metronome ---
+        // --- Bass Drum Metronome (Loud, unaffected by mute) ---
         function playBassDrum(isAccented = false) {
             initAudio();
 
@@ -1080,7 +1072,6 @@
             filter.type = 'lowpass';
             filter.frequency.setValueAtTime(140, now);
 
-            // Metronome uses fixed Loud Volume, ignoring toneVolume and isToneMuted settings
             const peakVol = isAccented ? 0.6 : 0.4;
             gain.gain.setValueAtTime(0.0001, now);
             gain.gain.linearRampToValueAtTime(peakVol, now + 0.007);
@@ -1115,7 +1106,6 @@
             filter.type = 'lowpass';
             filter.frequency.setValueAtTime(Math.min(2500, freq * 3), now);
 
-            // Using lowered target multiplier so tone sits back in the mix
             const targetGain = toneVolume * 0.15;
             gain.gain.setValueAtTime(0.0001, now);
             gain.gain.linearRampToValueAtTime(targetGain, now + 0.04);
@@ -1191,7 +1181,6 @@
             if (!isPlaying && !isLiveTuner) drawScene();
         }
 
-        // Live VU Sound Meter Updater
         function updateVUMeters(rms) {
             const normalized = Math.min(1.0, Math.max(0.0, (rms - 0.003) * 4.2));
 
@@ -1533,7 +1522,7 @@
                 totalBars = 16;
             }
 
-            let timeAccumulator = 1 * (4 * BEAT_MS); // Count in
+            let timeAccumulator = 1 * (4 * BEAT_MS);
 
             for (let bar = 0; bar < totalBars; bar++) {
                 const pattern = activePatterns[Math.floor(Math.random() * activePatterns.length)];
@@ -1683,7 +1672,6 @@
         function drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch) {
             let displayMidi = currentDetectedMidi;
             
-            // Limit drawing so laser line stays somewhat sane if completely out of range
             if (displayMidi < viewMinPitch) displayMidi = viewMinPitch - 0.5;
             if (displayMidi > viewMaxPitch) displayMidi = viewMaxPitch + 0.5;
 
@@ -1694,15 +1682,14 @@
             const cents = Math.round(1200 * Math.log2(currentDetectedFreq / targetFreq));
             const absCents = Math.abs(cents);
 
-            let tuneColor = '#22c55e'; // In tune
+            let tuneColor = '#22c55e';
             if (absCents > 30) {
-                tuneColor = '#ef4444'; // Off pitch
+                tuneColor = '#ef4444';
             } else if (absCents > 18) {
-                tuneColor = '#facc15'; // Slightly off
+                tuneColor = '#facc15';
             }
 
             ctx.save();
-
             ctx.strokeStyle = tuneColor;
             ctx.lineWidth = 3;
             ctx.shadowColor = tuneColor;
@@ -1850,7 +1837,6 @@
                 const ang = Math.PI + frac * Math.PI;
                 const isMajor = (cVal % 10 === 0);
                 const isCenter = (cVal === 0);
-                const isTolBound = (cVal === -20 || cVal === 20);
 
                 const rInner = arcR - (isCenter ? 14 : (isMajor ? 10 : 5));
                 const rOuter = arcR + (isCenter ? 3 : 0);
@@ -2168,14 +2154,13 @@
                     if (note.showX2) {
                         const age = now - note.x2Time;
                         if (age < 1500) {
-                            const yOffset = Math.sin(age * 0.01) * 6; // bounce
-                            const scale = Math.max(1, 1.8 - (age/600)); // shrink slightly over time
+                            const yOffset = Math.sin(age * 0.01) * 6;
+                            const scale = Math.max(1, 1.8 - (age/600));
                             
                             ctx.save();
                             ctx.translate(drawX + Math.min(drawW, 40) / 2, noteY - 10 - yOffset);
                             ctx.scale(scale, scale);
                             
-                            // Rainbow color cycle for extra reward feel
                             const hue = (age * 0.6) % 360;
                             ctx.fillStyle = `hsl(${hue}, 100%, 65%)`;
                             ctx.strokeStyle = '#000000';
@@ -2185,8 +2170,8 @@
                             ctx.textAlign = 'center';
                             ctx.textBaseline = 'bottom';
                             
-                            ctx.strokeText("x2", 0, 0); // border
-                            ctx.fillText("x2", 0, 0);   // text fill
+                            ctx.strokeText("x2", 0, 0);
+                            ctx.fillText("x2", 0, 0);
                             ctx.restore();
                         }
                     }
@@ -2218,7 +2203,6 @@
                                         note.hitState = 'perfect';
                                         let points = 10 + streak;
                                         
-                                        // Bonus for singing with Tone Muted
                                         if (isToneMuted) {
                                             points *= 2;
                                             note.showX2 = true;
@@ -2262,7 +2246,6 @@
                     let dMidi1 = pt1.pitch;
                     let dMidi2 = pt2.pitch;
                     
-                    // Clamp visual traces if out of bounds so they don't break the UI
                     if (dMidi1 < activeViewMinPitch) dMidi1 = activeViewMinPitch - 0.5;
                     if (dMidi1 > activeViewMaxPitch) dMidi1 = activeViewMaxPitch + 0.5;
                     
@@ -2603,7 +2586,8 @@
                     const songSelect = document.getElementById('song-select');
                     
                     const diffText = difficultySelect.options[difficultySelect.selectedIndex].text;
-                    const songText = songSelect.options[songSelect.selectedIndex].text;
+                    const isRandom = (songSelect.value === 'random');
+                    const songTitleText = isRandom ? "Random Melody" : songSelect.options[songSelect.selectedIndex].text;
 
                     const payload = {
                         studentName: currentStudentName,
@@ -2619,9 +2603,10 @@
                         vocalRange: `${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)}`,
                         lowestNote: getNoteName(vocalRange.min),
                         highestNote: getNoteName(vocalRange.max),
-                        difficultyLevel: diffText,
-                        songTitle: songText,
-                        songName: songText
+                        difficultyLevel: isRandom ? diffText : songTitleText,
+                        songTitle: songTitleText,
+                        songName: songTitleText,
+                        song: songTitleText
                     };
 
                     try {
@@ -2635,7 +2620,7 @@
                             document.getElementById('save-status').textContent = 'Saved to Sheet!';
                             document.getElementById('save-status').style.color = '#22c55e';
                             
-                            const displayTitle = songSelect.value !== 'random' ? songText : diffText.split('(')[0].trim();
+                            const displayTitle = isRandom ? diffText.split('(')[0].trim() : songTitleText;
                             rankBox.innerHTML = `<span>🟢</span> ${displayTitle} Rank ${resJson.rank}/${resJson.totalEntries}`;
                         } else {
                             document.getElementById('save-status').textContent = 'Save Notice: ' + (resJson.error || 'Check Permissions');
@@ -2750,11 +2735,10 @@
                     noteTimeline = parsedNotes;
                     pitchTraceHistory = [];
                 } else {
-                    generateMelody('1'); // Fallback if parse fails
+                    generateMelody('1');
                 }
             }
             
-            // Re-calculate the view range before starting so the piano roll wraps perfectly around the song's notes
             updateViewRange();
 
             score = 0; streak = 0; maxStreak = 0; totalNotesHit = 0; totalNotesMissed = 0;
