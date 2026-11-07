@@ -2602,10 +2602,8 @@
                     const difficultySelect = document.getElementById('difficulty-select');
                     const songSelect = document.getElementById('song-select');
                     
-                    let diffText = difficultySelect.options[difficultySelect.selectedIndex].text;
-                    if (songSelect.value !== 'random') {
-                        diffText = songSelect.options[songSelect.selectedIndex].text; // Push song name to Difficulty Column
-                    }
+                    const diffText = difficultySelect.options[difficultySelect.selectedIndex].text;
+                    const songText = songSelect.options[songSelect.selectedIndex].text;
 
                     const payload = {
                         studentName: currentStudentName,
@@ -2621,7 +2619,9 @@
                         vocalRange: `${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)}`,
                         lowestNote: getNoteName(vocalRange.min),
                         highestNote: getNoteName(vocalRange.max),
-                        difficultyLevel: diffText
+                        difficultyLevel: diffText,
+                        songTitle: songText,
+                        songName: songText
                     };
 
                     try {
@@ -2635,8 +2635,8 @@
                             document.getElementById('save-status').textContent = 'Saved to Sheet!';
                             document.getElementById('save-status').style.color = '#22c55e';
                             
-                            const shortDiff = diffText.split('(')[0].trim();
-                            rankBox.innerHTML = `<span>🟢</span> ${shortDiff} Rank ${resJson.rank}/${resJson.totalEntries}`;
+                            const displayTitle = songSelect.value !== 'random' ? songText : diffText.split('(')[0].trim();
+                            rankBox.innerHTML = `<span>🟢</span> ${displayTitle} Rank ${resJson.rank}/${resJson.totalEntries}`;
                         } else {
                             document.getElementById('save-status').textContent = 'Save Notice: ' + (resJson.error || 'Check Permissions');
                             document.getElementById('save-status').style.color = '#ef4444';
