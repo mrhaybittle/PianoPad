@@ -2050,10 +2050,8 @@
                     for (let b = Math.max(0, lastPlayedBeatIndex + 1); b <= currentBeat; b++) {
                         if (b < 4) {
                             playCountInClick(b === 0);
-                        } else {
-                            const beatInBar = (b - 4) % 4;
-                            playBassDrum(beatInBar === 0);
                         }
+                        // Bass drum removed during gameplay
                     }
                     lastPlayedBeatIndex = currentBeat;
                 }
@@ -2603,10 +2601,24 @@
                         vocalRange: `${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)}`,
                         lowestNote: getNoteName(vocalRange.min),
                         highestNote: getNoteName(vocalRange.max),
-                        difficultyLevel: isRandom ? diffText : songTitleText,
+                        difficultyLevel: isRandom ? diffText : "PianoPad Song",
                         songTitle: songTitleText,
                         songName: songTitleText,
-                        song: songTitleText
+                        song: songTitleText,
+                        // Exact matches for Google Sheets headers
+                        "Student Name": currentStudentName,
+                        "Year Group": currentYearGroup,
+                        "Class": currentStudentClass,
+                        "Difficulty Level": isRandom ? diffText : "PianoPad Song",
+                        "Vocal Range": `${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)}`,
+                        "Final Score": score,
+                        "Accuracy (%)": accuracyNum,
+                        "Max Streak": maxStreak,
+                        "Total Notes": totalNotes,
+                        "Perfect Hits": perfectHits,
+                        "Early/Late Hits": earlyLateHits,
+                        "Misses": totalNotesMissed,
+                        "Song Title": songTitleText
                     };
 
                     try {
