@@ -1048,8 +1048,8 @@
             osc.stop(now + 0.07);
         }
 
-        function playGuideTone(freq, durationMs) {
-            if (isToneMuted || !freq || toneVolume <= 0) return;
+        function playGuideTone(freq, durationMs, forcePlay = false) {
+            if ((isToneMuted && !forcePlay) || !freq || toneVolume <= 0) return;
             initAudio();
 
             const now = audioCtx.currentTime;
@@ -1561,7 +1561,7 @@
                 const note = sequence[i];
                 previewScaleActiveNote = note;
                 
-                playGuideTone(midiToFreq(note), noteDuration * 0.92);
+                playGuideTone(midiToFreq(note), noteDuration * 0.92, true); // Force play reference scale
                 drawScene();
                 
                 await new Promise(r => setTimeout(r, noteDuration));
@@ -2006,6 +2006,11 @@
                     for (let b = Math.max(0, lastPlayedBeatIndex + 1); b <= currentBeat; b++) {
                         if (b < 4) {
                             playCountInClick(b === 0);
+                            
+                            // Play guide tone on the 3rd beat of count-in (index 2) when muted
+                            if (b === 2 && isToneMuted && noteTimeline.length > 0) {
+                                playGuideTone(midiToFreq(noteTimeline[0].pitch), BEAT_MS, true);
+                            }
                         }
                     }
                     lastPlayedBeatIndex = currentBeat;
@@ -2252,17 +2257,17 @@
                 const hue = (now / 10) % 360;
                 
                 ctx.fillStyle = `hsl(${hue}, 100%, ${60 + flash * 20}%)`;
-                ctx.font = '900 22px sans-serif';
+                ctx.font = '900 44px sans-serif'; // Doubled in size from 22px
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'top';
                 ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
                 ctx.shadowBlur = 15 + flash * 15;
                 
                 ctx.strokeStyle = '#000000';
-                ctx.lineWidth = 4;
+                ctx.lineWidth = 6; 
                 
                 const textX = (canvas.width + PIANO_WIDTH) / 2;
-                const textY = 15 + bounce;
+                const textY = 25 + bounce; // Shifted slightly down for the bigger text
                 
                 ctx.strokeText("⚡ x2 Power-Up (Keyboard Muted) ⚡", textX, textY);
                 ctx.fillText("⚡ x2 Power-Up (Keyboard Muted) ⚡", textX, textY);
