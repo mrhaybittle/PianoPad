@@ -233,6 +233,8 @@
         .btn-danger:hover { background-color: #dc2626; }
         .btn-calib { background-color: #8b5cf6; }
         .btn-calib:hover { background-color: #7c3aed; }
+        .btn-purple { background-color: #a855f7; }
+        .btn-purple:hover { background-color: #9333ea; }
 
         .btn-mic-active {
             background-color: #10b981 !important;
@@ -686,6 +688,7 @@
             <p id="save-status" style="color: #38bdf8; font-size: 0.75rem; margin-top: 2px;">Saving to Leaderboard...</p>
             
             <div class="modal-footer">
+                <button type="button" class="btn-purple" id="btn-results-try-muted" style="padding: 9px 24px; font-weight: 800; font-size: 0.88rem; display: none;">Try X2 - Keyboard Mute Mode</button>
                 <button type="button" class="btn-warning" id="btn-results-retry" style="padding: 9px 24px; font-weight: 800; font-size: 0.88rem;">Try Again</button>
                 <button type="button" class="btn-success" id="btn-results-close" style="padding: 9px 24px; font-weight: 800; font-size: 0.88rem;">Continue</button>
             </div>
@@ -723,8 +726,8 @@
         let isCalibrated = false;
 
         let isToneMuted = false;
-        let toneVolume = 0.20; // Lowered default volume to prevent bleed and make user sing out
-        let isOriginalKey = false; // Tracks if auto-transpose is disabled
+        let toneVolume = 0.20;
+        let isOriginalKey = false; 
 
         // Dynamic View Range
         let activeViewMinPitch = 42;
@@ -786,7 +789,6 @@
         }
         window.addEventListener('resize', resizeCanvas);
 
-        // --- Identity Login Modal ---
         document.addEventListener('DOMContentLoaded', () => {
             resizeCanvas();
             document.getElementById('login-modal').classList.add('open');
@@ -799,7 +801,6 @@
             fetchPianoPadSongs();
         });
 
-        // --- View Logic Auto-Scroll (Keeps notes centered and on-screen) ---
         function updateViewRange() {
             if (noteTimeline && noteTimeline.length > 0) {
                 const minMidi = Math.min(...noteTimeline.map(n => n.pitch));
@@ -819,7 +820,6 @@
             }
         }
 
-        // --- PianoPad Song Database Parsing & Fetching ---
         const fallbackSongs = [
             { title: "12 to 12 - Sombr", notes: "E3,E3,E3,E3,E3,E3,B2,D3,G3,E3,D3,E3,E3,E3,E3,E3,D3,D3,D3,G3,F#3,E3,D3,E3,D3,B2,A3,A3,A3,A3,A3,A3,A3,D3,E3,D3,B2,D3,A3,A3,A3,A3,A3,D3,D3,RESTS,0,242,242,484,242,242,242,242,484,484,484,484,242,242,242,484,484,242,242,242,363,363,242,484,121,121,968,484,242,242,242,242,242,484,484,121,121,484,484,242,242,484,242,242,242" },
             { title: "7 Nation Army (riff)", notes: "E1,E1,G1,E1,D1,C1,B0,E1,E1,G1,E1,D1,C1,D1,C1,B0,RESTS,0,704,253,345,300,256,951,938,689,215,355,325,260,330,296,248" },
@@ -951,7 +951,6 @@
             
             if (parsedNotes.length === 0) return null;
 
-            // Auto-transpose whole sequence into singer's verified vocal range
             if (!isOriginalKey) {
                 const avgPitch = parsedNotes.reduce((sum, n) => sum + n.pitch, 0) / parsedNotes.length;
                 const targetAvg = (vocalRange.min + vocalRange.max) / 2;
@@ -962,7 +961,6 @@
             return parsedNotes;
         }
 
-        // --- Toggle Dropdown Styles ---
         document.getElementById('song-select').addEventListener('change', (e) => {
             const diffSelect = document.getElementById('difficulty-select');
             if (e.target.value !== 'random') {
@@ -974,7 +972,6 @@
             }
         });
 
-        // --- Toggle Original Key button listener ---
         const btnOrigKey = document.getElementById('btn-orig-key');
         btnOrigKey.addEventListener('click', () => {
             isOriginalKey = !isOriginalKey;
@@ -990,7 +987,6 @@
             if (isPlaying) document.getElementById('status').textContent = ' Original key toggled! Stop & Play to apply changes.';
         });
 
-        // --- Login Modal Logic ---
         document.getElementById('btn-login-start').addEventListener('click', () => {
             const n = document.getElementById('login-name').value.trim();
             const y = document.getElementById('login-year').value;
@@ -1022,7 +1018,6 @@
             }
         }
 
-        // --- Count-In Percussion (Loud, unaffected by mute) ---
         function playCountInClick(isAccented = false) {
             initAudio();
 
@@ -1051,38 +1046,6 @@
 
             osc.start(now);
             osc.stop(now + 0.07);
-        }
-
-        // --- Bass Drum Metronome (Loud, unaffected by mute) ---
-        function playBassDrum(isAccented = false) {
-            initAudio();
-
-            const now = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            const filter = audioCtx.createBiquadFilter();
-
-            osc.type = 'sine';
-
-            const startFreq = isAccented ? 115 : 95;
-            const endFreq = isAccented ? 48 : 42;
-            osc.frequency.setValueAtTime(startFreq, now);
-            osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.08);
-
-            filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(140, now);
-
-            const peakVol = isAccented ? 0.6 : 0.4;
-            gain.gain.setValueAtTime(0.0001, now);
-            gain.gain.linearRampToValueAtTime(peakVol, now + 0.007);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + (isAccented ? 0.22 : 0.16));
-
-            osc.connect(filter);
-            filter.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            osc.start(now);
-            osc.stop(now + 0.25);
         }
 
         function playGuideTone(freq, durationMs) {
@@ -1316,7 +1279,6 @@
             return diff;
         }
 
-        // --- Calibration Logic ---
         const calibModal = document.getElementById('calib-modal');
         const btnCalibAction = document.getElementById('btn-calib-action');
         const btnCalibSkip = document.getElementById('btn-calib-skip');
@@ -1631,7 +1593,6 @@
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Lanes
             for (let p = activeViewMinPitch; p <= activeViewMaxPitch; p++) {
                 const yTop = rollY + (activeViewMaxPitch - p) * semitoneHeight;
                 const isBlack = isBlackKey(p);
@@ -1645,7 +1606,6 @@
                 ctx.stroke();
             }
 
-            // Target Line
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--hitline-color').trim() || '#ef4444';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -1653,17 +1613,14 @@
             ctx.lineTo(HIT_ZONE_X, canvas.height);
             ctx.stroke();
 
-            // Piano & Staff
             const activeStaffNote = previewScaleActiveNote || (currentDetectedMidi > 0 ? Math.round(currentDetectedMidi) : null);
             drawVerticalPiano(ctx, rollY, semitoneHeight, activeViewMinPitch, activeViewMaxPitch, activeStaffNote, currentDetectedMidi);
             drawTrebleClef(ctx, clefHeight, activeStaffNote);
 
-            // Laser Line
             if (currentDetectedMidi > 0 && !previewScaleActiveNote) {
                 drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, activeViewMinPitch, activeViewMaxPitch);
             }
 
-            // Tuner
             if (isLiveTuner) {
                 drawLargeGuitarTunerDisplay(ctx, rollY, rollHeight);
             }
@@ -2008,7 +1965,6 @@
             let activeNoteMidi = null;
             let virtualElapsed = elapsed;
             
-            // Step Mode logic
             if (isStepMode && stepModeCurrentIndex < noteTimeline.length) {
                 const currentNote = noteTimeline[stepModeCurrentIndex];
                 if (virtualElapsed >= currentNote.startTime) {
@@ -2051,7 +2007,6 @@
                         if (b < 4) {
                             playCountInClick(b === 0);
                         }
-                        // Bass drum removed during gameplay
                     }
                     lastPlayedBeatIndex = currentBeat;
                 }
@@ -2148,7 +2103,6 @@
                         ctx.fillText(getNoteName(note.pitch), drawX + 6, noteY + noteHeight / 2);
                     }
                     
-                    // Flash rewarding X2 visually over the note block if bonus earned
                     if (note.showX2) {
                         const age = now - note.x2Time;
                         if (age < 1500) {
@@ -2201,17 +2155,17 @@
                                         note.hitState = 'perfect';
                                         let points = 10 + streak;
                                         
-                                        if (isToneMuted) {
-                                            points *= 2;
-                                            note.showX2 = true;
-                                            note.x2Time = now;
-                                        }
-
-                                        score += points;
+                                        score += points; // Keeping base score normal for easy final multiplier mapping
                                         streak++;
                                         if (streak > maxStreak) maxStreak = streak;
                                         totalNotesHit++;
                                         perfectHits++;
+                                        
+                                        if (isToneMuted) {
+                                            note.showX2 = true;
+                                            note.x2Time = now;
+                                        }
+
                                         updateScoreUI();
                                         spawnConfetti(HIT_ZONE_X, getPitchCenterY(note.pitch));
                                     }
@@ -2285,6 +2239,33 @@
                 ctx.shadowColor = 'rgba(250, 204, 21, 0.75)';
                 ctx.shadowBlur = 14;
                 ctx.fillText(`COUNT IN: ${countNum}`, (canvas.width + PIANO_WIDTH) / 2, rollY + 45);
+                ctx.restore();
+            }
+
+            // =========================================================================
+            // VISUALLY APPEALING POWER-UP TEXT OVERLAY (WHEN MUTED)
+            // =========================================================================
+            if (isToneMuted && !isStepMode && noteTimeline.length > 0) {
+                ctx.save();
+                const bounce = Math.sin(now / 150) * 5;
+                const flash = Math.abs(Math.sin(now / 200));
+                const hue = (now / 10) % 360;
+                
+                ctx.fillStyle = `hsl(${hue}, 100%, ${60 + flash * 20}%)`;
+                ctx.font = '900 22px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+                ctx.shadowBlur = 15 + flash * 15;
+                
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 4;
+                
+                const textX = (canvas.width + PIANO_WIDTH) / 2;
+                const textY = 15 + bounce;
+                
+                ctx.strokeText("⚡ x2 Power-Up (Keyboard Muted) ⚡", textX, textY);
+                ctx.fillText("⚡ x2 Power-Up (Keyboard Muted) ⚡", textX, textY);
                 ctx.restore();
             }
 
@@ -2524,7 +2505,8 @@
                 document.getElementById('score-text').textContent = "N/A";
                 document.getElementById('streak-text').textContent = "Step Mode";
             } else {
-                document.getElementById('score-text').textContent = score;
+                let displayScore = isToneMuted ? score * 2 : score;
+                document.getElementById('score-text').textContent = displayScore;
                 document.getElementById('streak-text').textContent = `x${streak}`;
             }
         }
@@ -2538,6 +2520,9 @@
                 : "100.0";
             const accuracyNum = parseFloat(accuracyVal);
 
+            // Double the score logic for the final tally and spreadsheet submission
+            const finalScore = isToneMuted ? score * 2 : score;
+
             document.getElementById('summary-student').textContent = currentStudentName || "Anonymous";
 
             if (isStepMode) {
@@ -2548,13 +2533,14 @@
                 document.getElementById('save-status').textContent = 'Step mode results are not saved.';
                 document.getElementById('save-status').style.color = '#9ca3af';
 
-                // Reset Graph
                 document.getElementById('bar-red').style.height = `0%`;
                 document.getElementById('bar-orange').style.height = `0%`;
                 document.getElementById('bar-green').style.height = `100%`;
+                
+                document.getElementById('btn-results-try-muted').style.display = 'none';
 
             } else {
-                document.getElementById('summary-score').textContent = `${accuracyVal}%`;
+                document.getElementById('summary-score').textContent = `${accuracyVal}% (Score: ${finalScore})`;
                 document.getElementById('summary-breakdown').textContent =
                     `(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${totalNotesMissed} Missed out of ${totalNotes} notes)`;
 
@@ -2575,6 +2561,13 @@
 
                 const rankBox = document.getElementById('game-rank-box');
                 rankBox.innerHTML = '<span style="color:#facc15;">Calculating Rank...</span>';
+                
+                const tryMutedBtn = document.getElementById('btn-results-try-muted');
+                if (isToneMuted) {
+                    tryMutedBtn.style.display = 'none';
+                } else {
+                    tryMutedBtn.style.display = 'inline-flex';
+                }
 
                 if (APPS_SCRIPT_URL && APPS_SCRIPT_URL !== "YOUR_WEB_APP_URL_HERE") {
                     document.getElementById('save-status').textContent = 'Saving to Leaderboard...';
@@ -2591,7 +2584,7 @@
                         studentName: currentStudentName,
                         yearGroup: currentYearGroup,
                         studentClass: currentStudentClass,
-                        score: score,
+                        score: finalScore, 
                         accuracy: accuracyNum,
                         maxStreak: maxStreak,
                         totalNotes: totalNotes,
@@ -2605,13 +2598,12 @@
                         songTitle: songTitleText,
                         songName: songTitleText,
                         song: songTitleText,
-                        // Exact matches for Google Sheets headers
                         "Student Name": currentStudentName,
                         "Year Group": currentYearGroup,
                         "Class": currentStudentClass,
                         "Difficulty Level": isRandom ? diffText : "PianoPad Song",
                         "Vocal Range": `${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)}`,
-                        "Final Score": score,
+                        "Final Score": finalScore,
                         "Accuracy (%)": accuracyNum,
                         "Max Streak": maxStreak,
                         "Total Notes": totalNotes,
@@ -2687,6 +2679,18 @@
                 iconMuted.style.display = 'none';
                 toneMuteText.textContent = 'TONE';
             }
+        });
+        
+        document.getElementById('btn-results-try-muted').addEventListener('click', async () => {
+            // Mute the tone system automatically before retrying
+            isToneMuted = true;
+            btnToneMute.classList.add('btn-muted');
+            iconSound.style.display = 'none';
+            iconMuted.style.display = 'inline-block';
+            toneMuteText.textContent = 'MUTED';
+            
+            // Programmatically trigger the standard retry button
+            document.getElementById('btn-results-retry').click();
         });
 
         const micGainSlider = document.getElementById('mic-gain-slider');
