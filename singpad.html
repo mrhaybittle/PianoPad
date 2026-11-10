@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SingPad - Vocal Trainer</title>
+    <title>SingKing 👑 - Vocal Trainer</title>
     <style>
         :root {
             --bg-color: #121218;
@@ -165,20 +165,9 @@
             transition: background-color 0.04s ease, box-shadow 0.04s ease;
         }
 
-        .vu-bar.lit-green {
-            background-color: #22c55e !important;
-            box-shadow: 0 0 3px #22c55e;
-        }
-
-        .vu-bar.lit-yellow {
-            background-color: #facc15 !important;
-            box-shadow: 0 0 4px #facc15;
-        }
-
-        .vu-bar.lit-red {
-            background-color: #ef4444 !important;
-            box-shadow: 0 0 4px #ef4444;
-        }
+        .vu-bar.lit-green { background-color: #22c55e !important; box-shadow: 0 0 3px #22c55e; }
+        .vu-bar.lit-yellow { background-color: #facc15 !important; box-shadow: 0 0 4px #facc15; }
+        .vu-bar.lit-red { background-color: #ef4444 !important; box-shadow: 0 0 4px #ef4444; }
 
         .vu-meter-large {
             height: 26px;
@@ -186,11 +175,7 @@
             padding: 3px 6px;
             background: #050811;
         }
-
-        .vu-meter-large .vu-bar {
-            width: 7px;
-            border-radius: 2px;
-        }
+        .vu-meter-large .vu-bar { width: 7px; border-radius: 2px; }
 
         select, button, .btn-link, input[type="text"] {
             padding: 5px 8px;
@@ -201,7 +186,7 @@
             font-weight: 600;
             font-size: 0.78rem;
             outline: none;
-            transition: background-color 0.2s, transform 0.1s;
+            transition: background-color 0.2s, transform 0.1s, opacity 0.2s;
         }
 
         button, .btn-link {
@@ -217,10 +202,9 @@
 
         button:hover, .btn-link:hover { background-color: var(--accent-hover); }
         button:active, .btn-link:active { transform: scale(0.98); }
-
         select:focus, input:focus { border-color: var(--accent-color); }
         #theme-select { max-width: 95px; padding: 5px 6px; font-size: 0.75rem; }
-       
+        
         #difficulty-select {
             color: #facc15 !important;
             border: 2px solid #eab308 !important;
@@ -230,6 +214,17 @@
         }
         #difficulty-select option { background-color: #0b0f19; }
 
+        /* Dropdown Styling for PianoPad Song Select */
+        #song-select {
+            color: #38bdf8 !important;
+            border: 2px solid #0284c7 !important;
+            background-color: #082f49 !important;
+            font-weight: 700 !important;
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+            max-width: 170px;
+        }
+        #song-select option { background-color: #0b0f19; color: #f3f4f6; }
+
         .btn-secondary { background-color: #4b5563; }
         .btn-secondary:hover { background-color: #6b7280; }
         .btn-success { background-color: #10b981; }
@@ -238,6 +233,8 @@
         .btn-danger:hover { background-color: #dc2626; }
         .btn-calib { background-color: #8b5cf6; }
         .btn-calib:hover { background-color: #7c3aed; }
+        .btn-purple { background-color: #a855f7; }
+        .btn-purple:hover { background-color: #9333ea; }
 
         .btn-mic-active {
             background-color: #10b981 !important;
@@ -252,16 +249,23 @@
             box-shadow: 0 0 14px var(--tuner-active);
         }
 
-        .btn-muted {
-            background-color: #ef4444 !important;
-            color: #ffffff !important;
+        .btn-orig-active {
+            background-color: #f59e0b !important;
+            color: #000000 !important;
+            font-weight: 800 !important;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
         }
 
-        .btn-step { background-color: #ec4899 !important; color: #ffffff !important; font-weight: 700; }
-        .btn-step:hover { background-color: #db2777 !important; }
-        .btn-step-active { background-color: #f43f5e !important; color: #ffffff !important; box-shadow: 0 0 12px #f43f5e; }
-       
-        .btn-game-active { background-color: var(--game-active) !important; color: #fff; box-shadow: 0 0 12px var(--game-active); }
+        .btn-muted { background-color: #ef4444 !important; color: #ffffff !important; }
+
+        /* RED & GREEN Game Mode Default States */
+        .btn-step { background-color: #991b1b !important; color: #fca5a5 !important; font-weight: 600; }
+        .btn-step:hover { background-color: #b91c1c !important; }
+        .btn-step-active { background-color: #ef4444 !important; color: #ffffff !important; box-shadow: 0 0 12px #ef4444; font-weight: 800; }
+        
+        .btn-game { background-color: #065f46 !important; color: #6ee7b7 !important; font-weight: 600; }
+        .btn-game:hover { background-color: #047857 !important; }
+        .btn-game-active { background-color: #10b981 !important; color: #ffffff !important; box-shadow: 0 0 12px #10b981; font-weight: 800; }
 
         .icon {
             width: 13px;
@@ -347,7 +351,7 @@
             transition: opacity 0.2s ease;
         }
         .modal-overlay.open { opacity: 1; pointer-events: auto; }
-       
+        
         .modal {
             background: var(--panel-bg);
             border-radius: 16px;
@@ -362,10 +366,10 @@
             border: 1px solid #374151;
             text-align: center;
         }
-       
+        
         .modal h2 { font-size: 1.45rem; font-weight: 800; color: #ffffff; letter-spacing: -0.01em; margin-bottom: 2px; }
         .modal p { color: #cbd5e1; font-size: 0.9rem; line-height: 1.4; }
-       
+        
         .modal-footer {
             display: flex;
             justify-content: center;
@@ -412,7 +416,7 @@
         .badge-gold { background: #f59e0b; color: #000; }
         .badge-silver { background: linear-gradient(135deg, #94a3b8, #cbd5e1); color: #000; }
         .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
-       
+        
         .rank-display-box {
             font-size: 1.15rem;
             font-weight: 900;
@@ -462,23 +466,9 @@
             background: #181f2e;
         }
 
-        .bar-part-red {
-            background-color: #ef4444;
-            width: 100%;
-            transition: height 0.5s ease;
-        }
-
-        .bar-part-orange {
-            background-color: #f97316;
-            width: 100%;
-            transition: height 0.5s ease;
-        }
-
-        .bar-part-green {
-            background-color: #22c55e;
-            width: 100%;
-            transition: height 0.5s ease;
-        }
+        .bar-part-red { background-color: #ef4444; width: 100%; transition: height 0.5s ease; }
+        .bar-part-orange { background-color: #f97316; width: 100%; transition: height 0.5s ease; }
+        .bar-part-green { background-color: #22c55e; width: 100%; transition: height 0.5s ease; }
 
         .graph-legend {
             display: flex;
@@ -500,17 +490,28 @@
         <header>
             <h1>
                 <svg class="icon" style="width:20px; height:20px; color:#ec4899;" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
-                SingPad
+                SingKing 👑
             </h1>
             <div class="controls">
                 <span id="header-student-label" style="font-size: 0.8rem; font-weight: 700; color: #facc15; margin-right: 6px;">Guest</span>
-               
+                
                 <select id="difficulty-select">
                     <option value="1">Level 1 (Easy - Stepwise)</option>
                     <option value="2">Level 2 (Medium - Leaps up to 3rds)</option>
                     <option value="3">Level 3 (Hard - Accidentals & 16ths)</option>
                     <option value="4">Endless Mode</option>
                 </select>
+
+                <!-- PianoPad Database Song Selector -->
+                <select id="song-select" title="Choose a PianoPad Song Database entry or a Random Melody">
+                    <option value="random">Random Melody</option>
+                </select>
+
+                <!-- Original Key Toggle Switch -->
+                <button type="button" id="btn-orig-key" class="btn-secondary" title="Play in original key (disables auto-transpose)">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                    Orig. Key: OFF
+                </button>
 
                 <select id="theme-select">
                     <option value="default">Dark</option>
@@ -550,7 +551,7 @@
                         <svg id="icon-muted" class="icon" style="display:none;" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
                         <span id="tone-mute-text">TONE</span>
                     </button>
-                    <input type="range" id="tone-volume" min="0" max="100" value="35" title="Adjust Volume (Recommended 30-40% on speakers)">
+                    <input type="range" id="tone-volume" min="0" max="100" value="20" title="Adjust Volume (Recommended 20-30% on speakers)">
                 </div>
 
                 <button type="button" id="btn-calib" class="btn-calib" title="Calibrate Lowest & Highest Pitch">
@@ -558,18 +559,19 @@
                     Calibrate
                 </button>
 
-                <button type="button" id="btn-step" class="btn-step">
+                <!-- Step Mode Default Red (Off), Game Mode Default Green (On) -->
+                <button type="button" id="btn-step" class="btn-step" title="Practice note-by-note without a timer (No Score Submitted)">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
-                    Step Mode
+                    Step Mode: OFF
                 </button>
-                <button type="button" id="btn-game" class="btn-game-active">
+                <button type="button" id="btn-game" class="btn-game-active" title="Play with live timing and scoring">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                     Game Mode: ON
                 </button>
 
                 <button type="button" id="btn-play" class="btn-success">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                    Generate & Play
+                    Play Song
                 </button>
                 <button type="button" id="btn-stop" class="btn-danger">
                     <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
@@ -595,9 +597,9 @@
     <!-- Login Modal -->
     <div class="modal-overlay" id="login-modal">
         <div class="modal">
-            <h2>Welcome to SingPad</h2>
+            <h2>Welcome to SingKing 👑</h2>
             <p>Please enter your details to save your scores to the leaderboard.</p>
-           
+            
             <div style="display:flex; flex-direction:column; gap:10px; margin: 15px 0; width:100%;">
                 <input type="text" id="login-name" placeholder="First Name & Last Initial (e.g. Sam T)" style="padding: 10px;">
                 <select id="login-year" style="padding: 10px;">
@@ -613,7 +615,7 @@
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn-success" id="btn-login-start" style="width: 100%; padding: 10px; justify-content:center;">Enter SingPad</button>
+                <button type="button" class="btn-success" id="btn-login-start" style="width: 100%; padding: 10px; justify-content:center;">Enter SingKing</button>
             </div>
         </div>
     </div>
@@ -623,11 +625,11 @@
         <div class="modal">
             <h2>Daily Vocal Calibration</h2>
             <p id="calib-instructions">Let's find your healthy vocal range for today. We will use this to generate melodies that fit your voice perfectly.</p>
-           
+            
             <div class="calib-box">
                 <span id="calib-step-text" style="color:#facc15; font-weight:bold;">Step 1: Sing your LOWEST comfortable note</span>
                 <div class="calib-pitch-text" id="calib-live-pitch">--</div>
-               
+                
                 <!-- Calibration Live Sound Meter -->
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 4px; width: 100%;">
                     <span style="font-size:0.7rem; color:#9ca3af; font-weight:700;">MIC SOUND LEVEL</span>
@@ -664,7 +666,7 @@
             </div>
 
             <div id="results-badge-container"></div>
-           
+            
             <div id="game-rank-box" class="rank-display-box">Calculating Rank...</div>
 
             <!-- Stacked Column Graph -->
@@ -684,8 +686,9 @@
             </div>
 
             <p id="save-status" style="color: #38bdf8; font-size: 0.75rem; margin-top: 2px;">Saving to Leaderboard...</p>
-           
+            
             <div class="modal-footer">
+                <button type="button" class="btn-purple" id="btn-results-try-muted" style="padding: 9px 24px; font-weight: 800; font-size: 0.88rem; display: none;">Try X2 - Keyboard Mute Mode</button>
                 <button type="button" class="btn-warning" id="btn-results-retry" style="padding: 9px 24px; font-weight: 800; font-size: 0.88rem;">Try Again</button>
                 <button type="button" class="btn-success" id="btn-results-close" style="padding: 9px 24px; font-weight: 800; font-size: 0.88rem;">Continue</button>
             </div>
@@ -697,7 +700,8 @@
         // GOOGLE APPS SCRIPT WEB APP ENDPOINT FOR SPREADSHEET SUBMISSION
         // =========================================================================
         const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzAo05vJwNnIDbFUKEfbRETBzTORNsZKQ1y8rqnXKbhBuYA31x2LkN4EDMR6NYOAq8P/exec";
-       
+        const PIANOPAD_SONGS_URL = "https://script.google.com/macros/s/AKfycby67M5VwNiRpcySnun4wTW31nIfXauLXhMRP1w96r6yjMuV9iA8n_C-eEIKfJ_xEuUjKg/exec";
+        
         // --- Identity Variables ---
         let currentStudentName = "Anonymous";
         let currentYearGroup = "N/A";
@@ -711,23 +715,28 @@
         let micAnalyser = null;
         let isMicListening = false;
         let pitchDetectionFrameId = null;
-       
+        
         let micBoostGain = 3.5;
         let currentDetectedFreq = 0;
         let currentDetectedMidi = 0;
         let currentInputRMS = 0;
-       
+        
         // Default range: Teenage male (A2 = 45 to E4 = 64)
         let vocalRange = { min: 45, max: 64 };
         let isCalibrated = false;
 
         let isToneMuted = false;
-        let toneVolume = 0.35; // Gentle 35% default to prevent speaker bleed into mic
+        let toneVolume = 0.20;
+        let isOriginalKey = false; 
+
+        // Dynamic View Range
+        let activeViewMinPitch = 42;
+        let activeViewMaxPitch = 67;
 
         // --- Live Tuner & Free Sing Mode ---
         let isLiveTuner = false;
         let idleAnimationFrameId = null;
-        let tunerNeedleAngle = Math.PI * 1.5; // Damped swinging needle (starts at 12 o'clock)
+        let tunerNeedleAngle = Math.PI * 1.5;
 
         // --- 4/4 Timing Configuration ---
         const BEAT_MS = 750; // 80 BPM
@@ -738,7 +747,7 @@
         let isGameMode = true;
         let isStepMode = false;
         let currentTheme = 'default';
-       
+        
         let score = 0;
         let streak = 0;
         let maxStreak = 0;
@@ -749,7 +758,7 @@
 
         let noteTimeline = [];
         let pitchTraceHistory = [];
-       
+        
         let playbackStartTime = 0;
         let lastFrameTime = 0;
         let stepModeCurrentIndex = 0;
@@ -757,7 +766,7 @@
 
         const PIXELS_PER_MS = 0.15;
         const HIT_ZONE_X = 220;
-        const HIT_TOLERANCE_SEMITONES = 1.05; // Generous +/- 1 semitone
+        const HIT_TOLERANCE_SEMITONES = 1.05;
         const PIANO_WIDTH = 68;
 
         const canvas = document.getElementById('vocal-canvas');
@@ -780,14 +789,202 @@
         }
         window.addEventListener('resize', resizeCanvas);
 
-        // --- Identity Login Modal ---
         document.addEventListener('DOMContentLoaded', () => {
             resizeCanvas();
             document.getElementById('login-modal').classList.add('open');
-            if (localStorage.getItem('singpad_name')) document.getElementById('login-name').value = localStorage.getItem('singpad_name');
-            if (localStorage.getItem('singpad_year')) document.getElementById('login-year').value = localStorage.getItem('singpad_year');
-            if (localStorage.getItem('singpad_class')) document.getElementById('login-class').value = localStorage.getItem('singpad_class');
+            if (localStorage.getItem('SingKing_name')) document.getElementById('login-name').value = localStorage.getItem('SingKing_name');
+            if (localStorage.getItem('SingKing_year')) document.getElementById('login-year').value = localStorage.getItem('SingKing_year');
+            if (localStorage.getItem('SingKing_class')) document.getElementById('login-class').value = localStorage.getItem('SingKing_class');
             drawScene();
+            
+            populateSongSelect();
+            fetchPianoPadSongs();
+        });
+
+        function updateViewRange() {
+            if (noteTimeline && noteTimeline.length > 0) {
+                const minMidi = Math.min(...noteTimeline.map(n => n.pitch));
+                const maxMidi = Math.max(...noteTimeline.map(n => n.pitch));
+                
+                activeViewMinPitch = Math.floor(minMidi) - 4;
+                activeViewMaxPitch = Math.ceil(maxMidi) + 4;
+                
+                if (activeViewMaxPitch - activeViewMinPitch < 14) {
+                    const diff = 14 - (activeViewMaxPitch - activeViewMinPitch);
+                    activeViewMinPitch -= Math.floor(diff / 2);
+                    activeViewMaxPitch += Math.ceil(diff / 2);
+                }
+            } else {
+                activeViewMinPitch = vocalRange.min - 3;
+                activeViewMaxPitch = vocalRange.max + 3;
+            }
+        }
+
+        const fallbackSongs = [
+            { title: "12 to 12 - Sombr", notes: "E3,E3,E3,E3,E3,E3,B2,D3,G3,E3,D3,E3,E3,E3,E3,E3,D3,D3,D3,G3,F#3,E3,D3,E3,D3,B2,A3,A3,A3,A3,A3,A3,A3,D3,E3,D3,B2,D3,A3,A3,A3,A3,A3,D3,D3,RESTS,0,242,242,484,242,242,242,242,484,484,484,484,242,242,242,484,484,242,242,242,363,363,242,484,121,121,968,484,242,242,242,242,242,484,484,121,121,484,484,242,242,484,242,242,242" },
+            { title: "7 Nation Army (riff)", notes: "E1,E1,G1,E1,D1,C1,B0,E1,E1,G1,E1,D1,C1,D1,C1,B0,RESTS,0,704,253,345,300,256,951,938,689,215,355,325,260,330,296,248" },
+            { title: "Acapella", notes: "A2,A2,A2,A2,A2,G2,E2,E2,E2,E2,E2,D2,D2,D2,D2,D2,D2,C2,E2,G2,A2,A2,A2,A2,A2,G2,E2,E2,E2,E2,D2,D2,D2,D2,D2,D2,D2,C2,C2,A1,A2,A2,A2,A2,B2,G2,E2,E2,E2,E2,G2,D2,D2,D2,D2,D2,D2,C2,E2,G2,A2,A2,A2,A2,A2,G2,E2,E2,E2,E2,E2,D2,D2,D2,D2,D2,D2,C2,C2,A1,A2,RESTS,0,174,174,174,174,349,349,174,174,174,174,349,349,174,174,174,174,349,349,349,698,174,174,174,174,349,349,174,174,174,174,349,349,174,174,174,174,349,349,349,698,174,174,174,174,349,349,174,174,174,174,349,349,174,174,174,174,349,349,349,698,174,174,174,174,349,349,174,174,174,174,349,349,174,174,174,174,349,349,349,349,349" },
+            { title: "All Star - from Shrek", notes: "G1,D2,B1,B1,A1,A1,G1,G1,C2,B1,B1,A1,A1,G1,G1,D2,B1,B1,A1,A1,G1,G1,E1,D1,RESTS,0,567,267,265,241,271,204,275,240,469,242,240,226,232,492,209,259,207,220,226,203,268,246,428" },
+            { title: "Another One Bites The Dust", notes: "A2,G2,E2,E2,E2,E2,E2,E2,G2,E2,A2,A2,G2,E2,E2,E2,E2,E2,E2,G2,E2,A2,RESTS,0,69,178,463,497,908,138,277,237,242,84,911,95,125,479,478,863,140,198,276,238,114" }
+        ];
+        let pianoPadSongs = [...fallbackSongs];
+
+        function populateSongSelect() {
+            const select = document.getElementById('song-select');
+            pianoPadSongs.forEach((song, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.text = song.title;
+                select.appendChild(opt);
+            });
+        }
+
+        async function fetchPianoPadSongs() {
+            try {
+                let res = await fetch(PIANOPAD_SONGS_URL, { redirect: "follow" });
+                let text = await res.text();
+                let list = [];
+                
+                try {
+                    const data = JSON.parse(text);
+                    if (Array.isArray(data)) {
+                        list = data;
+                    } else if (typeof data === 'object') {
+                        for (let key in data) {
+                            if (Array.isArray(data[key])) {
+                                list = data[key];
+                                break;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    const rows = text.split('\n');
+                    for (let row of rows) {
+                        const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                        if (cols.length >= 2) {
+                            list.push([cols[0].replace(/(^"|"$)/g, ''), cols[1].replace(/(^"|"$)/g, '')]);
+                        }
+                    }
+                }
+
+                if (list.length < 50) {
+                    const csvUrl = "https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958";
+                    const csvRes = await fetch(csvUrl);
+                    const csvText = await csvRes.text();
+                    const rows = csvText.split('\n');
+                    list = [];
+                    for (let row of rows) {
+                        const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                        if (cols.length >= 2) {
+                            list.push([cols[0].replace(/(^"|"$)/g, ''), cols[1].replace(/(^"|"$)/g, '')]);
+                        }
+                    }
+                }
+
+                if (list.length > 0) {
+                    pianoPadSongs = [];
+                    const select = document.getElementById('song-select');
+                    select.innerHTML = '<option value="random">Random Melody</option>';
+                    
+                    list.forEach((item, idx) => {
+                        let title, notes;
+                        if (Array.isArray(item)) {
+                            title = item[0];
+                            notes = item[1];
+                        } else {
+                            title = item.Title || item.title || item.Name || item.name || item.Song || item["Song Name"] || item[Object.keys(item)[0]];
+                            notes = item.Notes || item.notes || item.Data || item.data || item[Object.keys(item)[1]];
+                        }
+                        
+                        if (title && notes && typeof notes === 'string' && notes.includes("RESTS")) {
+                            pianoPadSongs.push({ title, notes });
+                            const opt = document.createElement('option');
+                            opt.value = pianoPadSongs.length - 1; 
+                            opt.text = title;
+                            select.appendChild(opt);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn("Fetch failed, using fallbacks:", e);
+            }
+        }
+
+        function noteNameToMidi(name) {
+            const noteMap = {'C':0, 'C#':1, 'Db':1, 'D':2, 'D#':3, 'Eb':3, 'E':4, 'F':5, 'F#':6, 'Gb':6, 'G':7, 'G#':8, 'Ab':8, 'A':9, 'A#':10, 'Bb':10, 'B':11};
+            let note = name.replace(/[^A-Ga-g#b]/g, '');
+            let octStr = name.replace(/[^0-9-]/g, '');
+            let oct = parseInt(octStr, 10);
+            if (isNaN(oct)) oct = 4;
+            return 12 * (oct + 1) + (noteMap[note] || 0); 
+        }
+
+        function parsePianoPadSong(dataString) {
+            const parts = dataString.split(',RESTS,0,');
+            if (parts.length !== 2) return null;
+            const noteNames = parts[0].split(',');
+            const durations = parts[1].split(',').map(Number);
+            
+            let timeAccumulator = 4 * BEAT_MS; 
+            let parsedNotes = [];
+            
+            for (let i = 0; i < noteNames.length; i++) {
+                let n = noteNames[i].trim();
+                let dur = durations[i] || 250;
+                
+                if (n && n !== "REST") {
+                    let pitch = noteNameToMidi(n);
+                    parsedNotes.push({
+                        originalPitch: pitch,
+                        pitch: pitch,
+                        startTime: timeAccumulator,
+                        duration: dur,
+                        hitState: 'pending',
+                        soundPlayed: false,
+                        accumulatedHitFrames: 0,
+                        showX2: false,
+                        x2Time: 0
+                    });
+                }
+                timeAccumulator += dur;
+            }
+            
+            if (parsedNotes.length === 0) return null;
+
+            if (!isOriginalKey) {
+                const avgPitch = parsedNotes.reduce((sum, n) => sum + n.pitch, 0) / parsedNotes.length;
+                const targetAvg = (vocalRange.min + vocalRange.max) / 2;
+                const shift = Math.round(targetAvg - avgPitch);
+                parsedNotes.forEach(n => n.pitch += shift);
+            }
+            
+            return parsedNotes;
+        }
+
+        document.getElementById('song-select').addEventListener('change', (e) => {
+            const diffSelect = document.getElementById('difficulty-select');
+            if (e.target.value !== 'random') {
+                diffSelect.style.opacity = '0.4';
+                diffSelect.disabled = true;
+            } else {
+                diffSelect.style.opacity = '1';
+                diffSelect.disabled = false;
+            }
+        });
+
+        const btnOrigKey = document.getElementById('btn-orig-key');
+        btnOrigKey.addEventListener('click', () => {
+            isOriginalKey = !isOriginalKey;
+            if (isOriginalKey) {
+                btnOrigKey.classList.remove('btn-secondary');
+                btnOrigKey.classList.add('btn-orig-active');
+                btnOrigKey.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg> Orig. Key: ON`;
+            } else {
+                btnOrigKey.classList.remove('btn-orig-active');
+                btnOrigKey.classList.add('btn-secondary');
+                btnOrigKey.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg> Orig. Key: OFF`;
+            }
+            if (isPlaying) document.getElementById('status').textContent = ' Original key toggled! Stop & Play to apply changes.';
         });
 
         document.getElementById('btn-login-start').addEventListener('click', () => {
@@ -804,9 +1001,9 @@
             currentYearGroup = y;
             currentStudentClass = c;
 
-            localStorage.setItem('singpad_name', n);
-            localStorage.setItem('singpad_year', y);
-            localStorage.setItem('singpad_class', c);
+            localStorage.setItem('SingKing_name', n);
+            localStorage.setItem('SingKing_year', y);
+            localStorage.setItem('SingKing_class', c);
 
             document.getElementById('header-student-label').textContent = currentStudentName;
             document.getElementById('login-modal').classList.remove('open');
@@ -821,9 +1018,7 @@
             }
         }
 
-        // --- Count-In Percussion (Woodblock Click) ---
         function playCountInClick(isAccented = false) {
-            if (isToneMuted || toneVolume <= 0) return;
             initAudio();
 
             const now = audioCtx.currentTime;
@@ -840,7 +1035,7 @@
             filter.frequency.setValueAtTime(freq, now);
             filter.Q.setValueAtTime(3.0, now);
 
-            const vol = (isAccented ? 0.28 : 0.18) * toneVolume;
+            const vol = isAccented ? 0.8 : 0.5;
             gain.gain.setValueAtTime(0.0001, now);
             gain.gain.linearRampToValueAtTime(vol, now + 0.003);
             gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
@@ -853,41 +1048,8 @@
             osc.stop(now + 0.07);
         }
 
-        // --- Quiet Acoustic Bass Drum Metronome ---
-        function playBassDrum(isAccented = false) {
-            if (isToneMuted || toneVolume <= 0) return;
-            initAudio();
-
-            const now = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            const filter = audioCtx.createBiquadFilter();
-
-            osc.type = 'sine';
-
-            const startFreq = isAccented ? 115 : 95;
-            const endFreq = isAccented ? 48 : 42;
-            osc.frequency.setValueAtTime(startFreq, now);
-            osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.08);
-
-            filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(140, now);
-
-            const peakVol = (isAccented ? 0.15 : 0.07) * toneVolume;
-            gain.gain.setValueAtTime(0.0001, now);
-            gain.gain.linearRampToValueAtTime(peakVol, now + 0.007);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + (isAccented ? 0.22 : 0.16));
-
-            osc.connect(filter);
-            filter.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            osc.start(now);
-            osc.stop(now + 0.25);
-        }
-
-        function playGuideTone(freq, durationMs) {
-            if (isToneMuted || !freq || toneVolume <= 0) return;
+        function playGuideTone(freq, durationMs, forcePlay = false) {
+            if ((isToneMuted && !forcePlay) || !freq || toneVolume <= 0) return;
             initAudio();
 
             const now = audioCtx.currentTime;
@@ -907,7 +1069,7 @@
             filter.type = 'lowpass';
             filter.frequency.setValueAtTime(Math.min(2500, freq * 3), now);
 
-            const targetGain = toneVolume * 0.22;
+            const targetGain = toneVolume * 0.15;
             gain.gain.setValueAtTime(0.0001, now);
             gain.gain.linearRampToValueAtTime(targetGain, now + 0.04);
             gain.gain.setValueAtTime(targetGain, now + dur - 0.04);
@@ -935,7 +1097,6 @@
                 btn.classList.add('btn-secondary');
             } else {
                 try {
-                    // echoCancellation=false ensures WebRTC doesn't cancel student singing when audio plays
                     micStream = await navigator.mediaDevices.getUserMedia({
                         audio: {
                             echoCancellation: false,
@@ -945,7 +1106,7 @@
                         video: false
                     });
                     micSource = audioCtx.createMediaStreamSource(micStream);
-                   
+                    
                     micGainNode = audioCtx.createGain();
                     micGainNode.gain.setValueAtTime(micBoostGain, audioCtx.currentTime);
 
@@ -959,7 +1120,7 @@
                     btn.textContent = ' MIC: ON';
                     btn.classList.remove('btn-secondary');
                     btn.classList.add('btn-mic-active');
-                   
+                    
                     processPitch();
                     startIdleRenderLoop();
                 } catch (err) {
@@ -983,7 +1144,6 @@
             if (!isPlaying && !isLiveTuner) drawScene();
         }
 
-        // Live VU Sound Meter Updater
         function updateVUMeters(rms) {
             const normalized = Math.min(1.0, Math.max(0.0, (rms - 0.003) * 4.2));
 
@@ -1016,7 +1176,6 @@
             }
         }
 
-        // Clean Bounded Autocorrelation Pitch Detector
         function autoCorrelate(buf, sampleRate) {
             const SIZE = buf.length;
             let rms = 0;
@@ -1082,11 +1241,11 @@
             const buf = new Float32Array(micAnalyser.fftSize);
             micAnalyser.getFloatTimeDomainData(buf);
             const freq = autoCorrelate(buf, audioCtx.sampleRate);
-           
+            
             if (freq !== -1 && freq >= 50 && freq <= 1600) {
                 currentDetectedFreq = freq;
                 currentDetectedMidi = freqToMidi(freq);
-               
+                
                 if (isPlaying) {
                     const elapsed = performance.now() - playbackStartTime;
                     pitchTraceHistory.push({ time: elapsed, pitch: currentDetectedMidi });
@@ -1111,7 +1270,6 @@
             return pc === 1 || pc === 3 || pc === 6 || pc === 8 || pc === 10;
         }
 
-        // Pitch-Class (Octave-Invariant) Difference
         function getPitchClassDistance(detectedMidi, targetMidi) {
             if (!detectedMidi || detectedMidi <= 0) return 999;
             const detPitchClass = ((detectedMidi % 12) + 12) % 12;
@@ -1121,13 +1279,12 @@
             return diff;
         }
 
-        // --- Calibration Logic ---
         const calibModal = document.getElementById('calib-modal');
         const btnCalibAction = document.getElementById('btn-calib-action');
         const btnCalibSkip = document.getElementById('btn-calib-skip');
         const calibLivePitch = document.getElementById('calib-live-pitch');
         const calibProgress = document.getElementById('calib-progress');
-       
+        
         let calibPhase = 0;
         let calibSamples = [];
         let calibInterval = null;
@@ -1139,13 +1296,14 @@
             calibModal.classList.remove('open');
             document.getElementById('status').textContent = reasonText || ` Calibration Active: Default Range (${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)})`;
             spawnConfetti(HIT_ZONE_X, canvas.height / 2);
+            updateViewRange();
             if (!isPlaying) drawScene();
         }
 
         document.getElementById('btn-calib').addEventListener('click', () => {
             initAudio();
             if (!isMicListening) toggleMicrophone();
-           
+            
             calibPhase = 0;
             calibSamples = [];
             document.getElementById('calib-step-text').textContent = 'Step 1: Sing your LOWEST comfortable note';
@@ -1187,13 +1345,14 @@
                     isCalibrated = true;
                     clearInterval(calibInterval);
                     calibModal.classList.remove('open');
-                   
+                    
                     if (vocalRange.max <= vocalRange.min) {
                         vocalRange.max = vocalRange.min + 12;
                     }
-                   
+                    
                     document.getElementById('status').textContent = ` Calibration Complete! Range: ${getNoteName(vocalRange.min)} to ${getNoteName(vocalRange.max)}`;
                     btnCalibAction.disabled = false;
+                    updateViewRange();
                     if (!isPlaying) drawScene();
                 });
             }
@@ -1202,11 +1361,11 @@
         function recordPitchFor(ms, callback) {
             let elapsed = 0;
             calibProgress.style.width = '0%';
-           
+            
             calibInterval = setInterval(() => {
                 elapsed += 50;
                 calibProgress.style.width = `${(elapsed / ms) * 100}%`;
-               
+                
                 if (currentDetectedMidi > 0) {
                     calibSamples.push(currentDetectedMidi);
                     calibLivePitch.textContent = getNoteName(currentDetectedMidi);
@@ -1240,12 +1399,13 @@
             }
         });
 
-        // --- Key Center Detection & Scale Builder ---
         function determineScaleNotes(timeline) {
+            if (timeline.length === 0) return { rootNoteName: 'C', sequence: [] };
+            
             const pitchClasses = new Set(timeline.map(n => Math.round(n.pitch) % 12));
             const majorIntervals = [0, 2, 4, 5, 7, 9, 11];
             const candidateKeys = [0, 7, 2, 9, 4, 5, 10];
-           
+            
             let bestRoot = 0;
             let bestScore = -1;
 
@@ -1284,7 +1444,7 @@
                     }
                 });
             }
-           
+            
             const topTonic = startRoot + (octaveCount * 12);
             if (topTonic <= maxMidi + 4 && !scaleNotes.includes(topTonic)) {
                 scaleNotes.push(topTonic);
@@ -1298,7 +1458,6 @@
             };
         }
 
-        // --- 4/4 Melody Generator with Musical Note Values ---
         const DIATONIC_STEPS = [0, 2, 4, 5, 7, 9, 11];
 
         function generateMelody(difficulty) {
@@ -1307,34 +1466,9 @@
             let currentMidi = Math.round((vocalRange.min + vocalRange.max) / 2);
             currentMidi = snapToDiatonic(currentMidi);
 
-            const patternsLevel1 = [
-                [4],
-                [2, 2],
-                [2, 1, 1],
-                [1, 1, 2],
-                [1, 1, 1, 1],
-                [1, 2, 1]
-            ];
-
-            const patternsLevel2 = patternsLevel1.concat([
-                [1, 1, 1, 0.5, 0.5],
-                [0.5, 0.5, 1, 2],
-                [2, 1, 0.5, 0.5],
-                [1, 0.5, 0.5, 1, 1],
-                [0.5, 0.5, 0.5, 0.5, 2],
-                [1, 0.5, 0.5, 2],
-                [0.5, 0.5, 1, 0.5, 0.5, 1]
-            ]);
-
-            const patternsLevel3 = patternsLevel2.concat([
-                [0.25, 0.25, 0.25, 0.25, 1, 2],
-                [1, 0.25, 0.25, 0.25, 0.25, 2],
-                [0.5, 0.25, 0.25, 1, 2],
-                [1, 0.5, 0.25, 0.25, 1, 1],
-                [0.25, 0.25, 0.5, 1, 2],
-                [2, 1, 0.5, 0.25, 0.25],
-                [1, 1, 1, 0.25, 0.25, 0.25, 0.25]
-            ]);
+            const patternsLevel1 = [ [4], [2, 2], [2, 1, 1], [1, 1, 2], [1, 1, 1, 1], [1, 2, 1] ];
+            const patternsLevel2 = patternsLevel1.concat([ [1, 1, 1, 0.5, 0.5], [0.5, 0.5, 1, 2], [2, 1, 0.5, 0.5], [1, 0.5, 0.5, 1, 1], [0.5, 0.5, 0.5, 0.5, 2], [1, 0.5, 0.5, 2], [0.5, 0.5, 1, 0.5, 0.5, 1] ]);
+            const patternsLevel3 = patternsLevel2.concat([ [0.25, 0.25, 0.25, 0.25, 1, 2], [1, 0.25, 0.25, 0.25, 0.25, 2], [0.5, 0.25, 0.25, 1, 2], [1, 0.5, 0.25, 0.25, 1, 1], [0.25, 0.25, 0.5, 1, 2], [2, 1, 0.5, 0.25, 0.25], [1, 1, 1, 0.25, 0.25, 0.25, 0.25] ]);
 
             let activePatterns = patternsLevel1;
             let totalBars = 4;
@@ -1350,7 +1484,6 @@
                 totalBars = 16;
             }
 
-            // Lead-in: 1 bar (4 beats) count-in
             let timeAccumulator = 1 * (4 * BEAT_MS);
 
             for (let bar = 0; bar < totalBars; bar++) {
@@ -1365,7 +1498,9 @@
                         duration: durationMs,
                         hitState: 'pending',
                         soundPlayed: false,
-                        accumulatedHitFrames: 0
+                        accumulatedHitFrames: 0,
+                        showX2: false,
+                        x2Time: 0
                     });
 
                     timeAccumulator += durationMs;
@@ -1391,7 +1526,7 @@
         function snapToDiatonic(midi, stepOffset = 0) {
             const octave = Math.floor(midi / 12);
             const noteClass = midi % 12;
-           
+            
             let closestStepIdx = 0;
             let minDiff = 99;
             for (let i = 0; i < DIATONIC_STEPS.length; i++) {
@@ -1401,20 +1536,20 @@
                     closestStepIdx = i;
                 }
             }
-           
+            
             closestStepIdx += stepOffset;
             let targetOctave = octave;
-           
+            
             while (closestStepIdx < 0) { closestStepIdx += 7; targetOctave--; }
             while (closestStepIdx >= 7) { closestStepIdx -= 7; targetOctave++; }
-           
+            
             return (targetOctave * 12) + DIATONIC_STEPS[closestStepIdx];
         }
 
-        // --- Pre-Roll Scale Playback ---
         let previewScaleActiveNote = null;
 
         async function playScalePreRoll(scaleData) {
+            if (scaleData.sequence.length === 0) return;
             const { rootNoteName, sequence } = scaleData;
             const noteDuration = 280;
             const statusEl = document.getElementById('status');
@@ -1425,10 +1560,10 @@
                 if (!isPlaying) return;
                 const note = sequence[i];
                 previewScaleActiveNote = note;
-               
-                playGuideTone(midiToFreq(note), noteDuration * 0.92);
+                
+                playGuideTone(midiToFreq(note), noteDuration * 0.92, true); // Force play reference scale
                 drawScene();
-               
+                
                 await new Promise(r => setTimeout(r, noteDuration));
             }
 
@@ -1437,7 +1572,6 @@
             statusEl.textContent = isStepMode ? ' Step Mode: Match pitch to advance!' : ' Count in starting... Get ready to sing!';
         }
 
-        // --- Idle & Live Tuner Rendering ---
         function startIdleRenderLoop() {
             if (idleAnimationFrameId) cancelAnimationFrame(idleAnimationFrameId);
             function loop() {
@@ -1453,18 +1587,16 @@
             const clefHeight = 110;
             const rollY = clefHeight;
             const rollHeight = canvas.height - clefHeight;
-            const viewMinPitch = vocalRange.min - 3;
-            const viewMaxPitch = vocalRange.max + 3;
-            const totalPitches = (viewMaxPitch - viewMinPitch) + 1;
+            
+            const totalPitches = (activeViewMaxPitch - activeViewMinPitch) + 1;
             const semitoneHeight = rollHeight / totalPitches;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Lanes
-            for (let p = viewMinPitch; p <= viewMaxPitch; p++) {
-                const yTop = rollY + (viewMaxPitch - p) * semitoneHeight;
+            for (let p = activeViewMinPitch; p <= activeViewMaxPitch; p++) {
+                const yTop = rollY + (activeViewMaxPitch - p) * semitoneHeight;
                 const isBlack = isBlackKey(p);
-                ctx.fillStyle = isBlack ? '#0d0d14' : '#161622';
+                ctx.fillStyle = isBlack ? getComputedStyle(document.body).getPropertyValue('--lane-dark').trim() || '#0d0d14' : getComputedStyle(document.body).getPropertyValue('--lane-light').trim() || '#161622';
                 ctx.fillRect(PIANO_WIDTH, yTop, canvas.width - PIANO_WIDTH, semitoneHeight);
                 ctx.strokeStyle = '#222230';
                 ctx.lineWidth = 1;
@@ -1474,7 +1606,6 @@
                 ctx.stroke();
             }
 
-            // Target Line (Red)
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--hitline-color').trim() || '#ef4444';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -1482,27 +1613,24 @@
             ctx.lineTo(HIT_ZONE_X, canvas.height);
             ctx.stroke();
 
-            // Draw Piano & Staff
             const activeStaffNote = previewScaleActiveNote || (currentDetectedMidi > 0 ? Math.round(currentDetectedMidi) : null);
-            drawVerticalPiano(ctx, rollY, semitoneHeight, viewMinPitch, viewMaxPitch, activeStaffNote, currentDetectedMidi);
+            drawVerticalPiano(ctx, rollY, semitoneHeight, activeViewMinPitch, activeViewMaxPitch, activeStaffNote, currentDetectedMidi);
             drawTrebleClef(ctx, clefHeight, activeStaffNote);
 
-            // Draw Live Laser Line on Piano Roll
             if (currentDetectedMidi > 0 && !previewScaleActiveNote) {
-                drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch);
+                drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, activeViewMinPitch, activeViewMaxPitch);
             }
 
-            // LARGE GUITAR-STYLE TUNER DISPLAY ON THE RIGHT SIDE
             if (isLiveTuner) {
                 drawLargeGuitarTunerDisplay(ctx, rollY, rollHeight);
             }
         }
 
-        // Draws the live tuner line, frequency tag, and cents indicator across piano roll and staff
         function drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch) {
             let displayMidi = currentDetectedMidi;
-            while (displayMidi < viewMinPitch) displayMidi += 12;
-            while (displayMidi > viewMaxPitch) displayMidi -= 12;
+            
+            if (displayMidi < viewMinPitch) displayMidi = viewMinPitch - 0.5;
+            if (displayMidi > viewMaxPitch) displayMidi = viewMaxPitch + 0.5;
 
             const detectedY = rollY + (viewMaxPitch - displayMidi) * semitoneHeight + semitoneHeight / 2;
             const roundedMidi = Math.round(currentDetectedMidi);
@@ -1511,16 +1639,14 @@
             const cents = Math.round(1200 * Math.log2(currentDetectedFreq / targetFreq));
             const absCents = Math.abs(cents);
 
-            let tuneColor = '#22c55e'; // In tune
+            let tuneColor = '#22c55e';
             if (absCents > 30) {
-                tuneColor = '#ef4444'; // Off pitch
+                tuneColor = '#ef4444';
             } else if (absCents > 18) {
-                tuneColor = '#facc15'; // Slightly off
+                tuneColor = '#facc15';
             }
 
             ctx.save();
-
-            // Glowing Laser Guide Line
             ctx.strokeStyle = tuneColor;
             ctx.lineWidth = 3;
             ctx.shadowColor = tuneColor;
@@ -1530,7 +1656,6 @@
             ctx.lineTo(isLiveTuner ? canvas.width - 410 : canvas.width, detectedY);
             ctx.stroke();
 
-            // Live Pill Badge at Target Line
             const badgeW = 205;
             const badgeH = 26;
             const badgeX = Math.min(canvas.width - badgeW - (isLiveTuner ? 420 : 10), Math.max(PIANO_WIDTH + 10, HIT_ZONE_X - 10));
@@ -1554,10 +1679,6 @@
             ctx.restore();
         }
 
-        // =========================================================================
-        // LARGE GUITAR-STYLE TUNER DISPLAY (SWEEPS FROM 9 O'CLOCK TO 3 O'CLOCK)
-        // Midpoint at 12 o'clock = Perfect Pitch. Flashes green with vocal vibrato tolerance (±20¢)
-        // =========================================================================
         function drawLargeGuitarTunerDisplay(ctx, rollY, rollHeight) {
             ctx.save();
 
@@ -1566,7 +1687,6 @@
             const tunerX = canvas.width - tunerW - 14;
             const tunerY = rollY + (rollHeight - tunerH) / 2;
 
-            // 1. Outer Heavy-Duty Metallic / Stage Tuner Housing
             const housingGrad = ctx.createLinearGradient(tunerX, tunerY, tunerX, tunerY + tunerH);
             housingGrad.addColorStop(0, '#1c2234');
             housingGrad.addColorStop(0.5, '#101422');
@@ -1580,29 +1700,22 @@
             ctx.fill();
             ctx.stroke();
 
-            // Screw rivets at four corners for vintage pedal aesthetic
             const cornerDist = 10;
             const corners = [
-                [tunerX + cornerDist, tunerY + cornerDist],
-                [tunerX + tunerW - cornerDist, tunerY + cornerDist],
-                [tunerX + cornerDist, tunerY + tunerH - cornerDist],
-                [tunerX + tunerW - cornerDist, tunerY + tunerH - cornerDist]
+                [tunerX + cornerDist, tunerY + cornerDist], [tunerX + tunerW - cornerDist, tunerY + cornerDist],
+                [tunerX + cornerDist, tunerY + tunerH - cornerDist], [tunerX + tunerW - cornerDist, tunerY + tunerH - cornerDist]
             ];
             ctx.fillStyle = '#4b5563';
             corners.forEach(([cx, cy]) => {
-                ctx.beginPath();
-                ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2); ctx.fill();
             });
 
-            // Tuner Header Label
             ctx.fillStyle = '#9ca3af';
             ctx.font = '800 10px -apple-system, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("CHROMATIC VOCAL GUITAR TUNER", tunerX + tunerW / 2, tunerY + 16);
 
-            // 2. Inner Recessed Glass Meter Display Window
             const meterPadX = 14;
             const meterPadY = 28;
             const meterW = tunerW - meterPadX * 2;
@@ -1618,7 +1731,6 @@
             ctx.fill();
             ctx.stroke();
 
-            // 3. Pitch & Cents Mathematics
             let cents = 0;
             let noteName = "--";
             let freqText = "-- Hz";
@@ -1632,33 +1744,23 @@
                 freqText = `${currentDetectedFreq.toFixed(1)} Hz`;
             }
 
-            // Clamped cents (-50 to +50 cents covers the full 9 o'clock to 3 o'clock sweep)
             const clampedCents = Math.max(-50, Math.min(50, cents));
-           
-            // Vocal vibrato tolerance window: +/- 20 cents
             const isWithinTolerance = (hasSignal && Math.abs(cents) <= 20.0);
             const isFlat = (hasSignal && cents < -20.0);
             const isSharp = (hasSignal && cents > 20.0);
 
-            // Compute target angle:
-            // 9 o'clock = Math.PI rad (180 deg, flat)
-            // 12 o'clock = 1.5 * Math.PI rad (270 deg, perfect pitch)
-            // 3 o'clock = 2.0 * Math.PI rad (360 deg, sharp)
-            let targetAngle = Math.PI * 1.5; // Rest at 12 o'clock when silent
+            let targetAngle = Math.PI * 1.5; 
             if (hasSignal) {
-                const sweepFraction = (clampedCents + 50) / 100; // 0.0 (flat) to 1.0 (sharp)
+                const sweepFraction = (clampedCents + 50) / 100;
                 targetAngle = Math.PI + sweepFraction * Math.PI;
             }
 
-            // Smooth swinging arm needle movement (simulates analog physical galvanometer damping)
             tunerNeedleAngle += (targetAngle - tunerNeedleAngle) * 0.22;
 
-            // 4. Dial Geometry
             const pivotX = meterX + meterW / 2;
             const pivotY = meterY + meterH * 0.82;
             const arcR = meterH * 0.62;
 
-            // Ambient Green Flash Backlight Glow when within acceptable pitch range!
             if (isWithinTolerance) {
                 const pulse = 0.22 + 0.14 * Math.sin(Date.now() / 90);
                 const glowGrad = ctx.createRadialGradient(pivotX, pivotY - arcR * 0.6, 10, pivotX, pivotY - arcR * 0.6, arcR * 1.2);
@@ -1672,9 +1774,8 @@
                 ctx.fill();
             }
 
-            // 5. Draw Vocal Tolerance Band (Green highlight arc between -20¢ and +20¢)
-            const tolAngleStart = Math.PI + (30 / 100) * Math.PI; // -20 cents
-            const tolAngleEnd = Math.PI + (70 / 100) * Math.PI;   // +20 cents
+            const tolAngleStart = Math.PI + (30 / 100) * Math.PI; 
+            const tolAngleEnd = Math.PI + (70 / 100) * Math.PI;   
 
             ctx.strokeStyle = isWithinTolerance ? 'rgba(34, 197, 94, 0.85)' : 'rgba(34, 197, 94, 0.45)';
             ctx.lineWidth = 10;
@@ -1682,20 +1783,17 @@
             ctx.arc(pivotX, pivotY, arcR - 5, tolAngleStart, tolAngleEnd);
             ctx.stroke();
 
-            // Main Arc Line (9 o'clock to 3 o'clock)
             ctx.strokeStyle = '#374151';
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.arc(pivotX, pivotY, arcR, Math.PI, Math.PI * 2);
             ctx.stroke();
 
-            // 6. Draw Ticks & Labels (-50¢ to +50¢)
             for (let cVal = -50; cVal <= 50; cVal += 5) {
                 const frac = (cVal + 50) / 100;
                 const ang = Math.PI + frac * Math.PI;
                 const isMajor = (cVal % 10 === 0);
                 const isCenter = (cVal === 0);
-                const isTolBound = (cVal === -20 || cVal === 20);
 
                 const rInner = arcR - (isCenter ? 14 : (isMajor ? 10 : 5));
                 const rOuter = arcR + (isCenter ? 3 : 0);
@@ -1721,7 +1819,6 @@
                 }
                 ctx.stroke();
 
-                // Numbers at key points
                 if (cVal === -50 || cVal === -20 || cVal === 0 || cVal === 20 || cVal === 50) {
                     const labelR = arcR - 22;
                     const lx = pivotX + labelR * Math.cos(ang);
@@ -1735,10 +1832,8 @@
                 }
             }
 
-            // 7. Status LEDs & Directional Arrows Across Top
             const ledY = meterY + 16;
-           
-            // Flat Arrow / LED (Left)
+            
             ctx.fillStyle = isFlat ? '#ef4444' : '#1e293b';
             if (isFlat) { ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 10; }
             ctx.font = 'bold 12px sans-serif';
@@ -1746,7 +1841,6 @@
             ctx.fillText("◀ ♭ FLAT", meterX + 10, ledY);
             ctx.shadowBlur = 0;
 
-            // Center IN TUNE Flashing Strobe LED (12 o'clock)
             ctx.fillStyle = isWithinTolerance ? '#22c55e' : '#1e293b';
             if (isWithinTolerance) { ctx.shadowColor = '#22c55e'; ctx.shadowBlur = 14; }
             ctx.beginPath();
@@ -1754,14 +1848,12 @@
             ctx.fill();
             ctx.shadowBlur = 0;
 
-            // Sharp Arrow / LED (Right)
             ctx.fillStyle = isSharp ? '#ef4444' : '#1e293b';
             if (isSharp) { ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 10; }
             ctx.textAlign = 'right';
             ctx.fillText("SHARP ♯ ▶", meterX + meterW - 10, ledY);
             ctx.shadowBlur = 0;
 
-            // 8. The Swinging Needle Arm
             const needleR = arcR + 2;
             const needleTipX = pivotX + needleR * Math.cos(tunerNeedleAngle);
             const needleTipY = pivotY + needleR * Math.sin(tunerNeedleAngle);
@@ -1773,7 +1865,6 @@
                 else needleColor = '#ef4444';
             }
 
-            // Needle Shadow & Glow
             ctx.save();
             ctx.strokeStyle = needleColor;
             ctx.lineWidth = 3.5;
@@ -1788,7 +1879,6 @@
             ctx.stroke();
             ctx.restore();
 
-            // Center Pivot Hub
             ctx.fillStyle = '#0f172a';
             ctx.strokeStyle = isWithinTolerance ? '#22c55e' : '#475569';
             ctx.lineWidth = 2.5;
@@ -1797,16 +1887,13 @@
             ctx.fill();
             ctx.stroke();
 
-            // Inner Hub Screw
             ctx.fillStyle = '#cbd5e1';
             ctx.beginPath();
             ctx.arc(pivotX, pivotY, 3, 0, Math.PI * 2);
             ctx.fill();
 
-            // 9. Digital Center Displays (Large Note Name, Frequency, Cents)
             const infoY = meterY + meterH - 26;
 
-            // Large Note Name
             ctx.fillStyle = isWithinTolerance ? '#22c55e' : (hasSignal ? '#facc15' : '#475569');
             ctx.font = '900 28px -apple-system, sans-serif';
             ctx.textAlign = 'center';
@@ -1816,7 +1903,6 @@
             ctx.fillText(noteName, pivotX, infoY - 8);
             ctx.shadowBlur = 0;
 
-            // Exact Cents & In-Tune Tag
             ctx.font = '700 11px monospace';
             ctx.textBaseline = 'middle';
             if (hasSignal) {
@@ -1836,42 +1922,38 @@
             ctx.restore();
         }
 
-        // --- Main Gameplay Rendering Loop ---
         function renderLoop() {
             if (!isPlaying) return;
-           
+            
             const now = performance.now();
             const elapsed = now - playbackStartTime;
-           
+            
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-           
+            
             const clefHeight = 110;
             const rollY = clefHeight;
             const rollHeight = canvas.height - clefHeight;
-           
-            const viewMinPitch = vocalRange.min - 3;
-            const viewMaxPitch = vocalRange.max + 3;
-            const totalPitches = (viewMaxPitch - viewMinPitch) + 1;
+            
+            const totalPitches = (activeViewMaxPitch - activeViewMinPitch) + 1;
             const semitoneHeight = rollHeight / totalPitches;
-           
+            
             function getPitchTop(midiNum) {
-                return rollY + (viewMaxPitch - midiNum) * semitoneHeight;
+                return rollY + (activeViewMaxPitch - midiNum) * semitoneHeight;
             }
 
             function getPitchCenterY(midiNum) {
                 return getPitchTop(midiNum) + semitoneHeight / 2;
             }
 
-            // Draw Background Grid Horizontal Lanes
-            for (let p = viewMinPitch; p <= viewMaxPitch; p++) {
+            for (let p = activeViewMinPitch; p <= activeViewMaxPitch; p++) {
                 const yTop = getPitchTop(p);
                 const isBlack = isBlackKey(p);
-               
+                
                 ctx.fillStyle = isBlack
                     ? (getComputedStyle(document.body).getPropertyValue('--lane-dark').trim() || '#0d0d14')
                     : (getComputedStyle(document.body).getPropertyValue('--lane-light').trim() || '#161622');
                 ctx.fillRect(PIANO_WIDTH, yTop, canvas.width - PIANO_WIDTH, semitoneHeight);
-               
+                
                 ctx.strokeStyle = '#222230';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
@@ -1882,21 +1964,20 @@
 
             let activeNoteMidi = null;
             let virtualElapsed = elapsed;
-           
-            // Step Mode: pauses time at target note
+            
             if (isStepMode && stepModeCurrentIndex < noteTimeline.length) {
                 const currentNote = noteTimeline[stepModeCurrentIndex];
                 if (virtualElapsed >= currentNote.startTime) {
                     virtualElapsed = currentNote.startTime;
                     playbackStartTime = now - virtualElapsed;
-                   
+                    
                     activeNoteMidi = currentNote.pitch;
 
                     if (!currentNote.soundPlayed) {
                         currentNote.soundPlayed = true;
                         playGuideTone(midiToFreq(currentNote.pitch), 600);
                     }
-                   
+                    
                     if (currentDetectedMidi > 0) {
                         const pitchDiff = getPitchClassDistance(currentDetectedMidi, currentNote.pitch);
 
@@ -1919,23 +2000,23 @@
                 }
             }
 
-            // Metronome Beat Tracker
             if (!isStepMode) {
                 const currentBeat = Math.floor(virtualElapsed / BEAT_MS);
                 if (currentBeat > lastPlayedBeatIndex) {
                     for (let b = Math.max(0, lastPlayedBeatIndex + 1); b <= currentBeat; b++) {
                         if (b < 4) {
                             playCountInClick(b === 0);
-                        } else {
-                            const beatInBar = (b - 4) % 4;
-                            playBassDrum(beatInBar === 0);
+                            
+                            // Play guide tone on the 3rd beat of count-in (index 2) when muted
+                            if (b === 2 && isToneMuted && noteTimeline.length > 0) {
+                                playGuideTone(midiToFreq(noteTimeline[0].pitch), BEAT_MS, true);
+                            }
                         }
                     }
                     lastPlayedBeatIndex = currentBeat;
                 }
             }
 
-            // Faint Grey Vertical Grid Lines (Barlines 2px, Beats 1px)
             const visibleMinTime = virtualElapsed + (PIANO_WIDTH - HIT_ZONE_X) / PIXELS_PER_MS;
             const visibleMaxTime = virtualElapsed + (canvas.width - HIT_ZONE_X) / PIXELS_PER_MS;
             const startBeat = Math.floor(visibleMinTime / BEAT_MS);
@@ -1979,7 +2060,6 @@
                 }
             }
 
-            // Hit Zone Target Line (Red)
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--hitline-color').trim() || '#ef4444';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -1987,13 +2067,12 @@
             ctx.lineTo(HIT_ZONE_X, canvas.height);
             ctx.stroke();
 
-            // Draw Melody Blocks & Game Hit Recognition
             noteTimeline.forEach(note => {
                 const noteX = HIT_ZONE_X + (note.startTime - virtualElapsed) * PIXELS_PER_MS;
                 const noteWidth = note.duration * PIXELS_PER_MS;
                 const noteY = getPitchTop(note.pitch) + 2;
                 const noteHeight = Math.max(14, semitoneHeight - 4);
-               
+                
                 if (!isStepMode && virtualElapsed >= note.startTime && !note.soundPlayed) {
                     note.soundPlayed = true;
                     playGuideTone(midiToFreq(note.pitch), note.duration);
@@ -2004,15 +2083,15 @@
                     const drawW = (noteX + noteWidth) - drawX;
 
                     if (note.hitState === 'perfect') {
-                        ctx.fillStyle = '#22c55e'; // Green
+                        ctx.fillStyle = '#22c55e'; 
                     } else if (note.hitState === 'earlyLate') {
-                        ctx.fillStyle = '#f97316'; // Orange
+                        ctx.fillStyle = '#f97316'; 
                     } else if (note.hitState === 'miss') {
-                        ctx.fillStyle = '#ef4444'; // Red
+                        ctx.fillStyle = '#ef4444'; 
                     } else {
-                        ctx.fillStyle = '#eab308'; // Scrolling: Yellow
+                        ctx.fillStyle = '#eab308'; 
                     }
-                   
+                    
                     ctx.beginPath();
                     ctx.roundRect(drawX, noteY, drawW, noteHeight, 4);
                     ctx.fill();
@@ -2028,21 +2107,45 @@
                         ctx.textBaseline = 'middle';
                         ctx.fillText(getNoteName(note.pitch), drawX + 6, noteY + noteHeight / 2);
                     }
+                    
+                    if (note.showX2) {
+                        const age = now - note.x2Time;
+                        if (age < 1500) {
+                            const yOffset = Math.sin(age * 0.01) * 6;
+                            const scale = Math.max(1, 1.8 - (age/600));
+                            
+                            ctx.save();
+                            ctx.translate(drawX + Math.min(drawW, 40) / 2, noteY - 10 - yOffset);
+                            ctx.scale(scale, scale);
+                            
+                            const hue = (age * 0.6) % 360;
+                            ctx.fillStyle = `hsl(${hue}, 100%, 65%)`;
+                            ctx.strokeStyle = '#000000';
+                            ctx.lineWidth = 3;
+                            
+                            ctx.font = '900 16px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'bottom';
+                            
+                            ctx.strokeText("x2", 0, 0);
+                            ctx.fillText("x2", 0, 0);
+                            ctx.restore();
+                        }
+                    }
                 }
 
-                // Robust Pitch-Class Invariant Hit Recognition
                 if (isGameMode && note.hitState === 'pending') {
                     const inTargetWindow = (virtualElapsed >= note.startTime - 120 && virtualElapsed <= note.startTime + note.duration + 80);
-                   
+                    
                     if (inTargetWindow) {
                         activeNoteMidi = note.pitch;
-                       
+                        
                         if (currentDetectedMidi > 0) {
                             const pitchDiff = getPitchClassDistance(currentDetectedMidi, note.pitch);
-                           
+                            
                             if (pitchDiff <= HIT_TOLERANCE_SEMITONES) {
                                 note.accumulatedHitFrames = (note.accumulatedHitFrames || 0) + 1;
-                               
+                                
                                 if (note.accumulatedHitFrames >= 3) {
                                     const timeOffset = virtualElapsed - note.startTime;
                                     const isEarlyLate = (timeOffset < -30 || timeOffset > note.duration * 0.90);
@@ -2055,11 +2158,19 @@
                                         updateScoreUI();
                                     } else {
                                         note.hitState = 'perfect';
-                                        score += 10 + streak;
+                                        let points = 10 + streak;
+                                        
+                                        score += points; // Keeping base score normal for easy final multiplier mapping
                                         streak++;
                                         if (streak > maxStreak) maxStreak = streak;
                                         totalNotesHit++;
                                         perfectHits++;
+                                        
+                                        if (isToneMuted) {
+                                            note.showX2 = true;
+                                            note.x2Time = now;
+                                        }
+
                                         updateScoreUI();
                                         spawnConfetti(HIT_ZONE_X, getPitchCenterY(note.pitch));
                                     }
@@ -2075,32 +2186,32 @@
                 }
             });
 
-            // Pitch Trace Glow Line
             if (pitchTraceHistory.length > 0) {
                 ctx.lineWidth = 4;
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
-               
+                
                 for (let i = 0; i < pitchTraceHistory.length - 1; i++) {
                     const pt1 = pitchTraceHistory[i];
                     const pt2 = pitchTraceHistory[i+1];
-                   
+                    
                     const x1 = HIT_ZONE_X - (virtualElapsed - pt1.time) * PIXELS_PER_MS;
                     const x2 = HIT_ZONE_X - (virtualElapsed - pt2.time) * PIXELS_PER_MS;
-                   
+                    
                     if (x2 < PIANO_WIDTH) continue;
-                   
+                    
                     let dMidi1 = pt1.pitch;
-                    while (dMidi1 < viewMinPitch) dMidi1 += 12;
-                    while (dMidi1 > viewMaxPitch) dMidi1 -= 12;
-                   
                     let dMidi2 = pt2.pitch;
-                    while (dMidi2 < viewMinPitch) dMidi2 += 12;
-                    while (dMidi2 > viewMaxPitch) dMidi2 -= 12;
+                    
+                    if (dMidi1 < activeViewMinPitch) dMidi1 = activeViewMinPitch - 0.5;
+                    if (dMidi1 > activeViewMaxPitch) dMidi1 = activeViewMaxPitch + 0.5;
+                    
+                    if (dMidi2 < activeViewMinPitch) dMidi2 = activeViewMinPitch - 0.5;
+                    if (dMidi2 > activeViewMaxPitch) dMidi2 = activeViewMaxPitch + 0.5;
 
                     const y1 = getPitchCenterY(dMidi1);
                     const y2 = getPitchCenterY(dMidi2);
-                   
+                    
                     ctx.strokeStyle = '#eab308';
                     if (activeNoteMidi) {
                         const diff = getPitchClassDistance(pt1.pitch, activeNoteMidi);
@@ -2116,15 +2227,13 @@
                 }
             }
 
-            drawVerticalPiano(ctx, rollY, semitoneHeight, viewMinPitch, viewMaxPitch, activeNoteMidi, currentDetectedMidi);
+            drawVerticalPiano(ctx, rollY, semitoneHeight, activeViewMinPitch, activeViewMaxPitch, activeNoteMidi, currentDetectedMidi);
             drawTrebleClef(ctx, clefHeight, activeNoteMidi);
 
-            // Display Live Pitch Laser Line and Tag directly on canvas during gameplay
             if (currentDetectedMidi > 0) {
-                drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, viewMinPitch, viewMaxPitch);
+                drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, activeViewMinPitch, activeViewMaxPitch);
             }
 
-            // Visual Count-In Banner during 4-beat count-in
             if (virtualElapsed < 4 * BEAT_MS && !isStepMode) {
                 const countNum = Math.min(4, Math.floor(virtualElapsed / BEAT_MS) + 1);
                 ctx.save();
@@ -2135,6 +2244,33 @@
                 ctx.shadowColor = 'rgba(250, 204, 21, 0.75)';
                 ctx.shadowBlur = 14;
                 ctx.fillText(`COUNT IN: ${countNum}`, (canvas.width + PIANO_WIDTH) / 2, rollY + 45);
+                ctx.restore();
+            }
+
+            // =========================================================================
+            // VISUALLY APPEALING POWER-UP TEXT OVERLAY (WHEN MUTED)
+            // =========================================================================
+            if (isToneMuted && !isStepMode && noteTimeline.length > 0) {
+                ctx.save();
+                const bounce = Math.sin(now / 150) * 5;
+                const flash = Math.abs(Math.sin(now / 200));
+                const hue = (now / 10) % 360;
+                
+                ctx.fillStyle = `hsl(${hue}, 100%, ${60 + flash * 20}%)`;
+                ctx.font = '900 44px sans-serif'; // Doubled in size from 22px
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+                ctx.shadowBlur = 15 + flash * 15;
+                
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 6; 
+                
+                const textX = (canvas.width + PIANO_WIDTH) / 2;
+                const textY = 25 + bounce; // Shifted slightly down for the bigger text
+                
+                ctx.strokeText("⚡ x2 Power-Up (Keyboard Muted) ⚡", textX, textY);
+                ctx.fillText("⚡ x2 Power-Up (Keyboard Muted) ⚡", textX, textY);
                 ctx.restore();
             }
 
@@ -2155,10 +2291,8 @@
             if (isPlaying) requestAnimationFrame(renderLoop);
         }
 
-        // --- Vertical DAW Piano Roll Keyboard on the Side ---
         function drawVerticalPiano(ctx, rollY, semitoneHeight, minPitch, maxPitch, activeMidi, detectedMidi) {
             ctx.save();
-
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, rollY, PIANO_WIDTH, canvas.height - rollY);
 
@@ -2224,21 +2358,16 @@
             ctx.restore();
         }
 
-        // --- Treble Clef Notation Engine ---
         function midiToStaffInfo(midi) {
             const roundedMidi = Math.round(midi);
             let displayMidi = roundedMidi;
             let octaveMark = null;
 
             if (displayMidi < 60) {
-                while (displayMidi < 60) {
-                    displayMidi += 12;
-                }
+                while (displayMidi < 60) displayMidi += 12;
                 octaveMark = '8vb';
             } else if (displayMidi > 79) {
-                while (displayMidi > 79) {
-                    displayMidi -= 12;
-                }
+                while (displayMidi > 79) displayMidi -= 12;
                 octaveMark = '8va';
             }
 
@@ -2255,11 +2384,7 @@
             const currentDiatonic = octave * 7 + baseStep;
             const staffStep = currentDiatonic - e4Diatonic;
 
-            return {
-                staffStep: staffStep,
-                hasSharp: hasSharp,
-                octaveMark: octaveMark
-            };
+            return { staffStep: staffStep, hasSharp: hasSharp, octaveMark: octaveMark };
         }
 
         function drawTrebleClef(ctx, height, activeMidi) {
@@ -2267,7 +2392,7 @@
             ctx.fillRect(0, 0, canvas.width, height);
 
             const lineSpacing = 10;
-            const line1_y = 75; // Line 1 = E4 (bottom line)
+            const line1_y = 75; // E4
             const staffLines = 5;
 
             ctx.strokeStyle = '#1e293b';
@@ -2310,20 +2435,14 @@
                 if (noteInfo.staffStep <= -2) {
                     for (let s = -2; s >= noteInfo.staffStep; s -= 2) {
                         const ly = line1_y - (s * halfStep);
-                        ctx.beginPath();
-                        ctx.moveTo(noteX - 12, ly);
-                        ctx.lineTo(noteX + 12, ly);
-                        ctx.stroke();
+                        ctx.beginPath(); ctx.moveTo(noteX - 12, ly); ctx.lineTo(noteX + 12, ly); ctx.stroke();
                     }
                 }
 
                 if (noteInfo.staffStep >= 10) {
                     for (let s = 10; s <= noteInfo.staffStep; s -= 2) {
                         const ly = line1_y - (s * halfStep);
-                        ctx.beginPath();
-                        ctx.moveTo(noteX - 12, ly);
-                        ctx.lineTo(noteX + 12, ly);
-                        ctx.stroke();
+                        ctx.beginPath(); ctx.moveTo(noteX - 12, ly); ctx.lineTo(noteX + 12, ly); ctx.stroke();
                     }
                 }
 
@@ -2345,7 +2464,7 @@
                     ctx.font = 'italic bold 11px sans-serif';
                     ctx.textAlign = 'left';
                     ctx.textBaseline = 'middle';
-                   
+                    
                     if (noteInfo.octaveMark === '8vb') {
                         ctx.fillText('8vb (sing octave lower)', noteX + 16, line1_y + 14);
                     } else {
@@ -2355,13 +2474,11 @@
             }
         }
 
-        // --- Gamification Effects ---
         let confetti = [];
         function spawnConfetti(x, y) {
             for (let i = 0; i < 15; i++) {
                 confetti.push({
-                    x: x,
-                    y: y,
+                    x: x, y: y,
                     vx: (Math.random() - 0.5) * 8,
                     vy: (Math.random() * -6) - 2,
                     color: Math.random() > 0.5 ? '#22c55e' : '#facc15',
@@ -2375,11 +2492,8 @@
             confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
             for (let i = confetti.length - 1; i >= 0; i--) {
                 let p = confetti[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                p.vy += 0.2;
-                p.life -= 0.02;
-               
+                p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life -= 0.02;
+                
                 if (p.life <= 0) {
                     confetti.splice(i, 1);
                 } else {
@@ -2392,100 +2506,153 @@
         }
 
         function updateScoreUI() {
-            document.getElementById('score-text').textContent = score;
-            document.getElementById('streak-text').textContent = `x${streak}`;
+            if (isStepMode) {
+                document.getElementById('score-text').textContent = "N/A";
+                document.getElementById('streak-text').textContent = "Step Mode";
+            } else {
+                let displayScore = isToneMuted ? score * 2 : score;
+                document.getElementById('score-text').textContent = displayScore;
+                document.getElementById('streak-text').textContent = `x${streak}`;
+            }
         }
 
         async function endGame() {
             isPlaying = false;
-           
+            
             const totalNotes = totalNotesHit + totalNotesMissed;
             const accuracyVal = totalNotes > 0
                 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalNotes) * 100).toFixed(1)
                 : "100.0";
             const accuracyNum = parseFloat(accuracyVal);
 
+            // Double the score logic for the final tally and spreadsheet submission
+            const finalScore = isToneMuted ? score * 2 : score;
+
             document.getElementById('summary-student').textContent = currentStudentName || "Anonymous";
-            document.getElementById('summary-score').textContent = `${accuracyVal}%`;
-            document.getElementById('summary-breakdown').textContent =
-                `(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${totalNotesMissed} Missed out of ${totalNotes} notes)`;
 
-            let badgeHTML = '';
-            if (accuracyNum >= 95) badgeHTML = '<div class="badge-box badge-platinum">PLATINUM VOCALIST (95%+)</div>';
-            else if (accuracyNum >= 80) badgeHTML = '<div class="badge-box badge-gold">GOLD VOCALIST (80%+)</div>';
-            else if (accuracyNum >= 60) badgeHTML = '<div class="badge-box badge-silver">SILVER VOCALIST (60%+)</div>';
-            else badgeHTML = '<div class="badge-box badge-bronze">BRONZE VOCALIST</div>';
-            document.getElementById('results-badge-container').innerHTML = badgeHTML;
+            if (isStepMode) {
+                document.getElementById('summary-score').textContent = "Step Mode Complete";
+                document.getElementById('summary-breakdown').textContent = "(Scores are only recorded in Game Mode)";
+                document.getElementById('results-badge-container').innerHTML = '<div class="badge-box badge-silver">PRACTICE COMPLETE</div>';
+                document.getElementById('game-rank-box').innerHTML = '<span>🟢</span> Practice Complete';
+                document.getElementById('save-status').textContent = 'Step mode results are not saved.';
+                document.getElementById('save-status').style.color = '#9ca3af';
 
-            const greenPct = totalNotes > 0 ? (perfectHits / totalNotes) * 100 : 0;
-            const orangePct = totalNotes > 0 ? (earlyLateHits / totalNotes) * 100 : 0;
-            const redPct = totalNotes > 0 ? (totalNotesMissed / totalNotes) * 100 : 0;
+                document.getElementById('bar-red').style.height = `0%`;
+                document.getElementById('bar-orange').style.height = `0%`;
+                document.getElementById('bar-green').style.height = `100%`;
+                
+                document.getElementById('btn-results-try-muted').style.display = 'none';
 
-            document.getElementById('bar-red').style.height = `${redPct}%`;
-            document.getElementById('bar-orange').style.height = `${orangePct}%`;
-            document.getElementById('bar-green').style.height = `${greenPct}%`;
+            } else {
+                document.getElementById('summary-score').textContent = `${accuracyVal}% (Score: ${finalScore})`;
+                document.getElementById('summary-breakdown').textContent =
+                    `(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${totalNotesMissed} Missed out of ${totalNotes} notes)`;
 
-            const rankBox = document.getElementById('game-rank-box');
-            rankBox.innerHTML = '<span style="color:#facc15;">Calculating Rank...</span>';
+                let badgeHTML = '';
+                if (accuracyNum >= 95) badgeHTML = '<div class="badge-box badge-platinum">PLATINUM VOCALIST (95%+)</div>';
+                else if (accuracyNum >= 80) badgeHTML = '<div class="badge-box badge-gold">GOLD VOCALIST (80%+)</div>';
+                else if (accuracyNum >= 60) badgeHTML = '<div class="badge-box badge-silver">SILVER VOCALIST (60%+)</div>';
+                else badgeHTML = '<div class="badge-box badge-bronze">BRONZE VOCALIST</div>';
+                document.getElementById('results-badge-container').innerHTML = badgeHTML;
+
+                const greenPct = totalNotes > 0 ? (perfectHits / totalNotes) * 100 : 0;
+                const orangePct = totalNotes > 0 ? (earlyLateHits / totalNotes) * 100 : 0;
+                const redPct = totalNotes > 0 ? (totalNotesMissed / totalNotes) * 100 : 0;
+
+                document.getElementById('bar-red').style.height = `${redPct}%`;
+                document.getElementById('bar-orange').style.height = `${orangePct}%`;
+                document.getElementById('bar-green').style.height = `${greenPct}%`;
+
+                const rankBox = document.getElementById('game-rank-box');
+                rankBox.innerHTML = '<span style="color:#facc15;">Calculating Rank...</span>';
+                
+                const tryMutedBtn = document.getElementById('btn-results-try-muted');
+                if (isToneMuted) {
+                    tryMutedBtn.style.display = 'none';
+                } else {
+                    tryMutedBtn.style.display = 'inline-flex';
+                }
+
+                if (APPS_SCRIPT_URL && APPS_SCRIPT_URL !== "YOUR_WEB_APP_URL_HERE") {
+                    document.getElementById('save-status').textContent = 'Saving to Leaderboard...';
+                    document.getElementById('save-status').style.color = '#38bdf8';
+                    
+                    const difficultySelect = document.getElementById('difficulty-select');
+                    const songSelect = document.getElementById('song-select');
+                    
+                    const diffText = difficultySelect.options[difficultySelect.selectedIndex].text;
+                    const isRandom = (songSelect.value === 'random');
+                    const songTitleText = isRandom ? "Random Melody" : songSelect.options[songSelect.selectedIndex].text;
+
+                    const payload = {
+                        studentName: currentStudentName,
+                        yearGroup: currentYearGroup,
+                        studentClass: currentStudentClass,
+                        score: finalScore, 
+                        accuracy: accuracyNum,
+                        maxStreak: maxStreak,
+                        totalNotes: totalNotes,
+                        perfect: perfectHits,
+                        earlyLate: earlyLateHits,
+                        missed: totalNotesMissed,
+                        vocalRange: `${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)}`,
+                        lowestNote: getNoteName(vocalRange.min),
+                        highestNote: getNoteName(vocalRange.max),
+                        difficultyLevel: isRandom ? diffText : "PianoPad Song",
+                        songTitle: songTitleText,
+                        songName: songTitleText,
+                        song: songTitleText,
+                        "Student Name": currentStudentName,
+                        "Year Group": currentYearGroup,
+                        "Class": currentStudentClass,
+                        "Difficulty Level": isRandom ? diffText : "PianoPad Song",
+                        "Vocal Range": `${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)}`,
+                        "Final Score": finalScore,
+                        "Accuracy (%)": accuracyNum,
+                        "Max Streak": maxStreak,
+                        "Total Notes": totalNotes,
+                        "Perfect Hits": perfectHits,
+                        "Early/Late Hits": earlyLateHits,
+                        "Misses": totalNotesMissed,
+                        "Song Title": songTitleText
+                    };
+
+                    try {
+                        const response = await fetch(APPS_SCRIPT_URL, {
+                            method: 'POST',
+                            body: JSON.stringify(payload),
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                        });
+                        const resJson = await response.json();
+                        if (resJson.result === "success") {
+                            document.getElementById('save-status').textContent = 'Saved to Sheet!';
+                            document.getElementById('save-status').style.color = '#22c55e';
+                            
+                            const displayTitle = isRandom ? diffText.split('(')[0].trim() : songTitleText;
+                            rankBox.innerHTML = `<span>🟢</span> ${displayTitle} Rank ${resJson.rank}/${resJson.totalEntries}`;
+                        } else {
+                            document.getElementById('save-status').textContent = 'Save Notice: ' + (resJson.error || 'Check Permissions');
+                            document.getElementById('save-status').style.color = '#ef4444';
+                            rankBox.innerHTML = `<span>🟢</span> Score Recorded`;
+                        }
+                    } catch (e) {
+                        console.error("Spreadsheet write error:", e);
+                        document.getElementById('save-status').textContent = 'Saved locally.';
+                        document.getElementById('save-status').style.color = '#9ca3af';
+                        rankBox.innerHTML = `<span>🟢</span> Score Recorded`;
+                    }
+                } else {
+                    document.getElementById('save-status').textContent = 'Web App URL not configured.';
+                    document.getElementById('save-status').style.color = '#9ca3af';
+                    document.getElementById('game-rank-box').innerHTML = `<span>🟢</span> Complete`;
+                }
+            }
 
             document.getElementById('results-modal').classList.add('open');
             document.getElementById('status').textContent = ' Exercise complete!';
-
-            if (APPS_SCRIPT_URL && APPS_SCRIPT_URL !== "YOUR_WEB_APP_URL_HERE") {
-                document.getElementById('save-status').textContent = 'Saving to Leaderboard...';
-               
-                const difficultySelect = document.getElementById('difficulty-select');
-                const diffText = difficultySelect.options[difficultySelect.selectedIndex].text;
-
-                const payload = {
-                    studentName: currentStudentName,
-                    yearGroup: currentYearGroup,
-                    studentClass: currentStudentClass,
-                    difficulty: diffText,
-                    vocalRange: `${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)}`,
-                    score: score,
-                    accuracy: accuracyNum,
-                    maxStreak: maxStreak,
-                    totalNotes: totalNotes,
-                    perfect: perfectHits,
-                    earlyLate: earlyLateHits,
-                    missed: totalNotesMissed
-                };
-
-                try {
-                    const response = await fetch(APPS_SCRIPT_URL, {
-                        method: 'POST',
-                        body: JSON.stringify(payload),
-                        headers: {
-                            'Content-Type': 'text/plain;charset=utf-8',
-                        }
-                    });
-                    const resJson = await response.json();
-                    if (resJson.result === "success") {
-                        document.getElementById('save-status').textContent = 'Saved to Sheet!';
-                        document.getElementById('save-status').style.color = '#22c55e';
-                       
-                        const shortDiff = diffText.split('(')[0].trim();
-                        rankBox.innerHTML = `<span>🟢</span> ${shortDiff} Rank ${resJson.rank}/${resJson.totalEntries}`;
-                    } else {
-                        document.getElementById('save-status').textContent = 'Save Notice: ' + (resJson.error || 'Check Permissions');
-                        document.getElementById('save-status').style.color = '#ef4444';
-                        rankBox.innerHTML = `<span>🟢</span> Score Recorded`;
-                    }
-                } catch (e) {
-                    console.error("Spreadsheet write error:", e);
-                    document.getElementById('save-status').textContent = 'Saved locally.';
-                    document.getElementById('save-status').style.color = '#9ca3af';
-                    rankBox.innerHTML = `<span>🟢</span> Score Recorded`;
-                }
-            } else {
-                document.getElementById('save-status').textContent = 'Web App URL not configured.';
-                document.getElementById('save-status').style.color = '#9ca3af';
-                rankBox.innerHTML = `<span>🟢</span> Complete`;
-            }
         }
 
-        // --- Audio Controls & UI Listeners ---
         const btnToneMute = document.getElementById('btn-tone-mute');
         const toneMuteText = document.getElementById('tone-mute-text');
         const iconSound = document.getElementById('icon-sound');
@@ -2518,8 +2685,19 @@
                 toneMuteText.textContent = 'TONE';
             }
         });
+        
+        document.getElementById('btn-results-try-muted').addEventListener('click', async () => {
+            // Mute the tone system automatically before retrying
+            isToneMuted = true;
+            btnToneMute.classList.add('btn-muted');
+            iconSound.style.display = 'none';
+            iconMuted.style.display = 'inline-block';
+            toneMuteText.textContent = 'MUTED';
+            
+            // Programmatically trigger the standard retry button
+            document.getElementById('btn-results-retry').click();
+        });
 
-        // Microphone Sensitivity Boost Slider
         const micGainSlider = document.getElementById('mic-gain-slider');
         const micGainDisplay = document.getElementById('mic-gain-display');
 
@@ -2531,14 +2709,13 @@
             }
         });
 
-        // --- Live Tuner / Free Sing Mode Toggle ---
         const btnTunerMode = document.getElementById('btn-tuner-mode');
         btnTunerMode.addEventListener('click', () => {
             isLiveTuner = !isLiveTuner;
             if (isLiveTuner) {
                 btnTunerMode.classList.add('btn-tuner-active');
                 btnTunerMode.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 3v4M12 17v4M3 12h4M17 12h4"></path><circle cx="12" cy="12" r="2"></circle></svg> Live Tuner: ON`;
-               
+                
                 if (isPlaying) {
                     isPlaying = false;
                     previewScaleActiveNote = null;
@@ -2567,18 +2744,32 @@
                 btnTunerMode.classList.remove('btn-tuner-active');
                 btnTunerMode.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 3v4M12 17v4M3 12h4M17 12h4"></path><circle cx="12" cy="12" r="2"></circle></svg> Live Tuner: OFF`;
             }
-           
-            const diff = document.getElementById('difficulty-select').value;
-            generateMelody(diff);
-           
+            
+            const songVal = document.getElementById('song-select').value;
+            if (songVal === 'random') {
+                const diff = document.getElementById('difficulty-select').value;
+                generateMelody(diff);
+            } else {
+                const songObj = pianoPadSongs[parseInt(songVal)];
+                const parsedNotes = parsePianoPadSong(songObj.notes);
+                if (parsedNotes && parsedNotes.length > 0) {
+                    noteTimeline = parsedNotes;
+                    pitchTraceHistory = [];
+                } else {
+                    generateMelody('1');
+                }
+            }
+            
+            updateViewRange();
+
             score = 0; streak = 0; maxStreak = 0; totalNotesHit = 0; totalNotesMissed = 0;
             earlyLateHits = 0; perfectHits = 0;
             updateScoreUI();
-           
+            
             stepModeCurrentIndex = 0;
             stepModeWaitTime = 0;
             lastPlayedBeatIndex = -1;
-           
+            
             isPlaying = true;
 
             const scaleData = determineScaleNotes(noteTimeline);
@@ -2609,15 +2800,25 @@
         btnStep.addEventListener('click', () => {
             isStepMode = true; isGameMode = false;
             btnStep.classList.replace('btn-step', 'btn-step-active');
-            btnGame.classList.replace('btn-game-active', 'btn-secondary');
+            btnStep.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg> Step Mode: ON`;
+
+            btnGame.classList.replace('btn-game-active', 'btn-game');
+            btnGame.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Game Mode: OFF`;
+            
             if (isPlaying) document.getElementById('status').textContent = ' Switched to Step Mode.';
+            updateScoreUI();
         });
 
         btnGame.addEventListener('click', () => {
             isGameMode = true; isStepMode = false;
-            btnGame.classList.replace('btn-secondary', 'btn-game-active');
+            btnGame.classList.replace('btn-game', 'btn-game-active');
+            btnGame.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Game Mode: ON`;
+
             btnStep.classList.replace('btn-step-active', 'btn-step');
+            btnStep.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg> Step Mode: OFF`;
+            
             if (isPlaying) document.getElementById('status').textContent = ' Switched to Game Mode.';
+            updateScoreUI();
         });
 
         document.getElementById('theme-select').addEventListener('change', (e) => {
@@ -2627,12 +2828,13 @@
             if (!isPlaying) drawScene();
         });
 
-        // "Try Again" Button: Retries the exact same melody without re-randomizing
         document.getElementById('btn-results-retry').addEventListener('click', async () => {
             document.getElementById('results-modal').classList.remove('open');
             if (noteTimeline.length === 0) return;
             if (!isMicListening) toggleMicrophone();
 
+            updateViewRange();
+            
             score = 0; streak = 0; maxStreak = 0; totalNotesHit = 0; totalNotesMissed = 0;
             earlyLateHits = 0; perfectHits = 0;
             updateScoreUI();
@@ -2646,6 +2848,7 @@
                 note.hitState = 'pending';
                 note.soundPlayed = false;
                 note.accumulatedHitFrames = 0;
+                note.showX2 = false;
             });
 
             isPlaying = true;
