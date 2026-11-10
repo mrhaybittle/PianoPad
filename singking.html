@@ -177,7 +177,7 @@
         }
         .vu-meter-large .vu-bar { width: 7px; border-radius: 2px; }
 
-        select, button, .btn-link, input[type="text"], input[type="number"] {
+        select, button, .btn-link, input[type="text"] {
             padding: 5px 8px;
             border-radius: 6px;
             border: 1px solid #374151;
@@ -214,6 +214,7 @@
         }
         #difficulty-select option { background-color: #0b0f19; }
 
+        /* Dropdown Styling for PianoPad Song Select */
         #song-select {
             color: #38bdf8 !important;
             border: 2px solid #0284c7 !important;
@@ -230,8 +231,6 @@
         .btn-success:hover { background-color: #059669; }
         .btn-danger { background-color: #ef4444; }
         .btn-danger:hover { background-color: #dc2626; }
-        .btn-warning { background-color: #f59e0b; color: #000; }
-        .btn-warning:hover { background-color: #d97706; }
         .btn-calib { background-color: #8b5cf6; }
         .btn-calib:hover { background-color: #7c3aed; }
         .btn-purple { background-color: #a855f7; }
@@ -259,6 +258,7 @@
 
         .btn-muted { background-color: #ef4444 !important; color: #ffffff !important; }
 
+        /* RED & GREEN Game Mode Default States */
         .btn-step { background-color: #991b1b !important; color: #fca5a5 !important; font-weight: 600; }
         .btn-step:hover { background-color: #b91c1c !important; }
         .btn-step-active { background-color: #ef4444 !important; color: #ffffff !important; box-shadow: 0 0 12px #ef4444; font-weight: 800; }
@@ -266,17 +266,6 @@
         .btn-game { background-color: #065f46 !important; color: #6ee7b7 !important; font-weight: 600; }
         .btn-game:hover { background-color: #047857 !important; }
         .btn-game-active { background-color: #10b981 !important; color: #ffffff !important; box-shadow: 0 0 12px #10b981; font-weight: 800; }
-
-        /* RECORD BUTTON STYLE */
-        .btn-record { background-color: #881337 !important; color: #fecdd3 !important; font-weight: 600; }
-        .btn-record:hover { background-color: #9f1239 !important; }
-        .btn-record-active { background-color: #e11d48 !important; color: #ffffff !important; box-shadow: 0 0 12px #e11d48; font-weight: 800; animation: pulseRecord 1.5s infinite; }
-        
-        @keyframes pulseRecord {
-            0% { box-shadow: 0 0 5px #e11d48; }
-            50% { box-shadow: 0 0 20px #e11d48; }
-            100% { box-shadow: 0 0 5px #e11d48; }
-        }
 
         .icon {
             width: 13px;
@@ -570,6 +559,7 @@
                     Calibrate
                 </button>
 
+                <!-- Step Mode Default Red (Off), Game Mode Default Green (On) -->
                 <button type="button" id="btn-step" class="btn-step" title="Practice note-by-note without a timer (No Score Submitted)">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
                     Step Mode: OFF
@@ -577,11 +567,6 @@
                 <button type="button" id="btn-game" class="btn-game-active" title="Play with live timing and scoring">
                     <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                     Game Mode: ON
-                </button>
-
-                <!-- NEW RECORD BUTTON -->
-                <button type="button" id="btn-record-mode" class="btn-record" title="Sing and record your own melody">
-                    🎙️ Record Mode
                 </button>
 
                 <button type="button" id="btn-play" class="btn-success">
@@ -631,43 +616,6 @@
 
             <div class="modal-footer">
                 <button type="button" class="btn-success" id="btn-login-start" style="width: 100%; padding: 10px; justify-content:center;">Enter SingKing</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Record Setup Modal -->
-    <div class="modal-overlay" id="record-setup-modal">
-        <div class="modal">
-            <h2>Record a Melody 🎙️</h2>
-            <p>Set your tempo and starting note to begin recording your own sequence.</p>
-            <div style="display:flex; flex-direction:column; gap:10px; margin: 15px 0; width:100%; text-align: left;">
-                <label style="color: #9ca3af; font-size: 0.85rem; font-weight:bold;">Tempo (BPM):</label>
-                <input type="number" id="record-tempo" value="110" style="padding: 10px;">
-                
-                <label style="color: #9ca3af; font-size: 0.85rem; font-weight:bold; margin-top: 8px;">Starting Note:</label>
-                <select id="record-start-note" style="padding: 10px;">
-                    <!-- Populated dynamically via JS -->
-                </select>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" id="btn-cancel-record" style="padding: 10px 20px;">Cancel</button>
-                <button type="button" class="btn-danger" id="btn-start-record-action" style="padding: 10px 20px;">Start Recording</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Record Result Modal -->
-    <div class="modal-overlay" id="record-result-modal">
-        <div class="modal" style="max-width: 600px;">
-            <h2>Recording Complete! 🎉</h2>
-            <p>Your performance has been compiled into PianoPad HayCode.</p>
-            <textarea id="record-haycode-out" readonly style="width:100%; height:90px; margin-top:10px; background:#0b0f19; color:#f3f4f6; border:1px solid #374151; padding:8px; border-radius:6px; font-family:monospace; resize:none;"></textarea>
-            
-            <div class="modal-footer" style="margin-top:15px; justify-content:center;">
-                <button type="button" class="btn-success" id="btn-listen-record" style="padding: 10px 18px; font-weight:bold;">🎵 Listen</button>
-                <button type="button" class="btn-purple" id="btn-export-midi" style="padding: 10px 18px; font-weight:bold;">💾 Export MIDI</button>
-                <button type="button" class="btn-warning" id="btn-retry-record" style="padding: 10px 18px; font-weight:bold;">🔄 Retry</button>
-                <button type="button" class="btn-secondary" id="btn-close-record-result" style="padding: 10px 18px; font-weight:bold;">Close</button>
             </div>
         </div>
     </div>
@@ -773,17 +721,6 @@
         let currentDetectedMidi = 0;
         let currentInputRMS = 0;
         
-        // Recording Engine Trackers
-        let isRecordingMode = false;
-        let recordingState = 'idle'; // idle, countin, recording
-        let recordingStartTime = 0;
-        let recordingCountInStartTime = 0;
-        let recordingBeatMs = 545.45; // ~110 BPM default
-        let recordStartNoteMidi = 60; // default C4
-        let recordedTimeline = [];
-        let currentRecordNote = null;
-        let recPitchBuffer = []; // Used to smooth raw audio detection frames
-
         // Default range: Teenage male (A2 = 45 to E4 = 64)
         let vocalRange = { min: 45, max: 64 };
         let isCalibrated = false;
@@ -802,7 +739,7 @@
         let tunerNeedleAngle = Math.PI * 1.5;
 
         // --- 4/4 Timing Configuration ---
-        const BEAT_MS = 750; // 80 BPM standard game
+        const BEAT_MS = 750; // 80 BPM
         let lastPlayedBeatIndex = -1;
 
         // --- Game State ---
@@ -1047,7 +984,7 @@
                 btnOrigKey.classList.add('btn-secondary');
                 btnOrigKey.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg> Orig. Key: OFF`;
             }
-            if (isPlaying && !isRecordingMode) document.getElementById('status').textContent = ' Original key toggled! Stop & Play to apply changes.';
+            if (isPlaying) document.getElementById('status').textContent = ' Original key toggled! Stop & Play to apply changes.';
         });
 
         document.getElementById('btn-login-start').addEventListener('click', () => {
@@ -1299,27 +1236,6 @@
             return 440 * Math.pow(2, (midi - 69) / 12);
         }
 
-        // --- Pitch Smoother for Live Recording ---
-        function getSmoothedPitch(rawMidi) {
-            if (rawMidi === 0) recPitchBuffer.push(0);
-            else recPitchBuffer.push(Math.round(rawMidi));
-            
-            if (recPitchBuffer.length > 5) recPitchBuffer.shift();
-            
-            let counts = {};
-            let maxCount = 0;
-            let mode = 0;
-            for (let i = 0; i < recPitchBuffer.length; i++) {
-                let p = recPitchBuffer[i];
-                counts[p] = (counts[p] || 0) + 1;
-                if (counts[p] > maxCount) {
-                    maxCount = counts[p];
-                    mode = p;
-                }
-            }
-            return (maxCount >= 3) ? mode : 0; 
-        }
-
         function processPitch() {
             if (!isMicListening || !micAnalyser) return;
             const buf = new Float32Array(micAnalyser.fftSize);
@@ -1330,7 +1246,7 @@
                 currentDetectedFreq = freq;
                 currentDetectedMidi = freqToMidi(freq);
                 
-                if (isPlaying && !isRecordingMode) {
+                if (isPlaying) {
                     const elapsed = performance.now() - playbackStartTime;
                     pitchTraceHistory.push({ time: elapsed, pitch: currentDetectedMidi });
                     if (pitchTraceHistory.length > 300) pitchTraceHistory.shift();
@@ -2006,81 +1922,29 @@
             ctx.restore();
         }
 
-        // =========================================================================
-        // MAIN RENDER ENGINE
-        // =========================================================================
         function renderLoop() {
             if (!isPlaying) return;
             
             const now = performance.now();
-            let virtualElapsed = 0;
+            const elapsed = now - playbackStartTime;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             const clefHeight = 110;
             const rollY = clefHeight;
             const rollHeight = canvas.height - clefHeight;
+            
             const totalPitches = (activeViewMaxPitch - activeViewMinPitch) + 1;
             const semitoneHeight = rollHeight / totalPitches;
             
-            function getPitchTop(midiNum) { return rollY + (activeViewMaxPitch - midiNum) * semitoneHeight; }
-            function getPitchCenterY(midiNum) { return getPitchTop(midiNum) + semitoneHeight / 2; }
-
-            // === RECORDING MODE LOOP LOGIC ===
-            if (isRecordingMode) {
-                const elapsedSinceRecordTrigger = now - recordingCountInStartTime;
-                
-                if (recordingState === 'countin') {
-                    virtualElapsed = 0;
-                    const beat = Math.floor(elapsedSinceRecordTrigger / recordingBeatMs);
-                    
-                    if (beat !== lastPlayedBeatIndex) {
-                        if (beat < 3) playCountInClick(beat === 0);
-                        else if (beat === 3) playGuideTone(midiToFreq(recordStartNoteMidi), recordingBeatMs, true);
-                        lastPlayedBeatIndex = beat;
-                    }
-                    
-                    if (beat >= 4) {
-                        recordingState = 'recording';
-                        recordingStartTime = now;
-                        virtualElapsed = 0;
-                        noteTimeline = [];
-                        currentRecordNote = null;
-                        document.getElementById('status').textContent = ' 🔴 Recording... Sing your melody!';
-                    }
-                } else if (recordingState === 'recording') {
-                    virtualElapsed = now - recordingStartTime;
-                    let rawActiveMidi = currentDetectedMidi > 0 ? currentDetectedMidi : 0;
-                    let smoothedPitch = getSmoothedPitch(rawActiveMidi);
-
-                    if (smoothedPitch > 0) {
-                        if (!currentRecordNote || currentRecordNote.pitch !== smoothedPitch) {
-                            if (currentRecordNote) currentRecordNote.duration = virtualElapsed - currentRecordNote.startTime;
-                            currentRecordNote = {
-                                pitch: smoothedPitch,
-                                startTime: virtualElapsed,
-                                duration: 10,
-                                hitState: 'perfect',
-                                soundPlayed: true
-                            };
-                            noteTimeline.push(currentRecordNote);
-                        } else {
-                            currentRecordNote.duration = virtualElapsed - currentRecordNote.startTime;
-                        }
-                    } else {
-                        if (currentRecordNote) {
-                            currentRecordNote.duration = virtualElapsed - currentRecordNote.startTime;
-                            currentRecordNote = null;
-                        }
-                    }
-                    updateViewRange();
-                }
-            } else {
-                // === STANDARD PLAYBACK LOGIC ===
-                virtualElapsed = now - playbackStartTime;
+            function getPitchTop(midiNum) {
+                return rollY + (activeViewMaxPitch - midiNum) * semitoneHeight;
             }
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            function getPitchCenterY(midiNum) {
+                return getPitchTop(midiNum) + semitoneHeight / 2;
+            }
 
-            // Draw Piano Lanes
             for (let p = activeViewMinPitch; p <= activeViewMaxPitch; p++) {
                 const yTop = getPitchTop(p);
                 const isBlack = isBlackKey(p);
@@ -2099,9 +1963,9 @@
             }
 
             let activeNoteMidi = null;
+            let virtualElapsed = elapsed;
             
-            // Step Mode Execution
-            if (isStepMode && stepModeCurrentIndex < noteTimeline.length && !isRecordingMode) {
+            if (isStepMode && stepModeCurrentIndex < noteTimeline.length) {
                 const currentNote = noteTimeline[stepModeCurrentIndex];
                 if (virtualElapsed >= currentNote.startTime) {
                     virtualElapsed = currentNote.startTime;
@@ -2116,25 +1980,34 @@
                     
                     if (currentDetectedMidi > 0) {
                         const pitchDiff = getPitchClassDistance(currentDetectedMidi, currentNote.pitch);
+
                         if (pitchDiff <= HIT_TOLERANCE_SEMITONES) {
                             stepModeWaitTime += (now - lastFrameTime);
                             if (stepModeWaitTime > 200) {
                                 currentNote.hitState = 'perfect';
-                                perfectHits++; totalNotesHit++; stepModeCurrentIndex++; stepModeWaitTime = 0;
+                                perfectHits++;
+                                totalNotesHit++;
+                                stepModeCurrentIndex++;
+                                stepModeWaitTime = 0;
                                 spawnConfetti(HIT_ZONE_X, getPitchCenterY(currentNote.pitch));
                             }
-                        } else stepModeWaitTime = 0;
-                    } else stepModeWaitTime = 0;
+                        } else {
+                            stepModeWaitTime = 0;
+                        }
+                    } else {
+                        stepModeWaitTime = 0;
+                    }
                 }
             }
 
-            // Standard Metronome & Count-In Beeps
-            if (!isStepMode && !isRecordingMode) {
+            if (!isStepMode) {
                 const currentBeat = Math.floor(virtualElapsed / BEAT_MS);
                 if (currentBeat > lastPlayedBeatIndex) {
                     for (let b = Math.max(0, lastPlayedBeatIndex + 1); b <= currentBeat; b++) {
                         if (b < 4) {
                             playCountInClick(b === 0);
+                            
+                            // Play guide tone on the 3rd beat of count-in (index 2) when muted
                             if (b === 2 && isToneMuted && noteTimeline.length > 0) {
                                 playGuideTone(midiToFreq(noteTimeline[0].pitch), BEAT_MS, true);
                             }
@@ -2144,15 +2017,13 @@
                 }
             }
 
-            // Draw Bar Lines
             const visibleMinTime = virtualElapsed + (PIANO_WIDTH - HIT_ZONE_X) / PIXELS_PER_MS;
             const visibleMaxTime = virtualElapsed + (canvas.width - HIT_ZONE_X) / PIXELS_PER_MS;
-            const activeBeatDuration = isRecordingMode ? recordingBeatMs : BEAT_MS;
-            const startBeat = Math.floor(visibleMinTime / activeBeatDuration);
-            const endBeat = Math.ceil(visibleMaxTime / activeBeatDuration);
+            const startBeat = Math.floor(visibleMinTime / BEAT_MS);
+            const endBeat = Math.ceil(visibleMaxTime / BEAT_MS);
 
             for (let b = startBeat; b <= endBeat; b++) {
-                const beatTime = b * activeBeatDuration;
+                const beatTime = b * BEAT_MS;
                 const bx = HIT_ZONE_X + (beatTime - virtualElapsed) * PIXELS_PER_MS;
                 if (bx >= PIANO_WIDTH && bx <= canvas.width) {
                     const beatInBar = ((b % 4) + 4) % 4;
@@ -2160,17 +2031,22 @@
 
                     ctx.save();
                     if (isBarLine) {
-                        ctx.strokeStyle = 'rgba(180, 180, 200, 0.32)'; ctx.lineWidth = 2;
+                        ctx.strokeStyle = 'rgba(180, 180, 200, 0.32)';
+                        ctx.lineWidth = 2;
                     } else {
-                        ctx.strokeStyle = 'rgba(120, 120, 140, 0.14)'; ctx.lineWidth = 1;
+                        ctx.strokeStyle = 'rgba(120, 120, 140, 0.14)';
+                        ctx.lineWidth = 1;
                     }
+
                     ctx.beginPath();
-                    ctx.moveTo(bx, rollY); ctx.lineTo(bx, canvas.height); ctx.stroke();
+                    ctx.moveTo(bx, rollY);
+                    ctx.lineTo(bx, canvas.height);
+                    ctx.stroke();
 
                     if (isBarLine) {
                         let label = "";
-                        if (b === 0 && !isRecordingMode) label = "COUNT IN";
-                        else if (b >= 0) label = `BAR ${Math.floor(Math.abs((b) / 4)) + (isRecordingMode ? 1 : 0)}`;
+                        if (b === 0) label = "COUNT IN";
+                        else if (b >= 4) label = `BAR ${Math.floor((b - 4) / 4) + 1}`;
 
                         if (label) {
                             ctx.fillStyle = 'rgba(180, 180, 200, 0.65)';
@@ -2187,17 +2063,17 @@
             ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--hitline-color').trim() || '#ef4444';
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(HIT_ZONE_X, 0); ctx.lineTo(HIT_ZONE_X, canvas.height); ctx.stroke();
+            ctx.moveTo(HIT_ZONE_X, 0);
+            ctx.lineTo(HIT_ZONE_X, canvas.height);
+            ctx.stroke();
 
-            // Draw Note Blocks
             noteTimeline.forEach(note => {
                 const noteX = HIT_ZONE_X + (note.startTime - virtualElapsed) * PIXELS_PER_MS;
                 const noteWidth = note.duration * PIXELS_PER_MS;
                 const noteY = getPitchTop(note.pitch) + 2;
                 const noteHeight = Math.max(14, semitoneHeight - 4);
                 
-                // Audio synthesis triggering
-                if (!isStepMode && !isRecordingMode && virtualElapsed >= note.startTime && !note.soundPlayed) {
+                if (!isStepMode && virtualElapsed >= note.startTime && !note.soundPlayed) {
                     note.soundPlayed = true;
                     playGuideTone(midiToFreq(note.pitch), note.duration);
                 }
@@ -2206,10 +2082,15 @@
                     const drawX = Math.max(PIANO_WIDTH, noteX);
                     const drawW = (noteX + noteWidth) - drawX;
 
-                    if (note.hitState === 'perfect') ctx.fillStyle = '#22c55e'; 
-                    else if (note.hitState === 'earlyLate') ctx.fillStyle = '#f97316'; 
-                    else if (note.hitState === 'miss') ctx.fillStyle = '#ef4444'; 
-                    else ctx.fillStyle = '#eab308'; 
+                    if (note.hitState === 'perfect') {
+                        ctx.fillStyle = '#22c55e'; 
+                    } else if (note.hitState === 'earlyLate') {
+                        ctx.fillStyle = '#f97316'; 
+                    } else if (note.hitState === 'miss') {
+                        ctx.fillStyle = '#ef4444'; 
+                    } else {
+                        ctx.fillStyle = '#eab308'; 
+                    }
                     
                     ctx.beginPath();
                     ctx.roundRect(drawX, noteY, drawW, noteHeight, 4);
@@ -2232,21 +2113,28 @@
                         if (age < 1500) {
                             const yOffset = Math.sin(age * 0.01) * 6;
                             const scale = Math.max(1, 1.8 - (age/600));
+                            
                             ctx.save();
                             ctx.translate(drawX + Math.min(drawW, 40) / 2, noteY - 10 - yOffset);
                             ctx.scale(scale, scale);
+                            
                             const hue = (age * 0.6) % 360;
                             ctx.fillStyle = `hsl(${hue}, 100%, 65%)`;
-                            ctx.strokeStyle = '#000000'; ctx.lineWidth = 3;
-                            ctx.font = '900 16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-                            ctx.strokeText("x2", 0, 0); ctx.fillText("x2", 0, 0);
+                            ctx.strokeStyle = '#000000';
+                            ctx.lineWidth = 3;
+                            
+                            ctx.font = '900 16px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'bottom';
+                            
+                            ctx.strokeText("x2", 0, 0);
+                            ctx.fillText("x2", 0, 0);
                             ctx.restore();
                         }
                     }
                 }
 
-                // Standard Hit Checking
-                if (isGameMode && !isRecordingMode && note.hitState === 'pending') {
+                if (isGameMode && note.hitState === 'pending') {
                     const inTargetWindow = (virtualElapsed >= note.startTime - 120 && virtualElapsed <= note.startTime + note.duration + 80);
                     
                     if (inTargetWindow) {
@@ -2264,13 +2152,25 @@
 
                                     if (isEarlyLate) {
                                         note.hitState = 'earlyLate';
-                                        score += 5; totalNotesHit++; earlyLateHits++; updateScoreUI();
+                                        score += 5;
+                                        totalNotesHit++;
+                                        earlyLateHits++;
+                                        updateScoreUI();
                                     } else {
                                         note.hitState = 'perfect';
-                                        score += (10 + streak); streak++;
+                                        let points = 10 + streak;
+                                        
+                                        score += points; // Keeping base score normal for easy final multiplier mapping
+                                        streak++;
                                         if (streak > maxStreak) maxStreak = streak;
-                                        totalNotesHit++; perfectHits++;
-                                        if (isToneMuted) { note.showX2 = true; note.x2Time = now; }
+                                        totalNotesHit++;
+                                        perfectHits++;
+                                        
+                                        if (isToneMuted) {
+                                            note.showX2 = true;
+                                            note.x2Time = now;
+                                        }
+
                                         updateScoreUI();
                                         spawnConfetti(HIT_ZONE_X, getPitchCenterY(note.pitch));
                                     }
@@ -2279,23 +2179,38 @@
                         }
                     } else if (virtualElapsed > note.startTime + note.duration + 80) {
                         note.hitState = 'miss';
-                        streak = 0; totalNotesMissed++; updateScoreUI();
+                        streak = 0;
+                        totalNotesMissed++;
+                        updateScoreUI();
                     }
                 }
             });
 
-            // Pitch Trace Line
-            if (pitchTraceHistory.length > 0 && !isRecordingMode) {
-                ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            if (pitchTraceHistory.length > 0) {
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                
                 for (let i = 0; i < pitchTraceHistory.length - 1; i++) {
-                    const pt1 = pitchTraceHistory[i]; const pt2 = pitchTraceHistory[i+1];
+                    const pt1 = pitchTraceHistory[i];
+                    const pt2 = pitchTraceHistory[i+1];
+                    
                     const x1 = HIT_ZONE_X - (virtualElapsed - pt1.time) * PIXELS_PER_MS;
                     const x2 = HIT_ZONE_X - (virtualElapsed - pt2.time) * PIXELS_PER_MS;
+                    
                     if (x2 < PIANO_WIDTH) continue;
                     
-                    let dMidi1 = Math.max(activeViewMinPitch - 0.5, Math.min(activeViewMaxPitch + 0.5, pt1.pitch));
-                    let dMidi2 = Math.max(activeViewMinPitch - 0.5, Math.min(activeViewMaxPitch + 0.5, pt2.pitch));
-                    const y1 = getPitchCenterY(dMidi1); const y2 = getPitchCenterY(dMidi2);
+                    let dMidi1 = pt1.pitch;
+                    let dMidi2 = pt2.pitch;
+                    
+                    if (dMidi1 < activeViewMinPitch) dMidi1 = activeViewMinPitch - 0.5;
+                    if (dMidi1 > activeViewMaxPitch) dMidi1 = activeViewMaxPitch + 0.5;
+                    
+                    if (dMidi2 < activeViewMinPitch) dMidi2 = activeViewMinPitch - 0.5;
+                    if (dMidi2 > activeViewMaxPitch) dMidi2 = activeViewMaxPitch + 0.5;
+
+                    const y1 = getPitchCenterY(dMidi1);
+                    const y2 = getPitchCenterY(dMidi2);
                     
                     ctx.strokeStyle = '#eab308';
                     if (activeNoteMidi) {
@@ -2306,58 +2221,54 @@
                     }
 
                     ctx.beginPath();
-                    ctx.moveTo(Math.max(PIANO_WIDTH, x1), y1); ctx.lineTo(Math.max(PIANO_WIDTH, x2), y2); ctx.stroke();
+                    ctx.moveTo(Math.max(PIANO_WIDTH, x1), y1);
+                    ctx.lineTo(Math.max(PIANO_WIDTH, x2), y2);
+                    ctx.stroke();
                 }
             }
 
             drawVerticalPiano(ctx, rollY, semitoneHeight, activeViewMinPitch, activeViewMaxPitch, activeNoteMidi, currentDetectedMidi);
-            
-            // In Record Mode, use real-time detected MIDI for the sheet music notation!
-            const staffActiveNote = (isRecordingMode && recordingState === 'recording') ? (currentRecordNote ? currentRecordNote.pitch : null) : activeNoteMidi;
-            drawTrebleClef(ctx, clefHeight, staffActiveNote);
+            drawTrebleClef(ctx, clefHeight, activeNoteMidi);
 
             if (currentDetectedMidi > 0) {
                 drawLivePitchTuner(ctx, rollY, rollHeight, semitoneHeight, activeViewMinPitch, activeViewMaxPitch);
             }
 
-            // UI Messages: Playback Count In
-            if (virtualElapsed < 4 * BEAT_MS && !isStepMode && !isRecordingMode) {
+            if (virtualElapsed < 4 * BEAT_MS && !isStepMode) {
                 const countNum = Math.min(4, Math.floor(virtualElapsed / BEAT_MS) + 1);
                 ctx.save();
-                ctx.fillStyle = '#facc15'; ctx.font = 'bold 36px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.shadowColor = 'rgba(250, 204, 21, 0.75)'; ctx.shadowBlur = 14;
+                ctx.fillStyle = '#facc15';
+                ctx.font = 'bold 36px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'rgba(250, 204, 21, 0.75)';
+                ctx.shadowBlur = 14;
                 ctx.fillText(`COUNT IN: ${countNum}`, (canvas.width + PIANO_WIDTH) / 2, rollY + 45);
                 ctx.restore();
             }
 
-            // UI Messages: Recording Count In
-            if (isRecordingMode && recordingState === 'countin') {
-                const countNum = Math.floor((now - recordingCountInStartTime) / recordingBeatMs) + 1;
-                let text = "";
-                if (countNum <= 3) text = countNum.toString();
-                else if (countNum === 4) text = "SING!";
-                
-                if (text) {
-                    ctx.save();
-                    ctx.fillStyle = countNum === 4 ? '#ec4899' : '#facc15';
-                    ctx.font = 'bold 68px sans-serif';
-                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                    ctx.shadowColor = countNum === 4 ? 'rgba(236, 72, 153, 0.8)' : 'rgba(250, 204, 21, 0.8)';
-                    ctx.shadowBlur = 25;
-                    ctx.fillText(text, (canvas.width + PIANO_WIDTH) / 2, rollY + rollHeight / 2);
-                    ctx.restore();
-                }
-            }
-
-            // Mute Power Up Display
-            if (isToneMuted && !isStepMode && !isRecordingMode && noteTimeline.length > 0) {
+            // =========================================================================
+            // VISUALLY APPEALING POWER-UP TEXT OVERLAY (WHEN MUTED)
+            // =========================================================================
+            if (isToneMuted && !isStepMode && noteTimeline.length > 0) {
                 ctx.save();
-                const bounce = Math.sin(now / 150) * 5; const flash = Math.abs(Math.sin(now / 200)); const hue = (now / 10) % 360;
-                ctx.fillStyle = `hsl(${hue}, 100%, ${60 + flash * 20}%)`; ctx.font = '900 44px sans-serif';
-                ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-                ctx.shadowColor = `hsl(${hue}, 100%, 50%)`; ctx.shadowBlur = 15 + flash * 15;
-                ctx.strokeStyle = '#000000'; ctx.lineWidth = 6; 
-                const textX = (canvas.width + PIANO_WIDTH) / 2; const textY = 25 + bounce;
+                const bounce = Math.sin(now / 150) * 5;
+                const flash = Math.abs(Math.sin(now / 200));
+                const hue = (now / 10) % 360;
+                
+                ctx.fillStyle = `hsl(${hue}, 100%, ${60 + flash * 20}%)`;
+                ctx.font = '900 44px sans-serif'; // Doubled in size from 22px
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+                ctx.shadowBlur = 15 + flash * 15;
+                
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 6; 
+                
+                const textX = (canvas.width + PIANO_WIDTH) / 2;
+                const textY = 25 + bounce; // Shifted slightly down for the bigger text
+                
                 ctx.strokeText("⚡ x2 Power-Up (Keyboard Muted) ⚡", textX, textY);
                 ctx.fillText("⚡ x2 Power-Up (Keyboard Muted) ⚡", textX, textY);
                 ctx.restore();
@@ -2365,15 +2276,15 @@
 
             drawConfetti();
 
-            if (!isRecordingMode) {
-                if (!isStepMode && noteTimeline.length > 0) {
-                    const lastNote = noteTimeline[noteTimeline.length - 1];
-                    if (virtualElapsed > lastNote.startTime + lastNote.duration + 2000) {
-                        endGame(); return;
-                    }
-                } else if (isStepMode && stepModeCurrentIndex >= noteTimeline.length) {
-                    endGame(); return;
+            if (!isStepMode && noteTimeline.length > 0) {
+                const lastNote = noteTimeline[noteTimeline.length - 1];
+                if (virtualElapsed > lastNote.startTime + lastNote.duration + 2000) {
+                    endGame();
+                    return;
                 }
+            } else if (isStepMode && stepModeCurrentIndex >= noteTimeline.length) {
+                endGame();
+                return;
             }
 
             lastFrameTime = now;
@@ -2406,12 +2317,16 @@
 
                     ctx.strokeStyle = '#cbd5e1';
                     ctx.beginPath();
-                    ctx.moveTo(0, yTop); ctx.lineTo(PIANO_WIDTH, yTop); ctx.stroke();
+                    ctx.moveTo(0, yTop);
+                    ctx.lineTo(PIANO_WIDTH, yTop);
+                    ctx.stroke();
 
                     const pc = p % 12;
                     if (pc === 0) {
-                        ctx.fillStyle = '#0f172a'; ctx.font = 'bold 10px sans-serif';
-                        ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+                        ctx.fillStyle = '#0f172a';
+                        ctx.font = 'bold 10px sans-serif';
+                        ctx.textAlign = 'right';
+                        ctx.textBaseline = 'middle';
                         ctx.fillText(`C${Math.floor(p/12)-1}`, PIANO_WIDTH - 6, yTop + semitoneHeight / 2);
                     }
                 }
@@ -2427,13 +2342,19 @@
                 if (isBlack) {
                     ctx.fillStyle = isPitchHit ? '#15803d' : (isTarget ? '#ca8a04' : '#000000');
                     ctx.fillRect(0, yTop + 1, blackKeyWidth, semitoneHeight - 1);
+
                     ctx.strokeStyle = '#334155';
                     ctx.strokeRect(0, yTop + 1, blackKeyWidth, semitoneHeight - 1);
                 }
             }
 
-            ctx.strokeStyle = '#000000'; ctx.lineWidth = 1.5;
-            ctx.beginPath(); ctx.moveTo(PIANO_WIDTH, rollY); ctx.lineTo(PIANO_WIDTH, canvas.height); ctx.stroke();
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(PIANO_WIDTH, rollY);
+            ctx.lineTo(PIANO_WIDTH, canvas.height);
+            ctx.stroke();
+
             ctx.restore();
         }
 
@@ -2452,6 +2373,7 @@
 
             const pitchClass = displayMidi % 12;
             const octave = Math.floor(displayMidi / 12) - 1;
+
             const diatonicStepMap = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
             const isAccidental = [false, true, false, true, false, false, true, false, true, false, true, false];
 
@@ -2473,10 +2395,14 @@
             const line1_y = 75; // E4
             const staffLines = 5;
 
-            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1.2;
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1.2;
             for (let i = 0; i < staffLines; i++) {
                 const y = line1_y - (i * lineSpacing);
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
             }
 
             ctx.save();
@@ -2484,12 +2410,18 @@
             const clefScale = 0.65;
             const g4_y = line1_y - lineSpacing;
             const clefX = 42;
-            ctx.translate(clefX, g4_y); ctx.scale(clefScale, clefScale);
+
+            ctx.translate(clefX, g4_y);
+            ctx.scale(clefScale, clefScale);
             ctx.fill(standardTreblePath);
             ctx.restore();
 
-            ctx.strokeStyle = '#374151'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(0, height); ctx.lineTo(canvas.width, height); ctx.stroke();
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, height);
+            ctx.lineTo(canvas.width, height);
+            ctx.stroke();
 
             if (activeMidi) {
                 const noteInfo = midiToStaffInfo(activeMidi);
@@ -2497,13 +2429,16 @@
                 const noteY = line1_y - (noteInfo.staffStep * halfStep);
                 const noteX = HIT_ZONE_X;
 
-                ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1.5;
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 1.5;
+
                 if (noteInfo.staffStep <= -2) {
                     for (let s = -2; s >= noteInfo.staffStep; s -= 2) {
                         const ly = line1_y - (s * halfStep);
                         ctx.beginPath(); ctx.moveTo(noteX - 12, ly); ctx.lineTo(noteX + 12, ly); ctx.stroke();
                     }
                 }
+
                 if (noteInfo.staffStep >= 10) {
                     for (let s = 10; s <= noteInfo.staffStep; s -= 2) {
                         const ly = line1_y - (s * halfStep);
@@ -2512,19 +2447,29 @@
                 }
 
                 ctx.fillStyle = '#22c55e';
-                ctx.beginPath(); ctx.ellipse(noteX, noteY, 6.5, 4.8, -0.22, 0, 2 * Math.PI); ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(noteX, noteY, 6.5, 4.8, -0.22, 0, 2 * Math.PI);
+                ctx.fill();
 
                 if (noteInfo.hasSharp) {
-                    ctx.fillStyle = '#0f172a'; ctx.font = 'bold 13px sans-serif';
-                    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#0f172a';
+                    ctx.font = 'bold 13px sans-serif';
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
                     ctx.fillText('♯', noteX - 8, noteY);
                 }
 
                 if (noteInfo.octaveMark) {
-                    ctx.fillStyle = '#ec4899'; ctx.font = 'italic bold 11px sans-serif';
-                    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-                    if (noteInfo.octaveMark === '8vb') ctx.fillText('8vb (sing octave lower)', noteX + 16, line1_y + 14);
-                    else ctx.fillText('8va (sing octave higher)', noteX + 16, line1_y - (staffLines * lineSpacing) - 6);
+                    ctx.fillStyle = '#ec4899';
+                    ctx.font = 'italic bold 11px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    
+                    if (noteInfo.octaveMark === '8vb') {
+                        ctx.fillText('8vb (sing octave lower)', noteX + 16, line1_y + 14);
+                    } else {
+                        ctx.fillText('8va (sing octave higher)', noteX + 16, line1_y - (staffLines * lineSpacing) - 6);
+                    }
                 }
             }
         }
@@ -2534,9 +2479,11 @@
             for (let i = 0; i < 15; i++) {
                 confetti.push({
                     x: x, y: y,
-                    vx: (Math.random() - 0.5) * 8, vy: (Math.random() * -6) - 2,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() * -6) - 2,
                     color: Math.random() > 0.5 ? '#22c55e' : '#facc15',
-                    life: 1.0, size: Math.random() * 4 + 2
+                    life: 1.0,
+                    size: Math.random() * 4 + 2
                 });
             }
         }
@@ -2546,8 +2493,10 @@
             for (let i = confetti.length - 1; i >= 0; i--) {
                 let p = confetti[i];
                 p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life -= 0.02;
-                if (p.life <= 0) confetti.splice(i, 1);
-                else {
+                
+                if (p.life <= 0) {
+                    confetti.splice(i, 1);
+                } else {
                     confettiCtx.globalAlpha = p.life;
                     confettiCtx.fillStyle = p.color;
                     confettiCtx.fillRect(p.x, p.y, p.size, p.size);
@@ -2560,9 +2509,6 @@
             if (isStepMode) {
                 document.getElementById('score-text').textContent = "N/A";
                 document.getElementById('streak-text').textContent = "Step Mode";
-            } else if (isRecordingMode) {
-                document.getElementById('score-text').textContent = "REC";
-                document.getElementById('streak-text').textContent = "🔴";
             } else {
                 let displayScore = isToneMuted ? score * 2 : score;
                 document.getElementById('score-text').textContent = displayScore;
@@ -2578,6 +2524,8 @@
                 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalNotes) * 100).toFixed(1)
                 : "100.0";
             const accuracyNum = parseFloat(accuracyVal);
+
+            // Double the score logic for the final tally and spreadsheet submission
             const finalScore = isToneMuted ? score * 2 : score;
 
             document.getElementById('summary-student').textContent = currentStudentName || "Anonymous";
@@ -2595,6 +2543,7 @@
                 document.getElementById('bar-green').style.height = `100%`;
                 
                 document.getElementById('btn-results-try-muted').style.display = 'none';
+
             } else {
                 document.getElementById('summary-score').textContent = `${accuracyVal}% (Score: ${finalScore})`;
                 document.getElementById('summary-breakdown').textContent =
@@ -2619,8 +2568,11 @@
                 rankBox.innerHTML = '<span style="color:#facc15;">Calculating Rank...</span>';
                 
                 const tryMutedBtn = document.getElementById('btn-results-try-muted');
-                if (isToneMuted) tryMutedBtn.style.display = 'none';
-                else tryMutedBtn.style.display = 'inline-flex';
+                if (isToneMuted) {
+                    tryMutedBtn.style.display = 'none';
+                } else {
+                    tryMutedBtn.style.display = 'inline-flex';
+                }
 
                 if (APPS_SCRIPT_URL && APPS_SCRIPT_URL !== "YOUR_WEB_APP_URL_HERE") {
                     document.getElementById('save-status').textContent = 'Saving to Leaderboard...';
@@ -2634,23 +2586,49 @@
                     const songTitleText = isRandom ? "Random Melody" : songSelect.options[songSelect.selectedIndex].text;
 
                     const payload = {
-                        studentName: currentStudentName, yearGroup: currentYearGroup, studentClass: currentStudentClass,
-                        score: finalScore, accuracy: accuracyNum, maxStreak: maxStreak, totalNotes: totalNotes, perfect: perfectHits,
-                        earlyLate: earlyLateHits, missed: totalNotesMissed,
-                        vocalRange: `${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)}`, lowestNote: getNoteName(vocalRange.min), highestNote: getNoteName(vocalRange.max),
-                        difficultyLevel: isRandom ? diffText : "PianoPad Song", songTitle: songTitleText,
-                        // Form aliases
-                        songName: songTitleText, song: songTitleText, "Student Name": currentStudentName, "Year Group": currentYearGroup,
-                        "Class": currentStudentClass, "Difficulty Level": isRandom ? diffText : "PianoPad Song", "Vocal Range": `${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)}`,
-                        "Final Score": finalScore, "Accuracy (%)": accuracyNum, "Max Streak": maxStreak, "Total Notes": totalNotes, "Perfect Hits": perfectHits,
-                        "Early/Late Hits": earlyLateHits, "Misses": totalNotesMissed, "Song Title": songTitleText
+                        studentName: currentStudentName,
+                        yearGroup: currentYearGroup,
+                        studentClass: currentStudentClass,
+                        score: finalScore, 
+                        accuracy: accuracyNum,
+                        maxStreak: maxStreak,
+                        totalNotes: totalNotes,
+                        perfect: perfectHits,
+                        earlyLate: earlyLateHits,
+                        missed: totalNotesMissed,
+                        vocalRange: `${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)}`,
+                        lowestNote: getNoteName(vocalRange.min),
+                        highestNote: getNoteName(vocalRange.max),
+                        difficultyLevel: isRandom ? diffText : "PianoPad Song",
+                        songTitle: songTitleText,
+                        songName: songTitleText,
+                        song: songTitleText,
+                        "Student Name": currentStudentName,
+                        "Year Group": currentYearGroup,
+                        "Class": currentStudentClass,
+                        "Difficulty Level": isRandom ? diffText : "PianoPad Song",
+                        "Vocal Range": `${getNoteName(vocalRange.min)} - ${getNoteName(vocalRange.max)}`,
+                        "Final Score": finalScore,
+                        "Accuracy (%)": accuracyNum,
+                        "Max Streak": maxStreak,
+                        "Total Notes": totalNotes,
+                        "Perfect Hits": perfectHits,
+                        "Early/Late Hits": earlyLateHits,
+                        "Misses": totalNotesMissed,
+                        "Song Title": songTitleText
                     };
 
                     try {
-                        const response = await fetch(APPS_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+                        const response = await fetch(APPS_SCRIPT_URL, {
+                            method: 'POST',
+                            body: JSON.stringify(payload),
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                        });
                         const resJson = await response.json();
                         if (resJson.result === "success") {
-                            document.getElementById('save-status').textContent = 'Saved to Sheet!'; document.getElementById('save-status').style.color = '#22c55e';
+                            document.getElementById('save-status').textContent = 'Saved to Sheet!';
+                            document.getElementById('save-status').style.color = '#22c55e';
+                            
                             const displayTitle = isRandom ? diffText.split('(')[0].trim() : songTitleText;
                             rankBox.innerHTML = `<span>🟢</span> ${displayTitle} Rank ${resJson.rank}/${resJson.totalEntries}`;
                         } else {
@@ -2660,11 +2638,13 @@
                         }
                     } catch (e) {
                         console.error("Spreadsheet write error:", e);
-                        document.getElementById('save-status').textContent = 'Saved locally.'; document.getElementById('save-status').style.color = '#9ca3af';
+                        document.getElementById('save-status').textContent = 'Saved locally.';
+                        document.getElementById('save-status').style.color = '#9ca3af';
                         rankBox.innerHTML = `<span>🟢</span> Score Recorded`;
                     }
                 } else {
-                    document.getElementById('save-status').textContent = 'Web App URL not configured.'; document.getElementById('save-status').style.color = '#9ca3af';
+                    document.getElementById('save-status').textContent = 'Web App URL not configured.';
+                    document.getElementById('save-status').style.color = '#9ca3af';
                     document.getElementById('game-rank-box').innerHTML = `<span>🟢</span> Complete`;
                 }
             }
@@ -2684,11 +2664,13 @@
             isToneMuted = !isToneMuted;
             if (isToneMuted) {
                 btnToneMute.classList.add('btn-muted');
-                iconSound.style.display = 'none'; iconMuted.style.display = 'inline-block';
+                iconSound.style.display = 'none';
+                iconMuted.style.display = 'inline-block';
                 toneMuteText.textContent = 'MUTED';
             } else {
                 btnToneMute.classList.remove('btn-muted');
-                iconSound.style.display = 'inline-block'; iconMuted.style.display = 'none';
+                iconSound.style.display = 'inline-block';
+                iconMuted.style.display = 'none';
                 toneMuteText.textContent = 'TONE';
             }
         });
@@ -2696,16 +2678,23 @@
         toneVolumeSlider.addEventListener('input', (e) => {
             toneVolume = parseFloat(e.target.value) / 100;
             if (isToneMuted && toneVolume > 0) {
-                isToneMuted = false; btnToneMute.classList.remove('btn-muted');
-                iconSound.style.display = 'inline-block'; iconMuted.style.display = 'none';
+                isToneMuted = false;
+                btnToneMute.classList.remove('btn-muted');
+                iconSound.style.display = 'inline-block';
+                iconMuted.style.display = 'none';
                 toneMuteText.textContent = 'TONE';
             }
         });
         
         document.getElementById('btn-results-try-muted').addEventListener('click', async () => {
+            // Mute the tone system automatically before retrying
             isToneMuted = true;
-            btnToneMute.classList.add('btn-muted'); iconSound.style.display = 'none'; iconMuted.style.display = 'inline-block';
+            btnToneMute.classList.add('btn-muted');
+            iconSound.style.display = 'none';
+            iconMuted.style.display = 'inline-block';
             toneMuteText.textContent = 'MUTED';
+            
+            // Programmatically trigger the standard retry button
             document.getElementById('btn-results-retry').click();
         });
 
@@ -2719,180 +2708,6 @@
                 micGainNode.gain.setValueAtTime(micBoostGain, audioCtx.currentTime);
             }
         });
-
-        // =========================================================================
-        // RECORD MODE MODULE 
-        // =========================================================================
-
-        function generateHayCode(timeline) {
-            let names = [];
-            let durs = [];
-            let lastEnd = 0;
-            
-            timeline.forEach(n => {
-                let gap = n.startTime - lastEnd;
-                if (gap > 50) { 
-                    names.push("REST");
-                    durs.push(Math.round(gap));
-                }
-                names.push(getNoteName(n.pitch));
-                durs.push(Math.round(n.duration));
-                lastEnd = n.startTime + n.duration;
-            });
-            return names.join(",") + ",RESTS,0," + durs.join(",");
-        }
-
-        function exportMidi(timeline, bpm) {
-            const ticksPerBeat = 480;
-            const msPerBeat = 60000 / bpm;
-            const msToTicks = (ms) => Math.round((ms / msPerBeat) * ticksPerBeat);
-
-            let trackEvents = [];
-            let lastTick = 0;
-            let events = [];
-            
-            timeline.forEach(n => {
-                events.push({ time: n.startTime, type: 'on', pitch: Math.round(n.pitch) });
-                events.push({ time: n.startTime + n.duration, type: 'off', pitch: Math.round(n.pitch) });
-            });
-            events.sort((a,b) => a.time - b.time);
-
-            function writeVLQ(val) {
-                let buffer = [val & 0x7f];
-                while ((val >>= 7) > 0) { buffer.unshift((val & 0x7f) | 0x80); }
-                return buffer;
-            }
-
-            events.forEach(ev => {
-                let tick = msToTicks(ev.time);
-                let delta = tick - lastTick;
-                lastTick = tick;
-
-                trackEvents.push(...writeVLQ(delta));
-                if (ev.type === 'on') trackEvents.push(0x90, ev.pitch, 100); 
-                else trackEvents.push(0x80, ev.pitch, 0);   
-            });
-            trackEvents.push(0x00, 0xFF, 0x2F, 0x00);
-
-            let trackLen = trackEvents.length;
-            let file = [
-                0x4D, 0x54, 0x68, 0x64, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x01,
-                (ticksPerBeat >> 8) & 0xFF, ticksPerBeat & 0xFF,
-                0x4D, 0x54, 0x72, 0x6B,
-                (trackLen >> 24) & 0xFF, (trackLen >> 16) & 0xFF, (trackLen >> 8) & 0xFF, trackLen & 0xFF,
-                ...trackEvents
-            ];
-
-            let b64 = btoa(String.fromCharCode.apply(null, file));
-            let a = document.createElement('a');
-            a.href = 'data:audio/midi;base64,' + b64;
-            a.download = 'SingKing_Recording.mid';
-            a.click();
-        }
-
-        function showRecordResults() {
-            // Remove micro glitch blobs
-            recordedTimeline = noteTimeline.filter(n => n.duration >= 50);
-            
-            const hayCode = generateHayCode(recordedTimeline);
-            document.getElementById('record-haycode-out').value = hayCode || "No audio detected.";
-            
-            document.getElementById('status').textContent = ' Recording Finished!';
-            document.getElementById('record-result-modal').classList.add('open');
-        }
-
-        const btnRecordMode = document.getElementById('btn-record-mode');
-        btnRecordMode.addEventListener('click', () => {
-            if (!isMicListening) toggleMicrophone();
-            
-            const select = document.getElementById('record-start-note');
-            select.innerHTML = '';
-            for (let m = 48; m <= 72; m++) { 
-                const opt = document.createElement('option');
-                opt.value = m;
-                opt.text = getNoteName(m);
-                if (m === 60) opt.selected = true; 
-                select.appendChild(opt);
-            }
-            
-            document.getElementById('record-setup-modal').classList.add('open');
-        });
-
-        document.getElementById('btn-cancel-record').addEventListener('click', () => {
-            document.getElementById('record-setup-modal').classList.remove('open');
-        });
-
-        document.getElementById('btn-start-record-action').addEventListener('click', () => {
-            document.getElementById('record-setup-modal').classList.remove('open');
-            
-            const bpm = parseInt(document.getElementById('record-tempo').value) || 110;
-            recordingBeatMs = 60000 / bpm;
-            recordStartNoteMidi = parseInt(document.getElementById('record-start-note').value) || 60;
-            
-            isRecordingMode = true; isStepMode = false; isGameMode = false; isPlaying = true;
-            
-            // Adjust visual states
-            btnRecordMode.classList.replace('btn-record', 'btn-record-active');
-            btnRecordMode.innerHTML = `🎙️ RECORDING`;
-            btnGame.classList.replace('btn-game-active', 'btn-game');
-            btnStep.classList.replace('btn-step-active', 'btn-step');
-
-            if (isLiveTuner) {
-                isLiveTuner = false;
-                document.getElementById('btn-tuner-mode').classList.remove('btn-tuner-active');
-                document.getElementById('btn-tuner-mode').innerHTML = `<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 3v4M12 17v4M3 12h4M17 12h4"></path><circle cx="12" cy="12" r="2"></circle></svg> Live Tuner: OFF`;
-            }
-
-            updateScoreUI();
-            
-            // Start count in
-            noteTimeline = [];
-            recordedTimeline = [];
-            recordingCountInStartTime = performance.now();
-            recordingState = 'countin';
-            lastPlayedBeatIndex = -1;
-            
-            document.getElementById('status').textContent = ' Get ready...';
-            requestAnimationFrame(renderLoop);
-        });
-
-        document.getElementById('btn-listen-record').addEventListener('click', () => {
-            document.getElementById('record-result-modal').classList.remove('open');
-            
-            noteTimeline = JSON.parse(JSON.stringify(recordedTimeline)); 
-            noteTimeline.forEach(n => { n.hitState = 'pending'; n.soundPlayed = false; });
-            
-            isRecordingMode = false; isGameMode = false; isStepMode = false; isPlaying = true;
-            btnRecordMode.classList.replace('btn-record-active', 'btn-record');
-            btnRecordMode.innerHTML = `🎙️ Record Mode`;
-            
-            playbackStartTime = performance.now();
-            lastFrameTime = performance.now();
-            lastPlayedBeatIndex = -1;
-            
-            document.getElementById('status').textContent = ' 🎵 Playing back your recording...';
-            requestAnimationFrame(renderLoop);
-        });
-
-        document.getElementById('btn-export-midi').addEventListener('click', () => {
-            const bpm = parseInt(document.getElementById('record-tempo').value) || 110;
-            exportMidi(recordedTimeline, bpm);
-        });
-
-        document.getElementById('btn-retry-record').addEventListener('click', () => {
-            document.getElementById('record-result-modal').classList.remove('open');
-            document.getElementById('record-setup-modal').classList.add('open');
-        });
-
-        document.getElementById('btn-close-record-result').addEventListener('click', () => {
-            document.getElementById('record-result-modal').classList.remove('open');
-            btnRecordMode.classList.replace('btn-record-active', 'btn-record');
-            btnRecordMode.innerHTML = `🎙️ Record Mode`;
-            isRecordingMode = false;
-            document.getElementById('status').textContent = ' Recording saved internally. Try game mode next!';
-            drawScene();
-        });
-
 
         const btnTunerMode = document.getElementById('btn-tuner-mode');
         btnTunerMode.addEventListener('click', () => {
@@ -2930,11 +2745,6 @@
                 btnTunerMode.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 3v4M12 17v4M3 12h4M17 12h4"></path><circle cx="12" cy="12" r="2"></circle></svg> Live Tuner: OFF`;
             }
             
-            // Reset active Record Mode visuals if active
-            isRecordingMode = false;
-            btnRecordMode.classList.replace('btn-record-active', 'btn-record');
-            btnRecordMode.innerHTML = `🎙️ Record Mode`;
-            
             const songVal = document.getElementById('song-select').value;
             if (songVal === 'random') {
                 const diff = document.getElementById('difficulty-select').value;
@@ -2945,7 +2755,9 @@
                 if (parsedNotes && parsedNotes.length > 0) {
                     noteTimeline = parsedNotes;
                     pitchTraceHistory = [];
-                } else generateMelody('1');
+                } else {
+                    generateMelody('1');
+                }
             }
             
             updateViewRange();
@@ -2954,7 +2766,10 @@
             earlyLateHits = 0; perfectHits = 0;
             updateScoreUI();
             
-            stepModeCurrentIndex = 0; stepModeWaitTime = 0; lastPlayedBeatIndex = -1;
+            stepModeCurrentIndex = 0;
+            stepModeWaitTime = 0;
+            lastPlayedBeatIndex = -1;
+            
             isPlaying = true;
 
             const scaleData = determineScaleNotes(noteTimeline);
@@ -2970,18 +2785,88 @@
 
         document.getElementById('btn-stop').addEventListener('click', () => {
             isPlaying = false;
-            
-            if (isRecordingMode && recordingState === 'recording') {
-                recordingState = 'idle';
-                showRecordResults();
-                return;
-            }
-
             previewScaleActiveNote = null;
             lastPlayedBeatIndex = -1;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.getElementById('status').textContent = ' Stopped.';
             drawScene();
+        });
+
+        document.getElementById('btn-mic-toggle').addEventListener('click', toggleMicrophone);
+
+        const btnStep = document.getElementById('btn-step');
+        const btnGame = document.getElementById('btn-game');
+
+        btnStep.addEventListener('click', () => {
+            isStepMode = true; isGameMode = false;
+            btnStep.classList.replace('btn-step', 'btn-step-active');
+            btnStep.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg> Step Mode: ON`;
+
+            btnGame.classList.replace('btn-game-active', 'btn-game');
+            btnGame.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Game Mode: OFF`;
+            
+            if (isPlaying) document.getElementById('status').textContent = ' Switched to Step Mode.';
+            updateScoreUI();
+        });
+
+        btnGame.addEventListener('click', () => {
+            isGameMode = true; isStepMode = false;
+            btnGame.classList.replace('btn-game', 'btn-game-active');
+            btnGame.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Game Mode: ON`;
+
+            btnStep.classList.replace('btn-step-active', 'btn-step');
+            btnStep.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg> Step Mode: OFF`;
+            
+            if (isPlaying) document.getElementById('status').textContent = ' Switched to Game Mode.';
+            updateScoreUI();
+        });
+
+        document.getElementById('theme-select').addEventListener('change', (e) => {
+            currentTheme = e.target.value;
+            if (currentTheme === 'default') document.body.removeAttribute('data-theme');
+            else document.body.setAttribute('data-theme', currentTheme);
+            if (!isPlaying) drawScene();
+        });
+
+        document.getElementById('btn-results-retry').addEventListener('click', async () => {
+            document.getElementById('results-modal').classList.remove('open');
+            if (noteTimeline.length === 0) return;
+            if (!isMicListening) toggleMicrophone();
+
+            updateViewRange();
+            
+            score = 0; streak = 0; maxStreak = 0; totalNotesHit = 0; totalNotesMissed = 0;
+            earlyLateHits = 0; perfectHits = 0;
+            updateScoreUI();
+
+            stepModeCurrentIndex = 0;
+            stepModeWaitTime = 0;
+            lastPlayedBeatIndex = -1;
+            pitchTraceHistory = [];
+
+            noteTimeline.forEach(note => {
+                note.hitState = 'pending';
+                note.soundPlayed = false;
+                note.accumulatedHitFrames = 0;
+                note.showX2 = false;
+            });
+
+            isPlaying = true;
+
+            const scaleData = determineScaleNotes(noteTimeline);
+            await playScalePreRoll(scaleData);
+
+            if (!isPlaying) return;
+
+            playbackStartTime = performance.now();
+            lastFrameTime = performance.now();
+            lastPlayedBeatIndex = -1;
+            requestAnimationFrame(renderLoop);
+        });
+
+        document.getElementById('btn-results-close').addEventListener('click', () => {
+            document.getElementById('results-modal').classList.remove('open');
+            if (!isPlaying) drawScene();
         });
 
     </script>
