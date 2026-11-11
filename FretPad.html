@@ -1292,8 +1292,16 @@
                 let displayBadge = false;
                 const isDouble = (localTabSwitches === 0);
                 const x2Tag = isDouble ? '<span style="color:#ef4444; font-weight:900; margin-left:4px;">X2</span>' : '';
-
-                if (elapsedMins >= 30) {
+               
+                if (elapsedMins >= 50 && localTabSwitches === 0) {
+                    displayBadge = true;
+                    badgeHtml = `<span style="color:#c084fc;">👑 Master Level</span>${x2Tag}`;
+                    barColor = '#c084fc';
+                } else if (elapsedMins >= 40 && localTabSwitches === 0) {
+                    displayBadge = true;
+                    badgeHtml = `<span style="color:#38bdf8;">💎 Diamond Level</span>${x2Tag}`;
+                    barColor = '#38bdf8';
+                } else if (elapsedMins >= 30) {
                     displayBadge = true;
                     badgeHtml = `<span style="color:#facc15;">🥇 Gold Level</span>${x2Tag}`;
                     barColor = '#facc15';
