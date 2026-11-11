@@ -152,6 +152,7 @@
             cursor: pointer;
         }
 
+        /* Speed Presets */
         .speed-presets {
             display: flex;
             gap: 4px;
@@ -245,6 +246,7 @@
         .btn-tuner-active { background-color: #06b6d4 !important; box-shadow: 0 0 12px #06b6d4; }
         .btn-game-active { background-color: #10b981 !important; color: #ffffff !important; font-weight: 800; box-shadow: 0 0 12px #10b981; }
 
+        /* Watch Demo YouTube Button Styling */
         .btn-demo {
             background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
             color: #ffffff !important;
@@ -885,7 +887,7 @@
 
                 <button type="button" id="btn-watch-demo" class="btn-demo" style="display: none;" title="Watch Video Demo for this song">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+                        <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
                     </svg>
                     Watch Demo
                 </button>
@@ -1143,6 +1145,11 @@
         let currentDetectedFreq = 0;
         let currentDetectedMidi = 0;
         let tunerNeedleAngle = Math.PI * 1.5; // Starts pointing straight up (12 o'clock)
+
+        // Step Mode Microphone Recognition State
+        let lastStepAdvanceTime = 0;
+        let stepHoldFrames = 0;
+        let stepSamePitchRequiresRepluck = false;
 
         // Game Mode Scoring & Particle Effects
         let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
@@ -1484,7 +1491,7 @@
                 frets.push(mapped[i].fret);
                 if (i > 0) {
                     const s1 = guitarStrings.findIndex(s => s.id === mapped[i-1].stringObj.id);
-                    const s2 = guitarStrings.findIndex(s => s.id === mapped[i].stringObj.id);
+                    const s2 = guitarStrings.findIndex(s => s.id === mapped[i-1].stringObj.id);
                     stringJumps += Math.abs(s1 - s2);
                 }
             }
@@ -1529,7 +1536,6 @@
             const titleToLog = songTitle || getCurrentSongTitle();
             const difficultyToLog = currentDifficulty || (currentSong.length > 0 ? calculateSongDifficulty(currentSong) : 'Normal');
 
-            // Calculate final statistics (Defaulting to 0/100% if not in Game Mode)
             const totalAssessed = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracyVal = totalAssessed > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalAssessed) * 100).toFixed(1) : '100.0';
 
@@ -1546,7 +1552,7 @@
                 perfect: gameStats.perfect,
                 earlyLate: gameStats.earlyLate,
                 missed: gameStats.miss,
-                maxStreak: currentStreak, // Note: Send currentStreak as maxStreak since we track it dynamically
+                maxStreak: currentStreak,
                 timestamp: new Date().toISOString()
             };
 
@@ -1929,7 +1935,7 @@
                         const y = startY + (stringIndex * lineSpacing);
                         
                         let strokeColor = item.color === '#000000' ? '#475569' : item.color;
-                        if (isGameMode) {
+                        if (isGameMode || isStepMode) {
                             if (item.gameStatus === 'perfect') strokeColor = '#22c55e';
                             else if (item.gameStatus === 'earlyLate') strokeColor = '#f97316';
                             else if (item.gameStatus === 'miss') strokeColor = '#ef4444';
@@ -2062,7 +2068,7 @@
                     let strokeColor = item.color === '#000000' ? '#64748b' : item.color;
                     let textColor = '#0f172a';
 
-                    if (isGameMode) {
+                    if (isGameMode || isStepMode) {
                         if (item.gameStatus === 'perfect') { strokeColor = '#22c55e'; fillColor = '#dcfce7'; }
                         else if (item.gameStatus === 'earlyLate') { strokeColor = '#f97316'; fillColor = '#ffedd5'; }
                         else if (item.gameStatus === 'miss') { strokeColor = '#ef4444'; fillColor = '#fee2e2'; }
@@ -2347,7 +2353,7 @@
                     const char = line[j];
                     if (char === '"' && line[j + 1] === '"') { entry += '"'; j++; }
                     else if (char === '"') { insideQuote = !insideQuote; }
-                    else if (char === ',' && !insideQuote) { row.push(entry); entry = ''; }
+                    else if (char === ',' && !insideQuote) { row.push(entry.trim()); entry = ''; }
                     else { entry += char; }
                 }
                 row.push(entry);
@@ -2453,7 +2459,7 @@
                         const opacity = 1.0 - (Math.abs(timeUntilHit) / 350);
                         const displayValue = showLetters ? extractNoteLetter(item.note) : item.fret.toString();
                         let strokeColor = '#ef4444';
-                        if (isGameMode) {
+                        if (isGameMode || isStepMode) {
                             if (item.gameStatus === 'perfect') strokeColor = '#22c55e';
                             else if (item.gameStatus === 'earlyLate') strokeColor = '#f97316';
                         }
@@ -2481,7 +2487,7 @@
                             const displayValue = showLetters ? extractNoteLetter(item.note) : item.fret.toString();
                             let renderStroke = item.stroke;
                             let renderColor = item.color;
-                            if (isGameMode) {
+                            if (isGameMode || isStepMode) {
                                 if (item.gameStatus === 'perfect') { renderColor = '#22c55e'; renderStroke = '#ffffff'; }
                                 else if (item.gameStatus === 'earlyLate') { renderColor = '#f97316'; renderStroke = '#ffffff'; }
                                 else if (item.gameStatus === 'miss') { renderColor = '#ef4444'; renderStroke = '#ffffff'; }
@@ -2497,6 +2503,92 @@
             updateAndDrawConfetti();
         }
 
+        /* --- PITCH MATCHING ENGINE (Direct Match & Guitar Octave Harmonics) --- */
+        function isGuitarPitchMatch(detectedMidi, targetMidi) {
+            if (!detectedMidi || detectedMidi <= 0) return false;
+            const diff = Math.abs(detectedMidi - targetMidi);
+            if (diff <= 1.1) return true; // Direct fundamental pitch match within ~100 cents
+
+            // Pitch class match (handles octave overtones on acoustic and electric guitar strings)
+            const detPC = Math.round(detectedMidi) % 12;
+            const tgtPC = Math.round(targetMidi) % 12;
+            let pcDiff = Math.abs(detPC - tgtPC);
+            if (pcDiff > 6) pcDiff = 12 - pcDiff;
+
+            if (pcDiff === 0 && (Math.abs(diff - 12) <= 1.1 || Math.abs(diff - 24) <= 1.1)) {
+                return true;
+            }
+            return false;
+        }
+
+        /* --- STEP MODE MICROPHONE PITCH RECOGNITION & NOTE ADVANCE --- */
+        function checkStepModeMicrophoneAdvance() {
+            if (!isStepMode || !isMicListening || noteTimeline.length === 0) return;
+
+            const now = performance.now();
+
+            // Allow looping back to start by plucking the first note when finished
+            if (currentStepIndex >= noteTimeline.length) {
+                const firstItem = noteTimeline[0];
+                const firstMidi = noteToMidi(firstItem.note);
+                if (currentDetectedMidi > 0 && isGuitarPitchMatch(currentDetectedMidi, firstMidi)) {
+                    advanceStepNote();
+                }
+                return;
+            }
+
+            const currentItem = noteTimeline[currentStepIndex];
+            const targetMidi = noteToMidi(currentItem.note);
+
+            // Minimum cooldown between step advances (350ms)
+            if (now - lastStepAdvanceTime < 350) return;
+
+            // Prevent ringing string from automatically skipping consecutive identical notes
+            if (stepSamePitchRequiresRepluck) {
+                if (currentDetectedMidi <= 0 || !isGuitarPitchMatch(currentDetectedMidi, targetMidi)) {
+                    stepSamePitchRequiresRepluck = false;
+                } else if (now - lastStepAdvanceTime > 650) {
+                    stepSamePitchRequiresRepluck = false;
+                } else {
+                    return;
+                }
+            }
+
+            if (currentDetectedMidi > 0 && isGuitarPitchMatch(currentDetectedMidi, targetMidi)) {
+                stepHoldFrames++;
+                if (stepHoldFrames >= 2) { // Note sustained stably for at least 2 animation frames (~30ms)
+                    stepHoldFrames = 0;
+                    lastStepAdvanceTime = now;
+
+                    // Calculate coordinates for visual feedback on fretboard
+                    const stringIndex = guitarStrings.findIndex(s => s.id === currentItem.stringId);
+                    const fretSpacing = (canvas.width - 60) / 12.5;
+                    const targetX = currentItem.fret === 0 ? 56 : 60 + (currentItem.fret - 0.5) * fretSpacing;
+                    const fretboardTop = canvas.height - 120;
+                    const targetY = fretboardTop + (120 / 6) * (stringIndex >= 0 ? stringIndex : 0) + 10;
+
+                    // Festive confetti pop at the fret location!
+                    spawnConfetti(targetX, targetY);
+
+                    // Mark note as hit
+                    currentItem.gameStatus = 'perfect';
+
+                    // Enforce re-pluck requirement if next step note has the identical pitch
+                    const nextIdx = currentStepIndex + 1;
+                    if (nextIdx < noteTimeline.length && noteToMidi(noteTimeline[nextIdx].note) === targetMidi) {
+                        stepSamePitchRequiresRepluck = true;
+                    } else {
+                        stepSamePitchRequiresRepluck = false;
+                    }
+
+                    // Advance to next step note!
+                    advanceStepNote();
+                }
+            } else {
+                stepHoldFrames = 0;
+            }
+        }
+
         /* Real-Time Microphone Pitch Evaluation for Game Mode */
         function evaluateLiveMicrophonePerformance(effectiveElapsed) {
             if (!isGameMode || !isMicListening || currentDetectedMidi <= 0) return;
@@ -2505,11 +2597,10 @@
                 if (item.gameStatus !== 'pending') return;
 
                 const targetMidi = noteToMidi(item.note);
-                const pitchDiff = Math.abs(currentDetectedMidi - targetMidi);
+                const isMatch = isGuitarPitchMatch(currentDetectedMidi, targetMidi);
                 const timeDiff = effectiveElapsed - item.hitTime;
 
-                // Check if currently detected note matches target note pitch (±1 semitone tolerance)
-                if (pitchDiff <= 1.05) {
+                if (isMatch) {
                     const stringIndex = guitarStrings.findIndex(s => s.id === item.stringId);
                     const fretSpacing = (canvas.width - 60) / 12.5;
                     const targetX = item.fret === 0 ? 56 : 60 + (item.fret - 0.5) * fretSpacing;
@@ -2583,11 +2674,13 @@
                 
                 stepVirtualTime += (targetStepTime - stepVirtualTime) * 0.15;
                 effectiveElapsed = stepVirtualTime;
+
+                // Evaluate microphone in Step Mode for hands-free note advance
+                checkStepModeMicrophoneAdvance();
             } else {
                 effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
+                if (isGameMode) evaluateLiveMicrophonePerformance(effectiveElapsed);
             }
-
-            evaluateLiveMicrophonePerformance(effectiveElapsed);
 
             noteTimeline.forEach(item => {
                 const stringIndex = guitarStrings.findIndex(s => s.id === item.stringId);
@@ -2637,6 +2730,9 @@
 
             if (isStepMode) {
                 currentStepIndex = 0;
+                stepHoldFrames = 0;
+                lastStepAdvanceTime = 0;
+                stepSamePitchRequiresRepluck = false;
                 stepVirtualTime = noteTimeline[0] ? noteTimeline[0].hitTime - 1800 : 0;
                 updateStepStatus();
             } else {
@@ -2668,7 +2764,16 @@
                 btnStep.textContent = 'Step Mode: ON';
                 btnStep.classList.add('btn-step-active');
                 currentStepIndex = 0;
+                stepHoldFrames = 0;
+                lastStepAdvanceTime = 0;
+                stepSamePitchRequiresRepluck = false;
                 stepVirtualTime = noteTimeline[0] ? noteTimeline[0].hitTime - 1800 : 0;
+
+                // Auto-enable microphone if not currently listening so students can play right away
+                if (!isMicListening) {
+                    toggleMicrophoneListening();
+                }
+
                 if (!isPlaying) playSong();
                 updateStepStatus();
             } else {
@@ -2714,7 +2819,10 @@
             if (currentStepIndex >= noteTimeline.length) {
                 currentStepIndex = 0;
                 completedThisRun = false;
-                for (let i = 0; i < noteTimeline.length; i++) noteTimeline[i].played = false;
+                for (let i = 0; i < noteTimeline.length; i++) {
+                    noteTimeline[i].played = false;
+                    noteTimeline[i].gameStatus = 'pending';
+                }
                 stepVirtualTime = noteTimeline[0] ? noteTimeline[0].hitTime - 1800 : 0;
                 document.getElementById('status').textContent = `Restarting song (Repetition #${songCompletionCount + 1})...`;
                 updateStepStatus();
@@ -2728,6 +2836,7 @@
             const stringIndex = guitarStrings.findIndex(s => s.id === item.stringId);
             triggerStringVibration(stringIndex);
             item.played = true;
+            item.gameStatus = 'perfect';
             currentStepIndex++;
             updateStepStatus();
         }
@@ -2736,7 +2845,12 @@
             if (noteTimeline.length === 0) return;
             if (currentStepIndex > 0) {
                 currentStepIndex--;
-                for (let i = currentStepIndex; i < noteTimeline.length; i++) noteTimeline[i].played = false;
+                stepHoldFrames = 0;
+                stepSamePitchRequiresRepluck = false;
+                for (let i = currentStepIndex; i < noteTimeline.length; i++) {
+                    noteTimeline[i].played = false;
+                    noteTimeline[i].gameStatus = 'pending';
+                }
                 const item = noteTimeline[currentStepIndex];
                 const midi = noteToMidi(item.note);
                 const freq = 440 * Math.pow(2, (midi - 69) / 12);
@@ -2752,14 +2866,17 @@
                 const nextItem = noteTimeline[currentStepIndex];
                 const displayValue = showLetters ? extractNoteLetter(nextItem.note) : nextItem.fret;
                 const repLabel = songCompletionCount > 0 ? ` [Completed: ${songCompletionCount}x]` : '';
-                document.getElementById('status').textContent = `Step ${currentStepIndex + 1} of ${noteTimeline.length}: Next -> String [ ${nextItem.stringId.toUpperCase()} ], Play [ ${displayValue} ] (RIGHT ARROW or SPACE to Step, LEFT ARROW to go back)${repLabel}`;
+                const micHint = isMicListening ? '🎤 Pluck note on guitar to advance' : 'Press SPACE or RIGHT ARROW to advance';
+                const strName = stringFriendlyNames[nextItem.stringId] || nextItem.stringId.toUpperCase();
+                document.getElementById('status').textContent = `Step ${currentStepIndex + 1} of ${noteTimeline.length}: Next -> String [ ${strName} ], Fret [ ${displayValue} ] (${micHint})${repLabel}`;
             } else {
                 if (!completedThisRun) {
-                    completedThisRun = true; songCompletionCount++;
+                    completedThisRun = true; 
+                    songCompletionCount++;
                     const modeLabel = isTabMode ? 'TAB Mode (Step)' : 'Step Mode';
                     logSongPlay(getCurrentSongTitle(), modeLabel, `${speedSlider.value}%`, 'Completed', songCompletionCount);
                 }
-                document.getElementById('status').textContent = `Song completed! (Total times played through: ${songCompletionCount}) Press RIGHT ARROW or SPACE to loop back to the start.`;
+                document.getElementById('status').textContent = `Song completed! (Total times played through: ${songCompletionCount}) Pluck first note on guitar or press SPACE / RIGHT ARROW to loop back.`;
             }
         }
 
@@ -2787,7 +2904,7 @@
                     btnMicToggle.textContent = '🎤 Mic: ON';
                     btnMicToggle.classList.remove('btn-secondary');
                     btnMicToggle.classList.add('btn-success');
-                    document.getElementById('status').textContent = 'Microphone listening for guitar notes...';
+                    document.getElementById('status').textContent = isStepMode ? '🎤 Microphone active! Pluck the displayed fret on your guitar...' : 'Microphone listening for guitar notes...';
                     processMicrophonePitch();
                 } catch (err) {
                     console.error("Mic error:", err);
@@ -2812,7 +2929,7 @@
             let rms = 0;
             for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
             rms = Math.sqrt(rms / SIZE);
-            if (rms < 0.015) return -1; // Ignore noise below threshold
+            if (rms < 0.015) return -1;
 
             let r1 = 0, r2 = SIZE - 1, thres = 0.2;
             for (let i = 0; i < SIZE / 2; i++) {
@@ -2882,10 +2999,9 @@
             const pivotY = h - 25;
             const radius = 135;
 
-            // 9am is Math.PI, 12 o'clock is 1.5 * Math.PI, 3pm is 2 * Math.PI
-            const startAngle = Math.PI;
-            const centerAngle = Math.PI * 1.5;
-            const endAngle = Math.PI * 2.0;
+            const startAngle = Math.PI;       // 9:00 AM (Flat)
+            const centerAngle = Math.PI * 1.5; // 12:00 PM (In Tune)
+            const endAngle = Math.PI * 2.0;    // 3:00 PM (Sharp)
 
             let cents = 0;
             let noteLabel = "--";
@@ -2904,12 +3020,10 @@
 
             let targetAngle = centerAngle;
             if (hasSignal) {
-                // Map -50 cents to 9am (PI), 0 cents to 12 o'clock (1.5 PI), +50 cents to 3pm (2 PI)
                 const fraction = (clampedCents + 50) / 100;
                 targetAngle = startAngle + fraction * Math.PI;
             }
 
-            // Smooth swinging arm needle movement
             tunerNeedleAngle += (targetAngle - tunerNeedleAngle) * 0.22;
 
             // Outer Arc Track
@@ -2919,7 +3033,7 @@
             tunerCtx.strokeStyle = '#1e293b';
             tunerCtx.stroke();
 
-            // Sweet Spot Center In-Tune Band (±10 cents around 12 o'clock)
+            // Center In-Tune Sweet Spot (±10 cents around 12 o'clock)
             const sweetStart = centerAngle - (10 / 100) * Math.PI;
             const sweetEnd = centerAngle + (10 / 100) * Math.PI;
             tunerCtx.beginPath();
@@ -2950,7 +3064,7 @@
                 tunerCtx.stroke();
             }
 
-            // Labels: 9am (Flat), 12 o'clock (In Tune), 3pm (Sharp)
+            // Dial Text Labels
             tunerCtx.font = '800 11px sans-serif';
             tunerCtx.textAlign = 'left';
             tunerCtx.fillStyle = '#ef4444';
