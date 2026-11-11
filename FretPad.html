@@ -2699,21 +2699,23 @@ function unlockMasterCelebration() {
                     const fretboardTop = canvas.height - 120;
                     const targetY = fretboardTop + (120 / 6) * stringIndex + 10;
 
-                    if (timeDiff >= -700 && timeDiff <= 140) {
-                        // Perfect hit (on time & correct pitch) -> Green
+                    if (timeDiff >= -400 && timeDiff <= 140) {
+                        // Perfect hit (Green) - Very forgiving early window
                         item.gameStatus = 'perfect';
                         gameStats.perfect++;
                         currentStreak++;
                         spawnConfetti(targetX, targetY);
                         triggerStringVibration(stringIndex);
                         updateGameStatusText();
-                    } else if (timeDiff >= -700 && timeDiff <= 320) {
-                        // Early or Late -> Orange
+                        noteMatched = true;
+                    } else if (timeDiff >= -600 && timeDiff <= 320) {
+                        // Early or Late (Orange) - Plucked way too early or late
                         item.gameStatus = 'earlyLate';
                         gameStats.earlyLate++;
                         currentStreak = 0;
                         triggerStringVibration(stringIndex);
                         updateGameStatusText();
+                        noteMatched = true;
                     }
                 }
             });
