@@ -152,7 +152,6 @@
             cursor: pointer;
         }
 
-        /* Speed Presets */
         .speed-presets {
             display: flex;
             gap: 4px;
@@ -242,8 +241,10 @@
         .btn-step-active { background-color: #f43f5e !important; color: #ffffff !important; box-shadow: 0 0 12px #f43f5e; }
         .btn-tab { background-color: #6366f1 !important; color: #ffffff !important; font-weight: 700; }
         .btn-tab-active { background-color: #a855f7 !important; color: #ffffff !important; box-shadow: 0 0 12px #a855f7; }
+        .btn-tuner { background-color: #0891b2 !important; color: #ffffff !important; font-weight: 700; }
+        .btn-tuner-active { background-color: #06b6d4 !important; box-shadow: 0 0 12px #06b6d4; }
+        .btn-game-active { background-color: #10b981 !important; color: #ffffff !important; font-weight: 800; box-shadow: 0 0 12px #10b981; }
 
-        /* Watch Demo YouTube Button Styling */
         .btn-demo {
             background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
             color: #ffffff !important;
@@ -644,7 +645,7 @@
         .video-container-ratio {
             position: relative;
             width: 100%;
-            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+            padding-bottom: 56.25%;
             height: 0;
             background-color: #000;
             border-radius: 8px;
@@ -659,6 +660,96 @@
             height: 100%;
             border: 0;
         }
+
+        /* TUNER MODAL & STYLING */
+        .tuner-card {
+            background: #0f172a;
+            border: 2px solid #0891b2;
+            border-radius: 12px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.35);
+        }
+        #tuner-meter-canvas {
+            background: #050811;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            display: block;
+        }
+        .tuner-note-readout {
+            font-size: 2.4rem;
+            font-weight: 900;
+            color: #facc15;
+            letter-spacing: -0.02em;
+            text-align: center;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .tuner-note-readout.in-tune {
+            color: #10b981 !important;
+            text-shadow: 0 0 16px #10b981;
+        }
+        .tuner-sub-readout {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            font-family: monospace;
+            font-weight: 700;
+        }
+
+        /* GAME MODE FEEDBACK & GRAPH MODAL */
+        .graph-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            width: 100%;
+        }
+        .bar-chart-wrapper {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            height: 160px;
+            width: 100px;
+            background: #0b0f19;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 8px;
+            position: relative;
+        }
+        .stacked-bar {
+            width: 38px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            height: 130px;
+            border-radius: 4px;
+            overflow: hidden;
+            background: #181f2e;
+        }
+        .bar-part-red { background-color: #ef4444; width: 100%; transition: height 0.4s ease; }
+        .bar-part-orange { background-color: #f97316; width: 100%; transition: height 0.4s ease; }
+        .bar-part-green { background-color: #22c55e; width: 100%; transition: height 0.4s ease; }
+        .badge-box {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-top: 6px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+        }
+        .badge-gold { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #000; }
+        .badge-silver { background: linear-gradient(135deg, #94a3b8, #cbd5e1); color: #000; }
+        .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
     </style>
 </head>
 <body>
@@ -728,6 +819,54 @@
         </div>
     </div>
 
+    <!-- Guitar Tuner Modal (9am to 3pm Swinging Arm) -->
+    <div class="modal-overlay" id="tuner-modal" style="z-index: 10002;">
+        <div class="modal tuner-card" style="max-width: 440px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <h2 style="font-size: 1.15rem; color: #06b6d4; display: flex; align-items: center; gap: 8px;">
+                    🎸 Guitar Tuner (Standard Tuning)
+                </h2>
+                <button type="button" id="btn-close-tuner" class="btn-secondary" style="padding: 4px 8px;">✕ Close</button>
+            </div>
+            <canvas id="tuner-meter-canvas" width="380" height="200"></canvas>
+            <div id="tuner-note-display" class="tuner-note-readout">--</div>
+            <div id="tuner-cents-display" class="tuner-sub-readout">Sing or pluck a guitar string</div>
+            <div style="display: flex; gap: 6px; font-size: 0.72rem; color: #94a3b8; font-weight: 700;">
+                <span>E2 (82.4Hz)</span> • <span>A2 (110Hz)</span> • <span>D3 (146.8Hz)</span> • <span>G3 (196Hz)</span> • <span>B3 (246.9Hz)</span> • <span>E4 (329.6Hz)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Mode Results Modal with Stacked Bar Graph -->
+    <div class="modal-overlay" id="game-results-modal" style="z-index: 10003;">
+        <div class="modal" style="text-align: center; max-width: 440px;">
+            <h2 style="color: #38bdf8;">Performance Summary</h2>
+            <p id="game-summary-text" style="font-size: 0.95rem; color: #e5e7eb; font-weight: 600;"></p>
+            <div id="badge-container"></div>
+            <div id="game-rank-text" style="font-size: 1.05rem; font-weight: 800; color: #facc15; margin-top: 6px;"></div>
+
+            <div class="graph-container">
+                <div class="bar-chart-wrapper">
+                    <div class="stacked-bar">
+                        <div id="bar-red" class="bar-part-red" style="height: 0%;"></div>
+                        <div id="bar-orange" class="bar-part-orange" style="height: 0%;"></div>
+                        <div id="bar-green" class="bar-part-green" style="height: 0%;"></div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 700; margin-top: 4px;">
+                    <span style="color: #22c55e;">● Perfect</span>
+                    <span style="color: #f97316;">● Early/Late</span>
+                    <span style="color: #ef4444;">● Missed</span>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px;">
+                <button type="button" class="btn-warning" id="btn-game-try-again">Play Again</button>
+                <button type="button" class="btn-success" id="btn-game-results-close">Continue</button>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <header>
             <div class="header-title-group">
@@ -744,7 +883,6 @@
                     <option value="">Loading Songs...</option>
                 </select>
 
-                <!-- Watch Demo Button appears dynamically next to song selection when Column D URL exists -->
                 <button type="button" id="btn-watch-demo" class="btn-demo" style="display: none;" title="Watch Video Demo for this song">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
@@ -759,23 +897,6 @@
                     <option value="overdrive">4. Overdriven Lead</option>
                     <option value="chiptune">5. 8-Bit Chiptune Guitar</option>
                 </select>
-
-                <!-- Tuner UI -->
-                <div id="tuner-container" style="display: flex; flex-direction: column; align-items: center; background: #0b0f19; border: 1px solid #374151; border-radius: 6px; padding: 4px 8px; margin: 0 4px;">
-                    <div style="font-size: 0.75rem; color: #cbd5e1; font-weight: bold; margin-bottom: 2px; display: flex; gap: 4px; align-items: center;">
-                        Tuner 
-                        <button type="button" id="btn-mic" style="padding: 2px 6px; font-size: 0.65rem; background: #374151; border: 1px solid #4b5563; border-radius: 4px; color: white; cursor: pointer; transition: 0.2s;">🎤 Mic Off</button>
-                    </div>
-                    <div style="position: relative; width: 80px; height: 35px; overflow: hidden; background: #1f2937; border-radius: 40px 40px 0 0; border: 1px solid #4b5563; border-bottom: none;">
-                        <!-- Tuner dial markings -->
-                        <div style="position: absolute; bottom: 0; left: 50%; width: 2px; height: 8px; background: #9ca3af; transform: translateX(-50%);"></div>
-                        <div style="position: absolute; bottom: 2px; left: 6px; font-size: 0.55rem; color: #9ca3af; font-weight: bold;">b</div>
-                        <div style="position: absolute; bottom: 2px; right: 6px; font-size: 0.55rem; color: #9ca3af; font-weight: bold;">#</div>
-                        <!-- Swinging arm -->
-                        <div id="tuner-arm" style="position: absolute; bottom: 0; left: 50%; width: 2px; height: 32px; background: #ef4444; transform-origin: bottom center; transform: translateX(-50%) rotate(-90deg); transition: transform 0.1s ease-out, background-color 0.1s;"></div>
-                    </div>
-                    <div id="tuner-note" style="font-size: 0.9rem; font-weight: 900; color: #f8fafc; margin-top: 2px; height: 1.1rem; line-height: 1.1rem;">--</div>
-                </div>
 
                 <div class="speed-control">
                     <label for="speed-slider">Speed: <span id="speed-label">100%</span></label>
@@ -792,6 +913,10 @@
                     <input type="checkbox" id="show-letters-toggle">
                     <label for="show-letters-toggle">Letters</label>
                 </div>
+
+                <button type="button" id="btn-tuner" class="btn-tuner">🎸 Tuner</button>
+                <button type="button" id="btn-mic-toggle" class="btn-secondary">🎤 Mic: OFF</button>
+                <button type="button" id="btn-game" class="btn-game-active">🎮 Game Mode: ON</button>
 
                 <button type="button" id="btn-octave-down" class="btn-secondary">Octave DOWN</button>
                 <button type="button" id="btn-octave-up" class="btn-secondary">Octave UP</button>
@@ -832,7 +957,6 @@
             <div class="version-stamp">v26.11.04 | NESA S4/5 Compliant</div>
             <div class="status-bar" id="status">Connecting to Google Sheet song database...</div>
             
-            <!-- MONITOR SESSION WIDGET TO LEFT OF HIT COUNTER -->
             <div class="footer-right-group">
                 <div class="monitor-widget-box" id="monitor-widget">
                     <div class="monitor-top-row">
@@ -848,7 +972,6 @@
                         <div class="monitor-progress-bar-fill" id="mon-bar-fill"></div>
                     </div>
                 </div>
-                <!-- HIT COUNTER IMAGE -->
                 <img src="https://hits.sh/github.com/mrhaybittle/FretPad.svg" alt="Visitor Count" />
             </div>
         </div>
@@ -940,9 +1063,7 @@
             </div>
 
             <div class="composer-grid-scroll" id="composer-grid-scroll" tabindex="0">
-                <table class="composer-grid-table" id="composer-table">
-                    <!-- Populated dynamically via JavaScript -->
-                </table>
+                <table class="composer-grid-table" id="composer-table"></table>
             </div>
 
             <div class="modal-footer" style="justify-content: space-between; align-items: center;">
@@ -969,6 +1090,8 @@
         let isPaused = false;
         let isStepMode = false;
         let isTabMode = false;
+        let isGameMode = true;
+        let isTunerOpen = false;
         let currentStepIndex = 0;
         let stepVirtualTime = 0;
         let animationFrameId = null;
@@ -986,11 +1109,7 @@
         
         let isLooping = false;
         let loopTimeout = null;
-
-        // Screen Wake Lock handle
         let wakeLockSentinel = null;
-
-        // Current active YouTube demo video URL
         let currentDemoUrl = '';
 
         // Roster & Session Monitoring Variables
@@ -1001,7 +1120,7 @@
         let sessionStudentAvatar = "🎸";
         let tabAwayTimestamp = null;
 
-        // Sleep / Standby vs Deliberate Tab Switch Detection State
+        // Hardware sleep detection
         let lastHeartbeatTime = Date.now();
         let lastPerfTimestamp = performance.now();
         let wasHardwareSleep = false;
@@ -1016,14 +1135,21 @@
         let lastDigitKeyTime = 0;
         let lastDigitEntered = '';
 
+        // Microphone & Pitch Detection State
         let micStream = null;
-        let audioAnalyser = null;
-        let micSource = null;
-        let animationTunerId = null;
-        const tunerBuf = new Float32Array(2048);
-        const tunerNoteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        let micAnalyser = null;
+        let isMicListening = false;
+        let pitchDetectionFrameId = null;
+        let currentDetectedFreq = 0;
+        let currentDetectedMidi = 0;
+        let tunerNeedleAngle = Math.PI * 1.5; // Starts pointing straight up (12 o'clock)
 
-        // 6 Horizontal Guitar Strings
+        // Game Mode Scoring & Particle Effects
+        let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+        let currentStreak = 0;
+        let confettiParticles = [];
+
+        // 6 Horizontal Guitar Strings (Standard Tuning: E4, B3, G3, D3, A2, E2)
         const guitarStrings = [
             { id: 'e1', name: 'E4', openMidi: 64, color: '#ec4899', stroke: '#ffffff' }, // High E (Pink)
             { id: 'b2', name: 'B3', openMidi: 59, color: '#22c55e', stroke: '#ffffff' }, // B (Green)
@@ -1034,12 +1160,7 @@
         ];
 
         const stringFriendlyNames = {
-            'e1': 'High E',
-            'b2': 'B',
-            'g3': 'G',
-            'd4': 'D',
-            'a5': 'A',
-            'e6': 'Low E'
+            'e1': 'High E', 'b2': 'B', 'g3': 'G', 'd4': 'D', 'a5': 'A', 'e6': 'Low E'
         };
 
         const noteNames = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
@@ -1053,6 +1174,9 @@
         const btnStep = document.getElementById('btn-step');
         const btnLoop = document.getElementById('btn-loop');
         const btnTabMode = document.getElementById('btn-tab-mode');
+        const btnGame = document.getElementById('btn-game');
+        const btnTuner = document.getElementById('btn-tuner');
+        const btnMicToggle = document.getElementById('btn-mic-toggle');
         const modal = document.getElementById('modal');
         const loginModal = document.getElementById('login-modal');
         const loginNameInput = document.getElementById('login-name');
@@ -1071,6 +1195,17 @@
         const youtubeIframe = document.getElementById('youtube-iframe');
         const btnCloseVideo = document.getElementById('btn-close-video');
 
+        const tunerModal = document.getElementById('tuner-modal');
+        const btnCloseTuner = document.getElementById('btn-close-tuner');
+        const tunerCanvas = document.getElementById('tuner-meter-canvas');
+        const tunerCtx = tunerCanvas.getContext('2d');
+        const tunerNoteDisplay = document.getElementById('tuner-note-display');
+        const tunerCentsDisplay = document.getElementById('tuner-cents-display');
+
+        const gameResultsModal = document.getElementById('game-results-modal');
+        const btnGameTryAgain = document.getElementById('btn-game-try-again');
+        const btnGameResultsClose = document.getElementById('btn-game-results-close');
+
         const bnnContainer = document.getElementById('big-next-note');
         const bnnColor = document.getElementById('bnn-color');
         const bnnString = document.getElementById('bnn-string');
@@ -1085,30 +1220,23 @@
         const composerTitle = document.getElementById('composer-title');
         const composerStepRest = document.getElementById('composer-step-rest');
 
-        /* Screen Wake Lock Management to keep laptop screen active during practice */
+        /* Screen Wake Lock Management */
         async function requestScreenWakeLock() {
             if ('wakeLock' in navigator && !wakeLockSentinel) {
                 try {
                     wakeLockSentinel = await navigator.wakeLock.request('screen');
-                    wakeLockSentinel.addEventListener('release', () => {
-                        wakeLockSentinel = null;
-                    });
-                } catch (err) {
-                    console.log('Screen Wake Lock request non-critical error:', err);
-                }
+                    wakeLockSentinel.addEventListener('release', () => { wakeLockSentinel = null; });
+                } catch (err) {}
             }
         }
 
         async function releaseScreenWakeLock() {
             if (wakeLockSentinel) {
-                try {
-                    await wakeLockSentinel.release();
-                } catch (e) {}
+                try { await wakeLockSentinel.release(); } catch (e) {}
                 wakeLockSentinel = null;
             }
         }
 
-        /* Helper to check if a year level has single or multi-class streams */
         function isSingleClassYear(yr) {
             const y = parseInt(yr, 10);
             return y >= 9 && y <= 12;
@@ -1150,7 +1278,7 @@
             if (timeEl) timeEl.textContent = `${mins}:${secs} / 60:00min`;
             if (songEl) songEl.textContent = `🎵 ${getCurrentSongTitle()}`;
 
-            let barColor = '#22c55e'; // default green
+            let barColor = '#22c55e';
 
             if (badgeEl) {
                 let badgeHtml = '';
@@ -1187,7 +1315,6 @@
                 fillEl.style.backgroundColor = barColor;
             }
 
-            // Render Break Markers on Track
             if (trackEl) {
                 trackEl.querySelectorAll('.monitor-break-marker').forEach(m => m.remove());
                 breakMarkerPositions.forEach(posPct => {
@@ -1199,10 +1326,9 @@
             }
         }
 
-        /* Centralized, Safe Firebase Roster Sync */
+        /* Firebase Roster Sync */
         function syncStudentToFirebase(statusOverride = null) {
             if (!window.firebaseSet || !window.firebaseRef || !window.firebaseDb) return;
-            
             const activeName = currentStudentName || "Student";
             const activeAvatar = sessionStudentAvatar || "🎸";
             const activeRoom = currentStudentClass || "Outside";
@@ -1223,7 +1349,6 @@
             window.firebaseOnDisconnect(myRef).remove();
         }
 
-        /* --- HARDWARE SLEEP VS ACTIVE TAB SWITCH HANDLERS --- */
         function markSystemAsAsleep() {
             wasHardwareSleep = true;
             sleepGracePeriodUntil = Date.now() + 3500;
@@ -1237,36 +1362,26 @@
             const currentPerf = performance.now();
 
             if (document.hidden) {
-                // Tab became hidden
                 tabAwayTimestamp = now;
                 lastHeartbeatTime = now;
                 lastPerfTimestamp = currentPerf;
             } else {
-                // Tab became visible again
                 const awayDurationMs = tabAwayTimestamp ? (now - tabAwayTimestamp) : 0;
                 const wallTimeDelta = now - lastHeartbeatTime;
                 const perfDelta = currentPerf - lastPerfTimestamp;
-
-                // Clock Drift Check:
-                // If a laptop lid is closed or computer sleeps, performance.now() stops ticking
-                // while Date.now() leaps ahead. A gap between wall clock and performance clock
-                // indicates hardware sleep.
                 const clockDrift = Math.abs(wallTimeDelta - perfDelta);
                 const isSleep = wasHardwareSleep || 
                                 (now < sleepGracePeriodUntil) || 
                                 (wallTimeDelta > 2200 && clockDrift > 1200) ||
                                 (clockDrift > 1800);
 
-                // Update clocks and clear sleep flag
                 lastHeartbeatTime = now;
                 lastPerfTimestamp = currentPerf;
 
                 if (isSleep) {
-                    // Computer slept or lid closed:
-                    // ZERO breaks recorded, no pop-up, no break log sent
                     tabAwayTimestamp = null;
                     wasHardwareSleep = false;
-                    sleepGracePeriodUntil = now + 3500; // Extend grace period to absorb lingering focus/blur events
+                    sleepGracePeriodUntil = now + 3500;
 
                     if (isPlaying && !isPaused && !isStepMode) {
                         isPaused = true;
@@ -1274,14 +1389,9 @@
                         if (btnPause) btnPause.textContent = 'Resume';
                         document.getElementById('status').textContent = 'Device woke from sleep. Practice paused — click Resume when ready.';
                     }
-
-                    if (isPlaying || isStepMode) {
-                        requestScreenWakeLock();
-                    }
+                    if (isPlaying || isStepMode) requestScreenWakeLock();
                     syncStudentToFirebase("active");
                 } else if (tabAwayTimestamp && awayDurationMs >= 2000) {
-                    // Genuine tab switch (computer was awake the entire time)
-                    // Throttle: ensure we do not log duplicate breaks within 4 seconds
                     if (now - lastBreakProcessedTime > 4000) {
                         lastBreakProcessedTime = now;
                         localTabSwitches++;
@@ -1296,11 +1406,8 @@
                         document.getElementById('tab-switch-title').textContent = `${fName.toUpperCase()} - TAB SWITCH RECORDED!`;
                         document.getElementById('tab-switch-modal').classList.add('open');
                     }
-
                     tabAwayTimestamp = null;
-                    if (isPlaying || isStepMode) {
-                        requestScreenWakeLock();
-                    }
+                    if (isPlaying || isStepMode) requestScreenWakeLock();
                 } else {
                     tabAwayTimestamp = null;
                     syncStudentToFirebase("active");
@@ -1318,7 +1425,6 @@
             try {
                 currentStudentName = localStorage.getItem('pianopad_student_name') || '';
                 currentStudentClass = localStorage.getItem('pianopad_student_class') || '';
-                
                 if (['undefined', 'null', 'N/A'].includes(currentStudentName.trim())) currentStudentName = '';
                 if (['undefined', 'null', 'N/A'].includes(currentStudentClass.trim())) currentStudentClass = '';
             } catch(e) {}
@@ -1448,7 +1554,6 @@
 
             const diffMs = Math.max(0, returnTimeMs - awayTimeMs);
             const durationSec = Math.round(diffMs / 1000);
-            
             if (durationSec < 1) return;
 
             const mins = Math.floor(durationSec / 60);
@@ -1480,8 +1585,7 @@
             };
 
             fetch(LOG_WEB_APP_URL, {
-                method: 'POST',
-                mode: 'no-cors',
+                method: 'POST', mode: 'no-cors',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
             }).catch(err => console.log('Break log failed:', err));
@@ -1507,6 +1611,13 @@
             const octave = Math.floor(midi / 12) - 4;
             const offset = ((midi % 12) + 12) % 12;
             return noteNames[offset] + octave;
+        }
+
+        function midiToNoteNameWithOctave(midi) {
+            const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const octave = Math.floor(midi / 12) - 1;
+            const name = notes[Math.round(midi) % 12];
+            return `${name}${octave}`;
         }
         
         function extractNoteLetter(noteStr) {
@@ -1570,9 +1681,7 @@
                 buildTimeline();
             }
 
-            if (!isPlaying) {
-                renderCurrentFrame(0);
-            }
+            if (!isPlaying) renderCurrentFrame(0);
             const dirStr = octaveOffset > 0 ? `+${octaveOffset}` : `${octaveOffset}`;
             document.getElementById('status').textContent = `Octave shift: ${dirStr} octave(s). All fret positions updated.`;
         }
@@ -1753,10 +1862,12 @@
             if (pct >= 99.5 && !completedThisRun && !isStepMode) {
                 completedThisRun = true;
                 songCompletionCount++;
-                const modeLabel = isTabMode ? 'TAB Mode' : 'Auto Play';
+                const modeLabel = isGameMode ? 'Game Mode' : (isTabMode ? 'TAB Mode' : 'Auto Play');
                 logSongPlay(getCurrentSongTitle(), modeLabel, `${speedSlider.value}%`, 'Completed', songCompletionCount);
                 
-                if (isLooping) {
+                if (isGameMode) {
+                    showGameResultsPopUp();
+                } else if (isLooping) {
                     document.getElementById('status').textContent = 'Song finished. Auto-looping in 2 seconds...';
                     if (loopTimeout) clearTimeout(loopTimeout);
                     loopTimeout = setTimeout(() => {
@@ -1807,13 +1918,20 @@
                     if (currentX > 35 && currentX < w + 20) {
                         const stringIndex = guitarStrings.findIndex(s => s.id === item.stringId);
                         const y = startY + (stringIndex * lineSpacing);
-                        const isHit = (timeUntilHit <= 0 && timeUntilHit >= -250);
+                        
+                        let strokeColor = item.color === '#000000' ? '#475569' : item.color;
+                        if (isGameMode) {
+                            if (item.gameStatus === 'perfect') strokeColor = '#22c55e';
+                            else if (item.gameStatus === 'earlyLate') strokeColor = '#f97316';
+                            else if (item.gameStatus === 'miss') strokeColor = '#ef4444';
+                        }
                         
                         ctx.fillStyle = '#ffffff';
                         ctx.beginPath(); ctx.arc(currentX, y, 10, 0, Math.PI * 2); ctx.fill();
 
-                        ctx.strokeStyle = isHit ? '#10b981' : (item.color === '#000000' ? '#475569' : item.color);
-                        ctx.lineWidth = isHit ? 3 : 2; ctx.stroke();
+                        ctx.strokeStyle = strokeColor;
+                        ctx.lineWidth = (item.gameStatus && item.gameStatus !== 'pending') ? 3 : 2; 
+                        ctx.stroke();
 
                         ctx.fillStyle = '#000000';
                         ctx.font = '900 11px -apple-system, BlinkMacSystemFont, sans-serif';
@@ -1874,7 +1992,6 @@
 
             const totalNotes = noteTimeline.length;
             const maxNotesPerSystem = 24;
-            
             const maxSystemsVisible = Math.max(1, Math.min(3, Math.floor(totalTabAreaHeight / 85)));
             let systemOffset = 0;
             if (activeIndex >= 0) {
@@ -1932,6 +2049,16 @@
 
                     const isCurrent = (i === activeIndex);
 
+                    let fillColor = '#ffffff';
+                    let strokeColor = item.color === '#000000' ? '#64748b' : item.color;
+                    let textColor = '#0f172a';
+
+                    if (isGameMode) {
+                        if (item.gameStatus === 'perfect') { strokeColor = '#22c55e'; fillColor = '#dcfce7'; }
+                        else if (item.gameStatus === 'earlyLate') { strokeColor = '#f97316'; fillColor = '#ffedd5'; }
+                        else if (item.gameStatus === 'miss') { strokeColor = '#ef4444'; fillColor = '#fee2e2'; }
+                    }
+
                     if (isCurrent) {
                         ctx.save();
                         ctx.fillStyle = '#dc2626';
@@ -1953,16 +2080,16 @@
                         ctx.fillText(displayValue, noteX, noteY + 0.5);
                         ctx.restore();
                     } else {
-                        ctx.fillStyle = '#ffffff';
+                        ctx.fillStyle = fillColor;
                         ctx.beginPath();
                         ctx.arc(noteX, noteY, 9, 0, Math.PI * 2);
                         ctx.fill();
 
-                        ctx.strokeStyle = item.color === '#000000' ? '#64748b' : item.color;
+                        ctx.strokeStyle = strokeColor;
                         ctx.lineWidth = 1.8;
                         ctx.stroke();
 
-                        ctx.fillStyle = '#0f172a';
+                        ctx.fillStyle = textColor;
                         ctx.font = '800 11px sans-serif';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
@@ -2065,7 +2192,45 @@
             ctx.fillText(displayValue, x, y - 1.5);
             ctx.restore();
         }
-        
+
+        function spawnConfetti(x, y) {
+            for (let i = 0; i < 28; i++) {
+                confettiParticles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 9,
+                    vy: (Math.random() * -7) - 2,
+                    size: Math.random() * 5 + 3,
+                    color: ['#10b981', '#22c55e', '#facc15', '#ec4899', '#38bdf8'][Math.floor(Math.random() * 5)],
+                    life: 1.0,
+                    rot: Math.random() * Math.PI * 2,
+                    rotSpeed: (Math.random() - 0.5) * 0.3
+                });
+            }
+        }
+
+        function updateAndDrawConfetti() {
+            for (let i = confettiParticles.length - 1; i >= 0; i--) {
+                const p = confettiParticles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.25;
+                p.rot += p.rotSpeed;
+                p.life -= 0.02;
+
+                if (p.life <= 0) {
+                    confettiParticles.splice(i, 1);
+                } else {
+                    ctx.save();
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = p.color;
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rot);
+                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                    ctx.restore();
+                }
+            }
+        }
+
         function updateBigNextNoteDisplay() {
             if (!isPlaying) {
                 bnnContainer.style.display = 'none';
@@ -2084,7 +2249,6 @@
                 bnnContainer.style.display = 'flex';
                 bnnColor.style.backgroundColor = nextNote.color === '#000000' ? '#1f2937' : nextNote.color;
                 bnnColor.style.borderColor = nextNote.color === '#000000' ? '#ffffff' : '#ffffff';
-
                 bnnString.textContent = stringFriendlyNames[nextNote.stringId] || nextNote.stringId;
                 bnnFret.textContent = showLetters ? extractNoteLetter(nextNote.note) : nextNote.fret;
             } else {
@@ -2115,15 +2279,12 @@
             if (match && match[1]) {
                 return `https://www.youtube.com/embed/${match[1]}?autoplay=1&rel=0`;
             }
-
             if (/^[a-zA-Z0-9_-]{11}$/.test(raw)) {
                 return `https://www.youtube.com/embed/${raw}?autoplay=1&rel=0`;
             }
-
             if (raw.includes('youtube.com/embed/')) {
                 return raw.includes('?') ? `${raw}&autoplay=1` : `${raw}?autoplay=1`;
             }
-
             return '';
         }
 
@@ -2139,7 +2300,7 @@
             if (!currentDemoUrl) return;
             const embedUrl = getYouTubeEmbedUrl(currentDemoUrl);
             if (!embedUrl) {
-                document.getElementById('status').textContent = 'No valid YouTube video format recognized for this song.';
+                alert('No valid YouTube video format recognized for this song.');
                 return;
             }
 
@@ -2255,7 +2416,8 @@
                 noteTimeline.push({
                     note: item.note, stringId: item.stringObj.id, fret: item.fret,
                     color: item.stringObj.color, stroke: item.stringObj.stroke,
-                    hitTime: cumulativeMs, duration: Math.max(140, (item.rest || 250) * 0.85 / speedFactor), played: false
+                    hitTime: cumulativeMs, duration: Math.max(140, (item.rest || 250) * 0.85 / speedFactor),
+                    played: false, gameStatus: 'pending'
                 });
             });
         }
@@ -2281,7 +2443,12 @@
                     if (timeUntilHit <= 0 && timeUntilHit >= -350) {
                         const opacity = 1.0 - (Math.abs(timeUntilHit) / 350);
                         const displayValue = showLetters ? extractNoteLetter(item.note) : item.fret.toString();
-                        drawPick(targetX, targetY, 14, item.color, '#ef4444', displayValue, opacity);
+                        let strokeColor = '#ef4444';
+                        if (isGameMode) {
+                            if (item.gameStatus === 'perfect') strokeColor = '#22c55e';
+                            else if (item.gameStatus === 'earlyLate') strokeColor = '#f97316';
+                        }
+                        drawPick(targetX, targetY, 14, item.color, strokeColor, displayValue, opacity);
                     }
                 });
             } else {
@@ -2303,13 +2470,97 @@
 
                         if (opacity > 0 && yPos > TAB_HEIGHT - 10) {
                             const displayValue = showLetters ? extractNoteLetter(item.note) : item.fret.toString();
-                            drawPick(targetX, yPos, 14, item.color, item.stroke, displayValue, opacity);
+                            let renderStroke = item.stroke;
+                            let renderColor = item.color;
+                            if (isGameMode) {
+                                if (item.gameStatus === 'perfect') { renderColor = '#22c55e'; renderStroke = '#ffffff'; }
+                                else if (item.gameStatus === 'earlyLate') { renderColor = '#f97316'; renderStroke = '#ffffff'; }
+                                else if (item.gameStatus === 'miss') { renderColor = '#ef4444'; renderStroke = '#ffffff'; }
+                            }
+                            drawPick(targetX, yPos, 14, renderColor, renderStroke, displayValue, opacity);
                         }
                     }
                 });
 
                 drawScrollingTablature(effectiveElapsed);
             }
+
+            updateAndDrawConfetti();
+        }
+
+        /* Real-Time Microphone Pitch Evaluation for Game Mode */
+        function evaluateLiveMicrophonePerformance(effectiveElapsed) {
+            if (!isGameMode || !isMicListening || currentDetectedMidi <= 0) return;
+
+            noteTimeline.forEach(item => {
+                if (item.gameStatus !== 'pending') return;
+
+                const targetMidi = noteToMidi(item.note);
+                const pitchDiff = Math.abs(currentDetectedMidi - targetMidi);
+                const timeDiff = effectiveElapsed - item.hitTime;
+
+                // Check if currently detected note matches target note pitch (±1 semitone tolerance)
+                if (pitchDiff <= 1.05) {
+                    const stringIndex = guitarStrings.findIndex(s => s.id === item.stringId);
+                    const fretSpacing = (canvas.width - 60) / 12.5;
+                    const targetX = item.fret === 0 ? 56 : 60 + (item.fret - 0.5) * fretSpacing;
+                    const fretboardTop = canvas.height - 120;
+                    const targetY = fretboardTop + (120 / 6) * stringIndex + 10;
+
+                    if (Math.abs(timeDiff) <= 140) {
+                        // Perfect hit (on time & correct pitch) -> Green
+                        item.gameStatus = 'perfect';
+                        gameStats.perfect++;
+                        currentStreak++;
+                        spawnConfetti(targetX, targetY);
+                        triggerStringVibration(stringIndex);
+                        updateGameStatusText();
+                    } else if (timeDiff >= -320 && timeDiff <= 320) {
+                        // Early or Late -> Orange
+                        item.gameStatus = 'earlyLate';
+                        gameStats.earlyLate++;
+                        currentStreak = 0;
+                        triggerStringVibration(stringIndex);
+                        updateGameStatusText();
+                    }
+                }
+            });
+        }
+
+        function updateGameStatusText() {
+            const totalAssessed = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+            const accuracy = totalAssessed > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalAssessed) * 100).toFixed(1) : '100.0';
+            const streakLabel = currentStreak >= 5 ? ` | 🔥 STREAK: x${currentStreak}` : '';
+            document.getElementById('status').textContent = `🎮 Accuracy: ${accuracy}% | Perfect: ${gameStats.perfect} | Early/Late: ${gameStats.earlyLate} | Missed: ${gameStats.miss}${streakLabel}`;
+        }
+
+        function showGameResultsPopUp() {
+            const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+            const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '0.0';
+            const accNum = parseFloat(accuracy);
+
+            document.getElementById('game-summary-text').innerHTML = `
+                Student: <span style="color:#38bdf8;">${currentStudentName || 'Guest'}</span><br>
+                Final Accuracy: <span style="color:#22c55e; font-size:1.25rem;">${accuracy}%</span><br>
+                <span style="font-size:0.8rem; color:#9ca3af;">(${gameStats.perfect} Perfect, ${gameStats.earlyLate} Early/Late, ${gameStats.miss} Missed out of ${total} notes)</span>
+            `;
+
+            let badgeHtml = '';
+            if (accNum >= 90) badgeHtml = '<div class="badge-box badge-gold">🥇 GOLD GUITARIST (90%+)</div>';
+            else if (accNum >= 75) badgeHtml = '<div class="badge-box badge-silver">🥈 SILVER GUITARIST (75%+)</div>';
+            else if (accNum >= 50) badgeHtml = '<div class="badge-box badge-bronze">🥉 BRONZE GUITARIST (50%+)</div>';
+            document.getElementById('badge-container').innerHTML = badgeHtml;
+
+            const greenPct = total > 0 ? (gameStats.perfect / total) * 100 : 0;
+            const orangePct = total > 0 ? (gameStats.earlyLate / total) * 100 : 0;
+            const redPct = total > 0 ? (gameStats.miss / total) * 100 : 0;
+
+            document.getElementById('bar-green').style.height = `${greenPct}%`;
+            document.getElementById('bar-orange').style.height = `${orangePct}%`;
+            document.getElementById('bar-red').style.height = `${redPct}%`;
+
+            document.getElementById('game-rank-text').textContent = `Speed: ${speedSlider.value}% | Song: ${getCurrentSongTitle()}`;
+            gameResultsModal.classList.add('open');
         }
 
         function renderLoop(now) {
@@ -2327,14 +2578,25 @@
                 effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
             }
 
+            evaluateLiveMicrophonePerformance(effectiveElapsed);
+
             noteTimeline.forEach(item => {
                 const stringIndex = guitarStrings.findIndex(s => s.id === item.stringId);
+
                 if (!isStepMode && effectiveElapsed >= item.hitTime && !item.played) {
                     item.played = true;
                     const midi = noteToMidi(item.note);
                     const freq = 440 * Math.pow(2, (midi - 69) / 12);
                     playTone(freq, item.duration / 1000);
                     triggerStringVibration(stringIndex);
+                }
+
+                if (isGameMode && item.gameStatus === 'pending' && effectiveElapsed > item.hitTime + 300) {
+                    // Missed note passes hitline without correct mic detection -> Red
+                    item.gameStatus = 'miss';
+                    gameStats.miss++;
+                    currentStreak = 0;
+                    updateGameStatusText();
                 }
             });
 
@@ -2354,6 +2616,10 @@
 
             hasLoggedCurrentPlay = false;
             completedThisRun = false;
+            gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+            currentStreak = 0;
+            confettiParticles = [];
+
             buildTimeline();
             isPlaying = true;
             isPaused = false;
@@ -2365,7 +2631,7 @@
                 stepVirtualTime = noteTimeline[0] ? noteTimeline[0].hitTime - 1800 : 0;
                 updateStepStatus();
             } else {
-                document.getElementById('status').textContent = 'Playing...';
+                document.getElementById('status').textContent = isGameMode ? '🎮 Game Mode active! Play on your guitar...' : 'Playing...';
             }
             requestAnimationFrame(renderLoop);
         }
@@ -2414,8 +2680,22 @@
                 btnTabMode.classList.remove('btn-tab-active');
                 document.getElementById('status').textContent = 'Waterfall and Scrolling TAB Mode restored.';
             }
-            if (!isPlaying) {
-                renderCurrentFrame(0, 0);
+            if (!isPlaying) renderCurrentFrame(0, 0);
+        }
+
+        function toggleGameMode() {
+            isGameMode = !isGameMode;
+            if (isGameMode) {
+                btnGame.textContent = '🎮 Game Mode: ON';
+                btnGame.classList.add('btn-game-active');
+                btnGame.classList.remove('btn-secondary');
+                if (!isMicListening) toggleMicrophoneListening();
+                document.getElementById('status').textContent = '🎮 Game Mode activated! Note accuracy will be assessed via microphone.';
+            } else {
+                btnGame.textContent = '🎮 Game Mode: OFF';
+                btnGame.classList.remove('btn-game-active');
+                btnGame.classList.add('btn-secondary');
+                document.getElementById('status').textContent = 'Game Mode OFF. Free-play active.';
             }
         }
 
@@ -2470,10 +2750,274 @@
                     const modeLabel = isTabMode ? 'TAB Mode (Step)' : 'Step Mode';
                     logSongPlay(getCurrentSongTitle(), modeLabel, `${speedSlider.value}%`, 'Completed', songCompletionCount);
                 }
-                document.getElementById('status').textContent = `Song completed! (Total times played through: ${songCompletionCount}) Press RIGHT ARROW or SPACE to loop back to the start (or LEFT ARROW to step back).`;
+                document.getElementById('status').textContent = `Song completed! (Total times played through: ${songCompletionCount}) Press RIGHT ARROW or SPACE to loop back to the start.`;
             }
         }
 
+        /* Microphone & Autocorrelation Pitch Detection */
+        async function toggleMicrophoneListening() {
+            initAudio();
+            if (isMicListening) {
+                stopMicrophoneListening();
+                btnMicToggle.textContent = '🎤 Mic: OFF';
+                btnMicToggle.classList.remove('btn-success');
+                btnMicToggle.classList.add('btn-secondary');
+                document.getElementById('status').textContent = 'Microphone stopped.';
+            } else {
+                try {
+                    micStream = await navigator.mediaDevices.getUserMedia({
+                        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+                        video: false
+                    });
+                    const source = audioCtx.createMediaStreamSource(micStream);
+                    micAnalyser = audioCtx.createAnalyser();
+                    micAnalyser.fftSize = 2048;
+                    source.connect(micAnalyser);
+
+                    isMicListening = true;
+                    btnMicToggle.textContent = '🎤 Mic: ON';
+                    btnMicToggle.classList.remove('btn-secondary');
+                    btnMicToggle.classList.add('btn-success');
+                    document.getElementById('status').textContent = 'Microphone listening for guitar notes...';
+                    processMicrophonePitch();
+                } catch (err) {
+                    console.error("Mic error:", err);
+                    alert("Unable to access microphone. Please allow microphone permissions in your browser.");
+                }
+            }
+        }
+
+        function stopMicrophoneListening() {
+            isMicListening = false;
+            if (pitchDetectionFrameId) cancelAnimationFrame(pitchDetectionFrameId);
+            if (micStream) {
+                micStream.getTracks().forEach(t => t.stop());
+                micStream = null;
+            }
+            currentDetectedFreq = 0;
+            currentDetectedMidi = 0;
+        }
+
+        function autoCorrelate(buf, sampleRate) {
+            const SIZE = buf.length;
+            let rms = 0;
+            for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
+            rms = Math.sqrt(rms / SIZE);
+            if (rms < 0.015) return -1; // Ignore noise below threshold
+
+            let r1 = 0, r2 = SIZE - 1, thres = 0.2;
+            for (let i = 0; i < SIZE / 2; i++) {
+                if (Math.abs(buf[i]) < thres) { r1 = i; break; }
+            }
+            for (let i = 1; i < SIZE / 2; i++) {
+                if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
+            }
+
+            buf = buf.slice(r1, r2);
+            const newSize = buf.length;
+            const c = new Array(newSize).fill(0);
+            for (let i = 0; i < newSize; i++) {
+                for (let j = 0; j < newSize - i; j++) {
+                    c[i] += buf[j] * buf[j + i];
+                }
+            }
+
+            let d = 0; while (c[d] > c[d + 1]) d++;
+            let maxval = -1, maxpos = -1;
+            for (let i = d; i < newSize; i++) {
+                if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
+            }
+            let T0 = maxpos;
+            let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+            let a = (x1 + x3 - 2 * x2) / 2;
+            let b = (x3 - x1) / 2;
+            if (a) T0 = T0 - b / (2 * a);
+
+            return sampleRate / T0;
+        }
+
+        function freqToMidi(f) {
+            return 69 + 12 * Math.log2(f / 440);
+        }
+
+        function midiToFreq(m) {
+            return 440 * Math.pow(2, (m - 69) / 12);
+        }
+
+        function processMicrophonePitch() {
+            if (!isMicListening || !micAnalyser) return;
+
+            const buf = new Float32Array(micAnalyser.fftSize);
+            micAnalyser.getFloatTimeDomainData(buf);
+            const freq = autoCorrelate(buf, audioCtx.sampleRate);
+
+            if (freq !== -1 && freq >= 65 && freq <= 1100) {
+                currentDetectedFreq = freq;
+                currentDetectedMidi = freqToMidi(freq);
+            } else {
+                currentDetectedFreq = 0;
+                currentDetectedMidi = 0;
+            }
+
+            if (isTunerOpen) drawTunerGauge();
+            pitchDetectionFrameId = requestAnimationFrame(processMicrophonePitch);
+        }
+
+        /* --- GUITAR TUNER SWINGING ARM GAUGE (9am to 3pm) --- */
+        function drawTunerGauge() {
+            const w = tunerCanvas.width;
+            const h = tunerCanvas.height;
+            tunerCtx.clearRect(0, 0, w, h);
+
+            const pivotX = w / 2;
+            const pivotY = h - 25;
+            const radius = 135;
+
+            // 9am is Math.PI, 12 o'clock is 1.5 * Math.PI, 3pm is 2 * Math.PI
+            const startAngle = Math.PI;
+            const centerAngle = Math.PI * 1.5;
+            const endAngle = Math.PI * 2.0;
+
+            let cents = 0;
+            let noteLabel = "--";
+            let closestFreq = 0;
+            let hasSignal = (currentDetectedFreq > 0 && currentDetectedMidi > 0);
+
+            if (hasSignal) {
+                const roundedMidi = Math.round(currentDetectedMidi);
+                closestFreq = midiToFreq(roundedMidi);
+                cents = 1200 * Math.log2(currentDetectedFreq / closestFreq);
+                noteLabel = midiToNoteNameWithOctave(roundedMidi);
+            }
+
+            const clampedCents = Math.max(-50, Math.min(50, cents));
+            const inTune = hasSignal && Math.abs(cents) <= 8.0;
+
+            let targetAngle = centerAngle;
+            if (hasSignal) {
+                // Map -50 cents to 9am (PI), 0 cents to 12 o'clock (1.5 PI), +50 cents to 3pm (2 PI)
+                const fraction = (clampedCents + 50) / 100;
+                targetAngle = startAngle + fraction * Math.PI;
+            }
+
+            // Smooth swinging arm needle movement
+            tunerNeedleAngle += (targetAngle - tunerNeedleAngle) * 0.22;
+
+            // Outer Arc Track
+            tunerCtx.beginPath();
+            tunerCtx.arc(pivotX, pivotY, radius, startAngle, endAngle);
+            tunerCtx.lineWidth = 14;
+            tunerCtx.strokeStyle = '#1e293b';
+            tunerCtx.stroke();
+
+            // Sweet Spot Center In-Tune Band (±10 cents around 12 o'clock)
+            const sweetStart = centerAngle - (10 / 100) * Math.PI;
+            const sweetEnd = centerAngle + (10 / 100) * Math.PI;
+            tunerCtx.beginPath();
+            tunerCtx.arc(pivotX, pivotY, radius, sweetStart, sweetEnd);
+            tunerCtx.lineWidth = 14;
+            tunerCtx.strokeStyle = inTune ? '#10b981' : 'rgba(16, 185, 129, 0.4)';
+            tunerCtx.stroke();
+
+            // Dial Tick Marks
+            for (let cVal = -50; cVal <= 50; cVal += 10) {
+                const fraction = (cVal + 50) / 100;
+                const ang = startAngle + fraction * Math.PI;
+                const isCenter = (cVal === 0);
+
+                const rIn = radius - (isCenter ? 14 : 8);
+                const rOut = radius + (isCenter ? 4 : 0);
+
+                const x1 = pivotX + rIn * Math.cos(ang);
+                const y1 = pivotY + rIn * Math.sin(ang);
+                const x2 = pivotX + rOut * Math.cos(ang);
+                const y2 = pivotY + rOut * Math.sin(ang);
+
+                tunerCtx.beginPath();
+                tunerCtx.moveTo(x1, y1);
+                tunerCtx.lineTo(x2, y2);
+                tunerCtx.lineWidth = isCenter ? 3.5 : 1.5;
+                tunerCtx.strokeStyle = isCenter ? (inTune ? '#10b981' : '#facc15') : '#64748b';
+                tunerCtx.stroke();
+            }
+
+            // Labels: 9am (Flat), 12 o'clock (In Tune), 3pm (Sharp)
+            tunerCtx.font = '800 11px sans-serif';
+            tunerCtx.textAlign = 'left';
+            tunerCtx.fillStyle = '#ef4444';
+            tunerCtx.fillText("♭ FLAT (9am)", 16, pivotY - 6);
+
+            tunerCtx.textAlign = 'right';
+            tunerCtx.fillStyle = '#ef4444';
+            tunerCtx.fillText("SHARP ♯ (3pm)", w - 16, pivotY - 6);
+
+            tunerCtx.textAlign = 'center';
+            tunerCtx.fillStyle = inTune ? '#10b981' : '#94a3b8';
+            tunerCtx.fillText("12:00 (IN TUNE)", pivotX, 22);
+
+            // Swinging Arm Needle
+            const needleTipX = pivotX + (radius + 6) * Math.cos(tunerNeedleAngle);
+            const needleTipY = pivotY + (radius + 6) * Math.sin(tunerNeedleAngle);
+
+            let needleColor = '#94a3b8';
+            if (hasSignal) {
+                needleColor = inTune ? '#10b981' : (Math.abs(cents) <= 20 ? '#facc15' : '#ef4444');
+            }
+
+            tunerCtx.save();
+            tunerCtx.beginPath();
+            tunerCtx.moveTo(pivotX, pivotY);
+            tunerCtx.lineTo(needleTipX, needleTipY);
+            tunerCtx.lineWidth = 4;
+            tunerCtx.lineCap = 'round';
+            tunerCtx.strokeStyle = needleColor;
+            if (inTune) {
+                tunerCtx.shadowColor = '#10b981';
+                tunerCtx.shadowBlur = 15;
+            }
+            tunerCtx.stroke();
+            tunerCtx.restore();
+
+            // Center Pivot Cap
+            tunerCtx.beginPath();
+            tunerCtx.arc(pivotX, pivotY, 10, 0, Math.PI * 2);
+            tunerCtx.fillStyle = inTune ? '#10b981' : '#334155';
+            tunerCtx.fill();
+            tunerCtx.lineWidth = 2;
+            tunerCtx.strokeStyle = '#ffffff';
+            tunerCtx.stroke();
+
+            // Text Readout Updates
+            if (hasSignal) {
+                tunerNoteDisplay.textContent = noteLabel;
+                tunerNoteDisplay.className = inTune ? 'tuner-note-readout in-tune' : 'tuner-note-readout';
+                const sign = cents >= 0 ? `+${Math.round(cents)}` : `${Math.round(cents)}`;
+                tunerCentsDisplay.innerHTML = inTune 
+                    ? `<span style="color:#10b981; font-weight:900;">★ IN TUNE ★</span> (${currentDetectedFreq.toFixed(1)} Hz)`
+                    : `${currentDetectedFreq.toFixed(1)} Hz (${sign} cents)`;
+            } else {
+                tunerNoteDisplay.textContent = "--";
+                tunerNoteDisplay.className = 'tuner-note-readout';
+                tunerCentsDisplay.textContent = "Sing or pluck a guitar string";
+            }
+        }
+
+        function openTunerModal() {
+            initAudio();
+            isTunerOpen = true;
+            btnTuner.classList.add('btn-tuner-active');
+            tunerModal.classList.add('open');
+            if (!isMicListening) toggleMicrophoneListening();
+            drawTunerGauge();
+        }
+
+        function closeTunerModal() {
+            isTunerOpen = false;
+            btnTuner.classList.remove('btn-tuner-active');
+            tunerModal.classList.remove('open');
+        }
+
+        /* Composer Functions */
         function initComposerGrid() {
             if (composerGridData.length === 0) {
                 composerGridData = [];
@@ -2697,128 +3241,14 @@
             doc.save(`${songTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_tab.pdf`);
             document.getElementById('status').textContent = `Exported "${songTitle}" to PDF successfully!`;
         }
-        
-        function autoCorrelate(buf, sampleRate) {
-            let SIZE = buf.length;
-            let rms = 0;
-            for (let i = 0; i < SIZE; i++) {
-                let val = buf[i];
-                rms += val * val;
-            }
-            rms = Math.sqrt(rms / SIZE);
-            if (rms < 0.01) return -1; // Not enough signal
-
-            let r1 = 0, r2 = SIZE - 1, thres = 0.2;
-            for (let i = 0; i < SIZE / 2; i++)
-                if (Math.abs(buf[i]) < thres) { r1 = i; break; }
-            for (let i = 1; i < SIZE / 2; i++)
-                if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
-
-            buf = buf.slice(r1, r2);
-            SIZE = buf.length;
-
-            let c = new Array(SIZE).fill(0);
-            for (let i = 0; i < SIZE; i++)
-                for (let j = 0; j < SIZE - i; j++)
-                    c[i] = c[i] + buf[j] * buf[j + i];
-
-            let d = 0; while (c[d] > c[d + 1]) d++;
-            let maxval = -1, maxpos = -1;
-            for (let i = d; i < SIZE; i++) {
-                if (c[i] > maxval) {
-                    maxval = c[i];
-                    maxpos = i;
-                }
-            }
-            let T0 = maxpos;
-            let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
-            let a = (x1 + x3 - 2 * x2) / 2;
-            let b = (x3 - x1) / 2;
-            if (a) T0 = T0 - b / (2 * a);
-
-            return sampleRate / T0;
-        }
-
-        function noteFromPitch(frequency) {
-            let noteNum = 12 * (Math.log(frequency / 440) / Math.log(2));
-            return Math.round(noteNum) + 69;
-        }
-
-        function frequencyFromNoteNumber(note) {
-            return 440 * Math.pow(2, (note - 69) / 12);
-        }
-
-        function centsOffFromPitch(frequency, note) {
-            return Math.floor(1200 * Math.log(frequency / frequencyFromNoteNumber(note)) / Math.log(2));
-        }
-
-        function updateTuner() {
-            if (!micStream) return;
-            audioAnalyser.getFloatTimeDomainData(tunerBuf);
-            let ac = autoCorrelate(tunerBuf, audioCtx.sampleRate);
-            
-            let arm = document.getElementById('tuner-arm');
-            let noteDisplay = document.getElementById('tuner-note');
-            
-            if (ac !== -1) {
-                let pitch = ac;
-                let note = noteFromPitch(pitch);
-                let noteName = tunerNoteStrings[note % 12];
-                let cents = centsOffFromPitch(pitch, note);
-                
-                noteDisplay.textContent = noteName;
-                
-                let displayCents = Math.max(-50, Math.min(50, cents));
-                let deg = (displayCents / 50) * 90;
-                
-                arm.style.transform = `translateX(-50%) rotate(${deg}deg)`;
-                
-                if (Math.abs(cents) < 5) {
-                    arm.style.background = '#10b981'; // green
-                    noteDisplay.style.color = '#10b981';
-                } else {
-                    arm.style.background = '#ef4444'; // red
-                    noteDisplay.style.color = '#f8fafc';
-                }
-            }
-            animationTunerId = requestAnimationFrame(updateTuner);
-        }
-
-        async function toggleMic() {
-            const btnMic = document.getElementById('btn-mic');
-            if (micStream) {
-                micStream.getTracks().forEach(t => t.stop());
-                micStream = null;
-                if (animationTunerId) cancelAnimationFrame(animationTunerId);
-                btnMic.textContent = '🎤 Mic Off';
-                btnMic.style.background = '#374151';
-                document.getElementById('tuner-arm').style.transform = 'translateX(-50%) rotate(-90deg)';
-                document.getElementById('tuner-arm').style.background = '#ef4444';
-                document.getElementById('tuner-note').textContent = '--';
-                document.getElementById('tuner-note').style.color = '#f8fafc';
-                document.getElementById('status').textContent = 'Microphone off.';
-            } else {
-                try {
-                    initAudio();
-                    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    audioAnalyser = audioCtx.createAnalyser();
-                    audioAnalyser.fftSize = 2048;
-                    micSource = audioCtx.createMediaStreamSource(micStream);
-                    micSource.connect(audioAnalyser);
-                    btnMic.textContent = '🎤 Mic On';
-                    btnMic.style.background = '#10b981';
-                    document.getElementById('status').textContent = 'Microphone listening for tuner...';
-                    updateTuner();
-                } catch (err) {
-                    console.error("Mic access denied or error:", err);
-                    document.getElementById('status').textContent = 'Could not access microphone.';
-                }
-            }
-        }
 
         window.addEventListener('keydown', (e) => {
             if (videoModal.classList.contains('open') && e.key === 'Escape') {
                 closeVideoModal();
+                return;
+            }
+            if (tunerModal.classList.contains('open') && e.key === 'Escape') {
+                closeTunerModal();
                 return;
             }
             if (composerModal.classList.contains('open')) { handleComposerKeyDown(e); return; }
@@ -2849,6 +3279,20 @@
             }
             updateClassDropdownVisibility();
             loginModal.classList.add('open');
+        });
+
+        // Tuner & Mic Event Listeners
+        btnTuner.addEventListener('click', openTunerModal);
+        btnCloseTuner.addEventListener('click', closeTunerModal);
+        btnMicToggle.addEventListener('click', toggleMicrophoneListening);
+        btnGame.addEventListener('click', toggleGameMode);
+
+        btnGameTryAgain.addEventListener('click', () => {
+            gameResultsModal.classList.remove('open');
+            playSong();
+        });
+        btnGameResultsClose.addEventListener('click', () => {
+            gameResultsModal.classList.remove('open');
         });
 
         // Demo Video Event Listeners
@@ -2882,7 +3326,6 @@
         document.getElementById('btn-octave-down').addEventListener('click', () => shiftSongOctave(-12));
         document.getElementById('btn-pdf').addEventListener('click', exportToPDF);
         btnStep.addEventListener('click', toggleStepMode);
-        document.getElementById('btn-mic').addEventListener('click', toggleMic);
         
         btnComposer.addEventListener('click', () => { initComposerGrid(); composerModal.classList.add('open'); composerGridScroll.focus(); });
         btnCloseComposer.addEventListener('click', () => { composerModal.classList.remove('open'); });
@@ -2964,6 +3407,11 @@
             if (isPlaying) {
                 isPaused = !isPaused; document.getElementById('btn-pause').textContent = isPaused ? 'Resume' : 'Pause';
                 document.getElementById('status').textContent = isPaused ? 'Playback paused.' : 'Playing...';
+                if (isPaused) {
+                    releaseScreenWakeLock();
+                } else {
+                    requestScreenWakeLock();
+                }
             }
         });
 
@@ -2978,6 +3426,18 @@
             }
 
             setInterval(() => {
+                const now = Date.now();
+                const currentPerf = performance.now();
+                const wallDelta = now - lastHeartbeatTime;
+                const perfDelta = currentPerf - lastPerfTimestamp;
+
+                if (wallDelta > 2000 && (wallDelta - perfDelta) > 1000) {
+                    wasHardwareSleep = true;
+                    sleepGracePeriodUntil = now + 3500;
+                }
+
+                lastHeartbeatTime = now;
+                lastPerfTimestamp = currentPerf;
                 updateMonitorWidget();
                 syncStudentToFirebase();
             }, 1000);
