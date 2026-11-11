@@ -1,0 +1,3570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FretPad - by Haybittle</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #121218;
+            --panel-bg: #1f1f2e;
+            --accent-color: #4f46e5;
+            --accent-hover: #6366f1;
+            --text-main: #f3f4f6;
+            --canvas-bg: #0a0a10;
+        }
+
+        /* Guitar String Color Palette */
+        :root {
+            --string-e1: #ec4899; /* High E (Pink) */
+            --string-b2: #22c55e; /* B (Green) */
+            --string-g3: #000000; /* G (Black) */
+            --string-d4: #3b82f6; /* D (Blue) */
+            --string-a5: #eab308; /* A (Yellow) */
+            --string-e6: #ef4444; /* Low E (Red) */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            max-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 12px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1180px;
+            max-height: calc(100vh - 16px);
+            background-color: var(--panel-bg);
+            border-radius: 14px;
+            box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.6);
+            padding: 12px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            border-bottom: 1px solid #374151;
+            padding-bottom: 8px;
+        }
+
+        .header-title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            color: #f8fafc;
+        }
+
+        .user-badge {
+            font-size: 0.75rem;
+            background: #0b0f19;
+            border: 1px solid #374151;
+            padding: 3px 8px;
+            border-radius: 20px;
+            color: #10b981;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .user-badge span {
+            color: #9ca3af;
+            font-weight: normal;
+        }
+
+        .class-badge {
+            background: #374151;
+            color: #f8fafc;
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            margin-left: 2px;
+        }
+
+        .difficulty-tag {
+            font-size: 0.72rem;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .diff-easy { background: #065f46; color: #34d399; }
+        .diff-normal { background: #1e3a8a; color: #60a5fa; }
+        .diff-hard { background: #78350f; color: #fbbf24; }
+        .diff-expert { background: #831843; color: #f472b6; }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background-color: #0b0f19;
+            padding: 5px 10px;
+            border-radius: 6px;
+            border: 1px solid #374151;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .speed-control label {
+            white-space: nowrap;
+            color: #cbd5e1;
+        }
+
+        .speed-control input[type="range"] {
+            width: 75px;
+            accent-color: var(--accent-color);
+            cursor: pointer;
+        }
+
+        /* Speed Presets */
+        .speed-presets {
+            display: flex;
+            gap: 4px;
+        }
+
+        .btn-speed-preset {
+            padding: 5px 8px;
+            font-size: 0.75rem;
+            background: #374151;
+            color: #e2e8f0;
+            border-radius: 4px;
+            border: 1px solid #4b5563;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-speed-preset:hover {
+            background: #4b5563;
+            color: white;
+        }
+        
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background-color: #0b0f19;
+            padding: 5px 10px;
+            border-radius: 6px;
+            border: 1px solid #374151;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .toggle-container label {
+            white-space: nowrap;
+            color: #cbd5e1;
+            cursor: pointer;
+        }
+        
+        .toggle-container input[type="checkbox"] {
+            cursor: pointer;
+            width: 14px;
+            height: 14px;
+            accent-color: var(--accent-color);
+        }
+
+        select {
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid #374151;
+            background-color: #0b0f19;
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            outline: none;
+            max-width: 180px;
+        }
+
+        button, .btn-file-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: none;
+            background-color: var(--accent-color);
+            color: white;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary { background-color: #4b5563; }
+        .btn-warning { background-color: #f59e0b; }
+        .btn-success { background-color: #10b981; }
+        .btn-danger { background-color: #ef4444; }
+        .btn-midi { background-color: #06b6d4; }
+        .btn-midi:hover { background-color: #0891b2; }
+        .btn-pdf { background-color: #8b5cf6; }
+        .btn-pdf:hover { background-color: #7c3aed; }
+        .btn-composer { background-color: #0284c7; }
+        .btn-composer:hover { background-color: #0369a1; }
+        .btn-step { background-color: #ec4899 !important; color: #ffffff !important; font-weight: 700; }
+        .btn-step-active { background-color: #f43f5e !important; color: #ffffff !important; box-shadow: 0 0 12px #f43f5e; }
+        .btn-tab { background-color: #6366f1 !important; color: #ffffff !important; font-weight: 700; }
+        .btn-tab-active { background-color: #a855f7 !important; color: #ffffff !important; box-shadow: 0 0 12px #a855f7; }
+        .btn-tuner { background-color: #0891b2 !important; color: #ffffff !important; font-weight: 700; }
+        .btn-tuner-active { background-color: #06b6d4 !important; box-shadow: 0 0 12px #06b6d4; }
+        .btn-game-active { background-color: #10b981 !important; color: #ffffff !important; font-weight: 800; box-shadow: 0 0 12px #10b981; }
+
+        /* Watch Demo YouTube Button Styling */
+        .btn-demo {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+            animation: pulse-demo 2.2s infinite;
+        }
+        .btn-demo:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+            transform: scale(1.02);
+        }
+        @keyframes pulse-demo {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+            50% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+        }
+
+        .visualizer-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #000;
+            border-radius: 10px;
+            padding: 8px;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.9);
+            width: 100%;
+        }
+
+        #waterfall-canvas {
+            background-color: var(--canvas-bg);
+            display: block;
+            border-radius: 6px;
+            width: 100%;
+            height: 420px;
+        }
+
+        #big-next-note {
+            display: none !important;
+            background: #0b0f19;
+            border: 2px solid #374151;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #f8fafc;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .bnn-circle {
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            display: inline-block;
+            border: 1px solid white;
+            box-shadow: 0 0 5px rgba(255,255,255,0.4);
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background-color: #0b0f19;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid #374151;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent-color), #10b981);
+            border-radius: 4px;
+            transition: width 0.05s linear;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+        .modal {
+            background: var(--panel-bg);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 480px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 20px 30px rgba(0,0,0,0.8);
+            border: 1px solid #374151;
+        }
+
+        .modal-composer {
+            max-width: 1080px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal h2 {
+            font-size: 1.2rem;
+            color: #f8fafc;
+        }
+
+        .modal input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            background: #0b0f19;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            color: #e5e7eb;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .modal input[type="text"]:focus {
+            border-color: var(--accent-color);
+        }
+
+        .dropdown-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .dropdown-row select {
+            flex: 1;
+            max-width: 100%;
+            padding: 10px 12px;
+            font-size: 0.9rem;
+        }
+
+        .modal textarea {
+            width: 100%; height: 110px;
+            background: #0b0f19;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            color: #e5e7eb;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+
+        .modal-footer { display: flex; justify-content: flex-end; gap: 8px; }
+
+        .composer-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            background: #0b0f19;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #374151;
+        }
+
+        .composer-tools-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .composer-grid-scroll {
+            width: 100%;
+            overflow-x: auto;
+            background: #0b0f19;
+            border-radius: 8px;
+            border: 1px solid #374151;
+            padding: 10px;
+            outline: none;
+        }
+
+        .composer-grid-table {
+            border-collapse: separate;
+            border-spacing: 4px;
+            width: 100%;
+            user-select: none;
+        }
+
+        .composer-grid-table th {
+            font-size: 0.72rem;
+            color: #9ca3af;
+            padding: 4px 6px;
+            font-weight: 700;
+            text-align: center;
+            min-width: 36px;
+        }
+
+        .composer-string-label {
+            font-size: 0.78rem;
+            font-weight: 800;
+            padding: 6px 10px;
+            border-radius: 4px;
+            text-align: center;
+            white-space: nowrap;
+            color: #ffffff;
+        }
+
+        .grid-cell {
+            width: 38px;
+            height: 38px;
+            min-width: 38px;
+            border-radius: 6px;
+            background: #1a1e2d;
+            border: 1px solid #334155;
+            color: #cbd5e1;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+        }
+
+        .grid-cell:hover {
+            border-color: #6366f1;
+            background: #252a3d;
+        }
+
+        .grid-cell.active-cell {
+            border: 2px solid #38bdf8 !important;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
+            background: #1e293b;
+            color: #ffffff;
+        }
+
+        .grid-cell.has-note {
+            background: #ffffff;
+            color: #000000;
+            font-weight: 900;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        .grid-cell.active-cell.has-note {
+            border: 2px solid #ef4444 !important;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+        }
+
+        .composer-instructions {
+            font-size: 0.78rem;
+            color: #94a3b8;
+            background: #111827;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border-left: 3px solid #0284c7;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .footer-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 4px;
+        }
+
+        .status-bar {
+            font-size: 0.85rem;
+            color: #9ca3af;
+            text-align: center;
+            min-height: 1.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+
+        .version-stamp {
+            font-size: 0.72rem;
+            color: #6b7280;
+            font-weight: 600;
+            font-family: monospace;
+        }
+
+        /* --- MONITOR SESSION WIDGET STYLING --- */
+        .footer-right-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .monitor-widget-box {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            background: rgba(30, 15, 20, 0.85);
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 0.72rem;
+            color: #f3f4f6;
+            min-width: 270px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .monitor-top-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .monitor-student-name {
+            font-weight: 800;
+            color: #ffffff;
+            font-size: 0.82rem;
+        }
+
+        .monitor-badge-breaks {
+            background-color: #991b1b;
+            color: #ffffff;
+            font-weight: 800;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.68rem;
+            letter-spacing: 0.02em;
+        }
+
+        .monitor-time-text {
+            color: #cbd5e1;
+            font-weight: 600;
+            font-size: 0.72rem;
+        }
+
+        .monitor-divider {
+            width: 1px;
+            height: 12px;
+            background-color: #4b5563;
+            margin: 0 2px;
+        }
+
+        .monitor-song-text {
+            color: #e2e8f0;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 120px;
+        }
+
+        .monitor-progress-bar-track {
+            position: relative;
+            width: 100%;
+            height: 5px;
+            background-color: #111827;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .monitor-progress-bar-fill {
+            height: 100%;
+            background-color: #22c55e;
+            width: 0%;
+            transition: width 0.5s ease, background-color 0.5s ease;
+        }
+
+        .monitor-break-marker {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background-color: #ef4444;
+            z-index: 2;
+        }
+
+        /* YouTube Modal Dialog Styling */
+        .modal-video {
+            max-width: 820px;
+            width: 92%;
+            background: #111827;
+            border: 2px solid #ef4444;
+            box-shadow: 0 0 35px rgba(239, 68, 68, 0.4);
+            padding: 16px 20px 20px 20px;
+            gap: 12px;
+        }
+        .video-container-ratio {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%;
+            height: 0;
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #374151;
+        }
+        .video-container-ratio iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        /* TUNER MODAL & STYLING */
+        .tuner-card {
+            background: #0f172a;
+            border: 2px solid #0891b2;
+            border-radius: 12px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.35);
+        }
+        #tuner-meter-canvas {
+            background: #050811;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            display: block;
+        }
+        .tuner-note-readout {
+            font-size: 2.4rem;
+            font-weight: 900;
+            color: #facc15;
+            letter-spacing: -0.02em;
+            text-align: center;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .tuner-note-readout.in-tune {
+            color: #10b981 !important;
+            text-shadow: 0 0 16px #10b981;
+        }
+        .tuner-sub-readout {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            font-family: monospace;
+            font-weight: 700;
+        }
+
+        /* GAME MODE FEEDBACK & GRAPH MODAL */
+        .graph-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            width: 100%;
+        }
+        .bar-chart-wrapper {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            height: 160px;
+            width: 100px;
+            background: #0b0f19;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 8px;
+            position: relative;
+        }
+        .stacked-bar {
+            width: 38px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            height: 130px;
+            border-radius: 4px;
+            overflow: hidden;
+            background: #181f2e;
+        }
+        .bar-part-red { background-color: #ef4444; width: 100%; transition: height 0.4s ease; }
+        .bar-part-orange { background-color: #f97316; width: 100%; transition: height 0.4s ease; }
+        .bar-part-green { background-color: #22c55e; width: 100%; transition: height 0.4s ease; }
+        .badge-box {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-top: 6px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+        }
+        .badge-gold { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #000; }
+        .badge-silver { background: linear-gradient(135deg, #94a3b8, #cbd5e1); color: #000; }
+        .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
+    </style>
+</head>
+<body>
+
+    <!-- FIREBASE INITIALIZATION FOR ROSTER -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getDatabase, ref, set, onDisconnect } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBAJSw8QFuzMoCXqZY2wmO3Nmy2Fdy6Q4U",
+            authDomain: "haysync-9b816.firebaseapp.com",
+            databaseURL: "https://haysync-9b816-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "haysync-9b816",
+            storageBucket: "haysync-9b816.firebasestorage.app",
+            messagingSenderId: "717730658604",
+            appId: "1:717730658604:web:e09a312b2ac7c8426e9489"
+        };
+            
+        try {
+            const app = initializeApp(firebaseConfig);
+            window.firebaseDb = getDatabase(app, firebaseConfig.databaseURL);
+            window.firebaseSet = set;
+            window.firebaseRef = ref;
+            window.firebaseOnDisconnect = onDisconnect;
+            
+            window.dispatchEvent(new Event('firebase-initialized'));
+        } catch(e) {
+            console.log("Firebase config error:", e);
+        }
+    </script>
+
+    <!-- Tab Switch Alert Modal -->
+    <div class="modal-overlay" id="tab-switch-modal" style="z-index: 10000;">
+        <div class="modal" style="max-width: 480px; text-align: center; border: 3px solid #ef4444; box-shadow: 0 0 25px rgba(239, 68, 68, 0.8); background-color: #1f2937;">
+            <h2 style="color: #ef4444; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; gap: 10px; text-transform: uppercase; margin-bottom: 5px;">
+                ⚠️ <span id="tab-switch-title">TAB SWITCH RECORDED!</span>
+            </h2>
+            <p style="font-size: 1.05rem; color: #ffffff; font-weight: 600; margin: 15px 0;">
+                You switched tabs - stay on task please. Break recorded.
+            </p>
+            <button type="button" style="width: 100%; padding: 14px; font-size: 1.1rem; justify-content: center; text-transform: uppercase; font-weight: 800; background: linear-gradient(to bottom, #ef4444, #991b1b); color: white; border: none; border-radius: 8px; cursor: pointer;" onclick="document.getElementById('tab-switch-modal').classList.remove('open')">
+                I UNDERSTAND - BACK TO TASK
+            </button>
+        </div>
+    </div>
+
+    <!-- YouTube Demo Video Modal -->
+    <div class="modal-overlay" id="video-modal" style="z-index: 10001;">
+        <div class="modal modal-video">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 id="video-modal-title" style="font-size: 1.15rem; color: #f8fafc; display: flex; align-items: center; gap: 8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#ef4444">
+                        <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+                    </svg>
+                    <span>Watch Guitar Demo</span>
+                </h2>
+                <button type="button" id="btn-close-video" class="btn-secondary" style="padding: 4px 8px;">✕ Close</button>
+            </div>
+            <div class="video-container-ratio">
+                <iframe id="youtube-iframe" src="" title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: #9ca3af;">
+                <span>Observe finger positioning, frets, and picking technique.</span>
+                <span style="color: #cbd5e1; font-weight: 600;">NESA Stage 4/5 Aural &amp; Performance Model</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guitar Tuner Modal (9am to 3pm Swinging Arm) -->
+    <div class="modal-overlay" id="tuner-modal" style="z-index: 10002;">
+        <div class="modal tuner-card" style="max-width: 440px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <h2 style="font-size: 1.15rem; color: #06b6d4; display: flex; align-items: center; gap: 8px;">
+                    🎸 Guitar Tuner (Standard Tuning)
+                </h2>
+                <button type="button" id="btn-close-tuner" class="btn-secondary" style="padding: 4px 8px;">✕ Close</button>
+            </div>
+            <canvas id="tuner-meter-canvas" width="380" height="200"></canvas>
+            <div id="tuner-note-display" class="tuner-note-readout">--</div>
+            <div id="tuner-cents-display" class="tuner-sub-readout">Sing or pluck a guitar string</div>
+            <div style="display: flex; gap: 6px; font-size: 0.72rem; color: #94a3b8; font-weight: 700;">
+                <span>E2 (82.4Hz)</span> • <span>A2 (110Hz)</span> • <span>D3 (146.8Hz)</span> • <span>G3 (196Hz)</span> • <span>B3 (246.9Hz)</span> • <span>E4 (329.6Hz)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Mode Results Modal with Stacked Bar Graph -->
+    <div class="modal-overlay" id="game-results-modal" style="z-index: 10003;">
+        <div class="modal" style="text-align: center; max-width: 440px;">
+            <h2 style="color: #38bdf8;">Performance Summary</h2>
+            <p id="game-summary-text" style="font-size: 0.95rem; color: #e5e7eb; font-weight: 600;"></p>
+            <div id="badge-container"></div>
+            <div id="game-rank-text" style="font-size: 1.05rem; font-weight: 800; color: #facc15; margin-top: 6px;"></div>
+
+            <div class="graph-container">
+                <div class="bar-chart-wrapper">
+                    <div class="stacked-bar">
+                        <div id="bar-red" class="bar-part-red" style="height: 0%;"></div>
+                        <div id="bar-orange" class="bar-part-orange" style="height: 0%;"></div>
+                        <div id="bar-green" class="bar-part-green" style="height: 0%;"></div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 700; margin-top: 4px;">
+                    <span style="color: #22c55e;">● Perfect</span>
+                    <span style="color: #f97316;">● Early/Late</span>
+                    <span style="color: #ef4444;">● Missed</span>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px;">
+                <button type="button" class="btn-warning" id="btn-game-try-again">Play Again</button>
+                <button type="button" class="btn-success" id="btn-game-results-close">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <div class="header-title-group">
+                <h1>FretPad</h1>
+                <div class="user-badge" id="user-badge" style="display: none;">
+                    <span>Student:</span> <strong id="display-username">Guest</strong>
+                    <span id="display-class" class="class-badge">7A</span>
+                    <button type="button" id="btn-change-user" class="btn-secondary" style="padding: 2px 6px; font-size: 0.65rem; margin-left: 4px;">Switch</button>
+                </div>
+                <span id="current-difficulty-badge" class="difficulty-tag diff-normal" style="display: none;">Normal</span>
+            </div>
+            <div class="controls">
+                <select id="song-select">
+                    <option value="">Loading Songs...</option>
+                </select>
+
+                <button type="button" id="btn-watch-demo" class="btn-demo" style="display: none;" title="Watch Video Demo for this song">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+                    </svg>
+                    Watch Demo
+                </button>
+
+                <select id="instrument-select">
+                    <option value="nylon">1. Nylon Classical Guitar</option>
+                    <option value="steel">2. Steel String Acoustic</option>
+                    <option value="electric">3. Electric Clean</option>
+                    <option value="overdrive">4. Overdriven Lead</option>
+                    <option value="chiptune">5. 8-Bit Chiptune Guitar</option>
+                </select>
+
+                <div class="speed-control">
+                    <label for="speed-slider">Speed: <span id="speed-label">100%</span></label>
+                    <input type="range" id="speed-slider" min="10" max="500" value="100" step="5">
+                </div>
+
+                <div class="speed-presets">
+                    <button type="button" class="btn-speed-preset" data-speed="50" title="Turtle - Learning">🐢 50%</button>
+                    <button type="button" class="btn-speed-preset" data-speed="75" title="Practice - Muscle Memory">🏃 75%</button>
+                    <button type="button" class="btn-speed-preset" data-speed="100" title="Perform - Full Speed">🚀 100%</button>
+                </div>
+                
+                <div class="toggle-container">
+                    <input type="checkbox" id="show-letters-toggle">
+                    <label for="show-letters-toggle">Letters</label>
+                </div>
+
+                <button type="button" id="btn-tuner" class="btn-tuner">🎸 Tuner</button>
+                <button type="button" id="btn-mic-toggle" class="btn-secondary">🎤 Mic: OFF</button>
+                <button type="button" id="btn-game" class="btn-game-active">🎮 Game Mode: ON</button>
+
+                <button type="button" id="btn-octave-down" class="btn-secondary">Octave DOWN</button>
+                <button type="button" id="btn-octave-up" class="btn-secondary">Octave UP</button>
+
+                <button type="button" id="btn-loop" class="btn-secondary">🔁 Loop: OFF</button>
+                <button type="button" id="btn-tab-mode" class="btn-tab">TAB</button>
+                <button type="button" id="btn-step" class="btn-step">Step Mode</button>
+                <button type="button" id="btn-composer" class="btn-composer">Composer</button>
+                
+                <label class="btn-file-label btn-midi">
+                    Import MIDI
+                    <input type="file" id="midi-input" accept=".mid,.midi" style="display: none;">
+                </label>
+
+                <button type="button" id="btn-import">Import Code</button>
+                <button type="button" id="btn-pdf" class="btn-pdf">Export PDF</button>
+
+                <button type="button" id="btn-play" class="btn-success">Play</button>
+                <button type="button" id="btn-pause" class="btn-warning">Pause</button>
+                <button type="button" id="btn-stop" class="btn-danger">Stop</button>
+
+                <div id="big-next-note" style="display: none;">
+                    Next: <div id="bnn-color" class="bnn-circle"></div>
+                    <span id="bnn-string">Low E</span> string &mdash; Fret <span id="bnn-fret" style="color: #38bdf8; font-size: 1.1rem; font-weight: 900;">3</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="visualizer-wrapper">
+            <canvas id="waterfall-canvas" width="1100" height="420"></canvas>
+        </div>
+
+        <div class="progress-container">
+            <div id="progress-bar" class="progress-bar"></div>
+        </div>
+
+        <div class="footer-bar">
+            <div class="version-stamp">v26.11.04 | NESA S4/5 Compliant</div>
+            <div class="status-bar" id="status">Connecting to Google Sheet song database...</div>
+            
+            <div class="footer-right-group">
+                <div class="monitor-widget-box" id="monitor-widget">
+                    <div class="monitor-top-row">
+                        <span id="mon-student-avatar" style="font-size: 0.82rem;">🎸</span>
+                        <span class="monitor-student-name" id="mon-student-name">Student</span>
+                        <span class="monitor-badge-breaks" id="mon-breaks-badge">Breaks: 0</span>
+                        <span class="monitor-time-text" id="mon-time-text">0:00 / 60:00min</span>
+                        <span id="mon-level-badge" style="display:none; align-items:center; font-weight:800; font-size:0.75rem; margin-left:2px; margin-right:2px;"></span>
+                        <div class="monitor-divider"></div>
+                        <span class="monitor-song-text" id="mon-song-text">🎵 Song</span>
+                    </div>
+                    <div class="monitor-progress-bar-track" id="mon-bar-track">
+                        <div class="monitor-progress-bar-fill" id="mon-bar-fill"></div>
+                    </div>
+                </div>
+                <img src="https://hits.sh/github.com/mrhaybittle/FretPad.svg" alt="Visitor Count" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Login Modal -->
+    <div class="modal-overlay" id="login-modal">
+        <div class="modal">
+            <h2>Welcome to FretPad</h2>
+            <p style="font-size: 0.85rem; color: #9ca3af;">Please enter your Name and select your Class to track your guitar practice progress:</p>
+            <input type="text" id="login-name" placeholder="Student Name or ID (e.g. Alex M.)" autocomplete="off">
+            <div class="dropdown-row">
+                <select id="login-year">
+                    <option value="">Select Year...</option>
+                    <option value="7">Year 7</option>
+                    <option value="8">Year 8</option>
+                    <option value="9">Year 9</option>
+                    <option value="10">Year 10</option>
+                    <option value="11">Year 11</option>
+                    <option value="12">Year 12</option>
+                </select>
+                <select id="login-class">
+                    <option value="">Select Class...</option>
+                    <option value="A">Class A</option>
+                    <option value="B">Class B</option>
+                    <option value="C">Class C</option>
+                    <option value="D">Class D</option>
+                    <option value="E">Class E</option>
+                    <option value="F">Class F</option>
+                    <option value="G">Class G</option>
+                    <option value="H">Class H</option>
+                    <option value="I">Class I</option>
+                    <option value="J">Class J</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btn-login" class="btn-success" style="width: 100%; justify-content: center; padding: 10px;">Start Practice Session</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <h2>Import FretPad Song</h2>
+            <p style="font-size: 0.85rem; color: #9ca3af;">Paste your music code below (Note sequence followed by Rests array):</p>
+            <textarea id="import-text" placeholder="Paste your song code here (e.g., G2,E2,g#2...Rests,0,250...)"></textarea>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="btn-cancel">Cancel</button>
+                <button type="button" id="btn-load-play">Load & Play</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Composer Modal -->
+    <div class="modal-overlay" id="composer-modal">
+        <div class="modal modal-composer">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>FretPad Composer & Tab Grid</h2>
+                <button type="button" id="btn-close-composer" class="btn-secondary" style="padding: 4px 8px;">✕ Close</button>
+            </div>
+
+            <div class="composer-toolbar">
+                <div class="composer-tools-group">
+                    <label style="font-size: 0.8rem; color: #cbd5e1;">Title:</label>
+                    <input type="text" id="composer-title" value="My Guitar Riff" style="width: 160px; padding: 5px 8px; font-size: 0.8rem;">
+                    
+                    <label style="font-size: 0.8rem; color: #cbd5e1;">Rhythm / Step:</label>
+                    <select id="composer-step-rest" style="padding: 5px 8px; font-size: 0.8rem; max-width: 130px;">
+                        <option value="125">16th Note (125ms)</option>
+                        <option value="250" selected>8th Note (250ms)</option>
+                        <option value="500">Quarter Note (500ms)</option>
+                        <option value="750">Dotted 1/4 (750ms)</option>
+                        <option value="1000">Half Note (1000ms)</option>
+                    </select>
+                </div>
+
+                <div class="composer-tools-group">
+                    <button type="button" id="btn-composer-add-col" class="btn-secondary" style="font-size: 0.75rem;">+ 4 Steps</button>
+                    <button type="button" id="btn-composer-rem-col" class="btn-secondary" style="font-size: 0.75rem;">- 4 Steps</button>
+                    <button type="button" id="btn-composer-clear" class="btn-danger" style="font-size: 0.75rem;">Clear Grid</button>
+                    <button type="button" id="btn-composer-audition" class="btn-warning" style="font-size: 0.75rem;">Audition Riff</button>
+                </div>
+            </div>
+
+            <div class="composer-instructions">
+                <span><strong>Arrow Keys (↑ ↓ ← →):</strong> Navigate Grid | <strong>Keys 0–12:</strong> Set Fret | <strong>Backspace/Del:</strong> Clear Note | <strong>Space:</strong> Audition Cell</span>
+                <span id="composer-cell-status" style="color: #38bdf8; font-weight: 700;">String: High E (e1) | Step: 1</span>
+            </div>
+
+            <div class="composer-grid-scroll" id="composer-grid-scroll" tabindex="0">
+                <table class="composer-grid-table" id="composer-table"></table>
+            </div>
+
+            <div class="modal-footer" style="justify-content: space-between; align-items: center;">
+                <div style="font-size: 0.75rem; color: #9ca3af;">
+                    NESA Stages 4 &amp; 5: Practical Composing (MU4-COM-01, MU5-COM-01/02)
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" id="btn-composer-export-code" class="btn-secondary">Copy Code</button>
+                    <button type="button" id="btn-composer-load" class="btn-success">Load & Play in FretPad</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
+        const LOG_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxvrRtC6stAJuvb0hGUpk80Jih6F9Qhs15IPcePe4MxuU6ZgzNH4ReVJMFTf6mEZY1J/exec';
+
+        let audioCtx = null;
+        let songList = [];
+        let currentSong = [];
+        let currentDifficulty = 'Normal';
+        let isPlaying = false;
+        let isPaused = false;
+        let isStepMode = false;
+        let isTabMode = false;
+        let isGameMode = true;
+        let isTunerOpen = false;
+        let currentStepIndex = 0;
+        let stepVirtualTime = 0;
+        let animationFrameId = null;
+        let playbackStartTime = 0;
+        let accumulatedPauseMs = 0;
+        let noteTimeline = [];
+        let octaveOffset = 0;
+        let showLetters = false;
+        let stringVibrations = [0, 0, 0, 0, 0, 0];
+        let hasLoggedCurrentPlay = false;
+        let completedThisRun = false;
+        let songCompletionCount = 0;
+        let currentStudentName = '';
+        let currentStudentClass = '';
+        
+        let isLooping = false;
+        let loopTimeout = null;
+        let wakeLockSentinel = null;
+        let currentDemoUrl = '';
+
+        // Roster & Session Monitoring Variables
+        let localStudentId = "stu_" + Math.random().toString(36).substr(2, 9);
+        let localTabSwitches = 0;
+        let sessionStartTime = Date.now();
+        let breakMarkerPositions = [];
+        let sessionStudentAvatar = "🎸";
+        let tabAwayTimestamp = null;
+
+        // Hardware sleep detection
+        let lastHeartbeatTime = Date.now();
+        let lastPerfTimestamp = performance.now();
+        let wasHardwareSleep = false;
+        let sleepGracePeriodUntil = 0;
+        let lastBreakProcessedTime = 0;
+
+        // Composer state
+        let composerGridSteps = 16;
+        let composerCursorRow = 0;
+        let composerCursorCol = 0;
+        let composerGridData = [];
+        let lastDigitKeyTime = 0;
+        let lastDigitEntered = '';
+
+        // Microphone & Pitch Detection State
+        let micStream = null;
+        let micAnalyser = null;
+        let isMicListening = false;
+        let pitchDetectionFrameId = null;
+        let currentDetectedFreq = 0;
+        let currentDetectedMidi = 0;
+        let tunerNeedleAngle = Math.PI * 1.5; // Starts pointing straight up (12 o'clock)
+
+        // Step Mode Microphone Recognition State
+        let lastStepAdvanceTime = 0;
+        let stepHoldFrames = 0;
+        let stepSamePitchRequiresRepluck = false;
+
+        // Game Mode Scoring & Particle Effects
+        let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+        let currentStreak = 0;
+        let confettiParticles = [];
+
+        // 6 Horizontal Guitar Strings (Standard Tuning: E4, B3, G3, D3, A2, E2)
+        const guitarStrings = [
+            { id: 'e1', name: 'E4', openMidi: 64, color: '#ec4899', stroke: '#ffffff' }, // High E (Pink)
+            { id: 'b2', name: 'B3', openMidi: 59, color: '#22c55e', stroke: '#ffffff' }, // B (Green)
+            { id: 'g3', name: 'G3', openMidi: 55, color: '#000000', stroke: '#ffffff' }, // G (Black)
+            { id: 'd4', name: 'D3', openMidi: 50, color: '#3b82f6', stroke: '#ffffff' }, // D (Blue)
+            { id: 'a5', name: 'A2', openMidi: 45, color: '#eab308', stroke: '#ffffff' }, // A (Yellow)
+            { id: 'e6', name: 'E2', openMidi: 40, color: '#ef4444', stroke: '#ffffff' }  // Low E (Red)
+        ];
+
+        const stringFriendlyNames = {
+            'e1': 'High E', 'b2': 'B', 'g3': 'G', 'd4': 'D', 'a5': 'A', 'e6': 'Low E'
+        };
+
+        const noteNames = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
+
+        const canvas = document.getElementById('waterfall-canvas');
+        const ctx = canvas.getContext('2d');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedLabel = document.getElementById('speed-label');
+        const songSelect = document.getElementById('song-select');
+        const instrumentSelect = document.getElementById('instrument-select');
+        const btnStep = document.getElementById('btn-step');
+        const btnLoop = document.getElementById('btn-loop');
+        const btnTabMode = document.getElementById('btn-tab-mode');
+        const btnGame = document.getElementById('btn-game');
+        const btnTuner = document.getElementById('btn-tuner');
+        const btnMicToggle = document.getElementById('btn-mic-toggle');
+        const modal = document.getElementById('modal');
+        const loginModal = document.getElementById('login-modal');
+        const loginNameInput = document.getElementById('login-name');
+        const loginYearSelect = document.getElementById('login-year');
+        const loginClassSelect = document.getElementById('login-class');
+        const showLettersToggle = document.getElementById('show-letters-toggle');
+        const progressBar = document.getElementById('progress-bar');
+        const userBadge = document.getElementById('user-badge');
+        const displayUsername = document.getElementById('display-username');
+        const displayClass = document.getElementById('display-class');
+        const difficultyBadge = document.getElementById('current-difficulty-badge');
+
+        const btnWatchDemo = document.getElementById('btn-watch-demo');
+        const videoModal = document.getElementById('video-modal');
+        const videoModalTitle = document.getElementById('video-modal-title');
+        const youtubeIframe = document.getElementById('youtube-iframe');
+        const btnCloseVideo = document.getElementById('btn-close-video');
+
+        const tunerModal = document.getElementById('tuner-modal');
+        const btnCloseTuner = document.getElementById('btn-close-tuner');
+        const tunerCanvas = document.getElementById('tuner-meter-canvas');
+        const tunerCtx = tunerCanvas.getContext('2d');
+        const tunerNoteDisplay = document.getElementById('tuner-note-display');
+        const tunerCentsDisplay = document.getElementById('tuner-cents-display');
+
+        const gameResultsModal = document.getElementById('game-results-modal');
+        const btnGameTryAgain = document.getElementById('btn-game-try-again');
+        const btnGameResultsClose = document.getElementById('btn-game-results-close');
+
+        const bnnContainer = document.getElementById('big-next-note');
+        const bnnColor = document.getElementById('bnn-color');
+        const bnnString = document.getElementById('bnn-string');
+        const bnnFret = document.getElementById('bnn-fret');
+
+        const composerModal = document.getElementById('composer-modal');
+        const btnComposer = document.getElementById('btn-composer');
+        const btnCloseComposer = document.getElementById('btn-close-composer');
+        const composerTable = document.getElementById('composer-table');
+        const composerGridScroll = document.getElementById('composer-grid-scroll');
+        const composerCellStatus = document.getElementById('composer-cell-status');
+        const composerTitle = document.getElementById('composer-title');
+        const composerStepRest = document.getElementById('composer-step-rest');
+
+        /* Screen Wake Lock Management */
+        async function requestScreenWakeLock() {
+            if ('wakeLock' in navigator && !wakeLockSentinel) {
+                try {
+                    wakeLockSentinel = await navigator.wakeLock.request('screen');
+                    wakeLockSentinel.addEventListener('release', () => { wakeLockSentinel = null; });
+                } catch (err) {}
+            }
+        }
+
+        async function releaseScreenWakeLock() {
+            if (wakeLockSentinel) {
+                try { await wakeLockSentinel.release(); } catch (e) {}
+                wakeLockSentinel = null;
+            }
+        }
+
+        function isSingleClassYear(yr) {
+            const y = parseInt(yr, 10);
+            return y >= 9 && y <= 12;
+        }
+
+        function updateClassDropdownVisibility() {
+            const yr = loginYearSelect.value;
+            if (isSingleClassYear(yr)) {
+                loginClassSelect.style.display = 'none';
+                loginClassSelect.value = '';
+            } else {
+                loginClassSelect.style.display = 'block';
+            }
+        }
+
+        loginYearSelect.addEventListener('change', updateClassDropdownVisibility);
+
+        /* --- MONITOR WIDGET UPDATER FUNCTION --- */
+        function updateMonitorWidget() {
+            const studentEl = document.getElementById('mon-student-name');
+            const avatarEl = document.getElementById('mon-student-avatar');
+            const breaksEl = document.getElementById('mon-breaks-badge');
+            const timeEl = document.getElementById('mon-time-text');
+            const songEl = document.getElementById('mon-song-text');
+            const fillEl = document.getElementById('mon-bar-fill');
+            const trackEl = document.getElementById('mon-bar-track');
+            const badgeEl = document.getElementById('mon-level-badge');
+
+            if (studentEl) studentEl.textContent = currentStudentName || "Student";
+            if (avatarEl) avatarEl.textContent = sessionStudentAvatar || "🎸";
+            if (breaksEl) breaksEl.textContent = `Breaks: ${localTabSwitches}`;
+            
+            const elapsedMs = Date.now() - sessionStartTime;
+            const totalSecs = Math.floor(elapsedMs / 1000);
+            const mins = Math.floor(totalSecs / 60);
+            const secs = (totalSecs % 60).toString().padStart(2, '0');
+            const elapsedMins = Math.floor(elapsedMs / 60000);
+            
+            if (timeEl) timeEl.textContent = `${mins}:${secs} / 60:00min`;
+            if (songEl) songEl.textContent = `🎵 ${getCurrentSongTitle()}`;
+
+            let barColor = '#22c55e';
+
+            if (badgeEl) {
+                let badgeHtml = '';
+                let displayBadge = false;
+                const isDouble = (localTabSwitches === 0);
+                const x2Tag = isDouble ? '<span style="color:#ef4444; font-weight:900; margin-left:4px;">X2</span>' : '';
+
+                if (elapsedMins >= 30) {
+                    displayBadge = true;
+                    badgeHtml = `<span style="color:#facc15;">🥇 Gold Level</span>${x2Tag}`;
+                    barColor = '#facc15';
+                } else if (elapsedMins >= 20) {
+                    displayBadge = true;
+                    badgeHtml = `<span style="color:#cbd5e1;">🥈 Silver Level</span>${x2Tag}`;
+                    barColor = '#cbd5e1';
+                } else if (elapsedMins >= 10) {
+                    displayBadge = true;
+                    badgeHtml = `<span style="color:#f97316;">🥉 Bronze Level</span>${x2Tag}`;
+                    barColor = '#f97316';
+                }
+
+                if (displayBadge) {
+                    badgeEl.style.display = 'inline-flex';
+                    badgeEl.innerHTML = badgeHtml;
+                } else {
+                    badgeEl.style.display = 'none';
+                    badgeEl.innerHTML = '';
+                }
+            }
+
+            if (fillEl) {
+                const fillPct = Math.min(100, Math.max(1, (elapsedMins / 60) * 100));
+                fillEl.style.width = `${fillPct}%`;
+                fillEl.style.backgroundColor = barColor;
+            }
+
+            if (trackEl) {
+                trackEl.querySelectorAll('.monitor-break-marker').forEach(m => m.remove());
+                breakMarkerPositions.forEach(posPct => {
+                    const marker = document.createElement('div');
+                    marker.className = 'monitor-break-marker';
+                    marker.style.left = `${posPct}%`;
+                    trackEl.appendChild(marker);
+                });
+            }
+        }
+
+        /* Firebase Roster Sync */
+        function syncStudentToFirebase(statusOverride = null) {
+            if (!window.firebaseSet || !window.firebaseRef || !window.firebaseDb) return;
+            const activeName = currentStudentName || "Student";
+            const activeAvatar = sessionStudentAvatar || "🎸";
+            const activeRoom = currentStudentClass || "Outside";
+            const activeStatus = statusOverride || (document.hidden ? "away" : "active");
+
+            const myRef = window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}`);
+            window.firebaseSet(myRef, {
+                name: activeName,
+                studentName: activeName,
+                avatar: activeAvatar,
+                room: activeRoom,
+                song: getCurrentSongTitle(),
+                status: activeStatus,
+                tabSwitches: localTabSwitches,
+                sessionStartTime: sessionStartTime,
+                lastActive: Date.now()
+            });
+            window.firebaseOnDisconnect(myRef).remove();
+        }
+
+        function markSystemAsAsleep() {
+            wasHardwareSleep = true;
+            sleepGracePeriodUntil = Date.now() + 3500;
+        }
+
+        window.addEventListener('freeze', markSystemAsAsleep);
+        window.addEventListener('resume', markSystemAsAsleep);
+
+        document.addEventListener("visibilitychange", () => {
+            const now = Date.now();
+            const currentPerf = performance.now();
+
+            if (document.hidden) {
+                tabAwayTimestamp = now;
+                lastHeartbeatTime = now;
+                lastPerfTimestamp = currentPerf;
+            } else {
+                const awayDurationMs = tabAwayTimestamp ? (now - tabAwayTimestamp) : 0;
+                const wallTimeDelta = now - lastHeartbeatTime;
+                const perfDelta = currentPerf - lastPerfTimestamp;
+                const clockDrift = Math.abs(wallTimeDelta - perfDelta);
+                const isSleep = wasHardwareSleep || 
+                                (now < sleepGracePeriodUntil) || 
+                                (wallTimeDelta > 2200 && clockDrift > 1200) ||
+                                (clockDrift > 1800);
+
+                lastHeartbeatTime = now;
+                lastPerfTimestamp = currentPerf;
+
+                if (isSleep) {
+                    tabAwayTimestamp = null;
+                    wasHardwareSleep = false;
+                    sleepGracePeriodUntil = now + 3500;
+
+                    if (isPlaying && !isPaused && !isStepMode) {
+                        isPaused = true;
+                        const btnPause = document.getElementById('btn-pause');
+                        if (btnPause) btnPause.textContent = 'Resume';
+                        document.getElementById('status').textContent = 'Device woke from sleep. Practice paused — click Resume when ready.';
+                    }
+                    if (isPlaying || isStepMode) requestScreenWakeLock();
+                    syncStudentToFirebase("active");
+                } else if (tabAwayTimestamp && awayDurationMs >= 2000) {
+                    if (now - lastBreakProcessedTime > 4000) {
+                        lastBreakProcessedTime = now;
+                        localTabSwitches++;
+                        const elapsedMs = now - sessionStartTime;
+                        const posPct = Math.min(100, (elapsedMs / (60 * 60000)) * 100);
+                        breakMarkerPositions.push(posPct);
+
+                        syncStudentToFirebase("active");
+                        logTabBreak(tabAwayTimestamp, now);
+
+                        const fName = (currentStudentName || "Student").split(' ')[0];
+                        document.getElementById('tab-switch-title').textContent = `${fName.toUpperCase()} - TAB SWITCH RECORDED!`;
+                        document.getElementById('tab-switch-modal').classList.add('open');
+                    }
+                    tabAwayTimestamp = null;
+                    if (isPlaying || isStepMode) requestScreenWakeLock();
+                } else {
+                    tabAwayTimestamp = null;
+                    syncStudentToFirebase("active");
+                }
+            }
+            updateMonitorWidget();
+        });
+
+        function updateRosterSong() {
+            syncStudentToFirebase();
+            updateMonitorWidget();
+        }
+
+        function checkLogin() {
+            try {
+                currentStudentName = localStorage.getItem('pianopad_student_name') || '';
+                currentStudentClass = localStorage.getItem('pianopad_student_class') || '';
+                if (['undefined', 'null', 'N/A'].includes(currentStudentName.trim())) currentStudentName = '';
+                if (['undefined', 'null', 'N/A'].includes(currentStudentClass.trim())) currentStudentClass = '';
+            } catch(e) {}
+
+            if (currentStudentName && currentStudentClass) {
+                displayUsername.textContent = currentStudentName;
+                displayClass.textContent = currentStudentClass;
+                userBadge.style.display = 'flex';
+                loginModal.classList.remove('open');
+            } else {
+                loginModal.classList.add('open');
+                updateClassDropdownVisibility();
+                setTimeout(() => loginNameInput.focus(), 200);
+            }
+        }
+
+        function handleLogin() {
+            const nameVal = loginNameInput.value.trim();
+            const yearVal = loginYearSelect.value;
+            const singleClass = isSingleClassYear(yearVal);
+            const classVal = singleClass ? '' : loginClassSelect.value;
+
+            if (!nameVal || !yearVal || (!singleClass && !classVal)) {
+                document.getElementById('status').textContent = singleClass 
+                    ? 'Please enter your Name and select your Year.' 
+                    : 'Please enter Name, Year, and Class.';
+                return;
+            }
+
+            currentStudentName = nameVal;
+            currentStudentClass = `${yearVal}${classVal}`;
+
+            try {
+                localStorage.setItem('pianopad_student_name', currentStudentName);
+                localStorage.setItem('pianopad_student_class', currentStudentClass);
+            } catch(e){}
+            
+            displayUsername.textContent = currentStudentName;
+            displayClass.textContent = currentStudentClass;
+            userBadge.style.display = 'flex';
+            loginModal.classList.remove('open');
+            document.getElementById('status').textContent = `Logged in as ${currentStudentName} (${currentStudentClass}). Ready to practice!`;
+            
+            syncStudentToFirebase("active");
+            updateMonitorWidget();
+        }
+
+        function calculateSongDifficulty(parsedSong) {
+            if (!parsedSong || parsedSong.length === 0) return 'Normal';
+            const totalNotes = parsedSong.length;
+            const averageRest = parsedSong.reduce((acc, curr) => acc + (curr.rest || 250), 0) / totalNotes;
+            const mapped = mapSongToErgonomicFrets(parsedSong);
+            
+            let stringJumps = 0;
+            let frets = [];
+            for (let i = 0; i < mapped.length; i++) {
+                frets.push(mapped[i].fret);
+                if (i > 0) {
+                    const s1 = guitarStrings.findIndex(s => s.id === mapped[i-1].stringObj.id);
+                    const s2 = guitarStrings.findIndex(s => s.id === mapped[i-1].stringObj.id);
+                    stringJumps += Math.abs(s1 - s2);
+                }
+            }
+            
+            const maxFret = Math.max(...frets, 0);
+            const avgJump = stringJumps / (totalNotes - 1 || 1);
+            let score = 0;
+            
+            if (averageRest < 180) score += 2; else if (averageRest < 250) score += 1;
+            if (avgJump > 1.8) score += 2; else if (avgJump > 1.0) score += 1;
+            if (maxFret > 7) score += 2; else if (maxFret > 4) score += 1;
+            if (totalNotes > 80) score += 1;
+
+            if (score <= 1) return 'Easy';
+            if (score <= 3) return 'Normal';
+            if (score <= 5) return 'Hard';
+            return 'Expert';
+        }
+
+        function updateDifficultyDisplay(diff) {
+            currentDifficulty = diff || 'Normal';
+            difficultyBadge.textContent = currentDifficulty;
+            difficultyBadge.className = `difficulty-tag diff-${currentDifficulty.toLowerCase()}`;
+            difficultyBadge.style.display = 'inline-block';
+        }
+
+        function getCurrentSongTitle() {
+            if (songSelect && songSelect.selectedIndex > 0) {
+                const text = songSelect.options[songSelect.selectedIndex].textContent;
+                if (text && !text.startsWith('--')) return text;
+            }
+            return 'Custom Song';
+        }
+
+        function logSongPlay(songTitle, mode = 'Auto Play', speed = '100%', status = 'Completed', completionNumber = 1) {
+            if (!LOG_WEB_APP_URL) return;
+            if (!currentStudentName || !currentStudentClass) {
+                checkLogin();
+                return;
+            }
+
+            const titleToLog = songTitle || getCurrentSongTitle();
+            const difficultyToLog = currentDifficulty || (currentSong.length > 0 ? calculateSongDifficulty(currentSong) : 'Normal');
+
+            const totalAssessed = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+            const accuracyVal = totalAssessed > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalAssessed) * 100).toFixed(1) : '100.0';
+
+            const payload = {
+                studentName: currentStudentName,
+                studentClass: currentStudentClass,
+                songTitle: titleToLog,
+                mode: mode,
+                speed: speed,
+                status: status,
+                difficulty: difficultyToLog,
+                completionCount: completionNumber,
+                accuracy: accuracyVal,
+                perfect: gameStats.perfect,
+                earlyLate: gameStats.earlyLate,
+                missed: gameStats.miss,
+                maxStreak: currentStreak,
+                timestamp: new Date().toISOString()
+            };
+
+            fetch(LOG_WEB_APP_URL, {
+                method: 'POST', mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+            }).catch(err => console.log('Log send failed:', err));
+        }
+        
+        function logTabBreak(awayTimeMs, returnTimeMs) {
+            if (!LOG_WEB_APP_URL) return;
+            if (!currentStudentName || !currentStudentClass) return;
+
+            const diffMs = Math.max(0, returnTimeMs - awayTimeMs);
+            const durationSec = Math.round(diffMs / 1000);
+            if (durationSec < 1) return;
+
+            const mins = Math.floor(durationSec / 60);
+            const secs = durationSec % 60;
+            const formattedDuration = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+
+            const yearMatch = currentStudentClass.match(/\d+/);
+            const classMatch = currentStudentClass.match(/[a-zA-Z]+/);
+            const yearVal = yearMatch ? yearMatch[0] : '';
+            const classVal = classMatch ? classMatch[0] : (isSingleClassYear(yearVal) ? '1' : currentStudentClass);
+
+            const sessionElapsedMs = returnTimeMs - sessionStartTime;
+            const totalSecs = Math.floor(sessionElapsedMs / 1000);
+            const sMins = Math.floor(totalSecs / 60);
+            const sSecs = (totalSecs % 60).toString().padStart(2, '0');
+
+            const payload = {
+                type: "break",
+                studentName: currentStudentName,
+                year: yearVal,
+                class: classVal,
+                awayTime: new Date(awayTimeMs).toLocaleTimeString(),
+                returnTime: new Date(returnTimeMs).toLocaleTimeString(),
+                durationSec: durationSec,
+                durationFormatted: formattedDuration,
+                breakCount: localTabSwitches,
+                songTitle: getCurrentSongTitle(),
+                sessionTime: `${sMins}:${sSecs}`
+            };
+
+            fetch(LOG_WEB_APP_URL, {
+                method: 'POST', mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+            }).catch(err => console.log('Break log failed:', err));
+        }
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function noteToMidi(noteStr) {
+            if (!noteStr) return 60;
+            noteStr = noteStr.trim().toLowerCase();
+            const match = noteStr.match(/^([a-g]#?)(-?\d+)$/);
+            if (!match) return 60;
+            const name = match[1];
+            const octave = parseInt(match[2], 10) + 3;
+            const noteOffsets = { 'c': 0, 'c#': 1, 'd': 2, 'd#': 3, 'e': 4, 'f': 5, 'f#': 6, 'g': 7, 'g#': 8, 'a': 9, 'a#': 10, 'b': 11 };
+            return (octave + 1) * 12 + noteOffsets[name];
+        }
+
+        function midiToNoteStr(midi) {
+            const octave = Math.floor(midi / 12) - 4;
+            const offset = ((midi % 12) + 12) % 12;
+            return noteNames[offset] + octave;
+        }
+
+        function midiToNoteNameWithOctave(midi) {
+            const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const octave = Math.floor(midi / 12) - 1;
+            const name = notes[Math.round(midi) % 12];
+            return `${name}${octave}`;
+        }
+        
+        function extractNoteLetter(noteStr) {
+            if (!noteStr) return '';
+            const match = noteStr.trim().match(/^([a-gA-G]#?)/);
+            return match ? match[1].toUpperCase() : '';
+        }
+
+        function triggerStringVibration(stringIndex) {
+            if (stringIndex >= 0 && stringIndex < 6) {
+                stringVibrations[stringIndex] = performance.now();
+            }
+        }
+
+        function updateOctaveButtons() {
+            const btnUp = document.getElementById('btn-octave-up');
+            const btnDown = document.getElementById('btn-octave-down');
+            if (!btnUp || !btnDown) return;
+
+            if (octaveOffset < 0) {
+                btnDown.style.backgroundColor = '#ef4444';
+                btnDown.style.boxShadow = '0 0 10px #ef4444';
+                btnUp.style.backgroundColor = '';
+                btnUp.style.boxShadow = '';
+            } else if (octaveOffset > 0) {
+                btnUp.style.backgroundColor = '#10b981';
+                btnUp.style.boxShadow = '0 0 10px #10b981';
+                btnDown.style.backgroundColor = '';
+                btnDown.style.boxShadow = '';
+            } else {
+                btnDown.style.backgroundColor = '';
+                btnDown.style.boxShadow = '';
+                btnUp.style.backgroundColor = '';
+                btnUp.style.boxShadow = '';
+            }
+        }
+
+        function shiftSongOctave(semitones) {
+            if (!currentSong || currentSong.length === 0) return;
+            octaveOffset += (semitones > 0 ? 1 : -1);
+            updateOctaveButtons();
+
+            currentSong = currentSong.map(item => {
+                let midi = noteToMidi(item.note) + semitones;
+                let newItem = { ...item, note: midiToNoteStr(midi) };
+                delete newItem.stringObj;
+                delete newItem.fret;
+                return newItem;
+            });
+
+            const mappedSong = mapSongToErgonomicFrets(currentSong);
+            if (noteTimeline.length === mappedSong.length) {
+                mappedSong.forEach((item, idx) => {
+                    noteTimeline[idx].note = item.note;
+                    noteTimeline[idx].stringId = item.stringObj.id;
+                    noteTimeline[idx].fret = item.fret;
+                    noteTimeline[idx].color = item.stringObj.color;
+                    noteTimeline[idx].stroke = item.stringObj.stroke;
+                });
+            } else {
+                buildTimeline();
+            }
+
+            if (!isPlaying) renderCurrentFrame(0);
+            const dirStr = octaveOffset > 0 ? `+${octaveOffset}` : `${octaveOffset}`;
+            document.getElementById('status').textContent = `Octave shift: ${dirStr} octave(s). All fret positions updated.`;
+        }
+
+        document.getElementById('midi-input').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            initAudio();
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const midi = new Midi(arrayBuffer);
+                let allNotes = [];
+                midi.tracks.forEach(track => {
+                    if (track.channel === 9) return;
+                    track.notes.forEach(n => {
+                        allNotes.push({ time: n.time, note: midiToNoteStr(n.midi) });
+                    });
+                });
+
+                if (allNotes.length === 0) {
+                    document.getElementById('status').textContent = 'No playable notes found in MIDI file.';
+                    return;
+                }
+
+                allNotes.sort((a, b) => a.time - b.time);
+                const hayNotes = [];
+                const hayRests = [];
+
+                for (let i = 0; i < allNotes.length; i++) {
+                    hayNotes.push(allNotes[i].note.toUpperCase());
+                    let restTime = (i === 0) ? 0 : Math.round((allNotes[i].time - allNotes[i - 1].time) * 1000);
+                    hayRests.push(Math.max(0, restTime));
+                }
+
+                const midiHayCode = `${hayNotes.join(',')},RESTS,${hayRests.join(',')}`;
+                const fileName = file.name.replace(/\.[^/.]+$/, "");
+                const parsed = parsePianoPad(midiHayCode);
+
+                if (parsed.length > 0) {
+                    octaveOffset = 0;
+                    updateOctaveButtons();
+                    currentSong = transposeSongOctaveDown(parsed);
+                    updateDifficultyDisplay(calculateSongDifficulty(currentSong));
+                    songSelect.value = '';
+                    currentDemoUrl = '';
+                    updateDemoButton();
+                    document.getElementById('status').textContent = `Loaded MIDI: "${fileName}". Converted successfully!`;
+                    playSong();
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('status').textContent = 'Failed to parse MIDI file.';
+            }
+            e.target.value = '';
+        });
+
+        function transposeSongOctaveDown(song) {
+            if (!song || song.length === 0) return song;
+            const MIN_GUITAR_MIDI = 40;
+            return song.map(item => {
+                let midi = noteToMidi(item.note);
+                let transposedMidi = midi - 12;
+                while (transposedMidi < MIN_GUITAR_MIDI) transposedMidi += 12;
+                return { ...item, note: midiToNoteStr(transposedMidi) };
+            });
+        }
+
+        function mapMidiToMax7thFret(midi) {
+            let candidates = [];
+            guitarStrings.forEach(s => {
+                const fret = midi - s.openMidi;
+                if (fret >= 0 && fret <= 12) candidates.push({ stringObj: s, fret: fret });
+            });
+            if (candidates.length === 0) return { stringObj: guitarStrings[5], fret: 0 };
+            let max7Candidate = candidates.find(c => c.fret >= 0 && c.fret <= 7);
+            if (max7Candidate) return max7Candidate;
+            candidates.sort((a, b) => a.fret - b.fret);
+            return candidates[0];
+        }
+
+        function mapSongToErgonomicFrets(song) {
+            return song.map(item => {
+                if (item.stringObj && item.fret !== undefined) {
+                    return item;
+                }
+                const midi = noteToMidi(item.note);
+                const chosen = mapMidiToMax7thFret(midi);
+                return { ...item, stringObj: chosen.stringObj, fret: chosen.fret };
+            });
+        }
+
+        function makeDistortionCurve(amount = 20) {
+            const n_samples = 44100;
+            const curve = new Float32Array(n_samples);
+            const deg = Math.PI / 180;
+            for (let i = 0; i < n_samples; ++i) {
+                const x = (i * 2) / n_samples - 1;
+                curve[i] = ((3 + amount) * x * 20 * deg) / (Math.PI + amount * Math.abs(x));
+            }
+            return curve;
+        }
+
+        function playTone(freq, duration = 0.5) {
+            if (!freq) return;
+            initAudio();
+            freq = freq * 2;
+            const now = audioCtx.currentTime;
+            const inst = instrumentSelect.value;
+
+            if (inst === 'nylon') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(freq, now);
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.3);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + duration + 0.3);
+            } else if (inst === 'steel') {
+                const osc = audioCtx.createOscillator();
+                const filter = audioCtx.createBiquadFilter();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(freq, now);
+                filter.type = 'lowpass'; filter.frequency.setValueAtTime(freq * 3.5, now);
+                filter.frequency.exponentialRampToValueAtTime(freq * 0.8, now + duration);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.4);
+                osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + duration + 0.4);
+            } else if (inst === 'electric') {
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc1.type = 'sine'; osc2.type = 'triangle';
+                osc1.frequency.setValueAtTime(freq, now); osc2.frequency.setValueAtTime(freq * 2, now);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.5);
+                osc1.connect(gain); osc2.connect(gain); gain.connect(audioCtx.destination);
+                osc1.start(now); osc2.start(now);
+                osc1.stop(now + duration + 0.5); osc2.stop(now + duration + 0.5);
+            } else if (inst === 'overdrive') {
+                const osc = audioCtx.createOscillator();
+                const dist = audioCtx.createWaveShaper();
+                const filter = audioCtx.createBiquadFilter();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(freq, now);
+                dist.curve = makeDistortionCurve(15);
+                filter.type = 'lowpass'; filter.frequency.setValueAtTime(1800, now);
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.3);
+                osc.connect(dist); dist.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + duration + 0.3);
+            } else if (inst === 'chiptune') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square'; osc.frequency.setValueAtTime(freq, now);
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.linearRampToValueAtTime(0.18, now + duration);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.05);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + duration + 0.05);
+            }
+        }
+
+        const TAB_HEIGHT = 90;
+
+        function updateProgressBar(effectiveElapsed) {
+            if (!progressBar) return;
+            if (!noteTimeline || noteTimeline.length === 0) {
+                progressBar.style.width = '0%';
+                return;
+            }
+            const lastNote = noteTimeline[noteTimeline.length - 1];
+            const totalDuration = lastNote ? (lastNote.hitTime + (lastNote.duration || 250)) : 1;
+            const pct = Math.max(0, Math.min(100, (effectiveElapsed / totalDuration) * 100));
+            progressBar.style.width = `${pct}%`;
+
+            if (pct >= 99.5 && !completedThisRun && !isStepMode) {
+                completedThisRun = true;
+                songCompletionCount++;
+                const modeLabel = isGameMode ? 'Game Mode' : (isTabMode ? 'TAB Mode' : 'Auto Play');
+                logSongPlay(getCurrentSongTitle(), modeLabel, `${speedSlider.value}%`, 'Completed', songCompletionCount);
+                
+                if (isGameMode) {
+                    showGameResultsPopUp();
+                } else if (isLooping) {
+                    document.getElementById('status').textContent = 'Song finished. Auto-looping in 2 seconds...';
+                    if (loopTimeout) clearTimeout(loopTimeout);
+                    loopTimeout = setTimeout(() => {
+                        if (isPlaying && completedThisRun) {
+                            playSong();
+                        }
+                    }, 2000);
+                } else {
+                    document.getElementById('status').textContent = `Playback completed. (Count: ${songCompletionCount})`;
+                }
+            }
+        }
+
+        function drawScrollingTablature(effectiveElapsed) {
+            const w = canvas.width;
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, w, TAB_HEIGHT);
+            
+            ctx.strokeStyle = '#334155'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(0, TAB_HEIGHT); ctx.lineTo(w, TAB_HEIGHT); ctx.stroke();
+
+            const hitLineX = 90;
+            const lineSpacing = 11;
+            const startY = 16;
+            const paddingLeft = 30;
+
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 6; i++) {
+                const y = startY + (i * lineSpacing);
+                ctx.strokeStyle = '#475569';
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+                
+                ctx.fillStyle = guitarStrings[i].color;
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+                ctx.fillText(guitarStrings[i].id.toUpperCase(), paddingLeft, y);
+            }
+
+            ctx.strokeStyle = 'var(--accent-color)'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(hitLineX, startY - 4); ctx.lineTo(hitLineX, startY + (5 * lineSpacing) + 4); ctx.stroke();
+
+            const tabSpeedMs = parseFloat(speedSlider.value) > 0 ? (1800 * 100 / parseFloat(speedSlider.value)) : 1800;
+            
+            noteTimeline.forEach(item => {
+                const timeUntilHit = item.hitTime - effectiveElapsed;
+                if (timeUntilHit >= -250 && timeUntilHit <= tabSpeedMs * 1.5) {
+                    const currentX = hitLineX + (timeUntilHit / tabSpeedMs) * (w - hitLineX);
+                    if (currentX > 35 && currentX < w + 20) {
+                        const stringIndex = guitarStrings.findIndex(s => s.id === item.stringId);
+                        const y = startY + (stringIndex * lineSpacing);
+                        
+                        let strokeColor = item.color === '#000000' ? '#475569' : item.color;
+                        if (isGameMode || isStepMode) {
+                            if (item.gameStatus === 'perfect') strokeColor = '#22c55e';
+                            else if (item.gameStatus === 'earlyLate') strokeColor = '#f97316';
+                            else if (item.gameStatus === 'miss') strokeColor = '#ef4444';
+                        }
+                        
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath(); ctx.arc(currentX, y, 10, 0, Math.PI * 2); ctx.fill();
+
+                        ctx.strokeStyle = strokeColor;
+                        ctx.lineWidth = (item.gameStatus && item.gameStatus !== 'pending') ? 3 : 2; 
+                        ctx.stroke();
+
+                        ctx.fillStyle = '#000000';
+                        ctx.font = '900 11px -apple-system, BlinkMacSystemFont, sans-serif';
+                        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                        const displayValue = showLetters ? extractNoteLetter(item.note) : item.fret.toString();
+                        ctx.fillText(displayValue, currentX, y + 0.5);
+                    }
+                }
+            });
+        }
+
+        /* --- STATIC FULL TAB MODE RENDERER --- */
+        function drawStaticFullTabMode(effectiveElapsed) {
+            const w = canvas.width;
+            const fretboardTop = canvas.height - 120;
+            const totalTabAreaHeight = fretboardTop - 5;
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(0, 0, w, totalTabAreaHeight);
+
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, totalTabAreaHeight);
+            ctx.lineTo(w, totalTabAreaHeight);
+            ctx.stroke();
+
+            if (!noteTimeline || noteTimeline.length === 0) {
+                ctx.fillStyle = '#64748b';
+                ctx.font = '600 15px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('Select or Import a Song to view the Full Tablature score.', w / 2, totalTabAreaHeight / 2);
+                return;
+            }
+
+            let activeIndex = -1;
+            if (isStepMode) {
+                activeIndex = currentStepIndex < noteTimeline.length ? currentStepIndex : noteTimeline.length - 1;
+            } else if (isPlaying) {
+                for (let i = 0; i < noteTimeline.length; i++) {
+                    const n = noteTimeline[i];
+                    if (effectiveElapsed >= n.hitTime && effectiveElapsed <= n.hitTime + n.duration + 120) {
+                        activeIndex = i;
+                    } else if (effectiveElapsed < n.hitTime && activeIndex === -1 && i > 0 && effectiveElapsed >= noteTimeline[i-1].hitTime) {
+                        activeIndex = i - 1;
+                    }
+                }
+                if (activeIndex === -1 && effectiveElapsed >= (noteTimeline[0]?.hitTime || 0)) {
+                    for (let i = noteTimeline.length - 1; i >= 0; i--) {
+                        if (effectiveElapsed >= noteTimeline[i].hitTime) {
+                            activeIndex = i;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            const totalNotes = noteTimeline.length;
+            const maxNotesPerSystem = 24;
+            const maxSystemsVisible = Math.max(1, Math.min(3, Math.floor(totalTabAreaHeight / 85)));
+            let systemOffset = 0;
+            if (activeIndex >= 0) {
+                const activeSystem = Math.floor(activeIndex / maxNotesPerSystem);
+                if (activeSystem >= maxSystemsVisible) {
+                    systemOffset = activeSystem - maxSystemsVisible + 1;
+                }
+            }
+
+            const systemHeight = totalTabAreaHeight / maxSystemsVisible;
+            const lineSpacing = 11;
+            const startX = 68;
+            const availableNoteWidth = w - startX - 25;
+            const noteSpacing = availableNoteWidth / maxNotesPerSystem;
+
+            for (let sIdx = 0; sIdx < maxSystemsVisible; sIdx++) {
+                const systemNum = sIdx + systemOffset;
+                const startNoteIdx = systemNum * maxNotesPerSystem;
+                if (startNoteIdx >= totalNotes) break;
+
+                const topY = sIdx * systemHeight + 14;
+
+                for (let strIdx = 0; strIdx < 6; strIdx++) {
+                    const lineY = topY + (strIdx * lineSpacing);
+                    ctx.strokeStyle = '#94a3b8';
+                    ctx.lineWidth = 1.2;
+                    ctx.beginPath();
+                    ctx.moveTo(startX - 8, lineY);
+                    ctx.lineTo(w - 20, lineY);
+                    ctx.stroke();
+
+                    ctx.fillStyle = guitarStrings[strIdx].color === '#000000' ? '#1e293b' : guitarStrings[strIdx].color;
+                    ctx.font = 'bold 10px sans-serif';
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(guitarStrings[strIdx].id.toUpperCase(), startX - 12, lineY);
+                }
+
+                ctx.strokeStyle = '#475569';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(startX - 8, topY);
+                ctx.lineTo(startX - 8, topY + 5 * lineSpacing);
+                ctx.moveTo(w - 20, topY);
+                ctx.lineTo(w - 20, topY + 5 * lineSpacing);
+                ctx.stroke();
+
+                const endNoteIdx = Math.min(totalNotes, startNoteIdx + maxNotesPerSystem);
+                for (let i = startNoteIdx; i < endNoteIdx; i++) {
+                    const item = noteTimeline[i];
+                    const colInSystem = i - startNoteIdx;
+                    const noteX = startX + (colInSystem * noteSpacing) + (noteSpacing / 2);
+                    const stringIndex = guitarStrings.findIndex(s => s.id === item.stringId);
+                    const noteY = topY + (stringIndex * lineSpacing);
+
+                    const isCurrent = (i === activeIndex);
+
+                    let fillColor = '#ffffff';
+                    let strokeColor = item.color === '#000000' ? '#64748b' : item.color;
+                    let textColor = '#0f172a';
+
+                    if (isGameMode || isStepMode) {
+                        if (item.gameStatus === 'perfect') { strokeColor = '#22c55e'; fillColor = '#dcfce7'; }
+                        else if (item.gameStatus === 'earlyLate') { strokeColor = '#f97316'; fillColor = '#ffedd5'; }
+                        else if (item.gameStatus === 'miss') { strokeColor = '#ef4444'; fillColor = '#fee2e2'; }
+                    }
+
+                    if (isCurrent) {
+                        ctx.save();
+                        ctx.fillStyle = '#dc2626';
+                        ctx.shadowColor = 'rgba(220, 38, 38, 0.45)';
+                        ctx.shadowBlur = 10;
+                        ctx.beginPath();
+                        ctx.arc(noteX, noteY, 11, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = '900 12px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        const displayValue = showLetters ? extractNoteLetter(item.note) : item.fret.toString();
+                        ctx.fillText(displayValue, noteX, noteY + 0.5);
+                        ctx.restore();
+                    } else {
+                        ctx.fillStyle = fillColor;
+                        ctx.beginPath();
+                        ctx.arc(noteX, noteY, 9, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.strokeStyle = strokeColor;
+                        ctx.lineWidth = 1.8;
+                        ctx.stroke();
+
+                        ctx.fillStyle = textColor;
+                        ctx.font = '800 11px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        const displayValue = showLetters ? extractNoteLetter(item.note) : item.fret.toString();
+                        ctx.fillText(displayValue, noteX, noteY + 0.5);
+                    }
+                }
+            }
+        }
+
+        function drawFretboardBackground(now) {
+            const w = canvas.width; const h = canvas.height;
+            const fretboardHeight = 120; const fretboardTop = h - fretboardHeight;
+            const paddingLeft = 60; const neckWidth = w - paddingLeft;
+
+            ctx.fillStyle = '#281911'; ctx.fillRect(paddingLeft, fretboardTop, neckWidth, fretboardHeight);
+            ctx.fillStyle = '#e2e8f0'; ctx.fillRect(paddingLeft - 8, fretboardTop, 8, fretboardHeight);
+
+            const numFrets = 12; const fretSpacing = neckWidth / (numFrets + 0.5);
+
+            ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2;
+            for (let i = 0; i <= numFrets; i++) {
+                const x = paddingLeft + i * fretSpacing;
+                ctx.beginPath(); ctx.moveTo(x, fretboardTop); ctx.lineTo(x, h); ctx.stroke();
+                ctx.fillStyle = '#94a3b8'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+                if (i > 0) ctx.fillText(`${i}fr`, x - fretSpacing / 2, fretboardTop - 6);
+            }
+
+            const dotFrets = [3, 5, 7, 9, 12];
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+            dotFrets.forEach(fret => {
+                const x = paddingLeft + (fret - 0.5) * fretSpacing;
+                if (fret === 12) {
+                    ctx.beginPath(); ctx.arc(x, fretboardTop + fretboardHeight * 0.3, 5, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(x, fretboardTop + fretboardHeight * 0.7, 5, 0, Math.PI * 2); ctx.fill();
+                } else {
+                    ctx.beginPath(); ctx.arc(x, fretboardTop + fretboardHeight / 2, 5, 0, Math.PI * 2); ctx.fill();
+                }
+            });
+
+            const rowHeight = fretboardHeight / 6;
+            guitarStrings.forEach((s, index) => {
+                const y = fretboardTop + rowHeight * index + rowHeight / 2;
+                let elapsed = -1; if (now !== undefined) elapsed = now - stringVibrations[index];
+                
+                let offset = 0;
+                if (elapsed >= 0 && elapsed < 400) {
+                    const decay = 1 - (elapsed / 400);
+                    offset = Math.sin(elapsed * 0.05) * (5 * decay);
+                }
+
+                ctx.strokeStyle = s.color === '#000000' ? '#ffffff' : s.color;
+                ctx.lineWidth = (s.color === '#000000' ? 3.5 : 2.5) + (offset !== 0 ? 1 : 0);
+                
+                ctx.beginPath();
+                if (offset !== 0) {
+                    ctx.moveTo(0, y);
+                    for (let x = 0; x <= w; x += 20) ctx.lineTo(x, y + Math.sin((x / w) * Math.PI * 8 + elapsed * 0.1) * offset);
+                } else {
+                    ctx.moveTo(0, y); ctx.lineTo(w, y);
+                }
+                ctx.stroke();
+
+                if (s.color === '#000000') {
+                    ctx.strokeStyle = '#000000'; ctx.lineWidth = 1.5; ctx.beginPath();
+                    if (offset !== 0) {
+                        ctx.moveTo(0, y);
+                        for (let x = 0; x <= w; x += 20) ctx.lineTo(x, y + Math.sin((x / w) * Math.PI * 8 + elapsed * 0.1) * offset);
+                    } else {
+                        ctx.moveTo(0, y); ctx.lineTo(w, y);
+                    }
+                    ctx.stroke();
+                }
+
+                ctx.fillStyle = s.color; ctx.beginPath(); ctx.arc(28, y, 11, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.stroke();
+                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(s.id.toUpperCase(), 28, y);
+            });
+        }
+
+        function drawPick(x, y, size, color, strokeColor, displayValue, opacity = 1.0) {
+            ctx.save();
+            ctx.globalAlpha = opacity;
+            ctx.fillStyle = color;
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.6)'; ctx.shadowBlur = 6;
+            const adjustedSize = size + 2;
+
+            ctx.beginPath();
+            ctx.moveTo(x, y + adjustedSize);
+            ctx.bezierCurveTo(x - adjustedSize, y, x - adjustedSize, y - adjustedSize, x, y - adjustedSize);
+            ctx.bezierCurveTo(x + adjustedSize, y - adjustedSize, x + adjustedSize, y, x, y + adjustedSize);
+            ctx.closePath(); ctx.fill();
+
+            ctx.strokeStyle = strokeColor || '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
+
+            ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y - 2, 9.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#000000'; ctx.font = '900 11px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(displayValue, x, y - 1.5);
+            ctx.restore();
+        }
+
+        function spawnConfetti(x, y) {
+            for (let i = 0; i < 28; i++) {
+                confettiParticles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 9,
+                    vy: (Math.random() * -7) - 2,
+                    size: Math.random() * 5 + 3,
+                    color: ['#10b981', '#22c55e', '#facc15', '#ec4899', '#38bdf8'][Math.floor(Math.random() * 5)],
+                    life: 1.0,
+                    rot: Math.random() * Math.PI * 2,
+                    rotSpeed: (Math.random() - 0.5) * 0.3
+                });
+            }
+        }
+
+        function updateAndDrawConfetti() {
+            for (let i = confettiParticles.length - 1; i >= 0; i--) {
+                const p = confettiParticles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.25;
+                p.rot += p.rotSpeed;
+                p.life -= 0.02;
+
+                if (p.life <= 0) {
+                    confettiParticles.splice(i, 1);
+                } else {
+                    ctx.save();
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = p.color;
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rot);
+                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                    ctx.restore();
+                }
+            }
+        }
+
+        function updateBigNextNoteDisplay() {
+            if (!isPlaying) {
+                bnnContainer.style.display = 'none';
+                return;
+            }
+
+            let nextNote = null;
+            for (let i = 0; i < noteTimeline.length; i++) {
+                if (!noteTimeline[i].played) {
+                    nextNote = noteTimeline[i];
+                    break;
+                }
+            }
+
+            if (nextNote) {
+                bnnContainer.style.display = 'flex';
+                bnnColor.style.backgroundColor = nextNote.color === '#000000' ? '#1f2937' : nextNote.color;
+                bnnColor.style.borderColor = nextNote.color === '#000000' ? '#ffffff' : '#ffffff';
+                bnnString.textContent = stringFriendlyNames[nextNote.stringId] || nextNote.stringId;
+                bnnFret.textContent = showLetters ? extractNoteLetter(nextNote.note) : nextNote.fret;
+            } else {
+                bnnContainer.style.display = 'none';
+            }
+        }
+
+        function parsePianoPad(code) {
+            if (!code || !code.trim()) return [];
+            const cleanCode = code.replace(/[\r\n\s]+/g, '');
+            const parts = cleanCode.split(/,Rests,/i);
+            if (parts.length < 2) return [];
+
+            const notes = parts[0].split(',').filter(Boolean);
+            const rests = parts[1].split(',').filter(Boolean);
+            const song = [];
+            for (let i = 0; i < notes.length; i++) song.push({ note: notes[i], rest: parseInt(rests[i] || '250', 10) });
+            return song;
+        }
+
+        function getYouTubeEmbedUrl(urlOrId) {
+            if (!urlOrId || !urlOrId.trim()) return '';
+            const raw = urlOrId.trim();
+
+            const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i;
+            const match = raw.match(regExp);
+
+            if (match && match[1]) {
+                return `https://www.youtube.com/embed/${match[1]}?autoplay=1&rel=0`;
+            }
+            if (/^[a-zA-Z0-9_-]{11}$/.test(raw)) {
+                return `https://www.youtube.com/embed/${raw}?autoplay=1&rel=0`;
+            }
+            if (raw.includes('youtube.com/embed/')) {
+                return raw.includes('?') ? `${raw}&autoplay=1` : `${raw}?autoplay=1`;
+            }
+            return '';
+        }
+
+        function updateDemoButton() {
+            if (currentDemoUrl && currentDemoUrl.trim().length > 0) {
+                btnWatchDemo.style.display = 'inline-flex';
+            } else {
+                btnWatchDemo.style.display = 'none';
+            }
+        }
+
+        function openVideoModal() {
+            if (!currentDemoUrl) return;
+            const embedUrl = getYouTubeEmbedUrl(currentDemoUrl);
+            if (!embedUrl) {
+                alert('No valid YouTube video format recognized for this song.');
+                return;
+            }
+
+            if (isPlaying && !isPaused) {
+                isPaused = true;
+                const btnPause = document.getElementById('btn-pause');
+                if (btnPause) btnPause.textContent = 'Resume';
+                document.getElementById('status').textContent = 'Playback paused for video demonstration.';
+            }
+
+            videoModalTitle.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#ef4444">
+                    <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+                </svg>
+                <span>Demo Video: <strong>${getCurrentSongTitle()}</strong></span>
+            `;
+
+            youtubeIframe.src = embedUrl;
+            videoModal.classList.add('open');
+        }
+
+        function closeVideoModal() {
+            youtubeIframe.src = '';
+            videoModal.classList.remove('open');
+        }
+
+        function parseCSVToSongs(csvText) {
+            const songs = [];
+            const lines = csvText.split(/\r?\n/);
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                const row = []; let insideQuote = false, entry = '';
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"' && line[j + 1] === '"') { entry += '"'; j++; }
+                    else if (char === '"') { insideQuote = !insideQuote; }
+                    else if (char === ',' && !insideQuote) { row.push(entry.trim()); entry = ''; }
+                    else { entry += char; }
+                }
+                row.push(entry);
+                if (row.length >= 2 && row[0].trim()) {
+                    songs.push({
+                        title: row[0].trim().replace(/^"|"$/g, ''),
+                        code: row[1].trim().replace(/^"|"$/g, ''),
+                        difficulty: row[2] ? row[2].trim().replace(/^"|"$/g, '') : null,
+                        youtubeUrl: row[3] ? row[3].trim().replace(/^"|"$/g, '') : ''
+                    });
+                }
+            }
+            return songs;
+        }
+
+        function renderSongSelect() {
+            const uniqueMap = new Map();
+            songList.forEach(s => {
+                const key = s.title.toLowerCase().trim();
+                if (!uniqueMap.has(key)) uniqueMap.set(key, s);
+            });
+            const sortedList = Array.from(uniqueMap.values());
+            sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
+
+            songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
+            sortedList.forEach(song => {
+                const opt = document.createElement('option');
+                opt.value = song.code; opt.textContent = song.title;
+                if (song.difficulty) opt.dataset.difficulty = song.difficulty;
+                if (song.youtubeUrl) opt.dataset.youtube = song.youtubeUrl;
+                songSelect.appendChild(opt);
+            });
+        }
+
+        async function syncSongsWithGoogleSheet() {
+            const cachedData = localStorage.getItem('pianopad_sheet_songs');
+            if (cachedData) {
+                try {
+                    songList = JSON.parse(cachedData); renderSongSelect();
+                    document.getElementById('status').textContent = `Loaded ${songList.length} cached songs. Syncing live Google Sheet...`;
+                } catch (e) {}
+            }
+
+            try {
+                const response = await fetch(SPREADSHEET_CSV_URL);
+                if (!response.ok) throw new Error('Network response failed');
+                
+                const csvText = await response.text();
+                const liveSongs = parseCSVToSongs(csvText);
+
+                if (liveSongs.length > 0) {
+                    songList = liveSongs; localStorage.setItem('pianopad_sheet_songs', JSON.stringify(liveSongs)); renderSongSelect();
+                    document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet. Please select a song to begin.`;
+                }
+            } catch (err) {
+                if (songList.length > 0) {
+                    document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode). Please select a song to begin.`;
+                } else {
+                    document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection.`;
+                }
+            }
+            updateMonitorWidget();
+        }
+
+        function buildTimeline() {
+            noteTimeline = [];
+            if (!currentSong || currentSong.length === 0) return;
+
+            const speedFactor = parseFloat(speedSlider.value) / 100;
+            let cumulativeMs = 2000;
+            const mappedSong = mapSongToErgonomicFrets(currentSong);
+
+            mappedSong.forEach((item) => {
+                cumulativeMs += (item.rest || 0) / speedFactor;
+                noteTimeline.push({
+                    note: item.note, stringId: item.stringObj.id, fret: item.fret,
+                    color: item.stringObj.color, stroke: item.stringObj.stroke,
+                    hitTime: cumulativeMs, duration: Math.max(140, (item.rest || 250) * 0.85 / speedFactor),
+                    played: false, gameStatus: 'pending'
+                });
+            });
+        }
+
+        function renderCurrentFrame(now = 0, effectiveElapsed = 0) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawFretboardBackground(now);
+
+            const w = canvas.width; const h = canvas.height;
+            const fretboardHeight = 120; const fretboardTop = h - fretboardHeight;
+            const paddingLeft = 60; const neckWidth = w - paddingLeft;
+            const fretSpacing = neckWidth / 12.5; const rowHeight = fretboardHeight / 6;
+
+            if (isTabMode) {
+                drawStaticFullTabMode(effectiveElapsed);
+
+                noteTimeline.forEach(item => {
+                    const timeUntilHit = item.hitTime - effectiveElapsed;
+                    const stringIndex = guitarStrings.findIndex(s => s.id === item.stringId);
+                    const targetY = fretboardTop + rowHeight * stringIndex + rowHeight / 2;
+                    const targetX = item.fret === 0 ? paddingLeft - 4 : paddingLeft + (item.fret - 0.5) * fretSpacing;
+
+                    if (timeUntilHit <= 0 && timeUntilHit >= -350) {
+                        const opacity = 1.0 - (Math.abs(timeUntilHit) / 350);
+                        const displayValue = showLetters ? extractNoteLetter(item.note) : item.fret.toString();
+                        let strokeColor = '#ef4444';
+                        if (isGameMode || isStepMode) {
+                            if (item.gameStatus === 'perfect') strokeColor = '#22c55e';
+                            else if (item.gameStatus === 'earlyLate') strokeColor = '#f97316';
+                        }
+                        drawPick(targetX, targetY, 14, item.color, strokeColor, displayValue, opacity);
+                    }
+                });
+            } else {
+                const FALL_TIME_MS = 1800; const fallDistance = fretboardTop - TAB_HEIGHT;
+
+                noteTimeline.forEach(item => {
+                    const stringIndex = guitarStrings.findIndex(s => s.id === item.stringId);
+                    const targetY = fretboardTop + rowHeight * stringIndex + rowHeight / 2;
+                    const targetX = item.fret === 0 ? paddingLeft - 4 : paddingLeft + (item.fret - 0.5) * fretSpacing;
+                    const timeUntilHit = item.hitTime - effectiveElapsed;
+
+                    if (timeUntilHit <= FALL_TIME_MS && timeUntilHit >= -250) {
+                        let yPos; let opacity = 1.0;
+                        if (timeUntilHit >= 0) {
+                            yPos = targetY - (timeUntilHit / FALL_TIME_MS) * fallDistance;
+                        } else {
+                            yPos = targetY; opacity = 1.0 - (Math.abs(timeUntilHit) / 250);
+                        }
+
+                        if (opacity > 0 && yPos > TAB_HEIGHT - 10) {
+                            const displayValue = showLetters ? extractNoteLetter(item.note) : item.fret.toString();
+                            let renderStroke = item.stroke;
+                            let renderColor = item.color;
+                            if (isGameMode || isStepMode) {
+                                if (item.gameStatus === 'perfect') { renderColor = '#22c55e'; renderStroke = '#ffffff'; }
+                                else if (item.gameStatus === 'earlyLate') { renderColor = '#f97316'; renderStroke = '#ffffff'; }
+                                else if (item.gameStatus === 'miss') { renderColor = '#ef4444'; renderStroke = '#ffffff'; }
+                            }
+                            drawPick(targetX, yPos, 14, renderColor, renderStroke, displayValue, opacity);
+                        }
+                    }
+                });
+
+                drawScrollingTablature(effectiveElapsed);
+            }
+
+            updateAndDrawConfetti();
+        }
+
+        /* --- PITCH MATCHING ENGINE (Direct Match & Guitar Octave Harmonics) --- */
+        function isGuitarPitchMatch(detectedMidi, targetMidi) {
+            if (!detectedMidi || detectedMidi <= 0) return false;
+            const diff = Math.abs(detectedMidi - targetMidi);
+            if (diff <= 1.1) return true; // Direct fundamental pitch match within ~100 cents
+
+            // Pitch class match (handles octave overtones on acoustic and electric guitar strings)
+            const detPC = Math.round(detectedMidi) % 12;
+            const tgtPC = Math.round(targetMidi) % 12;
+            let pcDiff = Math.abs(detPC - tgtPC);
+            if (pcDiff > 6) pcDiff = 12 - pcDiff;
+
+            if (pcDiff === 0 && (Math.abs(diff - 12) <= 1.1 || Math.abs(diff - 24) <= 1.1)) {
+                return true;
+            }
+            return false;
+        }
+
+        /* --- STEP MODE MICROPHONE PITCH RECOGNITION & NOTE ADVANCE --- */
+        function checkStepModeMicrophoneAdvance() {
+            if (!isStepMode || !isMicListening || noteTimeline.length === 0) return;
+
+            const now = performance.now();
+
+            // Allow looping back to start by plucking the first note when finished
+            if (currentStepIndex >= noteTimeline.length) {
+                const firstItem = noteTimeline[0];
+                const firstMidi = noteToMidi(firstItem.note);
+                if (currentDetectedMidi > 0 && isGuitarPitchMatch(currentDetectedMidi, firstMidi)) {
+                    advanceStepNote();
+                }
+                return;
+            }
+
+            const currentItem = noteTimeline[currentStepIndex];
+            const targetMidi = noteToMidi(currentItem.note);
+
+            // Minimum cooldown between step advances (350ms)
+            if (now - lastStepAdvanceTime < 350) return;
+
+            // Prevent ringing string from automatically skipping consecutive identical notes
+            if (stepSamePitchRequiresRepluck) {
+                if (currentDetectedMidi <= 0 || !isGuitarPitchMatch(currentDetectedMidi, targetMidi)) {
+                    stepSamePitchRequiresRepluck = false;
+                } else if (now - lastStepAdvanceTime > 650) {
+                    stepSamePitchRequiresRepluck = false;
+                } else {
+                    return;
+                }
+            }
+
+            if (currentDetectedMidi > 0 && isGuitarPitchMatch(currentDetectedMidi, targetMidi)) {
+                stepHoldFrames++;
+                if (stepHoldFrames >= 2) { // Note sustained stably for at least 2 animation frames (~30ms)
+                    stepHoldFrames = 0;
+                    lastStepAdvanceTime = now;
+
+                    // Calculate coordinates for visual feedback on fretboard
+                    const stringIndex = guitarStrings.findIndex(s => s.id === currentItem.stringId);
+                    const fretSpacing = (canvas.width - 60) / 12.5;
+                    const targetX = currentItem.fret === 0 ? 56 : 60 + (currentItem.fret - 0.5) * fretSpacing;
+                    const fretboardTop = canvas.height - 120;
+                    const targetY = fretboardTop + (120 / 6) * (stringIndex >= 0 ? stringIndex : 0) + 10;
+
+                    // Festive confetti pop at the fret location!
+                    spawnConfetti(targetX, targetY);
+
+                    // Mark note as hit
+                    currentItem.gameStatus = 'perfect';
+
+                    // Enforce re-pluck requirement if next step note has the identical pitch
+                    const nextIdx = currentStepIndex + 1;
+                    if (nextIdx < noteTimeline.length && noteToMidi(noteTimeline[nextIdx].note) === targetMidi) {
+                        stepSamePitchRequiresRepluck = true;
+                    } else {
+                        stepSamePitchRequiresRepluck = false;
+                    }
+
+                    // Advance to next step note!
+                    advanceStepNote();
+                }
+            } else {
+                stepHoldFrames = 0;
+            }
+        }
+
+        /* Real-Time Microphone Pitch Evaluation for Game Mode */
+        function evaluateLiveMicrophonePerformance(effectiveElapsed) {
+            if (!isGameMode || !isMicListening || currentDetectedMidi <= 0) return;
+
+            noteTimeline.forEach(item => {
+                if (item.gameStatus !== 'pending') return;
+
+                const targetMidi = noteToMidi(item.note);
+                const isMatch = isGuitarPitchMatch(currentDetectedMidi, targetMidi);
+                const timeDiff = effectiveElapsed - item.hitTime;
+
+                if (isMatch) {
+                    const stringIndex = guitarStrings.findIndex(s => s.id === item.stringId);
+                    const fretSpacing = (canvas.width - 60) / 12.5;
+                    const targetX = item.fret === 0 ? 56 : 60 + (item.fret - 0.5) * fretSpacing;
+                    const fretboardTop = canvas.height - 120;
+                    const targetY = fretboardTop + (120 / 6) * stringIndex + 10;
+
+                    if (Math.abs(timeDiff) <= 140) {
+                        // Perfect hit (on time & correct pitch) -> Green
+                        item.gameStatus = 'perfect';
+                        gameStats.perfect++;
+                        currentStreak++;
+                        spawnConfetti(targetX, targetY);
+                        triggerStringVibration(stringIndex);
+                        updateGameStatusText();
+                    } else if (timeDiff >= -320 && timeDiff <= 320) {
+                        // Early or Late -> Orange
+                        item.gameStatus = 'earlyLate';
+                        gameStats.earlyLate++;
+                        currentStreak = 0;
+                        triggerStringVibration(stringIndex);
+                        updateGameStatusText();
+                    }
+                }
+            });
+        }
+
+        function updateGameStatusText() {
+            const totalAssessed = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+            const accuracy = totalAssessed > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalAssessed) * 100).toFixed(1) : '100.0';
+            const streakLabel = currentStreak >= 5 ? ` | 🔥 STREAK: x${currentStreak}` : '';
+            document.getElementById('status').textContent = `🎮 Accuracy: ${accuracy}% | Perfect: ${gameStats.perfect} | Early/Late: ${gameStats.earlyLate} | Missed: ${gameStats.miss}${streakLabel}`;
+        }
+
+        function showGameResultsPopUp() {
+            const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+            const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '0.0';
+            const accNum = parseFloat(accuracy);
+
+            document.getElementById('game-summary-text').innerHTML = `
+                Student: <span style="color:#38bdf8;">${currentStudentName || 'Guest'}</span><br>
+                Final Accuracy: <span style="color:#22c55e; font-size:1.25rem;">${accuracy}%</span><br>
+                <span style="font-size:0.8rem; color:#9ca3af;">(${gameStats.perfect} Perfect, ${gameStats.earlyLate} Early/Late, ${gameStats.miss} Missed out of ${total} notes)</span>
+            `;
+
+            let badgeHtml = '';
+            if (accNum >= 90) badgeHtml = '<div class="badge-box badge-gold">🥇 GOLD GUITARIST (90%+)</div>';
+            else if (accNum >= 75) badgeHtml = '<div class="badge-box badge-silver">🥈 SILVER GUITARIST (75%+)</div>';
+            else if (accNum >= 50) badgeHtml = '<div class="badge-box badge-bronze">🥉 BRONZE GUITARIST (50%+)</div>';
+            document.getElementById('badge-container').innerHTML = badgeHtml;
+
+            const greenPct = total > 0 ? (gameStats.perfect / total) * 100 : 0;
+            const orangePct = total > 0 ? (gameStats.earlyLate / total) * 100 : 0;
+            const redPct = total > 0 ? (gameStats.miss / total) * 100 : 0;
+
+            document.getElementById('bar-green').style.height = `${greenPct}%`;
+            document.getElementById('bar-orange').style.height = `${orangePct}%`;
+            document.getElementById('bar-red').style.height = `${redPct}%`;
+
+            document.getElementById('game-rank-text').textContent = `Speed: ${speedSlider.value}% | Song: ${getCurrentSongTitle()}`;
+            gameResultsModal.classList.add('open');
+        }
+
+        function renderLoop(now) {
+            if (!isPlaying || isPaused) return;
+            let effectiveElapsed = 0;
+
+            if (isStepMode) {
+                const targetStepTime = (currentStepIndex < noteTimeline.length)
+                    ? noteTimeline[currentStepIndex].hitTime
+                    : (noteTimeline[noteTimeline.length - 1] ? noteTimeline[noteTimeline.length - 1].hitTime + 500 : 0);
+                
+                stepVirtualTime += (targetStepTime - stepVirtualTime) * 0.15;
+                effectiveElapsed = stepVirtualTime;
+
+                // Evaluate microphone in Step Mode for hands-free note advance
+                checkStepModeMicrophoneAdvance();
+            } else {
+                effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
+                if (isGameMode) evaluateLiveMicrophonePerformance(effectiveElapsed);
+            }
+
+            noteTimeline.forEach(item => {
+                const stringIndex = guitarStrings.findIndex(s => s.id === item.stringId);
+
+                if (!isStepMode && effectiveElapsed >= item.hitTime && !item.played) {
+                    item.played = true;
+                    const midi = noteToMidi(item.note);
+                    const freq = 440 * Math.pow(2, (midi - 69) / 12);
+                    playTone(freq, item.duration / 1000);
+                    triggerStringVibration(stringIndex);
+                }
+
+                if (isGameMode && item.gameStatus === 'pending' && effectiveElapsed > item.hitTime + 300) {
+                    // Missed note passes hitline without correct mic detection -> Red
+                    item.gameStatus = 'miss';
+                    gameStats.miss++;
+                    currentStreak = 0;
+                    updateGameStatusText();
+                }
+            });
+
+            renderCurrentFrame(now, effectiveElapsed);
+            updateProgressBar(effectiveElapsed);
+            updateBigNextNoteDisplay();
+
+            animationFrameId = requestAnimationFrame(renderLoop);
+        }
+
+        function playSong() {
+            initAudio();
+            requestScreenWakeLock();
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            if (loopTimeout) clearTimeout(loopTimeout);
+            if (currentSong.length === 0) return;
+
+            hasLoggedCurrentPlay = false;
+            completedThisRun = false;
+            gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+            currentStreak = 0;
+            confettiParticles = [];
+
+            buildTimeline();
+            isPlaying = true;
+            isPaused = false;
+            playbackStartTime = performance.now();
+            accumulatedPauseMs = 0;
+
+            if (isStepMode) {
+                currentStepIndex = 0;
+                stepHoldFrames = 0;
+                lastStepAdvanceTime = 0;
+                stepSamePitchRequiresRepluck = false;
+                stepVirtualTime = noteTimeline[0] ? noteTimeline[0].hitTime - 1800 : 0;
+                updateStepStatus();
+            } else {
+                document.getElementById('status').textContent = isGameMode ? '🎮 Game Mode active! Play on your guitar...' : 'Playing...';
+            }
+            requestAnimationFrame(renderLoop);
+        }
+
+        function stopSong() {
+            isPlaying = false;
+            releaseScreenWakeLock();
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            if (loopTimeout) clearTimeout(loopTimeout);
+            
+            renderCurrentFrame(0, 0);
+            updateProgressBar(0);
+            updateBigNextNoteDisplay();
+            
+            document.getElementById('status').textContent = 'Playback stopped.';
+        }
+
+        function toggleStepMode() {
+            initAudio();
+            isStepMode = !isStepMode;
+            if (loopTimeout) clearTimeout(loopTimeout);
+            
+            if (isStepMode) {
+                requestScreenWakeLock();
+                btnStep.textContent = 'Step Mode: ON';
+                btnStep.classList.add('btn-step-active');
+                currentStepIndex = 0;
+                stepHoldFrames = 0;
+                lastStepAdvanceTime = 0;
+                stepSamePitchRequiresRepluck = false;
+                stepVirtualTime = noteTimeline[0] ? noteTimeline[0].hitTime - 1800 : 0;
+
+                // Auto-enable microphone if not currently listening so students can play right away
+                if (!isMicListening) {
+                    toggleMicrophoneListening();
+                }
+
+                if (!isPlaying) playSong();
+                updateStepStatus();
+            } else {
+                btnStep.textContent = 'Step Mode';
+                btnStep.classList.remove('btn-step-active');
+                document.getElementById('status').textContent = 'Step Mode OFF. Normal auto-play active.';
+            }
+        }
+
+        function toggleTabMode() {
+            isTabMode = !isTabMode;
+            if (isTabMode) {
+                btnTabMode.textContent = 'TAB: ON';
+                btnTabMode.classList.add('btn-tab-active');
+                document.getElementById('status').textContent = 'Full Static TAB Mode activated. Scrolling numbers and falling picks removed.';
+            } else {
+                btnTabMode.textContent = 'TAB';
+                btnTabMode.classList.remove('btn-tab-active');
+                document.getElementById('status').textContent = 'Waterfall and Scrolling TAB Mode restored.';
+            }
+            if (!isPlaying) renderCurrentFrame(0, 0);
+        }
+
+        function toggleGameMode() {
+            isGameMode = !isGameMode;
+            if (isGameMode) {
+                btnGame.textContent = '🎮 Game Mode: ON';
+                btnGame.classList.add('btn-game-active');
+                btnGame.classList.remove('btn-secondary');
+                if (!isMicListening) toggleMicrophoneListening();
+                document.getElementById('status').textContent = '🎮 Game Mode activated! Note accuracy will be assessed via microphone.';
+            } else {
+                btnGame.textContent = '🎮 Game Mode: OFF';
+                btnGame.classList.remove('btn-game-active');
+                btnGame.classList.add('btn-secondary');
+                document.getElementById('status').textContent = 'Game Mode OFF. Free-play active.';
+            }
+        }
+
+        function advanceStepNote() {
+            if (noteTimeline.length === 0) return;
+
+            if (currentStepIndex >= noteTimeline.length) {
+                currentStepIndex = 0;
+                completedThisRun = false;
+                for (let i = 0; i < noteTimeline.length; i++) {
+                    noteTimeline[i].played = false;
+                    noteTimeline[i].gameStatus = 'pending';
+                }
+                stepVirtualTime = noteTimeline[0] ? noteTimeline[0].hitTime - 1800 : 0;
+                document.getElementById('status').textContent = `Restarting song (Repetition #${songCompletionCount + 1})...`;
+                updateStepStatus();
+                return;
+            }
+
+            const item = noteTimeline[currentStepIndex];
+            const midi = noteToMidi(item.note);
+            const freq = 440 * Math.pow(2, (midi - 69) / 12);
+            playTone(freq, item.duration / 1000);
+            const stringIndex = guitarStrings.findIndex(s => s.id === item.stringId);
+            triggerStringVibration(stringIndex);
+            item.played = true;
+            item.gameStatus = 'perfect';
+            currentStepIndex++;
+            updateStepStatus();
+        }
+
+        function stepBackwardNote() {
+            if (noteTimeline.length === 0) return;
+            if (currentStepIndex > 0) {
+                currentStepIndex--;
+                stepHoldFrames = 0;
+                stepSamePitchRequiresRepluck = false;
+                for (let i = currentStepIndex; i < noteTimeline.length; i++) {
+                    noteTimeline[i].played = false;
+                    noteTimeline[i].gameStatus = 'pending';
+                }
+                const item = noteTimeline[currentStepIndex];
+                const midi = noteToMidi(item.note);
+                const freq = 440 * Math.pow(2, (midi - 69) / 12);
+                playTone(freq, item.duration / 1000);
+                const stringIndex = guitarStrings.findIndex(s => s.id === item.stringId);
+                triggerStringVibration(stringIndex);
+                updateStepStatus();
+            }
+        }
+
+        function updateStepStatus() {
+            if (currentStepIndex < noteTimeline.length) {
+                const nextItem = noteTimeline[currentStepIndex];
+                const displayValue = showLetters ? extractNoteLetter(nextItem.note) : nextItem.fret;
+                const repLabel = songCompletionCount > 0 ? ` [Completed: ${songCompletionCount}x]` : '';
+                const micHint = isMicListening ? '🎤 Pluck note on guitar to advance' : 'Press SPACE or RIGHT ARROW to advance';
+                const strName = stringFriendlyNames[nextItem.stringId] || nextItem.stringId.toUpperCase();
+                document.getElementById('status').textContent = `Step ${currentStepIndex + 1} of ${noteTimeline.length}: Next -> String [ ${strName} ], Fret [ ${displayValue} ] (${micHint})${repLabel}`;
+            } else {
+                if (!completedThisRun) {
+                    completedThisRun = true; 
+                    songCompletionCount++;
+                    const modeLabel = isTabMode ? 'TAB Mode (Step)' : 'Step Mode';
+                    logSongPlay(getCurrentSongTitle(), modeLabel, `${speedSlider.value}%`, 'Completed', songCompletionCount);
+                }
+                document.getElementById('status').textContent = `Song completed! (Total times played through: ${songCompletionCount}) Pluck first note on guitar or press SPACE / RIGHT ARROW to loop back.`;
+            }
+        }
+
+        /* Microphone & Autocorrelation Pitch Detection */
+        async function toggleMicrophoneListening() {
+            initAudio();
+            if (isMicListening) {
+                stopMicrophoneListening();
+                btnMicToggle.textContent = '🎤 Mic: OFF';
+                btnMicToggle.classList.remove('btn-success');
+                btnMicToggle.classList.add('btn-secondary');
+                document.getElementById('status').textContent = 'Microphone stopped.';
+            } else {
+                try {
+                    micStream = await navigator.mediaDevices.getUserMedia({
+                        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+                        video: false
+                    });
+                    const source = audioCtx.createMediaStreamSource(micStream);
+                    micAnalyser = audioCtx.createAnalyser();
+                    micAnalyser.fftSize = 2048;
+                    source.connect(micAnalyser);
+
+                    isMicListening = true;
+                    btnMicToggle.textContent = '🎤 Mic: ON';
+                    btnMicToggle.classList.remove('btn-secondary');
+                    btnMicToggle.classList.add('btn-success');
+                    document.getElementById('status').textContent = isStepMode ? '🎤 Microphone active! Pluck the displayed fret on your guitar...' : 'Microphone listening for guitar notes...';
+                    processMicrophonePitch();
+                } catch (err) {
+                    console.error("Mic error:", err);
+                    alert("Unable to access microphone. Please allow microphone permissions in your browser.");
+                }
+            }
+        }
+
+        function stopMicrophoneListening() {
+            isMicListening = false;
+            if (pitchDetectionFrameId) cancelAnimationFrame(pitchDetectionFrameId);
+            if (micStream) {
+                micStream.getTracks().forEach(t => t.stop());
+                micStream = null;
+            }
+            currentDetectedFreq = 0;
+            currentDetectedMidi = 0;
+        }
+
+        function autoCorrelate(buf, sampleRate) {
+            const SIZE = buf.length;
+            let rms = 0;
+            for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
+            rms = Math.sqrt(rms / SIZE);
+            if (rms < 0.015) return -1;
+
+            let r1 = 0, r2 = SIZE - 1, thres = 0.2;
+            for (let i = 0; i < SIZE / 2; i++) {
+                if (Math.abs(buf[i]) < thres) { r1 = i; break; }
+            }
+            for (let i = 1; i < SIZE / 2; i++) {
+                if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
+            }
+
+            buf = buf.slice(r1, r2);
+            const newSize = buf.length;
+            const c = new Array(newSize).fill(0);
+            for (let i = 0; i < newSize; i++) {
+                for (let j = 0; j < newSize - i; j++) {
+                    c[i] += buf[j] * buf[j + i];
+                }
+            }
+
+            let d = 0; while (c[d] > c[d + 1]) d++;
+            let maxval = -1, maxpos = -1;
+            for (let i = d; i < newSize; i++) {
+                if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
+            }
+            let T0 = maxpos;
+            let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+            let a = (x1 + x3 - 2 * x2) / 2;
+            let b = (x3 - x1) / 2;
+            if (a) T0 = T0 - b / (2 * a);
+
+            return sampleRate / T0;
+        }
+
+        function freqToMidi(f) {
+            return 69 + 12 * Math.log2(f / 440);
+        }
+
+        function midiToFreq(m) {
+            return 440 * Math.pow(2, (m - 69) / 12);
+        }
+
+        function processMicrophonePitch() {
+            if (!isMicListening || !micAnalyser) return;
+
+            const buf = new Float32Array(micAnalyser.fftSize);
+            micAnalyser.getFloatTimeDomainData(buf);
+            const freq = autoCorrelate(buf, audioCtx.sampleRate);
+
+            if (freq !== -1 && freq >= 65 && freq <= 1100) {
+                currentDetectedFreq = freq;
+                currentDetectedMidi = freqToMidi(freq);
+            } else {
+                currentDetectedFreq = 0;
+                currentDetectedMidi = 0;
+            }
+
+            if (isTunerOpen) drawTunerGauge();
+            pitchDetectionFrameId = requestAnimationFrame(processMicrophonePitch);
+        }
+
+        /* --- GUITAR TUNER SWINGING ARM GAUGE (9am to 3pm) --- */
+        function drawTunerGauge() {
+            const w = tunerCanvas.width;
+            const h = tunerCanvas.height;
+            tunerCtx.clearRect(0, 0, w, h);
+
+            const pivotX = w / 2;
+            const pivotY = h - 25;
+            const radius = 135;
+
+            const startAngle = Math.PI;       // 9:00 AM (Flat)
+            const centerAngle = Math.PI * 1.5; // 12:00 PM (In Tune)
+            const endAngle = Math.PI * 2.0;    // 3:00 PM (Sharp)
+
+            let cents = 0;
+            let noteLabel = "--";
+            let closestFreq = 0;
+            let hasSignal = (currentDetectedFreq > 0 && currentDetectedMidi > 0);
+
+            if (hasSignal) {
+                const roundedMidi = Math.round(currentDetectedMidi);
+                closestFreq = midiToFreq(roundedMidi);
+                cents = 1200 * Math.log2(currentDetectedFreq / closestFreq);
+                noteLabel = midiToNoteNameWithOctave(roundedMidi);
+            }
+
+            const clampedCents = Math.max(-50, Math.min(50, cents));
+            const inTune = hasSignal && Math.abs(cents) <= 8.0;
+
+            let targetAngle = centerAngle;
+            if (hasSignal) {
+                const fraction = (clampedCents + 50) / 100;
+                targetAngle = startAngle + fraction * Math.PI;
+            }
+
+            tunerNeedleAngle += (targetAngle - tunerNeedleAngle) * 0.22;
+
+            // Outer Arc Track
+            tunerCtx.beginPath();
+            tunerCtx.arc(pivotX, pivotY, radius, startAngle, endAngle);
+            tunerCtx.lineWidth = 14;
+            tunerCtx.strokeStyle = '#1e293b';
+            tunerCtx.stroke();
+
+            // Center In-Tune Sweet Spot (±10 cents around 12 o'clock)
+            const sweetStart = centerAngle - (10 / 100) * Math.PI;
+            const sweetEnd = centerAngle + (10 / 100) * Math.PI;
+            tunerCtx.beginPath();
+            tunerCtx.arc(pivotX, pivotY, radius, sweetStart, sweetEnd);
+            tunerCtx.lineWidth = 14;
+            tunerCtx.strokeStyle = inTune ? '#10b981' : 'rgba(16, 185, 129, 0.4)';
+            tunerCtx.stroke();
+
+            // Dial Tick Marks
+            for (let cVal = -50; cVal <= 50; cVal += 10) {
+                const fraction = (cVal + 50) / 100;
+                const ang = startAngle + fraction * Math.PI;
+                const isCenter = (cVal === 0);
+
+                const rIn = radius - (isCenter ? 14 : 8);
+                const rOut = radius + (isCenter ? 4 : 0);
+
+                const x1 = pivotX + rIn * Math.cos(ang);
+                const y1 = pivotY + rIn * Math.sin(ang);
+                const x2 = pivotX + rOut * Math.cos(ang);
+                const y2 = pivotY + rOut * Math.sin(ang);
+
+                tunerCtx.beginPath();
+                tunerCtx.moveTo(x1, y1);
+                tunerCtx.lineTo(x2, y2);
+                tunerCtx.lineWidth = isCenter ? 3.5 : 1.5;
+                tunerCtx.strokeStyle = isCenter ? (inTune ? '#10b981' : '#facc15') : '#64748b';
+                tunerCtx.stroke();
+            }
+
+            // Dial Text Labels
+            tunerCtx.font = '800 11px sans-serif';
+            tunerCtx.textAlign = 'left';
+            tunerCtx.fillStyle = '#ef4444';
+            tunerCtx.fillText("♭ FLAT (9am)", 16, pivotY - 6);
+
+            tunerCtx.textAlign = 'right';
+            tunerCtx.fillStyle = '#ef4444';
+            tunerCtx.fillText("SHARP ♯ (3pm)", w - 16, pivotY - 6);
+
+            tunerCtx.textAlign = 'center';
+            tunerCtx.fillStyle = inTune ? '#10b981' : '#94a3b8';
+            tunerCtx.fillText("12:00 (IN TUNE)", pivotX, 22);
+
+            // Swinging Arm Needle
+            const needleTipX = pivotX + (radius + 6) * Math.cos(tunerNeedleAngle);
+            const needleTipY = pivotY + (radius + 6) * Math.sin(tunerNeedleAngle);
+
+            let needleColor = '#94a3b8';
+            if (hasSignal) {
+                needleColor = inTune ? '#10b981' : (Math.abs(cents) <= 20 ? '#facc15' : '#ef4444');
+            }
+
+            tunerCtx.save();
+            tunerCtx.beginPath();
+            tunerCtx.moveTo(pivotX, pivotY);
+            tunerCtx.lineTo(needleTipX, needleTipY);
+            tunerCtx.lineWidth = 4;
+            tunerCtx.lineCap = 'round';
+            tunerCtx.strokeStyle = needleColor;
+            if (inTune) {
+                tunerCtx.shadowColor = '#10b981';
+                tunerCtx.shadowBlur = 15;
+            }
+            tunerCtx.stroke();
+            tunerCtx.restore();
+
+            // Center Pivot Cap
+            tunerCtx.beginPath();
+            tunerCtx.arc(pivotX, pivotY, 10, 0, Math.PI * 2);
+            tunerCtx.fillStyle = inTune ? '#10b981' : '#334155';
+            tunerCtx.fill();
+            tunerCtx.lineWidth = 2;
+            tunerCtx.strokeStyle = '#ffffff';
+            tunerCtx.stroke();
+
+            // Text Readout Updates
+            if (hasSignal) {
+                tunerNoteDisplay.textContent = noteLabel;
+                tunerNoteDisplay.className = inTune ? 'tuner-note-readout in-tune' : 'tuner-note-readout';
+                const sign = cents >= 0 ? `+${Math.round(cents)}` : `${Math.round(cents)}`;
+                tunerCentsDisplay.innerHTML = inTune 
+                    ? `<span style="color:#10b981; font-weight:900;">★ IN TUNE ★</span> (${currentDetectedFreq.toFixed(1)} Hz)`
+                    : `${currentDetectedFreq.toFixed(1)} Hz (${sign} cents)`;
+            } else {
+                tunerNoteDisplay.textContent = "--";
+                tunerNoteDisplay.className = 'tuner-note-readout';
+                tunerCentsDisplay.textContent = "Sing or pluck a guitar string";
+            }
+        }
+
+        function openTunerModal() {
+            initAudio();
+            isTunerOpen = true;
+            btnTuner.classList.add('btn-tuner-active');
+            tunerModal.classList.add('open');
+            if (!isMicListening) toggleMicrophoneListening();
+            drawTunerGauge();
+        }
+
+        function closeTunerModal() {
+            isTunerOpen = false;
+            btnTuner.classList.remove('btn-tuner-active');
+            tunerModal.classList.remove('open');
+        }
+
+        /* Composer Functions */
+        function initComposerGrid() {
+            if (composerGridData.length === 0) {
+                composerGridData = [];
+                for (let s = 0; s < 6; s++) {
+                    const row = [];
+                    for (let c = 0; c < composerGridSteps; c++) row.push(null);
+                    composerGridData.push(row);
+                }
+                composerGridData[5][0] = 0; composerGridData[5][2] = 3; composerGridData[5][4] = 5;
+                composerGridData[5][6] = 0; composerGridData[5][8] = 3; composerGridData[5][10] = 6; composerGridData[5][11] = 5;
+            }
+            renderComposerTable(); updateComposerCursorView();
+        }
+
+        function renderComposerTable() {
+            let html = '<thead><tr><th>String</th>';
+            for (let c = 0; c < composerGridSteps; c++) html += `<th>${c + 1}</th>`;
+            html += '</tr></thead><tbody>';
+
+            for (let s = 0; s < 6; s++) {
+                const sObj = guitarStrings[s];
+                html += `<tr><td class="composer-string-label" style="background-color: ${sObj.color === '#000000' ? '#1f2937' : sObj.color}; border: 1px solid ${sObj.color === '#000000' ? '#6b7280' : 'transparent'};">${sObj.id.toUpperCase()} (${sObj.name})</td>`;
+                for (let c = 0; c < composerGridSteps; c++) {
+                    const fretVal = composerGridData[s][c];
+                    const hasNote = fretVal !== null && fretVal !== undefined;
+                    const text = hasNote ? fretVal : '·';
+                    html += `<td class="grid-cell ${hasNote ? 'has-note' : ''}" data-row="${s}" data-col="${c}" id="comp-cell-${s}-${c}">${text}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</tbody>';
+            composerTable.innerHTML = html;
+
+            const cells = composerTable.querySelectorAll('.grid-cell');
+            cells.forEach(cell => {
+                cell.addEventListener('click', (e) => {
+                    const r = parseInt(cell.getAttribute('data-row'), 10);
+                    const c = parseInt(cell.getAttribute('data-col'), 10);
+                    setComposerCursor(r, c); auditionComposerCell(r, c);
+                });
+            });
+        }
+
+        function setComposerCursor(r, c) {
+            composerCursorRow = Math.max(0, Math.min(5, r)); composerCursorCol = Math.max(0, Math.min(composerGridSteps - 1, c));
+            updateComposerCursorView();
+        }
+
+        function updateComposerCursorView() {
+            const prevActive = composerTable.querySelectorAll('.active-cell');
+            prevActive.forEach(el => el.classList.remove('active-cell'));
+
+            const targetCell = document.getElementById(`comp-cell-${composerCursorRow}-${composerCursorCol}`);
+            if (targetCell) {
+                targetCell.classList.add('active-cell');
+                targetCell.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+            }
+
+            const currentStr = guitarStrings[composerCursorRow];
+            const currentFret = composerGridData[composerCursorRow][composerCursorCol];
+            let noteInfo = 'None (Rest)';
+            if (currentFret !== null && currentFret !== undefined) {
+                const midi = currentStr.openMidi + currentFret;
+                noteInfo = `Fret ${currentFret} [${midiToNoteStr(midi).toUpperCase()}]`;
+            }
+            composerCellStatus.innerHTML = `String: <strong style="color: ${currentStr.color === '#000000' ? '#ffffff' : currentStr.color};">${currentStr.id.toUpperCase()}</strong> | Step: <strong>${composerCursorCol + 1}</strong> of ${composerGridSteps} | Current Note: <strong>${noteInfo}</strong>`;
+        }
+
+        function auditionComposerCell(r, c) {
+            initAudio();
+            const sObj = guitarStrings[r]; const fret = composerGridData[r][c];
+            const midi = (fret !== null && fret !== undefined) ? (sObj.openMidi + fret) : sObj.openMidi;
+            const freq = 440 * Math.pow(2, (midi - 69) / 12);
+            playTone(freq, 0.35); triggerStringVibration(r);
+        }
+
+        function setComposerCellFret(r, c, fretNumber) {
+            composerGridData[r][c] = fretNumber;
+            const cell = document.getElementById(`comp-cell-${r}-${c}`);
+            if (cell) { cell.textContent = fretNumber; cell.classList.add('has-note'); }
+            auditionComposerCell(r, c); updateComposerCursorView();
+        }
+
+        function clearComposerCell(r, c) {
+            composerGridData[r][c] = null;
+            const cell = document.getElementById(`comp-cell-${r}-${c}`);
+            if (cell) { cell.textContent = '·'; cell.classList.remove('has-note'); }
+            updateComposerCursorView();
+        }
+
+        function handleComposerKeyDown(e) {
+            if (!composerModal.classList.contains('open')) return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+
+            if (e.key === 'ArrowUp') { e.preventDefault(); setComposerCursor(composerCursorRow - 1, composerCursorCol); }
+            else if (e.key === 'ArrowDown') { e.preventDefault(); setComposerCursor(composerCursorRow + 1, composerCursorCol); }
+            else if (e.key === 'ArrowLeft') { e.preventDefault(); setComposerCursor(composerCursorRow, composerCursorCol - 1); }
+            else if (e.key === 'ArrowRight') { e.preventDefault(); setComposerCursor(composerCursorRow, composerCursorCol + 1); }
+            else if (e.key === ' ' || e.code === 'Space') { e.preventDefault(); auditionComposerCell(composerCursorRow, composerCursorCol); }
+            else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); clearComposerCell(composerCursorRow, composerCursorCol); }
+            else if (e.key >= '0' && e.key <= '9') {
+                e.preventDefault(); const now = performance.now(); let fretNum = parseInt(e.key, 10);
+                if (now - lastDigitKeyTime < 600 && lastDigitEntered === '1') {
+                    if (e.key === '0') fretNum = 10; else if (e.key === '1') fretNum = 11; else if (e.key === '2') fretNum = 12;
+                    lastDigitEntered = '';
+                } else { lastDigitEntered = e.key; }
+                lastDigitKeyTime = now; setComposerCellFret(composerCursorRow, composerCursorCol, fretNum);
+            }
+        }
+
+        function generateComposerFretPadCode() {
+            const stepRestMs = parseInt(composerStepRest.value || '250', 10);
+            const notesArr = []; const restsArr = [];
+            let lastStep = 0;
+            let isFirstNote = true;
+
+            for (let c = 0; c < composerGridSteps; c++) {
+                for (let s = 0; s < 6; s++) {
+                    const fret = composerGridData[s][c];
+                    if (fret !== null && fret !== undefined) {
+                        const midi = guitarStrings[s].openMidi + fret;
+                        notesArr.push(midiToNoteStr(midi).toUpperCase());
+                        const rest = isFirstNote ? (c * stepRestMs) : ((c - lastStep) * stepRestMs);
+                        restsArr.push(rest);
+                        isFirstNote = false;
+                        lastStep = c;
+                    }
+                }
+            }
+            if (notesArr.length === 0) return null;
+            return `${notesArr.join(',')},Rests,${restsArr.join(',')}`;
+        }
+
+        function loadComposerIntoFretPad() {
+            const stepRestMs = parseInt(composerStepRest.value || '250', 10);
+            const parsed = [];
+            let lastStep = 0;
+            let isFirstNote = true;
+            
+            for (let c = 0; c < composerGridSteps; c++) {
+                for (let s = 0; s < 6; s++) {
+                    const fret = composerGridData[s][c];
+                    if (fret !== null && fret !== undefined) {
+                        const midi = guitarStrings[s].openMidi + fret;
+                        const rest = isFirstNote ? (c * stepRestMs) : ((c - lastStep) * stepRestMs);
+                        isFirstNote = false;
+                        lastStep = c;
+                        parsed.push({
+                            note: midiToNoteStr(midi).toUpperCase(),
+                            rest: rest,
+                            stringObj: guitarStrings[s],
+                            fret: fret
+                        });
+                    }
+                }
+            }
+            
+            if (parsed.length === 0) {
+                document.getElementById('status').textContent = 'Please enter at least one fret note on the grid before loading.';
+                return;
+            }
+            
+            currentSong = parsed;
+            octaveOffset = 0;
+            currentDemoUrl = '';
+            updateDemoButton();
+            updateOctaveButtons();
+            updateDifficultyDisplay(calculateSongDifficulty(currentSong));
+            const titleText = composerTitle.value.trim() || 'My Composition';
+            document.getElementById('status').textContent = `Loaded composition "${titleText}"! Starting playback...`;
+            composerModal.classList.remove('open');
+            
+            updateRosterSong();
+            playSong();
+        }
+
+        function auditionComposerRiff() {
+            initAudio(); const stepRestMs = parseInt(composerStepRest.value || '250', 10); let timeDelay = 0;
+            for (let c = 0; c < composerGridSteps; c++) {
+                for (let s = 0; s < 6; s++) {
+                    const fret = composerGridData[s][c];
+                    if (fret !== null && fret !== undefined) {
+                        const midi = guitarStrings[s].openMidi + fret;
+                        const freq = 440 * Math.pow(2, (midi - 69) / 12);
+                        setTimeout(() => { playTone(freq, 0.3); triggerStringVibration(s); setComposerCursor(s, c); }, timeDelay);
+                    }
+                }
+                timeDelay += stepRestMs;
+            }
+        }
+
+        function exportToPDF() {
+            if (!currentSong || currentSong.length === 0) { document.getElementById('status').textContent = 'No song loaded to export.'; return; }
+            const { jsPDF } = window.jspdf; const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            const songTitle = getCurrentSongTitle(); const mappedSong = mapSongToErgonomicFrets(currentSong);
+            doc.setFont('Helvetica', 'bold'); doc.setFontSize(18); doc.text(songTitle, 14, 15);
+            doc.setFont('Helvetica', 'normal'); doc.setFontSize(10);
+            doc.text(`Generated by FretPad | Student: ${currentStudentName || 'Guest'} (${currentStudentClass || 'N/A'}) | Difficulty: ${currentDifficulty} | Total Notes: ${mappedSong.length}`, 14, 21);
+
+            const stringLabels = ['e1', 'B2', 'G3', 'D4', 'A5', 'E6']; const notesPerSystem = 32;
+            const startX = 25; const noteSpacing = 7.5; let currentY = 32; const systemHeight = 28;
+
+            for (let i = 0; i < mappedSong.length; i += notesPerSystem) {
+                const systemNotes = mappedSong.slice(i, i + notesPerSystem);
+                if (currentY + systemHeight > 195) { doc.addPage('a4', 'landscape'); currentY = 20; }
+                doc.setLineWidth(0.3); doc.setDrawColor(180, 180, 180);
+                for (let s = 0; s < 6; s++) { const lineY = currentY + (s * 3.5); doc.line(startX - 5, lineY, startX + (notesPerSystem * noteSpacing) + 2, lineY); }
+                doc.setFont('Helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(80, 80, 80);
+                for (let s = 0; s < 6; s++) { const lineY = currentY + (s * 3.5) + 1; doc.text(stringLabels[s], startX - 12, lineY); }
+
+                systemNotes.forEach((item, idx) => {
+                    const noteX = startX + (idx * noteSpacing);
+                    const stringIndex = guitarStrings.findIndex(s => s.id === item.stringObj.id);
+                    const lineY = currentY + (stringIndex * 3.5) + 1;
+                    const val = showLetters ? extractNoteLetter(item.note) : item.fret.toString();
+                    doc.setFillColor(255, 255, 255); doc.rect(noteX - 1.5, lineY - 2.5, 3.5, 3.2, 'F');
+                    doc.setFont('Helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(0, 0, 0); doc.text(val, noteX, lineY, { align: 'center' });
+                });
+                currentY += systemHeight;
+            }
+            doc.save(`${songTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_tab.pdf`);
+            document.getElementById('status').textContent = `Exported "${songTitle}" to PDF successfully!`;
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (videoModal.classList.contains('open') && e.key === 'Escape') {
+                closeVideoModal();
+                return;
+            }
+            if (tunerModal.classList.contains('open') && e.key === 'Escape') {
+                closeTunerModal();
+                return;
+            }
+            if (composerModal.classList.contains('open')) { handleComposerKeyDown(e); return; }
+            if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') return;
+
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (!isStepMode) toggleStepMode(); else advanceStepNote();
+            } else if (e.code === 'ArrowRight') {
+                if (isStepMode) { e.preventDefault(); advanceStepNote(); }
+            } else if (e.code === 'ArrowLeft') {
+                if (isStepMode) { e.preventDefault(); stepBackwardNote(); }
+            }
+        });
+
+        // Event Listeners setup
+        document.getElementById('btn-login').addEventListener('click', handleLogin);
+        loginNameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleLogin(); });
+
+        document.getElementById('btn-change-user').addEventListener('click', () => {
+            loginNameInput.value = currentStudentName;
+            if (currentStudentClass) {
+                const match = currentStudentClass.match(/^(\d+)([A-Z])?$/i);
+                if (match) { 
+                    loginYearSelect.value = match[1]; 
+                    loginClassSelect.value = match[2] ? match[2].toUpperCase() : ''; 
+                }
+            }
+            updateClassDropdownVisibility();
+            loginModal.classList.add('open');
+        });
+
+        // Tuner & Mic Event Listeners
+        btnTuner.addEventListener('click', openTunerModal);
+        btnCloseTuner.addEventListener('click', closeTunerModal);
+        btnMicToggle.addEventListener('click', toggleMicrophoneListening);
+        btnGame.addEventListener('click', toggleGameMode);
+
+        btnGameTryAgain.addEventListener('click', () => {
+            gameResultsModal.classList.remove('open');
+            playSong();
+        });
+        btnGameResultsClose.addEventListener('click', () => {
+            gameResultsModal.classList.remove('open');
+        });
+
+        // Demo Video Event Listeners
+        btnWatchDemo.addEventListener('click', openVideoModal);
+        btnCloseVideo.addEventListener('click', closeVideoModal);
+        videoModal.addEventListener('click', (e) => {
+            if (e.target === videoModal) closeVideoModal();
+        });
+
+        // Speed Preset Buttons
+        document.querySelectorAll('.btn-speed-preset').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const speed = e.target.getAttribute('data-speed');
+                speedSlider.value = speed;
+                speedLabel.textContent = `${speed}%`;
+                if (isPlaying && !isStepMode) playSong();
+            });
+        });
+
+        // Loop Toggle
+        btnLoop.addEventListener('click', () => {
+            isLooping = !isLooping;
+            btnLoop.textContent = isLooping ? '🔁 Loop: ON' : '🔁 Loop: OFF';
+            btnLoop.classList.toggle('btn-success', isLooping);
+            btnLoop.classList.toggle('btn-secondary', !isLooping);
+        });
+
+        btnTabMode.addEventListener('click', toggleTabMode);
+
+        document.getElementById('btn-octave-up').addEventListener('click', () => shiftSongOctave(12));
+        document.getElementById('btn-octave-down').addEventListener('click', () => shiftSongOctave(-12));
+        document.getElementById('btn-pdf').addEventListener('click', exportToPDF);
+        btnStep.addEventListener('click', toggleStepMode);
+        
+        btnComposer.addEventListener('click', () => { initComposerGrid(); composerModal.classList.add('open'); composerGridScroll.focus(); });
+        btnCloseComposer.addEventListener('click', () => { composerModal.classList.remove('open'); });
+        document.getElementById('btn-composer-load').addEventListener('click', loadComposerIntoFretPad);
+        document.getElementById('btn-composer-audition').addEventListener('click', auditionComposerRiff);
+        document.getElementById('btn-composer-clear').addEventListener('click', () => {
+            for (let s = 0; s < 6; s++) { for (let c = 0; c < composerGridSteps; c++) composerGridData[s][c] = null; }
+            renderComposerTable(); updateComposerCursorView(); document.getElementById('status').textContent = 'Composer grid cleared.';
+        });
+        document.getElementById('btn-composer-add-col').addEventListener('click', () => {
+            if (composerGridSteps >= 64) return;
+            composerGridSteps += 4;
+            for (let s = 0; s < 6; s++) { for (let i = 0; i < 4; i++) composerGridData[s].push(null); }
+            renderComposerTable(); updateComposerCursorView();
+        });
+        document.getElementById('btn-composer-rem-col').addEventListener('click', () => {
+            if (composerGridSteps <= 8) return;
+            composerGridSteps -= 4;
+            for (let s = 0; s < 6; s++) { for (let c = 0; c < composerGridSteps; c++) composerGridData[s].splice(composerGridSteps, 4); }
+            if (composerCursorCol >= composerGridSteps) composerCursorCol = composerGridSteps - 1;
+            renderComposerTable(); updateComposerCursorView();
+        });
+        document.getElementById('btn-composer-export-code').addEventListener('click', () => {
+            const code = generateComposerFretPadCode();
+            if (!code) { document.getElementById('status').textContent = 'Grid is currently empty.'; return; }
+            navigator.clipboard.writeText(code).then(() => { document.getElementById('status').textContent = 'Composer song code copied to clipboard!'; });
+        });
+
+        showLettersToggle.addEventListener('change', (e) => {
+            showLetters = e.target.checked;
+            if (!isPlaying) { renderCurrentFrame(0, 0); }
+            if (isStepMode) updateStepStatus();
+            updateBigNextNoteDisplay();
+        });
+
+        songSelect.addEventListener('change', (e) => {
+            const code = e.target.value;
+            if (!code) {
+                currentSong = [];
+                currentDemoUrl = '';
+                updateDemoButton();
+                stopSong();
+                return;
+            }
+            const opt = songSelect.options[songSelect.selectedIndex];
+            currentDemoUrl = opt.dataset.youtube || '';
+            updateDemoButton();
+
+            octaveOffset = 0; songCompletionCount = 0; completedThisRun = false; updateOctaveButtons();
+            currentSong = transposeSongOctaveDown(parsePianoPad(code));
+            updateDifficultyDisplay(opt.dataset.difficulty || calculateSongDifficulty(currentSong));
+            updateRosterSong();
+            playSong();
+        });
+
+        speedSlider.addEventListener('input', () => {
+            speedLabel.textContent = `${speedSlider.value}%`;
+            if (isPlaying && !isStepMode) playSong();
+        });
+
+        document.getElementById('btn-import').addEventListener('click', () => modal.classList.add('open'));
+        document.getElementById('btn-cancel').addEventListener('click', () => modal.classList.remove('open'));
+        document.getElementById('btn-load-play').addEventListener('click', () => {
+            const code = document.getElementById('import-text').value;
+            const parsed = parsePianoPad(code);
+            if (parsed.length > 0) {
+                octaveOffset = 0; updateOctaveButtons();
+                currentSong = transposeSongOctaveDown(parsed); updateDifficultyDisplay(calculateSongDifficulty(currentSong));
+                currentDemoUrl = '';
+                updateDemoButton();
+                modal.classList.remove('open'); playSong();
+            }
+        });
+
+        document.getElementById('btn-play').addEventListener('click', playSong);
+        document.getElementById('btn-stop').addEventListener('click', stopSong);
+        
+        document.getElementById('btn-pause').addEventListener('click', () => {
+            if (isPlaying) {
+                isPaused = !isPaused; document.getElementById('btn-pause').textContent = isPaused ? 'Resume' : 'Pause';
+                document.getElementById('status').textContent = isPaused ? 'Playback paused.' : 'Playing...';
+                if (isPaused) {
+                    releaseScreenWakeLock();
+                } else {
+                    requestScreenWakeLock();
+                }
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderCurrentFrame(0, 0);
+            syncSongsWithGoogleSheet(); checkLogin();
+
+            if (window.firebaseSet) {
+                syncStudentToFirebase();
+            } else {
+                window.addEventListener('firebase-initialized', () => syncStudentToFirebase(), { once: true });
+            }
+
+            setInterval(() => {
+                const now = Date.now();
+                const currentPerf = performance.now();
+                const wallDelta = now - lastHeartbeatTime;
+                const perfDelta = currentPerf - lastPerfTimestamp;
+
+                if (wallDelta > 2000 && (wallDelta - perfDelta) > 1000) {
+                    wasHardwareSleep = true;
+                    sleepGracePeriodUntil = now + 3500;
+                }
+
+                lastHeartbeatTime = now;
+                lastPerfTimestamp = currentPerf;
+                updateMonitorWidget();
+                syncStudentToFirebase();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
