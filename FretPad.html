@@ -1529,6 +1529,10 @@
             const titleToLog = songTitle || getCurrentSongTitle();
             const difficultyToLog = currentDifficulty || (currentSong.length > 0 ? calculateSongDifficulty(currentSong) : 'Normal');
 
+            // Calculate final statistics (Defaulting to 0/100% if not in Game Mode)
+            const totalAssessed = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+            const accuracyVal = totalAssessed > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalAssessed) * 100).toFixed(1) : '100.0';
+
             const payload = {
                 studentName: currentStudentName,
                 studentClass: currentStudentClass,
@@ -1538,6 +1542,11 @@
                 status: status,
                 difficulty: difficultyToLog,
                 completionCount: completionNumber,
+                accuracy: accuracyVal,
+                perfect: gameStats.perfect,
+                earlyLate: gameStats.earlyLate,
+                missed: gameStats.miss,
+                maxStreak: currentStreak, // Note: Send currentStreak as maxStreak since we track it dynamically
                 timestamp: new Date().toISOString()
             };
 
