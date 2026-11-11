@@ -752,6 +752,28 @@
         .badge-gold { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #000; }
         .badge-silver { background: linear-gradient(135deg, #94a3b8, #cbd5e1); color: #000; }
         .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
+
+@keyframes diamondPulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(56, 189, 248, 0.5), inset 0 0 15px rgba(56, 189, 248, 0.2); }
+    50% { box-shadow: 0 0 45px rgba(56, 189, 248, 0.9), inset 0 0 30px rgba(56, 189, 248, 0.4); }
+}
+
+@keyframes masterPulse {
+    0%, 100% { box-shadow: 0 0 25px rgba(192, 132, 252, 0.6), inset 0 0 20px rgba(192, 132, 252, 0.3); }
+    50% { box-shadow: 0 0 55px rgba(192, 132, 252, 1), inset 0 0 35px rgba(192, 132, 252, 0.5); }
+}
+
+.diamond-glow-active {
+    border: 2px solid #38bdf8 !important;
+    animation: diamondPulse 2s infinite ease-in-out !important;
+}
+
+.master-glow-active {
+    border: 2px solid #c084fc !important;
+    animation: masterPulse 1.8s infinite ease-in-out !important;
+}
+
+        
     </style>
 </head>
 <body>
@@ -1260,7 +1282,67 @@
         }
 
         loginYearSelect.addEventListener('change', updateClassDropdownVisibility);
+let hasTriggeredDiamond = false;
+let hasTriggeredMaster = false;
 
+function unlockDiamondCelebration() {
+    hasTriggeredDiamond = true;
+    sessionStudentAvatar = "💎";
+
+    const container = document.querySelector('.container');
+    if (container) {
+        container.classList.remove('master-glow-active');
+        container.classList.add('diamond-glow-active');
+    }
+
+    // 5-note crystalline arpeggio chime (C5 -> E6)
+    const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+    notes.forEach((freq, i) => {
+        setTimeout(() => playTone(freq, 0.35), i * 110);
+    });
+
+    // 3-point confetti celebration
+    setTimeout(() => {
+        spawnConfetti(canvas.width * 0.25, canvas.height * 0.4);
+        spawnConfetti(canvas.width * 0.5, canvas.height * 0.3);
+        spawnConfetti(canvas.width * 0.75, canvas.height * 0.4);
+    }, 350);
+
+    syncStudentToFirebase("active");
+}
+
+function unlockMasterCelebration() {
+    hasTriggeredMaster = true;
+    sessionStudentAvatar = "👑";
+
+    const container = document.querySelector('.container');
+    if (container) {
+        container.classList.remove('diamond-glow-active');
+        container.classList.add('master-glow-active');
+    }
+
+    // Royal brass fanfare sequence
+    const fanfare = [
+        { f: 587.33, d: 0.18, t: 0 },
+        { f: 587.33, d: 0.18, t: 180 },
+        { f: 587.33, d: 0.18, t: 360 },
+        { f: 880.00, d: 0.60, t: 540 }
+    ];
+    fanfare.forEach(n => {
+        setTimeout(() => playTone(n.f, n.d), n.t);
+    });
+
+    // 5-point grand fireworks shower
+    setTimeout(() => {
+        spawnConfetti(canvas.width * 0.15, canvas.height * 0.5);
+        spawnConfetti(canvas.width * 0.35, canvas.height * 0.3);
+        spawnConfetti(canvas.width * 0.5, canvas.height * 0.25);
+        spawnConfetti(canvas.width * 0.65, canvas.height * 0.3);
+        spawnConfetti(canvas.width * 0.85, canvas.height * 0.5);
+    }, 450);
+
+    syncStudentToFirebase("active");
+}
         /* --- MONITOR WIDGET UPDATER FUNCTION --- */
         function updateMonitorWidget() {
             const studentEl = document.getElementById('mon-student-name');
@@ -1297,10 +1379,12 @@
                     displayBadge = true;
                     badgeHtml = `<span style="color:#c084fc;">👑 Master Level</span>${x2Tag}`;
                     barColor = '#c084fc';
+                    if (!hasTriggeredMaster) unlockMasterCelebration();
                 } else if (elapsedMins >= 40 && localTabSwitches === 0) {
                     displayBadge = true;
                     badgeHtml = `<span style="color:#38bdf8;">💎 Diamond Level</span>${x2Tag}`;
                     barColor = '#38bdf8';
+                    if (!hasTriggeredDiamond) unlockDiamondCelebration();
                 } else if (elapsedMins >= 30) {
                     displayBadge = true;
                     badgeHtml = `<span style="color:#facc15;">🥇 Gold Level</span>${x2Tag}`;
