@@ -682,12 +682,12 @@
             display: block;
         }
         .tuner-note-readout {
-            font-size: 2.4rem;
+            font-size: 4.5rem;
             font-weight: 900;
             color: #facc15;
             letter-spacing: -0.02em;
             text-align: center;
-            height: 48px;
+            height: 70px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -752,6 +752,28 @@
         .badge-gold { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #000; }
         .badge-silver { background: linear-gradient(135deg, #94a3b8, #cbd5e1); color: #000; }
         .badge-bronze { background: linear-gradient(135deg, #b45309, #d97706); color: #fff; }
+
+@keyframes diamondPulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(56, 189, 248, 0.5), inset 0 0 15px rgba(56, 189, 248, 0.2); }
+    50% { box-shadow: 0 0 45px rgba(56, 189, 248, 0.9), inset 0 0 30px rgba(56, 189, 248, 0.4); }
+}
+
+@keyframes masterPulse {
+    0%, 100% { box-shadow: 0 0 25px rgba(192, 132, 252, 0.6), inset 0 0 20px rgba(192, 132, 252, 0.3); }
+    50% { box-shadow: 0 0 55px rgba(192, 132, 252, 1), inset 0 0 35px rgba(192, 132, 252, 0.5); }
+}
+
+.diamond-glow-active {
+    border: 2px solid #38bdf8 !important;
+    animation: diamondPulse 2s infinite ease-in-out !important;
+}
+
+.master-glow-active {
+    border: 2px solid #c084fc !important;
+    animation: masterPulse 1.8s infinite ease-in-out !important;
+}
+
+        
     </style>
 </head>
 <body>
@@ -887,7 +909,7 @@
 
                 <button type="button" id="btn-watch-demo" class="btn-demo" style="display: none;" title="Watch Video Demo for this song">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+                        <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
                     </svg>
                     Watch Demo
                 </button>
@@ -1145,6 +1167,11 @@
         let currentDetectedFreq = 0;
         let currentDetectedMidi = 0;
         let tunerNeedleAngle = Math.PI * 1.5; // Starts pointing straight up (12 o'clock)
+        
+        // Microphone Transient & Deaf Window State
+        let previousRms = 0;
+        let lastPluckTime = 0;
+        window.lastPlayToneTime = 0; // Tracks when a synth note is fired
 
         // Step Mode Microphone Recognition State
         let lastStepAdvanceTime = 0;
@@ -1260,7 +1287,67 @@
         }
 
         loginYearSelect.addEventListener('change', updateClassDropdownVisibility);
+let hasTriggeredDiamond = false;
+let hasTriggeredMaster = false;
 
+function unlockDiamondCelebration() {
+    hasTriggeredDiamond = true;
+    sessionStudentAvatar = "💎";
+
+    const container = document.querySelector('.container');
+    if (container) {
+        container.classList.remove('master-glow-active');
+        container.classList.add('diamond-glow-active');
+    }
+
+    // 5-note crystalline arpeggio chime (C5 -> E6)
+    const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+    notes.forEach((freq, i) => {
+        setTimeout(() => playTone(freq, 0.35), i * 110);
+    });
+
+    // 3-point confetti celebration
+    setTimeout(() => {
+        spawnConfetti(canvas.width * 0.25, canvas.height * 0.4);
+        spawnConfetti(canvas.width * 0.5, canvas.height * 0.3);
+        spawnConfetti(canvas.width * 0.75, canvas.height * 0.4);
+    }, 350);
+
+    syncStudentToFirebase("active");
+}
+
+function unlockMasterCelebration() {
+    hasTriggeredMaster = true;
+    sessionStudentAvatar = "👑";
+
+    const container = document.querySelector('.container');
+    if (container) {
+        container.classList.remove('diamond-glow-active');
+        container.classList.add('master-glow-active');
+    }
+
+    // Royal brass fanfare sequence
+    const fanfare = [
+        { f: 587.33, d: 0.18, t: 0 },
+        { f: 587.33, d: 0.18, t: 180 },
+        { f: 587.33, d: 0.18, t: 360 },
+        { f: 880.00, d: 0.60, t: 540 }
+    ];
+    fanfare.forEach(n => {
+        setTimeout(() => playTone(n.f, n.d), n.t);
+    });
+
+    // 5-point grand fireworks shower
+    setTimeout(() => {
+        spawnConfetti(canvas.width * 0.15, canvas.height * 0.5);
+        spawnConfetti(canvas.width * 0.35, canvas.height * 0.3);
+        spawnConfetti(canvas.width * 0.5, canvas.height * 0.25);
+        spawnConfetti(canvas.width * 0.65, canvas.height * 0.3);
+        spawnConfetti(canvas.width * 0.85, canvas.height * 0.5);
+    }, 450);
+
+    syncStudentToFirebase("active");
+}
         /* --- MONITOR WIDGET UPDATER FUNCTION --- */
         function updateMonitorWidget() {
             const studentEl = document.getElementById('mon-student-name');
@@ -1292,8 +1379,18 @@
                 let displayBadge = false;
                 const isDouble = (localTabSwitches === 0);
                 const x2Tag = isDouble ? '<span style="color:#ef4444; font-weight:900; margin-left:4px;">X2</span>' : '';
-
-                if (elapsedMins >= 30) {
+                
+                if (elapsedMins >= 50 && localTabSwitches === 0) {
+                    displayBadge = true;
+                    badgeHtml = `<span style="color:#c084fc;">👑 Master Level</span>${x2Tag}`;
+                    barColor = '#c084fc';
+                    if (!hasTriggeredMaster) unlockMasterCelebration();
+                } else if (elapsedMins >= 40 && localTabSwitches === 0) {
+                    displayBadge = true;
+                    badgeHtml = `<span style="color:#38bdf8;">💎 Diamond Level</span>${x2Tag}`;
+                    barColor = '#38bdf8';
+                    if (!hasTriggeredDiamond) unlockDiamondCelebration();
+                } else if (elapsedMins >= 30) {
                     displayBadge = true;
                     badgeHtml = `<span style="color:#facc15;">🥇 Gold Level</span>${x2Tag}`;
                     barColor = '#facc15';
@@ -1801,6 +1898,7 @@
         }
 
         function playTone(freq, duration = 0.5) {
+            window.lastPlayToneTime = performance.now(); // Record exact timestamp for the blind window
             if (!freq) return;
             initAudio();
             freq = freq * 2;
@@ -2593,8 +2691,11 @@
         function evaluateLiveMicrophonePerformance(effectiveElapsed) {
             if (!isGameMode || !isMicListening || currentDetectedMidi <= 0) return;
 
+            let noteMatched = false;
+
             noteTimeline.forEach(item => {
                 if (item.gameStatus !== 'pending') return;
+                if (noteMatched) return;
 
                 const targetMidi = noteToMidi(item.note);
                 const isMatch = isGuitarPitchMatch(currentDetectedMidi, targetMidi);
@@ -2607,21 +2708,23 @@
                     const fretboardTop = canvas.height - 120;
                     const targetY = fretboardTop + (120 / 6) * stringIndex + 10;
 
-                    if (Math.abs(timeDiff) <= 140) {
-                        // Perfect hit (on time & correct pitch) -> Green
+                    if (timeDiff >= -400 && timeDiff <= 140) {
+                        // Perfect hit (Green) - Very forgiving early window
                         item.gameStatus = 'perfect';
                         gameStats.perfect++;
                         currentStreak++;
                         spawnConfetti(targetX, targetY);
                         triggerStringVibration(stringIndex);
                         updateGameStatusText();
-                    } else if (timeDiff >= -320 && timeDiff <= 320) {
-                        // Early or Late -> Orange
+                        noteMatched = true;
+                    } else if (timeDiff >= -600 && timeDiff <= 500) {
+                        // Early or Late (Orange) - Plucked way too early or late
                         item.gameStatus = 'earlyLate';
                         gameStats.earlyLate++;
                         currentStreak = 0;
                         triggerStringVibration(stringIndex);
                         updateGameStatusText();
+                        noteMatched = true;
                     }
                 }
             });
@@ -2892,7 +2995,7 @@
             } else {
                 try {
                     micStream = await navigator.mediaDevices.getUserMedia({
-                        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+                        audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false },
                         video: false
                     });
                     const source = audioCtx.createMediaStreamSource(micStream);
@@ -2929,7 +3032,7 @@
             let rms = 0;
             for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
             rms = Math.sqrt(rms / SIZE);
-            if (rms < 0.015) return -1;
+            if (rms < 0.015) return { freq: -1, rms: rms };
 
             let r1 = 0, r2 = SIZE - 1, thres = 0.2;
             for (let i = 0; i < SIZE / 2; i++) {
@@ -2959,7 +3062,7 @@
             let b = (x3 - x1) / 2;
             if (a) T0 = T0 - b / (2 * a);
 
-            return sampleRate / T0;
+            return { freq: sampleRate / T0, rms: rms };
         }
 
         function freqToMidi(f) {
@@ -2975,11 +3078,30 @@
 
             const buf = new Float32Array(micAnalyser.fftSize);
             micAnalyser.getFloatTimeDomainData(buf);
-            const freq = autoCorrelate(buf, audioCtx.sampleRate);
+            const { freq, rms } = autoCorrelate(buf, audioCtx.sampleRate);
+            const now = performance.now();
 
-            if (freq !== -1 && freq >= 65 && freq <= 1100) {
-                currentDetectedFreq = freq;
-                currentDetectedMidi = freqToMidi(freq);
+            // 1. Transient (Attack) Detection for Physical Guitars
+            if (rms > previousRms * 1.5 && rms > 0.02) {
+                lastPluckTime = now;
+            }
+            previousRms = rms;
+
+            // 2. Deaf Window to ignore self-sound (Speaker Bleed)
+            const timeSincePlay = now - window.lastPlayToneTime;
+            const isSpeakerBleed = timeSincePlay < 80; // Completely ignore mic for 80ms after playTone fires
+
+            const isRecentPluck = (now - lastPluckTime) < 250; // Allow 250ms for pitch to stabilize and be read
+
+            if (freq !== -1 && freq >= 65 && freq <= 1100 && !isSpeakerBleed) {
+                // If game or step mode and not tuning, strictly require a physical pluck onset
+                if (!isTunerOpen && (isGameMode || isStepMode) && !isRecentPluck) {
+                    currentDetectedFreq = 0;
+                    currentDetectedMidi = 0;
+                } else {
+                    currentDetectedFreq = freq;
+                    currentDetectedMidi = freqToMidi(freq);
+                }
             } else {
                 currentDetectedFreq = 0;
                 currentDetectedMidi = 0;
