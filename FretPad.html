@@ -1110,13 +1110,7 @@
         </div>
     </div>
 
-    document.getElementById('difficulty-filter').addEventListener('change', (e) => {
-    const filter = e.target.value;
-    Array.from(songSelect.options).forEach((opt, idx) => {
-        if (idx === 0) return; // Keep "-- Choose a Song --"
-        const diff = opt.dataset.difficulty || 'Normal';
-        opt.hidden = (filter !== 'ALL' && diff !== filter);
-    });
+    
 });
 
     <script>
@@ -1280,7 +1274,13 @@
                 } catch (err) {}
             }
         }
-
+document.getElementById('difficulty-filter').addEventListener('change', (e) => {
+    const filter = e.target.value;
+    Array.from(songSelect.options).forEach((opt, idx) => {
+        if (idx === 0) return; // Keep "-- Choose a Song --"
+        const diff = opt.dataset.difficulty || 'Normal';
+        opt.hidden = (filter !== 'ALL' && diff !== filter);
+    });
         async function releaseScreenWakeLock() {
             if (wakeLockSentinel) {
                 try { await wakeLockSentinel.release(); } catch (e) {}
