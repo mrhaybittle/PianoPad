@@ -1588,7 +1588,8 @@ function unlockMasterCelebration() {
                 frets.push(mapped[i].fret);
                 if (i > 0) {
                     const s1 = guitarStrings.findIndex(s => s.id === mapped[i-1].stringObj.id);
-                    const s2 = guitarStrings.findIndex(s => s.id === mapped[i-1].stringObj.id);
+                    
+                    const s2 = guitarStrings.findIndex(s => s.id === mapped[i].stringObj.id);
                     stringJumps += Math.abs(s1 - s2);
                 }
             }
@@ -3687,6 +3688,35 @@ function unlockMasterCelebration() {
                 syncStudentToFirebase();
             }, 1000);
         });
+
+canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const clickX = (e.clientX - rect.left) * scaleX;
+    const clickY = (e.clientY - rect.top) * scaleY;
+
+    const fretboardHeight = 120;
+    const fretboardTop = canvas.height - fretboardHeight;
+    if (clickY < fretboardTop) return; // Ignore clicks above the fretboard
+
+    const rowHeight = fretboardHeight / 6;
+    const stringIndex = Math.floor((clickY - fretboardTop) / rowHeight);
+    if (stringIndex < 0 || stringIndex > 5) return;
+
+    const paddingLeft = 60;
+    const fretSpacing = (canvas.width - paddingLeft) / 12.5;
+    const fret = clickX < paddingLeft ? 0 : Math.min(12, Math.ceil((clickX - paddingLeft) / fretSpacing));
+
+    const sObj = guitarStrings[stringIndex];
+    const midi = sObj.openMidi + fret;
+    const freq = 440 * Math.pow(2, (midi - 69) / 12);
+
+    playTone(freq, 0.5);
+    triggerStringVibration(stringIndex);
+    document.getElementById('status').textContent = `Plucked ${stringFriendlyNames[sObj.id]} string, Fret ${fret} (${midiToNoteNameWithOctave(midi)})`;
+});
+        
     </script>
 </body>
 </html>
