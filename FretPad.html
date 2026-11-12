@@ -903,6 +903,14 @@
                 <span id="current-difficulty-badge" class="difficulty-tag diff-normal" style="display: none;">Normal</span>
             </div>
             <div class="controls">
+
+                <select id="difficulty-filter" style="max-width: 110px;">
+    <option value="ALL">All Levels</option>
+    <option value="Easy">Easy</option>
+    <option value="Normal">Normal</option>
+    <option value="Hard">Hard</option>
+    <option value="Expert">Expert</option>
+</select>
                 <select id="song-select">
                     <option value="">Loading Songs...</option>
                 </select>
@@ -1101,6 +1109,15 @@
             </div>
         </div>
     </div>
+
+    document.getElementById('difficulty-filter').addEventListener('change', (e) => {
+    const filter = e.target.value;
+    Array.from(songSelect.options).forEach((opt, idx) => {
+        if (idx === 0) return; // Keep "-- Choose a Song --"
+        const diff = opt.dataset.difficulty || 'Normal';
+        opt.hidden = (filter !== 'ALL' && diff !== filter);
+    });
+});
 
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
@@ -3687,6 +3704,14 @@ function unlockMasterCelebration() {
                 updateMonitorWidget();
                 syncStudentToFirebase();
             }, 1000);
+            const savedInst = localStorage.getItem('fretpad_inst');
+if (savedInst) instrumentSelect.value = savedInst;
+instrumentSelect.addEventListener('change', () => localStorage.setItem('fretpad_inst', instrumentSelect.value));
+
+const savedLetters = localStorage.getItem('fretpad_letters') === 'true';
+showLettersToggle.checked = savedLetters;
+showLetters = savedLetters;
+showLettersToggle.addEventListener('change', () => localStorage.setItem('fretpad_letters', showLettersToggle.checked));
         });
 
 canvas.addEventListener('click', (e) => {
