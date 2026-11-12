@@ -2830,7 +2830,8 @@ function unlockMasterCelebration() {
 
             hasLoggedCurrentPlay = false;
             completedThisRun = false;
-            gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+           gameStats = { perfect: 0, early: 0, late: 0, miss: 0 };
+if (isGameMode && !isMicListening) toggleMicrophoneListening();
             currentStreak = 0;
             confettiParticles = [];
 
