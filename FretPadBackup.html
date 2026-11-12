@@ -232,6 +232,20 @@
         .btn-warning { background-color: #f59e0b; }
         .btn-success { background-color: #10b981; }
         .btn-danger { background-color: #ef4444; }
+        .btn-play-large {
+            width: 100%;
+            justify-content: center;
+            padding: 12px 20px;
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+        }
+        .btn-play-large:hover {
+            background-color: #059669;
+            transform: translateY(-1px);
+        }
         .btn-midi { background-color: #06b6d4; }
         .btn-midi:hover { background-color: #0891b2; }
         .btn-pdf { background-color: #8b5cf6; }
@@ -982,6 +996,8 @@
         <div class="progress-container">
             <div id="progress-bar" class="progress-bar"></div>
         </div>
+
+        <button type="button" id="btn-play-bottom" class="btn-success btn-play-large">▶ PLAY</button>
 
         <div class="footer-bar">
             <div class="version-stamp">v26.11.04 | NESA S4/5 Compliant</div>
@@ -3517,9 +3533,15 @@ function unlockMasterCelebration() {
             if (composerModal.classList.contains('open')) { handleComposerKeyDown(e); return; }
             if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') return;
 
-            if (e.code === 'Space') {
+           if (e.code === 'Space') {
                 e.preventDefault();
-                if (!isStepMode) toggleStepMode(); else advanceStepNote();
+                if (isStepMode) {
+                    advanceStepNote();
+                } else if (isGameMode) {
+                    playSong();
+                } else {
+                    toggleStepMode();
+                }
             } else if (e.code === 'ArrowRight') {
                 if (isStepMode) { e.preventDefault(); advanceStepNote(); }
             } else if (e.code === 'ArrowLeft') {
@@ -3663,7 +3685,9 @@ function unlockMasterCelebration() {
             }
         });
 
+
         document.getElementById('btn-play').addEventListener('click', playSong);
+        document.getElementById('btn-play-bottom').addEventListener('click', playSong); // ADD THIS LINE
         document.getElementById('btn-stop').addEventListener('click', stopSong);
         
         document.getElementById('btn-pause').addEventListener('click', () => {
