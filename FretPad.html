@@ -903,14 +903,6 @@
                 <span id="current-difficulty-badge" class="difficulty-tag diff-normal" style="display: none;">Normal</span>
             </div>
             <div class="controls">
-
-                <select id="difficulty-filter" style="max-width: 110px;">
-    <option value="ALL">All Levels</option>
-    <option value="Easy">Easy</option>
-    <option value="Normal">Normal</option>
-    <option value="Hard">Hard</option>
-    <option value="Expert">Expert</option>
-</select>
                 <select id="song-select">
                     <option value="">Loading Songs...</option>
                 </select>
@@ -1110,9 +1102,6 @@
         </div>
     </div>
 
-    
-});
-
     <script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
         const LOG_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxvrRtC6stAJuvb0hGUpk80Jih6F9Qhs15IPcePe4MxuU6ZgzNH4ReVJMFTf6mEZY1J/exec';
@@ -1274,13 +1263,7 @@
                 } catch (err) {}
             }
         }
-document.getElementById('difficulty-filter').addEventListener('change', (e) => {
-    const filter = e.target.value;
-    Array.from(songSelect.options).forEach((opt, idx) => {
-        if (idx === 0) return; // Keep "-- Choose a Song --"
-        const diff = opt.dataset.difficulty || 'Normal';
-        opt.hidden = (filter !== 'ALL' && diff !== filter);
-    });
+
         async function releaseScreenWakeLock() {
             if (wakeLockSentinel) {
                 try { await wakeLockSentinel.release(); } catch (e) {}
@@ -1605,8 +1588,7 @@ function unlockMasterCelebration() {
                 frets.push(mapped[i].fret);
                 if (i > 0) {
                     const s1 = guitarStrings.findIndex(s => s.id === mapped[i-1].stringObj.id);
-                    
-                    const s2 = guitarStrings.findIndex(s => s.id === mapped[i].stringObj.id);
+                    const s2 = guitarStrings.findIndex(s => s.id === mapped[i-1].stringObj.id);
                     stringJumps += Math.abs(s1 - s2);
                 }
             }
@@ -3704,44 +3686,7 @@ function unlockMasterCelebration() {
                 updateMonitorWidget();
                 syncStudentToFirebase();
             }, 1000);
-            const savedInst = localStorage.getItem('fretpad_inst');
-if (savedInst) instrumentSelect.value = savedInst;
-instrumentSelect.addEventListener('change', () => localStorage.setItem('fretpad_inst', instrumentSelect.value));
-
-const savedLetters = localStorage.getItem('fretpad_letters') === 'true';
-showLettersToggle.checked = savedLetters;
-showLetters = savedLetters;
-showLettersToggle.addEventListener('change', () => localStorage.setItem('fretpad_letters', showLettersToggle.checked));
         });
-
-canvas.addEventListener('click', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const clickX = (e.clientX - rect.left) * scaleX;
-    const clickY = (e.clientY - rect.top) * scaleY;
-
-    const fretboardHeight = 120;
-    const fretboardTop = canvas.height - fretboardHeight;
-    if (clickY < fretboardTop) return; // Ignore clicks above the fretboard
-
-    const rowHeight = fretboardHeight / 6;
-    const stringIndex = Math.floor((clickY - fretboardTop) / rowHeight);
-    if (stringIndex < 0 || stringIndex > 5) return;
-
-    const paddingLeft = 60;
-    const fretSpacing = (canvas.width - paddingLeft) / 12.5;
-    const fret = clickX < paddingLeft ? 0 : Math.min(12, Math.ceil((clickX - paddingLeft) / fretSpacing));
-
-    const sObj = guitarStrings[stringIndex];
-    const midi = sObj.openMidi + fret;
-    const freq = 440 * Math.pow(2, (midi - 69) / 12);
-
-    playTone(freq, 0.5);
-    triggerStringVibration(stringIndex);
-    document.getElementById('status').textContent = `Plucked ${stringFriendlyNames[sObj.id]} string, Fret ${fret} (${midiToNoteNameWithOctave(midi)})`;
-});
-        
     </script>
 </body>
 </html>
