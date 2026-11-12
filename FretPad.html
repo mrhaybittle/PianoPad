@@ -2708,7 +2708,7 @@ function unlockMasterCelebration() {
                         triggerStringVibration(stringIndex);
                         updateGameStatusText();
                         noteMatched = true;
-                    } else if (timeDiff >= -600 && timeDiff <= 320) {
+                    } else if (timeDiff >= -600 && timeDiff <= 500) {
                         // Early or Late (Orange) - Plucked way too early or late
                         item.gameStatus = 'earlyLate';
                         gameStats.earlyLate++;
