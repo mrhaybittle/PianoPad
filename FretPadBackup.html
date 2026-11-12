@@ -903,6 +903,14 @@
                 <span id="current-difficulty-badge" class="difficulty-tag diff-normal" style="display: none;">Normal</span>
             </div>
             <div class="controls">
+
+                <select id="difficulty-filter" style="max-width: 110px;">
+    <option value="ALL">All Levels</option>
+    <option value="Easy">Easy</option>
+    <option value="Normal">Normal</option>
+    <option value="Hard">Hard</option>
+    <option value="Expert">Expert</option>
+</select>
                 <select id="song-select">
                     <option value="">Loading Songs...</option>
                 </select>
@@ -1121,6 +1129,7 @@
         let animationFrameId = null;
         let playbackStartTime = 0;
         let accumulatedPauseMs = 0;
+        let pauseStartTime = 0;
         let noteTimeline = [];
         let octaveOffset = 0;
         let showLetters = false;
@@ -1263,7 +1272,14 @@
                 } catch (err) {}
             }
         }
-
+document.getElementById('difficulty-filter').addEventListener('change', (e) => {
+    const filter = e.target.value;
+    Array.from(songSelect.options).forEach((opt, idx) => {
+        if (idx === 0) return; // Keep "-- Choose a Song --"
+        const diff = opt.dataset.difficulty || 'Normal';
+        opt.hidden = (filter !== 'ALL' && diff !== filter);
+    });
+});
         async function releaseScreenWakeLock() {
             if (wakeLockSentinel) {
                 try { await wakeLockSentinel.release(); } catch (e) {}
@@ -1489,6 +1505,7 @@ function unlockMasterCelebration() {
 
                     if (isPlaying && !isPaused && !isStepMode) {
                         isPaused = true;
+                        pauseStartTime = performance.now();
                         const btnPause = document.getElementById('btn-pause');
                         if (btnPause) btnPause.textContent = 'Resume';
                         document.getElementById('status').textContent = 'Device woke from sleep. Practice paused — click Resume when ready.';
@@ -1588,7 +1605,8 @@ function unlockMasterCelebration() {
                 frets.push(mapped[i].fret);
                 if (i > 0) {
                     const s1 = guitarStrings.findIndex(s => s.id === mapped[i-1].stringObj.id);
-                    const s2 = guitarStrings.findIndex(s => s.id === mapped[i-1].stringObj.id);
+                    
+                    const s2 = guitarStrings.findIndex(s => s.id === mapped[i].stringObj.id);
                     stringJumps += Math.abs(s1 - s2);
                 }
             }
@@ -2419,6 +2437,7 @@ function unlockMasterCelebration() {
 
             if (isPlaying && !isPaused) {
                 isPaused = true;
+                pauseStartTime = performance.now();
                 const btnPause = document.getElementById('btn-pause');
                 if (btnPause) btnPause.textContent = 'Resume';
                 document.getElementById('status').textContent = 'Playback paused for video demonstration.';
@@ -2830,6 +2849,7 @@ function unlockMasterCelebration() {
             isPaused = false;
             playbackStartTime = performance.now();
             accumulatedPauseMs = 0;
+            pauseStartTime = 0;
 
             if (isStepMode) {
                 currentStepIndex = 0;
@@ -3121,7 +3141,7 @@ function unlockMasterCelebration() {
             const pivotY = h - 25;
             const radius = 135;
 
-            const startAngle = Math.PI;       // 9:00 AM (Flat)
+            const startAngle = Math.PI;        // 9:00 AM (Flat)
             const centerAngle = Math.PI * 1.5; // 12:00 PM (In Tune)
             const endAngle = Math.PI * 2.0;    // 3:00 PM (Sharp)
 
@@ -3589,7 +3609,7 @@ function unlockMasterCelebration() {
         document.getElementById('btn-composer-rem-col').addEventListener('click', () => {
             if (composerGridSteps <= 8) return;
             composerGridSteps -= 4;
-            for (let s = 0; s < 6; s++) { for (let c = 0; c < composerGridSteps; c++) composerGridData[s].splice(composerGridSteps, 4); }
+            for (let s = 0; s < 6; s++) { composerGridData[s].splice(composerGridSteps, 4); }
             if (composerCursorCol >= composerGridSteps) composerCursorCol = composerGridSteps - 1;
             renderComposerTable(); updateComposerCursorView();
         });
@@ -3653,9 +3673,15 @@ function unlockMasterCelebration() {
                 isPaused = !isPaused; document.getElementById('btn-pause').textContent = isPaused ? 'Resume' : 'Pause';
                 document.getElementById('status').textContent = isPaused ? 'Playback paused.' : 'Playing...';
                 if (isPaused) {
+                    pauseStartTime = performance.now();
                     releaseScreenWakeLock();
                 } else {
+                    if (pauseStartTime > 0) {
+                        accumulatedPauseMs += performance.now() - pauseStartTime;
+                        pauseStartTime = 0;
+                    }
                     requestScreenWakeLock();
+                    requestAnimationFrame(renderLoop);
                 }
             }
         });
@@ -3686,7 +3712,44 @@ function unlockMasterCelebration() {
                 updateMonitorWidget();
                 syncStudentToFirebase();
             }, 1000);
+            const savedInst = localStorage.getItem('fretpad_inst');
+if (savedInst) instrumentSelect.value = savedInst;
+instrumentSelect.addEventListener('change', () => localStorage.setItem('fretpad_inst', instrumentSelect.value));
+
+const savedLetters = localStorage.getItem('fretpad_letters') === 'true';
+showLettersToggle.checked = savedLetters;
+showLetters = savedLetters;
+showLettersToggle.addEventListener('change', () => localStorage.setItem('fretpad_letters', showLettersToggle.checked));
         });
+
+canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const clickX = (e.clientX - rect.left) * scaleX;
+    const clickY = (e.clientY - rect.top) * scaleY;
+
+    const fretboardHeight = 120;
+    const fretboardTop = canvas.height - fretboardHeight;
+    if (clickY < fretboardTop) return; // Ignore clicks above the fretboard
+
+    const rowHeight = fretboardHeight / 6;
+    const stringIndex = Math.floor((clickY - fretboardTop) / rowHeight);
+    if (stringIndex < 0 || stringIndex > 5) return;
+
+    const paddingLeft = 60;
+    const fretSpacing = (canvas.width - paddingLeft) / 12.5;
+    const fret = clickX < paddingLeft ? 0 : Math.min(12, Math.ceil((clickX - paddingLeft) / fretSpacing));
+
+    const sObj = guitarStrings[stringIndex];
+    const midi = sObj.openMidi + fret;
+    const freq = 440 * Math.pow(2, (midi - 69) / 12);
+
+    playTone(freq, 0.5);
+    triggerStringVibration(stringIndex);
+    document.getElementById('status').textContent = `Plucked ${stringFriendlyNames[sObj.id]} string, Fret ${fret} (${midiToNoteNameWithOctave(midi)})`;
+});
+        
     </script>
 </body>
 </html>
