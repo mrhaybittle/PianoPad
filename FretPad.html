@@ -2740,40 +2740,40 @@ function unlockMasterCelebration() {
         }
 
         function updateGameStatusText() {
-            const totalAssessed = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
-            const accuracy = totalAssessed > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / totalAssessed) * 100).toFixed(1) : '100.0';
-            const streakLabel = currentStreak >= 5 ? ` | 🔥 STREAK: x${currentStreak}` : '';
-            document.getElementById('status').textContent = `🎮 Accuracy: ${accuracy}% | Perfect: ${gameStats.perfect} | Early/Late: ${gameStats.earlyLate} | Missed: ${gameStats.miss}${streakLabel}`;
-        }
+    const totalAssessed = gameStats.perfect + gameStats.early + gameStats.late + gameStats.miss;
+    const accuracy = totalAssessed > 0 ? (((gameStats.perfect * 1.0 + (gameStats.early + gameStats.late) * 0.5) / totalAssessed) * 100).toFixed(1) : '100.0';
+    const streakLabel = currentStreak >= 5 ? ` | 🔥 STREAK: x${currentStreak}` : '';
+    document.getElementById('status').textContent = `🎮 Accuracy: ${accuracy}% | Perfect: ${gameStats.perfect} | Early: ${gameStats.early} | Late: ${gameStats.late} | Missed: ${gameStats.miss}${streakLabel}`;
+}
 
-        function showGameResultsPopUp() {
-            const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
-            const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '0.0';
-            const accNum = parseFloat(accuracy);
+function showGameResultsPopUp() {
+    const total = gameStats.perfect + gameStats.early + gameStats.late + gameStats.miss;
+    const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + (gameStats.early + gameStats.late) * 0.5) / total) * 100).toFixed(1) : '0.0';
+    const accNum = parseFloat(accuracy);
 
-            document.getElementById('game-summary-text').innerHTML = `
-                Student: <span style="color:#38bdf8;">${currentStudentName || 'Guest'}</span><br>
-                Final Accuracy: <span style="color:#22c55e; font-size:1.25rem;">${accuracy}%</span><br>
-                <span style="font-size:0.8rem; color:#9ca3af;">(${gameStats.perfect} Perfect, ${gameStats.earlyLate} Early/Late, ${gameStats.miss} Missed out of ${total} notes)</span>
-            `;
+    document.getElementById('game-summary-text').innerHTML = `
+        Student: <span style="color:#38bdf8;">${currentStudentName || 'Guest'}</span><br>
+        Final Accuracy: <span style="color:#22c55e; font-size:1.25rem;">${accuracy}%</span><br>
+        <span style="font-size:0.8rem; color:#9ca3af;">(${gameStats.perfect} Perfect, ${gameStats.early} Early, ${gameStats.late} Late, ${gameStats.miss} Missed out of ${total} notes)</span>
+    `;
 
-            let badgeHtml = '';
-            if (accNum >= 90) badgeHtml = '<div class="badge-box badge-gold">🥇 GOLD GUITARIST (90%+)</div>';
-            else if (accNum >= 75) badgeHtml = '<div class="badge-box badge-silver">🥈 SILVER GUITARIST (75%+)</div>';
-            else if (accNum >= 50) badgeHtml = '<div class="badge-box badge-bronze">🥉 BRONZE GUITARIST (50%+)</div>';
-            document.getElementById('badge-container').innerHTML = badgeHtml;
+    let badgeHtml = '';
+    if (accNum >= 90) badgeHtml = '<div class="badge-box badge-gold">🥇 GOLD GUITARIST (90%+)</div>';
+    else if (accNum >= 75) badgeHtml = '<div class="badge-box badge-silver">🥈 SILVER GUITARIST (75%+)</div>';
+    else if (accNum >= 50) badgeHtml = '<div class="badge-box badge-bronze">🥉 BRONZE GUITARIST (50%+)</div>';
+    document.getElementById('badge-container').innerHTML = badgeHtml;
 
-            const greenPct = total > 0 ? (gameStats.perfect / total) * 100 : 0;
-            const orangePct = total > 0 ? (gameStats.earlyLate / total) * 100 : 0;
-            const redPct = total > 0 ? (gameStats.miss / total) * 100 : 0;
+    const greenPct = total > 0 ? (gameStats.perfect / total) * 100 : 0;
+    const orangePct = total > 0 ? ((gameStats.early + gameStats.late) / total) * 100 : 0;
+    const redPct = total > 0 ? (gameStats.miss / total) * 100 : 0;
 
-            document.getElementById('bar-green').style.height = `${greenPct}%`;
-            document.getElementById('bar-orange').style.height = `${orangePct}%`;
-            document.getElementById('bar-red').style.height = `${redPct}%`;
+    document.getElementById('bar-green').style.height = `${greenPct}%`;
+    document.getElementById('bar-orange').style.height = `${orangePct}%`;
+    document.getElementById('bar-red').style.height = `${redPct}%`;
 
-            document.getElementById('game-rank-text').textContent = `Speed: ${speedSlider.value}% | Song: ${getCurrentSongTitle()}`;
-            gameResultsModal.classList.add('open');
-        }
+    document.getElementById('game-rank-text').textContent = `Speed: ${speedSlider.value}% | Song: ${getCurrentSongTitle()}`;
+    gameResultsModal.classList.add('open');
+}
 
         function renderLoop(now) {
             if (!isPlaying || isPaused) return;
