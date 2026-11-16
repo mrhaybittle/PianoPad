@@ -1751,6 +1751,7 @@
         let noteHoldCounter = 0;
 
        let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+        let sessionSongHistory = {};
         let currentPerfectStreak = 0;
         let sessionStudentName = "";
 
@@ -4014,6 +4015,63 @@ function checkIsOutsideSchoolHours() {
             document.getElementById('bar-green').style.height = `${greenPct}%`;
             document.getElementById('bar-orange').style.height = `${orangePct}%`;
             document.getElementById('bar-red').style.height = `${redPct}%`;
+
+            // Record & render session progression graphs for this student + song
+            const studentKey = (sessionStudentName || 'Student').trim().toLowerCase();
+            const historyKey = `${studentKey}|||${currentSongTitle}`;
+            if (!sessionSongHistory[historyKey]) {
+                sessionSongHistory[historyKey] = [];
+            }
+
+            sessionSongHistory[historyKey].push({
+                attempt: sessionSongHistory[historyKey].length + 1,
+                perfect: perfectHits,
+                earlyLate: earlyLateHits,
+                miss: missedHits,
+                total: totalHits,
+                accuracy: parseFloat(accuracy) || 0,
+                speed: parseInt(speedSlider.value, 10) || 100
+            });
+
+            const attempts = sessionSongHistory[historyKey];
+            const singleGraph = document.getElementById('single-bar-graph');
+            const multiGraph = document.getElementById('multi-bar-graph');
+
+            if (attempts.length === 1) {
+                multiGraph.style.display = 'none';
+                singleGraph.style.display = 'flex';
+            } else {
+                singleGraph.style.display = 'none';
+                multiGraph.innerHTML = '';
+                multiGraph.style.display = 'flex';
+
+                attempts.forEach((att, idx) => {
+                    const gPct = att.total > 0 ? (att.perfect / att.total) * 100 : 0;
+                    const oPct = att.total > 0 ? (att.earlyLate / att.total) * 100 : 0;
+                    const rPct = att.total > 0 ? (att.miss / att.total) * 100 : 0;
+                    const isLatest = idx === attempts.length - 1;
+
+                    const col = document.createElement('div');
+                    col.className = 'multi-bar-column';
+                    col.innerHTML = `
+                        <div class="rank-medal-badge" style="color: ${isLatest ? '#22c55e' : '#facc15'};">
+                            ${att.accuracy.toFixed(1)}%
+                        </div>
+                        <div class="stacked-bar" style="${isLatest ? 'outline: 2px solid #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);' : ''}">
+                            <div class="bar-part-red" style="height:${rPct}%;"></div>
+                            <div class="bar-part-orange" style="height:${oPct}%;"></div>
+                            <div class="bar-part-green" style="height:${gPct}%;"></div>
+                        </div>
+                        <span style="font-size:0.74rem; font-weight:700; color:${isLatest ? '#38bdf8' : '#cbd5e1'};">
+                            Try ${att.attempt}
+                        </span>
+                        <span style="font-size:0.65rem; color:#9ca3af;">@${att.speed}%</span>
+                    `;
+                    multiGraph.appendChild(col);
+                });
+
+                multiGraph.scrollLeft = multiGraph.scrollWidth;
+            }
 
             const currentSpeed = parseInt(speedSlider.value, 10);
             const badgeContainer = document.getElementById('badge-container');
