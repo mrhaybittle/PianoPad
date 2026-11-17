@@ -1407,7 +1407,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.11.17 | 17-Nov 11:27 AEDT (West Wollongong)</div>
+            <div class="version-stamp">v26.11.17 | 17-Nov 11:58 AEDT (West Wollongong)</div>
             <div class="status-bar" id="status"> GAME MODE READY | Connecting to song database...</div>
             
             <div class="footer-right-group">
@@ -1552,8 +1552,8 @@
         </div>
     </div>
 
-    <!-- Calibration Wizard Modal -->
-    <div class="modal-overlay" id="calib-modal">
+   <!-- Calibration Wizard Modal -->
+    <div class="modal-overlay" id="calib-modal" style="z-index: 400;">
         <div class="modal" style="max-width: 680px;">
             <h2>MIDI Keyboard Calibration</h2>
             <p id="calib-instructions" style="font-size: 0.9rem; color: #38bdf8; font-weight: 600;">
@@ -1965,10 +1965,9 @@
 
             document.getElementById('room-join-modal').classList.remove('open');
             
-            syncStudentToFirebase("active");
+           syncStudentToFirebase("active");
             updateMonitorWidget();
             loadStudentTickerStats(sessionStudentName);
-            checkFirstTimeCalibration();
         });
 
         function checkIsOutsideSchoolHours() {
@@ -5749,14 +5748,7 @@
         // =========================================================================
         // SWISS-SYSTEM CLASS KNOCKOUT TOURNAMENT ENGINE (FIREBASE RTDB + GAS)
         // =========================================================================
-        let isClassKnockout = false;
-        let isKnockoutHost = false;
-        let knockoutRoomCode = "";
-        let knockoutUnsubscribe = null;
-        let knockoutLastRoundStarted = 0;
-        let knockoutLastRoundFinished = 0;
-        let knockoutDataCache = null;
-        let knockoutLiveSyncTimer = null;
+
 
         function initSwissTournamentUI() {
             const menuBtns = document.getElementById('sprint-menu-buttons');
@@ -6548,12 +6540,13 @@
         }
         // =========================================================================
 
-        document.addEventListener('DOMContentLoaded', () => {
+       document.addEventListener('DOMContentLoaded', () => {
             initMIDIHardware();
-            initSwissTournamentUI();
             resetGameStats();
             syncSongsWithGoogleSheet();
             setTimeout(updateKeyPositions, 100);
+            
+            checkFirstTimeCalibration();
 
             const savedName = localStorage.getItem('pianopad_name');
             const savedAvatar = localStorage.getItem('pianopad_avatar');
