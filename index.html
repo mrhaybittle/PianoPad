@@ -1100,6 +1100,41 @@
             0% { transform: translate3d(0, 0, 0); }
             100% { transform: translate3d(-100%, 0, 0); }
         }
+        /* --- GRAND FINALE & CELEBRATION CSS --- */
+        #celebration-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 510; display: none; }
+        
+        #finale-modal {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.85); z-index: 500; display: none;
+            flex-direction: column; align-items: center; justify-content: flex-start;
+            padding-top: 40px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            backdrop-filter: blur(8px);
+        }
+        
+        .finale-header { text-align: center; margin-bottom: 40px; }
+        .finale-title { font-size: 3rem; font-weight: 900; color: #facc15; text-transform: uppercase; text-shadow: 0 0 25px rgba(250,204,21,0.6); margin-bottom: 8px; letter-spacing: 0.05em; }
+        .finale-subtitle { font-size: 1.4rem; color: #fff; font-weight: 800; background: rgba(0,0,0,0.5); padding: 4px 16px; border-radius: 8px; display: inline-block; }
+        
+        .podium-container { display: flex; align-items: flex-end; justify-content: center; gap: 20px; height: 350px; margin-bottom: 30px; width: 100%; max-width: 800px; }
+        .pedestal-wrap { display: flex; flex-direction: column; align-items: center; opacity: 0; transform: translateY(60px); transition: all 1s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .pedestal-wrap.show { opacity: 1; transform: translateY(0); }
+        
+        .pedestal { width: 150px; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; padding-top: 15px; color: #000; font-weight: 900; font-size: 2.5rem; border-top-left-radius: 12px; border-top-right-radius: 12px; box-shadow: inset 0 5px 15px rgba(255,255,255,0.4), 0 -10px 40px rgba(255,255,255,0.1); }
+        .pedestal-1 { height: 240px; background: linear-gradient(to bottom, #fbbf24, #b45309); border: 2px solid #fef08a; border-bottom: none; z-index: 3; }
+        .pedestal-2 { height: 170px; background: linear-gradient(to bottom, #cbd5e1, #64748b); border: 2px solid #f1f5f9; border-bottom: none; z-index: 2; }
+        .pedestal-3 { height: 120px; background: linear-gradient(to bottom, #d97706, #78350f); border: 2px solid #fcd34d; border-bottom: none; color: #fff; z-index: 1; }
+        
+        .pedestal-avatar { font-size: 4.5rem; margin-bottom: -15px; z-index: 10; text-shadow: 0 8px 15px rgba(0,0,0,0.6); }
+        .pedestal-name { font-size: 1.3rem; font-weight: 900; color: #fff; text-shadow: 0 2px 5px #000; margin-bottom: 4px; text-align: center; white-space: nowrap; }
+        .pedestal-score { font-size: 1.1rem; color: #22c55e; font-weight: 900; background: rgba(0,0,0,0.8); padding: 4px 10px; border-radius: 6px; border: 1px solid #22c55e; box-shadow: 0 0 10px rgba(34,197,94,0.4); }
+        
+        .honorable-mentions { display: flex; gap: 12px; max-width: 90%; overflow-x: auto; padding: 12px; background: rgba(11, 15, 25, 0.6); border-radius: 12px; border: 1px solid #374151; }
+        .honorable-mentions::-webkit-scrollbar { height: 8px; }
+        .honorable-mentions::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        .hm-card { background: #1f2937; padding: 8px 16px; border-radius: 8px; border: 1px solid #4b5563; text-align: center; min-width: 130px; box-shadow: inset 0 2px 4px rgba(255,255,255,0.05); }
+        .hm-rank { color: #9ca3af; font-size: 0.85rem; font-weight: 900; }
+        .hm-name { color: #f3f4f6; font-weight: 800; font-size: 0.95rem; margin: 4px 0; }
+        .hm-score { color: #38bdf8; font-size: 0.85rem; font-weight: 800; }
     </style>
 </head>
 <body>
@@ -1131,7 +1166,23 @@
             console.log("Firebase config error:", e);
         }
     </script>
-
+<!-- Grand Finale Celebration Canvas & Modal -->
+    <canvas id="celebration-canvas"></canvas>
+    <div id="finale-modal">
+        <div class="finale-header">
+            <div class="finale-title" id="finale-title-text">TOURNAMENT COMPLETE</div>
+            <div class="finale-subtitle" id="finale-subtitle-text">Calculating...</div>
+        </div>
+        
+        <div class="podium-container" id="podium-container"></div>
+        
+        <div class="honorable-mentions" id="honorable-mentions"></div>
+        
+        <div style="margin-top: 35px; display: flex; gap: 15px; z-index: 520;">
+            <button type="button" class="btn-success" style="font-size: 1.15rem; padding: 12px 24px; font-weight: 900; box-shadow: 0 0 15px rgba(34,197,94,0.5);" onclick="closeGrandFinale()">Return to PianoPad</button>
+            <button type="button" class="btn-secondary" style="font-size: 1.15rem; padding: 12px 24px; font-weight: 800;" id="btn-mute-fanfare" onclick="toggleFanfareMute()">🔇 Mute Music</button>
+        </div>
+    </div>
     <!-- Tab Switch Alert Modal -->
     <div class="modal-overlay" id="tab-switch-modal" style="z-index: 10000;">
         <div class="modal" style="max-width: 480px; text-align: center; border: 3px solid #ef4444; box-shadow: 0 0 25px rgba(239, 68, 68, 0.8); background-color: #1f2937;">
@@ -3291,23 +3342,24 @@
             }
         }
 
+        async function forceEndSongBattle() {
+            if (!isSprintHost) return;
+            playersList.forEach(p => p.finished = true);
+            renderSongBattleResults();
+        }
+
         function renderSongBattleResults() {
             if (battleResultsShown) return;
 
             const allPlayersFinished = playersList.every(p => p.finished === true || p.finished === "true");
             
             if (!allPlayersFinished) {
-                document.getElementById('status').textContent = ` Battle finished for you! Waiting for remaining players to complete...`;
+                document.getElementById('status').innerHTML = ` Battle finished for you! Waiting for remaining players to complete... 
+                ${isSprintHost ? '<button type="button" class="btn-warning" onclick="forceEndSongBattle()" style="margin-left:10px; padding:2px 8px; font-size:0.75rem; border:none; border-radius:4px; cursor:pointer;">⚡ Force End Battle</button>' : ''}`;
                 return;
             }
 
             battleResultsShown = true;
-            const multiGraph = document.getElementById('multi-bar-graph');
-            multiGraph.innerHTML = '';
-            multiGraph.style.display = 'flex';
-            document.getElementById('badge-container').innerHTML = '';
-            document.getElementById('single-bar-graph').style.display = 'none';
-            document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
 
             const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
             if (localPlayer && localPlayer.stats) {
@@ -3329,47 +3381,25 @@
             });
 
             const battlePayload = [];
-
             sortedRanked.forEach((p, idx) => {
-                const col = document.createElement('div');
-                col.className = 'multi-bar-column';
-
                 const pStats = p.stats || { perfect: 0, earlyLate: 0, miss: 0 };
                 const total = Math.max(1, pStats.perfect + pStats.earlyLate + pStats.miss);
-
                 const accuracyPct = ((pStats.perfect * 1.0 + pStats.earlyLate * 0.5) / total) * 100;
-
+                
                 battlePayload.push({
                     name: p.name,
-                    score: accuracyPct.toFixed(1)
+                    score: accuracyPct.toFixed(1),
+                    avatar: p.avatar || '🏃',
+                    id: p.id
                 });
-
-                const gPct = (pStats.perfect / total) * 100;
-                const oPct = (pStats.earlyLate / total) * 100;
-                const rPct = (pStats.miss / total) * 100;
-
-                const medal = idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `${idx + 1}th`;
-
-                col.innerHTML = `
-                    <div class="rank-medal-badge">${medal}</div>
-                    <div class="stacked-bar">
-                        <div class="bar-part-red" style="height:${rPct}%;"></div>
-                        <div class="bar-part-orange" style="height:${oPct}%;"></div>
-                        <div class="bar-part-green" style="height:${gPct}%;"></div>
-                    </div>
-                    <span style="font-size:0.75rem; font-weight:700; color:#fff;">${p.avatar || '🏃'} ${p.name}</span>
-                `;
-                multiGraph.appendChild(col);
             });
 
             if (isSprintHost) {
                 postBattleToSpreadsheet(battlePayload);
             }
 
-            document.getElementById('game-summary-text').innerHTML = `<div style="font-size:1.2rem; font-weight:800; color:#facc15;"> Song Battle Standings: ${currentSongTitle}</div>`;
-            document.getElementById('game-rank-text').textContent = `Song Battle Logged!`;
-            gameResultsModal.classList.add('open');
-
+            // Launch the Grand Finale Canvas Overlay instead of the small chart
+            showGrandFinale(battlePayload, isSprintHost, `Song Battle: ${currentSongTitle}`);
             loadStudentTickerStats(sessionStudentName);
         }
 
@@ -5744,7 +5774,268 @@
 
             return new Blob([outBuffer], { type: 'audio/wav' });
         }
+// =========================================================================
+        // GRAND FINALE CEREMONY ENGINE (Visuals, Fanfare & UI)
+        // =========================================================================
+        let fanfareLoopOscs = [];
+        let fanfareGain = null;
+        let isFanfareMuted = false;
+        
+        let celCanvas, celCtx, celFrameId;
+        let fireworks = [];
+        let celConfetti = [];
 
+        function playVictoryFanfare() {
+            initAudio();
+            stopVictoryMusic();
+            isFanfareMuted = false;
+            document.getElementById('btn-mute-fanfare').textContent = "🔇 Mute Music";
+
+            fanfareGain = audioCtx.createGain();
+            fanfareGain.gain.value = 0.4;
+            fanfareGain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            
+            const playBrassChord = (pitches, time, duration) => {
+                pitches.forEach(p => {
+                    const osc = audioCtx.createOscillator();
+                    osc.type = 'sawtooth';
+                    osc.frequency.value = getNoteFrequency(p);
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(400, time);
+                    filter.frequency.exponentialRampToValueAtTime(3500, time + duration / 2);
+                    
+                    const env = audioCtx.createGain();
+                    env.gain.setValueAtTime(0, time);
+                    env.gain.linearRampToValueAtTime(0.25, time + 0.1);
+                    env.gain.exponentialRampToValueAtTime(0.01, time + duration);
+                    
+                    osc.connect(filter).connect(env).connect(fanfareGain);
+                    osc.start(time);
+                    osc.stop(time + duration);
+                });
+            };
+
+            // 3-Second Triumphant Intro
+            playBrassChord(['c4', 'e4', 'g4'], now, 0.5);
+            playBrassChord(['f4', 'a4', 'c5'], now + 0.5, 0.5);
+            playBrassChord(['g4', 'b4', 'd5'], now + 1.0, 0.5);
+            playBrassChord(['c4', 'e4', 'g4', 'c5'], now + 1.5, 2.0);
+
+            // Upbeat Chiptune/Marimba Loop (starts at 3.5s)
+            const loopStart = now + 3.5;
+            const loopNotes = ['c4', 'e4', 'g4', 'e4', 'f4', 'a4', 'c5', 'a4', 'd4', 'f4', 'a4', 'f4', 'g4', 'b4', 'd5', 'b4'];
+            for (let i = 0; i < 48; i++) {
+                const time = loopStart + (i * 0.25);
+                const osc = audioCtx.createOscillator();
+                osc.type = 'square';
+                osc.frequency.value = getNoteFrequency(loopNotes[i % loopNotes.length]);
+                
+                const env = audioCtx.createGain();
+                env.gain.setValueAtTime(0, time);
+                env.gain.linearRampToValueAtTime(0.12, time + 0.03);
+                env.gain.exponentialRampToValueAtTime(0.01, time + 0.22);
+                
+                osc.connect(env).connect(fanfareGain);
+                osc.start(time);
+                osc.stop(time + 0.25);
+                fanfareLoopOscs.push(osc);
+            }
+        }
+
+        function toggleFanfareMute() {
+            if (!fanfareGain) return;
+            isFanfareMuted = !isFanfareMuted;
+            fanfareGain.gain.value = isFanfareMuted ? 0 : 0.4;
+            document.getElementById('btn-mute-fanfare').textContent = isFanfareMuted ? "🔊 Unmute" : "🔇 Mute Music";
+        }
+
+        function stopVictoryMusic() {
+            fanfareLoopOscs.forEach(o => { try { o.stop(); } catch (e) {} });
+            fanfareLoopOscs = [];
+            if (fanfareGain) {
+                fanfareGain.disconnect();
+                fanfareGain = null;
+            }
+        }
+
+        function startCelebrationCanvas() {
+            celCanvas = document.getElementById('celebration-canvas');
+            celCanvas.style.display = 'block';
+            celCanvas.width = window.innerWidth;
+            celCanvas.height = window.innerHeight;
+            celCtx = celCanvas.getContext('2d');
+            fireworks = [];
+            celConfetti = [];
+            celFrameId = requestAnimationFrame(renderCelebration);
+        }
+
+        function stopCelebrationCanvas() {
+            if (celFrameId) cancelAnimationFrame(celFrameId);
+            if (celCanvas) celCanvas.style.display = 'none';
+        }
+
+        function spawnFirework() {
+            fireworks.push({
+                x: Math.random() * (celCanvas.width - 300) + 150,
+                y: celCanvas.height,
+                vx: (Math.random() - 0.5) * 3,
+                vy: -(Math.random() * 6 + 12),
+                exploded: false,
+                particles: [],
+                hue: Math.random() * 360
+            });
+        }
+
+        function renderCelebration() {
+            celCtx.clearRect(0, 0, celCanvas.width, celCanvas.height);
+            
+            if (Math.random() < 0.04) spawnFirework();
+            if (Math.random() < 0.25) {
+                celConfetti.push({
+                    x: Math.random() * celCanvas.width, y: -10,
+                    vx: (Math.random() - 0.5) * 3, vy: Math.random() * 4 + 2,
+                    size: Math.random() * 10 + 5, color: `hsl(${Math.random()*360}, 100%, 50%)`,
+                    rot: 0, rotSpeed: (Math.random()-0.5)*0.3
+                });
+            }
+
+            for (let i = celConfetti.length - 1; i >= 0; i--) {
+                let c = celConfetti[i];
+                c.x += c.vx; c.y += c.vy; c.rot += c.rotSpeed;
+                celCtx.save();
+                celCtx.translate(c.x, c.y); celCtx.rotate(c.rot);
+                celCtx.fillStyle = c.color;
+                celCtx.fillRect(-c.size/2, -c.size/2, c.size, c.size);
+                celCtx.restore();
+                if (c.y > celCanvas.height) celConfetti.splice(i, 1);
+            }
+
+            for (let i = fireworks.length - 1; i >= 0; i--) {
+                let fw = fireworks[i];
+                if (!fw.exploded) {
+                    fw.x += fw.vx; fw.y += fw.vy; fw.vy += 0.2; 
+                    celCtx.fillStyle = '#fff';
+                    celCtx.beginPath(); celCtx.arc(fw.x, fw.y, 4, 0, Math.PI*2); celCtx.fill();
+                    if (fw.vy >= 0) {
+                        fw.exploded = true;
+                        for (let j = 0; j < 60; j++) {
+                            let angle = Math.random() * Math.PI * 2;
+                            let speed = Math.random() * 7 + 1;
+                            fw.particles.push({
+                                x: fw.x, y: fw.y,
+                                vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
+                                alpha: 1, hue: fw.hue + (Math.random()-0.5)*40
+                            });
+                        }
+                    }
+                } else {
+                    for (let j = fw.particles.length - 1; j >= 0; j--) {
+                        let p = fw.particles[j];
+                        p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.vx *= 0.97; p.alpha -= 0.02;
+                        celCtx.fillStyle = `hsla(${p.hue}, 100%, 60%, ${p.alpha})`;
+                        celCtx.beginPath(); celCtx.arc(p.x, p.y, 3, 0, Math.PI*2); celCtx.fill();
+                        if (p.alpha <= 0) fw.particles.splice(j, 1);
+                    }
+                    if (fw.particles.length === 0) fireworks.splice(i, 1);
+                }
+            }
+            celFrameId = requestAnimationFrame(renderCelebration);
+        }
+
+        function showGrandFinale(standings, isHost, titleText) {
+            document.getElementById('game-results-modal').classList.remove('open');
+            const koModal = document.getElementById('knockout-modal');
+            if (koModal) koModal.classList.remove('open');
+            const vsOverlay = document.getElementById('ko-vs-overlay');
+            if (vsOverlay) vsOverlay.style.display = 'none';
+
+            const modal = document.getElementById('finale-modal');
+            modal.style.display = 'flex';
+            document.getElementById('finale-title-text').textContent = titleText || "GRAND FINALE!";
+
+            let myRank = -1;
+            standings.forEach((p, idx) => {
+                if (p.name === sessionStudentName || p.id === localStudentId) myRank = idx + 1;
+            });
+
+            const subText = document.getElementById('finale-subtitle-text');
+            if (myRank === 1) {
+                subText.innerHTML = "🏆 <span style='color:#facc15;'>CLASS CHAMPION!</span>";
+            } else if (myRank > 1) {
+                subText.innerHTML = `🎉 YOU FINISHED <span style='color:#38bdf8;'>#${myRank}</span> OUT OF ${standings.length}!`;
+            } else {
+                subText.innerHTML = `Spectator Mode`;
+            }
+
+            const podiumMap = [
+                { rank: 2, class: 'pedestal-2', label: '🥈 2nd' },
+                { rank: 1, class: 'pedestal-1', label: '👑 1st' },
+                { rank: 3, class: 'pedestal-3', label: '🥉 3rd' }
+            ];
+
+            const podiumContainer = document.getElementById('podium-container');
+            podiumContainer.innerHTML = '';
+            
+            podiumMap.forEach((spot) => {
+                const p = standings[spot.rank - 1];
+                if (p) {
+                    const delay = spot.rank === 1 ? 2800 : (spot.rank === 2 ? 1800 : 800);
+                    const scoreText = p.score !== undefined ? `${p.score}%` : (p.avgAcc ? `${p.avgAcc}%` : '');
+                    
+                    podiumContainer.innerHTML += `
+                        <div class="pedestal-wrap" id="ped-wrap-${spot.rank}" style="transition-delay: ${delay}ms;">
+                            <div class="pedestal-avatar">${p.avatar || '🏃'}</div>
+                            <div class="pedestal-name">${p.name}</div>
+                            <div class="pedestal-score">${scoreText}</div>
+                            <div class="pedestal ${spot.class}">${spot.label}</div>
+                        </div>
+                    `;
+                }
+            });
+
+            setTimeout(() => {
+                [3, 2, 1].forEach(r => {
+                    const el = document.getElementById(`ped-wrap-${r}`);
+                    if (el) el.classList.add('show');
+                });
+            }, 100);
+
+            const hmContainer = document.getElementById('honorable-mentions');
+            hmContainer.innerHTML = '';
+            if (standings.length > 3) {
+                standings.slice(3).forEach((p, idx) => {
+                    const scoreText = p.score !== undefined ? `${p.score}%` : (p.avgAcc ? `${p.avgAcc}%` : '');
+                    hmContainer.innerHTML += `
+                        <div class="hm-card">
+                            <div class="hm-rank">#${idx + 4} Rank</div>
+                            <div class="hm-name">${p.avatar || '🏃'} ${p.name}</div>
+                            <div class="hm-score">${scoreText}</div>
+                        </div>
+                    `;
+                });
+            }
+
+            playVictoryFanfare();
+            startCelebrationCanvas();
+        }
+
+        function closeGrandFinale() {
+            stopVictoryMusic();
+            stopCelebrationCanvas();
+            document.getElementById('finale-modal').style.display = 'none';
+            
+            if (isSongBattle) {
+                stopBattlePolling();
+            } else if (isClassKnockout) {
+                leaveClassKnockout();
+            }
+            
+            loadStudentTickerStats(sessionStudentName);
+            document.getElementById('status').textContent = 'Returned to PianoPad.';
+        }
         // =========================================================================
         // SWISS-SYSTEM CLASS KNOCKOUT TOURNAMENT ENGINE (FIREBASE RTDB + GAS)
         // =========================================================================
@@ -6232,6 +6523,9 @@
                 btnForce.style.display = 'none';
                 btnFinish.style.display = 'none';
                 statusBanner.textContent = `🏆 Tournament Complete! Final Class Placings Logged to Leaderboard.`;
+                
+                let standings = data.finalStandings || [];
+                showGrandFinale(standings, true, `🏆 Class Knockout Complete!`);
             }
         }
 
@@ -6325,7 +6619,9 @@
                 const avgAcc = p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0';
                 return {
                     name: p.name,
-                    score: avgAcc
+                    score: avgAcc,
+                    avatar: p.avatar || '🏃',
+                    id: p.id
                 };
             });
 
@@ -6334,7 +6630,8 @@
 
             const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
             await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}`), {
-                status: 'finished'
+                status: 'finished',
+                finalStandings: battlePayload
             });
         }
 
@@ -6417,11 +6714,14 @@
                     renderKnockoutPostRoundComparison(me, me.lastMatchResult, myPlaceText);
                 }
             } else if (data.status === 'finished') {
-                gameResultsModal.classList.remove('open');
-                document.getElementById('ko-student-status').innerHTML = `🏆 TOURNAMENT COMPLETE! Final Placing: <span style="color:#facc15;">${myPlaceText}</span>`;
-                document.getElementById('ko-student-pairing-box').innerHTML = `Great job competing in all rounds! Review the final class podium below.`;
-                document.getElementById('knockout-modal').classList.add('open');
-                loadStudentTickerStats(sessionStudentName);
+                let standings = data.finalStandings || [];
+                if (standings.length === 0) {
+                    const ranked = getRankedKnockoutPlayers(data.players || {});
+                    standings = ranked.map(p => ({
+                        name: p.name, score: p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0', avatar: p.avatar, id: p.id
+                    }));
+                }
+                showGrandFinale(standings, false, `🏆 Class Knockout Complete!`);
             }
         }
 
