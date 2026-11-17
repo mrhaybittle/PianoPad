@@ -3884,7 +3884,7 @@
             const title = teacherTitleInput.value.trim();
             const code = teacherCodeTextarea.value.trim();
 
-            if (pass !== "Rocky") {
+            if (pass !== "ERC") {
                 teacherErrorDiv.textContent = "Incorrect Teacher Password!";
                 teacherErrorDiv.style.display = "block";
                 return;
@@ -5912,7 +5912,7 @@
 
         async function openTeacherKnockoutSetup() {
             const pass = prompt("Enter Teacher Password to Host Class Knockout:");
-            if (pass !== "Rocky") {
+            if (pass !== "ERC") {
                 if (pass !== null) alert("Incorrect Teacher Password!");
                 return;
             }
