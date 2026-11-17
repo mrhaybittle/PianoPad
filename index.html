@@ -277,16 +277,6 @@
             background: linear-gradient(135deg, #d97706, #dc2626) !important;
         }
 
-        .btn-knockout {
-            background: linear-gradient(135deg, #facc15, #f97316) !important;
-            color: #000000 !important;
-            font-weight: 900 !important;
-            box-shadow: 0 0 12px rgba(250, 204, 21, 0.5);
-        }
-        .btn-knockout:hover {
-            background: linear-gradient(135deg, #eab308, #ea580c) !important;
-        }
-
         .btn-step { background-color: #ec4899 !important; color: #ffffff !important; font-weight: 700; }
         .btn-step:hover { background-color: #db2777 !important; }
 
@@ -297,25 +287,25 @@
         .btn-game-active:hover { background-color: #db2777 !important; }
 
         #btn-record {
-            background-color: var(--recording-active) !important;
-            color: #ffffff !important;
-        }
+    background-color: var(--recording-active) !important;
+    color: #ffffff !important;
+}
 
-        #btn-record:hover {
-            background-color: #dc2626 !important;
-        }
+#btn-record:hover {
+    background-color: #dc2626 !important;
+}
 
-        .btn-rec-active {
-            background-color: var(--recording-active) !important;
-            color: #ffffff !important;
-            box-shadow: 0 0 14px rgba(239, 68, 68, 0.8) !important;
-            animation: btnRecordFlash 0.8s infinite ease-in-out;
-        }
+.btn-rec-active {
+    background-color: var(--recording-active) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.8) !important;
+    animation: btnRecordFlash 0.8s infinite ease-in-out;
+}
 
-        @keyframes btnRecordFlash {
-            0%, 100% { opacity: 1; filter: brightness(1); }
-            50% { opacity: 0.45; filter: brightness(1.4); }
-        }
+@keyframes btnRecordFlash {
+    0%, 100% { opacity: 1; filter: brightness(1); }
+    50% { opacity: 0.45; filter: brightness(1.4); }
+}
 
         .btn-rec-active span {
             animation: textBlink 0.8s infinite ease-in-out;
@@ -944,14 +934,12 @@
         .countdown-overlay {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.88);
+            background: rgba(0,0,0,0.85);
             display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            z-index: 250;
-            padding: 20px;
-            text-align: center;
+            z-index: 200;
         }
 
         .countdown-number {
@@ -960,17 +948,6 @@
             color: #facc15;
             text-shadow: 0 0 30px #facc15;
             animation: pulseCount 0.8s ease-in-out infinite;
-        }
-
-        .vs-banner-box {
-            background: linear-gradient(135deg, #1e1b4b, #311042);
-            border: 3px solid #facc15;
-            border-radius: 16px;
-            padding: 20px 32px;
-            margin-bottom: 18px;
-            box-shadow: 0 0 30px rgba(250, 204, 21, 0.4);
-            max-width: 680px;
-            width: 100%;
         }
 
         @keyframes pulseCount {
@@ -985,8 +962,6 @@
             gap: 6px;
             margin: 10px 0;
             text-align: left;
-            max-height: 180px;
-            overflow-y: auto;
         }
 
         .lobby-player-card {
@@ -1021,91 +996,6 @@
             padding: 6px 10px;
             border-bottom: 1px solid #1f2937;
             color: #f3f4f6;
-        }
-
-        /* Teacher Swiss Knockout Dashboard */
-        .knockout-teacher-panel {
-            display: none;
-            flex-direction: column;
-            gap: 12px;
-            background: #090814;
-            border: 2px solid #facc15;
-            border-radius: 12px;
-            padding: 14px;
-            flex: 1;
-            overflow-y: auto;
-            box-shadow: inset 0 0 25px rgba(250, 204, 21, 0.2);
-        }
-
-        .knockout-teacher-panel.open {
-            display: flex;
-        }
-
-        .knockout-match-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 10px;
-        }
-
-        .knockout-match-card {
-            background: #141226;
-            border: 1px solid #374151;
-            border-radius: 8px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .knockout-match-card.finished {
-            border-color: #22c55e;
-            background: #0d1f16;
-        }
-
-        .knockout-player-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.82rem;
-            font-weight: 700;
-            padding: 4px 6px;
-            background: #0b0f19;
-            border-radius: 4px;
-        }
-
-        .knockout-standings-strip {
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            padding: 6px;
-            background: #0b0f19;
-            border-radius: 8px;
-            border: 1px solid #374151;
-        }
-
-        .knockout-standing-pill {
-            background: #1f2937;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.76rem;
-            font-weight: 700;
-            white-space: nowrap;
-            border: 1px solid #4b5563;
-        }
-
-        /* Student Knockout Opponent HUD */
-        .knockout-opponent-hud {
-            display: none;
-            align-items: center;
-            justify-content: space-between;
-            background: linear-gradient(90deg, #1e1b4b, #311042);
-            border: 1px solid #facc15;
-            border-radius: 8px;
-            padding: 4px 14px;
-            font-size: 0.82rem;
-            font-weight: 800;
-            color: #ffffff;
-            flex-shrink: 0;
         }
 
         @keyframes statusFlash {
@@ -1214,10 +1104,10 @@
 </head>
 <body>
 
-    <!-- FIREBASE INITIALIZATION FOR ROSTER & SWISS TOURNAMENT -->
+    <!-- FIREBASE INITIALIZATION FOR ROSTER -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getDatabase, ref, set, update, onValue, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+        import { getDatabase, ref, set, onDisconnect } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBAJSw8QFuzMoCXqZY2wmO3Nmy2Fdy6Q4U",
@@ -1228,17 +1118,14 @@
             messagingSenderId: "717730658604",
             appId: "1:717730658604:web:e09a312b2ac7c8426e9489"
         };
-            
+           
         try {
             const app = initializeApp(firebaseConfig);
             window.firebaseDb = getDatabase(app, firebaseConfig.databaseURL);
             window.firebaseSet = set;
-            window.firebaseUpdate = update;
             window.firebaseRef = ref;
-            window.firebaseOnValue = onValue;
             window.firebaseOnDisconnect = onDisconnect;
-            window.firebaseRemove = remove;
-            
+           
             window.dispatchEvent(new Event('firebase-initialized'));
         } catch(e) {
             console.log("Firebase config error:", e);
@@ -1267,7 +1154,7 @@
             <p style="font-size: 0.9rem; color: #9ca3af;">Please enter your details, select your class, and room to begin:</p>
             <div style="display: flex; flex-direction: column; gap: 12px; margin: 15px 0;">
                 <input type="text" id="student-join-name" placeholder="Your First Name & Last Initial" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 0.9rem;">
-                
+               
                 <select id="student-join-avatar" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 0.9rem;">
                     <option value="🏃" selected>🏃 Runner (Male)</option>
                     <option value="🏃‍♀️">🏃‍♀️ Runner (Female)</option>
@@ -1359,7 +1246,7 @@
                 <div class="speed-control">
                     <label for="speed-input" style="cursor: pointer;">Speed: </label>
                     <div style="display: inline-flex; align-items: center;">
-                        <input type="number" id="speed-input" min="10" max="500" value="100" 
+                        <input type="number" id="speed-input" min="10" max="500" value="100"
                                style="width: 48px; background: transparent; border: 1px solid #4b5563; border-radius: 4px; color: #facc15; font-weight: 700; font-size: 0.78rem; text-align: center; padding: 1px 2px; -moz-appearance: textfield;"
                                title="Click to type a set speed (10% - 500%)">
                         <span style="color: #cbd5e1; margin-left: 2px;">%</span>
@@ -1417,8 +1304,8 @@
                 </button>
 
                 <button type="button" id="btn-settings" class="btn-settings" title="Settings">
-                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                </button>
+    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+</button>
 
                 <a href="https://sites.google.com/erc.nsw.edu.au/pianopad-leaderboard/home" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M12 15l-3 4-3-4"></path><path d="M5 6v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"></path><path d="M3 6h18"></path><path d="M5 2h14"></path></svg>
@@ -1473,42 +1360,6 @@
             </div>
         </div>
 
-        <!-- Live Swiss Knockout Opponent HUD for Students -->
-        <div class="knockout-opponent-hud" id="knockout-opponent-hud">
-            <span id="ko-hud-round" style="color: #facc15;">🏆 CLASS KNOCKOUT - ROUND 1</span>
-            <span id="ko-hud-matchup">🆚 Opponent: Waiting...</span>
-            <span id="ko-hud-live-score" style="color: #38bdf8;">Opponent Live: 0.0%</span>
-        </div>
-
-        <!-- Teacher Swiss Knockout Live Bracket & Control Dashboard -->
-        <div class="knockout-teacher-panel" id="knockout-teacher-panel">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #374151; padding-bottom: 10px;">
-                <div>
-                    <h2 style="color: #facc15; font-size: 1.2rem;">🏆 Teacher Swiss Knockout Dashboard</h2>
-                    <div id="ko-teacher-room-info" style="font-size: 0.85rem; color: #38bdf8; font-weight: 700;">Room Code: --- | Round: 0 | Joined: 0</div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                    <select id="ko-teacher-song-select" style="max-width: 220px; border-color: #facc15;"></select>
-                    <button type="button" id="btn-ko-start-round" class="btn-success" onclick="koTeacherStartNextRound()">▶ Start Round 1</button>
-                    <button type="button" id="btn-ko-force-end" class="btn-warning" style="display:none;" onclick="koTeacherForceEndRound()">⏭ Force End Round</button>
-                    <button type="button" id="btn-ko-finish-tournament" class="btn-knockout" style="display:none;" onclick="koTeacherFinishTournament()">🏁 Finish & Save Podium</button>
-                    <button type="button" class="btn-danger" onclick="koTeacherCloseDashboard()">✖ Close Tournament</button>
-                </div>
-            </div>
-
-            <div>
-                <div style="font-size: 0.75rem; color: #9ca3af; font-weight: 700; margin-bottom: 4px; text-transform: uppercase;">Live Class Ladder Standings (Wins • Cumulative Accuracy):</div>
-                <div class="knockout-standings-strip" id="ko-teacher-standings-strip">
-                    <span style="font-size: 0.78rem; color: #9ca3af;">Waiting for students to join with the Room Code...</span>
-                </div>
-            </div>
-
-            <div style="flex: 1; overflow-y: auto;">
-                <div style="font-size: 0.75rem; color: #9ca3af; font-weight: 700; margin-bottom: 6px; text-transform: uppercase;" id="ko-teacher-grid-label">Lobby Players & Active 1v1 Pairings:</div>
-                <div class="knockout-match-grid" id="ko-teacher-match-grid"></div>
-            </div>
-        </div>
-
         <div class="arcade-hub-overlay" id="arcade-hub">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #374151; padding-bottom: 8px;">
                 <h2 style="font-size: 1.2rem; color: #ec4899; display: flex; align-items: center; gap: 8px;"> PianoPad Arcade Mini-Games</h2>
@@ -1550,15 +1401,15 @@
 
         <div class="runner-track-wrapper" id="runner-track" style="display: none;"></div>
 
-        <div class="visualizer-wrapper" id="main-visualizer-wrapper">
+        <div class="visualizer-wrapper">
             <canvas id="waterfall-canvas" width="1232" height="380"></canvas>
             <div class="piano" id="keyboard"></div>
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.11.17 | 17-Nov 11:03 AEDT (West Wollongong)</div>
+            <div class="version-stamp">v26.10.27 | 27-Oct 12:48 AEDT (West Wollongong)</div>
             <div class="status-bar" id="status"> GAME MODE READY | Connecting to song database...</div>
-            
+           
             <div class="footer-right-group">
                 <div class="monitor-widget-box" id="monitor-widget">
                     <div class="monitor-top-row">
@@ -1581,7 +1432,7 @@
         </div>
     </div>
 
-    <!-- Live Sprint, Song Battle & Class Knockout Setup Modal -->
+    <!-- Live Sprint & Song Battle Setup Modal -->
     <div class="modal-overlay" id="sprint-option-modal">
         <div class="modal" style="text-align: center;">
             <h2 id="battle-modal-title"> Setup Mode</h2>
@@ -1590,21 +1441,12 @@
                 <button type="button" class="btn-arcade" id="btn-sprint-bot-opt" onclick="initSinglePlayerSprint()"> Challenge Robot Opponent</button>
                 <button type="button" class="btn-success" onclick="openHostNamePrompt()"> Host Live Session</button>
                 <button type="button" class="btn-midi" onclick="openJoinNamePrompt()"> Join Live Session</button>
-                <button type="button" class="btn-knockout" id="btn-host-class-knockout" style="display: none;" onclick="openTeacherKnockoutPrompt()">🏆 Host Class Knockout (Teacher)</button>
             </div>
-            
-            <!-- Teacher Password Prompt for Swiss Knockout -->
-            <div id="ko-teacher-auth-container" style="display: none; flex-direction: column; gap: 8px; text-align: left;">
-                <label style="font-size: 0.78rem; color: #facc15; font-weight: 700;">Enter Teacher Password to Host Swiss Class Knockout:</label>
-                <input type="password" id="ko-teacher-pass-input" placeholder="Enter password..." style="width:100%; padding:8px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.85rem;">
-                <div id="ko-teacher-auth-error" style="color:#ef4444; font-size:0.75rem; font-weight:700; display:none;">Incorrect teacher password!</div>
-                <button type="button" class="btn-knockout" style="justify-content:center; margin-top:4px;" onclick="verifyAndLaunchTeacherKnockout()">Launch Class Knockout Lobby</button>
-            </div>
-
+           
             <div id="sprint-form-container" style="display: none; flex-direction: column; gap: 8px; text-align: left;">
                 <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Your First Name & Surname Initial:</label>
                 <input type="text" id="sprint-player-name" placeholder="e.g. Alex M" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem;">
-                
+               
                 <div id="host-song-selector-group" style="display:none; flex-direction:column; gap:4px; margin-top:4px;">
                     <label style="font-size:0.75rem; color:#facc15; font-weight:700;">Select Battle Song:</label>
                     <select id="host-battle-song-select" style="width:100%; max-width:100%;"></select>
@@ -1624,9 +1466,9 @@
                 </div>
 
                 <div id="client-waiting-group" style="display:none; flex-direction:column; gap:6px; text-align:center;">
-                    <p style="font-size:0.85rem; color:#22c55e; font-weight:700;" id="client-lobby-status-title">Connected to Host Room!</p>
+                    <p style="font-size:0.85rem; color:#22c55e; font-weight:700;">Connected to Host Room!</p>
                     <div class="lobby-players-grid" id="client-lobby-grid"></div>
-                    <p style="font-size:0.75rem; color:#9ca3af;" id="client-lobby-wait-sub">Waiting for host to press start...</p>
+                    <p style="font-size:0.75rem; color:#9ca3af;">Waiting for host to press start...</p>
                 </div>
 
                 <button type="button" class="btn-success" id="btn-confirm-sprint-action" style="margin-top:6px; justify-content:center;">Confirm & Continue</button>
@@ -1659,13 +1501,8 @@
         </div>
     </div>
 
-    <!-- Countdown Overlay (with Pre-Round VS Banner for Swiss Knockout) -->
+    <!-- Countdown Overlay -->
     <div class="countdown-overlay" id="countdown-overlay">
-        <div class="vs-banner-box" id="vs-banner-box" style="display: none;">
-            <div style="font-size: 0.9rem; color: #facc15; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;" id="vs-round-label">ROUND 1 MATCHUP</div>
-            <div style="font-size: 1.6rem; font-weight: 900; color: #ffffff; margin: 8px 0;" id="vs-matchup-names">Player A vs Player B</div>
-            <div style="font-size: 0.95rem; color: #38bdf8; font-weight: 700;" id="vs-song-label">Song: Wipeout</div>
-        </div>
         <div class="countdown-number" id="countdown-text">3</div>
     </div>
 
@@ -1737,15 +1574,15 @@
     <!-- Game Mode Completion Pop-up Modal with Graph -->
     <div class="modal-overlay" id="game-results-modal">
         <div class="modal" style="text-align: center;">
-            <h2 id="game-results-modal-title">Game Performance Summary</h2>
-            <div id="game-summary-text" style="font-size: 0.95rem; color: #e5e7eb; font-weight: 600;"></div>
-            
+            <h2>Game Performance Summary</h2>
+            <p id="game-summary-text" style="font-size: 0.95rem; color: #e5e7eb; font-weight: 600;"></p>
+           
             <div id="badge-container"></div>
             <div id="game-rank-text" class="rank-display-box">Calculating Rank...</div>
 
             <div class="graph-container">
                 <div class="multi-bar-container" id="multi-bar-graph" style="display: none;"></div>
-                
+               
                 <div class="bar-chart-wrapper" id="single-bar-graph">
                     <div class="stacked-bar">
                         <div id="bar-red" class="bar-part-red"></div>
@@ -1753,7 +1590,7 @@
                         <div id="bar-green" class="bar-part-green"></div>
                     </div>
                 </div>
-                
+               
                 <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 600; margin-top: 4px;">
                     <span style="color: #22c55e;"> Perfect</span>
                     <span style="color: #f97316;"> Early/Late</span>
@@ -1791,7 +1628,7 @@
         <div class="modal">
             <h2>Add Song (Teacher Access)</h2>
             <p style="font-size: 0.85rem; color: #9ca3af;">Enter teacher password to add a new song directly to PianoPad & Google Sheet:</p>
-            
+           
             <div style="display: flex; flex-direction: column; gap: 8px;">
                 <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">Teacher Password:</label>
                 <input type="password" id="teacher-pass" placeholder="Enter password..." style="width:100%; padding:7px 10px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; outline:none;">
@@ -1810,14 +1647,14 @@
                 <button type="button" class="btn-teacher" id="btn-teacher-submit">Add Song Now</button>
             </div>
         </div>
-    </div> 
+    </div>
 
     <!-- Class Selection Modal for Audio Upload -->
     <div class="modal-overlay" id="class-select-modal" style="z-index: 400;">
         <div class="modal" style="max-width: 420px; text-align: center;">
             <h2 style="color: #4f46e5;">Confirm Your Class</h2>
             <p style="font-size: 0.85rem; color: #9ca3af;">Select your Year Group and Class Letter to route your recording to the correct folder:</p>
-            
+           
             <div style="display: flex; flex-direction: column; gap: 12px; margin: 15px 0; text-align: left;">
                 <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">Year Group:</label>
                 <select id="upload-year-select" style="width: 100%; padding: 10px;">
@@ -1859,7 +1696,7 @@
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby67M5VwNiRpcySnun4wTW31nIfXauLXhMRP1w96r6yjMuV9iA8n_C-eEIKfJ_xEuUjKg/exec';
         const GAMEMODE_RANKS_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?tqx=out:csv&sheet=GameModeRanks';
-        
+       
         let audioCtx = null;
         let songList = [];
         let currentSong = [];
@@ -1876,7 +1713,7 @@
 
         let localStudentId = "stu_" + Math.random().toString(36).substr(2, 9);
         let localTabSwitches = 0;
-        let tabSwitchAwayTimestamp = null; 
+        let tabSwitchAwayTimestamp = null;
         let currentRoom = "";
         let currentStudentClass = "";
         let sessionStartTime = Date.now();
@@ -1913,7 +1750,7 @@
         let lastDetectedNote = null;
         let noteHoldCounter = 0;
 
-        let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+       let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
         let sessionSongHistory = {};
         let currentPerfectStreak = 0;
         let sessionStudentName = "";
@@ -1945,7 +1782,7 @@
         let simonSequence = [];
         let simonPlayerIndex = 0;
         let simonIsPrompting = false;
-        
+       
         let mysteryTargetPitch = null;
         let mysteryGuessCount = 0;
 
@@ -1964,18 +1801,6 @@
         let activeBattleRoomCode = "";
         let hasBattleStarted = false;
         let battleResultsShown = false;
-
-        // ==========================================
-        // SWISS-SYSTEM KNOCKOUT TOURNAMENT STATE
-        // ==========================================
-        let isSwissKnockout = false;
-        let isKnockoutHost = false;
-        let koRoomCode = "";
-        let koUnsubscribe = null;
-        let koCurrentData = null;
-        let koLastRenderedRound = 0;
-        let koLastResultsRound = 0;
-        let koFinalPodiumShown = false;
 
         const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄', '🎹', '🎧', '👨‍🎤', '😎', '🐱', '🐲', '🚀', '🥷'];
 
@@ -2023,13 +1848,13 @@
             if (avatarEl) avatarEl.textContent = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || "🏃";
             if (classEl) classEl.textContent = activeClass;
             if (breaksEl) breaksEl.textContent = `Breaks: ${localTabSwitches}`;
-            
+           
             const elapsedMs = Date.now() - sessionStartTime;
             const totalSecs = Math.floor(elapsedMs / 1000);
             const mins = Math.floor(totalSecs / 60);
             const secs = (totalSecs % 60).toString().padStart(2, '0');
             const elapsedMins = Math.floor(elapsedMs / 60000);
-            
+           
             if (timeEl) timeEl.textContent = `${mins}:${secs} / 60:00min`;
             if (songEl) songEl.textContent = ` ${currentSongTitle || 'Wipeout'}`;
 
@@ -2083,7 +1908,7 @@
 
         function syncStudentToFirebase(statusOverride = null) {
             if (!window.firebaseSet || !window.firebaseRef || !window.firebaseDb) return;
-            
+           
             const activeName = sessionStudentName || localStorage.getItem('pianopad_name') || "Student";
             const activeAvatar = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || "🏃";
             const activeRoom = currentRoom || "Outside";
@@ -2113,7 +1938,7 @@
             const chosenClass = document.getElementById('student-join-class').value;
             const roomSelect = document.getElementById('student-join-room');
             const room = (roomSelect && roomSelect.style.display === 'none') ? "Outside" : (roomSelect ? roomSelect.value : "Outside");
-            
+           
             if (!name || !chosenClass || (roomSelect && roomSelect.style.display !== 'none' && !room)) {
                 alert('Please enter your Name and select your Class.');
                 return;
@@ -2129,28 +1954,26 @@
             localStorage.setItem('pianopad_room', currentRoom);
 
             document.getElementById('room-join-modal').classList.remove('open');
-            
+           
             syncStudentToFirebase("active");
             updateMonitorWidget();
             loadStudentTickerStats(sessionStudentName);
             checkFirstTimeCalibration();
         });
-
-        function checkIsOutsideSchoolHours() {
+function checkIsOutsideSchoolHours() {
             const now = new Date();
             const day = now.getDay(); // 0 = Sunday, 6 = Saturday
             const timeMins = now.getHours() * 60 + now.getMinutes();
             return (day === 0 || day === 6) || (timeMins < 8 * 60) || (timeMins >= 14 * 60 + 5);
         }
-
-        document.addEventListener("visibilitychange", () => {
+       document.addEventListener("visibilitychange", () => {
             const isOOS = checkIsOutsideSchoolHours();
 
             if (document.hidden) {
                 if (!isOOS) {
                     localTabSwitches++;
                     tabSwitchAwayTimestamp = new Date();
-                    
+                   
                     const elapsedMs = Date.now() - sessionStartTime;
                     const posPct = Math.min(100, (elapsedMs / (60 * 60000)) * 100);
                     breakMarkerPositions.push(posPct);
@@ -2170,7 +1993,7 @@
                         const payload = {
                             action: "LOG_BREAK",
                             studentName: sessionStudentName || localStorage.getItem('pianopad_name') || "Student",
-                            year: "", 
+                            year: "",
                             class: currentStudentClass || localStorage.getItem('pianopad_class') || currentRoom || "",
                             awayTime: tabSwitchAwayTimestamp.toLocaleTimeString(),
                             returnTime: returnTimestamp.toLocaleTimeString(),
@@ -2222,13 +2045,12 @@
 
         document.getElementById('btn-game-results-close').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
-            if (!isSwissKnockout) stopBattlePolling();
+            stopBattlePolling();
         });
 
         document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
             stopBattlePolling();
-            if (isSwissKnockout) leaveSwissKnockout();
             openArcadeHub();
         });
 
@@ -2271,7 +2093,7 @@
             return new Promise((resolve) => {
                 const script = document.createElement('script');
                 const cbName = callbackName || 'jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-                
+               
                 window[cbName] = function(data) {
                     delete window[cbName];
                     if (document.body.contains(script)) document.body.removeChild(script);
@@ -2575,9 +2397,9 @@
         function startCalibration() {
             settingsModal.classList.remove('open');
             buildCalibrationKeyboard();
-            
+           
             isCalibrating = true;
-            calibStep = 1; 
+            calibStep = 1;
             calibLowestRawMIDI = null;
             calibHighestRawMIDI = null;
 
@@ -2618,7 +2440,7 @@
 
                 const rawDiff = calibHighestRawMIDI - calibLowestRawMIDI;
                 const octaveDistance = Math.round(rawDiff / 12);
-                
+               
                 const targetOctave = Math.min(7, 1 + octaveDistance);
                 const highCKey = document.querySelector(`.calib-key[data-calib-note="c${targetOctave}"]`);
                 if (highCKey) highCKey.classList.add('blue-highlight');
@@ -2762,10 +2584,10 @@
             } else {
                 playErrorClackSound();
                 currentSongTitle = "Simon Taps";
-                
+               
                 const maxLevelRemembered = Math.max(1, simonSequence.length - 1);
                 ensureStudentName();
-                
+               
                 document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Max Level Remembered: <span style="color:#22c55e; font-size:1.3rem;">Level ${maxLevelRemembered}</span>`;
                 document.getElementById('single-bar-graph').style.display = 'flex';
                 document.getElementById('multi-bar-graph').style.display = 'none';
@@ -2811,7 +2633,7 @@
                 highlightKey(noteStr, 500, '#22c55e');
                 const mPos = keyPosMap[noteStr.toLowerCase().trim()];
                 if(mPos) spawnConfetti(mPos.left + mPos.width / 2, canvas.height, '#22c55e');
-                
+               
                 currentSongTitle = "Mystery Note";
                 ensureStudentName();
 
@@ -2908,14 +2730,12 @@
         function openSprintModeSelector() {
             initAudio();
             isSongBattle = false;
-            document.getElementById('battle-modal-title').textContent = " Setup Mode";
+            document.getElementById('battle-modal-title').textContent = " Finger Sprint Setup";
             document.getElementById('battle-modal-subtitle').textContent = "Select your race mode:";
             document.getElementById('btn-sprint-bot-opt').style.display = 'inline-flex';
-            document.getElementById('btn-host-class-knockout').style.display = 'none';
             document.getElementById('host-song-selector-group').style.display = 'none';
             document.getElementById('sprint-menu-buttons').style.display = 'flex';
             document.getElementById('sprint-form-container').style.display = 'none';
-            document.getElementById('ko-teacher-auth-container').style.display = 'none';
             document.getElementById('inline-name-error').style.display = 'none';
             document.getElementById('sprint-option-modal').classList.add('open');
         }
@@ -2936,7 +2756,7 @@
             initAudio();
             isSongBattle = true;
             battleResultsShown = false;
-            
+           
             if (isStepMode) {
                 isStepMode = false;
                 btnStep.textContent = 'Step Mode';
@@ -2947,606 +2767,14 @@
             document.getElementById('battle-modal-title').textContent = ` Song Battle Setup`;
             document.getElementById('battle-modal-subtitle').textContent = "Host or join a live song battle:";
             document.getElementById('btn-sprint-bot-opt').style.display = 'none';
-            document.getElementById('btn-host-class-knockout').style.display = 'inline-flex';
             document.getElementById('sprint-menu-buttons').style.display = 'flex';
             document.getElementById('sprint-form-container').style.display = 'none';
-            document.getElementById('ko-teacher-auth-container').style.display = 'none';
             document.getElementById('inline-name-error').style.display = 'none';
             document.getElementById('sprint-option-modal').classList.add('open');
         }
 
         function closeSprintOptionModal() {
             document.getElementById('sprint-option-modal').classList.remove('open');
-        }
-
-        // ==========================================
-        // SWISS-SYSTEM KNOCKOUT TOURNAMENT ENGINE
-        // ==========================================
-        function openTeacherKnockoutPrompt() {
-            document.getElementById('sprint-menu-buttons').style.display = 'none';
-            document.getElementById('sprint-form-container').style.display = 'none';
-            document.getElementById('ko-teacher-auth-container').style.display = 'flex';
-            document.getElementById('ko-teacher-auth-error').style.display = 'none';
-            const passInput = document.getElementById('ko-teacher-pass-input');
-            passInput.value = '';
-            setTimeout(() => passInput.focus(), 80);
-        }
-
-        function verifyAndLaunchTeacherKnockout() {
-            const pass = document.getElementById('ko-teacher-pass-input').value;
-            if (pass !== 'Rocky') {
-                document.getElementById('ko-teacher-auth-error').style.display = 'block';
-                return;
-            }
-            if (!window.firebaseDb || !window.firebaseSet || !window.firebaseRef || !window.firebaseOnValue) {
-                alert("Firebase connection is not ready yet. Please try again in a second.");
-                return;
-            }
-
-            closeSprintOptionModal();
-            stopSong();
-            isSwissKnockout = true;
-            isKnockoutHost = true;
-            koRoomCode = '' + Math.floor(100 + Math.random() * 900);
-            koLastRenderedRound = 0;
-
-            // Populate Teacher Song Selector
-            const koSongSelect = document.getElementById('ko-teacher-song-select');
-            koSongSelect.innerHTML = '';
-            songList.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.code;
-                opt.textContent = (s.difficulty ? `[${s.difficulty}] ` : '') + s.title;
-                if (s.title === currentSongTitle) opt.selected = true;
-                koSongSelect.appendChild(opt);
-            });
-
-            // Show Teacher Dashboard
-            document.getElementById('main-visualizer-wrapper').style.display = 'none';
-            document.getElementById('knockout-teacher-panel').classList.add('open');
-
-            const tourneyRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koRoomCode}`);
-            window.firebaseSet(tourneyRef, {
-                roomCode: koRoomCode,
-                status: 'lobby',
-                round: 0,
-                songTitle: currentSongTitle || 'Wipeout',
-                songCode: songSelect.value || '',
-                players: {},
-                pairings: [],
-                createdAt: Date.now()
-            });
-            window.firebaseOnDisconnect(tourneyRef).remove();
-
-            if (koUnsubscribe) koUnsubscribe();
-            koUnsubscribe = window.firebaseOnValue(tourneyRef, (snapshot) => {
-                const data = snapshot.val();
-                if (!data) return;
-                koCurrentData = data;
-                renderTeacherKnockoutDashboard(data);
-            });
-
-            document.getElementById('status').textContent = `🏆 Class Knockout Lobby Open! Share Join Code: ${koRoomCode}`;
-        }
-
-        function computeSwissStandings(playersObj) {
-            const list = Object.values(playersObj || {});
-            list.sort((a, b) => {
-                const wA = a.wins || 0;
-                const wB = b.wins || 0;
-                if (wB !== wA) return wB - wA;
-                const accA = a.cumulativeAcc || 0;
-                const accB = b.cumulativeAcc || 0;
-                return accB - accA;
-            });
-            return list;
-        }
-
-        function renderTeacherKnockoutDashboard(data) {
-            const players = data.players ? Object.values(data.players) : [];
-            const round = data.round || 0;
-            const status = data.status || 'lobby';
-
-            document.getElementById('ko-teacher-room-info').textContent =
-                `Join Code: ${data.roomCode}  |  Round: ${round}  |  Status: ${status.toUpperCase()}  |  Students Joined: ${players.length}`;
-
-            const standings = computeSwissStandings(data.players);
-            const strip = document.getElementById('ko-teacher-standings-strip');
-            if (standings.length === 0) {
-                strip.innerHTML = `<span style="font-size:0.78rem; color:#9ca3af;">Waiting for students to join via Song Battle -> Join Live Session (Code: ${data.roomCode})...</span>`;
-            } else {
-                strip.innerHTML = standings.map((p, idx) => {
-                    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
-                    const avgAcc = round > 0 ? ((p.cumulativeAcc || 0) / round).toFixed(1) : '0.0';
-                    return `<div class="knockout-standing-pill">${medal} ${p.avatar || '🏃'} ${p.name} • ${p.wins || 0}W (${avgAcc}%)</div>`;
-                }).join('');
-            }
-
-            const grid = document.getElementById('ko-teacher-match-grid');
-            const gridLabel = document.getElementById('ko-teacher-grid-label');
-            const btnStart = document.getElementById('btn-ko-start-round');
-            const btnForceEnd = document.getElementById('btn-ko-force-end');
-            const btnFinish = document.getElementById('btn-ko-finish-tournament');
-
-            if (status === 'lobby') {
-                gridLabel.textContent = `Joined Students (${players.length}) - Ready for Round 1 Random Draw:`;
-                btnStart.style.display = 'inline-flex';
-                btnStart.textContent = `▶ Start Round 1 (${players.length} Players)`;
-                btnForceEnd.style.display = 'none';
-                btnFinish.style.display = 'none';
-
-                grid.innerHTML = players.map(p => `
-                    <div class="knockout-match-card">
-                        <div class="knockout-player-row">
-                            <span>${p.avatar || '🏃'} ${p.name}</span>
-                            <span style="color:#22c55e; font-size:0.74rem;">Ready</span>
-                        </div>
-                    </div>
-                `).join('');
-            } else if (status === 'playing' || status === 'round_results' || status === 'finished') {
-                const pairings = data.pairings || [];
-                gridLabel.textContent = `Round ${round} Matchups (${data.songTitle}):`;
-
-                let allMatchesDone = pairings.length > 0;
-
-                grid.innerHTML = pairings.map((m, idx) => {
-                    const pA = data.players ? data.players[m.p1] : null;
-                    const pB = m.p2 === 'TARGET_80' ? null : (data.players ? data.players[m.p2] : null);
-
-                    const pADone = pA && pA.roundFinished;
-                    const pBDone = m.p2 === 'TARGET_80' ? true : (pB && pB.roundFinished);
-                    const matchDone = pADone && pBDone;
-                    if (!matchDone) allMatchesDone = false;
-
-                    const pAScore = pA ? (pA.roundScore || 0).toFixed(1) : '0.0';
-                    const pBScore = m.p2 === 'TARGET_80' ? '80.0' : (pB ? (pB.roundScore || 0).toFixed(1) : '0.0');
-
-                    return `
-                        <div class="knockout-match-card ${matchDone ? 'finished' : ''}">
-                            <div style="font-size:0.7rem; color:#9ca3af; font-weight:800; display:flex; justify-content:space-between;">
-                                <span>TABLE #${idx + 1}</span>
-                                <span>${matchDone ? '✅ COMPLETE' : '🎹 PLAYING...'}</span>
-                            </div>
-                            <div class="knockout-player-row">
-                                <span>${pA ? (pA.avatar || '🏃') + ' ' + pA.name : 'Player A'}</span>
-                                <span style="color:${pADone ? '#22c55e' : '#38bdf8'};">${pAScore}% ${pADone ? '✓' : ''}</span>
-                            </div>
-                            <div class="knockout-player-row">
-                                <span>${m.p2 === 'TARGET_80' ? '🎯 Target Benchmark' : (pB ? (pB.avatar || '🏃') + ' ' + pB.name : 'Player B')}</span>
-                                <span style="color:${pBDone ? '#22c55e' : '#38bdf8'};">${pBScore}% ${pBDone ? '✓' : ''}</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-
-                if (status === 'playing') {
-                    btnStart.style.display = 'none';
-                    btnForceEnd.style.display = 'inline-flex';
-                    btnFinish.style.display = 'none';
-
-                    // Automatically resolve round when every student finishes
-                    if (allMatchesDone && pairings.length > 0) {
-                        koResolveRoundResults(data);
-                    }
-                } else if (status === 'round_results') {
-                    btnForceEnd.style.display = 'none';
-                    btnStart.style.display = 'inline-flex';
-                    btnStart.textContent = `▶ Start Round ${round + 1} (Similar-Score Pairing)`;
-                    btnFinish.style.display = 'inline-flex';
-                } else if (status === 'finished') {
-                    btnStart.style.display = 'none';
-                    btnForceEnd.style.display = 'none';
-                    btnFinish.style.display = 'none';
-                }
-            }
-        }
-
-        function koTeacherStartNextRound() {
-            if (!koCurrentData || !window.firebaseUpdate || !window.firebaseRef) return;
-            const playersMap = koCurrentData.players || {};
-            const playerIds = Object.keys(playersMap);
-            if (playerIds.length === 0) {
-                alert("Wait for at least 1 student to join before starting Round 1!");
-                return;
-            }
-
-            const nextRound = (koCurrentData.round || 0) + 1;
-            const koSongSelect = document.getElementById('ko-teacher-song-select');
-            const selectedCode = koSongSelect.value || songSelect.value;
-            const selectedTitle = koSongSelect.selectedOptions[0]
-                ? koSongSelect.selectedOptions[0].text.replace(/^\[(Easy|Medium|Hard)\]\s*/i, '')
-                : currentSongTitle;
-
-            let orderedIds = [];
-            if (nextRound === 1) {
-                // Round 1: Random Draw
-                orderedIds = [...playerIds].sort(() => Math.random() - 0.5);
-            } else {
-                // Round 2+: Similar-Score Swiss Ladder Pairing
-                const sortedPlayers = computeSwissStandings(playersMap);
-                orderedIds = sortedPlayers.map(p => p.id);
-
-                // Prevent immediate repeat matchups by swapping adjacent slots if possible
-                for (let i = 0; i < orderedIds.length - 1; i += 2) {
-                    const p1 = playersMap[orderedIds[i]];
-                    const p2 = playersMap[orderedIds[i + 1]];
-                    const prevOpps = p1.opponents || [];
-                    if (prevOpps.includes(p2.id) && i + 2 < orderedIds.length) {
-                        const temp = orderedIds[i + 1];
-                        orderedIds[i + 1] = orderedIds[i + 2];
-                        orderedIds[i + 2] = temp;
-                    }
-                }
-            }
-
-            const pairings = [];
-            const playerUpdates = {};
-
-            for (let i = 0; i < orderedIds.length; i += 2) {
-                const p1Id = orderedIds[i];
-                const p2Id = (i + 1 < orderedIds.length) ? orderedIds[i + 1] : 'TARGET_80';
-
-                pairings.push({ p1: p1Id, p2: p2Id });
-
-                const p1Prev = playersMap[p1Id].opponents || [];
-                playerUpdates[`players/${p1Id}/roundFinished`] = false;
-                playerUpdates[`players/${p1Id}/roundScore`] = 0;
-                playerUpdates[`players/${p1Id}/roundStats`] = { perfect: 0, earlyLate: 0, miss: 0 };
-                playerUpdates[`players/${p1Id}/opponents`] = [...p1Prev, p2Id];
-
-                if (p2Id !== 'TARGET_80') {
-                    const p2Prev = playersMap[p2Id].opponents || [];
-                    playerUpdates[`players/${p2Id}/roundFinished`] = false;
-                    playerUpdates[`players/${p2Id}/roundScore`] = 0;
-                    playerUpdates[`players/${p2Id}/roundStats`] = { perfect: 0, earlyLate: 0, miss: 0 };
-                    playerUpdates[`players/${p2Id}/opponents`] = [...p2Prev, p1Id];
-                }
-            }
-
-            const tourneyRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koRoomCode}`);
-            window.firebaseUpdate(tourneyRef, {
-                status: 'playing',
-                round: nextRound,
-                songTitle: selectedTitle,
-                songCode: selectedCode,
-                pairings: pairings,
-                ...playerUpdates
-            });
-        }
-
-        function koTeacherForceEndRound() {
-            if (!koCurrentData || koCurrentData.status !== 'playing') return;
-            koResolveRoundResults(koCurrentData);
-        }
-
-        function koResolveRoundResults(data) {
-            if (!data || data.status !== 'playing') return;
-            const pairings = data.pairings || [];
-            const playersMap = data.players || {};
-            const updates = { status: 'round_results' };
-
-            pairings.forEach(m => {
-                const p1 = playersMap[m.p1];
-                if (!p1) return;
-                const s1 = p1.roundScore || 0;
-
-                if (m.p2 === 'TARGET_80') {
-                    const won = s1 >= 80;
-                    updates[`players/${m.p1}/roundFinished`] = true;
-                    updates[`players/${m.p1}/wins`] = (p1.wins || 0) + (won ? 1 : 0);
-                    updates[`players/${m.p1}/cumulativeAcc`] = (p1.cumulativeAcc || 0) + s1;
-                    updates[`players/${m.p1}/lastRoundWon`] = won;
-                } else {
-                    const p2 = playersMap[m.p2];
-                    if (!p2) return;
-                    const s2 = p2.roundScore || 0;
-                    const p1Won = s1 >= s2;
-                    const p2Won = s2 > s1;
-
-                    updates[`players/${m.p1}/roundFinished`] = true;
-                    updates[`players/${m.p1}/wins`] = (p1.wins || 0) + (p1Won ? 1 : 0);
-                    updates[`players/${m.p1}/cumulativeAcc`] = (p1.cumulativeAcc || 0) + s1;
-                    updates[`players/${m.p1}/lastRoundWon`] = p1Won;
-
-                    updates[`players/${m.p2}/roundFinished`] = true;
-                    updates[`players/${m.p2}/wins`] = (p2.wins || 0) + (p2Won ? 1 : 0);
-                    updates[`players/${m.p2}/cumulativeAcc`] = (p2.cumulativeAcc || 0) + s2;
-                    updates[`players/${m.p2}/lastRoundWon`] = p2Won;
-                }
-            });
-
-            const tourneyRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koRoomCode}`);
-            window.firebaseUpdate(tourneyRef, updates);
-        }
-
-        async function koTeacherFinishTournament() {
-            if (!koCurrentData || !window.firebaseUpdate || !window.firebaseRef) return;
-            const standings = computeSwissStandings(koCurrentData.players);
-            const roundCount = Math.max(1, koCurrentData.round || 1);
-
-            const battlePayload = standings.map(p => ({
-                name: p.name,
-                score: ((p.cumulativeAcc || 0) / roundCount).toFixed(1)
-            }));
-
-            const tourneyRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koRoomCode}`);
-            await window.firebaseUpdate(tourneyRef, { status: 'finished' });
-
-            await postBattleToSpreadsheet(battlePayload);
-            document.getElementById('status').textContent = `🏆 Final Class Knockout Standings saved to Google Sheet!`;
-        }
-
-        function koTeacherCloseDashboard() {
-            if (koUnsubscribe) { koUnsubscribe(); koUnsubscribe = null; }
-            if (koRoomCode && window.firebaseRemove && window.firebaseRef && window.firebaseDb) {
-                window.firebaseRemove(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koRoomCode}`));
-            }
-            isSwissKnockout = false;
-            isKnockoutHost = false;
-            koRoomCode = "";
-            koCurrentData = null;
-            document.getElementById('knockout-teacher-panel').classList.remove('open');
-            document.getElementById('main-visualizer-wrapper').style.display = 'flex';
-            document.getElementById('status').textContent = 'Returned to PianoPad Player view.';
-        }
-
-        function leaveSwissKnockout() {
-            if (koUnsubscribe) { koUnsubscribe(); koUnsubscribe = null; }
-            isSwissKnockout = false;
-            isKnockoutHost = false;
-            koRoomCode = "";
-            koCurrentData = null;
-            koLastRenderedRound = 0;
-            koLastResultsRound = 0;
-            koFinalPodiumShown = false;
-            document.getElementById('knockout-opponent-hud').style.display = 'none';
-            document.getElementById('vs-banner-box').style.display = 'none';
-        }
-
-        function joinSwissKnockoutStudent(playerName, roomCode) {
-            isSwissKnockout = true;
-            isKnockoutHost = false;
-            koRoomCode = roomCode;
-            koLastRenderedRound = 0;
-            koLastResultsRound = 0;
-            koFinalPodiumShown = false;
-
-            const playerRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${roomCode}/players/${localStudentId}`);
-            window.firebaseSet(playerRef, {
-                id: localStudentId,
-                name: playerName,
-                avatar: sessionStudentAvatar || '🏃',
-                wins: 0,
-                cumulativeAcc: 0,
-                roundScore: 0,
-                roundFinished: false,
-                roundStats: { perfect: 0, earlyLate: 0, miss: 0 },
-                opponents: []
-            });
-            window.firebaseOnDisconnect(playerRef).remove();
-
-            document.getElementById('code-input-group').style.display = 'none';
-            document.getElementById('btn-confirm-sprint-action').style.display = 'none';
-            document.getElementById('client-waiting-group').style.display = 'flex';
-            document.getElementById('client-lobby-status-title').textContent = `🏆 Joined Class Knockout (Code: ${roomCode})!`;
-            document.getElementById('client-lobby-wait-sub').textContent = `Waiting for your teacher to start Round 1...`;
-
-            const tourneyRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${roomCode}`);
-            if (koUnsubscribe) koUnsubscribe();
-            koUnsubscribe = window.firebaseOnValue(tourneyRef, (snapshot) => {
-                const data = snapshot.val();
-                if (!data) {
-                    leaveSwissKnockout();
-                    closeSprintOptionModal();
-                    document.getElementById('status').textContent = 'Teacher ended the Class Knockout session.';
-                    return;
-                }
-                koCurrentData = data;
-                handleStudentKnockoutUpdate(data);
-            });
-        }
-
-        function handleStudentKnockoutUpdate(data) {
-            const players = data.players ? Object.values(data.players) : [];
-            const standings = computeSwissStandings(data.players);
-            const myRankIdx = standings.findIndex(p => p.id === localStudentId);
-            const myRank = myRankIdx >= 0 ? myRankIdx + 1 : players.length;
-
-            // Update Lobby Grid if in lobby
-            if (data.status === 'lobby') {
-                const grid = document.getElementById('client-lobby-grid');
-                if (grid) {
-                    grid.innerHTML = players.map(p => `<div class="lobby-player-card"><span>${p.avatar || '🏃'}</span><span>${p.name}</span></div>`).join('');
-                }
-                return;
-            }
-
-            // Find my pairing for the active round
-            const pairings = data.pairings || [];
-            const myMatch = pairings.find(m => m.p1 === localStudentId || m.p2 === localStudentId);
-            let oppId = null;
-            if (myMatch) {
-                oppId = (myMatch.p1 === localStudentId) ? myMatch.p2 : myMatch.p1;
-            }
-            const oppObj = (oppId && oppId !== 'TARGET_80' && data.players) ? data.players[oppId] : null;
-            const oppRankIdx = oppObj ? standings.findIndex(p => p.id === oppObj.id) : -1;
-            const oppRank = oppRankIdx >= 0 ? oppRankIdx + 1 : '-';
-
-            // Update Live Opponent HUD
-            const hud = document.getElementById('knockout-opponent-hud');
-            if (data.status === 'playing' || data.status === 'round_results') {
-                hud.style.display = 'flex';
-                document.getElementById('ko-hud-round').textContent = `🏆 ROUND ${data.round} • YOUR CLASS RANK: #${myRank} of ${standings.length}`;
-                if (oppId === 'TARGET_80') {
-                    document.getElementById('ko-hud-matchup').textContent = `🆚 Target Benchmark Match (Beat 80%!)`;
-                    document.getElementById('ko-hud-live-score').textContent = `Target: 80.0%`;
-                } else if (oppObj) {
-                    document.getElementById('ko-hud-matchup').textContent = `🆚 ${oppObj.avatar || '🏃'} ${oppObj.name} (Rank #${oppRank})`;
-                    document.getElementById('ko-hud-live-score').textContent = `Opponent Live: ${(oppObj.roundScore || 0).toFixed(1)}% ${oppObj.roundFinished ? '✅' : ''}`;
-                }
-            }
-
-            // Trigger New Round Gameplay
-            if (data.status === 'playing' && data.round > koLastRenderedRound) {
-                koLastRenderedRound = data.round;
-                closeSprintOptionModal();
-                gameResultsModal.classList.remove('open');
-                arcadeHub.classList.remove('open');
-
-                if (data.songCode) {
-                    currentSongTitle = data.songTitle || 'Battle Song';
-                    songSelect.value = data.songCode;
-                    const parsed = parsePianoPad(data.songCode);
-                    if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
-                }
-
-                isStepMode = false;
-                btnStep.textContent = 'Step Mode';
-                btnStep.classList.remove('btn-step-active');
-                btnStep.classList.add('btn-step');
-
-                isGameMode = true;
-                btnGame.textContent = 'Game Mode: ON';
-                btnGame.classList.add('btn-game-active');
-                resetGameStats();
-
-                // Populate Pre-Round VS Banner
-                const vsBox = document.getElementById('vs-banner-box');
-                vsBox.style.display = 'block';
-                document.getElementById('vs-round-label').textContent = `🏆 CLASS KNOCKOUT — ROUND ${data.round}`;
-                const meObj = data.players[localStudentId];
-                const myLabel = `${meObj ? meObj.avatar : '🏃'} ${sessionStudentName} (Rank #${myRank})`;
-                const oppLabel = oppId === 'TARGET_80'
-                    ? `🎯 Benchmark Target (80.0%)`
-                    : `${oppObj ? (oppObj.avatar || '🏃') + ' ' + oppObj.name : 'Opponent'} (Rank #${oppRank})`;
-                document.getElementById('vs-matchup-names').innerHTML = `${myLabel} <span style="color:#facc15; margin:0 10px;">VS</span> ${oppLabel}`;
-                document.getElementById('vs-song-label').textContent = `Song: ${currentSongTitle}`;
-
-                startCountdown(() => {
-                    vsBox.style.display = 'none';
-                    playSong();
-                });
-            }
-
-            // Show Side-by-Side Round Results when Round Completes
-            if (data.status === 'round_results' && data.round > koLastResultsRound) {
-                koLastResultsRound = data.round;
-                renderStudentKnockoutRoundResults(data, standings, myRank, oppId, oppObj);
-            }
-
-            // Show Final Class Podium when Tournament Finishes
-            if (data.status === 'finished' && !koFinalPodiumShown) {
-                koFinalPodiumShown = true;
-                renderStudentKnockoutFinalPodium(data, standings, myRank);
-            }
-        }
-
-        function pushStudentKnockoutProgress(isFinished = false) {
-            if (!isSwissKnockout || isKnockoutHost || !koRoomCode || !window.firebaseUpdate || !window.firebaseRef) return;
-            const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
-            const acc = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100) : 0;
-
-            const playerRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koRoomCode}/players/${localStudentId}`);
-            window.firebaseUpdate(playerRef, {
-                roundScore: parseFloat(acc.toFixed(1)),
-                roundFinished: isFinished,
-                roundStats: { ...gameStats }
-            });
-        }
-
-        function renderStudentKnockoutRoundResults(data, standings, myRank, oppId, oppObj) {
-            const me = data.players[localStudentId];
-            if (!me) return;
-
-            document.getElementById('game-results-modal-title').textContent = `🏆 Round ${data.round} Match Results`;
-            document.getElementById('badge-container').innerHTML = '';
-            document.getElementById('single-bar-graph').style.display = 'none';
-            document.getElementById('btn-battle-again').style.display = 'none';
-
-            const multiGraph = document.getElementById('multi-bar-graph');
-            multiGraph.innerHTML = '';
-            multiGraph.style.display = 'flex';
-
-            const buildBarCol = (label, avatar, stats, scoreVal, isWinner) => {
-                const tot = Math.max(1, (stats.perfect || 0) + (stats.earlyLate || 0) + (stats.miss || 0));
-                const gPct = ((stats.perfect || 0) / tot) * 100;
-                const oPct = ((stats.earlyLate || 0) / tot) * 100;
-                const rPct = ((stats.miss || 0) / tot) * 100;
-                const col = document.createElement('div');
-                col.className = 'multi-bar-column';
-                col.innerHTML = `
-                    <div class="rank-medal-badge" style="color:${isWinner ? '#22c55e' : '#facc15'};">${isWinner ? '👑 WIN' : ''} ${scoreVal.toFixed(1)}%</div>
-                    <div class="stacked-bar" style="${isWinner ? 'outline: 2px solid #22c55e;' : ''}">
-                        <div class="bar-part-red" style="height:${rPct}%;"></div>
-                        <div class="bar-part-orange" style="height:${oPct}%;"></div>
-                        <div class="bar-part-green" style="height:${gPct}%;"></div>
-                    </div>
-                    <span style="font-size:0.78rem; font-weight:800; color:#fff;">${avatar} ${label}</span>
-                `;
-                return col;
-            };
-
-            const myWon = me.lastRoundWon === true;
-            multiGraph.appendChild(buildBarCol(me.name, me.avatar || '🏃', me.roundStats || gameStats, me.roundScore || 0, myWon));
-
-            if (oppId === 'TARGET_80') {
-                multiGraph.appendChild(buildBarCol('Benchmark', '🎯', { perfect: 80, earlyLate: 0, miss: 20 }, 80.0, !myWon));
-            } else if (oppObj) {
-                multiGraph.appendChild(buildBarCol(oppObj.name, oppObj.avatar || '🏃', oppObj.roundStats || { perfect: 0, earlyLate: 0, miss: 0 }, oppObj.roundScore || 0, !myWon));
-            }
-
-            document.getElementById('game-summary-text').innerHTML = `
-                <div style="font-size:1.25rem; font-weight:900; color:${myWon ? '#22c55e' : '#f97316'}; margin-bottom:4px;">
-                    ${myWon ? '🎉 ROUND VICTORY! (+1 Win)' : '💪 TOUGH MATCH! Next round pairs you with a similar score.'}
-                </div>
-                <div style="font-size:0.85rem; color:#cbd5e1;">Wait here — your teacher will launch Round ${data.round + 1} shortly!</div>
-            `;
-            document.getElementById('game-rank-text').textContent = `Current Class Placing: #${myRank} of ${standings.length} (${me.wins || 0} Wins)`;
-            gameResultsModal.classList.add('open');
-        }
-
-        function renderStudentKnockoutFinalPodium(data, standings, myRank) {
-            const roundCount = Math.max(1, data.round || 1);
-            document.getElementById('game-results-modal-title').textContent = `🏆 Final Class Knockout Standings`;
-            document.getElementById('single-bar-graph').style.display = 'none';
-            document.getElementById('multi-bar-graph').style.display = 'none';
-            document.getElementById('btn-battle-again').style.display = 'none';
-
-            if (myRank === 1) {
-                document.getElementById('badge-container').innerHTML = `<div class="badge-box badge-gold">🥇 1st PLACE CLASS CHAMPION!</div>`;
-            } else if (myRank === 2) {
-                document.getElementById('badge-container').innerHTML = `<div class="badge-box badge-silver">🥈 2nd PLACE SILVER MEDALIST!</div>`;
-            } else if (myRank === 3) {
-                document.getElementById('badge-container').innerHTML = `<div class="badge-box badge-bronze">🥉 3rd PLACE BRONZE MEDALIST!</div>`;
-            } else {
-                document.getElementById('badge-container').innerHTML = '';
-            }
-
-            const rows = standings.map((p, idx) => {
-                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
-                const avgAcc = ((p.cumulativeAcc || 0) / roundCount).toFixed(1);
-                const isMe = p.id === localStudentId;
-                return `<tr style="${isMe ? 'background:#1e3a8a; font-weight:800;' : ''}">
-                    <td>${medal}</td>
-                    <td>${p.avatar || '🏃'} ${p.name}</td>
-                    <td>${p.wins || 0}W</td>
-                    <td style="color:#22c55e;">${avgAcc}%</td>
-                </tr>`;
-            }).join('');
-
-            document.getElementById('game-summary-text').innerHTML = `
-                <div style="max-height: 220px; overflow-y: auto; margin-top: 6px;">
-                    <table class="race-results-table">
-                        <thead>
-                            <tr><th>Place</th><th>Student</th><th>Wins</th><th>Avg Acc.</th></tr>
-                        </thead>
-                        <tbody>${rows}</tbody>
-                    </table>
-                </div>
-            `;
-            document.getElementById('game-rank-text').textContent = `Final Class Placing: #${myRank} of ${standings.length}`;
-            gameResultsModal.classList.add('open');
-            leaveSwissKnockout();
         }
 
         function openHostNamePrompt() {
@@ -3564,7 +2792,7 @@
             } else {
                 document.getElementById('host-song-selector-group').style.display = 'none';
             }
-            
+           
             document.getElementById('btn-confirm-sprint-action').onclick = () => {
                 const rawName = document.getElementById('sprint-player-name').value;
                 if (!rawName.trim()) {
@@ -3598,10 +2826,6 @@
             document.getElementById('client-waiting-group').style.display = 'none';
             document.getElementById('inline-name-error').style.display = 'none';
             document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
-
-            if (sessionStudentName && sessionStudentName !== 'Student') {
-                document.getElementById('sprint-player-name').value = sessionStudentName;
-            }
 
             document.getElementById('btn-confirm-sprint-action').onclick = () => {
                 const rawName = document.getElementById('sprint-player-name').value;
@@ -3695,28 +2919,6 @@
 
         async function showJoinSetup(racerName, roomCode) {
             sessionStudentName = racerName;
-
-            // Check if this roomCode is a Teacher Swiss Knockout Tournament in Firebase first
-            if (isSongBattle && window.firebaseDb && window.firebaseRef && window.firebaseOnValue) {
-                const checkRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${roomCode}`);
-                const isKnockoutRoom = await new Promise((resolve) => {
-                    let resolved = false;
-                    const unsub = window.firebaseOnValue(checkRef, (snap) => {
-                        if (!resolved) {
-                            resolved = true;
-                            unsub();
-                            resolve(snap.exists());
-                        }
-                    });
-                    setTimeout(() => { if (!resolved) { resolved = true; resolve(false); } }, 1500);
-                });
-
-                if (isKnockoutRoom) {
-                    joinSwissKnockoutStudent(racerName, roomCode);
-                    return;
-                }
-            }
-
             activeBattleRoomCode = roomCode;
 
             localPlayerIdRoom = 'p' + (Date.now() % 10000);
@@ -3728,7 +2930,7 @@
             for (let attempt = 1; attempt <= 3; attempt++) {
                 const url = `${APPS_SCRIPT_URL}?action=JOIN_ROOM&roomCode=${roomCode}&playerId=${localPlayerIdRoom}&playerName=${encodeURIComponent(racerName)}&avatar=${encodeURIComponent(playerAvatar)}&t=${Date.now()}`;
                 res = await sendJSONP(url);
-                
+               
                 if (res && !res.error) break;
                 await new Promise(r => setTimeout(r, 1000));
             }
@@ -3741,8 +2943,6 @@
             document.getElementById('code-input-group').style.display = 'none';
             document.getElementById('btn-confirm-sprint-action').style.display = 'none';
             document.getElementById('client-waiting-group').style.display = 'flex';
-            document.getElementById('client-lobby-status-title').textContent = `Connected to Host Room!`;
-            document.getElementById('client-lobby-wait-sub').textContent = `Waiting for host to press start...`;
             document.getElementById('status').textContent = `Connected to Host Code (${roomCode})! Waiting for start...`;
 
             startGoogleAppsScriptPolling(roomCode, false);
@@ -4052,7 +3252,7 @@
             if (battleResultsShown) return;
 
             const allPlayersFinished = playersList.every(p => p.finished === true || p.finished === "true");
-            
+           
             if (!allPlayersFinished) {
                 document.getElementById('status').textContent = ` Battle finished for you! Waiting for remaining players to complete...`;
                 return;
@@ -4142,7 +3342,7 @@
 
                 const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&class=${encodeURIComponent(studentClass)}&studentClass=${encodeURIComponent(studentClass)}&t=${Date.now()}`;
                 const res = await sendJSONP(url);
-                
+               
                 if (res && res.status === "SCORE_SUBMITTED") {
                     document.getElementById('status').textContent = `Score (${accuracyNum}) saved to Google Sheet for ${sessionStudentName}!`;
                 } else if (res && res.error) {
@@ -4181,7 +3381,7 @@
             if (parsedNote && expectedHurdleNote) {
                 const letter = parsedNote[1].toUpperCase();
                 const octave = parseInt(parsedNote[2], 10);
-                
+               
                 localPlayer.clearedHurdles = localPlayer.clearedHurdles || [];
 
                 if (!localPlayer.clearedHurdles.includes(nearHurdleIndex)) {
@@ -4190,9 +3390,9 @@
                         localPlayer.clearedHurdles.push(nearHurdleIndex);
                         localPlayer.pxProgress += 60;
                         sprintKeystrokeCount += 2;
-                        
+                       
                         updateMultiplayerLanesUI();
-                        
+                       
                         const avatarEl = document.getElementById(`avatar-${localPlayer.id}`);
                         if (avatarEl) {
                             avatarEl.textContent = '🤸';
@@ -4202,7 +3402,7 @@
                                 avatarEl.textContent = sessionStudentAvatar || '🏃';
                             }, 450);
                         }
-                        
+                       
                         document.getElementById('status').textContent = ` Jumped Hurdle ${expectedHurdleNote}!`;
                         spawnConfetti(canvas.width / 2, canvas.height / 2, '#22c55e');
                         pushPlayerState();
@@ -4260,7 +3460,7 @@
         function playErrorClackSound() {
             initAudio();
             const now = audioCtx.currentTime;
-            
+           
             const bufferSize = audioCtx.sampleRate * 0.04;
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const data = buffer.getChannelData(0);
@@ -4593,7 +3793,7 @@
             loopRangeLabel.textContent = `${start}% - ${end}% Region`;
         }
 
-      function buildCalibrationKeyboard() {
+        function buildCalibrationKeyboard() {
             const container = document.getElementById('calib-keyboard');
             container.innerHTML = '';
             for (let oct = 1; oct <= 6; oct++) {
@@ -4669,7 +3869,7 @@
             songList.push({ title: title, code: code, difficulty: 'Medium' });
             localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
             renderSongSelect();
-            
+           
             songSelect.value = code;
             currentSongTitle = title;
             currentSong = autoTransposeSong(parsed);
@@ -4689,7 +3889,7 @@
             } else {
                 document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
             }
-            
+           
             updateRosterSong();
             playSong();
         }
@@ -4713,12 +3913,12 @@
             }
         }
 
-        function resetGameStats() {
+    function resetGameStats() {
             gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
             currentPerfectStreak = 0;
         }
 
-        function updateGameStatus() {
+       function updateGameStatus() {
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
             const streakLabel = currentPerfectStreak >= 10 ? ` | 🔥 STREAK (${currentPerfectStreak})` : '';
@@ -4816,6 +4016,7 @@
             document.getElementById('bar-orange').style.height = `${orangePct}%`;
             document.getElementById('bar-red').style.height = `${redPct}%`;
 
+            // Record & render session progression graphs for this student + song
             const studentKey = (sessionStudentName || 'Student').trim().toLowerCase();
             const historyKey = `${studentKey}|||${currentSongTitle}`;
             if (!sessionSongHistory[historyKey]) {
@@ -4874,7 +4075,7 @@
 
             const currentSpeed = parseInt(speedSlider.value, 10);
             const badgeContainer = document.getElementById('badge-container');
-            
+           
             if (currentSpeed >= 100) {
                 badgeContainer.innerHTML = `<div class="badge-box badge-gold"> GOLD BADGE: Full Master Speed (${currentSpeed}%)</div>`;
             } else if (currentSpeed >= 75) {
@@ -4918,11 +4119,11 @@
                 recordedNotes = [];
                 recordedRests = [];
                 lastRecordNoteTime = 0;
-                
+               
                 recordBtnText.textContent = ' RECORDING (Click to Stop)';
                 btnRecord.classList.add('btn-rec-active');
                 btnShare.style.display = 'none';
-                
+               
                 document.getElementById('status').textContent = ' RECORDING ACTIVE... Play notes using your keyboard or mouse!';
             } else {
                 recordBtnText.textContent = 'Record';
@@ -4967,7 +4168,7 @@
                 return;
             }
 
-            if (e.code === 'Space') {
+           if (e.code === 'Space') {
                 e.preventDefault();
                 if (isRecording) {
                     toggleRecording();
@@ -4990,9 +4191,9 @@
 
         function toggleStepMode() {
             initAudio();
-            
-            if (isSongBattle || isClassKnockout) {
-                document.getElementById('status').textContent = ' Step Mode is NOT permitted during Song Battles or Class Knockouts!';
+           
+            if (isSongBattle) {
+                document.getElementById('status').textContent = ' Step Mode is NOT permitted during Song Battles!';
                 return;
             }
 
@@ -5003,7 +4204,7 @@
                 btnStep.classList.add('btn-step-active');
 
                 if (isGameMode) toggleGameMode();
-                
+               
                 if (!isPlaying) {
                     playSong();
                 } else {
@@ -5412,7 +4613,7 @@
                         gameStats.perfect++;
                         highlightKey(noteStr, 220, '#22c55e');
                         document.getElementById('status').textContent = ` Safe Dodge! Total Dodges: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
-                        
+                       
                         const safePos = keyPosMap[noteStr.toLowerCase().trim()];
                         if (safePos) spawnConfetti(safePos.left + safePos.width / 2, canvas.height, '#22c55e');
                     } else {
@@ -5462,7 +4663,7 @@
 
             if ((isGameMode || activeMiniGame === 'combo') && isPlaying && !isPaused) {
                 let effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
-                
+               
                 const target = noteTimeline.find(item =>
                     item.notes.some(n => n.toLowerCase().trim() === noteStr.toLowerCase().trim()) &&
                     item.gameStatus === 'pending' &&
@@ -5476,7 +4677,7 @@
                         gameStats.perfect++;
                         currentPerfectStreak++;
                         highlightKey(noteStr, 220, '#22c55e');
-                        
+                       
                         const normNote = noteStr.toLowerCase().trim();
                         const pos = keyPosMap[normNote];
                         if (pos) spawnConfetti(pos.left + pos.width / 2, canvas.height, '#22c55e');
@@ -5487,9 +4688,7 @@
                         highlightKey(noteStr, 220, '#f97316');
                     }
 
-                    if (isClassKnockout) {
-                        syncKnockoutLiveScore();
-                    } else if (isSongBattle) {
+                    if (isSongBattle) {
                         const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
@@ -5504,9 +4703,7 @@
                     playErrorClackSound();
                     highlightKey(noteStr, 200, '#ef4444');
 
-                    if (isClassKnockout) {
-                        syncKnockoutLiveScore();
-                    } else if (isSongBattle) {
+                    if (isSongBattle) {
                         const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
@@ -5550,7 +4747,7 @@
         function parseCSVToSongs(csvText) {
             const songs = [];
             const lines = csvText.split(/\r?\n/);
-            
+           
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
@@ -5587,40 +4784,39 @@
         }
 
         function renderSongSelect() {
-            const uniqueMap = new Map();
-            songList.forEach(s => {
-                const key = s.title.toLowerCase().trim();
-                if (!uniqueMap.has(key)) uniqueMap.set(key, s);
-            });
-            const sortedList = Array.from(uniqueMap.values());
-            sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
+    const uniqueMap = new Map();
+    songList.forEach(s => {
+        const key = s.title.toLowerCase().trim();
+        if (!uniqueMap.has(key)) uniqueMap.set(key, s);
+    });
+    const sortedList = Array.from(uniqueMap.values());
+    sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
 
-            songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
-            sortedList.forEach(song => {
-                const opt = document.createElement('option');
-                opt.value = song.code;
+    songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
+    sortedList.forEach(song => {
+        const opt = document.createElement('option');
+        opt.value = song.code;
 
-                let badge = '';
-                if (song.difficulty) {
-                    const diff = song.difficulty.toLowerCase().trim();
-                    if (diff === 'easy') {
-                        badge = '🟢 ';
-                        opt.style.color = '#22c55e';
-                    } else if (diff === 'medium') {
-                        badge = '🟠 ';
-                        opt.style.color = '#f97316';
-                    } else if (diff === 'hard') {
-                        badge = '🔴 ';
-                        opt.style.color = '#ef4444';
-                    }
-                    opt.dataset.diff = diff;
-                }
-
-                opt.textContent = badge + song.title;
-                songSelect.appendChild(opt);
-            });
+        let badge = '';
+        if (song.difficulty) {
+            const diff = song.difficulty.toLowerCase().trim();
+            if (diff === 'easy') {
+                badge = '🟢 ';
+                opt.style.color = '#22c55e';
+            } else if (diff === 'medium') {
+                badge = '🟠 ';
+                opt.style.color = '#f97316';
+            } else if (diff === 'hard') {
+                badge = '🔴 ';
+                opt.style.color = '#ef4444';
+            }
+            opt.dataset.diff = diff;
         }
 
+        opt.textContent = badge + song.title;
+        songSelect.appendChild(opt);
+    });
+}
         async function syncSongsWithGoogleSheet() {
             localStorage.removeItem('pianopad_sheet_songs');
 
@@ -5791,9 +4987,10 @@
 
         function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending') {
             ctx.save();
-            
+           
             const palette = themePalettes[currentTheme] || themePalettes.default;
 
+            // Pitch colour mapping (C: Red, D: Orange, E: Yellow, F: Green, G: Blue, A: Purple, B: Pink)
             const pitchColorMap = {
                 'c': '#ef4444',
                 'd': '#f97316',
@@ -5805,8 +5002,8 @@
             };
 
             const noteLetterMatch = (noteName || '').trim().toLowerCase().match(/^([a-g])/);
-            const defaultPitchColor = noteLetterMatch && pitchColorMap[noteLetterMatch[1]] 
-                ? pitchColorMap[noteLetterMatch[1]] 
+            const defaultPitchColor = noteLetterMatch && pitchColorMap[noteLetterMatch[1]]
+                ? pitchColorMap[noteLetterMatch[1]]
                 : palette.normal;
 
             let blockColor = defaultPitchColor;
@@ -5873,7 +5070,7 @@
                 const targetStepElapsed = (currentStepIndex < noteTimeline.length)
                     ? noteTimeline[currentStepIndex].hitTime
                     : (noteTimeline[noteTimeline.length - 1] ? noteTimeline[noteTimeline.length - 1].hitTime + 500 : 0);
-                
+               
                 smoothStepElapsed += (targetStepElapsed - smoothStepElapsed) * 0.15;
                 effectiveElapsed = smoothStepElapsed;
             } else {
@@ -5894,7 +5091,7 @@
                 if (effectiveElapsed >= loopEndMs) {
                     const currentSpeedVal = parseFloat(speedSlider.value);
                     const acceleratedSpeed = Math.min(500, Math.round(currentSpeedVal * 1.02));
-                    
+                   
                     if (acceleratedSpeed !== currentSpeedVal) {
                         updateSpeed(acceleratedSpeed, false);
                         buildTimeline();
@@ -6008,9 +5205,7 @@
                     item.gameStatus = 'miss';
                     gameStats.miss++;
                     currentPerfectStreak = 0;
-                    if (isClassKnockout) {
-                        syncKnockoutLiveScore();
-                    } else if (isSongBattle) {
+                    if (isSongBattle) {
                         const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
@@ -6031,6 +5226,7 @@
                         const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * waterfallHeight;
                         let blockHeight = (item.duration / currentFallSpeed) * waterfallHeight;
 
+                        // Check if a subsequent event shares this exact pitch
                         let nextSamePitchItem = null;
                         for (let k = itemIdx + 1; k < noteTimeline.length; k++) {
                             if (noteTimeline[k].notes.some(n => n.toLowerCase().trim() === normNote)) {
@@ -6039,6 +5235,7 @@
                             }
                         }
 
+                        // Enforce at least 6px clear separation before the next rectangle of identical pitch
                         if (nextSamePitchItem) {
                             const timeGap = nextSamePitchItem.hitTime - item.hitTime;
                             const distanceToNext = (timeGap / currentFallSpeed) * waterfallHeight;
@@ -6087,10 +5284,7 @@
                     isPlaying = false;
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                    if (isClassKnockout) {
-                        submitKnockoutRoundFinish();
-                        return;
-                    } else if (isSongBattle) {
+                    if (isSongBattle) {
                         const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
                         if (localPlayer) {
                             localPlayer.finished = true;
@@ -6286,6 +5480,7 @@
 
             const fullClassCode = (yearVal === '7' || yearVal === '8') ? `${yearVal}${letterVal}` : `Year${yearVal}`;
             const studentName = (sessionStudentName || localStorage.getItem('pianopad_name') || 'Student').replace(/\s+/g, '');
+           
             const avatar = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || '';
 
             const fullFormattedName = `${fullClassCode}_${pendingExportFileName}_${studentName}_${avatar}`;
@@ -6498,794 +5693,8 @@
             return new Blob([outBuffer], { type: 'audio/wav' });
         }
 
-        // =========================================================================
-        // SWISS-SYSTEM CLASS KNOCKOUT TOURNAMENT ENGINE (FIREBASE RTDB + GAS)
-        // =========================================================================
-        let isClassKnockout = false;
-        let isKnockoutHost = false;
-        let knockoutRoomCode = "";
-        let knockoutUnsubscribe = null;
-        let knockoutLastRoundStarted = 0;
-        let knockoutLastRoundFinished = 0;
-        let knockoutDataCache = null;
-        let knockoutLiveSyncTimer = null;
-
-        function initSwissTournamentUI() {
-            // 1. Inject Teacher "Host Class Knockout" option into existing #sprint-option-modal
-            const menuBtns = document.getElementById('sprint-menu-buttons');
-            if (menuBtns && !document.getElementById('btn-host-knockout-opt')) {
-                const btnKo = document.createElement('button');
-                btnKo.type = 'button';
-                btnKo.id = 'btn-host-knockout-opt';
-                btnKo.className = 'btn-teacher';
-                btnKo.style.justifyContent = 'center';
-                btnKo.innerHTML = '🏆 Host Class Knockout (Teacher)';
-                btnKo.onclick = openTeacherKnockoutSetup;
-                menuBtns.appendChild(btnKo);
-            }
-
-            // 2. Inject Swiss Class Knockout Teacher Bracket & Student Lobby Modal
-            if (!document.getElementById('knockout-modal')) {
-                const koModal = document.createElement('div');
-                koModal.id = 'knockout-modal';
-                koModal.className = 'modal-overlay';
-                koModal.style.zIndex = '350';
-                koModal.innerHTML = `
-                    <div class="modal" style="max-width: 780px; width: 95%; max-height: 90vh; overflow-y: auto; border: 2px solid #a855f7;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #374151; padding-bottom:10px;">
-                            <h2 id="ko-modal-title" style="color:#facc15; margin:0;">🏆 Class Swiss Knockout Tournament</h2>
-                            <span id="ko-room-badge" style="background:#4f46e5; color:#fff; padding:4px 12px; border-radius:6px; font-weight:800; font-size:0.95rem;">Code: ---</span>
-                        </div>
-
-                        <!-- Teacher Host View -->
-                        <div id="ko-teacher-panel" style="display:none; flex-direction:column; gap:12px;">
-                            <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:#0b0f19; padding:10px; border-radius:8px; border:1px solid #374151;">
-                                <div style="flex:1; min-width:200px;">
-                                    <label style="font-size:0.72rem; color:#9ca3af; font-weight:700; display:block; margin-bottom:4px;">SELECT SONG FOR NEXT ROUND:</label>
-                                    <select id="ko-song-select" style="width:100%; max-width:100%;"></select>
-                                </div>
-                                <div style="display:flex; gap:8px; align-items:flex-end;">
-                                    <button type="button" id="btn-ko-start-round" class="btn-success" style="padding:8px 14px; font-size:0.85rem;">▶ Start Round 1</button>
-                                    <button type="button" id="btn-ko-force-end" class="btn-warning" style="display:none; padding:8px 12px; font-size:0.82rem;">⚡ Force End Round</button>
-                                    <button type="button" id="btn-ko-finish-tourney" class="btn-arcade" style="display:none; padding:8px 12px; font-size:0.82rem;">🏅 End & Podium</button>
-                                </div>
-                            </div>
-
-                            <div id="ko-status-banner" style="font-size:0.85rem; color:#38bdf8; font-weight:700; text-align:center;">
-                                Waiting for students to join using Room Code above...
-                            </div>
-
-                            <div id="ko-bracket-container" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px; max-height:320px; overflow-y:auto;"></div>
-
-                            <div id="ko-standings-container" style="background:#0b0f19; border:1px solid #374151; border-radius:8px; padding:10px; max-height:200px; overflow-y:auto;"></div>
-                        </div>
-
-                        <!-- Student Waiting / Standings View -->
-                        <div id="ko-student-panel" style="display:none; flex-direction:column; gap:12px; text-align:center;">
-                            <div id="ko-student-status" style="font-size:1rem; color:#22c55e; font-weight:800;">
-                                Connected to Class Knockout! Waiting for Teacher to start Round 1...
-                            </div>
-                            <div id="ko-student-pairing-box" style="background:#0b0f19; border:1px solid #374151; border-radius:8px; padding:12px; font-size:0.9rem;"></div>
-                            <div id="ko-student-standings" style="background:#0b0f19; border:1px solid #374151; border-radius:8px; padding:10px; max-height:240px; overflow-y:auto; text-align:left;"></div>
-                        </div>
-
-                        <div class="modal-footer" style="justify-content:space-between; border-top:1px solid #374151; padding-top:10px;">
-                            <span style="font-size:0.75rem; color:#9ca3af;">Swiss Placement Ladder • Zero Elimination • Everyone plays every round</span>
-                            <button type="button" class="btn-danger" onclick="leaveClassKnockout()">Exit Tournament</button>
-                        </div>
-                    </div>
-                `;
-                document.body.appendChild(koModal);
-
-                document.getElementById('btn-ko-start-round').addEventListener('click', startNextKnockoutRound);
-                document.getElementById('btn-ko-force-end').addEventListener('click', forceEndKnockoutRound);
-                document.getElementById('btn-ko-finish-tourney').addEventListener('click', finalizeClassKnockout);
-            }
-
-            // 3. Inject Pre-Round "VS" Matchup Overlay Banner
-            if (!document.getElementById('ko-vs-overlay')) {
-                const vsOverlay = document.createElement('div');
-                vsOverlay.id = 'ko-vs-overlay';
-                vsOverlay.className = 'countdown-overlay';
-                vsOverlay.style.zIndex = '250';
-                vsOverlay.innerHTML = `
-                    <div style="background:#1f1f2e; border:3px solid #facc15; border-radius:16px; padding:28px 36px; text-align:center; max-width:560px; width:90%; box-shadow:0 0 40px rgba(250,204,21,0.5);">
-                        <div id="ko-vs-round-label" style="color:#ec4899; font-weight:900; font-size:1.1rem; letter-spacing:0.08em; text-transform:uppercase;">ROUND 1 MATCHUP</div>
-                        <div style="display:flex; align-items:center; justify-content:space-around; gap:16px; margin:20px 0;">
-                            <div style="flex:1;">
-                                <div id="ko-vs-p1-avatar" style="font-size:3.2rem;">🏃</div>
-                                <div id="ko-vs-p1-name" style="font-size:1.15rem; font-weight:800; color:#fff; margin-top:4px;">You</div>
-                                <div id="ko-vs-p1-rank" style="font-size:0.8rem; color:#38bdf8; font-weight:700;">Rank #1</div>
-                            </div>
-                            <div style="font-size:2.4rem; font-weight:900; color:#facc15; text-shadow:0 0 15px #facc15;">VS</div>
-                            <div style="flex:1;">
-                                <div id="ko-vs-p2-avatar" style="font-size:3.2rem;">🤖</div>
-                                <div id="ko-vs-p2-name" style="font-size:1.15rem; font-weight:800; color:#fff; margin-top:4px;">Opponent</div>
-                                <div id="ko-vs-p2-rank" style="font-size:0.8rem; color:#f97316; font-weight:700;">Rank #2</div>
-                            </div>
-                        </div>
-                        <div id="ko-vs-song-label" style="font-size:0.9rem; color:#cbd5e1; font-weight:700;">Song: Wipeout</div>
-                    </div>
-                `;
-                document.body.appendChild(vsOverlay);
-            }
-        }
-
-        // Enhance openSongBattleSelector to surface the Teacher Knockout button & Firebase join check
-        const _origOpenSongBattleSelector = openSongBattleSelector;
-        openSongBattleSelector = function() {
-            initSwissTournamentUI();
-            _origOpenSongBattleSelector();
-            const btnKo = document.getElementById('btn-host-knockout-opt');
-            if (btnKo) btnKo.style.display = 'inline-flex';
-        };
-
-        const _origOpenSprintModeSelector = openSprintModeSelector;
-        openSprintModeSelector = function() {
-            initSwissTournamentUI();
-            _origOpenSprintModeSelector();
-            const btnKo = document.getElementById('btn-host-knockout-opt');
-            if (btnKo) btnKo.style.display = 'none';
-        };
-
-        // Intercept showJoinSetup when in Song Battle mode to check Firebase RTDB for a Class Knockout first
-        const _origShowJoinSetup = showJoinSetup;
-        showJoinSetup = async function(racerName, roomCode) {
-            if (isSongBattle && window.firebaseDb) {
-                try {
-                    const { get, child } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-                    const snap = await get(child(window.firebaseRef(window.firebaseDb), `pianopad_tournaments/${roomCode}`));
-                    if (snap.exists()) {
-                        closeSprintOptionModal();
-                        joinClassKnockoutStudent(racerName, roomCode);
-                        return;
-                    }
-                } catch (e) {
-                    console.warn("Tournament room check fallback to standard battle:", e);
-                }
-            }
-            return _origShowJoinSetup(racerName, roomCode);
-        };
-
-        async function openTeacherKnockoutSetup() {
-            const pass = prompt("Enter Teacher Password to Host Class Knockout:");
-            if (pass !== "Rocky") {
-                if (pass !== null) alert("Incorrect Teacher Password!");
-                return;
-            }
-
-            if (!window.firebaseDb) {
-                alert("Firebase Realtime Database is not connected yet. Please wait a moment and try again.");
-                return;
-            }
-
-            closeSprintOptionModal();
-            initSwissTournamentUI();
-
-            isClassKnockout = true;
-            isKnockoutHost = true;
-            isSongBattle = true;
-            knockoutLastRoundStarted = 0;
-            knockoutLastRoundFinished = 0;
-            knockoutRoomCode = '' + Math.floor(100 + Math.random() * 900);
-
-            // Populate song dropdown inside Knockout modal
-            const koSongSel = document.getElementById('ko-song-select');
-            koSongSel.innerHTML = '';
-            songList.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.code;
-                opt.textContent = s.title;
-                if (s.title === currentSongTitle) opt.selected = true;
-                koSongSel.appendChild(opt);
-            });
-
-            document.getElementById('ko-room-badge').textContent = `Join Code: ${knockoutRoomCode}`;
-            document.getElementById('ko-teacher-panel').style.display = 'flex';
-            document.getElementById('ko-student-panel').style.display = 'none';
-            document.getElementById('btn-ko-start-round').style.display = 'inline-flex';
-            document.getElementById('btn-ko-start-round').textContent = '▶ Start Round 1 (Random Draw)';
-            document.getElementById('btn-ko-force-end').style.display = 'none';
-            document.getElementById('btn-ko-finish-tourney').style.display = 'none';
-            document.getElementById('knockout-modal').classList.add('open');
-
-            const tourneyRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}`);
-            await window.firebaseSet(tourneyRef, {
-                roomCode: knockoutRoomCode,
-                status: 'lobby',
-                round: 0,
-                songTitle: currentSongTitle,
-                songCode: songSelect.value || (songList[0] ? songList[0].code : ''),
-                createdAt: Date.now(),
-                players: {},
-                pairings: {}
-            });
-            window.firebaseOnDisconnect(tourneyRef).remove();
-
-            attachKnockoutListener(knockoutRoomCode);
-        }
-
-        async function joinClassKnockoutStudent(studentName, roomCode) {
-            initSwissTournamentUI();
-            isClassKnockout = true;
-            isKnockoutHost = false;
-            isSongBattle = true;
-            knockoutRoomCode = roomCode;
-            knockoutLastRoundStarted = 0;
-            knockoutLastRoundFinished = 0;
-            sessionStudentName = studentName;
-
-            const avatar = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || '🏃';
-            const studentClass = currentStudentClass || localStorage.getItem('pianopad_class') || '';
-
-            const playerRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${roomCode}/players/${localStudentId}`);
-            await window.firebaseSet(playerRef, {
-                id: localStudentId,
-                name: studentName,
-                avatar: avatar,
-                studentClass: studentClass,
-                wins: 0,
-                losses: 0,
-                totalAcc: 0,
-                roundsPlayed: 0,
-                opponents: [],
-                currentScore: 0,
-                finishedRound: 0,
-                lastStats: { perfect: 0, earlyLate: 0, miss: 0 }
-            });
-            window.firebaseOnDisconnect(playerRef).remove();
-
-            document.getElementById('ko-room-badge').textContent = `Room: ${roomCode}`;
-            document.getElementById('ko-teacher-panel').style.display = 'none';
-            document.getElementById('ko-student-panel').style.display = 'flex';
-            document.getElementById('knockout-modal').classList.add('open');
-
-            attachKnockoutListener(roomCode);
-        }
-
-        async function attachKnockoutListener(roomCode) {
-            if (knockoutUnsubscribe) {
-                knockoutUnsubscribe();
-                knockoutUnsubscribe = null;
-            }
-            const { onValue } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-            const tourneyRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${roomCode}`);
-
-            knockoutUnsubscribe = onValue(tourneyRef, (snapshot) => {
-                const data = snapshot.val();
-                if (!data) {
-                    if (isClassKnockout) {
-                        alert("The teacher has closed the Class Knockout tournament.");
-                        leaveClassKnockout();
-                    }
-                    return;
-                }
-                knockoutDataCache = data;
-                if (isKnockoutHost) {
-                    handleKnockoutHostUpdate(data);
-                } else {
-                    handleKnockoutStudentUpdate(data);
-                }
-            });
-        }
-
-        function getRankedKnockoutPlayers(playersObj) {
-            const arr = Object.values(playersObj || {});
-            arr.sort((a, b) => {
-                if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0);
-                return (b.totalAcc || 0) - (a.totalAcc || 0);
-            });
-            return arr;
-        }
-
-        function buildStandingsHTML(rankedPlayers) {
-            if (rankedPlayers.length === 0) {
-                return `<div style="color:#9ca3af; font-size:0.8rem; text-align:center; padding:8px;">No students joined yet...</div>`;
-            }
-            let rows = rankedPlayers.map((p, idx) => {
-                const rankBadge = idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `#${idx + 1}`;
-                const avgAcc = p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0';
-                return `
-                    <tr style="${p.id === localStudentId ? 'background:rgba(56,189,248,0.15);' : ''}">
-                        <td style="font-weight:800; color:#facc15;">${rankBadge}</td>
-                        <td style="font-weight:700;">${p.avatar || '🏃'} ${p.name}</td>
-                        <td style="color:#22c55e; font-weight:800;">${p.wins || 0}W - ${p.losses || 0}L</td>
-                        <td style="color:#38bdf8; font-weight:700;">${avgAcc}% avg</td>
-                    </tr>
-                `;
-            }).join('');
-
-            return `
-                <div style="font-size:0.75rem; font-weight:800; color:#facc15; margin-bottom:6px; text-transform:uppercase;">Live Class Standings (${rankedPlayers.length} Players)</div>
-                <table class="race-results-table" style="margin-top:0;">
-                    <thead>
-                        <tr><th>Place</th><th>Student</th><th>Record</th><th>Avg Acc</th></tr>
-                    </thead>
-                    <tbody>${rows}</tbody>
-                </table>
-            `;
-        }
-
-        // Swiss-System Pairing Engine: Round 1 Random, Round 2+ Adjacent Rank Pairing without Repeats
-        function generateSwissPairings(playersObj, roundNum) {
-            const players = Object.values(playersObj || {});
-            let ordered = [];
-
-            if (roundNum === 1) {
-                ordered = [...players].sort(() => Math.random() - 0.5);
-            } else {
-                ordered = getRankedKnockoutPlayers(playersObj);
-                // Prevent repeat matchups by swapping adjacent slots when possible
-                for (let i = 0; i < ordered.length - 1; i += 2) {
-                    const p1 = ordered[i];
-                    const p2 = ordered[i + 1];
-                    const p1History = Array.isArray(p1.opponents) ? p1.opponents : Object.values(p1.opponents || {});
-                    if (p1History.includes(p2.id) && i + 2 < ordered.length) {
-                        const temp = ordered[i + 1];
-                        ordered[i + 1] = ordered[i + 2];
-                        ordered[i + 2] = temp;
-                    }
-                }
-            }
-
-            const pairings = {};
-            let matchIdx = 1;
-            for (let i = 0; i < ordered.length; i += 2) {
-                if (i + 1 < ordered.length) {
-                    pairings[`m${matchIdx}`] = {
-                        matchId: `m${matchIdx}`,
-                        p1: ordered[i].id,
-                        p2: ordered[i + 1].id,
-                        isGhostMatch: false,
-                        targetScore: 0
-                    };
-                } else {
-                    // Odd number of players: "Beat the Benchmark" Target Match (≥80% = win)
-                    pairings[`m${matchIdx}`] = {
-                        matchId: `m${matchIdx}`,
-                        p1: ordered[i].id,
-                        p2: 'BENCHMARK_80',
-                        isGhostMatch: true,
-                        targetScore: 80
-                    };
-                }
-                matchIdx++;
-            }
-            return pairings;
-        }
-
-        async function startNextKnockoutRound() {
-            if (!isKnockoutHost || !knockoutDataCache) return;
-            const playersObj = knockoutDataCache.players || {};
-            const playerIds = Object.keys(playersObj);
-
-            if (playerIds.length < 2) {
-                alert("At least 2 students must join the room before starting Round 1!");
-                return;
-            }
-
-            const nextRound = (knockoutDataCache.round || 0) + 1;
-            const koSongSel = document.getElementById('ko-song-select');
-            const selectedCode = koSongSel.value;
-            const selectedTitle = koSongSel.selectedOptions[0] ? koSongSel.selectedOptions[0].text : currentSongTitle;
-
-            const pairings = generateSwissPairings(playersObj, nextRound);
-            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-
-            const updates = {
-                status: 'playing',
-                round: nextRound,
-                songTitle: selectedTitle,
-                songCode: selectedCode,
-                pairings: pairings
-            };
-
-            playerIds.forEach(pid => {
-                updates[`players/${pid}/currentScore`] = 0;
-                updates[`players/${pid}/finishedRound`] = 0;
-                updates[`players/${pid}/lastStats`] = { perfect: 0, earlyLate: 0, miss: 0 };
-            });
-
-            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}`), updates);
-        }
-
-        function handleKnockoutHostUpdate(data) {
-            const playersObj = data.players || {};
-            const ranked = getRankedKnockoutPlayers(playersObj);
-            document.getElementById('ko-standings-container').innerHTML = buildStandingsHTML(ranked);
-
-            const bracketDiv = document.getElementById('ko-bracket-container');
-            const statusBanner = document.getElementById('ko-status-banner');
-            const btnStart = document.getElementById('btn-ko-start-round');
-            const btnForce = document.getElementById('btn-ko-force-end');
-            const btnFinish = document.getElementById('btn-ko-finish-tourney');
-
-            if (data.status === 'lobby') {
-                statusBanner.textContent = `Lobby Open (${ranked.length} students connected). Select Round 1 song & click Start!`;
-                bracketDiv.innerHTML = ranked.map(p => `
-                    <div class="lobby-player-card"><span>${p.avatar || '🏃'}</span><span>${p.name} (${p.studentClass || 'Class'})</span></div>
-                `).join('');
-                return;
-            }
-
-            if (data.status === 'playing') {
-                btnStart.style.display = 'none';
-                btnForce.style.display = 'inline-flex';
-                btnFinish.style.display = 'none';
-
-                const pairings = Object.values(data.pairings || {});
-                let allDone = true;
-
-                bracketDiv.innerHTML = pairings.map((m, idx) => {
-                    const p1 = playersObj[m.p1];
-                    if (!p1) return '';
-                    const p1Done = p1.finishedRound === data.round;
-                    const p1Status = p1Done ? `✅ ${Number(p1.currentScore || 0).toFixed(1)}%` : `🎹 ${Number(p1.currentScore || 0).toFixed(1)}%...`;
-
-                    if (m.isGhostMatch) {
-                        if (!p1Done) allDone = false;
-                        return `
-                            <div style="background:#141824; border:1px solid #8b5cf6; border-radius:8px; padding:10px;">
-                                <div style="font-size:0.72rem; color:#c084fc; font-weight:800;">MATCH ${idx + 1} • BENCHMARK CHALLENGE</div>
-                                <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; font-weight:700;">
-                                    <span>${p1.avatar} ${p1.name}</span>
-                                    <span style="color:${p1Done ? '#22c55e' : '#facc15'};">${p1Status}</span>
-                                </div>
-                                <div style="font-size:0.75rem; color:#9ca3af; margin-top:4px;">Target to Win: ≥ 80.0% Accuracy</div>
-                            </div>
-                        `;
-                    }
-
-                    const p2 = playersObj[m.p2];
-                    const p2Done = p2 ? (p2.finishedRound === data.round) : true;
-                    if (!p1Done || !p2Done) allDone = false;
-                    const p2Status = p2 ? (p2Done ? `✅ ${Number(p2.currentScore || 0).toFixed(1)}%` : `🎹 ${Number(p2.currentScore || 0).toFixed(1)}%...`) : 'Disconnected';
-
-                    return `
-                        <div style="background:#141824; border:1px solid #374151; border-radius:8px; padding:10px;">
-                            <div style="font-size:0.72rem; color:#38bdf8; font-weight:800;">TABLE ${idx + 1} • ROUND ${data.round}</div>
-                            <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; font-weight:700;">
-                                <span>${p1.avatar} ${p1.name}</span>
-                                <span style="color:${p1Done ? '#22c55e' : '#facc15'};">${p1Status}</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; margin-top:4px; font-size:0.85rem; font-weight:700;">
-                                <span>${p2 ? p2.avatar + ' ' + p2.name : '---'}</span>
-                                <span style="color:${p2Done ? '#22c55e' : '#facc15'};">${p2Status}</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-
-                statusBanner.textContent = `Round ${data.round} in progress (${data.songTitle}) — Waiting for all matches to finish...`;
-
-                if (allDone && pairings.length > 0 && knockoutLastRoundFinished !== data.round) {
-                    knockoutLastRoundFinished = data.round;
-                    scoreAndConcludeKnockoutRound(data);
-                }
-            } else if (data.status === 'round_results') {
-                btnForce.style.display = 'none';
-                btnStart.style.display = 'inline-flex';
-                btnStart.textContent = `▶ Start Round ${data.round + 1} (Swiss Matched)`;
-                btnFinish.style.display = 'inline-flex';
-                statusBanner.textContent = `Round ${data.round} Complete! Students paired by similar accuracy for Round ${data.round + 1}.`;
-            } else if (data.status === 'finished') {
-                btnStart.style.display = 'none';
-                btnForce.style.display = 'none';
-                btnFinish.style.display = 'none';
-                statusBanner.textContent = `🏆 Tournament Complete! Final Class Placings Logged to Leaderboard.`;
-            }
-        }
-
-        async function forceEndKnockoutRound() {
-            if (!isKnockoutHost || !knockoutDataCache) return;
-            if (knockoutLastRoundFinished === knockoutDataCache.round) return;
-            knockoutLastRoundFinished = knockoutDataCache.round;
-            await scoreAndConcludeKnockoutRound(knockoutDataCache);
-        }
-
-        async function scoreAndConcludeKnockoutRound(data) {
-            const playersObj = data.players || {};
-            const pairings = Object.values(data.pairings || {});
-            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-
-            const updates = {
-                status: 'round_results'
-            };
-
-            pairings.forEach(m => {
-                const p1 = playersObj[m.p1];
-                if (!p1) return;
-                const s1 = Number(p1.currentScore || 0);
-
-                if (m.isGhostMatch) {
-                    const won = s1 >= (m.targetScore || 80);
-                    updates[`players/${p1.id}/wins`] = (p1.wins || 0) + (won ? 1 : 0);
-                    updates[`players/${p1.id}/losses`] = (p1.losses || 0) + (won ? 0 : 1);
-                    updates[`players/${p1.id}/totalAcc`] = (p1.totalAcc || 0) + s1;
-                    updates[`players/${p1.id}/roundsPlayed`] = (p1.roundsPlayed || 0) + 1;
-                    updates[`players/${p1.id}/lastMatchResult`] = {
-                        round: data.round,
-                        won: won,
-                        myScore: s1,
-                        oppName: '80% Benchmark',
-                        oppAvatar: '🎯',
-                        oppScore: 80,
-                        oppStats: { perfect: 8, earlyLate: 0, miss: 2 }
-                    };
-                } else {
-                    const p2 = playersObj[m.p2];
-                    if (!p2) return;
-                    const s2 = Number(p2.currentScore || 0);
-                    const p1Won = s1 >= s2;
-
-                    const p1Opps = Array.isArray(p1.opponents) ? [...p1.opponents] : Object.values(p1.opponents || {});
-                    const p2Opps = Array.isArray(p2.opponents) ? [...p2.opponents] : Object.values(p2.opponents || {});
-                    if (!p1Opps.includes(p2.id)) p1Opps.push(p2.id);
-                    if (!p2Opps.includes(p1.id)) p2Opps.push(p1.id);
-
-                    updates[`players/${p1.id}/wins`] = (p1.wins || 0) + (p1Won ? 1 : 0);
-                    updates[`players/${p1.id}/losses`] = (p1.losses || 0) + (p1Won ? 0 : 1);
-                    updates[`players/${p1.id}/totalAcc`] = (p1.totalAcc || 0) + s1;
-                    updates[`players/${p1.id}/roundsPlayed`] = (p1.roundsPlayed || 0) + 1;
-                    updates[`players/${p1.id}/opponents`] = p1Opps;
-                    updates[`players/${p1.id}/lastMatchResult`] = {
-                        round: data.round,
-                        won: p1Won,
-                        myScore: s1,
-                        oppName: p2.name,
-                        oppAvatar: p2.avatar || '🏃',
-                        oppScore: s2,
-                        oppStats: p2.lastStats || { perfect: 0, earlyLate: 0, miss: 0 }
-                    };
-
-                    updates[`players/${p2.id}/wins`] = (p2.wins || 0) + (!p1Won ? 1 : 0);
-                    updates[`players/${p2.id}/losses`] = (p2.losses || 0) + (!p1Won ? 0 : 1);
-                    updates[`players/${p2.id}/totalAcc`] = (p2.totalAcc || 0) + s2;
-                    updates[`players/${p2.id}/roundsPlayed`] = (p2.roundsPlayed || 0) + 1;
-                    updates[`players/${p2.id}/opponents`] = p2Opps;
-                    updates[`players/${p2.id}/lastMatchResult`] = {
-                        round: data.round,
-                        won: !p1Won,
-                        myScore: s2,
-                        oppName: p1.name,
-                        oppAvatar: p1.avatar || '🏃',
-                        oppScore: s1,
-                        oppStats: p1.lastStats || { perfect: 0, earlyLate: 0, miss: 0 }
-                    };
-                }
-            });
-
-            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}`), updates);
-        }
-
-        async function finalizeClassKnockout() {
-            if (!isKnockoutHost || !knockoutDataCache) return;
-            const ranked = getRankedKnockoutPlayers(knockoutDataCache.players || {});
-
-            // Batch-log final class placings to Google Apps Script (SUBMIT_BATTLE)
-            const battlePayload = ranked.map(p => {
-                const avgAcc = p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0';
-                return {
-                    name: p.name,
-                    score: avgAcc
-                };
-            });
-
-            currentSongTitle = `Class Knockout (${knockoutDataCache.songTitle || 'Tournament'})`;
-            await postBattleToSpreadsheet(battlePayload);
-
-            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}`), {
-                status: 'finished'
-            });
-        }
-
-        function handleKnockoutStudentUpdate(data) {
-            const playersObj = data.players || {};
-            const ranked = getRankedKnockoutPlayers(playersObj);
-            const myRankIdx = ranked.findIndex(p => p.id === localStudentId);
-            const myPlaceText = myRankIdx >= 0 ? `Rank #${myRankIdx + 1} of ${ranked.length}` : 'Unranked';
-
-            document.getElementById('ko-student-standings').innerHTML = buildStandingsHTML(ranked);
-
-            if (data.status === 'playing' && knockoutLastRoundStarted !== data.round) {
-                knockoutLastRoundStarted = data.round;
-
-                // Load round song
-                if (data.songCode) {
-                    currentSongTitle = data.songTitle;
-                    songSelect.value = data.songCode;
-                    const parsed = parsePianoPad(data.songCode);
-                    if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
-                }
-
-                // Find my pairing
-                const pairings = Object.values(data.pairings || {});
-                const myMatch = pairings.find(m => m.p1 === localStudentId || m.p2 === localStudentId);
-                let oppName = 'Class Opponent';
-                let oppAvatar = '🤖';
-                let oppRankText = 'Challenger';
-
-                if (myMatch) {
-                    if (myMatch.isGhostMatch) {
-                        oppName = '80% Benchmark';
-                        oppAvatar = '🎯';
-                        oppRankText = 'Target Score';
-                    } else {
-                        const oppId = myMatch.p1 === localStudentId ? myMatch.p2 : myMatch.p1;
-                        const oppObj = playersObj[oppId];
-                        if (oppObj) {
-                            oppName = oppObj.name;
-                            oppAvatar = oppObj.avatar || '🏃';
-                            const oppIdx = ranked.findIndex(p => p.id === oppId);
-                            oppRankText = oppIdx >= 0 ? `Rank #${oppIdx + 1}` : 'Challenger';
-                        }
-                    }
-                }
-
-                // Hide modals, show 3-second "VS" Matchup Card, then Countdown -> Play!
-                document.getElementById('knockout-modal').classList.remove('open');
-                gameResultsModal.classList.remove('open');
-                arcadeHub.classList.remove('open');
-
-                document.getElementById('ko-vs-round-label').textContent = `ROUND ${data.round} MATCHUP`;
-                document.getElementById('ko-vs-p1-avatar').textContent = sessionStudentAvatar || '🏃';
-                document.getElementById('ko-vs-p1-name').textContent = sessionStudentName || 'You';
-                document.getElementById('ko-vs-p1-rank').textContent = myPlaceText;
-                document.getElementById('ko-vs-p2-avatar').textContent = oppAvatar;
-                document.getElementById('ko-vs-p2-name').textContent = oppName;
-                document.getElementById('ko-vs-p2-rank').textContent = oppRankText;
-                document.getElementById('ko-vs-song-label').textContent = `Song: ${data.songTitle}`;
-
-                const vsOverlay = document.getElementById('ko-vs-overlay');
-                vsOverlay.style.display = 'flex';
-
-                setTimeout(() => {
-                    vsOverlay.style.display = 'none';
-                    isStepMode = false;
-                    btnStep.textContent = 'Step Mode';
-                    btnStep.classList.remove('btn-step-active');
-                    btnStep.classList.add('btn-step');
-
-                    isGameMode = true;
-                    btnGame.textContent = 'Game Mode: ON';
-                    btnGame.classList.add('btn-game-active');
-
-                    resetGameStats();
-                    startCountdown(() => { playSong(); });
-                }, 2800);
-
-            } else if (data.status === 'round_results') {
-                const me = playersObj[localStudentId];
-                if (me && me.lastMatchResult && me.lastMatchResult.round === data.round && knockoutLastRoundFinished !== data.round) {
-                    knockoutLastRoundFinished = data.round;
-                    renderKnockoutPostRoundComparison(me, me.lastMatchResult, myPlaceText);
-                }
-            } else if (data.status === 'finished') {
-                gameResultsModal.classList.remove('open');
-                document.getElementById('ko-student-status').innerHTML = `🏆 TOURNAMENT COMPLETE! Final Placing: <span style="color:#facc15;">${myPlaceText}</span>`;
-                document.getElementById('ko-student-pairing-box').innerHTML = `Great job competing in all rounds! Review the final class podium below.`;
-                document.getElementById('knockout-modal').classList.add('open');
-                loadStudentTickerStats(sessionStudentName);
-            }
-        }
-
-        function syncKnockoutLiveScore() {
-            if (!isClassKnockout || !knockoutRoomCode || !window.firebaseDb) return;
-            const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
-            const acc = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100) : 100;
-
-            clearTimeout(knockoutLiveSyncTimer);
-            knockoutLiveSyncTimer = setTimeout(async () => {
-                const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-                await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}/players/${localStudentId}`), {
-                    currentScore: Number(acc.toFixed(1)),
-                    lastStats: { ...gameStats }
-                });
-            }, 350);
-        }
-
-        async function submitKnockoutRoundFinish() {
-            if (!isClassKnockout || !knockoutRoomCode || !window.firebaseDb) return;
-            const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
-            const acc = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100) : 0;
-            const roundNum = knockoutDataCache ? knockoutDataCache.round : 1;
-
-            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}/players/${localStudentId}`), {
-                currentScore: Number(acc.toFixed(1)),
-                finishedRound: roundNum,
-                lastStats: { ...gameStats }
-            });
-
-            document.getElementById('ko-student-status').textContent = `✅ Round ${roundNum} Finished (${acc.toFixed(1)}%)! Waiting for remaining classmates...`;
-            document.getElementById('ko-student-pairing-box').textContent = `Swiss pairings for the next round will generate automatically once all matches complete.`;
-            document.getElementById('knockout-modal').classList.add('open');
-        }
-
-        function renderKnockoutPostRoundComparison(me, res, myPlaceText) {
-            document.getElementById('knockout-modal').classList.remove('open');
-
-            const multiGraph = document.getElementById('multi-bar-graph');
-            multiGraph.innerHTML = '';
-            multiGraph.style.display = 'flex';
-            document.getElementById('single-bar-graph').style.display = 'none';
-            document.getElementById('btn-battle-again').style.display = 'none';
-
-            const myStats = me.lastStats || { perfect: 0, earlyLate: 0, miss: 0 };
-            const myTot = Math.max(1, myStats.perfect + myStats.earlyLate + myStats.miss);
-            const oppStats = res.oppStats || { perfect: 0, earlyLate: 0, miss: 0 };
-            const oppTot = Math.max(1, oppStats.perfect + oppStats.earlyLate + oppStats.miss);
-
-            const contenders = [
-                {
-                    label: `${me.avatar || '🏃'} ${me.name} (You)`,
-                    score: Number(res.myScore || 0).toFixed(1),
-                    g: (myStats.perfect / myTot) * 100,
-                    o: (myStats.earlyLate / myTot) * 100,
-                    r: (myStats.miss / myTot) * 100,
-                    winner: res.won
-                },
-                {
-                    label: `${res.oppAvatar || '🏃'} ${res.oppName}`,
-                    score: Number(res.oppScore || 0).toFixed(1),
-                    g: (oppStats.perfect / oppTot) * 100,
-                    o: (oppStats.earlyLate / oppTot) * 100,
-                    r: (oppStats.miss / oppTot) * 100,
-                    winner: !res.won
-                }
-            ];
-
-            contenders.forEach(c => {
-                const col = document.createElement('div');
-                col.className = 'multi-bar-column';
-                col.style.minWidth = '110px';
-                col.innerHTML = `
-                    <div class="rank-medal-badge" style="color:${c.winner ? '#22c55e' : '#f97316'};">
-                        ${c.winner ? '🏆 WINNER' : 'RUNNER-UP'} (${c.score}%)
-                    </div>
-                    <div class="stacked-bar" style="width:48px;">
-                        <div class="bar-part-red" style="height:${c.r}%;"></div>
-                        <div class="bar-part-orange" style="height:${c.o}%;"></div>
-                        <div class="bar-part-green" style="height:${c.g}%;"></div>
-                    </div>
-                    <span style="font-size:0.8rem; font-weight:700; color:#fff;">${c.label}</span>
-                `;
-                multiGraph.appendChild(col);
-            });
-
-            document.getElementById('game-summary-text').innerHTML = `
-                <div style="font-size:1.25rem; font-weight:900; color:${res.won ? '#22c55e' : '#38bdf8'};">
-                    ${res.won ? '🎉 Round Victory!' : '👏 Great Effort!'}
-                </div>
-                <div style="font-size:0.88rem; color:#cbd5e1; margin-top:4px;">
-                    Stay ready — Teacher will launch the next skill-matched round shortly!
-                </div>
-            `;
-            document.getElementById('badge-container').innerHTML = '';
-            document.getElementById('game-rank-text').textContent = `Current Class Placing: ${myPlaceText}`;
-            gameResultsModal.classList.add('open');
-        }
-
-        function leaveClassKnockout() {
-            if (knockoutUnsubscribe) {
-                knockoutUnsubscribe();
-                knockoutUnsubscribe = null;
-            }
-            isClassKnockout = false;
-            isKnockoutHost = false;
-            isSongBattle = false;
-            knockoutRoomCode = "";
-            knockoutDataCache = null;
-            document.getElementById('knockout-modal')?.classList.remove('open');
-            document.getElementById('ko-vs-overlay').style.display = 'none';
-            stopSong();
-        }
-        // =========================================================================
-
         document.addEventListener('DOMContentLoaded', () => {
             initMIDIHardware();
-            initSwissTournamentUI();
             resetGameStats();
             syncSongsWithGoogleSheet();
             setTimeout(updateKeyPositions, 100);
@@ -7299,7 +5708,7 @@
             if (savedClass) currentStudentClass = savedClass;
             if (savedRoom) currentRoom = savedRoom;
 
-            const now = new Date();
+           const now = new Date();
             const day = now.getDay();
             const timeMins = now.getHours() * 60 + now.getMinutes();
             const isOOS = (day === 0 || day === 6) || (timeMins < 8 * 60) || (timeMins >= 14 * 60 + 5);
@@ -7344,11 +5753,11 @@
 
             const fetchGvizData = () => new Promise((resolve) => {
                 const script = document.createElement('script');
-                
+               
                 window.parseTickerGvizResponse = function(gvizData) {
                     delete window.parseTickerGvizResponse;
                     if (document.body.contains(script)) document.body.removeChild(script);
-                    
+                   
                     if (gvizData && gvizData.table && gvizData.table.rows) {
                         resolve(gvizData.table);
                     } else {
@@ -7386,7 +5795,7 @@
                     const cells = r.c || [];
                     if (cells[nameIdx] && cells[nameIdx].v !== null) {
                         const rowStudentName = String(cells[nameIdx].v || '');
-                        
+                       
                         if (cleanName(rowStudentName) === targetName) {
                             const titleVal = cells[titleIdx] ? String(cells[titleIdx].v || '') : 'Song';
                             const scoreVal = cells[scoreIdx] ? parseFloat(cells[scoreIdx].v) || 0 : 0;
