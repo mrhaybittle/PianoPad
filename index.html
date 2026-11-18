@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+Put your HTML text here<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6448,6 +6448,15 @@
         }
 
         function handleKnockoutHostUpdate(data) {
+            
+            if (data.status !== 'round_results' && knockoutAutoAdvanceTimer) {
+                clearInterval(knockoutAutoAdvanceTimer);
+                knockoutAutoAdvanceTimer = null;
+            }
+            
+            
+            
+            
             const playersObj = data.players || {};
             const ranked = getRankedKnockoutPlayers(playersObj);
             document.getElementById('ko-standings-container').innerHTML = buildStandingsHTML(ranked);
@@ -6523,9 +6532,25 @@
             } else if (data.status === 'round_results') {
                 btnForce.style.display = 'none';
                 btnStart.style.display = 'inline-flex';
-                btnStart.textContent = `▶ Start Round ${data.round + 1} (Swiss Matched)`;
+                btnStart.textContent = `▶ Start Round ${data.round + 1} (Auto in 15s)`;
                 btnFinish.style.display = 'inline-flex';
                 statusBanner.textContent = `Round ${data.round} Complete! Students paired by similar accuracy for Round ${data.round + 1}.`;
+
+                // Add the 15-second auto-advance logic
+                if (!knockoutAutoAdvanceTimer) {
+                    let countdown = 15;
+                    knockoutAutoAdvanceTimer = setInterval(() => {
+                        countdown--;
+                        if (countdown > 0) {
+                            btnStart.textContent = `▶ Start Round ${data.round + 1} (Auto in ${countdown}s)`;
+                        } else {
+                            clearInterval(knockoutAutoAdvanceTimer);
+                            knockoutAutoAdvanceTimer = null;
+                            startNextKnockoutRound(); // Auto-trigger the next round
+                        }
+                    }, 1000);
+                }
+            } else if (data.status === 'finished') {
             } else if (data.status === 'finished') {
                 btnStart.style.display = 'none';
                 btnForce.style.display = 'none';
@@ -6834,6 +6859,11 @@
             if (knockoutUnsubscribe) {
                 knockoutUnsubscribe();
                 knockoutUnsubscribe = null;
+            }
+            // Add this to clear timer on manual exit
+            if (knockoutAutoAdvanceTimer) {
+                clearInterval(knockoutAutoAdvanceTimer);
+                knockoutAutoAdvanceTimer = null;
             }
             isClassKnockout = false;
             isKnockoutHost = false;
