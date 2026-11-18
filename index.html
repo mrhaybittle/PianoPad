@@ -2862,7 +2862,11 @@
             document.getElementById('host-lobby-group').style.display = 'none';
             document.getElementById('client-waiting-group').style.display = 'none';
             document.getElementById('inline-name-error').style.display = 'none';
-            document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
+            
+            const confirmBtn = document.getElementById('btn-confirm-sprint-action');
+            confirmBtn.style.display = 'inline-flex';
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirm & Continue';
 
             if (isSongBattle) {
                 populateHostSongSelector();
@@ -2871,13 +2875,19 @@
                 document.getElementById('host-song-selector-group').style.display = 'none';
             }
             
-            document.getElementById('btn-confirm-sprint-action').onclick = () => {
+            confirmBtn.onclick = () => {
+                if (confirmBtn.disabled) return; // Guard against autoclickers
+
                 const rawName = document.getElementById('sprint-player-name').value;
                 if (!rawName.trim()) {
                     document.getElementById('inline-name-error').style.display = 'block';
                     document.getElementById('sprint-player-name').focus();
                     return;
                 }
+
+                // Immediately disable button
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Starting...';
 
                 const nameInput = sanitizeName(rawName);
                 document.getElementById('sprint-player-name').value = nameInput;
@@ -2903,9 +2913,15 @@
             document.getElementById('host-lobby-group').style.display = 'none';
             document.getElementById('client-waiting-group').style.display = 'none';
             document.getElementById('inline-name-error').style.display = 'none';
-            document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
+            
+            const confirmBtn = document.getElementById('btn-confirm-sprint-action');
+            confirmBtn.style.display = 'inline-flex';
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirm & Continue';
 
-            document.getElementById('btn-confirm-sprint-action').onclick = () => {
+            confirmBtn.onclick = () => {
+                if (confirmBtn.disabled) return; // Guard against autoclickers
+
                 const rawName = document.getElementById('sprint-player-name').value;
                 const roomCode = document.getElementById('sprint-room-code').value.trim().toUpperCase();
 
@@ -2920,6 +2936,10 @@
                     document.getElementById('sprint-room-code').focus();
                     return;
                 }
+
+                // Immediately disable button to prevent spam/crashing
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Joining...';
 
                 const nameInput = sanitizeName(rawName);
                 document.getElementById('sprint-player-name').value = nameInput;
@@ -3031,6 +3051,13 @@
 
             if (res && res.error) {
                 alert("Room not found! Check code and try again.");
+                
+                // Re-enable the button so the user can fix the code and retry
+                const confirmBtn = document.getElementById('btn-confirm-sprint-action');
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = 'Confirm & Continue';
+                }
                 return;
             }
 
