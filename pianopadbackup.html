@@ -3773,6 +3773,14 @@
         const speedInput = document.getElementById('speed-input');
 
         function updateSpeed(newVal, restartPlayback = true) {
+            // Prevent tempo alterations during active battles or class knockouts
+            if (isSongBattle || isClassKnockout) {
+                document.getElementById('status').textContent = ' Tempo is locked at 100% during battles!';
+                speedSlider.value = 100;
+                if (speedInput) speedInput.value = 100;
+                return;
+            }
+
             let val = Math.max(10, Math.min(500, Math.round(Number(newVal) || 100)));
             speedSlider.value = val;
             if (speedInput) speedInput.value = val;
