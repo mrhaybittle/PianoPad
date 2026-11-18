@@ -6937,35 +6937,64 @@
             const cleanName = (str) => String(str || '').replace(/\./g, '').replace(/\s+/g, ' ').trim().toLowerCase();
             const targetName = cleanName(studentName);
 
-            const gvizUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?sheet=GameModeRanks&tqx=responseHandler:parseTickerGvizResponse&_ts=${Date.now()}`;
+            // 1. Fetch Dynamic Announcement from Cell A2 of "announcement" sheet
+            const announceUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?sheet=announcement&range=A2:A2&tqx=responseHandler:parseAnnounceGviz&_ts=${Date.now()}`;
+            const fetchAnnouncement = () => new Promise((resolve) => {
+                const script = document.createElement('script');
+                window.parseAnnounceGviz = function(gvizData) {
+                    delete window.parseAnnounceGviz;
+                    if (document.body.contains(script)) document.body.removeChild(script);
+                    let val = "";
+                    if (gvizData && gvizData.table) {
+                        if (gvizData.table.rows && gvizData.table.rows.length > 0 && gvizData.table.rows[0].c && gvizData.table.rows[0].c[0]) {
+                            val = gvizData.table.rows[0].c[0].v;
+                        } else if (gvizData.table.cols && gvizData.table.cols.length > 0) {
+                            val = gvizData.table.cols[0].label;
+                        }
+                    }
+                    resolve(val ? String(val).trim() : "");
+                };
+                script.src = announceUrl;
+                script.onerror = function() {
+                    delete window.parseAnnounceGviz;
+                    if (document.body.contains(script)) document.body.removeChild(script);
+                    resolve("");
+                };
+                document.body.appendChild(script);
+            });
 
+            // 2. Fetch Leaderboard Stats
+            const gvizUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?sheet=GameModeRanks&tqx=responseHandler:parseTickerGvizResponse&_ts=${Date.now()}`;
             const fetchGvizData = () => new Promise((resolve) => {
                 const script = document.createElement('script');
-                
                 window.parseTickerGvizResponse = function(gvizData) {
                     delete window.parseTickerGvizResponse;
                     if (document.body.contains(script)) document.body.removeChild(script);
-                    
                     if (gvizData && gvizData.table && gvizData.table.rows) {
                         resolve(gvizData.table);
                     } else {
                         resolve(null);
                     }
                 };
-
                 script.src = gvizUrl;
                 script.onerror = function() {
                     delete window.parseTickerGvizResponse;
                     if (document.body.contains(script)) document.body.removeChild(script);
                     resolve(null);
                 };
-
                 document.body.appendChild(script);
             });
 
-            const tableData = await fetchGvizData();
-            const stats = [];
+            // 3. Execute both fetches concurrently
+            const [announceText, tableData] = await Promise.all([fetchAnnouncement(), fetchGvizData()]);
 
+            // Build flashing announcement if cell A2 is not empty
+            let teacherAnnouncement = "";
+            if (announceText && announceText.toLowerCase() !== "null" && announceText !== "") {
+                teacherAnnouncement = `<span class="ticker-item" style="color:#facc15; font-weight:900; letter-spacing:0.02em; animation: textBlink 1.5s infinite ease-in-out;">📢 ${announceText}</span><span style="color:#64748b;"> • </span>`;
+            }
+
+            const stats = [];
             if (tableData) {
                 const cols = tableData.cols || [];
                 let titleIdx = 0, nameIdx = 1, scoreIdx = 2, rankIdx = 3, attemptsIdx = 4;
@@ -7004,7 +7033,7 @@
             stats.sort((a, b) => a.rank !== b.rank ? a.rank - b.rank : b.score - a.score);
 
             if (stats.length === 0) {
-                tickerTrack.innerHTML = `<span class="ticker-item">Welcome <span class="ticker-item-title">${studentName}</span>! No Game Mode scores logged yet. Play songs in Game Mode to earn your ranks!</span>`;
+                tickerTrack.innerHTML = teacherAnnouncement + `<span class="ticker-item">Welcome <span class="ticker-item-title">${studentName}</span>! No Game Mode scores logged yet. Play songs in Game Mode to earn your ranks!</span>`;
                 tickerContainer.style.display = 'flex';
                 return;
             }
@@ -7013,7 +7042,7 @@
             const rank2Count = stats.filter(s => s.rank === 2).length;
             const rank3Count = stats.filter(s => s.rank === 3).length;
 
-            let itemsHtml = `
+            let itemsHtml = teacherAnnouncement + `
                 <span class="ticker-item" style="color:#38bdf8;">
                     Logged in as <strong>${studentName}</strong> | Ranked in ${stats.length} Songs (${rank1Count > 0 ? '🥇x' + rank1Count + ' ' : ''}${rank2Count > 0 ? '🥈x' + rank2Count + ' ' : ''}${rank3Count > 0 ? '🥉x' + rank3Count : ''})
                 </span>
