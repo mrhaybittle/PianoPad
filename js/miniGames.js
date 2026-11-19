@@ -61,15 +61,7 @@ function injectNewArcadeButtons() {
         btnContainer.appendChild(flappyBtn);
     }
 
-    if (!document.getElementById('btn-arcade-lasertag')) {
-    const laserBtn = document.createElement('button');
-    laserBtn.type = 'button';
-    laserBtn.id = 'btn-arcade-lasertag';
-    laserBtn.className = 'arcade-card-btn';
-    laserBtn.onclick = () => startLaserTag(gameBridgeHelper);
-    laserBtn.innerHTML = `<span style="font-size:1.5rem;">🛸</span><strong>Neon Laser Tag</strong><small>Multiplayer Maze Shooter</small>`;
-    btnContainer.appendChild(laserBtn);
-}
+ 
 
     if (!document.getElementById('btn-arcade-rhythm-echo')) {
         const rhythmBtn = document.createElement('button');
