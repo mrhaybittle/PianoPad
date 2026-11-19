@@ -2862,7 +2862,11 @@
             document.getElementById('host-lobby-group').style.display = 'none';
             document.getElementById('client-waiting-group').style.display = 'none';
             document.getElementById('inline-name-error').style.display = 'none';
-            document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
+            
+            const confirmBtn = document.getElementById('btn-confirm-sprint-action');
+            confirmBtn.style.display = 'inline-flex';
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirm & Continue';
 
             if (isSongBattle) {
                 populateHostSongSelector();
@@ -2871,13 +2875,19 @@
                 document.getElementById('host-song-selector-group').style.display = 'none';
             }
             
-            document.getElementById('btn-confirm-sprint-action').onclick = () => {
+            confirmBtn.onclick = () => {
+                if (confirmBtn.disabled) return; // Guard against autoclickers
+
                 const rawName = document.getElementById('sprint-player-name').value;
                 if (!rawName.trim()) {
                     document.getElementById('inline-name-error').style.display = 'block';
                     document.getElementById('sprint-player-name').focus();
                     return;
                 }
+
+                // Immediately disable button
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Starting...';
 
                 const nameInput = sanitizeName(rawName);
                 document.getElementById('sprint-player-name').value = nameInput;
@@ -2903,9 +2913,15 @@
             document.getElementById('host-lobby-group').style.display = 'none';
             document.getElementById('client-waiting-group').style.display = 'none';
             document.getElementById('inline-name-error').style.display = 'none';
-            document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
+            
+            const confirmBtn = document.getElementById('btn-confirm-sprint-action');
+            confirmBtn.style.display = 'inline-flex';
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirm & Continue';
 
-            document.getElementById('btn-confirm-sprint-action').onclick = () => {
+            confirmBtn.onclick = () => {
+                if (confirmBtn.disabled) return; // Guard against autoclickers
+
                 const rawName = document.getElementById('sprint-player-name').value;
                 const roomCode = document.getElementById('sprint-room-code').value.trim().toUpperCase();
 
@@ -2920,6 +2936,10 @@
                     document.getElementById('sprint-room-code').focus();
                     return;
                 }
+
+                // Immediately disable button to prevent spam/crashing
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Joining...';
 
                 const nameInput = sanitizeName(rawName);
                 document.getElementById('sprint-player-name').value = nameInput;
@@ -3031,6 +3051,13 @@
 
             if (res && res.error) {
                 alert("Room not found! Check code and try again.");
+                
+                // Re-enable the button so the user can fix the code and retry
+                const confirmBtn = document.getElementById('btn-confirm-sprint-action');
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = 'Confirm & Continue';
+                }
                 return;
             }
 
@@ -6056,6 +6083,8 @@
                 btnKo.type = 'button';
                 btnKo.id = 'btn-host-knockout-opt';
                 btnKo.className = 'btn-teacher';
+                // Changed button color to Red for the new theme
+                btnKo.style.background = '#ef4444'; 
                 btnKo.style.justifyContent = 'center';
                 btnKo.innerHTML = '🏆 Host Class Knockout (Teacher)';
                 btnKo.onclick = openTeacherKnockoutSetup;
@@ -6067,46 +6096,47 @@
                 koModal.id = 'knockout-modal';
                 koModal.className = 'modal-overlay';
                 koModal.style.zIndex = '350';
+                // Swapped purple border for Red (#ef4444), set background to black/dark gray
                 koModal.innerHTML = `
-                    <div class="modal" style="max-width: 780px; width: 95%; max-height: 90vh; overflow-y: auto; border: 2px solid #a855f7;">
+                    <div class="modal" style="max-width: 780px; width: 95%; max-height: 90vh; overflow-y: auto; border: 2px solid #ef4444; background: #0a0a0a;">
                         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #374151; padding-bottom:10px;">
-                            <h2 id="ko-modal-title" style="color:#facc15; margin:0;">🏆 Class Swiss Knockout Tournament</h2>
-                            <span id="ko-room-badge" style="background:#4f46e5; color:#fff; padding:4px 12px; border-radius:6px; font-weight:800; font-size:0.95rem;">Code: ---</span>
+                            <h2 id="ko-modal-title" style="color:#ffffff; margin:0;">🏆 Class Swiss Knockout Tournament</h2>
+                            <span id="ko-room-badge" style="background:#ef4444; color:#fff; padding:4px 12px; border-radius:6px; font-weight:800; font-size:0.95rem;">Code: ---</span>
                         </div>
 
                         <div id="ko-teacher-panel" style="display:none; flex-direction:column; gap:12px;">
-                            <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:#0b0f19; padding:10px; border-radius:8px; border:1px solid #374151;">
+                            <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:#111; padding:10px; border-radius:8px; border:1px solid #374151;">
                                 <div style="flex:1; min-width:200px;">
                                     <label style="font-size:0.72rem; color:#9ca3af; font-weight:700; display:block; margin-bottom:4px;">SELECT SONG FOR NEXT ROUND:</label>
-                                    <select id="ko-song-select" style="width:100%; max-width:100%;"></select>
+                                    <select id="ko-song-select" style="width:100%; max-width:100%; background:#000; color:#fff;"></select>
                                 </div>
                                 <div style="display:flex; gap:8px; align-items:flex-end;">
-                                    <button type="button" id="btn-ko-start-round" class="btn-success" style="padding:8px 14px; font-size:0.85rem;">▶ Start Round 1</button>
+                                    <button type="button" id="btn-ko-start-round" class="btn-success" style="padding:8px 14px; font-size:0.85rem; background:#ef4444;">▶ Start Round 1</button>
                                     <button type="button" id="btn-ko-force-end" class="btn-warning" style="display:none; padding:8px 12px; font-size:0.82rem;">⚡ Force End Round</button>
-                                    <button type="button" id="btn-ko-finish-tourney" class="btn-arcade" style="display:none; padding:8px 12px; font-size:0.82rem;">🏅 End & Podium</button>
+                                    <button type="button" id="btn-ko-finish-tourney" class="btn-arcade" style="display:none; padding:8px 12px; font-size:0.82rem; background:#fff; color:#000;">🏅 End & Podium</button>
                                 </div>
                             </div>
 
-                            <div id="ko-status-banner" style="font-size:0.85rem; color:#38bdf8; font-weight:700; text-align:center;">
+                            <div id="ko-status-banner" style="font-size:0.85rem; color:#ffffff; font-weight:700; text-align:center;">
                                 Waiting for students to join using Room Code above...
                             </div>
 
                             <div id="ko-bracket-container" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px; max-height:320px; overflow-y:auto;"></div>
 
-                            <div id="ko-standings-container" style="background:#0b0f19; border:1px solid #374151; border-radius:8px; padding:10px; max-height:200px; overflow-y:auto;"></div>
+                            <div id="ko-standings-container" style="background:#111; border:1px solid #374151; border-radius:8px; padding:10px; max-height:200px; overflow-y:auto;"></div>
                         </div>
 
                         <div id="ko-student-panel" style="display:none; flex-direction:column; gap:12px; text-align:center;">
-                            <div id="ko-student-status" style="font-size:1rem; color:#22c55e; font-weight:800;">
+                            <div id="ko-student-status" style="font-size:1rem; color:#ffffff; font-weight:800;">
                                 Connected to Class Knockout! Waiting for Teacher to start Round 1...
                             </div>
-                            <div id="ko-student-pairing-box" style="background:#0b0f19; border:1px solid #374151; border-radius:8px; padding:12px; font-size:0.9rem;"></div>
-                            <div id="ko-student-standings" style="background:#0b0f19; border:1px solid #374151; border-radius:8px; padding:10px; max-height:240px; overflow-y:auto; text-align:left;"></div>
+                            <div id="ko-student-pairing-box" style="background:#111; border:1px solid #374151; border-radius:8px; padding:12px; font-size:0.9rem; color:#fff;"></div>
+                            <div id="ko-student-standings" style="background:#111; border:1px solid #374151; border-radius:8px; padding:10px; max-height:240px; overflow-y:auto; text-align:left;"></div>
                         </div>
 
                         <div class="modal-footer" style="justify-content:space-between; border-top:1px solid #374151; padding-top:10px;">
                             <span style="font-size:0.75rem; color:#9ca3af;">Swiss Placement Ladder • Zero Elimination • Everyone plays every round</span>
-                            <button type="button" class="btn-danger" onclick="leaveClassKnockout()">Exit Tournament</button>
+                            <button type="button" class="btn-danger" style="background:#ef4444;" onclick="leaveClassKnockout()">Exit Tournament</button>
                         </div>
                     </div>
                 `;
@@ -6122,23 +6152,24 @@
                 vsOverlay.id = 'ko-vs-overlay';
                 vsOverlay.className = 'countdown-overlay';
                 vsOverlay.style.zIndex = '250';
+                // Swapped VS overlay borders and glowing text to Red and White
                 vsOverlay.innerHTML = `
-                    <div style="background:#1f1f2e; border:3px solid #facc15; border-radius:16px; padding:28px 36px; text-align:center; max-width:560px; width:90%; box-shadow:0 0 40px rgba(250,204,21,0.5);">
-                        <div id="ko-vs-round-label" style="color:#ec4899; font-weight:900; font-size:1.1rem; letter-spacing:0.08em; text-transform:uppercase;">ROUND 1 MATCHUP</div>
+                    <div style="background:#0a0a0a; border:3px solid #ffffff; border-radius:16px; padding:28px 36px; text-align:center; max-width:560px; width:90%; box-shadow:0 0 40px rgba(239,68,68,0.5);">
+                        <div id="ko-vs-round-label" style="color:#ef4444; font-weight:900; font-size:1.1rem; letter-spacing:0.08em; text-transform:uppercase;">ROUND 1 MATCHUP</div>
                         <div style="display:flex; align-items:center; justify-content:space-around; gap:16px; margin:20px 0;">
                             <div style="flex:1;">
                                 <div id="ko-vs-p1-avatar" style="font-size:3.2rem;">🏃</div>
                                 <div id="ko-vs-p1-name" style="font-size:1.15rem; font-weight:800; color:#fff; margin-top:4px;">You</div>
-                                <div id="ko-vs-p1-rank" style="font-size:0.8rem; color:#38bdf8; font-weight:700;">Rank #1</div>
+                                <div id="ko-vs-p1-rank" style="font-size:0.8rem; color:#ffffff; font-weight:700;">Rank #1</div>
                             </div>
-                            <div style="font-size:2.4rem; font-weight:900; color:#facc15; text-shadow:0 0 15px #facc15;">VS</div>
+                            <div style="font-size:2.4rem; font-weight:900; color:#ef4444; text-shadow:0 0 15px #ef4444;">VS</div>
                             <div style="flex:1;">
                                 <div id="ko-vs-p2-avatar" style="font-size:3.2rem;">🤖</div>
                                 <div id="ko-vs-p2-name" style="font-size:1.15rem; font-weight:800; color:#fff; margin-top:4px;">Opponent</div>
-                                <div id="ko-vs-p2-rank" style="font-size:0.8rem; color:#f97316; font-weight:700;">Rank #2</div>
+                                <div id="ko-vs-p2-rank" style="font-size:0.8rem; color:#ffffff; font-weight:700;">Rank #2</div>
                             </div>
                         </div>
-                        <div id="ko-vs-song-label" style="font-size:0.9rem; color:#cbd5e1; font-weight:700;">Song: Wipeout</div>
+                        <div id="ko-vs-song-label" style="font-size:0.9rem; color:#9ca3af; font-weight:700;">Song: Wipeout</div>
                     </div>
                 `;
                 document.body.appendChild(vsOverlay);
@@ -6906,35 +6937,64 @@
             const cleanName = (str) => String(str || '').replace(/\./g, '').replace(/\s+/g, ' ').trim().toLowerCase();
             const targetName = cleanName(studentName);
 
-            const gvizUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?sheet=GameModeRanks&tqx=responseHandler:parseTickerGvizResponse&_ts=${Date.now()}`;
+            // 1. Fetch Dynamic Announcement from Cell A2 of "announcement" sheet
+            const announceUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?sheet=announcement&range=A2:A2&tqx=responseHandler:parseAnnounceGviz&_ts=${Date.now()}`;
+            const fetchAnnouncement = () => new Promise((resolve) => {
+                const script = document.createElement('script');
+                window.parseAnnounceGviz = function(gvizData) {
+                    delete window.parseAnnounceGviz;
+                    if (document.body.contains(script)) document.body.removeChild(script);
+                    let val = "";
+                    if (gvizData && gvizData.table) {
+                        if (gvizData.table.rows && gvizData.table.rows.length > 0 && gvizData.table.rows[0].c && gvizData.table.rows[0].c[0]) {
+                            val = gvizData.table.rows[0].c[0].v;
+                        } else if (gvizData.table.cols && gvizData.table.cols.length > 0) {
+                            val = gvizData.table.cols[0].label;
+                        }
+                    }
+                    resolve(val ? String(val).trim() : "");
+                };
+                script.src = announceUrl;
+                script.onerror = function() {
+                    delete window.parseAnnounceGviz;
+                    if (document.body.contains(script)) document.body.removeChild(script);
+                    resolve("");
+                };
+                document.body.appendChild(script);
+            });
 
+            // 2. Fetch Leaderboard Stats
+            const gvizUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?sheet=GameModeRanks&tqx=responseHandler:parseTickerGvizResponse&_ts=${Date.now()}`;
             const fetchGvizData = () => new Promise((resolve) => {
                 const script = document.createElement('script');
-                
                 window.parseTickerGvizResponse = function(gvizData) {
                     delete window.parseTickerGvizResponse;
                     if (document.body.contains(script)) document.body.removeChild(script);
-                    
                     if (gvizData && gvizData.table && gvizData.table.rows) {
                         resolve(gvizData.table);
                     } else {
                         resolve(null);
                     }
                 };
-
                 script.src = gvizUrl;
                 script.onerror = function() {
                     delete window.parseTickerGvizResponse;
                     if (document.body.contains(script)) document.body.removeChild(script);
                     resolve(null);
                 };
-
                 document.body.appendChild(script);
             });
 
-            const tableData = await fetchGvizData();
-            const stats = [];
+            // 3. Execute both fetches concurrently
+            const [announceText, tableData] = await Promise.all([fetchAnnouncement(), fetchGvizData()]);
 
+            // Build flashing announcement if cell A2 is not empty
+            let teacherAnnouncement = "";
+            if (announceText && announceText.toLowerCase() !== "null" && announceText !== "") {
+                teacherAnnouncement = `<span class="ticker-item" style="color:#facc15; font-weight:900; letter-spacing:0.02em; animation: textBlink 1.5s infinite ease-in-out;">📢 ${announceText}</span><span style="color:#64748b;"> • </span>`;
+            }
+
+            const stats = [];
             if (tableData) {
                 const cols = tableData.cols || [];
                 let titleIdx = 0, nameIdx = 1, scoreIdx = 2, rankIdx = 3, attemptsIdx = 4;
@@ -6973,7 +7033,7 @@
             stats.sort((a, b) => a.rank !== b.rank ? a.rank - b.rank : b.score - a.score);
 
             if (stats.length === 0) {
-                tickerTrack.innerHTML = `<span class="ticker-item">Welcome <span class="ticker-item-title">${studentName}</span>! No Game Mode scores logged yet. Play songs in Game Mode to earn your ranks!</span>`;
+                tickerTrack.innerHTML = teacherAnnouncement + `<span class="ticker-item">Welcome <span class="ticker-item-title">${studentName}</span>! No Game Mode scores logged yet. Play songs in Game Mode to earn your ranks!</span>`;
                 tickerContainer.style.display = 'flex';
                 return;
             }
@@ -6982,7 +7042,7 @@
             const rank2Count = stats.filter(s => s.rank === 2).length;
             const rank3Count = stats.filter(s => s.rank === 3).length;
 
-            let itemsHtml = `
+            let itemsHtml = teacherAnnouncement + `
                 <span class="ticker-item" style="color:#38bdf8;">
                     Logged in as <strong>${studentName}</strong> | Ranked in ${stats.length} Songs (${rank1Count > 0 ? '🥇x' + rank1Count + ' ' : ''}${rank2Count > 0 ? '🥈x' + rank2Count + ' ' : ''}${rank3Count > 0 ? '🥉x' + rank3Count : ''})
                 </span>
