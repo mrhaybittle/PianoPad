@@ -762,21 +762,88 @@ function drawSubwayBackdropAndTracks(ctx, W, H) {
         ctx.fill();
     });
 
-    // Downtown Skyscrapers along the horizon
-    const skylineBuildings = [
-        { x: 0.03, w: 0.06, h: 0.17, col: '#0369a1' },
-        { x: 0.11, w: 0.05, h: 0.22, col: '#075985' },
-        { x: 0.19, w: 0.07, h: 0.15, col: '#0284c7' },
-        { x: 0.29, w: 0.05, h: 0.20, col: '#0369a1' },
-        { x: 0.66, w: 0.06, h: 0.21, col: '#075985' },
-        { x: 0.74, w: 0.07, h: 0.16, col: '#0369a1' },
-        { x: 0.84, w: 0.05, h: 0.23, col: '#0284c7' },
-        { x: 0.91, w: 0.06, h: 0.18, col: '#075985' }
+    // --- NEW OCEAN SCENERY INSTEAD OF BUILDINGS ---
+    // Deep Blue Ocean along the horizon
+    ctx.fillStyle = '#0ea5e9'; // Ocean main
+    ctx.fillRect(0, horizonY - H * 0.08, W, H * 0.08);
+    ctx.fillStyle = '#0284c7'; // Darker water edge
+    ctx.fillRect(0, horizonY - H * 0.02, W, H * 0.02);
+
+    // Wooden Harbour Pier
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(W * 0.4, horizonY - H * 0.03, W * 0.3, H * 0.015); // Pier deck
+    ctx.fillRect(W * 0.42, horizonY - H * 0.015, W * 0.01, H * 0.015); // Pilings
+    ctx.fillRect(W * 0.55, horizonY - H * 0.015, W * 0.01, H * 0.015);
+    ctx.fillRect(W * 0.68, horizonY - H * 0.015, W * 0.01, H * 0.015);
+
+    // Sailboats in the harbour
+    const boats = [
+        { x: 0.15, scale: 1 },
+        { x: 0.28, scale: 0.7 },
+        { x: 0.65, scale: 0.85 }
     ];
-    skylineBuildings.forEach(b => {
-        ctx.fillStyle = b.col;
-        ctx.fillRect(W * b.x, horizonY - H * b.h, W * b.w, H * b.h);
+    
+    boats.forEach(boat => {
+        const bx = W * boat.x;
+        const by = horizonY - H * 0.02;
+        const bw = W * 0.04 * boat.scale;
+        const bh = H * 0.08 * boat.scale;
+        
+        // Boat Hull
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.moveTo(bx - bw, by);
+        ctx.lineTo(bx + bw, by);
+        ctx.lineTo(bx + bw * 0.7, by + bh * 0.2);
+        ctx.lineTo(bx - bw * 0.7, by + bh * 0.2);
+        ctx.fill();
+        
+        // Mast
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(bx, by - bh, Math.max(1, 2 * boat.scale), bh);
+        
+        // Sail
+        ctx.fillStyle = '#e0f2fe';
+        ctx.beginPath();
+        ctx.moveTo(bx + 2, by - bh * 0.9);
+        ctx.lineTo(bx + bw * 0.8, by - bh * 0.1);
+        ctx.lineTo(bx + 2, by - bh * 0.1);
+        ctx.fill();
     });
+
+    // White Lighthouse on the coast
+    const lhX = W * 0.85;
+    const lhY = horizonY - H * 0.02;
+    const lhW = W * 0.035;
+    const lhH = H * 0.18;
+
+    // Lighthouse Body (Tapered White Cylinder)
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(lhX - lhW * 0.5, lhY);
+    ctx.lineTo(lhX + lhW * 0.5, lhY);
+    ctx.lineTo(lhX + lhW * 0.35, lhY - lhH);
+    ctx.lineTo(lhX - lhW * 0.35, lhY - lhH);
+    ctx.fill();
+    
+    // Lighthouse Red Lantern Room Top
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(lhX - lhW * 0.4, lhY - lhH, lhW * 0.8, lhH * 0.15);
+    
+    // Yellow Light Shining
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.arc(lhX, lhY - lhH + lhH * 0.075, lhW * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Sweeping Light Beam
+    ctx.fillStyle = 'rgba(250, 204, 21, 0.25)';
+    ctx.beginPath();
+    ctx.moveTo(lhX, lhY - lhH + lhH * 0.075);
+    ctx.lineTo(lhX - W * 0.25, lhY - lhH - H * 0.05);
+    ctx.lineTo(lhX - W * 0.25, lhY - lhH + H * 0.2);
+    ctx.fill();
+    // ----------------------------------------------
 
     // 2. Gravel Railway Yard Bed
     const bedGrad = ctx.createLinearGradient(0, horizonY, 0, H);
