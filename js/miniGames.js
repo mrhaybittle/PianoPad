@@ -164,6 +164,7 @@ export function exitActiveMiniGame() {
     bridge.setIsPlaying(false);
     arcadeState.raceActive = false;
     stopBattlePolling();
+    stopLaserTag();
     const runnerTrack = document.getElementById('runner-track');
     runnerTrack.style.display = 'none';
     runnerTrack.innerHTML = '';
@@ -197,6 +198,11 @@ export function handleMiniGameNoteInput(noteStr) {
         handleNoteSniperInput(noteStr, gameBridgeHelper);
         return true;
     }
+
+    if (mode === 'laserTag') {
+    handleLaserTagInput(noteStr, gameBridgeHelper);
+    return true;
+}
     if (mode === 'drop') {
         const { noteTimeline, playbackStartTime, accumulatedPauseMs, gameStats, keyPosMap } = bridge.getState();
         const canvas = document.getElementById('waterfall-canvas');
