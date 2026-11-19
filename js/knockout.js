@@ -1477,3 +1477,4 @@ export function leaveClassKnockout() {
     if (vsOverlay) vsOverlay.style.display = 'none';
     bridge.stopSong();
 }
+window.selectKnockoutTeam = selectKnockoutTeam;
