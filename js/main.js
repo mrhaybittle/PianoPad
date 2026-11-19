@@ -1,0 +1,5715 @@
+<script>
+        const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
+        const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby67M5VwNiRpcySnun4wTW31nIfXauLXhMRP1w96r6yjMuV9iA8n_C-eEIKfJ_xEuUjKg/exec';
+        const GAMEMODE_RANKS_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?tqx=out:csv&sheet=GameModeRanks';
+        
+        let audioCtx = null;
+        let songList = [];
+        let currentSong = [];
+        let currentSongTitle = "Wipeout";
+
+        let isPlaying = false;
+        let isPaused = false;
+        let isStepMode = false;
+        let isLooping = false;
+        let isRecording = false;
+        let isGameMode = true;
+        let currentTheme = 'default';
+        let bonusSoundsUnlocked = false;
+
+        let localStudentId = "stu_" + Math.random().toString(36).substr(2, 9);
+        let localTabSwitches = 0;
+        let tabSwitchAwayTimestamp = null; 
+        let currentRoom = "";
+        let currentStudentClass = "";
+        let sessionStartTime = Date.now();
+        let breakMarkerPositions = [];
+        let sessionStudentAvatar = "🏃";
+
+        let showSheetMusic = localStorage.getItem('pianopad_sheet_music') !== 'false';
+        const btnSheetToggle = document.getElementById('btn-sheet-toggle');
+
+        if (btnSheetToggle) {
+            btnSheetToggle.addEventListener('click', () => {
+                showSheetMusic = !showSheetMusic;
+                localStorage.setItem('pianopad_sheet_music', showSheetMusic ? 'true' : 'false');
+                updateSheetToggleButton();
+            });
+            updateSheetToggleButton();
+        }
+
+        function updateSheetToggleButton() {
+            if (!btnSheetToggle) return;
+            if (showSheetMusic) {
+                btnSheetToggle.textContent = ' Sheet: ON';
+                btnSheetToggle.style.backgroundColor = '#0d9488';
+            } else {
+                btnSheetToggle.textContent = ' Sheet: OFF';
+                btnSheetToggle.style.backgroundColor = '#4b5563';
+            }
+        }
+
+        let micStream = null;
+        let micAnalyser = null;
+        let isMicListening = false;
+        let pitchDetectionFrameId = null;
+        let lastDetectedNote = null;
+        let noteHoldCounter = 0;
+
+        let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+        let sessionSongHistory = {};
+        let currentPerfectStreak = 0;
+        let sessionStudentName = "";
+
+        let currentStepIndex = 0;
+        let smoothStepElapsed = 0;
+
+        let animationFrameId = null;
+        let playbackStartTime = 0;
+        let pauseStartTime = 0;
+        let accumulatedPauseMs = 0;
+        let lastFrameTime = 0;
+        let noteTimeline = [];
+
+        let recordedNotes = [];
+        let recordedRests = [];
+        let lastRecordNoteTime = 0;
+        let generatedHaycode = "";
+
+        let isCalibrating = false;
+        let calibStep = 1;
+        let calibLowestRawMIDI = 36;
+        let calibHighestRawMIDI = 96;
+        let midiOctaveOffset = 0;
+
+        let pendingMidiData = null;
+
+        let activeMiniGame = null;
+        let simonSequence = [];
+        let simonPlayerIndex = 0;
+        let simonIsPrompting = false;
+        
+        let mysteryTargetPitch = null;
+        let mysteryGuessCount = 0;
+
+        let dodgeLives = 5;
+        let dodgeDodgedCount = 0;
+
+        let httpPollTimer = null;
+        let isSprintHost = false;
+        let localPlayerIdRoom = 'p1';
+        let sprintSequence = ['c1', 'd1'];
+        let sprintIndex = 0;
+        let sprintKeystrokeCount = 0;
+        let sprintStartTime = 0;
+        let raceActive = false;
+        let isSongBattle = false;
+        let activeBattleRoomCode = "";
+        let hasBattleStarted = false;
+        let battleResultsShown = false;
+
+        // Swiss-System Class Knockout Tournament State
+        let isClassKnockout = false;
+        let isKnockoutHost = false;
+        let knockoutRoomCode = "";
+        let knockoutUnsubscribe = null;
+        let knockoutLastRoundStarted = 0;
+        let knockoutLastRoundFinished = 0;
+        let knockoutDataCache = null;
+        let knockoutLiveSyncTimer = null;
+
+        // Streak Sabotage, Tug-of-War HUD & 50-Emote Quick-Reaction State
+        let knockoutSabotageCount = 0;
+        let lastProcessedSabotageId = null;
+        let activeSabotageType = null;
+        let activeSabotageUntil = 0;
+        let smokeParticles = [];
+        let koOpponentId = null;
+        let koOpponentName = "Opponent";
+        let koOpponentAvatar = "🤖";
+        let lastProcessedOppEmoteId = null;
+        let koSelfEmoteHideTimer = null;
+        let koOppEmoteHideTimer = null;
+
+        const KO_HYPE_EMOTES = [
+            "😤 LOCKED IN", "🔥 TOO EASY", "😎 WATCH THIS", "⚡ LIGHT WORK", "👑 BOW DOWN",
+            "🚀 BUILT DIFFERENT", "🎯 100% INCOMING", "🧊 ICE COLD", "💪 NO SWEAT", "🧠 BIG BRAIN",
+            "🎹 PIANO GOD", "🦖 BEAST MODE", "🏆 ALREADY WON", "🌟 MAIN CHARACTER", "🔋 FULL POWER",
+            "💀 RIP BRO", "🪦 GG EZ", "🧹 GET SWEPT", "🧂 PASS THE SALT", "📉 YOUR ACCURACY",
+            "🐢 TOO SLOW", "🤡 NICE TRY", "🧯 CALL THE FIRE DEPT", "🎒 PACK YOUR BAGS", "💤 WAKE ME UP",
+            "🧀 SKILL ISSUE", "🚧 WRONG KEY BRO", "🗑️ OUTTA MY WAY", "👀 DON'T BLINK", "📉 CHOKING INCOMING",
+            "🙏 PRAY FOR ME", "💦 SWEATING BULLETS", "🫠 MY FINGERS HURT", "🐌 LAG!", "😬 OH NO...",
+            "🎲 PURE LUCK", "🆘 SEND HELP", "🫣 I FORGOT THE NOTES", "🍌 SLIPPERY KEYS", "🎲 YOLO",
+            "🐢 PRACTICE SPEED PLS", "😅 MERCY PLS", "🤝 GG", "🫡 RESPECT", "⚔️ BRING IT ON",
+            "🍿 POPCORN READY", "🚨 UPSET ALERT", "🌪️ CHAOS TIME", "💣 SABOTAGE INCOMING", "🎉 LET'S GOOO!"
+        ];
+
+        const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄', '🎹', '🎧', '👨‍🎤', '😎', '🐱', '🐲', '🚀', '🥷'];
+
+        let playersList = [];
+        let miniGameFallSpeedMs = 3800;
+        let confettiParticles = [];
+
+        function spawnConfetti(x, y, baseColor) {
+            for (let i = 0; i < 30; i++) {
+                confettiParticles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() * -10) - 2,
+                    size: Math.random() * 6 + 4,
+                    color: Math.random() > 0.3 ? baseColor : (Math.random() > 0.5 ? '#facc15' : '#ec4899'),
+                    life: 1.0,
+                    rot: Math.random() * Math.PI * 2,
+                    rotSpeed: (Math.random() - 0.5) * 0.4
+                });
+            }
+        }
+
+        const cMajorScaleNotes = ['c1', 'd1', 'e1', 'f1', 'g1', 'a1', 'b1', 'c2'];
+        const arcadeHub = document.getElementById('arcade-hub');
+        const mainControlsBar = document.getElementById('main-controls-bar');
+        const arcadeControlsBar = document.getElementById('arcade-controls-bar');
+        const timelineBox = document.getElementById('timeline-box');
+        const runnerTrack = document.getElementById('runner-track');
+
+        function updateMonitorWidget() {
+            const studentEl = document.getElementById('mon-student-name');
+            const avatarEl = document.getElementById('mon-student-avatar');
+            const classEl = document.getElementById('mon-class-badge');
+            const breaksEl = document.getElementById('mon-breaks-badge');
+            const timeEl = document.getElementById('mon-time-text');
+            const songEl = document.getElementById('mon-song-text');
+            const fillEl = document.getElementById('mon-bar-fill');
+            const trackEl = document.getElementById('mon-bar-track');
+            const badgeEl = document.getElementById('mon-level-badge');
+
+            const activeClass = currentStudentClass || localStorage.getItem('pianopad_class') || "7G";
+
+            if (studentEl) studentEl.textContent = sessionStudentName || localStorage.getItem('pianopad_name') || "Mr H";
+            if (avatarEl) avatarEl.textContent = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || "🏃";
+            if (classEl) classEl.textContent = activeClass;
+            if (breaksEl) breaksEl.textContent = `Breaks: ${localTabSwitches}`;
+            
+            const elapsedMs = Date.now() - sessionStartTime;
+            const totalSecs = Math.floor(elapsedMs / 1000);
+            const mins = Math.floor(totalSecs / 60);
+            const secs = (totalSecs % 60).toString().padStart(2, '0');
+            const elapsedMins = Math.floor(elapsedMs / 60000);
+            
+            if (timeEl) timeEl.textContent = `${mins}:${secs} / 60:00min`;
+            if (songEl) songEl.textContent = ` ${currentSongTitle || 'Wipeout'}`;
+
+            let barColor = '#22c55e';
+
+            if (badgeEl) {
+                let badgeHtml = '';
+                let displayBadge = false;
+                const isDouble = (localTabSwitches === 0);
+                const x2Tag = isDouble ? '<span style="color:#ef4444; font-weight:900; margin-left:4px;">X2</span>' : '';
+
+                if (elapsedMins >= 30) {
+                    displayBadge = true;
+                    badgeHtml = `<span style="color:#facc15;"> Gold Level</span>${x2Tag}`;
+                    barColor = '#facc15';
+                } else if (elapsedMins >= 20) {
+                    displayBadge = true;
+                    badgeHtml = `<span style="color:#cbd5e1;"> Silver Level</span>${x2Tag}`;
+                    barColor = '#cbd5e1';
+                } else if (elapsedMins >= 10) {
+                    displayBadge = true;
+                    badgeHtml = `<span style="color:#f97316;"> Bronze Level</span>${x2Tag}`;
+                    barColor = '#f97316';
+                }
+
+                if (displayBadge) {
+                    badgeEl.style.display = 'inline-flex';
+                    badgeEl.innerHTML = badgeHtml;
+                } else {
+                    badgeEl.style.display = 'none';
+                    badgeEl.innerHTML = '';
+                }
+            }
+
+            if (fillEl) {
+                const fillPct = Math.min(100, Math.max(1, (elapsedMins / 60) * 100));
+                fillEl.style.width = `${fillPct}%`;
+                fillEl.style.backgroundColor = barColor;
+            }
+
+            if (trackEl) {
+                trackEl.querySelectorAll('.monitor-break-marker').forEach(m => m.remove());
+                breakMarkerPositions.forEach(posPct => {
+                    const marker = document.createElement('div');
+                    marker.className = 'monitor-break-marker';
+                    marker.style.left = `${posPct}%`;
+                    trackEl.appendChild(marker);
+                });
+            }
+        }
+
+        function syncStudentToFirebase(statusOverride = null) {
+            if (!window.firebaseSet || !window.firebaseRef || !window.firebaseDb) return;
+            
+            const activeName = sessionStudentName || localStorage.getItem('pianopad_name') || "Student";
+            const activeAvatar = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || "🏃";
+            const activeRoom = currentRoom || "Outside";
+            const activeClass = currentStudentClass || localStorage.getItem('pianopad_class') || "7G";
+            const activeStatus = statusOverride || (document.hidden ? "away" : "active");
+
+            const myRef = window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}`);
+            window.firebaseSet(myRef, {
+                name: activeName,
+                studentName: activeName,
+                avatar: activeAvatar,
+                room: activeRoom,
+                class: activeClass,
+                studentClass: activeClass,
+                song: currentSongTitle || "Wipeout",
+                status: activeStatus,
+                tabSwitches: localTabSwitches,
+                sessionStartTime: sessionStartTime,
+                lastActive: Date.now()
+            });
+            window.firebaseOnDisconnect(myRef).remove();
+        }
+
+        document.getElementById('btn-join-room').addEventListener('click', () => {
+            const name = document.getElementById('student-join-name').value.trim();
+            const avatar = document.getElementById('student-join-avatar').value;
+            const chosenClass = document.getElementById('student-join-class').value;
+            const roomSelect = document.getElementById('student-join-room');
+            const room = (roomSelect && roomSelect.style.display === 'none') ? "Outside" : (roomSelect ? roomSelect.value : "Outside");
+            
+            if (!name || !chosenClass || (roomSelect && roomSelect.style.display !== 'none' && !room)) {
+                alert('Please enter your Name and select your Class.');
+                return;
+            }
+            sessionStudentName = sanitizeName(name);
+            sessionStudentAvatar = avatar;
+            currentStudentClass = chosenClass;
+            currentRoom = room;
+
+            localStorage.setItem('pianopad_name', sessionStudentName);
+            localStorage.setItem('pianopad_avatar', sessionStudentAvatar);
+            localStorage.setItem('pianopad_class', currentStudentClass);
+            localStorage.setItem('pianopad_room', currentRoom);
+
+            document.getElementById('room-join-modal').classList.remove('open');
+            
+           syncStudentToFirebase("active");
+            updateMonitorWidget();
+            loadStudentTickerStats(sessionStudentName);
+        });
+
+        function checkIsOutsideSchoolHours() {
+            const now = new Date();
+            const day = now.getDay();
+            const timeMins = now.getHours() * 60 + now.getMinutes();
+            return (day === 0 || day === 6) || (timeMins < 8 * 60) || (timeMins >= 14 * 60 + 5);
+        }
+
+        document.addEventListener("visibilitychange", () => {
+            const isOOS = checkIsOutsideSchoolHours();
+
+            if (document.hidden) {
+                if (!isOOS) {
+                    localTabSwitches++;
+                    tabSwitchAwayTimestamp = new Date();
+                    
+                    const elapsedMs = Date.now() - sessionStartTime;
+                    const posPct = Math.min(100, (elapsedMs / (60 * 60000)) * 100);
+                    breakMarkerPositions.push(posPct);
+                }
+                syncStudentToFirebase("away");
+            } else {
+                syncStudentToFirebase("active");
+
+                if (!isOOS && tabSwitchAwayTimestamp) {
+                    const returnTimestamp = new Date();
+                    const durationSec = Math.round((returnTimestamp - tabSwitchAwayTimestamp) / 1000);
+
+                    if (durationSec >= 1) {
+                        const formatSec = (s) => `${Math.floor(s / 60)}m ${s % 60}s`;
+                        const sessionElapsed = Math.round((Date.now() - sessionStartTime) / 1000);
+
+                        const payload = {
+                            action: "LOG_BREAK",
+                            studentName: sessionStudentName || localStorage.getItem('pianopad_name') || "Student",
+                            year: "", 
+                            class: currentStudentClass || localStorage.getItem('pianopad_class') || currentRoom || "",
+                            awayTime: tabSwitchAwayTimestamp.toLocaleTimeString(),
+                            returnTime: returnTimestamp.toLocaleTimeString(),
+                            durationSec: durationSec,
+                            durationFormatted: formatSec(durationSec),
+                            breakCount: localTabSwitches,
+                            songTitle: currentSongTitle || "Free Play",
+                            sessionTime: formatSec(sessionElapsed)
+                        };
+
+                        fetch(APPS_SCRIPT_URL, {
+                            method: "POST",
+                            headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            body: JSON.stringify(payload)
+                        }).catch(e => console.log("Sheet log error:", e));
+                    }
+                    tabSwitchAwayTimestamp = null;
+                }
+
+                if (!isOOS && localTabSwitches > 0) {
+                    const fName = (sessionStudentName || localStorage.getItem('pianopad_name') || "Student").split(' ')[0];
+                    document.getElementById('tab-switch-title').textContent = `${fName.toUpperCase()} - TAB SWITCH RECORDED!`;
+                    document.getElementById('tab-switch-modal').classList.add('open');
+                }
+            }
+            updateMonitorWidget();
+        });
+
+        function updateRosterSong() {
+            syncStudentToFirebase();
+            updateMonitorWidget();
+        }
+
+        document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
+        document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
+        document.getElementById('btn-stop-arcade').addEventListener('click', exitActiveMiniGame);
+        document.getElementById('btn-song-battle').addEventListener('click', openSongBattleSelector);
+        document.getElementById('btn-mic-toggle').addEventListener('click', toggleMicrophoneListening);
+
+        function stopBattlePolling() {
+            isSongBattle = false;
+            activeBattleRoomCode = "";
+            battleResultsShown = false;
+            if (httpPollTimer) {
+                clearInterval(httpPollTimer);
+                httpPollTimer = null;
+            }
+        }
+
+        document.getElementById('btn-game-results-close').addEventListener('click', () => {
+            gameResultsModal.classList.remove('open');
+            stopBattlePolling();
+            if (isClassKnockout) {
+                const koModal = document.getElementById('knockout-modal');
+                if (koModal) koModal.classList.add('open');
+            }
+        });
+
+        document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
+            gameResultsModal.classList.remove('open');
+            stopBattlePolling();
+            if (isClassKnockout) leaveClassKnockout();
+            openArcadeHub();
+        });
+
+        document.getElementById('btn-game-try-again').addEventListener('click', () => {
+            gameResultsModal.classList.remove('open');
+            stopBattlePolling();
+            if (isClassKnockout) {
+                const koModal = document.getElementById('knockout-modal');
+                if (koModal) koModal.classList.add('open');
+                return;
+            }
+            if (currentSongTitle === "Mystery Note") startMysteryNote();
+            else if (currentSongTitle === "Simon Taps") startSimonTaps();
+            else if (currentSongTitle === "Drop Dodge") startDropDodge();
+            else if (currentSongTitle === "Combo Strike") startComboStrike();
+            else if (currentSongTitle === "Finger Sprint") openSprintModeSelector();
+            else playSong();
+        });
+
+        function sanitizeName(str) {
+            const parts = str.trim().split(/\s+/);
+            if (parts.length === 1) return parts[0];
+            const firstName = parts[0];
+            const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
+            return `${firstName} ${lastInitial}`;
+        }
+
+        function ensureStudentName() {
+            if (!sessionStudentName || sessionStudentName === "Student" || !sessionStudentName.trim()) {
+                const inputName = prompt("Great job! Please enter your First Name and Last Initial for the leaderboard (e.g., Alex M.):", "Student A");
+                if (inputName && inputName.trim()) {
+                    sessionStudentName = sanitizeName(inputName);
+                    localStorage.setItem('pianopad_name', sessionStudentName);
+                    loadStudentTickerStats(sessionStudentName);
+                    syncStudentToFirebase();
+                } else {
+                    sessionStudentName = "Anonymous";
+                }
+            }
+            updateMonitorWidget();
+            return sessionStudentName;
+        }
+
+        function sendJSONP(url, callbackName) {
+            return new Promise((resolve) => {
+                const script = document.createElement('script');
+                const cbName = callbackName || 'jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+                
+                window[cbName] = function(data) {
+                    delete window[cbName];
+                    if (document.body.contains(script)) document.body.removeChild(script);
+                    resolve(data);
+                };
+
+                const del = url.includes('?') ? '&' : '?';
+                script.src = `${url}${del}callback=${cbName}`;
+                script.onerror = function() {
+                    delete window[cbName];
+                    if (document.body.contains(script)) document.body.removeChild(script);
+                    resolve({ error: "SCRIPT_LOAD_ERROR" });
+                };
+                document.body.appendChild(script);
+            });
+        }
+
+        function getDiatonicStepAndShift(noteStr) {
+            noteStr = noteStr.trim().toLowerCase();
+            const match = noteStr.match(/^([a-g])(#?)([0-9]+)$/);
+            if (!match) return null;
+
+            const letter = match[1].toUpperCase();
+            const isSharp = match[2] === '#';
+            let octave = parseInt(match[3], 10);
+
+            const baseSteps = { 'C': 0, 'D': 1, 'E': 2, 'F': 3, 'G': 4, 'A': 5, 'B': 6 };
+            let baseStep = baseSteps[letter];
+            if (baseStep === undefined) return null;
+
+            let totalDiatonicStep = (octave - 1) * 7 + baseStep;
+
+            let octaveShift = 0;
+            if (totalDiatonicStep > 14 && totalDiatonicStep <= 21) {
+                octaveShift = 1;
+                totalDiatonicStep -= 7;
+            } else if (totalDiatonicStep > 21) {
+                octaveShift = 2;
+                totalDiatonicStep -= 14;
+            }
+
+            let relativeStep = totalDiatonicStep - 2;
+
+            return {
+                letter: letter,
+                isSharp: isSharp,
+                step: relativeStep,
+                octaveShift: octaveShift
+            };
+        }
+
+        function drawSheetMusicStaff(ctx, width) {
+            const STAFF_HEIGHT = 75;
+            const line1_y = 56;
+            const lineSpacing = 8;
+
+            ctx.save();
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, STAFF_HEIGHT);
+
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, STAFF_HEIGHT);
+            ctx.lineTo(width, STAFF_HEIGHT);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 5; i++) {
+                const ly = line1_y - i * lineSpacing;
+                ctx.beginPath();
+                ctx.moveTo(0, ly);
+                ctx.lineTo(width, ly);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = '#000000';
+            ctx.font = '68px "Segoe UI Symbol", "Apple Symbols", "Noto Music", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('𝄞', 35, 48);
+
+            ctx.restore();
+        }
+
+        function drawStemlessNote(ctx, x, y, isSharp, color = '#000000') {
+            ctx.save();
+            ctx.fillStyle = color;
+
+            if (isSharp) {
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('♯', x - 7, y);
+            }
+
+            ctx.beginPath();
+            ctx.ellipse(x, y, 5.5, 4.0, -0.25, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawLedgerLines(ctx, x, step, line1_y, halfStep, color = '#000000') {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.2;
+
+            if (step <= -2) {
+                const ly = line1_y + 2 * halfStep;
+                ctx.beginPath();
+                ctx.moveTo(x - 9, ly);
+                ctx.lineTo(x + 9, ly);
+                ctx.stroke();
+            }
+
+            if (step >= 10) {
+                const ly1 = line1_y - 10 * halfStep;
+                ctx.beginPath();
+                ctx.moveTo(x - 9, ly1);
+                ctx.lineTo(x + 9, ly1);
+                ctx.stroke();
+            }
+
+            if (step >= 12) {
+                const ly2 = line1_y - 12 * halfStep;
+                ctx.beginPath();
+                ctx.moveTo(x - 9, ly2);
+                ctx.lineTo(x + 9, ly2);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        async function toggleMicrophoneListening() {
+            initAudio();
+            const btn = document.getElementById('btn-mic-toggle');
+
+            if (isMicListening) {
+                stopMicrophoneListening();
+                btn.textContent = ' MIC INPUT: OFF';
+                btn.classList.remove('btn-mic-active');
+                btn.classList.add('btn-secondary');
+                document.getElementById('status').textContent = 'Microphone Pitch Detection stopped.';
+            } else {
+                try {
+                    micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                    const micSource = audioCtx.createMediaStreamSource(micStream);
+                    micAnalyser = audioCtx.createAnalyser();
+                    micAnalyser.fftSize = 2048;
+                    micSource.connect(micAnalyser);
+
+                    isMicListening = true;
+                    btn.textContent = ' MIC INPUT: ON';
+                    btn.classList.remove('btn-secondary');
+                    btn.classList.add('btn-mic-active');
+                    document.getElementById('status').textContent = ' Listening to acoustic piano notes... Play near your computer microphone!';
+
+                    processMicrophonePitch();
+                } catch (err) {
+                    console.error("Microphone access error:", err);
+                    alert("Unable to access microphone. Please allow microphone permissions in your browser.");
+                }
+            }
+        }
+
+        function stopMicrophoneListening() {
+            isMicListening = false;
+            if (pitchDetectionFrameId) cancelAnimationFrame(pitchDetectionFrameId);
+            if (micStream) {
+                micStream.getTracks().forEach(track => track.stop());
+                micStream = null;
+            }
+        }
+
+        function autoCorrelate(buf, sampleRate) {
+            let SIZE = buf.length;
+            let rms = 0;
+
+            for (let i = 0; i < SIZE; i++) {
+                let val = buf[i];
+                rms += val * val;
+            }
+            rms = Math.sqrt(rms / SIZE);
+            if (rms < 0.015) return -1;
+
+            let r1 = 0, r2 = SIZE - 1, thres = 0.2;
+            for (let i = 0; i < SIZE / 2; i++) {
+                if (Math.abs(buf[i]) < thres) { r1 = i; break; }
+            }
+            for (let i = 1; i < SIZE / 2; i++) {
+                if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
+            }
+
+            buf = buf.slice(r1, r2);
+            SIZE = buf.length;
+
+            let c = new Array(SIZE).fill(0);
+            for (let i = 0; i < SIZE; i++) {
+                for (let j = 0; j < SIZE - i; j++) {
+                    c[i] = c[i] + buf[j] * buf[j + i];
+                }
+            }
+
+            let d = 0; while (c[d] > c[d + 1]) d++;
+            let maxval = -1, maxpos = -1;
+            for (let i = d; i < SIZE; i++) {
+                if (c[i] > maxval) {
+                    maxval = c[i];
+                    maxpos = i;
+                }
+            }
+            let T0 = maxpos;
+
+            let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+            let a = (x1 + x3 - 2 * x2) / 2;
+            let b = (x3 - x1) / 2;
+            if (a) T0 = T0 - b / (2 * a);
+
+            return sampleRate / T0;
+        }
+
+        function frequencyToNoteName(freq) {
+            if (freq < 50 || freq > 2000) return null;
+            let midi = Math.round(69 + 12 * Math.log2(freq / 440));
+            return midiNoteToName(midi);
+        }
+
+        function processMicrophonePitch() {
+            if (!isMicListening || !micAnalyser) return;
+
+            let buf = new Float32Array(micAnalyser.fftSize);
+            micAnalyser.getFloatTimeDomainData(buf);
+            let freq = autoCorrelate(buf, audioCtx.sampleRate);
+
+            if (freq !== -1) {
+                let note = frequencyToNoteName(freq);
+                if (note) {
+                    if (note === lastDetectedNote) {
+                        noteHoldCounter++;
+                        if (noteHoldCounter === 3) {
+                            playManualNote(note);
+                        }
+                    } else {
+                        lastDetectedNote = note;
+                        noteHoldCounter = 0;
+                    }
+                }
+            } else {
+                lastDetectedNote = null;
+                noteHoldCounter = 0;
+            }
+
+            pitchDetectionFrameId = requestAnimationFrame(processMicrophonePitch);
+        }
+
+        function openArcadeHub() {
+            initAudio();
+            stopSong();
+            mainControlsBar.style.display = 'none';
+            timelineBox.style.display = 'none';
+            arcadeControlsBar.style.display = 'flex';
+            arcadeHub.classList.add('open');
+            document.getElementById('status').textContent = ' PianoPad Arcade Active! Choose a Mini-Game above.';
+        }
+
+        function returnToPlayerHome() {
+            exitActiveMiniGame();
+            arcadeHub.classList.remove('open');
+            arcadeControlsBar.style.display = 'none';
+            runnerTrack.style.display = 'none';
+            mainControlsBar.style.display = 'flex';
+            timelineBox.style.display = 'inline-flex';
+            document.getElementById('status').textContent = 'Returned to PianoPad Player view.';
+        }
+
+        function exitActiveMiniGame() {
+            activeMiniGame = null;
+            isPlaying = false;
+            raceActive = false;
+            stopBattlePolling();
+            runnerTrack.style.display = 'none';
+            runnerTrack.innerHTML = '';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.querySelectorAll('.key').forEach(k => {
+                k.classList.remove('active');
+                k.style.backgroundColor = '';
+                k.style.boxShadow = '';
+            });
+            document.getElementById('status').textContent = 'Arcade Mini-Game stopped. Select another game or return Home.';
+        }
+
+        function checkFirstTimeCalibration() {
+            const calibDone = localStorage.getItem('pianopad_calib_done');
+            if (!calibDone) {
+                startCalibration();
+            }
+        }
+
+        function startCalibration() {
+            settingsModal.classList.remove('open');
+            buildCalibrationKeyboard();
+            
+            isCalibrating = true;
+            calibStep = 1; 
+            calibLowestRawMIDI = null;
+            calibHighestRawMIDI = null;
+
+            document.querySelectorAll('.calib-key').forEach(k => k.classList.remove('blue-highlight'));
+
+            document.getElementById('btn-calib-skip').style.display = 'inline-flex';
+            document.getElementById('btn-calib-cancel').style.display = 'none';
+            document.getElementById('calib-instructions').innerHTML = "Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...";
+            calibModal.classList.add('open');
+        }
+
+        function skipCalibration() {
+            isCalibrating = false;
+            localStorage.setItem('pianopad_calib_done', 'true');
+            calibModal.classList.remove('open');
+            document.getElementById('status').textContent = 'Calibration skipped. Default key map active.';
+        }
+
+        function cancelCalibration() {
+            isCalibrating = false;
+            calibModal.classList.remove('open');
+        }
+
+        function processCalibrationNote(rawMidi) {
+            if (!isCalibrating) return;
+
+            if (calibStep === 1) {
+                calibLowestRawMIDI = rawMidi;
+                midiOctaveOffset = 36 - rawMidi;
+
+                const lowCKey = document.querySelector('.calib-key[data-calib-note="c1"]');
+                if (lowCKey) lowCKey.classList.add('blue-highlight');
+
+                calibStep = 2;
+                document.getElementById('calib-instructions').innerHTML = 'Recognized Lowest C! Step 2: Now press the <span style="color: #22c55e; font-weight: 800;">HIGHEST</span> \'C\' key on your external MIDI Keyboard...';
+            } else if (calibStep === 2) {
+                calibHighestRawMIDI = rawMidi;
+
+                const rawDiff = calibHighestRawMIDI - calibLowestRawMIDI;
+                const octaveDistance = Math.round(rawDiff / 12);
+                
+                const targetOctave = Math.min(7, 1 + octaveDistance);
+                const highCKey = document.querySelector(`.calib-key[data-calib-note="c${targetOctave}"]`);
+                if (highCKey) highCKey.classList.add('blue-highlight');
+
+                document.getElementById('calib-instructions').textContent = `Calibration Complete! Detected a ${octaveDistance}-Octave Keyboard (${octaveDistance * 12 + 1} keys).`;
+                setTimeout(() => {
+                    isCalibrating = false;
+                    calibStep = 1;
+                    localStorage.setItem('pianopad_calib_done', 'true');
+                    calibModal.classList.remove('open');
+                    updateKeyPositions();
+                    document.getElementById('status').textContent = `MIDI Keyboard calibrated! Lowest key now maps directly to C1 on-screen.`;
+                }, 1200);
+            }
+        }
+
+        function unlockBonusSounds(reasonText) {
+            if (bonusSoundsUnlocked) return;
+            bonusSoundsUnlocked = true;
+
+            const instSelect = document.getElementById('instrument-select');
+            const bonusOptions = [
+                { val: 'epiano', text: ' Electric Piano' },
+                { val: 'harpsichord', text: ' Harpsichord' },
+                { val: 'synth80s', text: ' 80s Synth Lead' },
+                { val: 'xylophone', text: ' Xylophone' },
+                { val: 'accordion', text: ' Accordion' }
+            ];
+
+            bonusOptions.forEach(opt => {
+                const optionEl = document.createElement('option');
+                optionEl.value = opt.val;
+                optionEl.textContent = opt.text;
+                instSelect.appendChild(optionEl);
+            });
+
+            if (reasonText) {
+                document.getElementById('unlock-modal-text').innerHTML = reasonText;
+            }
+            document.getElementById('unlock-modal').classList.add('open');
+        }
+
+        function closeUnlockModal() {
+            document.getElementById('unlock-modal').classList.remove('open');
+        }
+
+        function startSimonTaps() {
+            initAudio();
+            exitActiveMiniGame();
+            arcadeHub.classList.remove('open');
+            activeMiniGame = 'simon';
+            simonSequence = [];
+            resetGameStats();
+            document.getElementById('status').textContent = ' Simon Taps: Watch and listen to the pattern...';
+            nextSimonRound();
+        }
+
+        function drawSimonStaircase(level) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (level <= 0) return;
+
+            const startX = 60;
+            const startY = canvas.height - 25;
+            const stepWidth = Math.min(32, (canvas.width - 120) / Math.max(level, 10));
+            const stepHeight = Math.min(18, (canvas.height - 40) / Math.max(level, 10));
+
+            const colorPalettes = [
+                ['#22c55e', '#16a34a'],
+                ['#ec4899', '#db2777'],
+                ['#06b6d4', '#0891b2'],
+                ['#f59e0b', '#d97706']
+            ];
+
+            for (let i = 0; i < level; i++) {
+                const paletteIdx = Math.min(colorPalettes.length - 1, Math.floor(i / 5));
+                const colors = colorPalettes[paletteIdx];
+
+                const px = startX + i * stepWidth;
+                const py = startY - i * stepHeight;
+
+                ctx.save();
+                ctx.fillStyle = colors[0];
+                ctx.shadowColor = colors[0];
+                ctx.shadowBlur = 8;
+                ctx.fillRect(px, py, stepWidth - 2, stepHeight - 2);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 10px -apple-system, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(i + 1, px + stepWidth / 2 - 1, py + stepHeight / 2 - 1);
+                ctx.restore();
+            }
+        }
+
+        function nextSimonRound() {
+            simonPlayerIndex = 0;
+            simonIsPrompting = true;
+
+            if (simonSequence.length === 0) {
+                simonSequence.push('c1');
+                simonSequence.push('d1');
+            } else {
+                const lastNote = simonSequence[simonSequence.length - 1];
+                const lastIdx = cMajorScaleNotes.indexOf(lastNote);
+                const stepChange = Math.random() > 0.5 ? 1 : -1;
+                let nextIdx = Math.max(0, Math.min(cMajorScaleNotes.length - 1, lastIdx + stepChange));
+                simonSequence.push(cMajorScaleNotes[nextIdx]);
+            }
+
+            drawSimonStaircase(simonSequence.length);
+            document.getElementById('status').textContent = ` Simon Taps (Level ${simonSequence.length}): Memorize pattern...`;
+
+            let step = 0;
+            const interval = setInterval(() => {
+                if (step < simonSequence.length) {
+                    const note = simonSequence[step];
+                    const freq = getNoteFrequency(note);
+                    if (freq) playTone(freq, 0.35, 1.0);
+                    highlightKey(note, 350, '#8b5cf6');
+                    step++;
+                } else {
+                    clearInterval(interval);
+                    simonIsPrompting = false;
+                    document.getElementById('status').textContent = ` Your Turn! Play back Level ${simonSequence.length}...`;
+                }
+            }, 600);
+        }
+
+        function handleSimonInput(noteStr) {
+            if (simonIsPrompting) return;
+
+            const expected = simonSequence[simonPlayerIndex];
+            if (noteStr.toLowerCase().trim() === expected.toLowerCase().trim()) {
+                simonPlayerIndex++;
+                if (simonPlayerIndex >= simonSequence.length) {
+                    spawnConfetti(canvas.width / 2, canvas.height / 2, '#8b5cf6');
+                    document.getElementById('status').textContent = ` Level ${simonSequence.length} Complete! Escalating to Level ${simonSequence.length + 1}...`;
+                    setTimeout(nextSimonRound, 1200);
+                }
+            } else {
+                playErrorClackSound();
+                currentSongTitle = "Simon Taps";
+                
+                const maxLevelRemembered = Math.max(1, simonSequence.length - 1);
+                ensureStudentName();
+                
+                document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Max Level Remembered: <span style="color:#22c55e; font-size:1.3rem;">Level ${maxLevelRemembered}</span>`;
+                document.getElementById('single-bar-graph').style.display = 'flex';
+                document.getElementById('multi-bar-graph').style.display = 'none';
+                document.getElementById('btn-battle-again').style.display = 'none';
+                document.getElementById('bar-green').style.height = '100%';
+                document.getElementById('bar-orange').style.height = '0%';
+                document.getElementById('bar-red').style.height = '0%';
+
+                document.getElementById('game-rank-text').textContent = `Simon Taps Level Logged!`;
+                gameResultsModal.classList.add('open');
+                postScoreToLeaderboard(maxLevelRemembered);
+                activeMiniGame = null;
+            }
+        }
+
+        function startMysteryNote() {
+            initAudio();
+            exitActiveMiniGame();
+            arcadeHub.classList.remove('open');
+            activeMiniGame = 'mystery';
+            mysteryGuessCount = 0;
+            resetGameStats();
+
+            const randomPitch = Math.floor(Math.random() * 48) + 12;
+            mysteryTargetPitch = pitchToNote(randomPitch);
+
+            const freq = getNoteFrequency(mysteryTargetPitch);
+            if (freq) playTone(freq, 0.6, 1.0);
+
+            document.getElementById('status').textContent = ' Mystery Note chosen! Tap keys to guess...';
+        }
+
+        function handleMysteryInput(noteStr) {
+            mysteryGuessCount++;
+            const guessedPitchNum = noteToPitch(noteStr);
+            const targetPitchNum = noteToPitch(mysteryTargetPitch);
+
+            if (guessedPitchNum === null || targetPitchNum === null) return;
+
+            const diff = Math.abs(guessedPitchNum - targetPitchNum);
+
+            if (diff === 0) {
+                highlightKey(noteStr, 500, '#22c55e');
+                const mPos = keyPosMap[noteStr.toLowerCase().trim()];
+                if(mPos) spawnConfetti(mPos.left + mPos.width / 2, canvas.height, '#22c55e');
+                
+                currentSongTitle = "Mystery Note";
+                ensureStudentName();
+
+                document.getElementById('game-summary-text').innerHTML =
+                    `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>` +
+                    `Guesses Taken: <span style="color:#22c55e; font-size:1.4rem; font-weight:800;">${mysteryGuessCount}</span>`;
+
+                document.getElementById('single-bar-graph').style.display = 'flex';
+                document.getElementById('multi-bar-graph').style.display = 'none';
+                document.getElementById('btn-battle-again').style.display = 'none';
+                document.getElementById('bar-green').style.height = '100%';
+                document.getElementById('bar-orange').style.height = '0%';
+                document.getElementById('bar-red').style.height = '0%';
+
+                document.getElementById('game-rank-text').textContent = `Mystery Note Cleared!`;
+
+                gameResultsModal.classList.add('open');
+                postScoreToLeaderboard(mysteryGuessCount);
+                activeMiniGame = null;
+            } else if (diff <= 2) {
+                highlightKey(noteStr, 250, '#ef4444');
+                document.getElementById('status').textContent = ` Sizzle HOT! You are right next to it! (Guesses: ${mysteryGuessCount})`;
+            } else if (diff <= 6) {
+                highlightKey(noteStr, 250, '#f97316');
+                document.getElementById('status').textContent = ` Warm... Getting closer! (Guesses: ${mysteryGuessCount})`;
+            } else {
+                highlightKey(noteStr, 250, '#38bdf8');
+                document.getElementById('status').textContent = ` Ice COLD! Far away... (Guesses: ${mysteryGuessCount})`;
+            }
+        }
+
+        function startDropDodge() {
+            initAudio();
+            exitActiveMiniGame();
+            arcadeHub.classList.remove('open');
+            activeMiniGame = 'drop';
+            dodgeLives = 5;
+            dodgeDodgedCount = 0;
+            resetGameStats();
+
+            miniGameFallSpeedMs = 3800;
+            currentSong = [];
+            const whiteKeys = keyLayout.filter(k => k.type === 'white').map(k => k.note);
+
+            for (let i = 0; i < 20; i++) {
+                const safeKeyIdx = Math.floor(Math.random() * whiteKeys.length);
+                const safeKey = whiteKeys[safeKeyIdx];
+                const wallNotes = whiteKeys.filter(k => k !== safeKey);
+
+                currentSong.push({
+                    notes: wallNotes,
+                    safeKey: safeKey,
+                    rest: 2200
+                });
+            }
+
+            buildTimeline();
+            isPlaying = true;
+            playbackStartTime = performance.now();
+            lastFrameTime = performance.now();
+            document.getElementById('status').textContent = ` DROP DODGE ACTIVE! Lives: ❤️ ${dodgeLives} | Dodges: 0`;
+            requestAnimationFrame(renderLoop);
+        }
+
+        function startComboStrike() {
+            initAudio();
+            exitActiveMiniGame();
+            arcadeHub.classList.remove('open');
+            activeMiniGame = 'combo';
+            resetGameStats();
+
+            miniGameFallSpeedMs = 2400;
+            const comboPairs = [
+                ['c1', 'g1'], ['c1', 'e1'], ['f1', 'a1'], ['g1', 'b1'], ['c2', 'e2'], ['d1', 'f1']
+            ];
+
+            currentSong = [];
+            for (let i = 0; i < 12; i++) {
+                const pair = comboPairs[Math.floor(Math.random() * comboPairs.length)];
+                currentSong.push({
+                    notes: pair,
+                    rest: 1800
+                });
+            }
+
+            buildTimeline();
+            isPlaying = true;
+            playbackStartTime = performance.now();
+            lastFrameTime = performance.now();
+            document.getElementById('status').textContent = ' TWO-NOTE COMBO STRIKE! Strike falling note intervals simultaneously!';
+            requestAnimationFrame(renderLoop);
+        }
+
+        function openSprintModeSelector() {
+            initAudio();
+            initSwissTournamentUI();
+            isSongBattle = false;
+            const btnKo = document.getElementById('btn-host-knockout-opt');
+            if (btnKo) btnKo.style.display = 'none';
+            document.getElementById('battle-modal-title').textContent = " Finger Sprint Setup";
+            document.getElementById('battle-modal-subtitle').textContent = "Select your race mode:";
+            document.getElementById('btn-sprint-bot-opt').style.display = 'inline-flex';
+            document.getElementById('host-song-selector-group').style.display = 'none';
+            document.getElementById('sprint-menu-buttons').style.display = 'flex';
+            document.getElementById('sprint-form-container').style.display = 'none';
+            document.getElementById('inline-name-error').style.display = 'none';
+            document.getElementById('sprint-option-modal').classList.add('open');
+        }
+
+        function populateHostSongSelector() {
+            const hostSelect = document.getElementById('host-battle-song-select');
+            hostSelect.innerHTML = '';
+            songList.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.code;
+                opt.textContent = s.title;
+                if (s.title === currentSongTitle) opt.selected = true;
+                hostSelect.appendChild(opt);
+            });
+        }
+
+        function openSongBattleSelector() {
+            initAudio();
+            initSwissTournamentUI();
+            isSongBattle = true;
+            battleResultsShown = false;
+            
+            if (isStepMode) {
+                isStepMode = false;
+                btnStep.textContent = 'Step Mode';
+                btnStep.classList.remove('btn-step-active');
+                btnStep.classList.add('btn-step');
+            }
+
+            const btnKo = document.getElementById('btn-host-knockout-opt');
+            if (btnKo) btnKo.style.display = 'inline-flex';
+            document.getElementById('battle-modal-title').textContent = ` Song Battle Setup`;
+            document.getElementById('battle-modal-subtitle').textContent = "Host or join a live song battle:";
+            document.getElementById('btn-sprint-bot-opt').style.display = 'none';
+            document.getElementById('sprint-menu-buttons').style.display = 'flex';
+            document.getElementById('sprint-form-container').style.display = 'none';
+            document.getElementById('inline-name-error').style.display = 'none';
+            document.getElementById('sprint-option-modal').classList.add('open');
+        }
+
+        function closeSprintOptionModal() {
+            document.getElementById('sprint-option-modal').classList.remove('open');
+        }
+
+        function openHostNamePrompt() {
+            document.getElementById('sprint-menu-buttons').style.display = 'none';
+            document.getElementById('sprint-form-container').style.display = 'flex';
+            document.getElementById('code-input-group').style.display = 'none';
+            document.getElementById('host-lobby-group').style.display = 'none';
+            document.getElementById('client-waiting-group').style.display = 'none';
+            document.getElementById('inline-name-error').style.display = 'none';
+            
+            const confirmBtn = document.getElementById('btn-confirm-sprint-action');
+            confirmBtn.style.display = 'inline-flex';
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirm & Continue';
+
+            if (isSongBattle) {
+                populateHostSongSelector();
+                document.getElementById('host-song-selector-group').style.display = 'flex';
+            } else {
+                document.getElementById('host-song-selector-group').style.display = 'none';
+            }
+            
+            confirmBtn.onclick = () => {
+                if (confirmBtn.disabled) return;
+
+                const rawName = document.getElementById('sprint-player-name').value;
+                if (!rawName.trim()) {
+                    document.getElementById('inline-name-error').style.display = 'block';
+                    document.getElementById('sprint-player-name').focus();
+                    return;
+                }
+
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Starting...';
+
+                const nameInput = sanitizeName(rawName);
+                document.getElementById('sprint-player-name').value = nameInput;
+
+                if (isSongBattle) {
+                    const selectedCode = document.getElementById('host-battle-song-select').value;
+                    const opt = document.getElementById('host-battle-song-select').selectedOptions[0];
+                    if (opt) currentSongTitle = opt.text;
+                    songSelect.value = selectedCode;
+                    const parsed = parsePianoPad(selectedCode);
+                    if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
+                }
+
+                showHostSetup(nameInput);
+            };
+        }
+
+        function openJoinNamePrompt() {
+            document.getElementById('sprint-menu-buttons').style.display = 'none';
+            document.getElementById('sprint-form-container').style.display = 'flex';
+            document.getElementById('code-input-group').style.display = 'flex';
+            document.getElementById('host-song-selector-group').style.display = 'none';
+            document.getElementById('host-lobby-group').style.display = 'none';
+            document.getElementById('client-waiting-group').style.display = 'none';
+            document.getElementById('inline-name-error').style.display = 'none';
+            
+            const confirmBtn = document.getElementById('btn-confirm-sprint-action');
+            confirmBtn.style.display = 'inline-flex';
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirm & Continue';
+
+            confirmBtn.onclick = () => {
+                if (confirmBtn.disabled) return;
+
+                const rawName = document.getElementById('sprint-player-name').value;
+                const roomCode = document.getElementById('sprint-room-code').value.trim().toUpperCase();
+
+                if (!rawName.trim()) {
+                    document.getElementById('inline-name-error').style.display = 'block';
+                    document.getElementById('sprint-player-name').focus();
+                    return;
+                }
+
+                if (!roomCode) {
+                    alert("Please enter a valid Host Join Code!");
+                    document.getElementById('sprint-room-code').focus();
+                    return;
+                }
+
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Joining...';
+
+                const nameInput = sanitizeName(rawName);
+                document.getElementById('sprint-player-name').value = nameInput;
+
+                showJoinSetup(nameInput, roomCode);
+            };
+        }
+
+        function initSinglePlayerSprint() {
+            closeSprintOptionModal();
+            exitActiveMiniGame();
+            arcadeHub.classList.remove('open');
+            activeMiniGame = 'sprint';
+            resetGameStats();
+
+            playersList = [
+                { id: 'p1', name: 'YOU', avatar: sessionStudentAvatar || '🏃', pxProgress: 0, finishTime: null, isLocal: true, clearedHurdles: [] },
+                { id: 'bot', name: 'ROBO-OPPONENT', avatar: '🤖', pxProgress: 0, finishTime: null, isBot: true, clearedHurdles: [] }
+            ];
+            localPlayerIdRoom = 'p1';
+
+            renderSprintLanes();
+            startCountdown(() => {
+                raceActive = true;
+                sprintStartTime = performance.now();
+                sprintKeystrokeCount = 0;
+                sprintIndex = 0;
+
+                const botInt = setInterval(() => {
+                    if (!raceActive) { clearInterval(botInt); return; }
+                    const bot = playersList.find(p => p.id === 'bot');
+                    if (bot && !bot.finishTime) {
+                        bot.pxProgress += 42.0 + Math.random() * 6.0;
+                        updateMultiplayerLanesUI();
+                        if (bot.pxProgress >= 3600) {
+                            bot.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
+                            checkAllFinished();
+                        }
+                    }
+                }, 100);
+            });
+        }
+
+        function renderLobbyGrid(gridElementId) {
+            const grid = document.getElementById(gridElementId);
+            if (!grid) return;
+            grid.innerHTML = '';
+            playersList.forEach((player) => {
+                const card = document.createElement('div');
+                card.className = 'lobby-player-card';
+                card.innerHTML = `<span>${player.avatar}</span><span>${player.name}</span>`;
+                grid.appendChild(card);
+            });
+        }
+
+        async function showHostSetup(hostName) {
+            sessionStudentName = hostName;
+            document.getElementById('btn-confirm-sprint-action').style.display = 'none';
+            document.getElementById('host-lobby-group').style.display = 'flex';
+            document.getElementById('host-song-selector-group').style.display = 'none';
+
+            activeBattleRoomCode = '' + Math.floor(100 + Math.random() * 900);
+            document.getElementById('generated-room-code-display').textContent = `Join Code: ${activeBattleRoomCode}`;
+
+            isSprintHost = true;
+            localPlayerIdRoom = 'p1';
+            playersList = [{ id: 'p1', name: hostName, avatar: sessionStudentAvatar || AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true, clearedHurdles: [] }];
+            renderLobbyGrid('lobby-players-grid');
+
+            const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(hostName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
+            await sendJSONP(url);
+
+            startGoogleAppsScriptPolling(activeBattleRoomCode, true);
+        }
+
+        async function showJoinSetup(racerName, roomCode) {
+            sessionStudentName = racerName;
+
+            if (isSongBattle && window.firebaseDb) {
+                try {
+                    const { get, child } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+                    const snap = await get(child(window.firebaseRef(window.firebaseDb), `pianopad_tournaments/${roomCode}`));
+                    if (snap.exists()) {
+                        closeSprintOptionModal();
+                        joinClassKnockoutStudent(racerName, roomCode);
+                        return;
+                    }
+                } catch (e) {
+                    console.warn("Tournament room check fallback to standard battle:", e);
+                }
+            }
+
+            activeBattleRoomCode = roomCode;
+
+            localPlayerIdRoom = 'p' + (Date.now() % 10000);
+            const playerAvatar = sessionStudentAvatar || AVATARS[Math.floor(Math.random() * AVATARS.length)];
+
+            document.getElementById('status').textContent = `Connecting to room ${roomCode}...`;
+
+            let res = null;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                const url = `${APPS_SCRIPT_URL}?action=JOIN_ROOM&roomCode=${roomCode}&playerId=${localPlayerIdRoom}&playerName=${encodeURIComponent(racerName)}&avatar=${encodeURIComponent(playerAvatar)}&t=${Date.now()}`;
+                res = await sendJSONP(url);
+                
+                if (res && !res.error) break;
+                await new Promise(r => setTimeout(r, 1000));
+            }
+
+            if (res && res.error) {
+                alert("Room not found! Check code and try again.");
+                const confirmBtn = document.getElementById('btn-confirm-sprint-action');
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = 'Confirm & Continue';
+                }
+                return;
+            }
+
+            document.getElementById('code-input-group').style.display = 'none';
+            document.getElementById('btn-confirm-sprint-action').style.display = 'none';
+            document.getElementById('client-waiting-group').style.display = 'flex';
+            document.getElementById('status').textContent = `Connected to Host Code (${roomCode})! Waiting for start...`;
+
+            startGoogleAppsScriptPolling(roomCode, false);
+        }
+
+        function startGoogleAppsScriptPolling(roomCode, isHost) {
+            if (httpPollTimer) clearInterval(httpPollTimer);
+            hasBattleStarted = false;
+
+            httpPollTimer = setInterval(async () => {
+                if (!activeBattleRoomCode) return;
+                const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_ROOM&roomCode=${roomCode}&t=${Date.now()}`);
+                if (!res || !res.players) return;
+
+                playersList = res.players.map(remotePlayer => {
+                    const localMatch = playersList.find(p => p.id === remotePlayer.id);
+                    const isLocal = remotePlayer.id === localPlayerIdRoom;
+                    const finished = isLocal ? (localMatch ? (localMatch.finished || remotePlayer.finished) : remotePlayer.finished) : remotePlayer.finished;
+
+                    return {
+                        ...remotePlayer,
+                        isLocal: isLocal,
+                        finished: finished === true || finished === "true",
+                        clearedHurdles: localMatch ? localMatch.clearedHurdles : [],
+                        stats: remotePlayer.stats || { perfect: 0, earlyLate: 0, miss: 0 }
+                    };
+                });
+
+                if (isHost) renderLobbyGrid('lobby-players-grid');
+                else renderLobbyGrid('client-lobby-grid');
+
+                if (isSongBattle) {
+                    const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
+                    if (localPlayer && localPlayer.finished) {
+                        pushPlayerState();
+                    }
+                    renderSongBattleResults();
+                } else {
+                    updateMultiplayerLanesUI();
+                }
+
+                if (res.songCode && !isHost) {
+                    currentSongTitle = res.songTitle;
+                    songSelect.value = res.songCode;
+                    const parsed = parsePianoPad(res.songCode);
+                    if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
+                }
+
+                if (res.status === "started" && !hasBattleStarted) {
+                    hasBattleStarted = true;
+                    document.getElementById('sprint-option-modal').classList.remove('open');
+                    arcadeHub.classList.remove('open');
+                    resetGameStats();
+
+                    if (isSongBattle) {
+                        isStepMode = false;
+                        btnStep.textContent = 'Step Mode';
+                        btnStep.classList.remove('btn-step-active');
+                        btnStep.classList.add('btn-step');
+
+                        isGameMode = true;
+                        btnGame.textContent = 'Game Mode: ON';
+                        btnGame.classList.add('btn-game-active');
+                        startCountdown(() => { playSong(); });
+                    } else {
+                        activeMiniGame = 'sprint';
+                        renderSprintLanes();
+                        startCountdown(() => {
+                            raceActive = true;
+                            sprintStartTime = performance.now();
+                            sprintKeystrokeCount = 0;
+                            sprintIndex = 0;
+                        });
+                    }
+                }
+
+                if (res.status === "finished" && raceActive) {
+                    raceActive = false;
+                    if (isSongBattle) renderSongBattleResults();
+                    else finishSprintRace();
+                }
+            }, 1000);
+        }
+
+        async function pushPlayerState() {
+            if (!activeBattleRoomCode) return;
+            const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
+            if (!localPlayer) return;
+
+            const stats = localPlayer.stats || gameStats;
+            const url = `${APPS_SCRIPT_URL}?action=UPDATE_PLAYER&roomCode=${activeBattleRoomCode}&playerId=${localPlayerIdRoom}&pxProgress=${localPlayer.pxProgress}&finishTime=${localPlayer.finishTime || ''}&finished=${localPlayer.finished}&perfect=${stats.perfect}&earlyLate=${stats.earlyLate}&miss=${stats.miss}&t=${Date.now()}`;
+            await sendJSONP(url);
+        }
+
+        async function triggerHostStartRace() {
+            if (!activeBattleRoomCode) return;
+
+            const url = `${APPS_SCRIPT_URL}?action=START_ROOM&roomCode=${activeBattleRoomCode}&t=${Date.now()}`;
+            await sendJSONP(url);
+
+            document.getElementById('sprint-option-modal').classList.remove('open');
+            arcadeHub.classList.remove('open');
+            resetGameStats();
+
+            if (isSongBattle) {
+                isStepMode = false;
+                btnStep.textContent = 'Step Mode';
+                btnStep.classList.remove('btn-step-active');
+                btnStep.classList.add('btn-step');
+
+                isGameMode = true;
+                btnGame.textContent = 'Game Mode: ON';
+                btnGame.classList.add('btn-game-active');
+                startCountdown(() => { playSong(); });
+            } else {
+                activeMiniGame = 'sprint';
+                renderSprintLanes();
+                startCountdown(() => {
+                    raceActive = true;
+                    sprintStartTime = performance.now();
+                    sprintKeystrokeCount = 0;
+                    sprintIndex = 0;
+                });
+            }
+        }
+
+        async function triggerBattleAgain() {
+            gameResultsModal.classList.remove('open');
+            hasBattleStarted = false;
+            battleResultsShown = false;
+
+            if (isSprintHost) {
+                const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(sessionStudentName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
+                await sendJSONP(url);
+
+                showHostSetup(sessionStudentName);
+                document.getElementById('sprint-option-modal').classList.add('open');
+            }
+        }
+
+        function renderSprintLanes() {
+            runnerTrack.style.display = 'flex';
+            runnerTrack.innerHTML = '';
+
+            const hurdleNotes = ['G', 'E', 'C', 'F', 'A', 'D', 'B', 'C', 'E', 'G'];
+
+            playersList.forEach((player) => {
+                const laneDiv = document.createElement('div');
+                laneDiv.className = `runner-lane ${player.id === localPlayerIdRoom ? 'my-lane' : ''}`;
+                laneDiv.id = `lane-${player.id}`;
+
+                const label = document.createElement('div');
+                label.className = 'lane-label';
+                label.textContent = `${player.name} (${player.avatar})`;
+
+                const avatar = document.createElement('div');
+                avatar.className = 'runner-avatar';
+                avatar.id = `avatar-${player.id}`;
+                avatar.textContent = player.avatar;
+
+                const scrollTrack = document.createElement('div');
+                scrollTrack.className = 'runner-track-scroll';
+                scrollTrack.id = `scroll-${player.id}`;
+
+                hurdleNotes.forEach((note, idx) => {
+                    const hurdleDiv = document.createElement('div');
+                    hurdleDiv.className = 'hurdle-obstacle';
+                    hurdleDiv.style.left = `${(idx + 1) * 320}px`;
+                    hurdleDiv.textContent = note;
+                    scrollTrack.appendChild(hurdleDiv);
+                });
+
+                const finishLine = document.createElement('div');
+                finishLine.className = 'runner-finish-line';
+                scrollTrack.appendChild(finishLine);
+
+                laneDiv.appendChild(label);
+                laneDiv.appendChild(avatar);
+                laneDiv.appendChild(scrollTrack);
+                runnerTrack.appendChild(laneDiv);
+            });
+        }
+
+        function updateMultiplayerLanesUI() {
+            playersList.forEach((player) => {
+                const scrollTrack = document.getElementById(`scroll-${player.id}`);
+                if (scrollTrack) {
+                    scrollTrack.style.transform = `translateX(-${player.pxProgress}px)`;
+                }
+            });
+        }
+
+        function startCountdown(onComplete) {
+            const overlay = document.getElementById('countdown-overlay');
+            const numText = document.getElementById('countdown-text');
+            overlay.style.display = 'flex';
+
+            let count = 3;
+            numText.textContent = count;
+
+            const interval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    numText.textContent = count;
+                } else if (count === 0) {
+                    numText.textContent = "GO!";
+                } else {
+                    clearInterval(interval);
+                    overlay.style.display = 'none';
+                    if (onComplete) onComplete();
+                }
+            }, 800);
+        }
+
+        function checkAllFinished() {
+            const allFinished = playersList.every(p => p.finished === true || p.finished === "true" || p.finishTime !== null || p.pxProgress >= 3600);
+            if (allFinished) {
+                if (raceActive) {
+                    raceActive = false;
+                    finishSprintRace();
+                } else if (isSongBattle) {
+                    renderSongBattleResults();
+                }
+            }
+        }
+
+        function finishSprintRace() {
+            raceActive = false;
+            currentSongTitle = "Finger Sprint";
+
+            const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
+            const winner = [...playersList].sort((a,b) => parseFloat(a.finishTime || 999) - parseFloat(b.finishTime || 999))[0];
+            const isWinner = winner && winner.id === localPlayerIdRoom;
+
+            const popUpHeader = isWinner ? ` YOU WON! (${localPlayer ? localPlayer.finishTime : ''}s)` : ` YOU LOST! Winner: ${winner ? winner.name : 'Opponent'}`;
+
+            const sortedResults = [...playersList].sort((a, b) => {
+                if (a.finishTime && b.finishTime) return parseFloat(a.finishTime) - parseFloat(b.finishTime);
+                if (a.finishTime) return -1;
+                if (b.finishTime) return 1;
+                return b.pxProgress - a.pxProgress;
+            });
+
+            let tableRows = sortedResults.map((p, idx) => {
+                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
+                const timeLabel = p.finishTime ? `${p.finishTime}s` : 'DNF';
+                return `<tr>
+                    <td style="font-weight:800;">${medal}</td>
+                    <td>${p.avatar} ${p.name}</td>
+                    <td style="color:#22c55e; font-weight:700;">${timeLabel}</td>
+                </tr>`;
+            }).join('');
+
+            const resultsHTML = `
+                <div style="margin-bottom:8px; font-weight:900; font-size:1.3rem; color:${isWinner ? '#22c55e' : '#ef4444'};">${popUpHeader}</div>
+                <table class="race-results-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Racer</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            `;
+
+            document.getElementById('game-summary-text').innerHTML = resultsHTML;
+
+            document.getElementById('badge-container').innerHTML = '';
+            document.getElementById('single-bar-graph').style.display = 'flex';
+            document.getElementById('multi-bar-graph').style.display = 'none';
+            document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
+
+            const totalHits = gameStats.perfect + gameStats.miss;
+            const greenPct = totalHits > 0 ? (gameStats.perfect / totalHits) * 100 : 100;
+            const redPct = totalHits > 0 ? (gameStats.miss / totalHits) * 100 : 0;
+
+            document.getElementById('bar-green').style.height = `${greenPct}%`;
+            document.getElementById('bar-orange').style.height = '0%';
+            document.getElementById('bar-red').style.height = `${redPct}%`;
+
+            document.getElementById('game-rank-text').textContent = `Finger Sprint Finish!`;
+            gameResultsModal.classList.add('open');
+
+            if (localPlayer && localPlayer.finishTime) {
+                ensureStudentName();
+                postScoreToLeaderboard(parseFloat(localPlayer.finishTime));
+            }
+            loadStudentTickerStats(sessionStudentName);
+            activeMiniGame = null;
+        }
+
+        async function postBattleToSpreadsheet(battlePayload) {
+            if (!APPS_SCRIPT_URL) return;
+
+            try {
+                const url = `${APPS_SCRIPT_URL}?action=SUBMIT_BATTLE&players=${encodeURIComponent(JSON.stringify(battlePayload))}&t=${Date.now()}`;
+                await sendJSONP(url);
+                document.getElementById('status').textContent = `Song Battle results saved to Google Sheet!`;
+            } catch (err) {
+                console.warn("Could not post battle to Google Sheet:", err);
+            }
+        }
+
+        async function forceEndSongBattle() {
+            if (!isSprintHost) return;
+            playersList.forEach(p => p.finished = true);
+            renderSongBattleResults();
+        }
+
+        function renderSongBattleResults() {
+            if (battleResultsShown) return;
+
+            const allPlayersFinished = playersList.every(p => p.finished === true || p.finished === "true");
+            
+            if (!allPlayersFinished) {
+                document.getElementById('status').innerHTML = ` Battle finished for you! Waiting for remaining players to complete... 
+                ${isSprintHost ? '<button type="button" class="btn-warning" onclick="forceEndSongBattle()" style="margin-left:10px; padding:2px 8px; font-size:0.75rem; border:none; border-radius:4px; cursor:pointer;">⚡ Force End Battle</button>' : ''}`;
+                return;
+            }
+
+            battleResultsShown = true;
+
+            const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
+            if (localPlayer && localPlayer.stats) {
+                const tot = localPlayer.stats.perfect + localPlayer.stats.earlyLate + localPlayer.stats.miss;
+                const acc = tot > 0 ? (((localPlayer.stats.perfect * 1.0 + localPlayer.stats.earlyLate * 0.5) / tot) * 100) : 0;
+                if (acc >= 80) {
+                    unlockBonusSounds(`Great job! You achieved <strong>${acc.toFixed(1)}%</strong> accuracy in the Song Battle and unlocked 5 bonus instrument sound engines!`);
+                }
+            }
+
+            const sortedRanked = [...playersList].sort((a, b) => {
+                const aStats = a.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+                const bStats = b.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+                const aTot = Math.max(1, aStats.perfect + aStats.earlyLate + aStats.miss);
+                const bTot = Math.max(1, bStats.perfect + bStats.earlyLate + bStats.miss);
+                const aAcc = ((aStats.perfect * 1.0 + aStats.earlyLate * 0.5) / aTot) * 100;
+                const bAcc = ((bStats.perfect * 1.0 + bStats.earlyLate * 0.5) / bTot) * 100;
+                return bAcc - aAcc;
+            });
+
+            const battlePayload = [];
+            sortedRanked.forEach((p, idx) => {
+                const pStats = p.stats || { perfect: 0, earlyLate: 0, miss: 0 };
+                const total = Math.max(1, pStats.perfect + pStats.earlyLate + pStats.miss);
+                const accuracyPct = ((pStats.perfect * 1.0 + pStats.earlyLate * 0.5) / total) * 100;
+                
+                battlePayload.push({
+                    name: p.name,
+                    score: accuracyPct.toFixed(1),
+                    avatar: p.avatar || '🏃',
+                    id: p.id
+                });
+            });
+
+            if (isSprintHost) {
+                postBattleToSpreadsheet(battlePayload);
+            }
+
+            showGrandFinale(battlePayload, isSprintHost, `Song Battle: ${currentSongTitle}`);
+            loadStudentTickerStats(sessionStudentName);
+        }
+
+        async function postScoreToLeaderboard(accuracyNum) {
+            if (!APPS_SCRIPT_URL) return;
+
+            ensureStudentName();
+            const speedText = speedSlider.value + '%';
+            const studentClass = currentStudentClass || localStorage.getItem('pianopad_class') || currentRoom || '';
+
+            try {
+                document.getElementById('status').textContent = `Submitting score (${accuracyNum}) for ${sessionStudentName} (${studentClass || 'No Class'})...`;
+
+                const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&class=${encodeURIComponent(studentClass)}&studentClass=${encodeURIComponent(studentClass)}&t=${Date.now()}`;
+                const res = await sendJSONP(url);
+                
+                if (res && res.status === "SCORE_SUBMITTED") {
+                    document.getElementById('status').textContent = `Score (${accuracyNum}) saved to Google Sheet for ${sessionStudentName}!`;
+                } else if (res && res.error) {
+                    document.getElementById('status').textContent = `Google Sheet write error: ${res.error}`;
+                } else {
+                    document.getElementById('status').textContent = `Score (${accuracyNum}) submitted for ${sessionStudentName}!`;
+                }
+            } catch (err) {
+                console.warn("Could not post score to Google Apps Script.", err);
+                document.getElementById('status').textContent = `Failed to submit score for ${sessionStudentName}.`;
+            }
+        }
+
+        function handleSprintInput(noteStr) {
+            if (!raceActive) return;
+
+            const rawNoteName = noteStr.toLowerCase().trim();
+            const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
+
+            if (!localPlayer || localPlayer.finishTime) return;
+
+            const hurdleNotes = ['G', 'E', 'C', 'F', 'A', 'D', 'B', 'C', 'E', 'G'];
+            let nearHurdleIndex = -1;
+            let expectedHurdleNote = null;
+
+            for (let i = 0; i < hurdleNotes.length; i++) {
+                const hPx = (i + 1) * 320;
+                if (localPlayer.pxProgress >= hPx - 90 && localPlayer.pxProgress <= hPx + 30) {
+                    nearHurdleIndex = i;
+                    expectedHurdleNote = hurdleNotes[i];
+                    break;
+                }
+            }
+
+            const parsedNote = rawNoteName.match(/^([a-g]#?)([0-9]+)$/);
+            if (parsedNote && expectedHurdleNote) {
+                const letter = parsedNote[1].toUpperCase();
+                const octave = parseInt(parsedNote[2], 10);
+                
+                localPlayer.clearedHurdles = localPlayer.clearedHurdles || [];
+
+                if (!localPlayer.clearedHurdles.includes(nearHurdleIndex)) {
+                    if (letter === expectedHurdleNote && octave >= 2) {
+                        gameStats.perfect++;
+                        localPlayer.clearedHurdles.push(nearHurdleIndex);
+                        localPlayer.pxProgress += 60;
+                        sprintKeystrokeCount += 2;
+                        
+                        updateMultiplayerLanesUI();
+                        
+                        const avatarEl = document.getElementById(`avatar-${localPlayer.id}`);
+                        if (avatarEl) {
+                            avatarEl.textContent = '🤸';
+                            avatarEl.classList.add('jumping');
+                            setTimeout(() => {
+                                avatarEl.classList.remove('jumping');
+                                avatarEl.textContent = sessionStudentAvatar || '🏃';
+                            }, 450);
+                        }
+                        
+                        document.getElementById('status').textContent = ` Jumped Hurdle ${expectedHurdleNote}!`;
+                        spawnConfetti(canvas.width / 2, canvas.height / 2, '#22c55e');
+                        pushPlayerState();
+                        return;
+                    } else if (letter === expectedHurdleNote && octave < 2) {
+                        playErrorClackSound();
+                        document.getElementById('status').textContent = ` Play a HIGH ${expectedHurdleNote} (Octave 2+) to jump!`;
+                        return;
+                    }
+                }
+            }
+
+            const expectedNote = sprintSequence[sprintIndex % 2];
+            if (rawNoteName === expectedNote.toLowerCase().trim()) {
+                gameStats.perfect++;
+                sprintIndex++;
+                sprintKeystrokeCount++;
+
+                const avatarEl = document.getElementById(`avatar-${localPlayer.id}`);
+                if (avatarEl && !avatarEl.classList.contains('jumping')) {
+                    avatarEl.textContent = (sprintKeystrokeCount % 2 === 0) ? '🏃‍♂️' : (sessionStudentAvatar || '🏃');
+                }
+
+                localPlayer.pxProgress = sprintKeystrokeCount * 36;
+                updateMultiplayerLanesUI();
+
+                if (localPlayer.pxProgress >= 3600 && !localPlayer.finishTime) {
+                    localPlayer.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
+                }
+
+                pushPlayerState();
+
+                if (localPlayer.pxProgress >= 3600) {
+                    checkAllFinished();
+                    return;
+                }
+
+                const nextExpected = sprintSequence[sprintIndex % 2];
+                highlightKey(nextExpected, 300, '#eab308');
+            } else {
+                gameStats.miss++;
+                playErrorClackSound();
+            }
+        }
+    function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playErrorClackSound() {
+            initAudio();
+            const now = audioCtx.currentTime;
+            
+            const bufferSize = audioCtx.sampleRate * 0.04;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(320, now);
+
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(0.35, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            noise.start(now);
+            noise.stop(now + 0.04);
+        }
+
+        function initMIDIHardware() {
+            if (navigator.requestMIDIAccess) {
+                navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
+            }
+        }
+
+        function onMIDISuccess(midiAccess) {
+            const inputs = midiAccess.inputs.values();
+            for (let input of inputs) {
+                input.onmidimessage = handleMIDIMessage;
+            }
+            midiAccess.onstatechange = (e) => {
+                if (e.port.type === 'input' && e.port.state === 'connected') {
+                    e.port.onmidimessage = handleMIDIMessage;
+                }
+            };
+        }
+
+        function onMIDIFailure() {
+            console.warn("Web MIDI API access denied or unsupported in this browser.");
+        }
+
+        function handleMIDIMessage(event) {
+            const status = event.data[0];
+            const channel = status & 0x0F;
+            if (channel === 9) return;
+
+            const command = status & 0xF0;
+            const rawNoteNumber = event.data[1];
+            const velocity = event.data.length > 2 ? event.data[2] : 0;
+
+            if (command === 144 && velocity > 0) {
+                if (isCalibrating) {
+                    processCalibrationNote(rawNoteNumber);
+                } else {
+                    const correctedNoteNumber = rawNoteNumber + midiOctaveOffset;
+                    const noteStr = midiNoteToName(correctedNoteNumber);
+                    if (noteStr) {
+                        playManualNote(noteStr);
+                    }
+                }
+            }
+        }
+
+        function midiNoteToName(midi) {
+            const octave = Math.floor(midi / 12) - 2;
+            const offset = ((midi % 12) + 12) % 12;
+            const name = noteNames[offset];
+            return name + octave;
+        }
+
+        document.getElementById('midi-input').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            initAudio();
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const midi = new Midi(arrayBuffer);
+                const fileName = file.name.replace(/\.[^/.]+$/, "");
+
+                const channelMap = new Map();
+                midi.tracks.forEach((track, tIdx) => {
+                    if (!track.notes || track.notes.length === 0) return;
+                    const ch = track.channel;
+                    if (!channelMap.has(ch)) {
+                        channelMap.set(ch, { channel: ch, noteCount: 0, trackNames: [] });
+                    }
+                    const info = channelMap.get(ch);
+                    info.noteCount += track.notes.length;
+                    const tName = track.name || (track.instrument && track.instrument.name ? track.instrument.name : '') || `Track ${tIdx + 1}`;
+                    if (tName && !info.trackNames.includes(tName)) info.trackNames.push(tName);
+                });
+
+                if (channelMap.size === 0) {
+                    document.getElementById('status').textContent = 'No playable notes found in MIDI file.';
+                    e.target.value = '';
+                    return;
+                }
+
+                pendingMidiData = { midi, fileName };
+
+                const channelSelect = document.getElementById('midi-channel-select');
+                channelSelect.innerHTML = '';
+
+                const sortedChannels = Array.from(channelMap.values()).sort((a, b) => a.channel - b.channel);
+
+                sortedChannels.forEach(info => {
+                    const opt = document.createElement('option');
+                    opt.value = info.channel;
+                    const chNumDisplay = info.channel + 1;
+                    const trackDesc = info.trackNames.length > 0 ? info.trackNames.join(', ') : 'Track';
+                    const isDrums = info.channel === 9 ? ' [Drums/Percussion]' : '';
+                    opt.textContent = `Channel ${chNumDisplay}${isDrums}: ${trackDesc} (${info.noteCount} notes)`;
+
+                    if (info.channel !== 9) {
+                        opt.selected = true;
+                    }
+                    channelSelect.appendChild(opt);
+                });
+
+                document.getElementById('midi-channel-modal').classList.add('open');
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('status').textContent = 'Failed to parse MIDI file.';
+            }
+
+            e.target.value = '';
+        });
+
+        document.getElementById('btn-midi-channel-cancel').addEventListener('click', () => {
+            document.getElementById('midi-channel-modal').classList.remove('open');
+            pendingMidiData = null;
+        });
+
+        document.getElementById('btn-midi-channel-confirm').addEventListener('click', () => {
+            if (!pendingMidiData) return;
+            const selectedChannel = parseInt(document.getElementById('midi-channel-select').value, 10);
+            const { midi, fileName } = pendingMidiData;
+            document.getElementById('midi-channel-modal').classList.remove('open');
+
+            let allNotes = [];
+            midi.tracks.forEach(track => {
+                if (track.channel !== selectedChannel) return;
+                track.notes.forEach(n => {
+                    allNotes.push({
+                        time: n.time,
+                        note: midiNoteToName(n.midi)
+                    });
+                });
+            });
+
+            if (allNotes.length === 0) {
+                document.getElementById('status').textContent = 'No playable notes in selected channel.';
+                pendingMidiData = null;
+                return;
+            }
+
+            allNotes.sort((a, b) => a.time - b.time);
+
+            const hayNotes = [];
+            const hayRests = [];
+
+            let currentChord = [];
+            let lastTime = 0;
+
+            for (let i = 0; i < allNotes.length; i++) {
+                const n = allNotes[i];
+                if (i === 0) {
+                    currentChord.push(n.note.toUpperCase());
+                    hayRests.push(0);
+                    lastTime = n.time;
+                } else {
+                    const timeDiff = Math.round((n.time - lastTime) * 1000);
+                    if (timeDiff <= 20) {
+                        currentChord.push(n.note.toUpperCase());
+                    } else {
+                        hayNotes.push(currentChord.join('+'));
+                        currentChord = [n.note.toUpperCase()];
+                        hayRests.push(timeDiff);
+                        lastTime = n.time;
+                    }
+                }
+            }
+            if (currentChord.length > 0) {
+                hayNotes.push(currentChord.join('+'));
+            }
+
+            const midiHayCode = `${hayNotes.join(',')},RESTS,${hayRests.join(',')}`;
+
+            currentSongTitle = fileName;
+            const parsed = parsePianoPad(midiHayCode);
+
+            if (parsed.length > 0) {
+                currentSong = autoTransposeSong(parsed);
+                generatedHaycode = midiHayCode;
+                btnShare.style.display = 'inline-flex';
+                songSelect.value = '';
+                document.getElementById('status').textContent = `Loaded MIDI Channel ${selectedChannel + 1}: "${fileName}". Converted successfully!`;
+                updateRosterSong();
+                playSong();
+            } else {
+                document.getElementById('status').textContent = 'Error parsing converted MIDI sequence.';
+            }
+
+            pendingMidiData = null;
+        });
+
+        const themePalettes = {
+            default: { pending: '#38bdf8', normal: '#22c55e', shadowActive: 'rgba(56, 189, 248, 0.6)', shadowNormal: 'rgba(34, 197, 94, 0.4)' },
+            cyberpunk: { pending: '#00f0ff', normal: '#ff007f', shadowActive: 'rgba(0, 240, 255, 0.8)', shadowNormal: 'rgba(255, 0, 127, 0.6)' },
+            synthwave: { pending: '#fcee0a', normal: '#ff7700', shadowActive: 'rgba(252, 238, 10, 0.8)', shadowNormal: 'rgba(255, 119, 0, 0.6)' },
+            matrix: { pending: '#00cc66', normal: '#00ff41', shadowActive: 'rgba(0, 204, 102, 0.8)', shadowNormal: 'rgba(0, 255, 65, 0.6)' },
+            gold: { pending: '#fbbf24', normal: '#eab308', shadowActive: 'rgba(251, 191, 36, 0.8)', shadowNormal: 'rgba(234, 179, 8, 0.6)' }
+        };
+
+        const keyboardMap = {
+            'z': 'c1', 's': 'c#1', 'x': 'd1', 'd': 'd#1', 'c': 'e1', 'v': 'f1', 'g': 'f#1', 'b': 'g1', 'h': 'g#1', 'n': 'a1', 'j': 'a#1', 'm': 'b1',
+            ',': 'c2', 'l': 'c#2', '.': 'd2', '1': 'd#2', 'q': 'e2', 'w': 'f2', '3': 'f#2', 'e': 'g2', '4': 'g#2', 'r': 'a2', '5': 'a#2', 't': 'b2',
+            'y': 'c3', '7': 'c#3', 'u': 'd3', '8': 'd#3', 'i': 'e3', 'o': 'f3', '0': 'f#3', 'p': 'g3'
+        };
+
+        const FALL_TIME_MS = 1800;
+        const PRE_FALL_PAUSE = 500;
+
+        const canvas = document.getElementById('waterfall-canvas');
+        const ctx = canvas.getContext('2d');
+
+        const speedSlider = document.getElementById('speed-slider');
+        const speedInput = document.getElementById('speed-input');
+
+        function updateSpeed(newVal, restartPlayback = true) {
+            if (isSongBattle || isClassKnockout) {
+                document.getElementById('status').textContent = ' Tempo is locked at 100% during battles!';
+                speedSlider.value = 100;
+                if (speedInput) speedInput.value = 100;
+                return;
+            }
+
+            let val = Math.max(10, Math.min(500, Math.round(Number(newVal) || 100)));
+            speedSlider.value = val;
+            if (speedInput) speedInput.value = val;
+            if (restartPlayback && isPlaying && !isPaused && !isStepMode) {
+                playSong();
+            }
+        }
+
+        if (speedSlider) {
+            speedSlider.addEventListener('input', () => {
+                updateSpeed(speedSlider.value, true);
+            });
+        }
+
+        if (speedInput) {
+            speedInput.addEventListener('change', () => {
+                updateSpeed(speedInput.value, true);
+            });
+            speedInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    speedInput.blur();
+                }
+            });
+        }
+
+        const songSelect = document.getElementById('song-select');
+        const instrumentSelect = document.getElementById('instrument-select');
+        const themeSelect = document.getElementById('theme-select');
+        const btnStep = document.getElementById('btn-step');
+        const btnGame = document.getElementById('btn-game');
+        const btnPause = document.getElementById('btn-pause');
+        const btnLoop = document.getElementById('btn-loop');
+        const btnRecord = document.getElementById('btn-record');
+        const btnAddTeacherSong = document.getElementById('btn-add-teacher-song');
+        const recordBtnText = document.getElementById('record-btn-text');
+        const btnShare = document.getElementById('btn-share');
+
+        const loopStartSlider = document.getElementById('loop-start');
+        const loopEndSlider = document.getElementById('loop-end');
+        const loopRangeLabel = document.getElementById('loop-range-label');
+
+        const teacherModal = document.getElementById('teacher-modal');
+        const teacherPassInput = document.getElementById('teacher-pass');
+        const teacherTitleInput = document.getElementById('teacher-title');
+        const teacherCodeTextarea = document.getElementById('teacher-code');
+        const teacherErrorDiv = document.getElementById('teacher-error');
+
+        const settingsModal = document.getElementById('settings-modal');
+        const calibModal = document.getElementById('calib-modal');
+        const gameResultsModal = document.getElementById('game-results-modal');
+
+        document.getElementById('btn-settings').addEventListener('click', () => {
+            initAudio();
+            settingsModal.classList.add('open');
+        });
+        document.getElementById('btn-settings-close').addEventListener('click', () => settingsModal.classList.remove('open'));
+        document.getElementById('btn-start-calib').addEventListener('click', startCalibration);
+        document.getElementById('btn-calib-cancel').addEventListener('click', cancelCalibration);
+
+        themeSelect.addEventListener('change', (e) => {
+            currentTheme = e.target.value;
+            if (currentTheme === 'default') {
+                document.body.removeAttribute('data-theme');
+            } else {
+                document.body.setAttribute('data-theme', currentTheme);
+            }
+        });
+
+        btnStep.addEventListener('click', toggleStepMode);
+        btnGame.addEventListener('click', toggleGameMode);
+        btnPause.addEventListener('click', togglePause);
+        btnLoop.addEventListener('click', toggleLoopMode);
+        btnRecord.addEventListener('click', toggleRecording);
+        document.getElementById('btn-add-teacher-song').addEventListener('click', openTeacherModal);
+        btnShare.addEventListener('click', shareHaycode);
+
+        document.getElementById('btn-teacher-cancel').addEventListener('click', () => teacherModal.classList.remove('open'));
+        document.getElementById('btn-teacher-submit').addEventListener('click', submitTeacherSong);
+
+        loopStartSlider.addEventListener('input', updateLoopRange);
+        loopEndSlider.addEventListener('input', updateLoopRange);
+
+        function updateLoopRange() {
+            let start = parseInt(loopStartSlider.value, 10);
+            let end = parseInt(loopEndSlider.value, 10);
+
+            if (start >= end) {
+                start = Math.max(0, end - 1);
+                loopStartSlider.value = start;
+            }
+            loopRangeLabel.textContent = `${start}% - ${end}% Region`;
+        }
+
+        function buildCalibrationKeyboard() {
+            const container = document.getElementById('calib-keyboard');
+            container.innerHTML = '';
+            for (let oct = 1; oct <= 6; oct++) {
+                const octNotes = [
+                    { note: `c${oct}`, type: 'white', label: oct === 1 ? 'C' : '' },
+                    { note: `c#${oct}`, type: 'black' },
+                    { note: `d${oct}`, type: 'white' },
+                    { note: `d#${oct}`, type: 'black' },
+                    { note: `e${oct}`, type: 'white' },
+                    { note: `f${oct}`, type: 'white' },
+                    { note: `f#${oct}`, type: 'black' },
+                    { note: `g${oct}`, type: 'white' },
+                    { note: `g#${oct}`, type: 'black' },
+                    { note: `a${oct}`, type: 'white' },
+                    { note: `a#${oct}`, type: 'black' },
+                    { note: `b${oct}`, type: 'white' }
+                ];
+                octNotes.forEach(k => {
+                    const div = document.createElement('div');
+                    div.className = `calib-key ${k.type}`;
+                    div.dataset.calibNote = k.note;
+                    if (k.label) div.textContent = k.label;
+                    container.appendChild(div);
+                });
+            }
+            const topC = document.createElement('div');
+            topC.className = 'calib-key white';
+            topC.dataset.calibNote = 'c7';
+            topC.textContent = 'C';
+            container.appendChild(topC);
+        }
+
+        function openTeacherModal() {
+            initAudio();
+            teacherPassInput.value = '';
+            teacherTitleInput.value = '';
+            teacherErrorDiv.style.display = 'none';
+            teacherCodeTextarea.value = generatedHaycode ? generatedHaycode : '';
+            teacherModal.classList.add('open');
+            setTimeout(() => teacherPassInput.focus(), 100);
+        }
+
+        async function submitTeacherSong() {
+            const pass = teacherPassInput.value;
+            const title = teacherTitleInput.value.trim();
+            const code = teacherCodeTextarea.value.trim();
+
+            if (pass !== "ERC") {
+                teacherErrorDiv.textContent = "Incorrect Teacher Password!";
+                teacherErrorDiv.style.display = "block";
+                return;
+            }
+
+            if (!title) {
+                teacherErrorDiv.textContent = "Please enter a Song Title / Piece Name!";
+                teacherErrorDiv.style.display = "block";
+                return;
+            }
+
+            if (!code) {
+                teacherErrorDiv.textContent = "Please enter or record a HayCode string!";
+                teacherErrorDiv.style.display = "block";
+                return;
+            }
+
+            const parsed = parsePianoPad(code);
+            if (parsed.length === 0) {
+                teacherErrorDiv.textContent = "Invalid HayCode format!";
+                teacherErrorDiv.style.display = "block";
+                return;
+            }
+
+            songList.push({ title: title, code: code, difficulty: 'Medium' });
+            localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
+            renderSongSelect();
+            
+            songSelect.value = code;
+            currentSongTitle = title;
+            currentSong = autoTransposeSong(parsed);
+
+            teacherModal.classList.remove('open');
+            document.getElementById('status').textContent = `Adding "${title}" to PianoPad & Google Sheet...`;
+
+            if (APPS_SCRIPT_URL) {
+                try {
+                    const addUrl = `${APPS_SCRIPT_URL}?action=ADD_SONG&title=${encodeURIComponent(title)}&code=${encodeURIComponent(code)}&t=${Date.now()}`;
+                    await sendJSONP(addUrl);
+                    document.getElementById('status').textContent = ` "${title}" successfully added to PianoPad & Google Sheet!`;
+                } catch (e) {
+                    console.warn("Could not post to Apps Script endpoint.", e);
+                    document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
+                }
+            } else {
+                document.getElementById('status').textContent = ` "${title}" loaded into PianoPad!`;
+            }
+            
+            updateRosterSong();
+            playSong();
+        }
+
+        function toggleGameMode() {
+            initAudio();
+            isGameMode = !isGameMode;
+            if (isGameMode) {
+                btnGame.textContent = 'Game Mode: ON';
+                btnGame.classList.remove('btn-secondary');
+                btnGame.classList.add('btn-game-active');
+
+                if (isStepMode) toggleStepMode();
+                resetGameStats();
+                document.getElementById('status').textContent = ' GAME MODE ACTIVE! Press Play and hit falling notes in time.';
+            } else {
+                btnGame.textContent = 'Game Mode: OFF';
+                btnGame.classList.remove('btn-game-active');
+                btnGame.classList.add('btn-secondary');
+                document.getElementById('status').textContent = 'Game Mode OFF. Normal play active.';
+            }
+        }
+
+        function resetGameStats() {
+            gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+            currentPerfectStreak = 0;
+            knockoutSabotageCount = 0;
+            activeSabotageType = null;
+            activeSabotageUntil = 0;
+            smokeParticles = [];
+            canvas.classList.remove('canvas-shake-active');
+        }
+
+        function updateGameStatus() {
+            const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+            const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
+            const streakLabel = currentPerfectStreak >= 10 ? ` | 🔥 STREAK (${currentPerfectStreak})` : '';
+            const sabLabel = (activeSabotageType && performance.now() < activeSabotageUntil)
+                ? ` | ⚠️ SABOTAGED: ${activeSabotageType.toUpperCase()}!`
+                : '';
+            document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}${streakLabel}${sabLabel}`;
+        }
+
+        async function calculateAndDisplayRank(accuracyNum) {
+            const rankDiv = document.getElementById('game-rank-text');
+            rankDiv.textContent = "Calculating Rank...";
+
+            try {
+                const response = await fetch(LEADERBOARD_CSV_URL);
+                if (!response.ok) throw new Error('Fetch failed');
+
+                const csvText = await response.text();
+                const lines = csvText.split(/\r?\n/);
+                const songScores = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+
+                    const row = [];
+                    let insideQuote = false;
+                    let entry = '';
+
+                    for (let j = 0; j < line.length; j++) {
+                        const char = line[j];
+                        if (char === '"' && line[j + 1] === '"') {
+                            entry += '"';
+                            j++;
+                        } else if (char === '"') {
+                            insideQuote = !insideQuote;
+                        } else if (char === ',' && !insideQuote) {
+                            row.push(entry);
+                            entry = '';
+                        } else {
+                            entry += char;
+                        }
+                    }
+                    row.push(entry);
+
+                    if (row.length >= 4) {
+                        const rowTitle = row[2] ? row[2].trim().replace(/^"|"$/g, '') : '';
+                        if (rowTitle.toLowerCase() === currentSongTitle.toLowerCase()) {
+                            songScores.push({
+                                accuracy: parseFloat(row[3]) || 0,
+                                speed: parseInt(row[4]) || 100
+                            });
+                        }
+                    }
+                }
+
+                const currentSpeedNum = parseInt(speedSlider.value, 10);
+                songScores.push({ accuracy: accuracyNum, speed: currentSpeedNum });
+
+                const titleLower = currentSongTitle.toLowerCase();
+                const isAscending = titleLower.includes('mystery note') || titleLower.includes('finger sprint');
+
+                songScores.sort((a, b) => {
+                    if (a.accuracy !== b.accuracy) {
+                        return isAscending ? a.accuracy - b.accuracy : b.accuracy - a.accuracy;
+                    }
+                    return b.speed - a.speed;
+                });
+
+                const totalEntries = songScores.length;
+                const userRank = songScores.findIndex(s => s.accuracy === accuracyNum && s.speed === currentSpeedNum) + 1;
+
+                rankDiv.textContent = `${currentSongTitle} Rank ${userRank}/${totalEntries}`;
+            } catch (err) {
+                console.warn("Could not calculate live rank:", err);
+                rankDiv.textContent = `${currentSongTitle} Score Logged!`;
+            }
+        }
+
+        function showGameResultsPopUp() {
+            ensureStudentName();
+
+            const perfectHits = gameStats.perfect;
+            const earlyLateHits = gameStats.earlyLate;
+            const missedHits = gameStats.miss;
+            const totalHits = perfectHits + earlyLateHits + missedHits;
+
+            const accuracy = totalHits > 0 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
+            const accuracyNum = parseFloat(accuracy);
+
+            document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
+
+            const greenPct = totalHits > 0 ? (perfectHits / totalHits) * 100 : 0;
+            const orangePct = totalHits > 0 ? (earlyLateHits / totalHits) * 100 : 0;
+            const redPct = totalHits > 0 ? (missedHits / totalHits) * 100 : 0;
+
+            document.getElementById('bar-green').style.height = `${greenPct}%`;
+            document.getElementById('bar-orange').style.height = `${orangePct}%`;
+            document.getElementById('bar-red').style.height = `${redPct}%`;
+
+            const studentKey = (sessionStudentName || 'Student').trim().toLowerCase();
+            const historyKey = `${studentKey}|||${currentSongTitle}`;
+            if (!sessionSongHistory[historyKey]) {
+                sessionSongHistory[historyKey] = [];
+            }
+
+            sessionSongHistory[historyKey].push({
+                attempt: sessionSongHistory[historyKey].length + 1,
+                perfect: perfectHits,
+                earlyLate: earlyLateHits,
+                miss: missedHits,
+                total: totalHits,
+                accuracy: parseFloat(accuracy) || 0,
+                speed: parseInt(speedSlider.value, 10) || 100
+            });
+
+            const attempts = sessionSongHistory[historyKey];
+            const singleGraph = document.getElementById('single-bar-graph');
+            const multiGraph = document.getElementById('multi-bar-graph');
+
+            if (attempts.length === 1) {
+                multiGraph.style.display = 'none';
+                singleGraph.style.display = 'flex';
+            } else {
+                singleGraph.style.display = 'none';
+                multiGraph.innerHTML = '';
+                multiGraph.style.display = 'flex';
+
+                attempts.forEach((att, idx) => {
+                    const gPct = att.total > 0 ? (att.perfect / att.total) * 100 : 0;
+                    const oPct = att.total > 0 ? (att.earlyLate / att.total) * 100 : 0;
+                    const rPct = att.total > 0 ? (att.miss / att.total) * 100 : 0;
+                    const isLatest = idx === attempts.length - 1;
+
+                    const col = document.createElement('div');
+                    col.className = 'multi-bar-column';
+                    col.innerHTML = `
+                        <div class="rank-medal-badge" style="color: ${isLatest ? '#22c55e' : '#facc15'};">
+                            ${att.accuracy.toFixed(1)}%
+                        </div>
+                        <div class="stacked-bar" style="${isLatest ? 'outline: 2px solid #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);' : ''}">
+                            <div class="bar-part-red" style="height:${rPct}%;"></div>
+                            <div class="bar-part-orange" style="height:${oPct}%;"></div>
+                            <div class="bar-part-green" style="height:${gPct}%;"></div>
+                        </div>
+                        <span style="font-size:0.74rem; font-weight:700; color:${isLatest ? '#38bdf8' : '#cbd5e1'};">
+                            Try ${att.attempt}
+                        </span>
+                        <span style="font-size:0.65rem; color:#9ca3af;">@${att.speed}%</span>
+                    `;
+                    multiGraph.appendChild(col);
+                });
+
+                multiGraph.scrollLeft = multiGraph.scrollWidth;
+            }
+
+            const currentSpeed = parseInt(speedSlider.value, 10);
+            const badgeContainer = document.getElementById('badge-container');
+            
+            if (currentSpeed >= 100) {
+                badgeContainer.innerHTML = `<div class="badge-box badge-gold"> GOLD BADGE: Full Master Speed (${currentSpeed}%)</div>`;
+            } else if (currentSpeed >= 75) {
+                badgeContainer.innerHTML = `<div class="badge-box badge-silver"> SILVER BADGE: Intermediate Tempo (${currentSpeed}%)</div>`;
+            } else if (currentSpeed >= 50) {
+                badgeContainer.innerHTML = `<div class="badge-box badge-bronze"> BRONZE BADGE: Practice Pace (${currentSpeed}%)</div>`;
+            } else {
+                badgeContainer.innerHTML = `<div style="font-size:0.8rem; color:#9ca3af; margin-top:4px;">Practice Speed: ${currentSpeed}% (Reach 50%+ for Practice Badges)</div>`;
+            }
+
+            if (accuracyNum >= 80) {
+                unlockBonusSounds(`Awesome performance! You achieved <strong>${accuracyNum}%</strong> accuracy on ${currentSongTitle} and unlocked 5 bonus instrument sound engines!`);
+            }
+
+            gameResultsModal.classList.add('open');
+
+            postScoreToLeaderboard(accuracyNum);
+            calculateAndDisplayRank(accuracyNum);
+            loadStudentTickerStats(sessionStudentName);
+        }
+
+        function toggleLoopMode() {
+            initAudio();
+            isLooping = !isLooping;
+            if (isLooping) {
+                btnLoop.textContent = 'Loop: ON';
+                btnLoop.classList.remove('btn-secondary');
+                btnLoop.classList.add('btn-loop-active');
+            } else {
+                btnLoop.textContent = 'Loop: OFF';
+                btnLoop.classList.remove('btn-loop-active');
+                btnLoop.classList.add('btn-secondary');
+            }
+        }
+
+        function toggleRecording() {
+            initAudio();
+            isRecording = !isRecording;
+
+            if (isRecording) {
+                recordedNotes = [];
+                recordedRests = [];
+                lastRecordNoteTime = 0;
+                
+                recordBtnText.textContent = ' RECORDING (Click to Stop)';
+                btnRecord.classList.add('btn-rec-active');
+                btnShare.style.display = 'none';
+                
+                document.getElementById('status').textContent = ' RECORDING ACTIVE... Play notes using your keyboard or mouse!';
+            } else {
+                recordBtnText.textContent = 'Record';
+                btnRecord.classList.remove('btn-rec-active');
+
+                if (recordedNotes.length > 0) {
+                    generatedHaycode = `${recordedNotes.join(',')},RESTS,${recordedRests.join(',')}`;
+                    btnShare.style.display = 'inline-flex';
+                    document.getElementById('status').textContent = ` RECORDING STOPPED! ${recordedNotes.length} notes saved. Click "Share Haycode" or "Add SONG (Teacher)".`;
+                    openExportModal();
+                } else {
+                    document.getElementById('status').textContent = 'Recording stopped. No notes captured.';
+                }
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') return;
+
+            initAudio();
+
+            if (e.key === '(') {
+                e.preventDefault();
+                document.getElementById('student-join-name').value = sessionStudentName || localStorage.getItem('pianopad_name') || "";
+                if (localStorage.getItem('pianopad_avatar')) {
+                    document.getElementById('student-join-avatar').value = localStorage.getItem('pianopad_avatar');
+                }
+                if (localStorage.getItem('pianopad_class')) {
+                    document.getElementById('student-join-class').value = localStorage.getItem('pianopad_class');
+                }
+                if (localStorage.getItem('pianopad_room')) {
+                    document.getElementById('student-join-room').value = localStorage.getItem('pianopad_room');
+                }
+                document.getElementById('room-join-modal').classList.add('open');
+                document.getElementById('status').textContent = ' Room Login modal opened via "(" hotkey.';
+                return;
+            }
+
+            if (e.code === 'ArrowDown') {
+                e.preventDefault();
+                playSong();
+                return;
+            }
+
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (isRecording) {
+                    toggleRecording();
+                    return;
+                }
+                if (!isStepMode) {
+                    toggleStepMode();
+                } else {
+                    advanceStepNote();
+                }
+                return;
+            }
+
+            const keyChar = e.key.toLowerCase();
+            if (keyboardMap[keyChar] && !e.repeat) {
+                const noteStr = keyboardMap[keyChar];
+                playManualNote(noteStr);
+            }
+        });
+
+        function toggleStepMode() {
+            initAudio();
+            
+            if (isSongBattle || isClassKnockout) {
+                document.getElementById('status').textContent = ' Step Mode is NOT permitted during Song Battles or Class Knockouts!';
+                return;
+            }
+
+            isStepMode = !isStepMode;
+            if (isStepMode) {
+                btnStep.textContent = 'Step Mode: ON';
+                btnStep.classList.remove('btn-step');
+                btnStep.classList.add('btn-step-active');
+
+                if (isGameMode) toggleGameMode();
+                
+                if (!isPlaying) {
+                    playSong();
+                } else {
+                    isPaused = false;
+                    btnPause.textContent = 'Pause';
+                    btnPause.classList.remove('btn-success');
+                    btnPause.classList.add('btn-warning');
+                }
+                currentStepIndex = 0;
+                smoothStepElapsed = noteTimeline[0] ? noteTimeline[0].hitTime : 0;
+                updateStepStatus();
+            } else {
+                btnStep.textContent = 'Step Mode: OFF';
+                btnStep.classList.remove('btn-step-active');
+                btnStep.classList.add('btn-step');
+                document.getElementById('status').textContent = 'Step Mode OFF. Normal auto-play active.';
+            }
+        }
+
+        function advanceStepNote() {
+            if (noteTimeline.length === 0) return;
+
+            if (currentStepIndex < noteTimeline.length) {
+                const item = noteTimeline[currentStepIndex];
+                item.notes.forEach(noteStr => {
+                    const freq = getNoteFrequency(noteStr);
+                    if (freq) playTone(freq, item.duration / 1000);
+                    highlightKey(noteStr, item.duration);
+                });
+                item.played = true;
+                currentStepIndex++;
+                updateStepStatus();
+            }
+        }
+
+        function updateStepStatus() {
+            if (currentStepIndex < noteTimeline.length) {
+                const nextItem = noteTimeline[currentStepIndex];
+                const displayStr = nextItem.notes.join('+').toUpperCase();
+                document.getElementById('status').textContent = `Step ${currentStepIndex + 1} of ${noteTimeline.length}: Next Note -> [ ${displayStr} ] (Press SPACE BAR or play on MIDI Keyboard)`;
+            } else {
+                document.getElementById('status').textContent = 'Step Practice Finished!';
+            }
+        }
+
+        function togglePause() {
+            initAudio();
+            if (!isPlaying || isStepMode) return;
+
+            if (!isPaused) {
+                isPaused = true;
+                pauseStartTime = performance.now();
+                btnPause.textContent = 'Resume';
+                btnPause.classList.remove('btn-warning');
+                btnPause.classList.add('btn-success');
+                if (animationFrameId !== null) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                document.getElementById('status').textContent = 'Paused.';
+            } else {
+                isPaused = false;
+                accumulatedPauseMs += (performance.now() - pauseStartTime);
+                lastFrameTime = performance.now();
+                btnPause.textContent = 'Pause';
+                btnPause.classList.remove('btn-success');
+                btnPause.classList.add('btn-warning');
+                document.getElementById('status').textContent = 'Playing...';
+                animationFrameId = requestAnimationFrame(renderLoop);
+            }
+        }
+
+        const keyLayout = [
+            { note: 'c1', type: 'white', label: 'C', hint: 'Z' }, { note: 'c#1', type: 'black', label: 'C#', hint: 'S' },
+            { note: 'd1', type: 'white', label: 'D', hint: 'X' }, { note: 'd#1', type: 'black', label: 'D#', hint: 'D' },
+            { note: 'e1', type: 'white', label: 'E', hint: 'C' },
+            { note: 'f1', type: 'white', label: 'F', hint: 'V' }, { note: 'f#1', type: 'black', label: 'F#', hint: 'G' },
+            { note: 'g1', type: 'white', label: 'G', hint: 'B' }, { note: 'g#1', type: 'black', label: 'G#', hint: 'H' },
+            { note: 'a1', type: 'white', label: 'A', hint: 'N' }, { note: 'a#1', type: 'black', label: 'A#', hint: 'J' },
+            { note: 'b1', type: 'white', label: 'B', hint: 'M' },
+            { note: 'c2', type: 'white', label: 'C', hint: ',' }, { note: 'c#2', type: 'black', label: 'C#', hint: 'L' },
+            { note: 'd2', type: 'white', label: 'D', hint: '.' }, { note: 'd#2', type: 'black', label: 'D#', hint: '1' },
+            { note: 'e2', type: 'white', label: 'E', hint: 'Q' },
+            { note: 'f2', type: 'white', label: 'F', hint: 'W' }, { note: 'f#2', type: 'black', label: 'F#', hint: '3' },
+            { note: 'g2', type: 'white', label: 'G', hint: 'E' }, { note: 'g#2', type: 'black', label: 'G#', hint: '4' },
+            { note: 'a2', type: 'white', label: 'A', hint: 'R' }, { note: 'a#2', type: 'black', label: 'A#', hint: '5' },
+            { note: 'b2', type: 'white', label: 'B', hint: 'T' },
+            { note: 'c3', type: 'white', label: 'C', hint: 'Y' }, { note: 'c#3', type: 'black', label: 'C#', hint: '7' },
+            { note: 'd3', type: 'white', label: 'D', hint: 'U' }, { note: 'd#3', type: 'black', label: 'D#', hint: '8' },
+            { note: 'e3', type: 'white', label: 'E', hint: 'I' },
+            { note: 'f3', type: 'white', label: 'F', hint: 'O' }, { note: 'f#3', type: 'black', label: 'F#', hint: '0' },
+            { note: 'g3', type: 'white', label: 'G', hint: 'P' }, { note: 'g#3', type: 'black', label: 'G#' },
+            { note: 'a3', type: 'white', label: 'A' }, { note: 'a#3', type: 'black', label: 'A#' },
+            { note: 'b3', type: 'white', label: 'B' },
+            { note: 'c4', type: 'white', label: 'C' }, { note: 'c#4', type: 'black', label: 'C#' },
+            { note: 'd4', type: 'white', label: 'D' }, { note: 'd#4', type: 'black', label: 'D#' },
+            { note: 'e4', type: 'white', label: 'E' },
+            { note: 'f4', type: 'white', label: 'F' }, { note: 'f#4', type: 'black', label: 'F#' },
+            { note: 'g4', type: 'white', label: 'G' }, { note: 'g#4', type: 'black', label: 'G#' },
+            { note: 'a4', type: 'white', label: 'A' }, { note: 'a#4', type: 'black', label: 'A#' },
+            { note: 'b4', type: 'white', label: 'B' }
+        ];
+
+        const noteNames = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
+        let keyPosMap = {};
+
+        function noteToPitch(noteStr) {
+            noteStr = noteStr.trim().toLowerCase();
+            const match = noteStr.match(/^([a-g]#?)([0-9]+)$/);
+            if (!match) return null;
+            const name = match[1];
+            const octave = parseInt(match[2], 10);
+            const offset = noteNames.indexOf(name);
+            if (offset === -1) return null;
+            return octave * 12 + offset;
+        }
+
+        function pitchToNote(pitch) {
+            if (pitch < 0) pitch = 0;
+            const octave = Math.floor(pitch / 12);
+            const offset = pitch % 12;
+            return noteNames[offset] + octave;
+        }
+
+        function autoTransposeSong(song) {
+            if (!song || song.length === 0) return song;
+
+            let pitches = [];
+            song.forEach(item => {
+                item.notes.forEach(n => {
+                    const p = noteToPitch(n);
+                    if (p !== null) pitches.push(p);
+                });
+            });
+            if (pitches.length === 0) return song;
+
+            let minP = Math.min(...pitches);
+            let maxP = Math.max(...pitches);
+
+            const MIN_PITCH = 12;
+            const MAX_PITCH = 59;
+
+            let octaveShift = 0;
+
+            while (minP + octaveShift * 12 < MIN_PITCH) octaveShift++;
+            while (maxP + octaveShift * 12 > MAX_PITCH && minP + octaveShift * 12 > MIN_PITCH) octaveShift--;
+
+            return song.map(item => {
+                const newNotes = item.notes.map(noteStr => {
+                    const p = noteToPitch(noteStr);
+                    if (p === null) return noteStr;
+                    let shiftedP = p + octaveShift * 12;
+                    while (shiftedP < MIN_PITCH) shiftedP += 12;
+                    while (shiftedP > MAX_PITCH) shiftedP -= 12;
+                    return pitchToNote(shiftedP);
+                });
+
+                return {
+                    ...item,
+                    notes: newNotes
+                };
+            });
+        }
+
+        function getNoteFrequency(noteStr) {
+            noteStr = noteStr.trim().toLowerCase();
+            const match = noteStr.match(/^([a-g]#?)([0-9]+)$/);
+            if (!match) return null;
+
+            const name = match[1];
+            const octave = parseInt(match[2], 10);
+            const realOctave = octave + 3;
+            const noteOffsets = { 'c': 0, 'c#': 1, 'd': 2, 'd#': 3, 'e': 4, 'f': 5, 'f#': 6, 'g': 7, 'g#': 8, 'a': 9, 'a#': 10, 'b': 11 };
+
+            if (noteOffsets[name] === undefined) return null;
+            const midiNumber = (realOctave + 1) * 12 + noteOffsets[name];
+            return 440 * Math.pow(2, (midiNumber - 69) / 12);
+        }
+
+        const keyboardEl = document.getElementById('keyboard');
+        keyLayout.forEach(k => {
+            const keyDiv = document.createElement('div');
+            keyDiv.className = `key ${k.type}`;
+            keyDiv.dataset.note = k.note;
+            keyDiv.textContent = k.label;
+
+            if (k.hint) {
+                const hintSpan = document.createElement('span');
+                hintSpan.className = 'bind-hint';
+                hintSpan.textContent = k.hint;
+                keyDiv.appendChild(hintSpan);
+            }
+
+            keyDiv.addEventListener('mousedown', () => playManualNote(k.note));
+            keyboardEl.appendChild(keyDiv);
+        });
+
+        function updateKeyPositions() {
+            keyPosMap = {};
+            const pianoRect = keyboardEl.getBoundingClientRect();
+            const pianoLeft = pianoRect.left;
+            const targetWidth = pianoRect.width;
+
+            if (targetWidth > 0) {
+                canvas.width = targetWidth;
+            }
+
+            const keys = keyboardEl.querySelectorAll('.key');
+            keys.forEach(k => {
+                const kRect = k.getBoundingClientRect();
+                keyPosMap[k.dataset.note] = {
+                    left: kRect.left - pianoLeft,
+                    width: kRect.width,
+                    isBlack: k.classList.contains('black')
+                };
+            });
+        }
+
+        function playTone(freq, duration = 0.4, volScale = 1.0) {
+            if (!freq) return;
+            initAudio();
+
+            const inst = instrumentSelect.value;
+            const now = audioCtx.currentTime;
+
+            if (inst === 'piano') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now);
+
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.4 * volScale, now + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.3);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + duration + 0.3);
+            } else if (inst === 'synth') {
+                const osc = audioCtx.createOscillator();
+                const filter = audioCtx.createBiquadFilter();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, now);
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(freq * 3, now);
+                filter.frequency.exponentialRampToValueAtTime(freq, now + duration);
+
+                gain.gain.setValueAtTime(0.2 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.1);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + duration + 0.1);
+            } else if (inst === 'organ') {
+                [1, 2, 3].forEach(multiplier => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq * multiplier, now);
+
+                    const vol = (0.2 / multiplier) * volScale;
+                    gain.gain.setValueAtTime(vol, now);
+                    gain.gain.linearRampToValueAtTime(vol, now + duration);
+                    gain.gain.linearRampToValueAtTime(0.0001, now + duration + 0.05);
+
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + duration + 0.05);
+                });
+            } else if (inst === 'marimba') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now);
+
+                gain.gain.setValueAtTime(0.6 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + Math.min(duration, 0.25));
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (inst === 'chiptune') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq, now);
+
+                gain.gain.setValueAtTime(0.15 * volScale, now);
+                gain.gain.linearRampToValueAtTime(0.15 * volScale, now + duration);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.02);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + duration + 0.02);
+            } else if (inst === 'epiano') {
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc1.type = 'sine';
+                osc2.type = 'triangle';
+                osc1.frequency.setValueAtTime(freq, now);
+                osc2.frequency.setValueAtTime(freq * 2, now);
+
+                gain.gain.setValueAtTime(0.35 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.4);
+
+                osc1.connect(gain); osc2.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc1.start(now); osc2.start(now);
+                osc1.stop(now + duration + 0.4); osc2.stop(now + duration + 0.4);
+            } else if (inst === 'harpsichord') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, now);
+
+                gain.gain.setValueAtTime(0.25 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.15);
+
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + duration + 0.15);
+            } else if (inst === 'synth80s') {
+                const osc = audioCtx.createOscillator();
+                const filter = audioCtx.createBiquadFilter();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq, now);
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(freq * 4, now);
+
+                gain.gain.setValueAtTime(0.2 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.2);
+
+                osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + duration + 0.2);
+            } else if (inst === 'xylophone') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq * 2, now);
+
+                gain.gain.setValueAtTime(0.5 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 0.18);
+            } else if (inst === 'accordion') {
+                [0.99, 1.01].forEach(detune => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq * detune, now);
+
+                    gain.gain.setValueAtTime(0.12 * volScale, now);
+                    gain.gain.linearRampToValueAtTime(0.12 * volScale, now + duration);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.1);
+
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(now); osc.stop(now + duration + 0.1);
+                });
+            }
+        }
+
+        function highlightKey(noteStr, duration = 200, color = null) {
+            const normalizedNote = noteStr.trim().toLowerCase();
+            const el = document.querySelector(`.key[data-note="${normalizedNote}"]`);
+            if (el) {
+                el.classList.add('active');
+                if (color) {
+                    el.style.backgroundColor = color;
+                    el.style.boxShadow = `0 0 14px ${color}`;
+                }
+                setTimeout(() => {
+                    el.classList.remove('active');
+                    el.style.backgroundColor = '';
+                    el.style.boxShadow = '';
+                }, duration);
+            }
+        }
+
+        function playManualNote(noteStr) {
+            initAudio();
+            const freq = getNoteFrequency(noteStr);
+            if (freq) {
+                playTone(freq, 0.4, 1.0);
+            }
+
+            if (activeMiniGame === 'drop') {
+                const effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
+                const activeWall = noteTimeline.find(item => item.gameStatus === 'pending' && Math.abs(effectiveElapsed - item.hitTime) <= 600);
+
+                if (activeWall && activeWall.safeKey) {
+                    if (noteStr.toLowerCase().trim() === activeWall.safeKey.toLowerCase().trim()) {
+                        activeWall.gameStatus = 'perfect';
+                        dodgeDodgedCount++;
+                        gameStats.perfect++;
+                        highlightKey(noteStr, 220, '#22c55e');
+                        document.getElementById('status').textContent = ` Safe Dodge! Total Dodges: ${dodgeDodgedCount} | Lives: ❤️ ${dodgeLives}`;
+                        
+                        const safePos = keyPosMap[noteStr.toLowerCase().trim()];
+                        if (safePos) spawnConfetti(safePos.left + safePos.width / 2, canvas.height, '#22c55e');
+                    } else {
+                        activeWall.gameStatus = 'miss';
+                        dodgeLives--;
+                        gameStats.miss++;
+                        playErrorClackSound();
+                        highlightKey(noteStr, 220, '#ef4444');
+                        document.getElementById('status').textContent = ` Wall Impact! Lives left: ❤️ ${dodgeLives} | Dodges: ${dodgeDodgedCount}`;
+
+                        if (dodgeLives <= 0) {
+                            isPlaying = false;
+                            currentSongTitle = "Drop Dodge";
+                            showGameResultsPopUp();
+                            activeMiniGame = null;
+                        }
+                    }
+                } else {
+                    highlightKey(noteStr, 200, '#ef4444');
+                }
+                return;
+            }
+
+            if (activeMiniGame === 'simon') {
+                handleSimonInput(noteStr);
+                highlightKey(noteStr);
+                return;
+            } else if (activeMiniGame === 'mystery') {
+                handleMysteryInput(noteStr);
+                return;
+            } else if (activeMiniGame === 'sprint') {
+                handleSprintInput(noteStr);
+                return;
+            }
+
+            if (isRecording) {
+                const now = performance.now();
+                let rest = lastRecordNoteTime === 0 ? 0 : Math.round(now - lastRecordNoteTime);
+                if (rest <= 20 && recordedNotes.length > 0) {
+                    recordedNotes[recordedNotes.length - 1] += '+' + noteStr.toUpperCase();
+                } else {
+                    recordedNotes.push(noteStr.toUpperCase());
+                    recordedRests.push(rest);
+                    lastRecordNoteTime = now;
+                }
+            }
+
+            if ((isGameMode || activeMiniGame === 'combo') && isPlaying && !isPaused) {
+                let effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
+                
+                const target = noteTimeline.find(item =>
+                    item.notes.some(n => n.toLowerCase().trim() === noteStr.toLowerCase().trim()) &&
+                    item.gameStatus === 'pending' &&
+                    Math.abs(effectiveElapsed - item.hitTime) <= 400
+                );
+
+                if (target) {
+                    const diff = Math.abs(effectiveElapsed - target.hitTime);
+                    if (diff <= 140) {
+                        target.gameStatus = 'perfect';
+                        gameStats.perfect++;
+                        currentPerfectStreak++;
+                        highlightKey(noteStr, 220, '#22c55e');
+
+                        // Streak Sabotage trigger every 15-note Perfect streak during Class Knockout
+                        if (isClassKnockout && currentPerfectStreak > 0 && currentPerfectStreak % 15 === 0) {
+                            triggerStreakSabotage(currentPerfectStreak);
+                        }
+                        
+                        const normNote = noteStr.toLowerCase().trim();
+                        const pos = keyPosMap[normNote];
+                        if (pos) spawnConfetti(pos.left + pos.width / 2, canvas.height, '#22c55e');
+                    } else {
+                        target.gameStatus = 'earlyLate';
+                        gameStats.earlyLate++;
+                        currentPerfectStreak = 0;
+                        highlightKey(noteStr, 220, '#f97316');
+                    }
+
+                    if (isClassKnockout) {
+                        syncKnockoutLiveScore();
+                    } else if (isSongBattle) {
+                        const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
+                        if (localPlayer) {
+                            localPlayer.stats = { ...gameStats };
+                            pushPlayerState();
+                        }
+                    }
+
+                    if (isGameMode) updateGameStatus();
+                } else {
+                    gameStats.miss++;
+                    currentPerfectStreak = 0;
+                    playErrorClackSound();
+                    highlightKey(noteStr, 200, '#ef4444');
+
+                    if (isClassKnockout) {
+                        syncKnockoutLiveScore();
+                    } else if (isSongBattle) {
+                        const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
+                        if (localPlayer) {
+                            localPlayer.stats = { ...gameStats };
+                            pushPlayerState();
+                        }
+                    }
+                    if (isGameMode) updateGameStatus();
+                }
+            } else {
+                highlightKey(noteStr);
+            }
+
+            if (isStepMode) {
+                const targetItem = noteTimeline[currentStepIndex];
+                if (targetItem && targetItem.notes.some(n => n.toLowerCase().trim() === noteStr.toLowerCase().trim())) {
+                    advanceStepNote();
+                }
+            }
+        }
+
+        function parsePianoPad(code) {
+            if (!code || !code.trim()) return [];
+            const cleanCode = code.replace(/[\r\n\s]+/g, '');
+            const parts = cleanCode.split(/,Rests,/i);
+
+            if (parts.length < 2) return [];
+
+            const rawNotes = parts[0].split(',').filter(Boolean);
+            const rests = parts[1].split(',').filter(Boolean);
+
+            const song = [];
+            for (let i = 0; i < rawNotes.length; i++) {
+                song.push({
+                    notes: rawNotes[i].split('+').filter(Boolean),
+                    rest: parseInt(rests[i] || '250', 10)
+                });
+            }
+            return song;
+        }
+
+        function parseCSVToSongs(csvText) {
+            const songs = [];
+            const lines = csvText.split(/\r?\n/);
+            
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                const row = [];
+                let insideQuote = false;
+                let entry = '';
+
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"' && line[j + 1] === '"') {
+                        entry += '"';
+                        j++;
+                    } else if (char === '"') {
+                        insideQuote = !insideQuote;
+                    } else if (char === ',' && !insideQuote) {
+                        row.push(entry);
+                        entry = '';
+                    } else {
+                        entry += char;
+                    }
+                }
+                row.push(entry);
+
+                if (row.length >= 2 && row[0].trim()) {
+                    songs.push({
+                        title: row[0].trim().replace(/^"|"$/g, ''),
+                        code: row[1].trim().replace(/^"|"$/g, ''),
+                        difficulty: row[2] ? row[2].trim().replace(/^"|"$/g, '') : ''
+                    });
+                }
+            }
+            return songs;
+        }
+
+        function renderSongSelect() {
+            const uniqueMap = new Map();
+            songList.forEach(s => {
+                const key = s.title.toLowerCase().trim();
+                if (!uniqueMap.has(key)) uniqueMap.set(key, s);
+            });
+            const sortedList = Array.from(uniqueMap.values());
+            sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
+
+            songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
+            sortedList.forEach(song => {
+                const opt = document.createElement('option');
+                opt.value = song.code;
+
+                let badge = '';
+                if (song.difficulty) {
+                    const diff = song.difficulty.toLowerCase().trim();
+                    if (diff === 'easy') {
+                        badge = '🟢 ';
+                        opt.style.color = '#22c55e';
+                    } else if (diff === 'medium') {
+                        badge = '🟠 ';
+                        opt.style.color = '#f97316';
+                    } else if (diff === 'hard') {
+                        badge = '🔴 ';
+                        opt.style.color = '#ef4444';
+                    }
+                    opt.dataset.diff = diff;
+                }
+
+                opt.textContent = badge + song.title;
+                songSelect.appendChild(opt);
+            });
+        }
+
+        async function syncSongsWithGoogleSheet() {
+            localStorage.removeItem('pianopad_sheet_songs');
+
+            let localCache = [];
+            const cachedData = localStorage.getItem('pianopad_sheet_songs');
+            if (cachedData) {
+                try {
+                    localCache = JSON.parse(cachedData);
+                    songList = [...localCache];
+                    renderSongSelect();
+                    const defaultObj = songList.find(s => s.title === 'Wipeout') || songList[0];
+                    if (defaultObj) {
+                        currentSongTitle = defaultObj.title;
+                        currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
+                    }
+                    document.getElementById('status').textContent = `Loaded ${songList.length} cached songs. Syncing live Google Sheet...`;
+                } catch (e) {
+                    console.warn("Cache parse error");
+                }
+            }
+
+            let remoteSongs = [];
+
+            try {
+                const res = await sendJSONP(`${APPS_SCRIPT_URL}?action=GET_SONGS&v=2&t=${Date.now()}`);
+
+                if (res && res.songs && res.songs.length > 0) {
+                    remoteSongs = res.songs.map(s => ({
+                        title: s.title || s[0],
+                        code: s.code || s[1],
+                        difficulty: s.difficulty || s[2] || ''
+                    }));
+                } else {
+                    throw new Error(res ? res.error : "No songs returned from JSONP");
+                }
+            } catch (err) {
+                console.warn("Apps Script fetch error, trying CSV fallback...", err);
+                try {
+                    const response = await fetch(SPREADSHEET_CSV_URL);
+                    if (response.ok) {
+                        const csvText = await response.text();
+                        remoteSongs = parseCSVToSongs(csvText);
+                    }
+                } catch (csvErr) {
+                    console.warn("CSV Fallback error:", csvErr);
+                }
+            }
+
+            if (remoteSongs.length > 0) {
+                const songMap = new Map();
+                remoteSongs.forEach(s => songMap.set(s.title.toLowerCase().trim(), s));
+                localCache.forEach(s => {
+                    const key = s.title.toLowerCase().trim();
+                    if (!songMap.has(key)) {
+                        songMap.set(key, s);
+                    }
+                });
+
+                songList = Array.from(songMap.values());
+                localStorage.setItem('pianopad_sheet_songs', JSON.stringify(songList));
+                renderSongSelect();
+
+                const defaultObj = songList.find(s => s.title === currentSongTitle) || songList.find(s => s.title === 'Wipeout') || songList[0];
+                if (defaultObj) {
+                    currentSongTitle = defaultObj.title;
+                    songSelect.value = defaultObj.code;
+                    currentSong = autoTransposeSong(parsePianoPad(defaultObj.code));
+                }
+                document.getElementById('status').textContent = `Synced live! Loaded ${songList.length} songs from Google Sheet.`;
+            } else if (songList.length > 0) {
+                document.getElementById('status').textContent = `Loaded ${songList.length} songs (Offline mode).`;
+            } else {
+                document.getElementById('status').textContent = `Failed to load songs from Google Sheet. Check connection or link permissions.`;
+            }
+            updateMonitorWidget();
+        }
+
+        function buildTimeline() {
+            noteTimeline = [];
+            if (!currentSong || currentSong.length === 0) return;
+
+            const fallSpeed = activeMiniGame === 'drop' ? miniGameFallSpeedMs : FALL_TIME_MS;
+            const speedFactor = parseFloat(speedSlider.value) / 100;
+            let cumulativeMs = PRE_FALL_PAUSE + fallSpeed;
+
+            currentSong.forEach((item, index) => {
+                cumulativeMs += (item.rest || 0) / speedFactor;
+
+                noteTimeline.push({
+                    notes: item.notes,
+                    safeKey: item.safeKey || null,
+                    hitTime: cumulativeMs,
+                    duration: Math.max(140, (item.rest || 250) * 0.85 / speedFactor),
+                    played: false,
+                    gameStatus: 'pending'
+                });
+            });
+        }
+
+        songSelect.addEventListener('change', (e) => {
+            initAudio();
+            const code = e.target.value;
+            if (!code) return;
+            const opt = songSelect.options[songSelect.selectedIndex];
+            if (opt) currentSongTitle = opt.text;
+            const parsed = parsePianoPad(code);
+            if (parsed.length > 0) {
+                currentSong = autoTransposeSong(parsed);
+                updateRosterSong();
+                playSong();
+            }
+        });
+
+        function stopSong() {
+            isPlaying = false;
+            isPaused = false;
+            btnPause.textContent = 'Pause';
+            btnPause.classList.remove('btn-success');
+            btnPause.classList.add('btn-warning');
+
+            if (isRecording) {
+                toggleRecording();
+            }
+
+            if (animationFrameId !== null) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            document.querySelectorAll('.key').forEach(k => {
+                k.classList.remove('active');
+                k.style.backgroundColor = '';
+                k.style.boxShadow = '';
+            });
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('status').textContent = 'Playback stopped.';
+        }
+
+        function playSong() {
+            initAudio();
+            stopSong();
+            if (currentSong.length === 0) {
+                document.getElementById('status').textContent = 'No song loaded. Select a song or import one.';
+                return;
+            }
+
+            updateKeyPositions();
+            buildTimeline();
+            resetGameStats();
+
+            isPlaying = true;
+            isPaused = false;
+            accumulatedPauseMs = 0;
+            playbackStartTime = performance.now();
+            lastFrameTime = performance.now();
+
+            if (isStepMode) {
+                currentStepIndex = 0;
+                smoothStepElapsed = noteTimeline[0] ? noteTimeline[0].hitTime : 0;
+                updateStepStatus();
+            } else if (isGameMode) {
+                updateGameStatus();
+            } else {
+                document.getElementById('status').textContent = 'Playing...';
+            }
+
+            requestAnimationFrame(renderLoop);
+        }
+
+        function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending') {
+            ctx.save();
+            
+            const palette = themePalettes[currentTheme] || themePalettes.default;
+
+            const pitchColorMap = {
+                'c': '#ef4444',
+                'd': '#f97316',
+                'e': '#eab308',
+                'f': '#22c55e',
+                'g': '#3b82f6',
+                'a': '#8b5cf6',
+                'b': '#ec4899'
+            };
+
+            const noteLetterMatch = (noteName || '').trim().toLowerCase().match(/^([a-g])/);
+            const defaultPitchColor = noteLetterMatch && pitchColorMap[noteLetterMatch[1]] 
+                ? pitchColorMap[noteLetterMatch[1]] 
+                : palette.normal;
+
+            let blockColor = defaultPitchColor;
+            let shadowColor = palette.shadowNormal;
+
+            if (isGameMode || activeMiniGame) {
+                if (gameStatus === 'perfect') {
+                    blockColor = '#22c55e';
+                    shadowColor = 'rgba(34, 197, 94, 0.8)';
+                } else if (gameStatus === 'earlyLate') {
+                    blockColor = '#f97316';
+                    shadowColor = 'rgba(249, 115, 22, 0.8)';
+                } else if (gameStatus === 'miss') {
+                    blockColor = '#ef4444';
+                    shadowColor = 'rgba(239, 68, 68, 0.8)';
+                } else {
+                    blockColor = defaultPitchColor;
+                    shadowColor = palette.shadowActive;
+                }
+            } else if (active) {
+                blockColor = palette.pending;
+                shadowColor = palette.shadowActive;
+            }
+
+            const isFrozen = (activeSabotageType === 'freeze' && performance.now() < activeSabotageUntil && gameStatus === 'pending');
+            if (isFrozen) {
+                blockColor = '#bae6fd';
+                shadowColor = 'rgba(224, 242, 254, 0.95)';
+            }
+
+            ctx.fillStyle = blockColor;
+            ctx.shadowColor = shadowColor;
+            ctx.shadowBlur = isFrozen ? 14 : 8;
+
+            const radius = Math.min(6, width / 2, height / 2);
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            ctx.fill();
+
+            if (isFrozen) {
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+
+            if (height >= 18) {
+                ctx.fillStyle = isFrozen ? '#0f172a' : '#ffffff';
+                ctx.font = 'bold 11px -apple-system, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const match = noteName.match(/^([a-g]#?)/i);
+                const label = match ? match[1].toUpperCase() : noteName.toUpperCase();
+                ctx.fillText(isFrozen ? '❄️' : label, x + width / 2, y + height / 2);
+            }
+            ctx.restore();
+        }
+
+        function renderLoop(now) {
+            if (!isPlaying || isPaused) return;
+
+            const delta = now - lastFrameTime;
+            lastFrameTime = now;
+
+            let effectiveElapsed = 0;
+
+            if (isStepMode) {
+                const targetStepElapsed = (currentStepIndex < noteTimeline.length)
+                    ? noteTimeline[currentStepIndex].hitTime
+                    : (noteTimeline[noteTimeline.length - 1] ? noteTimeline[noteTimeline.length - 1].hitTime + 500 : 0);
+                
+                smoothStepElapsed += (targetStepElapsed - smoothStepElapsed) * 0.15;
+                effectiveElapsed = smoothStepElapsed;
+            } else {
+                effectiveElapsed = (now - playbackStartTime) - accumulatedPauseMs;
+            }
+
+            if (isLooping && noteTimeline.length > 0 && !isStepMode && !activeMiniGame) {
+                const firstHit = noteTimeline[0].hitTime;
+                const lastHit = noteTimeline[noteTimeline.length - 1].hitTime + noteTimeline[noteTimeline.length - 1].duration;
+                const totalDuration = lastHit - firstHit;
+
+                const startPct = parseInt(loopStartSlider.value, 10) / 100;
+                const endPct = parseInt(loopEndSlider.value, 10) / 100;
+
+                const loopStartMs = firstHit + (totalDuration * startPct);
+                const loopEndMs = firstHit + (totalDuration * endPct);
+
+                if (effectiveElapsed >= loopEndMs) {
+                    const currentSpeedVal = parseFloat(speedSlider.value);
+                    const acceleratedSpeed = Math.min(500, Math.round(currentSpeedVal * 1.02));
+                    
+                    if (acceleratedSpeed !== currentSpeedVal) {
+                        updateSpeed(acceleratedSpeed, false);
+                        buildTimeline();
+                    }
+
+                    const updatedFirstHit = noteTimeline[0].hitTime;
+                    const updatedLastHit = noteTimeline[noteTimeline.length - 1].hitTime + noteTimeline[noteTimeline.length - 1].duration;
+                    const updatedTotalDuration = updatedLastHit - updatedFirstHit;
+                    const newLoopStartMs = updatedFirstHit + (updatedTotalDuration * startPct);
+
+                    playbackStartTime = now - newLoopStartMs - accumulatedPauseMs;
+                    effectiveElapsed = newLoopStartMs;
+                    noteTimeline.forEach(n => {
+                        if (n.hitTime >= newLoopStartMs) {
+                            n.played = false;
+                            n.gameStatus = 'pending';
+                        }
+                    });
+
+                    document.getElementById('status').textContent = ` Loop accelerated by +2% (Now ${acceleratedSpeed}%)`;
+                }
+            }
+
+            if (activeMiniGame === 'simon') {
+                drawSimonStaircase(simonSequence.length);
+            } else {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+
+            const canvasHeight = canvas.height;
+            const currentFallSpeed = activeMiniGame === 'drop' ? miniGameFallSpeedMs : FALL_TIME_MS;
+            const waterfallTop = (showSheetMusic && !activeMiniGame) ? 75 : 0;
+            const waterfallHeight = canvasHeight - waterfallTop;
+
+            if (showSheetMusic && !activeMiniGame) {
+                drawSheetMusicStaff(ctx, canvas.width);
+
+                const line1_y = 56;
+                const halfStep = 4;
+                const targetX = 85;
+                const CLEF_X_END = 65;
+                const SCROLL_TIME_MS = 2200;
+
+                let has8va = false;
+                let has15ma = false;
+
+                let nextNoteItem = null;
+                let minUpcomingTime = Infinity;
+
+                noteTimeline.forEach(item => {
+                    const timeUntilHit = item.hitTime - effectiveElapsed;
+                    if (timeUntilHit >= -100 && timeUntilHit < minUpcomingTime && !item.played) {
+                        minUpcomingTime = timeUntilHit;
+                        nextNoteItem = item;
+                    }
+                });
+
+                noteTimeline.forEach(item => {
+                    const timeUntilHit = item.hitTime - effectiveElapsed;
+                    if (timeUntilHit >= -350 && timeUntilHit <= SCROLL_TIME_MS + 400) {
+                        const noteX = targetX + (timeUntilHit / SCROLL_TIME_MS) * (canvas.width - targetX);
+
+                        if (noteX > CLEF_X_END && noteX < canvas.width + 15) {
+                            const isNextNote = (item === nextNoteItem);
+                            const noteColor = isNextNote ? '#ef4444' : '#000000';
+
+                            item.notes.forEach(noteStr => {
+                                const info = getDiatonicStepAndShift(noteStr);
+                                if (info) {
+                                    const noteY = line1_y - info.step * halfStep;
+                                    drawLedgerLines(ctx, noteX, info.step, line1_y, halfStep, noteColor);
+                                    drawStemlessNote(ctx, noteX, noteY, info.isSharp, noteColor);
+
+                                    if (info.octaveShift === 1) has8va = true;
+                                    if (info.octaveShift === 2) has15ma = true;
+                                }
+                            });
+                        }
+                    }
+                });
+
+                if (has8va || has15ma) {
+                    ctx.save();
+                    ctx.fillStyle = '#8b5cf6';
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'top';
+                    const octText = has15ma ? '15ma' : '8va';
+                    ctx.fillText(`${octText} ------------------`, 85, 4);
+                    ctx.restore();
+                }
+            }
+
+            noteTimeline.forEach((item, itemIdx) => {
+                const backgroundVol = (isGameMode || activeMiniGame) ? 0.2 : 1.0;
+
+                if (!isStepMode && effectiveElapsed >= item.hitTime && !item.played) {
+                    item.played = true;
+                    item.notes.forEach(noteStr => {
+                        const freq = getNoteFrequency(noteStr);
+                        if (freq) {
+                            playTone(freq, item.duration / 1000, backgroundVol);
+                            if (!isGameMode && !activeMiniGame) {
+                                highlightKey(noteStr, item.duration);
+                            }
+                        }
+                    });
+                }
+
+                if ((isGameMode || activeMiniGame) && item.gameStatus === 'pending' && effectiveElapsed > (item.hitTime + 280)) {
+                    item.gameStatus = 'miss';
+                    gameStats.miss++;
+                    currentPerfectStreak = 0;
+                    if (isClassKnockout) {
+                        syncKnockoutLiveScore();
+                    } else if (isSongBattle) {
+                        const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
+                        if (localPlayer) {
+                            localPlayer.stats = { ...gameStats };
+                            pushPlayerState();
+                        }
+                    }
+                    if (isGameMode) updateGameStatus();
+                }
+
+                const normNotes = item.notes.map(n => n.toLowerCase().trim());
+
+                normNotes.forEach((normNote, noteSubIdx) => {
+                    const origNoteStr = item.notes[noteSubIdx];
+                    const pos = keyPosMap[normNote];
+
+                    if (pos) {
+                        const timeUntilHit = item.hitTime - effectiveElapsed;
+                        const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * waterfallHeight;
+                        let blockHeight = (item.duration / currentFallSpeed) * waterfallHeight;
+
+                        let nextSamePitchItem = null;
+                        for (let k = itemIdx + 1; k < noteTimeline.length; k++) {
+                            if (noteTimeline[k].notes.some(n => n.toLowerCase().trim() === normNote)) {
+                                nextSamePitchItem = noteTimeline[k];
+                                break;
+                            }
+                        }
+
+                        if (nextSamePitchItem) {
+                            const timeGap = nextSamePitchItem.hitTime - item.hitTime;
+                            const distanceToNext = (timeGap / currentFallSpeed) * waterfallHeight;
+                            const separationPx = 6;
+                            blockHeight = Math.min(blockHeight, Math.max(6, distanceToNext - separationPx));
+                        }
+
+                        const yTop = yBottom - blockHeight;
+
+                        if (yBottom > waterfallTop && yTop < canvasHeight) {
+                            const drawY = Math.max(waterfallTop, yTop);
+                            const drawH = Math.min(canvasHeight - drawY, yBottom - drawY);
+                            const active = effectiveElapsed >= item.hitTime && effectiveElapsed <= (item.hitTime + item.duration);
+                            drawNoteBlock(pos.left + 2, drawY, pos.width - 4, drawH, origNoteStr, active, item.gameStatus);
+                        }
+                    }
+                });
+            });
+
+            if (activeSabotageType && now < activeSabotageUntil) {
+                if (activeSabotageType === 'smoke') {
+                    const smokeZoneBottom = waterfallTop + waterfallHeight * 0.42;
+                    if (smokeParticles.length < 28) {
+                        smokeParticles.push({
+                            x: Math.random() * canvas.width,
+                            y: waterfallTop + Math.random() * (waterfallHeight * 0.35),
+                            r: 45 + Math.random() * 65,
+                            vx: (Math.random() - 0.5) * 2.4,
+                            alpha: 0.55 + Math.random() * 0.35
+                        });
+                    }
+                    ctx.save();
+                    const fogGrad = ctx.createLinearGradient(0, waterfallTop, 0, smokeZoneBottom + 25);
+                    fogGrad.addColorStop(0, 'rgba(203, 213, 225, 0.92)');
+                    fogGrad.addColorStop(0.75, 'rgba(148, 163, 184, 0.84)');
+                    fogGrad.addColorStop(1, 'rgba(148, 163, 184, 0)');
+                    ctx.fillStyle = fogGrad;
+                    ctx.fillRect(0, waterfallTop, canvas.width, waterfallHeight * 0.45);
+
+                    smokeParticles.forEach(sp => {
+                        sp.x += sp.vx;
+                        if (sp.x < -60) sp.x = canvas.width + 60;
+                        if (sp.x > canvas.width + 60) sp.x = -60;
+                        ctx.beginPath();
+                        ctx.fillStyle = `rgba(226, 232, 240, ${sp.alpha})`;
+                        ctx.arc(sp.x, sp.y, sp.r, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    ctx.restore();
+                } else if (activeSabotageType === 'freeze') {
+                    ctx.save();
+                    ctx.strokeStyle = 'rgba(186, 230, 253, 0.85)';
+                    ctx.lineWidth = 8;
+                    ctx.strokeRect(4, waterfallTop + 4, canvas.width - 8, waterfallHeight - 8);
+                    ctx.restore();
+                }
+            } else if (activeSabotageType && now >= activeSabotageUntil) {
+                activeSabotageType = null;
+                smokeParticles = [];
+                canvas.classList.remove('canvas-shake-active');
+            }
+
+            if (confettiParticles.length > 0) {
+                for (let i = confettiParticles.length - 1; i >= 0; i--) {
+                    let p = confettiParticles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.3;
+                    p.rot += p.rotSpeed;
+                    p.life -= 0.015;
+
+                    if (p.life <= 0) {
+                        confettiParticles.splice(i, 1);
+                    } else {
+                        ctx.save();
+                        ctx.globalAlpha = p.life;
+                        ctx.fillStyle = p.color;
+                        ctx.translate(p.x, p.y);
+                        ctx.rotate(p.rot);
+                        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                        ctx.restore();
+                    }
+                }
+            }
+
+            if (!isStepMode && !isLooping) {
+                const lastNote = noteTimeline[noteTimeline.length - 1];
+                if (lastNote && effectiveElapsed > lastNote.hitTime + lastNote.duration + 500) {
+                    isPlaying = false;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    if (isClassKnockout) {
+                        submitKnockoutRoundFinish();
+                        return;
+                    } else if (isSongBattle) {
+                        const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
+                        if (localPlayer) {
+                            localPlayer.finished = true;
+                            pushPlayerState();
+                        }
+                        return;
+                    } else if (isGameMode) {
+                        showGameResultsPopUp();
+                        return;
+                    } else if (activeMiniGame) {
+                        currentSongTitle = activeMiniGame === 'drop' ? "Drop Dodge" : "Combo Strike";
+                        showGameResultsPopUp();
+                        activeMiniGame = null;
+                        return;
+                    }
+
+                    document.getElementById('status').textContent = 'Playback finished.';
+                    return;
+                }
+            }
+
+            animationFrameId = requestAnimationFrame(renderLoop);
+        }
+
+        const modal = document.getElementById('modal');
+        const exportModal = document.getElementById('export-modal');
+        const importTextarea = document.getElementById('import-text');
+        const exportTextarea = document.getElementById('export-text');
+        const btnEmailHaycode = document.getElementById('btn-email-haycode');
+
+        window.addEventListener('resize', updateKeyPositions);
+
+        document.getElementById('btn-import').addEventListener('click', () => {
+            initAudio();
+            importTextarea.value = '';
+            modal.classList.add('open');
+        });
+
+        document.getElementById('btn-cancel').addEventListener('click', () => modal.classList.remove('open'));
+        document.getElementById('btn-export-close').addEventListener('click', () => exportModal.classList.remove('open'));
+
+        document.getElementById('btn-play').addEventListener('click', playSong);
+        document.getElementById('btn-stop').addEventListener('click', stopSong);
+
+        document.getElementById('btn-load-play').addEventListener('click', () => {
+            initAudio();
+            const code = importTextarea.value;
+            const parsed = parsePianoPad(code);
+            if (parsed.length > 0) {
+                currentSongTitle = 'Custom Imported Song';
+                currentSong = autoTransposeSong(parsed);
+                songSelect.value = '';
+                modal.classList.remove('open');
+                playSong();
+            } else {
+                document.getElementById('status').textContent = 'Invalid code format imported.';
+            }
+        });
+
+        function openExportModal() {
+            if (!generatedHaycode) return;
+            exportTextarea.value = generatedHaycode;
+
+            const subject = encodeURIComponent("HayCode for PianoPad 26");
+            const body = encodeURIComponent("Here is my recorded HayCode for PianoPad 26:\n\n" + generatedHaycode);
+            btnEmailHaycode.href = `mailto:?subject=${subject}&body=${body}`;
+
+            exportModal.classList.add('open');
+        }
+
+        async function shareHaycode() {
+            initAudio();
+            if (!generatedHaycode) return;
+
+            const shareData = {
+                title: 'HayCode for PianoPad 26',
+                text: 'Here is my recorded HayCode for PianoPad 26:\n\n' + generatedHaycode
+            };
+
+            if (navigator.share) {
+                try {
+                    await navigator.share(shareData);
+                } catch (err) {
+                    openExportModal();
+                }
+            } else {
+                openExportModal();
+            }
+        }
+
+        document.getElementById('btn-copy-haycode').addEventListener('click', () => {
+            exportTextarea.select();
+            navigator.clipboard.writeText(exportTextarea.value);
+            document.getElementById('status').textContent = 'Haycode copied to clipboard!';
+        });
+
+        document.getElementById('btn-export-wav').addEventListener('click', () => {
+            initAudio();
+            if (!generatedHaycode) {
+                alert("No recorded HayCode available to export.");
+                return;
+            }
+
+            const currentCleanCode = generatedHaycode.replace(/[\r\n\s]+/g, '').toLowerCase();
+
+            let isDuplicate = false;
+            for (let song of songList) {
+                if (song.code) {
+                    const dbCleanCode = song.code.replace(/[\r\n\s]+/g, '').toLowerCase();
+                    if (dbCleanCode === currentCleanCode) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+            }
+
+            if (isDuplicate) {
+                alert("WAV Export Blocked: This recorded HayCode matches an existing song in the database. Audio export is only allowed for original student recordings.");
+                return;
+            }
+
+            const defaultTitle = currentSongTitle && currentSongTitle !== 'Wipeout' ? currentSongTitle : 'My_PianoPad_Song';
+            const userTitle = prompt("Please enter a title for your recorded WAV audio file:", defaultTitle);
+
+            if (userTitle === null) return;
+
+            const cleanFileName = userTitle.trim().replace(/[^a-zA-Z0-9_\-\s]/g, '').replace(/\s+/g, '_') || 'PianoPad_Song';
+
+            exportPerformanceToWAV(cleanFileName);
+        });
+
+        function showFlashingStatus(message, durationMs = 6000) {
+            const statusEl = document.getElementById('status');
+            if (!statusEl) return;
+
+            statusEl.textContent = message;
+            statusEl.classList.add('status-flash-success');
+
+            setTimeout(() => {
+                statusEl.classList.remove('status-flash-success');
+            }, 3200);
+
+            setTimeout(() => {
+                if (statusEl.textContent === message) {
+                    statusEl.textContent = 'PianoPad Relay Active';
+                }
+            }, durationMs);
+        }
+
+        let pendingExportBlob = null;
+        let pendingExportFileName = null;
+        let pendingExportMode = 'download';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const yearSelect = document.getElementById('upload-year-select');
+            const letterGroup = document.getElementById('class-letter-group');
+            const letterSelect = document.getElementById('upload-class-letter-select');
+
+            if (yearSelect) {
+                yearSelect.addEventListener('change', () => {
+                    const val = yearSelect.value;
+                    if (val === '7' || val === '8') {
+                        letterGroup.style.display = 'flex';
+                        letterSelect.selectedIndex = 0;
+                    } else {
+                        letterGroup.style.display = 'none';
+                        letterSelect.value = '';
+                    }
+                });
+            }
+
+            document.getElementById('btn-cancel-class-select')?.addEventListener('click', () => {
+                document.getElementById('class-select-modal').classList.remove('open');
+                pendingExportBlob = null;
+            });
+
+            document.getElementById('btn-confirm-class-select')?.addEventListener('click', processConfirmedClassUpload);
+        });
+
+        function processConfirmedClassUpload() {
+            const yearVal = document.getElementById('upload-year-select').value;
+            const letterVal = document.getElementById('upload-class-letter-select').value;
+
+            if (!yearVal) {
+                alert("Please select your Year Group!");
+                return;
+            }
+
+            if ((yearVal === '7' || yearVal === '8') && !letterVal) {
+                alert("Please select your Class Letter!");
+                return;
+            }
+
+            const fullClassCode = (yearVal === '7' || yearVal === '8') ? `${yearVal}${letterVal}` : `Year${yearVal}`;
+            const studentName = (sessionStudentName || localStorage.getItem('pianopad_name') || 'Student').replace(/\s+/g, '');
+            
+            const avatar = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || '';
+
+            const fullFormattedName = `${fullClassCode}_${pendingExportFileName}_${studentName}_${avatar}`;
+
+            document.getElementById('class-select-modal').classList.remove('open');
+
+            if (pendingExportMode === 'download' || pendingExportMode === 'both') {
+                const url = URL.createObjectURL(pendingExportBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${fullFormattedName}.wav`;
+                a.click();
+                showFlashingStatus(` DOWNLOAD COMPLETE: "${fullFormattedName}.wav" saved locally!`);
+            }
+
+            if (pendingExportMode === 'drive' || pendingExportMode === 'both') {
+                uploadAudioToGoogleDrive(pendingExportBlob, fullFormattedName, fullClassCode, studentName);
+            }
+
+            pendingExportBlob = null;
+        }
+
+        function uploadAudioToGoogleDrive(wavBlob, fullFormattedName, fullClassCode, studentName) {
+            document.getElementById('status').textContent = "Uploading audio performance to Drive folder...";
+
+            const reader = new FileReader();
+            reader.readAsDataURL(wavBlob);
+            reader.onloadend = function () {
+                const base64Data = reader.result.split(',')[1];
+
+                const payload = {
+                    action: "UPLOAD_AUDIO",
+                    studentClass: fullClassCode,
+                    room: currentRoom || "G1",
+                    studentName: studentName,
+                    fileName: fullFormattedName,
+                    base64Data: base64Data
+                };
+
+                fetch(APPS_SCRIPT_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "text/plain;charset=utf-8",
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "SUCCESS") {
+                        showFlashingStatus(` UPLOAD SUCCESSFUL! Saved as "${fullFormattedName}.wav" in ${data.assignedRoom} -> ${data.folderName}`);
+                    } else {
+                        showFlashingStatus(` Upload Notice: ${data.error || 'Check Drive setup'}`);
+                    }
+                })
+                .catch(err => {
+                    console.error("Network notice:", err);
+                    showFlashingStatus(` Audio saved as "${fullFormattedName}.wav"!`);
+                });
+            };
+        }
+
+        function exportPerformanceToWAV(fileName = 'PianoPad_Song') {
+            if (recordedNotes.length === 0) {
+                alert("No recorded note sequence found.");
+                return;
+            }
+
+            let studentName = sessionStudentName || localStorage.getItem('pianopad_name');
+            if (!studentName || studentName === "Student" || !studentName.trim()) {
+                const inputName = prompt("Please enter your First Name and Last Initial before exporting (e.g. Alex M):", "Student A");
+                if (inputName && inputName.trim()) {
+                    sessionStudentName = sanitizeName(inputName);
+                    localStorage.setItem('pianopad_name', sessionStudentName);
+                } else {
+                    sessionStudentName = "Student";
+                }
+            }
+
+            const choice = prompt(
+                "Choose an export option:\n\nType '1' or 'WAV' to Download WAV file\nType '2' or 'DRIVE' to Upload directly to Drive Folder\nType '3' or 'BOTH' to do Both",
+                "1"
+            );
+
+            if (!choice) return;
+
+            const cleanChoice = choice.trim().toLowerCase();
+            const shouldDownload = cleanChoice === '1' || cleanChoice === 'wav' || cleanChoice === '3' || cleanChoice === 'both';
+            const shouldUpload = cleanChoice === '2' || cleanChoice === 'drive' || cleanChoice === '3' || cleanChoice === 'both';
+
+            if (!shouldDownload && !shouldUpload) {
+                alert("Invalid selection. Please choose 1, 2, or 3.");
+                return;
+            }
+
+            if (shouldDownload && shouldUpload) pendingExportMode = 'both';
+            else if (shouldUpload) pendingExportMode = 'drive';
+            else pendingExportMode = 'download';
+
+            document.getElementById('status').textContent = "Rendering WAV audio...";
+
+            let totalMs = 0;
+            recordedRests.forEach(r => totalMs += r);
+            const totalSeconds = Math.max(1.5, (totalMs + 1000) / 1000);
+
+            const sampleRate = 44100;
+            const offlineCtx = new OfflineAudioContext(1, Math.ceil(sampleRate * totalSeconds), sampleRate);
+
+            let cumulativeTime = 0;
+            for (let i = 0; i < recordedNotes.length; i++) {
+                const noteToken = recordedNotes[i];
+                const restMs = recordedRests[i] || 250;
+                cumulativeTime += (restMs / 1000);
+
+                const noteList = noteToken.split('+').filter(Boolean);
+                noteList.forEach(noteStr => {
+                    const freq = getNoteFrequency(noteStr);
+                    if (freq) {
+                        const osc = offlineCtx.createOscillator();
+                        const gain = offlineCtx.createGain();
+
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, cumulativeTime);
+
+                        gain.gain.setValueAtTime(0, cumulativeTime);
+                        gain.gain.linearRampToValueAtTime(0.4, cumulativeTime + 0.01);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, cumulativeTime + 0.4);
+
+                        osc.connect(gain);
+                        gain.connect(offlineCtx.destination);
+
+                        osc.start(cumulativeTime);
+                        osc.stop(cumulativeTime + 0.4);
+                    }
+                });
+            }
+
+            offlineCtx.startRendering().then(renderedBuffer => {
+                const wavBlob = bufferToWavBlob(renderedBuffer);
+
+                const expModal = document.getElementById('export-modal');
+                if (expModal) expModal.classList.remove('open');
+
+                pendingExportBlob = wavBlob;
+                pendingExportFileName = fileName;
+
+                document.getElementById('upload-year-select').selectedIndex = 0;
+                document.getElementById('class-letter-group').style.display = 'none';
+
+                document.getElementById('class-select-modal').classList.add('open');
+            }).catch(err => {
+                console.error("WAV Export Error:", err);
+                document.getElementById('status').textContent = "WAV Export failed.";
+            });
+        }
+
+        function bufferToWavBlob(buffer) {
+            const numOfChan = buffer.numberOfChannels;
+            const length = buffer.length * numOfChan * 2 + 44;
+            const outBuffer = new ArrayBuffer(length);
+            const view = new DataView(outBuffer);
+            const channels = [];
+            let sample = 0;
+            let offset = 0;
+            let pos = 0;
+
+            function writeString(str) {
+                for (let i = 0; i < str.length; i++) {
+                    view.setUint8(pos++, str.charCodeAt(i));
+                }
+            }
+
+            function setUint16(data) {
+                view.setUint16(pos, data, true);
+                pos += 2;
+            }
+
+            function setUint32(data) {
+                view.setUint32(pos, data, true);
+                pos += 4;
+            }
+
+            writeString('RIFF');
+            setUint32(length - 8);
+            writeString('WAVE');
+            writeString('fmt ');
+            setUint32(16);
+            setUint16(1);
+            setUint16(numOfChan);
+            setUint32(buffer.sampleRate);
+            setUint32(buffer.sampleRate * 2 * numOfChan);
+            setUint16(numOfChan * 2);
+            setUint16(16);
+            writeString('data');
+            setUint32(length - pos - 4);
+
+            for (let i = 0; i < buffer.numberOfChannels; i++) {
+                channels.push(buffer.getChannelData(i));
+            }
+
+            while (offset < buffer.length) {
+                for (let i = 0; i < numOfChan; i++) {
+                    sample = Math.max(-1, Math.min(1, channels[i][offset]));
+                    sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+                    view.setInt16(pos, sample, true);
+                    pos += 2;
+                }
+                offset++;
+            }
+
+            return new Blob([outBuffer], { type: 'audio/wav' });
+        }
+    // =========================================================================
+        // GRAND FINALE CEREMONY ENGINE (Visuals, Fanfare & UI)
+        // =========================================================================
+        let fanfareLoopOscs = [];
+        let fanfareGain = null;
+        let isFanfareMuted = false;
+        
+        let celCanvas, celCtx, celFrameId;
+        let fireworks = [];
+        let celConfetti = [];
+
+        function playVictoryFanfare() {
+            initAudio();
+            stopVictoryMusic();
+            isFanfareMuted = false;
+            document.getElementById('btn-mute-fanfare').textContent = "🔇 Mute Music";
+
+            fanfareGain = audioCtx.createGain();
+            fanfareGain.gain.value = 0.4;
+            fanfareGain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            
+            const playBrassChord = (pitches, time, duration) => {
+                pitches.forEach(p => {
+                    const osc = audioCtx.createOscillator();
+                    osc.type = 'sawtooth';
+                    osc.frequency.value = getNoteFrequency(p);
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(400, time);
+                    filter.frequency.exponentialRampToValueAtTime(3500, time + duration / 2);
+                    
+                    const env = audioCtx.createGain();
+                    env.gain.setValueAtTime(0, time);
+                    env.gain.linearRampToValueAtTime(0.25, time + 0.1);
+                    env.gain.exponentialRampToValueAtTime(0.01, time + duration);
+                    
+                    osc.connect(filter).connect(env).connect(fanfareGain);
+                    osc.start(time);
+                    osc.stop(time + duration);
+                });
+            };
+
+            playBrassChord(['c4', 'e4', 'g4'], now, 0.5);
+            playBrassChord(['f4', 'a4', 'c5'], now + 0.5, 0.5);
+            playBrassChord(['g4', 'b4', 'd5'], now + 1.0, 0.5);
+            playBrassChord(['c4', 'e4', 'g4', 'c5'], now + 1.5, 2.0);
+
+            const loopStart = now + 3.5;
+            const loopNotes = ['c4', 'e4', 'g4', 'e4', 'f4', 'a4', 'c5', 'a4', 'd4', 'f4', 'a4', 'f4', 'g4', 'b4', 'd5', 'b4'];
+            for (let i = 0; i < 48; i++) {
+                const time = loopStart + (i * 0.25);
+                const osc = audioCtx.createOscillator();
+                osc.type = 'square';
+                osc.frequency.value = getNoteFrequency(loopNotes[i % loopNotes.length]);
+                
+                const env = audioCtx.createGain();
+                env.gain.setValueAtTime(0, time);
+                env.gain.linearRampToValueAtTime(0.12, time + 0.03);
+                env.gain.exponentialRampToValueAtTime(0.01, time + 0.22);
+                
+                osc.connect(env).connect(fanfareGain);
+                osc.start(time);
+                osc.stop(time + 0.25);
+                fanfareLoopOscs.push(osc);
+            }
+        }
+
+        function toggleFanfareMute() {
+            if (!fanfareGain) return;
+            isFanfareMuted = !isFanfareMuted;
+            fanfareGain.gain.value = isFanfareMuted ? 0 : 0.4;
+            document.getElementById('btn-mute-fanfare').textContent = isFanfareMuted ? "🔊 Unmute" : "🔇 Mute Music";
+        }
+
+        function stopVictoryMusic() {
+            fanfareLoopOscs.forEach(o => { try { o.stop(); } catch (e) {} });
+            fanfareLoopOscs = [];
+            if (fanfareGain) {
+                fanfareGain.disconnect();
+                fanfareGain = null;
+            }
+        }
+
+        function startCelebrationCanvas() {
+            celCanvas = document.getElementById('celebration-canvas');
+            celCanvas.style.display = 'block';
+            celCanvas.width = window.innerWidth;
+            celCanvas.height = window.innerHeight;
+            celCtx = celCanvas.getContext('2d');
+            fireworks = [];
+            celConfetti = [];
+            celFrameId = requestAnimationFrame(renderCelebration);
+        }
+
+        function stopCelebrationCanvas() {
+            if (celFrameId) cancelAnimationFrame(celFrameId);
+            if (celCanvas) celCanvas.style.display = 'none';
+        }
+
+        function spawnFirework() {
+            fireworks.push({
+                x: Math.random() * (celCanvas.width - 300) + 150,
+                y: celCanvas.height,
+                vx: (Math.random() - 0.5) * 3,
+                vy: -(Math.random() * 6 + 12),
+                exploded: false,
+                particles: [],
+                hue: Math.random() * 360
+            });
+        }
+
+        function renderCelebration() {
+            celCtx.clearRect(0, 0, celCanvas.width, celCanvas.height);
+            
+            if (Math.random() < 0.04) spawnFirework();
+            if (Math.random() < 0.25) {
+                celConfetti.push({
+                    x: Math.random() * celCanvas.width, y: -10,
+                    vx: (Math.random() - 0.5) * 3, vy: Math.random() * 4 + 2,
+                    size: Math.random() * 10 + 5, color: `hsl(${Math.random()*360}, 100%, 50%)`,
+                    rot: 0, rotSpeed: (Math.random()-0.5)*0.3
+                });
+            }
+
+            for (let i = celConfetti.length - 1; i >= 0; i--) {
+                let c = celConfetti[i];
+                c.x += c.vx; c.y += c.vy; c.rot += c.rotSpeed;
+                celCtx.save();
+                celCtx.translate(c.x, c.y); celCtx.rotate(c.rot);
+                celCtx.fillStyle = c.color;
+                celCtx.fillRect(-c.size/2, -c.size/2, c.size, c.size);
+                celCtx.restore();
+                if (c.y > celCanvas.height) celConfetti.splice(i, 1);
+            }
+
+            for (let i = fireworks.length - 1; i >= 0; i--) {
+                let fw = fireworks[i];
+                if (!fw.exploded) {
+                    fw.x += fw.vx; fw.y += fw.vy; fw.vy += 0.2; 
+                    celCtx.fillStyle = '#fff';
+                    celCtx.beginPath(); celCtx.arc(fw.x, fw.y, 4, 0, Math.PI*2); celCtx.fill();
+                    if (fw.vy >= 0) {
+                        fw.exploded = true;
+                        for (let j = 0; j < 60; j++) {
+                            let angle = Math.random() * Math.PI * 2;
+                            let speed = Math.random() * 7 + 1;
+                            fw.particles.push({
+                                x: fw.x, y: fw.y,
+                                vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
+                                alpha: 1, hue: fw.hue + (Math.random()-0.5)*40
+                            });
+                        }
+                    }
+                } else {
+                    for (let j = fw.particles.length - 1; j >= 0; j--) {
+                        let p = fw.particles[j];
+                        p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.vx *= 0.97; p.alpha -= 0.02;
+                        celCtx.fillStyle = `hsla(${p.hue}, 100%, 60%, ${p.alpha})`;
+                        celCtx.beginPath(); celCtx.arc(p.x, p.y, 3, 0, Math.PI*2); celCtx.fill();
+                        if (p.alpha <= 0) fw.particles.splice(j, 1);
+                    }
+                    if (fw.particles.length === 0) fireworks.splice(i, 1);
+                }
+            }
+            celFrameId = requestAnimationFrame(renderCelebration);
+        }
+
+        function showGrandFinale(standings, isHost, titleText) {
+            document.getElementById('game-results-modal').classList.remove('open');
+            const koModal = document.getElementById('knockout-modal');
+            if (koModal) koModal.classList.remove('open');
+            const vsOverlay = document.getElementById('ko-vs-overlay');
+            if (vsOverlay) vsOverlay.style.display = 'none';
+            const tugHud = document.getElementById('tug-of-war-hud');
+            if (tugHud) tugHud.style.display = 'none';
+
+            const modal = document.getElementById('finale-modal');
+            modal.style.display = 'flex';
+            document.getElementById('finale-title-text').textContent = titleText || "GRAND FINALE!";
+
+            let myRank = -1;
+            standings.forEach((p, idx) => {
+                if (p.name === sessionStudentName || p.id === localStudentId) myRank = idx + 1;
+            });
+
+            const subText = document.getElementById('finale-subtitle-text');
+            if (myRank === 1) {
+                subText.innerHTML = "🏆 <span style='color:#facc15;'>CLASS CHAMPION!</span>";
+            } else if (myRank > 1) {
+                subText.innerHTML = `🎉 YOU FINISHED <span style='color:#38bdf8;'>#${myRank}</span> OUT OF ${standings.length}!`;
+            } else {
+                subText.innerHTML = `Spectator Mode`;
+            }
+
+            const podiumMap = [
+                { rank: 2, class: 'pedestal-2', label: '🥈 2nd' },
+                { rank: 1, class: 'pedestal-1', label: '👑 1st' },
+                { rank: 3, class: 'pedestal-3', label: '🥉 3rd' }
+            ];
+
+            const podiumContainer = document.getElementById('podium-container');
+            podiumContainer.innerHTML = '';
+            
+            podiumMap.forEach((spot) => {
+                const p = standings[spot.rank - 1];
+                if (p) {
+                    const delay = spot.rank === 1 ? 2800 : (spot.rank === 2 ? 1800 : 800);
+                    const scoreText = p.score !== undefined ? `${p.score}%` : (p.avgAcc ? `${p.avgAcc}%` : '');
+                    
+                    podiumContainer.innerHTML += `
+                        <div class="pedestal-wrap" id="ped-wrap-${spot.rank}" style="transition-delay: ${delay}ms;">
+                            <div class="pedestal-avatar">${p.avatar || '🏃'}</div>
+                            <div class="pedestal-name">${p.name}</div>
+                            <div class="pedestal-score">${scoreText}</div>
+                            <div class="pedestal ${spot.class}">${spot.label}</div>
+                        </div>
+                    `;
+                }
+            });
+
+            setTimeout(() => {
+                [3, 2, 1].forEach(r => {
+                    const el = document.getElementById(`ped-wrap-${r}`);
+                    if (el) el.classList.add('show');
+                });
+            }, 100);
+
+            const hmContainer = document.getElementById('honorable-mentions');
+            hmContainer.innerHTML = '';
+            if (standings.length > 3) {
+                standings.slice(3).forEach((p, idx) => {
+                    const scoreText = p.score !== undefined ? `${p.score}%` : (p.avgAcc ? `${p.avgAcc}%` : '');
+                    hmContainer.innerHTML += `
+                        <div class="hm-card">
+                            <div class="hm-rank">#${idx + 4} Rank</div>
+                            <div class="hm-name">${p.avatar || '🏃'} ${p.name}</div>
+                            <div class="hm-score">${scoreText}</div>
+                        </div>
+                    `;
+                });
+            }
+
+            playVictoryFanfare();
+            startCelebrationCanvas();
+        }
+
+        function closeGrandFinale() {
+            stopVictoryMusic();
+            stopCelebrationCanvas();
+            document.getElementById('finale-modal').style.display = 'none';
+            
+            if (isSongBattle) {
+                stopBattlePolling();
+            } else if (isClassKnockout) {
+                leaveClassKnockout();
+            }
+            
+            loadStudentTickerStats(sessionStudentName);
+            document.getElementById('status').textContent = 'Returned to PianoPad.';
+        }
+
+        // =========================================================================
+        // SWISS-SYSTEM CLASS KNOCKOUT TOURNAMENT ENGINE (FIREBASE RTDB + GAS)
+        // =========================================================================
+
+        function initSwissTournamentUI() {
+            const menuBtns = document.getElementById('sprint-menu-buttons');
+            if (menuBtns && !document.getElementById('btn-host-knockout-opt')) {
+                const btnKo = document.createElement('button');
+                btnKo.type = 'button';
+                btnKo.id = 'btn-host-knockout-opt';
+                btnKo.className = 'btn-teacher';
+                btnKo.style.background = '#ef4444'; 
+                btnKo.style.justifyContent = 'center';
+                btnKo.innerHTML = '🏆 Host Class Knockout (Teacher)';
+                btnKo.onclick = openTeacherKnockoutSetup;
+                menuBtns.appendChild(btnKo);
+            }
+
+            if (!document.getElementById('knockout-modal')) {
+                const koModal = document.createElement('div');
+                koModal.id = 'knockout-modal';
+                koModal.className = 'modal-overlay';
+                koModal.style.zIndex = '350';
+                koModal.innerHTML = `
+                    <div class="modal" style="max-width: 780px; width: 95%; max-height: 90vh; overflow-y: auto; border: 2px solid #ef4444; background: #0a0a0a;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #374151; padding-bottom:10px;">
+                            <h2 id="ko-modal-title" style="color:#ffffff; margin:0;">🏆 Class Swiss Knockout Tournament</h2>
+                            <span id="ko-room-badge" style="background:#ef4444; color:#fff; padding:4px 12px; border-radius:6px; font-weight:800; font-size:0.95rem;">Code: ---</span>
+                        </div>
+
+                        <div id="ko-teacher-panel" style="display:none; flex-direction:column; gap:12px;">
+                            <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:#111; padding:10px; border-radius:8px; border:1px solid #374151;">
+                                <div style="flex:1; min-width:200px;">
+                                    <label style="font-size:0.72rem; color:#9ca3af; font-weight:700; display:block; margin-bottom:4px;">SELECT SONG FOR NEXT ROUND:</label>
+                                    <select id="ko-song-select" style="width:100%; max-width:100%; background:#000; color:#fff;"></select>
+                                </div>
+                                <div style="display:flex; gap:8px; align-items:flex-end;">
+                                    <button type="button" id="btn-ko-start-round" class="btn-success" style="padding:8px 14px; font-size:0.85rem; background:#ef4444;">▶ Start Round 1</button>
+                                    <button type="button" id="btn-ko-force-end" class="btn-warning" style="display:none; padding:8px 12px; font-size:0.82rem;">⚡ Force End Round</button>
+                                    <button type="button" id="btn-ko-finish-tourney" class="btn-arcade" style="display:none; padding:8px 12px; font-size:0.82rem; background:#fff; color:#000;">🏅 End & Podium</button>
+                                </div>
+                            </div>
+
+                            <div id="ko-status-banner" style="font-size:0.85rem; color:#ffffff; font-weight:700; text-align:center;">
+                                Waiting for students to join using Room Code above...
+                            </div>
+
+                            <div id="ko-bracket-container" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px; max-height:320px; overflow-y:auto;"></div>
+
+                            <div id="ko-standings-container" style="background:#111; border:1px solid #374151; border-radius:8px; padding:10px; max-height:200px; overflow-y:auto;"></div>
+                        </div>
+
+                        <div id="ko-student-panel" style="display:none; flex-direction:column; gap:12px; text-align:center;">
+                            <div id="ko-student-status" style="font-size:1rem; color:#ffffff; font-weight:800;">
+                                Connected to Class Knockout! Waiting for Teacher to start Round 1...
+                            </div>
+                            <div id="ko-student-pairing-box" style="background:#111; border:1px solid #374151; border-radius:8px; padding:12px; font-size:0.9rem; color:#fff;"></div>
+                            <div id="ko-student-standings" style="background:#111; border:1px solid #374151; border-radius:8px; padding:10px; max-height:240px; overflow-y:auto; text-align:left;"></div>
+                        </div>
+
+                        <div class="modal-footer" style="justify-content:space-between; border-top:1px solid #374151; padding-top:10px;">
+                            <span style="font-size:0.75rem; color:#9ca3af;">Swiss Placement Ladder • Zero Elimination • Everyone plays every round</span>
+                            <button type="button" class="btn-danger" style="background:#ef4444;" onclick="leaveClassKnockout()">Exit Tournament</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(koModal);
+
+                document.getElementById('btn-ko-start-round').addEventListener('click', startNextKnockoutRound);
+                document.getElementById('btn-ko-force-end').addEventListener('click', forceEndKnockoutRound);
+                document.getElementById('btn-ko-finish-tourney').addEventListener('click', finalizeClassKnockout);
+            }
+
+            if (!document.getElementById('ko-vs-overlay')) {
+                const vsOverlay = document.createElement('div');
+                vsOverlay.id = 'ko-vs-overlay';
+                vsOverlay.className = 'countdown-overlay';
+                vsOverlay.style.zIndex = '250';
+                vsOverlay.innerHTML = `
+                    <div style="background:#0a0a0a; border:3px solid #ffffff; border-radius:16px; padding:24px 32px; text-align:center; max-width:600px; width:92%; box-shadow:0 0 40px rgba(239,68,68,0.5);">
+                        <div id="ko-vs-round-label" style="color:#ef4444; font-weight:900; font-size:1.1rem; letter-spacing:0.08em; text-transform:uppercase;">ROUND 1 MATCHUP</div>
+                        <div style="display:flex; align-items:center; justify-content:space-around; gap:16px; margin:16px 0;">
+                            <div style="flex:1;">
+                                <div id="ko-vs-p1-avatar" style="font-size:3.2rem;">🏃</div>
+                                <div id="ko-vs-p1-name" style="font-size:1.15rem; font-weight:800; color:#fff; margin-top:4px;">You</div>
+                                <div id="ko-vs-p1-rank" style="font-size:0.8rem; color:#ffffff; font-weight:700;">Rank #1</div>
+                                <div id="ko-vs-p1-emote" class="ko-emote-bubble">😤 LOCKED IN</div>
+                            </div>
+                            <div style="font-size:2.4rem; font-weight:900; color:#ef4444; text-shadow:0 0 15px #ef4444;">VS</div>
+                            <div style="flex:1;">
+                                <div id="ko-vs-p2-avatar" style="font-size:3.2rem;">🤖</div>
+                                <div id="ko-vs-p2-name" style="font-size:1.15rem; font-weight:800; color:#fff; margin-top:4px;">Opponent</div>
+                                <div id="ko-vs-p2-rank" style="font-size:0.8rem; color:#ffffff; font-weight:700;">Rank #2</div>
+                                <div id="ko-vs-p2-emote" class="ko-emote-bubble">💀 RIP BRO</div>
+                            </div>
+                        </div>
+                        <div id="ko-vs-song-label" style="font-size:0.9rem; color:#9ca3af; font-weight:700;">Song: Wipeout</div>
+                        <div class="ko-emote-deck" id="ko-emote-deck"></div>
+                    </div>
+                `;
+                document.body.appendChild(vsOverlay);
+            }
+        }
+
+        // =========================================================================
+        // 50-EMOTE PRE-MATCH QUICK REACTION DECK
+        // =========================================================================
+        function dealKnockoutEmoteDeck() {
+            const deckEl = document.getElementById('ko-emote-deck');
+            if (!deckEl) return;
+
+            const shuffled = [...KO_HYPE_EMOTES].sort(() => Math.random() - 0.5);
+            const hand = shuffled.slice(0, 4);
+
+            deckEl.innerHTML = hand.map(emote => `
+                <button type="button" class="ko-emote-btn" onclick="sendKnockoutQuickEmote('${emote.replace(/'/g, "\\'")}')">${emote}</button>
+            `).join('') + `<button type="button" class="ko-shuffle-btn" title="Deal 4 new reactions" onclick="dealKnockoutEmoteDeck()">🎲</button>`;
+        }
+
+        function playEmotePopSound() {
+            try {
+                initAudio();
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(520, now);
+                osc.frequency.exponentialRampToValueAtTime(980, now + 0.08);
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.09);
+            } catch (e) {}
+        }
+
+        async function sendKnockoutQuickEmote(emoteText) {
+            if (!isClassKnockout || !knockoutRoomCode || !window.firebaseDb) return;
+
+            playEmotePopSound();
+
+            const selfBubble = document.getElementById('ko-vs-p1-emote');
+            if (selfBubble) {
+                selfBubble.textContent = emoteText;
+                selfBubble.classList.add('visible');
+                clearTimeout(koSelfEmoteHideTimer);
+                koSelfEmoteHideTimer = setTimeout(() => {
+                    selfBubble.classList.remove('visible');
+                }, 2600);
+            }
+
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}/players/${localStudentId}`), {
+                activeEmote: {
+                    id: `${localStudentId}_${Date.now()}`,
+                    text: emoteText,
+                    timestamp: Date.now()
+                }
+            });
+        }
+
+        function showOpponentQuickEmote(emoteObj) {
+            if (!emoteObj || !emoteObj.id || emoteObj.id === lastProcessedOppEmoteId) return;
+            lastProcessedOppEmoteId = emoteObj.id;
+
+            const ageMs = Date.now() - (emoteObj.timestamp || Date.now());
+            if (ageMs > 5000) return;
+
+            playEmotePopSound();
+            const oppBubble = document.getElementById('ko-vs-p2-emote');
+            if (oppBubble) {
+                oppBubble.textContent = emoteObj.text;
+                oppBubble.classList.add('visible');
+                clearTimeout(koOppEmoteHideTimer);
+                koOppEmoteHideTimer = setTimeout(() => {
+                    oppBubble.classList.remove('visible');
+                }, 2600);
+            }
+        }
+
+        // =========================================================================
+        // 1. LIVE HEAD-TO-HEAD TUG-OF-WAR HUD & 2. STREAK SABOTAGE ENGINE
+        // =========================================================================
+        function updateTugOfWarHUD(myAcc, oppAcc) {
+            const hud = document.getElementById('tug-of-war-hud');
+            if (!hud) return;
+
+            if (!isClassKnockout) {
+                hud.style.display = 'none';
+                return;
+            }
+
+            hud.style.display = 'flex';
+            const myName = sessionStudentName || 'You';
+            const myAvatar = sessionStudentAvatar || '🏃';
+
+            document.getElementById('tug-p1-avatar').textContent = myAvatar;
+            document.getElementById('tug-p1-name').textContent = myName;
+            document.getElementById('tug-p1-acc').textContent = `${myAcc.toFixed(1)}%`;
+
+            document.getElementById('tug-p2-avatar').textContent = koOpponentAvatar || '🤖';
+            document.getElementById('tug-p2-name').textContent = koOpponentName || 'Opponent';
+            document.getElementById('tug-p2-acc').textContent = `${oppAcc.toFixed(1)}%`;
+
+            const diff = myAcc - oppAcc;
+            const ratio = Math.max(8, Math.min(92, 50 + (diff * 2.0)));
+            const fillLeft = document.getElementById('tug-fill-left');
+            const marker = document.getElementById('tug-marker');
+
+            if (fillLeft) {
+                fillLeft.style.width = `${ratio}%`;
+                if (diff > 0.5) {
+                    fillLeft.style.background = 'linear-gradient(90deg, #0284c7, #22c55e)';
+                } else if (diff < -0.5) {
+                    fillLeft.style.background = 'linear-gradient(90deg, #ef4444, #f97316)';
+                } else {
+                    fillLeft.style.background = 'linear-gradient(90deg, #38bdf8, #facc15)';
+                }
+            }
+            if (marker) marker.style.left = `${ratio}%`;
+        }
+
+        async function triggerStreakSabotage(streakVal) {
+            if (!isClassKnockout || !knockoutRoomCode || !window.firebaseDb || !koOpponentId || koOpponentId === 'BENCHMARK_80') return;
+
+            knockoutSabotageCount++;
+            const sabTypes = [
+                { type: 'freeze', label: '❄️ FREEZE FRAME' },
+                { type: 'smoke', label: '🌫️ SMOKE SCREEN' },
+                { type: 'shake', label: '🫨 SCREEN SHAKE' }
+            ];
+            const chosen = sabTypes[Math.floor(Math.random() * sabTypes.length)];
+            const sabId = `${localStudentId}_${Date.now()}`;
+
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}/players/${koOpponentId}`), {
+                incomingSabotage: {
+                    id: sabId,
+                    type: chosen.type,
+                    fromName: sessionStudentName || 'Opponent',
+                    timestamp: Date.now()
+                }
+            });
+
+            showFlashingStatus(`🔥 ${streakVal}-NOTE STREAK! Fired ${chosen.label} at ${koOpponentName}!`, 3500);
+        }
+
+        function applyIncomingSabotage(sabObj) {
+            if (!sabObj || !sabObj.id || sabObj.id === lastProcessedSabotageId) return;
+            lastProcessedSabotageId = sabObj.id;
+
+            const ageMs = Date.now() - (sabObj.timestamp || Date.now());
+            if (ageMs > 6000) return;
+
+            activeSabotageType = sabObj.type;
+            activeSabotageUntil = performance.now() + 3000;
+            smokeParticles = [];
+
+            if (sabObj.type === 'shake') {
+                canvas.classList.add('canvas-shake-active');
+                setTimeout(() => {
+                    canvas.classList.remove('canvas-shake-active');
+                }, 1000);
+            }
+
+            const labelMap = {
+                freeze: '❄️ FREEZE FRAME',
+                smoke: '🌫️ SMOKE SCREEN',
+                shake: '🫨 SCREEN SHAKE'
+            };
+            showFlashingStatus(`⚠️ SABOTAGED BY ${sabObj.fromName.toUpperCase()}: ${labelMap[sabObj.type] || 'DISTRACTION'}!`, 3200);
+        }
+
+        (function bindKnockoutHooks() {
+            const origBattleSel = openSongBattleSelector;
+            openSongBattleSelector = function() {
+                initSwissTournamentUI();
+                origBattleSel();
+                const btnKo = document.getElementById('btn-host-knockout-opt');
+                if (btnKo) btnKo.style.display = 'inline-flex';
+            };
+
+            const origSprintSel = openSprintModeSelector;
+            openSprintModeSelector = function() {
+                initSwissTournamentUI();
+                origSprintSel();
+                const btnKo = document.getElementById('btn-host-knockout-opt');
+                if (btnKo) btnKo.style.display = 'none';
+            };
+
+            const origJoinSetup = showJoinSetup;
+            showJoinSetup = async function(racerName, roomCode) {
+                if (isSongBattle && window.firebaseDb) {
+                    try {
+                        const { get, child } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+                        const snap = await get(child(window.firebaseRef(window.firebaseDb), `pianopad_tournaments/${roomCode}`));
+                        if (snap.exists()) {
+                            closeSprintOptionModal();
+                            joinClassKnockoutStudent(racerName, roomCode);
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn("Tournament room check fallback to standard battle:", e);
+                    }
+                }
+                return origJoinSetup(racerName, roomCode);
+            };
+
+            const origToggleStep = toggleStepMode;
+            toggleStepMode = function() {
+                if (isClassKnockout) {
+                    document.getElementById('status').textContent = ' Step Mode is NOT permitted during Class Knockouts!';
+                    return;
+                }
+                return origToggleStep();
+            };
+
+            const origPlayManual = playManualNote;
+            playManualNote = function(noteStr) {
+                origPlayManual(noteStr);
+                if (isClassKnockout && isPlaying && !isPaused) {
+                    syncKnockoutLiveScore();
+                }
+            };
+
+            const closeBtn = document.getElementById('btn-game-results-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    if (isClassKnockout) {
+                        const koModal = document.getElementById('knockout-modal');
+                        if (koModal) koModal.classList.add('open');
+                    }
+                });
+            }
+        })();
+
+        async function openTeacherKnockoutSetup() {
+            const pass = prompt("Enter Teacher Password to Host Class Knockout:");
+            if (pass !== "ERC") {
+                if (pass !== null) alert("Incorrect Teacher Password!");
+                return;
+            }
+
+            if (!window.firebaseDb) {
+                alert("Firebase Realtime Database is not connected yet. Please wait a moment and try again.");
+                return;
+            }
+
+            closeSprintOptionModal();
+            initSwissTournamentUI();
+
+            isClassKnockout = true;
+            isKnockoutHost = true;
+            isSongBattle = false;
+            knockoutLastRoundStarted = 0;
+            knockoutLastRoundFinished = 0;
+            knockoutRoomCode = '' + Math.floor(100 + Math.random() * 900);
+
+            const koSongSel = document.getElementById('ko-song-select');
+            koSongSel.innerHTML = '';
+            songList.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.code;
+                opt.textContent = s.title;
+                if (s.title === currentSongTitle) opt.selected = true;
+                koSongSel.appendChild(opt);
+            });
+
+            document.getElementById('ko-room-badge').textContent = `Join Code: ${knockoutRoomCode}`;
+            document.getElementById('ko-teacher-panel').style.display = 'flex';
+            document.getElementById('ko-student-panel').style.display = 'none';
+            document.getElementById('btn-ko-start-round').style.display = 'inline-flex';
+            document.getElementById('btn-ko-start-round').textContent = '▶ Start Round 1 (Random Draw)';
+            document.getElementById('btn-ko-force-end').style.display = 'none';
+            document.getElementById('btn-ko-finish-tourney').style.display = 'none';
+            document.getElementById('knockout-modal').classList.add('open');
+
+            const tourneyRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}`);
+            await window.firebaseSet(tourneyRef, {
+                roomCode: knockoutRoomCode,
+                status: 'lobby',
+                round: 0,
+                songTitle: currentSongTitle,
+                songCode: songSelect.value || (songList[0] ? songList[0].code : ''),
+                createdAt: Date.now(),
+                players: {},
+                pairings: {}
+            });
+            window.firebaseOnDisconnect(tourneyRef).remove();
+
+            attachKnockoutListener(knockoutRoomCode);
+        }
+
+        async function joinClassKnockoutStudent(studentName, roomCode) {
+            initSwissTournamentUI();
+            isClassKnockout = true;
+            isKnockoutHost = false;
+            isSongBattle = false;
+            knockoutRoomCode = roomCode;
+            knockoutLastRoundStarted = 0;
+            knockoutLastRoundFinished = 0;
+            sessionStudentName = studentName;
+
+            const avatar = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || '🏃';
+            const studentClass = currentStudentClass || localStorage.getItem('pianopad_class') || '';
+
+            const playerRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${roomCode}/players/${localStudentId}`);
+            await window.firebaseSet(playerRef, {
+                id: localStudentId,
+                name: studentName,
+                avatar: avatar,
+                studentClass: studentClass,
+                wins: 0,
+                losses: 0,
+                winStreak: 0,
+                totalAcc: 0,
+                roundsPlayed: 0,
+                opponents: [],
+                currentScore: 0,
+                finishedRound: 0,
+                lastStats: { perfect: 0, earlyLate: 0, miss: 0 },
+                incomingSabotage: null,
+                activeEmote: null
+            });
+            window.firebaseOnDisconnect(playerRef).remove();
+
+            document.getElementById('ko-room-badge').textContent = `Room: ${roomCode}`;
+            document.getElementById('ko-teacher-panel').style.display = 'none';
+            document.getElementById('ko-student-panel').style.display = 'flex';
+            document.getElementById('knockout-modal').classList.add('open');
+
+            attachKnockoutListener(roomCode);
+        }
+
+        async function attachKnockoutListener(roomCode) {
+            if (knockoutUnsubscribe) {
+                knockoutUnsubscribe();
+                knockoutUnsubscribe = null;
+            }
+            const { onValue } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            const tourneyRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${roomCode}`);
+
+            knockoutUnsubscribe = onValue(tourneyRef, (snapshot) => {
+                const data = snapshot.val();
+                if (!data) {
+                    if (isClassKnockout) {
+                        alert("The teacher has closed the Class Knockout tournament.");
+                        leaveClassKnockout();
+                    }
+                    return;
+                }
+                knockoutDataCache = data;
+                if (isKnockoutHost) {
+                    handleKnockoutHostUpdate(data);
+                } else {
+                    handleKnockoutStudentUpdate(data);
+                }
+            });
+        }
+
+        function getRankedKnockoutPlayers(playersObj) {
+            const arr = Object.values(playersObj || {});
+            arr.sort((a, b) => {
+                if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0);
+                return (b.totalAcc || 0) - (a.totalAcc || 0);
+            });
+            return arr;
+        }
+
+        function buildStandingsHTML(rankedPlayers) {
+            if (rankedPlayers.length === 0) {
+                return `<div style="color:#9ca3af; font-size:0.8rem; text-align:center; padding:8px;">No students joined yet...</div>`;
+            }
+            let rows = rankedPlayers.map((p, idx) => {
+                const rankBadge = idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `#${idx + 1}`;
+                const avgAcc = p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0';
+                const bountyTag = (idx === 0 && (p.roundsPlayed || 0) > 0)
+                    ? ` <span style="background:#ef4444; color:#fff; font-size:0.65rem; padding:1px 5px; border-radius:4px; font-weight:900; margin-left:4px;">🎯 BOUNTY</span>`
+                    : '';
+                const streak = p.winStreak || 0;
+                const streakTag = streak >= 2
+                    ? ` <span style="background:#f97316; color:#000; font-size:0.65rem; padding:1px 5px; border-radius:4px; font-weight:900; margin-left:4px;">🔥 ${streak}W</span>`
+                    : '';
+
+                return `
+                    <tr style="${p.id === localStudentId ? 'background:rgba(56,189,248,0.15);' : ''}">
+                        <td style="font-weight:800; color:#facc15;">${rankBadge}</td>
+                        <td style="font-weight:700;">${p.avatar || '🏃'} ${p.name}${bountyTag}${streakTag}</td>
+                        <td style="color:#22c55e; font-weight:800;">${p.wins || 0}W - ${p.losses || 0}L</td>
+                        <td style="color:#38bdf8; font-weight:700;">${avgAcc}% avg</td>
+                    </tr>
+                `;
+            }).join('');
+
+            return `
+                <div style="font-size:0.75rem; font-weight:800; color:#facc15; margin-bottom:6px; text-transform:uppercase;">Live Class Standings (${rankedPlayers.length} Players)</div>
+                <table class="race-results-table" style="margin-top:0;">
+                    <thead>
+                        <tr><th>Place</th><th>Student</th><th>Record</th><th>Avg Acc</th></tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+        }
+
+        function generateSwissPairings(playersObj, roundNum) {
+            const players = Object.values(playersObj || {});
+            let ordered = [];
+
+            if (roundNum === 1) {
+                ordered = [...players].sort(() => Math.random() - 0.5);
+            } else {
+                ordered = getRankedKnockoutPlayers(playersObj);
+                for (let i = 0; i < ordered.length - 1; i += 2) {
+                    const p1 = ordered[i];
+                    const p2 = ordered[i + 1];
+                    const p1History = Array.isArray(p1.opponents) ? p1.opponents : Object.values(p1.opponents || {});
+                    if (p1History.includes(p2.id) && i + 2 < ordered.length) {
+                        const temp = ordered[i + 1];
+                        ordered[i + 1] = ordered[i + 2];
+                        ordered[i + 2] = temp;
+                    }
+                }
+            }
+
+            const pairings = {};
+            let matchIdx = 1;
+            for (let i = 0; i < ordered.length; i += 2) {
+                if (i + 1 < ordered.length) {
+                    pairings[`m${matchIdx}`] = {
+                        matchId: `m${matchIdx}`,
+                        p1: ordered[i].id,
+                        p2: ordered[i + 1].id,
+                        isGhostMatch: false,
+                        targetScore: 0
+                    };
+                } else {
+                    pairings[`m${matchIdx}`] = {
+                        matchId: `m${matchIdx}`,
+                        p1: ordered[i].id,
+                        p2: 'BENCHMARK_80',
+                        isGhostMatch: true,
+                        targetScore: 80
+                    };
+                }
+                matchIdx++;
+            }
+            return pairings;
+        }
+
+        async function startNextKnockoutRound() {
+            if (!isKnockoutHost || !knockoutDataCache) return;
+            const playersObj = knockoutDataCache.players || {};
+            const playerIds = Object.keys(playersObj);
+
+            if (playerIds.length < 2) {
+                alert("At least 2 students must join the room before starting Round 1!");
+                return;
+            }
+
+            const nextRound = (knockoutDataCache.round || 0) + 1;
+            const koSongSel = document.getElementById('ko-song-select');
+            const selectedCode = koSongSel.value;
+            const selectedTitle = koSongSel.selectedOptions[0] ? koSongSel.selectedOptions[0].text : currentSongTitle;
+
+            const pairings = generateSwissPairings(playersObj, nextRound);
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+
+            const updates = {
+                status: 'playing',
+                round: nextRound,
+                songTitle: selectedTitle,
+                songCode: selectedCode,
+                pairings: pairings
+            };
+
+            playerIds.forEach(pid => {
+                updates[`players/${pid}/currentScore`] = 0;
+                updates[`players/${pid}/finishedRound`] = 0;
+                updates[`players/${pid}/lastStats`] = { perfect: 0, earlyLate: 0, miss: 0 };
+                updates[`players/${pid}/incomingSabotage`] = null;
+                updates[`players/${pid}/activeEmote`] = null;
+            });
+
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}`), updates);
+        }
+
+        function formatBracketEmoteBadge(playerObj) {
+            if (!playerObj || !playerObj.activeEmote || !playerObj.activeEmote.text) return '';
+            const age = Date.now() - (playerObj.activeEmote.timestamp || 0);
+            if (age > 4500) return '';
+            return `<span class="ko-bracket-emote-tag">${playerObj.activeEmote.text}</span>`;
+        }
+
+        function handleKnockoutHostUpdate(data) {
+            const playersObj = data.players || {};
+            const ranked = getRankedKnockoutPlayers(playersObj);
+            document.getElementById('ko-standings-container').innerHTML = buildStandingsHTML(ranked);
+
+            const bracketDiv = document.getElementById('ko-bracket-container');
+            const statusBanner = document.getElementById('ko-status-banner');
+            const btnStart = document.getElementById('btn-ko-start-round');
+            const btnForce = document.getElementById('btn-ko-force-end');
+            const btnFinish = document.getElementById('btn-ko-finish-tourney');
+
+            if (data.status === 'lobby') {
+                statusBanner.textContent = `Lobby Open (${ranked.length} students connected). Select Round 1 song & click Start!`;
+                bracketDiv.innerHTML = ranked.map(p => `
+                    <div class="lobby-player-card"><span>${p.avatar || '🏃'}</span><span>${p.name} (${p.studentClass || 'Class'})</span></div>
+                `).join('');
+                return;
+            }
+
+            if (data.status === 'playing') {
+                btnStart.style.display = 'none';
+                btnForce.style.display = 'inline-flex';
+                btnFinish.style.display = 'none';
+
+                const pairings = Object.values(data.pairings || {});
+                let allDone = true;
+
+                bracketDiv.innerHTML = pairings.map((m, idx) => {
+                    const p1 = playersObj[m.p1];
+                    if (!p1) return '';
+                    const p1Done = p1.finishedRound === data.round;
+                    const s1 = Number(p1.currentScore || 0);
+                    const p1Status = p1Done ? `✅ ${s1.toFixed(1)}%` : `🎹 ${s1.toFixed(1)}%...`;
+                    const p1Emote = formatBracketEmoteBadge(p1);
+
+                    if (m.isGhostMatch) {
+                        if (!p1Done) allDone = false;
+                        const isClose = Math.abs(s1 - 80) <= 0.5;
+                        return `
+                            <div style="background:#141824; border:1px solid #8b5cf6; border-radius:8px; padding:10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="font-size:0.72rem; color:#c084fc; font-weight:800;">MATCH ${idx + 1} • BENCHMARK CHALLENGE</span>
+                                    ${isClose ? '<span class="photo-finish-badge">PHOTO FINISH 🔥</span>' : ''}
+                                </div>
+                                <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; font-weight:700;">
+                                    <span>${p1.avatar} ${p1.name}${p1Emote}</span>
+                                    <span style="color:${p1Done ? '#22c55e' : '#facc15'};">${p1Status}</span>
+                                </div>
+                                <div style="font-size:0.75rem; color:#9ca3af; margin-top:4px;">Target to Win: ≥ 80.0% Accuracy</div>
+                            </div>
+                        `;
+                    }
+
+                    const p2 = playersObj[m.p2];
+                    const p2Done = p2 ? (p2.finishedRound === data.round) : true;
+                    if (!p1Done || !p2Done) allDone = false;
+                    const s2 = p2 ? Number(p2.currentScore || 0) : 0;
+                    const p2Status = p2 ? (p2Done ? `✅ ${s2.toFixed(1)}%` : `🎹 ${s2.toFixed(1)}%...`) : 'Disconnected';
+                    const p2Emote = formatBracketEmoteBadge(p2);
+                    const isPhotoFinish = p2 && Math.abs(s1 - s2) <= 0.5;
+
+                    return `
+                        <div style="background:#141824; border:1px solid ${isPhotoFinish ? '#ef4444' : '#374151'}; border-radius:8px; padding:10px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-size:0.72rem; color:#38bdf8; font-weight:800;">TABLE ${idx + 1} • ROUND ${data.round}</span>
+                                ${isPhotoFinish ? '<span class="photo-finish-badge">PHOTO FINISH 🔥</span>' : ''}
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; font-weight:700;">
+                                <span>${p1.avatar} ${p1.name}${p1Emote}</span>
+                                <span style="color:${p1Done ? '#22c55e' : '#facc15'};">${p1Status}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-top:4px; font-size:0.85rem; font-weight:700;">
+                                <span>${p2 ? p2.avatar + ' ' + p2.name + p2Emote : '---'}</span>
+                                <span style="color:${p2Done ? '#22c55e' : '#facc15'};">${p2Status}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                statusBanner.textContent = `Round ${data.round} in progress (${data.songTitle}) — Waiting for all matches to finish...`;
+
+                if (allDone && pairings.length > 0 && knockoutLastRoundFinished !== data.round) {
+                    knockoutLastRoundFinished = data.round;
+                    scoreAndConcludeKnockoutRound(data);
+                }
+            } else if (data.status === 'round_results') {
+                btnForce.style.display = 'none';
+                btnStart.style.display = 'inline-flex';
+                btnStart.textContent = `▶ Start Round ${data.round + 1} (Swiss Matched)`;
+                btnFinish.style.display = 'inline-flex';
+                statusBanner.textContent = `Round ${data.round} Complete! Students paired by similar accuracy for Round ${data.round + 1}.`;
+            } else if (data.status === 'finished') {
+                btnStart.style.display = 'none';
+                btnForce.style.display = 'none';
+                btnFinish.style.display = 'none';
+                statusBanner.textContent = `🏆 Tournament Complete! Final Class Placings Logged to Leaderboard.`;
+                
+                let standings = data.finalStandings || [];
+                showGrandFinale(standings, true, `🏆 Class Knockout Complete!`);
+            }
+        }
+
+        async function forceEndKnockoutRound() {
+            if (!isKnockoutHost || !knockoutDataCache) return;
+            if (knockoutLastRoundFinished === knockoutDataCache.round) return;
+            knockoutLastRoundFinished = knockoutDataCache.round;
+            await scoreAndConcludeKnockoutRound(knockoutDataCache);
+        }
+
+        async function scoreAndConcludeKnockoutRound(data) {
+            const playersObj = data.players || {};
+            const pairings = Object.values(data.pairings || {});
+            const rankedBefore = getRankedKnockoutPlayers(playersObj);
+            const currentLeaderId = (rankedBefore.length > 0 && (rankedBefore[0].roundsPlayed || 0) > 0) ? rankedBefore[0].id : null;
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+
+            const updates = {
+                status: 'round_results'
+            };
+
+            pairings.forEach(m => {
+                const p1 = playersObj[m.p1];
+                if (!p1) return;
+                const s1 = Number(p1.currentScore || 0);
+
+                if (m.isGhostMatch) {
+                    const won = s1 >= (m.targetScore || 80);
+                    const isPhotoFinish = Math.abs(s1 - (m.targetScore || 80)) <= 0.5;
+                    const newStreak = won ? ((p1.winStreak || 0) + 1) : 0;
+                    updates[`players/${p1.id}/wins`] = (p1.wins || 0) + (won ? 1 : 0);
+                    updates[`players/${p1.id}/losses`] = (p1.losses || 0) + (won ? 0 : 1);
+                    updates[`players/${p1.id}/winStreak`] = newStreak;
+                    updates[`players/${p1.id}/totalAcc`] = (p1.totalAcc || 0) + s1;
+                    updates[`players/${p1.id}/roundsPlayed`] = (p1.roundsPlayed || 0) + 1;
+                    updates[`players/${p1.id}/lastMatchResult`] = {
+                        round: data.round,
+                        won: won,
+                        photoFinish: isPhotoFinish,
+                        tiebreakerUsed: false,
+                        giantKiller: false,
+                        winStreak: newStreak,
+                        myScore: s1,
+                        oppName: '80% Benchmark',
+                        oppAvatar: '🎯',
+                        oppScore: 80,
+                        oppStats: { perfect: 8, earlyLate: 0, miss: 2 }
+                    };
+                } else {
+                    const p2 = playersObj[m.p2];
+                    if (!p2) return;
+                    const s2 = Number(p2.currentScore || 0);
+
+                    const isPhotoFinish = Math.abs(s1 - s2) <= 0.5;
+                    const p1Perfect = (p1.lastStats && p1.lastStats.perfect) ? Number(p1.lastStats.perfect) : 0;
+                    const p2Perfect = (p2.lastStats && p2.lastStats.perfect) ? Number(p2.lastStats.perfect) : 0;
+                    let p1Won = s1 > s2;
+                    let tiebreakerUsed = false;
+
+                    if (isPhotoFinish) {
+                        tiebreakerUsed = true;
+                        if (p1Perfect !== p2Perfect) {
+                            p1Won = p1Perfect > p2Perfect;
+                        } else {
+                            p1Won = s1 >= s2;
+                        }
+                    }
+
+                    const p1GiantKiller = p1Won && currentLeaderId === p2.id;
+                    const p2GiantKiller = !p1Won && currentLeaderId === p1.id;
+                    const p1Streak = p1Won ? ((p1.winStreak || 0) + 1) : 0;
+                    const p2Streak = !p1Won ? ((p2.winStreak || 0) + 1) : 0;
+
+                    const p1Opps = Array.isArray(p1.opponents) ? [...p1.opponents] : Object.values(p1.opponents || {});
+                    const p2Opps = Array.isArray(p2.opponents) ? [...p2.opponents] : Object.values(p2.opponents || {});
+                    if (!p1Opps.includes(p2.id)) p1Opps.push(p2.id);
+                    if (!p2Opps.includes(p1.id)) p2Opps.push(p1.id);
+
+                    updates[`players/${p1.id}/wins`] = (p1.wins || 0) + (p1Won ? 1 : 0);
+                    updates[`players/${p1.id}/losses`] = (p1.losses || 0) + (p1Won ? 0 : 1);
+                    updates[`players/${p1.id}/winStreak`] = p1Streak;
+                    updates[`players/${p1.id}/totalAcc`] = (p1.totalAcc || 0) + s1;
+                    updates[`players/${p1.id}/roundsPlayed`] = (p1.roundsPlayed || 0) + 1;
+                    updates[`players/${p1.id}/opponents`] = p1Opps;
+                    updates[`players/${p1.id}/lastMatchResult`] = {
+                        round: data.round,
+                        won: p1Won,
+                        photoFinish: isPhotoFinish,
+                        tiebreakerUsed: tiebreakerUsed,
+                        myPerfect: p1Perfect,
+                        oppPerfect: p2Perfect,
+                        giantKiller: p1GiantKiller,
+                        winStreak: p1Streak,
+                        myScore: s1,
+                        oppName: p2.name,
+                        oppAvatar: p2.avatar || '🏃',
+                        oppScore: s2,
+                        oppStats: p2.lastStats || { perfect: 0, earlyLate: 0, miss: 0 }
+                    };
+
+                    updates[`players/${p2.id}/wins`] = (p2.wins || 0) + (!p1Won ? 1 : 0);
+                    updates[`players/${p2.id}/losses`] = (p2.losses || 0) + (!p1Won ? 0 : 1);
+                    updates[`players/${p2.id}/winStreak`] = p2Streak;
+                    updates[`players/${p2.id}/totalAcc`] = (p2.totalAcc || 0) + s2;
+                    updates[`players/${p2.id}/roundsPlayed`] = (p2.roundsPlayed || 0) + 1;
+                    updates[`players/${p2.id}/opponents`] = p2Opps;
+                    updates[`players/${p2.id}/lastMatchResult`] = {
+                        round: data.round,
+                        won: !p1Won,
+                        photoFinish: isPhotoFinish,
+                        tiebreakerUsed: tiebreakerUsed,
+                        myPerfect: p2Perfect,
+                        oppPerfect: p1Perfect,
+                        giantKiller: p2GiantKiller,
+                        winStreak: p2Streak,
+                        myScore: s2,
+                        oppName: p1.name,
+                        oppAvatar: p1.avatar || '🏃',
+                        oppScore: s1,
+                        oppStats: p1.lastStats || { perfect: 0, earlyLate: 0, miss: 0 }
+                    };
+                }
+            });
+
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}`), updates);
+        }
+
+        async function finalizeClassKnockout() {
+            if (!isKnockoutHost || !knockoutDataCache) return;
+            const ranked = getRankedKnockoutPlayers(knockoutDataCache.players || {});
+
+            const battlePayload = ranked.map(p => {
+                const avgAcc = p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0';
+                return {
+                    name: p.name,
+                    score: avgAcc,
+                    avatar: p.avatar || '🏃',
+                    id: p.id
+                };
+            });
+
+            currentSongTitle = `Class Knockout (${knockoutDataCache.songTitle || 'Tournament'})`;
+            await postBattleToSpreadsheet(battlePayload);
+
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}`), {
+                status: 'finished',
+                finalStandings: battlePayload
+            });
+        }
+
+        function handleKnockoutStudentUpdate(data) {
+            const playersObj = data.players || {};
+            const me = playersObj[localStudentId];
+            const ranked = getRankedKnockoutPlayers(playersObj);
+            const myRankIdx = ranked.findIndex(p => p.id === localStudentId);
+            const myPlaceText = myRankIdx >= 0 ? `Rank #${myRankIdx + 1} of ${ranked.length}` : 'Unranked';
+
+            document.getElementById('ko-student-standings').innerHTML = buildStandingsHTML(ranked);
+
+            // Listen for opponent's pre-match quick emote
+            if (koOpponentId && koOpponentId !== 'BENCHMARK_80' && playersObj[koOpponentId] && playersObj[koOpponentId].activeEmote) {
+                showOpponentQuickEmote(playersObj[koOpponentId].activeEmote);
+            }
+
+            // Listen for incoming Streak Sabotage during live match
+            if (data.status === 'playing' && me && me.incomingSabotage) {
+                applyIncomingSabotage(me.incomingSabotage);
+            }
+
+            // Update Live Tug-of-War HUD during active round
+            if (data.status === 'playing' && me) {
+                const myLiveAcc = Number(me.currentScore !== undefined ? me.currentScore : 100);
+                let oppLiveAcc = 80.0;
+                if (koOpponentId && koOpponentId !== 'BENCHMARK_80' && playersObj[koOpponentId]) {
+                    oppLiveAcc = Number(playersObj[koOpponentId].currentScore !== undefined ? playersObj[koOpponentId].currentScore : 100);
+                }
+                updateTugOfWarHUD(myLiveAcc, oppLiveAcc);
+            }
+
+            if (data.status === 'playing' && knockoutLastRoundStarted !== data.round) {
+                knockoutLastRoundStarted = data.round;
+
+                if (data.songCode) {
+                    currentSongTitle = data.songTitle;
+                    songSelect.value = data.songCode;
+                    const parsed = parsePianoPad(data.songCode);
+                    if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
+                }
+
+                const pairings = Object.values(data.pairings || {});
+                const myMatch = pairings.find(m => m.p1 === localStudentId || m.p2 === localStudentId);
+                let oppName = 'Class Opponent';
+                let oppAvatar = '🤖';
+                let oppRankText = 'Challenger';
+                koOpponentId = null;
+
+                if (myMatch) {
+                    if (myMatch.isGhostMatch) {
+                        koOpponentId = 'BENCHMARK_80';
+                        oppName = '80% Benchmark';
+                        oppAvatar = '🎯';
+                        oppRankText = 'Target Score';
+                    } else {
+                        const oppId = myMatch.p1 === localStudentId ? myMatch.p2 : myMatch.p1;
+                        koOpponentId = oppId;
+                        const oppObj = playersObj[oppId];
+                        if (oppObj) {
+                            oppName = oppObj.name;
+                            oppAvatar = oppObj.avatar || '🏃';
+                            const oppIdx = ranked.findIndex(p => p.id === oppId);
+                            const isBounty = oppIdx === 0 && (oppObj.roundsPlayed || 0) > 0;
+                            oppRankText = isBounty
+                                ? `🎯 #1 BOUNTY TARGET`
+                                : (oppIdx >= 0 ? `Rank #${oppIdx + 1}` : 'Challenger');
+                        }
+                    }
+                }
+
+                koOpponentName = oppName;
+                koOpponentAvatar = oppAvatar;
+
+                document.getElementById('knockout-modal').classList.remove('open');
+                gameResultsModal.classList.remove('open');
+                arcadeHub.classList.remove('open');
+
+                const myIsBounty = myRankIdx === 0 && (playersObj[localStudentId]?.roundsPlayed || 0) > 0;
+                document.getElementById('ko-vs-round-label').textContent = `ROUND ${data.round} MATCHUP`;
+                document.getElementById('ko-vs-p1-avatar').textContent = sessionStudentAvatar || '🏃';
+                document.getElementById('ko-vs-p1-name').textContent = sessionStudentName || 'You';
+                document.getElementById('ko-vs-p1-rank').textContent = myIsBounty ? `👑 #1 DEFENDING BOUNTY` : myPlaceText;
+                document.getElementById('ko-vs-p2-avatar').textContent = oppAvatar;
+                document.getElementById('ko-vs-p2-name').textContent = oppName;
+                document.getElementById('ko-vs-p2-rank').textContent = oppRankText;
+                document.getElementById('ko-vs-song-label').textContent = `Song: ${data.songTitle}`;
+
+                const p1Bubble = document.getElementById('ko-vs-p1-emote');
+                const p2Bubble = document.getElementById('ko-vs-p2-emote');
+                if (p1Bubble) p1Bubble.classList.remove('visible');
+                if (p2Bubble) p2Bubble.classList.remove('visible');
+                dealKnockoutEmoteDeck();
+
+                const vsOverlay = document.getElementById('ko-vs-overlay');
+                vsOverlay.style.display = 'flex';
+
+                setTimeout(() => {
+                    vsOverlay.style.display = 'none';
+                    isStepMode = false;
+                    btnStep.textContent = 'Step Mode';
+                    btnStep.classList.remove('btn-step-active');
+                    btnStep.classList.add('btn-step');
+
+                    isGameMode = true;
+                    btnGame.textContent = 'Game Mode: ON';
+                    btnGame.classList.add('btn-game-active');
+
+                    resetGameStats();
+                    updateTugOfWarHUD(100.0, koOpponentId === 'BENCHMARK_80' ? 80.0 : 100.0);
+                    startCountdown(() => { playSong(); });
+                }, 3200);
+
+            } else if (data.status === 'round_results') {
+                const tugHud = document.getElementById('tug-of-war-hud');
+                if (tugHud) tugHud.style.display = 'none';
+                activeSabotageType = null;
+                canvas.classList.remove('canvas-shake-active');
+
+                if (me && me.lastMatchResult && me.lastMatchResult.round === data.round && knockoutLastRoundFinished !== data.round) {
+                    knockoutLastRoundFinished = data.round;
+                    renderKnockoutPostRoundComparison(me, me.lastMatchResult, myPlaceText);
+                }
+            } else if (data.status === 'finished') {
+                const tugHud = document.getElementById('tug-of-war-hud');
+                if (tugHud) tugHud.style.display = 'none';
+                let standings = data.finalStandings || [];
+                if (standings.length === 0) {
+                    const ranked = getRankedKnockoutPlayers(data.players || {});
+                    standings = ranked.map(p => ({
+                        name: p.name, score: p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0', avatar: p.avatar, id: p.id
+                    }));
+                }
+                showGrandFinale(standings, false, `🏆 Class Knockout Complete!`);
+            }
+        }
+
+        function syncKnockoutLiveScore() {
+            if (!isClassKnockout || !knockoutRoomCode || !window.firebaseDb) return;
+            const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+            const acc = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100) : 100;
+
+            let oppLiveAcc = 80.0;
+            if (knockoutDataCache && knockoutDataCache.players && koOpponentId && koOpponentId !== 'BENCHMARK_80') {
+                const oppObj = knockoutDataCache.players[koOpponentId];
+                if (oppObj && oppObj.currentScore !== undefined) oppLiveAcc = Number(oppObj.currentScore);
+            }
+            updateTugOfWarHUD(acc, oppLiveAcc);
+
+            clearTimeout(knockoutLiveSyncTimer);
+            knockoutLiveSyncTimer = setTimeout(async () => {
+                const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+                await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}/players/${localStudentId}`), {
+                    currentScore: Number(acc.toFixed(1)),
+                    lastStats: { ...gameStats }
+                });
+            }, 350);
+        }
+
+        async function submitKnockoutRoundFinish() {
+            if (!isClassKnockout || !knockoutRoomCode || !window.firebaseDb) return;
+            const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+            const acc = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100) : 0;
+            const roundNum = knockoutDataCache ? knockoutDataCache.round : 1;
+
+            const tugHud = document.getElementById('tug-of-war-hud');
+            if (tugHud) tugHud.style.display = 'none';
+            activeSabotageType = null;
+            canvas.classList.remove('canvas-shake-active');
+
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}/players/${localStudentId}`), {
+                currentScore: Number(acc.toFixed(1)),
+                finishedRound: roundNum,
+                lastStats: { ...gameStats }
+            });
+
+            document.getElementById('ko-student-status').textContent = `✅ Round ${roundNum} Finished (${acc.toFixed(1)}%)! Waiting for remaining classmates...`;
+            document.getElementById('ko-student-pairing-box').textContent = `Swiss pairings for the next round will generate automatically once all matches complete.`;
+            document.getElementById('knockout-modal').classList.add('open');
+        }
+
+        function renderKnockoutPostRoundComparison(me, res, myPlaceText) {
+            document.getElementById('knockout-modal').classList.remove('open');
+
+            const multiGraph = document.getElementById('multi-bar-graph');
+            multiGraph.innerHTML = '';
+            multiGraph.style.display = 'flex';
+            document.getElementById('single-bar-graph').style.display = 'none';
+            document.getElementById('btn-battle-again').style.display = 'none';
+
+            const myStats = me.lastStats || { perfect: 0, earlyLate: 0, miss: 0 };
+            const myTot = Math.max(1, myStats.perfect + myStats.earlyLate + myStats.miss);
+            const oppStats = res.oppStats || { perfect: 0, earlyLate: 0, miss: 0 };
+            const oppTot = Math.max(1, oppStats.perfect + oppStats.earlyLate + oppStats.miss);
+
+            const contenders = [
+                {
+                    label: `${me.avatar || '🏃'} ${me.name} (You)`,
+                    score: Number(res.myScore || 0).toFixed(1),
+                    g: (myStats.perfect / myTot) * 100,
+                    o: (myStats.earlyLate / myTot) * 100,
+                    r: (myStats.miss / myTot) * 100,
+                    winner: res.won
+                },
+                {
+                    label: `${res.oppAvatar || '🏃'} ${res.oppName}`,
+                    score: Number(res.oppScore || 0).toFixed(1),
+                    g: (oppStats.perfect / oppTot) * 100,
+                    o: (oppStats.earlyLate / oppTot) * 100,
+                    r: (oppStats.miss / oppTot) * 100,
+                    winner: !res.won
+                }
+            ];
+
+            contenders.forEach(c => {
+                const col = document.createElement('div');
+                col.className = 'multi-bar-column';
+                col.style.minWidth = '110px';
+                col.innerHTML = `
+                    <div class="rank-medal-badge" style="color:${c.winner ? '#22c55e' : '#f97316'};">
+                        ${c.winner ? '🏆 WINNER' : 'RUNNER-UP'} (${c.score}%)
+                    </div>
+                    <div class="stacked-bar" style="width:48px;">
+                        <div class="bar-part-red" style="height:${c.r}%;"></div>
+                        <div class="bar-part-orange" style="height:${c.o}%;"></div>
+                        <div class="bar-part-green" style="height:${c.g}%;"></div>
+                    </div>
+                    <span style="font-size:0.8rem; font-weight:700; color:#fff;">${c.label}</span>
+                `;
+                multiGraph.appendChild(col);
+            });
+
+            const photoFinishHtml = res.photoFinish
+                ? `<div style="margin-top:6px;"><span class="photo-finish-badge">PHOTO FINISH 🔥</span> <span style="font-size:0.78rem; color:#facc15; font-weight:700;">Tiebreaker by Perfect Hits (${res.myPerfect ?? myStats.perfect} vs ${res.oppPerfect ?? oppStats.perfect})</span></div>`
+                : '';
+
+            document.getElementById('game-summary-text').innerHTML = `
+                <div style="font-size:1.25rem; font-weight:900; color:${res.won ? '#22c55e' : '#38bdf8'};">
+                    ${res.won ? '🎉 Round Victory!' : '👏 Great Effort!'}
+                </div>
+                ${photoFinishHtml}
+                <div style="font-size:0.88rem; color:#cbd5e1; margin-top:4px;">
+                    Stay ready — Teacher will launch the next skill-matched round shortly!
+                </div>
+            `;
+            document.getElementById('badge-container').innerHTML = '';
+            document.getElementById('game-rank-text').textContent = `Current Class Placing: ${myPlaceText}`;
+            gameResultsModal.classList.add('open');
+        }
+
+        function leaveClassKnockout() {
+            if (knockoutUnsubscribe) {
+                knockoutUnsubscribe();
+                knockoutUnsubscribe = null;
+            }
+            isClassKnockout = false;
+            isKnockoutHost = false;
+            isSongBattle = false;
+            knockoutRoomCode = "";
+            knockoutDataCache = null;
+            activeSabotageType = null;
+            canvas.classList.remove('canvas-shake-active');
+            const tugHud = document.getElementById('tug-of-war-hud');
+            if (tugHud) tugHud.style.display = 'none';
+            const koModal = document.getElementById('knockout-modal');
+            if (koModal) koModal.classList.remove('open');
+            const vsOverlay = document.getElementById('ko-vs-overlay');
+            if (vsOverlay) vsOverlay.style.display = 'none';
+            stopSong();
+        }
+        // =========================================================================
+
+       document.addEventListener('DOMContentLoaded', () => {
+            initMIDIHardware();
+            resetGameStats();
+            syncSongsWithGoogleSheet();
+            setTimeout(updateKeyPositions, 100);
+            
+            checkFirstTimeCalibration();
+
+            const savedName = localStorage.getItem('pianopad_name');
+            const savedAvatar = localStorage.getItem('pianopad_avatar');
+            const savedClass = localStorage.getItem('pianopad_class');
+            const savedRoom = localStorage.getItem('pianopad_room');
+            if (savedName) sessionStudentName = savedName;
+            if (savedAvatar) sessionStudentAvatar = savedAvatar;
+            if (savedClass) currentStudentClass = savedClass;
+            if (savedRoom) currentRoom = savedRoom;
+
+           const now = new Date();
+            const day = now.getDay();
+            const timeMins = now.getHours() * 60 + now.getMinutes();
+            const isOOS = (day === 0 || day === 6) || (timeMins < 8 * 60) || (timeMins >= 14 * 60 + 5);
+
+            const roomSelect = document.getElementById('student-join-room');
+            document.getElementById('student-join-name').value = savedName || "";
+            if (savedAvatar) document.getElementById('student-join-avatar').value = savedAvatar;
+            if (savedClass) document.getElementById('student-join-class').value = savedClass;
+
+            if (isOOS) {
+                currentRoom = "Outside";
+                if (roomSelect) roomSelect.style.display = 'none';
+            } else {
+                if (roomSelect) {
+                    roomSelect.style.display = '';
+                    if (savedRoom) roomSelect.value = savedRoom;
+                }
+            }
+
+            document.getElementById('room-join-modal').classList.add('open');
+
+            if (window.firebaseSet) {
+                syncStudentToFirebase();
+            } else {
+                window.addEventListener('firebase-initialized', () => syncStudentToFirebase(), { once: true });
+            }
+
+            setInterval(updateMonitorWidget, 1000);
+        });
+
+        async function loadStudentTickerStats(studentName) {
+            if (!studentName || studentName === "Student" || studentName === "Anonymous") return;
+
+            const tickerContainer = document.getElementById('student-ticker-tape');
+            const tickerTrack = document.getElementById('ticker-track');
+            if (!tickerContainer || !tickerTrack) return;
+
+            const cleanName = (str) => String(str || '').replace(/\./g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+            const targetName = cleanName(studentName);
+
+            const announceUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?sheet=announcement&range=A2:A2&tqx=responseHandler:parseAnnounceGviz&_ts=${Date.now()}`;
+            const fetchAnnouncement = () => new Promise((resolve) => {
+                const script = document.createElement('script');
+                window.parseAnnounceGviz = function(gvizData) {
+                    delete window.parseAnnounceGviz;
+                    if (document.body.contains(script)) document.body.removeChild(script);
+                    let val = "";
+                    if (gvizData && gvizData.table) {
+                        if (gvizData.table.rows && gvizData.table.rows.length > 0 && gvizData.table.rows[0].c && gvizData.table.rows[0].c[0]) {
+                            val = gvizData.table.rows[0].c[0].v;
+                        } else if (gvizData.table.cols && gvizData.table.cols.length > 0) {
+                            val = gvizData.table.cols[0].label;
+                        }
+                    }
+                    resolve(val ? String(val).trim() : "");
+                };
+                script.src = announceUrl;
+                script.onerror = function() {
+                    delete window.parseAnnounceGviz;
+                    if (document.body.contains(script)) document.body.removeChild(script);
+                    resolve("");
+                };
+                document.body.appendChild(script);
+            });
+
+            const gvizUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?sheet=GameModeRanks&tqx=responseHandler:parseTickerGvizResponse&_ts=${Date.now()}`;
+            const fetchGvizData = () => new Promise((resolve) => {
+                const script = document.createElement('script');
+                window.parseTickerGvizResponse = function(gvizData) {
+                    delete window.parseTickerGvizResponse;
+                    if (document.body.contains(script)) document.body.removeChild(script);
+                    if (gvizData && gvizData.table && gvizData.table.rows) {
+                        resolve(gvizData.table);
+                    } else {
+                        resolve(null);
+                    }
+                };
+                script.src = gvizUrl;
+                script.onerror = function() {
+                    delete window.parseTickerGvizResponse;
+                    if (document.body.contains(script)) document.body.removeChild(script);
+                    resolve(null);
+                };
+                document.body.appendChild(script);
+            });
+
+            const [announceText, tableData] = await Promise.all([fetchAnnouncement(), fetchGvizData()]);
+
+            let teacherAnnouncement = "";
+            if (announceText && announceText.toLowerCase() !== "null" && announceText !== "") {
+                teacherAnnouncement = `<span class="ticker-item" style="color:#facc15; font-weight:900; letter-spacing:0.02em; animation: textBlink 1.5s infinite ease-in-out;">📢 ${announceText}</span><span style="color:#64748b;"> • </span>`;
+            }
+
+            const stats = [];
+            if (tableData) {
+                const cols = tableData.cols || [];
+                let titleIdx = 0, nameIdx = 1, scoreIdx = 2, rankIdx = 3, attemptsIdx = 4;
+
+                cols.forEach((col, idx) => {
+                    const label = (col.label || '').toLowerCase();
+                    if (label.includes('title') || label.includes('song')) titleIdx = idx;
+                    else if (label.includes('student') || label.includes('name')) nameIdx = idx;
+                    else if (label.includes('score')) scoreIdx = idx;
+                    else if (label.includes('rank')) rankIdx = idx;
+                    else if (label.includes('attempt') || label.includes('play')) attemptsIdx = idx;
+                });
+
+                tableData.rows.forEach(r => {
+                    const cells = r.c || [];
+                    if (cells[nameIdx] && cells[nameIdx].v !== null) {
+                        const rowStudentName = String(cells[nameIdx].v || '');
+                        
+                        if (cleanName(rowStudentName) === targetName) {
+                            const titleVal = cells[titleIdx] ? String(cells[titleIdx].v || '') : 'Song';
+                            const scoreVal = cells[scoreIdx] ? parseFloat(cells[scoreIdx].v) || 0 : 0;
+                            const rankVal = cells[rankIdx] ? parseInt(cells[rankIdx].v, 10) || 1 : 1;
+                            const attemptsVal = cells[attemptsIdx] ? parseInt(cells[attemptsIdx].v, 10) || 1 : 1;
+
+                            stats.push({
+                                title: titleVal,
+                                score: scoreVal,
+                                rank: rankVal,
+                                attempts: attemptsVal
+                            });
+                        }
+                    }
+                });
+            }
+
+            stats.sort((a, b) => a.rank !== b.rank ? a.rank - b.rank : b.score - a.score);
+
+            if (stats.length === 0) {
+                tickerTrack.innerHTML = teacherAnnouncement + `<span class="ticker-item">Welcome <span class="ticker-item-title">${studentName}</span>! No Game Mode scores logged yet. Play songs in Game Mode to earn your ranks!</span>`;
+                tickerContainer.style.display = 'flex';
+                return;
+            }
+
+            const rank1Count = stats.filter(s => s.rank === 1).length;
+            const rank2Count = stats.filter(s => s.rank === 2).length;
+            const rank3Count = stats.filter(s => s.rank === 3).length;
+
+            let itemsHtml = teacherAnnouncement + `
+                <span class="ticker-item" style="color:#38bdf8;">
+                    Logged in as <strong>${studentName}</strong> | Ranked in ${stats.length} Songs (${rank1Count > 0 ? '🥇x' + rank1Count + ' ' : ''}${rank2Count > 0 ? '🥈x' + rank2Count + ' ' : ''}${rank3Count > 0 ? '🥉x' + rank3Count : ''})
+                </span>
+                <span style="color:#64748b;">•</span>
+            `;
+
+            itemsHtml += stats.map(s => {
+                const medal = s.rank === 1 ? '🥇' : s.rank === 2 ? '🥈' : s.rank === 3 ? '🥉' : `#${s.rank}`;
+                const unit = s.title.toLowerCase().includes('finger sprint') ? 's' : (s.title.toLowerCase().includes('simon taps') ? ' lvl' : '%');
+                return `
+                    <span class="ticker-item">
+                        <span>${medal}</span>
+                        <span class="ticker-item-title">${s.title}</span>:
+                        <span class="ticker-item-rank">Rank #${s.rank}</span>
+                        <span class="ticker-item-score">(${s.score}${unit})</span>
+                        <span style="color:#94a3b8; font-size:0.68rem;">[${s.attempts} plays]</span>
+                    </span>
+                `;
+            }).join('<span style="color:#64748b;"> • </span>');
+
+            tickerTrack.innerHTML = itemsHtml + `<span style="color:#64748b;"> • </span>` + itemsHtml;
+            tickerContainer.style.display = 'flex';
+
+            const dynamicDuration = Math.max(30, stats.length * 6);
+            tickerTrack.style.animationDuration = `${dynamicDuration}s`;
+        }
+    </script>
