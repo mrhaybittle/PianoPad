@@ -456,6 +456,85 @@
             animation: textBlink 1s infinite ease-in-out;
         }
 
+        /* PRE-MATCH VS QUICK-EMOTE BUTTONS & SPEECH BUBBLES */
+        .ko-emote-deck {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #27272a;
+        }
+
+        .ko-emote-btn {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 1px solid #38bdf8;
+            color: #f8fafc;
+            font-size: 0.82rem;
+            font-weight: 800;
+            padding: 7px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: transform 0.12s, background 0.15s, box-shadow 0.15s;
+            box-shadow: 0 2px 8px rgba(56, 189, 248, 0.25);
+        }
+
+        .ko-emote-btn:hover {
+            background: linear-gradient(135deg, #0284c7, #2563eb);
+            transform: scale(1.06);
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.65);
+        }
+
+        .ko-emote-btn:active {
+            transform: scale(0.95);
+        }
+
+        .ko-shuffle-btn {
+            background: #27272a;
+            border: 1px solid #52525b;
+            color: #facc15;
+            font-size: 0.8rem;
+            font-weight: 800;
+            padding: 7px 10px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+
+        .ko-emote-bubble {
+            min-height: 28px;
+            margin-top: 6px;
+            display: inline-block;
+            background: #facc15;
+            color: #09090b;
+            font-weight: 900;
+            font-size: 0.78rem;
+            padding: 3px 10px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(250, 204, 21, 0.5);
+            opacity: 0;
+            transform: translateY(6px) scale(0.9);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            pointer-events: none;
+        }
+
+        .ko-emote-bubble.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .ko-bracket-emote-tag {
+            display: inline-block;
+            background: #facc15;
+            color: #000000;
+            font-weight: 900;
+            font-size: 0.68rem;
+            padding: 1px 6px;
+            border-radius: 8px;
+            margin-left: 6px;
+            animation: statusFlash 0.5s ease-in-out 3;
+        }
+
         #waterfall-canvas {
             background-color: var(--canvas-bg);
             border-bottom: 3px solid var(--hitline-color);
@@ -765,7 +844,6 @@
             color: white !important;
             box-shadow: 0 0 8px #3b82f6;
         }
-
         .graph-container {
             display: flex;
             flex-direction: column;
@@ -1570,7 +1648,7 @@
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.11.19 | 19-Nov 13:25 AEDT (West Wollongong)</div>
+            <div class="version-stamp">v26.11.19 | 19-Nov 14:02 AEDT (West Wollongong)</div>
             <div class="status-bar" id="status"> GAME MODE READY | Connecting to song database...</div>
             
             <div class="footer-right-group">
@@ -1853,8 +1931,7 @@
             </div>
         </div>
     </div>
-
-    <script>
+<script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby67M5VwNiRpcySnun4wTW31nIfXauLXhMRP1w96r6yjMuV9iA8n_C-eEIKfJ_xEuUjKg/exec';
@@ -1975,7 +2052,7 @@
         let knockoutDataCache = null;
         let knockoutLiveSyncTimer = null;
 
-        // Streak Sabotage & Tug-of-War HUD State
+        // Streak Sabotage, Tug-of-War HUD & 50-Emote Quick-Reaction State
         let knockoutSabotageCount = 0;
         let lastProcessedSabotageId = null;
         let activeSabotageType = null;
@@ -1984,6 +2061,23 @@
         let koOpponentId = null;
         let koOpponentName = "Opponent";
         let koOpponentAvatar = "🤖";
+        let lastProcessedOppEmoteId = null;
+        let koSelfEmoteHideTimer = null;
+        let koOppEmoteHideTimer = null;
+
+        const KO_HYPE_EMOTES = [
+            "😤 LOCKED IN", "🔥 TOO EASY", "😎 WATCH THIS", "⚡ LIGHT WORK", "👑 BOW DOWN",
+            "🚀 BUILT DIFFERENT", "🎯 100% INCOMING", "🧊 ICE COLD", "💪 NO SWEAT", "🧠 BIG BRAIN",
+            "🎹 PIANO GOD", "🦖 BEAST MODE", "🏆 ALREADY WON", "🌟 MAIN CHARACTER", "🔋 FULL POWER",
+            "💀 RIP BRO", "🪦 GG EZ", "🧹 GET SWEPT", "🧂 PASS THE SALT", "📉 YOUR ACCURACY",
+            "🐢 TOO SLOW", "🤡 NICE TRY", "🧯 CALL THE FIRE DEPT", "🎒 PACK YOUR BAGS", "💤 WAKE ME UP",
+            "🧀 SKILL ISSUE", "🚧 WRONG KEY BRO", "🗑️ OUTTA MY WAY", "👀 DON'T BLINK", "📉 CHOKING INCOMING",
+            "🙏 PRAY FOR ME", "💦 SWEATING BULLETS", "🫠 MY FINGERS HURT", "🐌 LAG!", "😬 OH NO...",
+            "🎲 PURE LUCK", "🆘 SEND HELP", "🫣 I FORGOT THE NOTES", "🍌 SLIPPERY KEYS", "🎲 YOLO",
+            "🐢 PRACTICE SPEED PLS", "😅 MERCY PLS", "🤝 GG", "🫡 RESPECT", "⚔️ BRING IT ON",
+            "🍿 POPCORN READY", "🚨 UPSET ALERT", "🌪️ CHAOS TIME", "💣 SABOTAGE INCOMING", "🎉 LET'S GOOO!"
+        ];
+
         const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄', '🎹', '🎧', '👨‍🎤', '😎', '🐱', '🐲', '🚀', '🥷'];
 
         let playersList = [];
@@ -3662,8 +3756,7 @@
                 playErrorClackSound();
             }
         }
-
-        function initAudio() {
+    function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
@@ -5229,7 +5322,6 @@
             
             const palette = themePalettes[currentTheme] || themePalettes.default;
 
-            // Pitch colour mapping (C: Red, D: Orange, E: Yellow, F: Green, G: Blue, A: Purple, B: Pink)
             const pitchColorMap = {
                 'c': '#ef4444',
                 'd': '#f97316',
@@ -5267,7 +5359,6 @@
                 shadowColor = palette.shadowActive;
             }
 
-            // ❄️ Freeze Frame Sabotage override: icy blue/white hides color-coded pitch hints
             const isFrozen = (activeSabotageType === 'freeze' && performance.now() < activeSabotageUntil && gameStatus === 'pending');
             if (isFrozen) {
                 blockColor = '#bae6fd';
@@ -5507,7 +5598,6 @@
                 });
             });
 
-            // 🌫️ Smoke Screen & Active Sabotage Overlay Effects
             if (activeSabotageType && now < activeSabotageUntil) {
                 if (activeSabotageType === 'smoke') {
                     const smokeZoneBottom = waterfallTop + waterfallHeight * 0.42;
@@ -5550,6 +5640,7 @@
                 smokeParticles = [];
                 canvas.classList.remove('canvas-shake-active');
             }
+
             if (confettiParticles.length > 0) {
                 for (let i = confettiParticles.length - 1; i >= 0; i--) {
                     let p = confettiParticles[i];
@@ -5990,8 +6081,7 @@
 
             return new Blob([outBuffer], { type: 'audio/wav' });
         }
-
-        // =========================================================================
+    // =========================================================================
         // GRAND FINALE CEREMONY ENGINE (Visuals, Fanfare & UI)
         // =========================================================================
         let fanfareLoopOscs = [];
@@ -6333,25 +6423,105 @@
                 vsOverlay.className = 'countdown-overlay';
                 vsOverlay.style.zIndex = '250';
                 vsOverlay.innerHTML = `
-                    <div style="background:#0a0a0a; border:3px solid #ffffff; border-radius:16px; padding:28px 36px; text-align:center; max-width:560px; width:90%; box-shadow:0 0 40px rgba(239,68,68,0.5);">
+                    <div style="background:#0a0a0a; border:3px solid #ffffff; border-radius:16px; padding:24px 32px; text-align:center; max-width:600px; width:92%; box-shadow:0 0 40px rgba(239,68,68,0.5);">
                         <div id="ko-vs-round-label" style="color:#ef4444; font-weight:900; font-size:1.1rem; letter-spacing:0.08em; text-transform:uppercase;">ROUND 1 MATCHUP</div>
-                        <div style="display:flex; align-items:center; justify-content:space-around; gap:16px; margin:20px 0;">
+                        <div style="display:flex; align-items:center; justify-content:space-around; gap:16px; margin:16px 0;">
                             <div style="flex:1;">
                                 <div id="ko-vs-p1-avatar" style="font-size:3.2rem;">🏃</div>
                                 <div id="ko-vs-p1-name" style="font-size:1.15rem; font-weight:800; color:#fff; margin-top:4px;">You</div>
                                 <div id="ko-vs-p1-rank" style="font-size:0.8rem; color:#ffffff; font-weight:700;">Rank #1</div>
+                                <div id="ko-vs-p1-emote" class="ko-emote-bubble">😤 LOCKED IN</div>
                             </div>
                             <div style="font-size:2.4rem; font-weight:900; color:#ef4444; text-shadow:0 0 15px #ef4444;">VS</div>
                             <div style="flex:1;">
                                 <div id="ko-vs-p2-avatar" style="font-size:3.2rem;">🤖</div>
                                 <div id="ko-vs-p2-name" style="font-size:1.15rem; font-weight:800; color:#fff; margin-top:4px;">Opponent</div>
                                 <div id="ko-vs-p2-rank" style="font-size:0.8rem; color:#ffffff; font-weight:700;">Rank #2</div>
+                                <div id="ko-vs-p2-emote" class="ko-emote-bubble">💀 RIP BRO</div>
                             </div>
                         </div>
                         <div id="ko-vs-song-label" style="font-size:0.9rem; color:#9ca3af; font-weight:700;">Song: Wipeout</div>
+                        <div class="ko-emote-deck" id="ko-emote-deck"></div>
                     </div>
                 `;
                 document.body.appendChild(vsOverlay);
+            }
+        }
+
+        // =========================================================================
+        // 50-EMOTE PRE-MATCH QUICK REACTION DECK
+        // =========================================================================
+        function dealKnockoutEmoteDeck() {
+            const deckEl = document.getElementById('ko-emote-deck');
+            if (!deckEl) return;
+
+            const shuffled = [...KO_HYPE_EMOTES].sort(() => Math.random() - 0.5);
+            const hand = shuffled.slice(0, 4);
+
+            deckEl.innerHTML = hand.map(emote => `
+                <button type="button" class="ko-emote-btn" onclick="sendKnockoutQuickEmote('${emote.replace(/'/g, "\\'")}')">${emote}</button>
+            `).join('') + `<button type="button" class="ko-shuffle-btn" title="Deal 4 new reactions" onclick="dealKnockoutEmoteDeck()">🎲</button>`;
+        }
+
+        function playEmotePopSound() {
+            try {
+                initAudio();
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(520, now);
+                osc.frequency.exponentialRampToValueAtTime(980, now + 0.08);
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.09);
+            } catch (e) {}
+        }
+
+        async function sendKnockoutQuickEmote(emoteText) {
+            if (!isClassKnockout || !knockoutRoomCode || !window.firebaseDb) return;
+
+            playEmotePopSound();
+
+            const selfBubble = document.getElementById('ko-vs-p1-emote');
+            if (selfBubble) {
+                selfBubble.textContent = emoteText;
+                selfBubble.classList.add('visible');
+                clearTimeout(koSelfEmoteHideTimer);
+                koSelfEmoteHideTimer = setTimeout(() => {
+                    selfBubble.classList.remove('visible');
+                }, 2600);
+            }
+
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}/players/${localStudentId}`), {
+                activeEmote: {
+                    id: `${localStudentId}_${Date.now()}`,
+                    text: emoteText,
+                    timestamp: Date.now()
+                }
+            });
+        }
+
+        function showOpponentQuickEmote(emoteObj) {
+            if (!emoteObj || !emoteObj.id || emoteObj.id === lastProcessedOppEmoteId) return;
+            lastProcessedOppEmoteId = emoteObj.id;
+
+            const ageMs = Date.now() - (emoteObj.timestamp || Date.now());
+            if (ageMs > 5000) return;
+
+            playEmotePopSound();
+            const oppBubble = document.getElementById('ko-vs-p2-emote');
+            if (oppBubble) {
+                oppBubble.textContent = emoteObj.text;
+                oppBubble.classList.add('visible');
+                clearTimeout(koOppEmoteHideTimer);
+                koOppEmoteHideTimer = setTimeout(() => {
+                    oppBubble.classList.remove('visible');
+                }, 2600);
             }
         }
 
@@ -6379,7 +6549,6 @@
             document.getElementById('tug-p2-name').textContent = koOpponentName || 'Opponent';
             document.getElementById('tug-p2-acc').textContent = `${oppAcc.toFixed(1)}%`;
 
-            // Difference of +/- 25% accuracy slides the bar to full advantage
             const diff = myAcc - oppAcc;
             const ratio = Math.max(8, Math.min(92, 50 + (diff * 2.0)));
             const fillLeft = document.getElementById('tug-fill-left');
@@ -6428,7 +6597,7 @@
             lastProcessedSabotageId = sabObj.id;
 
             const ageMs = Date.now() - (sabObj.timestamp || Date.now());
-            if (ageMs > 6000) return; // Ignore stale events
+            if (ageMs > 6000) return;
 
             activeSabotageType = sabObj.type;
             activeSabotageUntil = performance.now() + 3000;
@@ -6449,7 +6618,6 @@
             showFlashingStatus(`⚠️ SABOTAGED BY ${sabObj.fromName.toUpperCase()}: ${labelMap[sabObj.type] || 'DISTRACTION'}!`, 3200);
         }
 
-        // Override/wrap Song Battle & Sprint selectors + Results Close button cleanly
         (function bindKnockoutHooks() {
             const origBattleSel = openSongBattleSelector;
             openSongBattleSelector = function() {
@@ -6598,7 +6766,8 @@
                 currentScore: 0,
                 finishedRound: 0,
                 lastStats: { perfect: 0, earlyLate: 0, miss: 0 },
-                incomingSabotage: null
+                incomingSabotage: null,
+                activeEmote: null
             });
             window.firebaseOnDisconnect(playerRef).remove();
 
@@ -6757,9 +6926,17 @@
                 updates[`players/${pid}/finishedRound`] = 0;
                 updates[`players/${pid}/lastStats`] = { perfect: 0, earlyLate: 0, miss: 0 };
                 updates[`players/${pid}/incomingSabotage`] = null;
+                updates[`players/${pid}/activeEmote`] = null;
             });
 
             await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}`), updates);
+        }
+
+        function formatBracketEmoteBadge(playerObj) {
+            if (!playerObj || !playerObj.activeEmote || !playerObj.activeEmote.text) return '';
+            const age = Date.now() - (playerObj.activeEmote.timestamp || 0);
+            if (age > 4500) return '';
+            return `<span class="ko-bracket-emote-tag">${playerObj.activeEmote.text}</span>`;
         }
 
         function handleKnockoutHostUpdate(data) {
@@ -6795,6 +6972,7 @@
                     const p1Done = p1.finishedRound === data.round;
                     const s1 = Number(p1.currentScore || 0);
                     const p1Status = p1Done ? `✅ ${s1.toFixed(1)}%` : `🎹 ${s1.toFixed(1)}%...`;
+                    const p1Emote = formatBracketEmoteBadge(p1);
 
                     if (m.isGhostMatch) {
                         if (!p1Done) allDone = false;
@@ -6806,7 +6984,7 @@
                                     ${isClose ? '<span class="photo-finish-badge">PHOTO FINISH 🔥</span>' : ''}
                                 </div>
                                 <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; font-weight:700;">
-                                    <span>${p1.avatar} ${p1.name}</span>
+                                    <span>${p1.avatar} ${p1.name}${p1Emote}</span>
                                     <span style="color:${p1Done ? '#22c55e' : '#facc15'};">${p1Status}</span>
                                 </div>
                                 <div style="font-size:0.75rem; color:#9ca3af; margin-top:4px;">Target to Win: ≥ 80.0% Accuracy</div>
@@ -6819,6 +6997,7 @@
                     if (!p1Done || !p2Done) allDone = false;
                     const s2 = p2 ? Number(p2.currentScore || 0) : 0;
                     const p2Status = p2 ? (p2Done ? `✅ ${s2.toFixed(1)}%` : `🎹 ${s2.toFixed(1)}%...`) : 'Disconnected';
+                    const p2Emote = formatBracketEmoteBadge(p2);
                     const isPhotoFinish = p2 && Math.abs(s1 - s2) <= 0.5;
 
                     return `
@@ -6828,11 +7007,11 @@
                                 ${isPhotoFinish ? '<span class="photo-finish-badge">PHOTO FINISH 🔥</span>' : ''}
                             </div>
                             <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; font-weight:700;">
-                                <span>${p1.avatar} ${p1.name}</span>
+                                <span>${p1.avatar} ${p1.name}${p1Emote}</span>
                                 <span style="color:${p1Done ? '#22c55e' : '#facc15'};">${p1Status}</span>
                             </div>
                             <div style="display:flex; justify-content:space-between; margin-top:4px; font-size:0.85rem; font-weight:700;">
-                                <span>${p2 ? p2.avatar + ' ' + p2.name : '---'}</span>
+                                <span>${p2 ? p2.avatar + ' ' + p2.name + p2Emote : '---'}</span>
                                 <span style="color:${p2Done ? '#22c55e' : '#facc15'};">${p2Status}</span>
                             </div>
                         </div>
@@ -6912,7 +7091,6 @@
                     if (!p2) return;
                     const s2 = Number(p2.currentScore || 0);
 
-                    // 3. Live "Photo Finish" & Precision Tiebreaker (within 0.5% -> break ties by Total Perfect Hits)
                     const isPhotoFinish = Math.abs(s1 - s2) <= 0.5;
                     const p1Perfect = (p1.lastStats && p1.lastStats.perfect) ? Number(p1.lastStats.perfect) : 0;
                     const p2Perfect = (p2.lastStats && p2.lastStats.perfect) ? Number(p2.lastStats.perfect) : 0;
@@ -7020,7 +7198,12 @@
 
             document.getElementById('ko-student-standings').innerHTML = buildStandingsHTML(ranked);
 
-            // Check for incoming Streak Sabotage during live match
+            // Listen for opponent's pre-match quick emote
+            if (koOpponentId && koOpponentId !== 'BENCHMARK_80' && playersObj[koOpponentId] && playersObj[koOpponentId].activeEmote) {
+                showOpponentQuickEmote(playersObj[koOpponentId].activeEmote);
+            }
+
+            // Listen for incoming Streak Sabotage during live match
             if (data.status === 'playing' && me && me.incomingSabotage) {
                 applyIncomingSabotage(me.incomingSabotage);
             }
@@ -7091,6 +7274,12 @@
                 document.getElementById('ko-vs-p2-rank').textContent = oppRankText;
                 document.getElementById('ko-vs-song-label').textContent = `Song: ${data.songTitle}`;
 
+                const p1Bubble = document.getElementById('ko-vs-p1-emote');
+                const p2Bubble = document.getElementById('ko-vs-p2-emote');
+                if (p1Bubble) p1Bubble.classList.remove('visible');
+                if (p2Bubble) p2Bubble.classList.remove('visible');
+                dealKnockoutEmoteDeck();
+
                 const vsOverlay = document.getElementById('ko-vs-overlay');
                 vsOverlay.style.display = 'flex';
 
@@ -7108,7 +7297,7 @@
                     resetGameStats();
                     updateTugOfWarHUD(100.0, koOpponentId === 'BENCHMARK_80' ? 80.0 : 100.0);
                     startCountdown(() => { playSong(); });
-                }, 2800);
+                }, 3200);
 
             } else if (data.status === 'round_results') {
                 const tugHud = document.getElementById('tug-of-war-hud');
@@ -7139,7 +7328,6 @@
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const acc = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100) : 100;
 
-            // Instant local Tug-of-War update
             let oppLiveAcc = 80.0;
             if (knockoutDataCache && knockoutDataCache.players && koOpponentId && koOpponentId !== 'BENCHMARK_80') {
                 const oppObj = knockoutDataCache.players[koOpponentId];
@@ -7460,3 +7648,4 @@
     </script>
 </body>
 </html>
+    
