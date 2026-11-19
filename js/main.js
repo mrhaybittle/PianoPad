@@ -3,7 +3,8 @@ import { noteNames, midiNoteToName, noteToPitch, pitchToNote, autoTransposeSong,
 import { drawSheetMusicStaff, drawStemlessNote, drawLedgerLines } from './sheetMusic.js';
 import { audioCtx, initAudio, playErrorClackSound, playTone, bufferToWavBlob } from './audio.js';
 import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDeck, sendKnockoutQuickEmote, triggerStreakSabotage, resetKnockoutRoundEffects, joinClassKnockoutStudent, syncKnockoutLiveScore, submitKnockoutRoundFinish, leaveClassKnockout } from './knockout.js';
-     import { initFinaleBridge, showGrandFinale, closeGrandFinale, toggleFanfareMute } from './finale.js';
+  import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDeck, sendKnockoutQuickEmote, selectKnockoutTeam, triggerStreakSabotage, resetKnockoutRoundEffects, joinClassKnockoutStudent, syncKnockoutLiveScore, submitKnockoutRoundFinish, leaveClassKnockout } from './knockout.js';
+import { initFinaleBridge, showGrandFinale, closeGrandFinale, toggleFanfareMute } from './finale.js';
         let songList = [];
         let currentSong = [];
         let currentSongTitle = "Wipeout";
