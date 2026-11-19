@@ -4080,4 +4080,9 @@
             const dynamicDuration = Math.max(30, stats.length * 6);
             tickerTrack.style.animationDuration = `${dynamicDuration}s`;
         }
-    </script>
+// Check if the browser already loaded the page before the module finished downloading
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
