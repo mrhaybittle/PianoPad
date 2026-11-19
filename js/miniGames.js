@@ -4,6 +4,7 @@ import { APPS_SCRIPT_URL } from './config.js';
 import { startRhythmEcho, handleRhythmEchoInput } from './games/rhythmEcho.js';
 import { startNoteSniper, handleNoteSniperInput } from './games/noteSniper.js';
 import { startFlappyPitch, handleFlappyPitchInput, stopFlappyPitch } from './games/flappyPitch.js';
+
 export const arcadeState = {
     activeMiniGame: null,
     miniGameFallSpeedMs: 3800,
@@ -46,16 +47,19 @@ export function initMiniGamesBridge(deps) {
 function injectNewArcadeButtons() {
     const hub = document.getElementById('arcade-hub');
     if (!hub) return;
-if (!document.getElementById('btn-arcade-flappy-pitch')) {
-    const flappyBtn = document.createElement('button');
-    flappyBtn.type = 'button';
-    flappyBtn.id = 'btn-arcade-flappy-pitch';
-    flappyBtn.className = 'arcade-card-btn';
-    flappyBtn.onclick = () => startFlappyPitch(gameBridgeHelper);
-    flappyBtn.innerHTML = `<span style="font-size:1.5rem;">🐦</span><strong>Flappy Pitch</strong><small>Steer with high & low notes</small>`;
-    btnContainer.appendChild(flappyBtn);
-}
+
     const btnContainer = hub.querySelector('.arcade-grid') || hub;
+
+    if (!document.getElementById('btn-arcade-flappy-pitch')) {
+        const flappyBtn = document.createElement('button');
+        flappyBtn.type = 'button';
+        flappyBtn.id = 'btn-arcade-flappy-pitch';
+        flappyBtn.className = 'arcade-card-btn';
+        flappyBtn.onclick = () => startFlappyPitch(gameBridgeHelper);
+        flappyBtn.innerHTML = `<span style="font-size:1.5rem;">🐦</span><strong>Flappy Pitch</strong><small>Steer with high & low notes</small>`;
+        btnContainer.appendChild(flappyBtn);
+    }
+
     if (!document.getElementById('btn-arcade-rhythm-echo')) {
         const rhythmBtn = document.createElement('button');
         rhythmBtn.type = 'button';
@@ -133,6 +137,7 @@ export function returnToPlayerHome() {
 }
 
 export function exitActiveMiniGame() {
+    stopFlappyPitch();
     arcadeState.activeMiniGame = null;
     bridge.setIsPlaying(false);
     arcadeState.raceActive = false;
@@ -154,6 +159,10 @@ export function handleMiniGameNoteInput(noteStr) {
     const mode = arcadeState.activeMiniGame;
     if (!mode) return false;
 
+    if (mode === 'flappyPitch') {
+        handleFlappyPitchInput(noteStr, gameBridgeHelper);
+        return true;
+    }
     if (mode === 'rhythmEcho') {
         handleRhythmEchoInput(noteStr, gameBridgeHelper);
         return true;
@@ -1039,6 +1048,7 @@ function handleSprintInput(noteStr) {
 
 export function launchRhythmEcho() { startRhythmEcho(gameBridgeHelper); }
 export function launchNoteSniper() { startNoteSniper(gameBridgeHelper); }
+export function launchFlappyPitch() { startFlappyPitch(gameBridgeHelper); }
 
 Object.assign(window, {
     startSimonTaps,
@@ -1054,5 +1064,6 @@ Object.assign(window, {
     triggerBattleAgain,
     forceEndSongBattle,
     launchRhythmEcho,
-    launchNoteSniper
+    launchNoteSniper,
+    launchFlappyPitch
 });
