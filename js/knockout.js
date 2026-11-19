@@ -1,5 +1,6 @@
 import { initAudio, audioCtx, playTone, playErrorClackSound } from './audio.js';
 import { autoTransposeSong, parsePianoPad, getNoteFrequency } from './musicTheory.js';
+import { startLaserTag } from './games/laserTag.js';
 
 export const ER_HOUSES = {
     Crown:     { name: 'Crown',     icon: '👑', color: '#facc15', textColor: '#000000' },
@@ -510,6 +511,7 @@ export function initSwissTournamentUI() {
                                 <option value="sides">🧭 North Side vs. South Side</option>
                                 <option value="rooms">🏫 Room Battle (G1 vs. G2 vs. G3)</option>
                                 <option value="namethattune">🎵 Name That Tune (8-Choice Quiz)</option>
+                                <option value="lasertag">🛸 Neon Laser Tag (Free-For-All Arena)</option>
                             </select>
                         </div>
                         <div style="flex:1; min-width:200px;">
@@ -1422,7 +1424,7 @@ async function startNextKnockoutRound() {
     const modeSel = document.getElementById('ko-mode-select');
     const modeVal = modeSel ? modeSel.value : 'solo';
 
-    const minPlayers = modeVal === 'namethattune' ? 1 : 2;
+const minPlayers = (modeVal === 'namethattune' || modeVal === 'lasertag') ? 1 : 2;
     if (playerIds.length < minPlayers) {
         alert(`At least ${minPlayers} student(s) must join the room before starting Round 1!`);
         return;
@@ -1975,7 +1977,18 @@ function handleKnockoutStudentUpdate(data) {
 
     if (data.status === 'playing' && knockoutLastRoundStarted !== data.round) {
         knockoutLastRoundStarted = data.round;
+// LASER TAG ARENA LAUNCH
+        if (mode === 'lasertag') {
+            document.getElementById('knockout-modal').classList.remove('open');
+            document.getElementById('game-results-modal').classList.remove('open');
+            document.getElementById('arcade-hub').classList.remove('open');
+            const tugHud = document.getElementById('tug-of-war-hud');
+            if (tugHud) tugHud.style.display = 'none';
 
+            // Launch the arena using the teacher's active room code
+            startLaserTag(bridge, koState.knockoutRoomCode);
+            return;
+        }
         if (mode === 'namethattune') {
             document.getElementById('knockout-modal').classList.remove('open');
             document.getElementById('game-results-modal').classList.remove('open');
