@@ -3679,7 +3679,7 @@ import { initFinaleBridge, showGrandFinale, closeGrandFinale, toggleFanfareMute 
 
       function initApp() {
            initKnockoutBridge({
-    getState: () => ({ localStudentId, sessionStudentName, sessionStudentAvatar, currentStudentClass, songList, currentSongTitle, gameStats }),
+    getState: () => ({ localStudentId, sessionStudentName, sessionStudentAvatar, currentStudentClass, currentRoom, songList, currentSongTitle, gameStats }),
     setStudentName: (name) => { sessionStudentName = name; },
     setCurrentSongTitle: (title) => { currentSongTitle = title; },
     setCurrentSong: (song) => { currentSong = song; },
