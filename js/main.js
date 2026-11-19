@@ -2888,25 +2888,15 @@ import { initFinaleBridge, showGrandFinale, closeGrandFinale, toggleFanfareMute 
             const dynamicDuration = Math.max(30, stats.length * 6);
             tickerTrack.style.animationDuration = `${dynamicDuration}s`;
         }
+
 // Expose functions used by inline HTML onclick="..." attributes to the global window object
+// (miniGames.js and knockout.js already register their own buttons automatically)
 Object.assign(window, {
     closeGrandFinale,
     toggleFanfareMute,
-    startSimonTaps,
-    startMysteryNote,
-    startDropDodge,
-    startComboStrike,
-    openSprintModeSelector,
-    initSinglePlayerSprint,
-    openHostNamePrompt,
-    openJoinNamePrompt,
-    triggerHostStartRace,
-    closeSprintOptionModal,
     closeUnlockModal,
     skipCalibration,
     cancelCalibration,
-    triggerBattleAgain,
-    forceEndSongBattle,
     leaveClassKnockout,
     dealKnockoutEmoteDeck,
     sendKnockoutQuickEmote
