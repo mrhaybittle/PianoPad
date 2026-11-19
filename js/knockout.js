@@ -63,7 +63,9 @@ const KO_HYPE_EMOTES = [
     "🙏 PRAY FOR ME", "💦 SWEATING BULLETS", "🫠 MY FINGERS HURT", "🐌 LAG!", "😬 OH NO...",
     "🎲 PURE LUCK", "🆘 SEND HELP", "🫣 I FORGOT THE NOTES", "🍌 SLIPPERY KEYS", "🎲 YOLO",
     "🐢 PRACTICE SPEED PLS", "😅 MERCY PLS", "🤝 GG", "🫡 RESPECT", "⚔️ BRING IT ON",
-    "🍿 POPCORN READY", "🚨 UPSET ALERT", "🌪️ CHAOS TIME", "💣 SABOTAGE INCOMING", "🎉 LET'S GOOO!"
+    "🍿 POPCORN READY", "🚨 UPSET ALERT", "🌪️ CHAOS TIME", "💣 SABOTAGE INCOMING", "🎉 LET'S GOOO!",
+    "😏 RIZZ", "🤫🧏‍♂️ MEWING", "🍳 YOU'RE COOKED", "🧢 NO CAP", "🗿 SIGMA",
+    "🌽 ONLY IN OHIO", "🚽 SKIBIDI"
 ];
 
 export function initKnockoutBridge(deps) {
@@ -1047,12 +1049,19 @@ function handleKnockoutHostUpdate(data) {
             const p2Emote = formatBracketEmoteBadge(p2);
             const p2Team = (isTeamMode && p2) ? getTeamBadgeHTML(p2, mode) : '';
             const isPhotoFinish = p2 && Math.abs(s1 - s2) <= 0.5;
+            const p1PastOpps = (p1 && p1.opponents)
+                ? (Array.isArray(p1.opponents) ? p1.opponents : Object.values(p1.opponents))
+                : [];
+            const isTableRematch = Boolean(p2 && p1PastOpps.includes(p2.id));
 
             return `
                 <div style="background:#141824; border:1px solid ${isPhotoFinish ? '#ef4444' : '#374151'}; border-radius:8px; padding:10px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
                         <span style="font-size:0.72rem; color:#38bdf8; font-weight:800;">TABLE ${idx + 1} • ROUND ${data.round}</span>
-                        ${isPhotoFinish ? '<span class="photo-finish-badge">PHOTO FINISH 🔥</span>' : ''}
+                        <div style="display:flex; gap:4px; align-items:center;">
+                            ${isTableRematch ? '<span style="background:#f97316; color:#000; font-size:0.65rem; font-weight:900; padding:1px 6px; border-radius:4px;">🔥 REMATCH</span>' : ''}
+                            ${isPhotoFinish ? '<span class="photo-finish-badge">PHOTO FINISH 🔥</span>' : ''}
+                        </div>
                     </div>
                     <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; font-weight:700;">
                         <span>${p1.avatar} ${p1.name}${p1Team}${p1Emote}</span>
@@ -1411,6 +1420,15 @@ function handleKnockoutStudentUpdate(data) {
         document.getElementById('ko-vs-p2-name').textContent = oppName;
         document.getElementById('ko-vs-p2-rank').textContent = oppRankText;
         document.getElementById('ko-vs-song-label').textContent = `Song: ${data.songTitle}`;
+
+        const myPastOpps = (me && me.opponents)
+            ? (Array.isArray(me.opponents) ? me.opponents : Object.values(me.opponents))
+            : [];
+        const isRematch = Boolean(koOpponentId && koOpponentId !== 'BENCHMARK_80' && myPastOpps.includes(koOpponentId));
+        const rivalryBadge = document.getElementById('ko-vs-rivalry-badge');
+        if (rivalryBadge) {
+            rivalryBadge.style.display = isRematch ? 'inline-block' : 'none';
+        }
 
         const p1Bubble = document.getElementById('ko-vs-p1-emote');
         const p2Bubble = document.getElementById('ko-vs-p2-emote');
