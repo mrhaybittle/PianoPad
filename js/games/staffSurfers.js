@@ -2,7 +2,7 @@ import { initAudio, audioCtx } from '../audio.js';
 
 let animFrameId = null;
 let lastFrameTime = 0;
-let gamePhase = 'playing'; // 'playing' | 'dying' | 'over'
+let gamePhase = 'playing'; // 'playing' | 'dying' | 'over' | 'instructions'
 let flashAlpha = 0;
 let shakeTimer = 0;
 
@@ -143,6 +143,10 @@ export function stopStaffSurfers() {
         animFrameId = null;
     }
     gamePhase = 'over';
+    
+    // Clean up popup if the game is stopped early
+    const popup = document.getElementById('staff-surfers-popup');
+    if (popup) popup.style.display = 'none';
 }
 
 export function startStaffSurfers(bridge) {
@@ -181,9 +185,6 @@ export function startStaffSurfers(bridge) {
     player.inspectorTimer = 4.0;
     player.stumbleFlash = 0;
 
-    gamePhase = 'playing';
-    lastFrameTime = performance.now();
-
     // Seed an opening line of gold coins on the center track
     for (let i = 0; i < 5; i++) {
         coinItems.push({
@@ -197,7 +198,75 @@ export function startStaffSurfers(bridge) {
     }
 
     document.getElementById('status').textContent = '🚇 Staff Surfers: Oct 1 = Left | Oct 2 = Center | Oct 3 = Right | Black Key = JUMP | Same Lane = ROLL!';
-    animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
+    
+    // Set phase to instructions and show the popup instead of starting immediately
+    gamePhase = 'instructions'; 
+    showInstructionsPopup(bridge);
+}
+
+// --- NEW FUNCTION: Displays the Instructions Pop-up ---
+function showInstructionsPopup(bridge) {
+    let popup = document.getElementById('staff-surfers-popup');
+    
+    // Create the pop-up dynamically if it doesn't exist
+    if (!popup) {
+        popup = document.createElement('div');
+        popup.id = 'staff-surfers-popup';
+        popup.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 23, 42, 0.95);
+            border: 4px solid #38bdf8;
+            border-radius: 12px;
+            padding: 24px;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            z-index: 9999;
+            width: 85%;
+            max-width: 420px;
+            box-shadow: 0 0 30px rgba(56, 189, 248, 0.5);
+            text-align: center;
+        `;
+        document.body.appendChild(popup);
+    }
+
+    popup.innerHTML = `
+        <h2 style="color: #facc15; margin: 0 0 16px 0; font-weight: 900; font-size: 26px; text-transform: uppercase;">🚇 Staff Surfers</h2>
+        <div style="background: rgba(0,0,0,0.3); padding: 16px; border-radius: 8px; text-align: left; font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
+            <div style="margin-bottom: 8px;"><b>⬅️ LEFT TRACK:</b> Play Octave 1</div>
+            <div style="margin-bottom: 8px;"><b>⏺️ CENTER TRACK:</b> Play Octave 2</div>
+            <div style="margin-bottom: 8px;"><b>➡️ RIGHT TRACK:</b> Play Octave 3</div>
+            <hr style="border-color: #334155; margin: 12px 0;">
+            <div style="margin-bottom: 8px;"><b>⬆️ JUMP:</b> Play ANY Black Key</div>
+            <div><b>⬇️ ROLL:</b> Re-play a White Key in your lane</div>
+        </div>
+        <div style="color: #22c55e; font-weight: 900; margin-bottom: 20px; font-size: 14px;">
+            🎯 Hit the Target Notes to earn Jetpacks & Hoverboards!
+        </div>
+        <button id="btn-start-surfers" style="
+            background: #22c55e; color: white; border: none; padding: 14px 24px;
+            font-size: 18px; font-weight: 900; border-radius: 8px; cursor: pointer;
+            box-shadow: 0 5px 0 #166534; width: 100%; transition: all 0.1s; text-transform: uppercase;
+        ">Start Surfing!</button>
+    `;
+    
+    popup.style.display = 'block';
+
+    // Add button interaction to start the animation loop
+    const btn = document.getElementById('btn-start-surfers');
+    btn.onmousedown = () => btn.style.transform = 'translateY(5px)';
+    btn.onmouseup = () => btn.style.transform = 'translateY(0)';
+    
+    btn.onclick = () => {
+        popup.style.display = 'none';
+        gamePhase = 'playing';
+        lastFrameTime = performance.now();
+        if (animFrameId === null) {
+            animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
+        }
+    };
 }
 
 export function handleStaffSurfersInput(noteStr, bridge) {
