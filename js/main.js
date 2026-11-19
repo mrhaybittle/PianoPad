@@ -3701,6 +3701,17 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
         resetGameStats();
     }
 });
+           initFinaleBridge({
+    getState: () => ({ sessionStudentName, localStudentId }),
+    onClose: () => {
+        if (isSongBattle) {
+            stopBattlePolling();
+        } else if (koState.isClassKnockout) {
+            leaveClassKnockout();
+        }
+        loadStudentTickerStats(sessionStudentName);
+    }
+});
             initMIDIHardware();
             resetGameStats();
             syncSongsWithGoogleSheet();
