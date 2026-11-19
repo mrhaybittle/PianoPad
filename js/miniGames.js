@@ -6,6 +6,7 @@ import { startNoteSniper, handleNoteSniperInput } from './games/noteSniper.js';
 import { startFlappyPitch, handleFlappyPitchInput, stopFlappyPitch } from './games/flappyPitch.js';
 import { startStaffSurfers, handleStaffSurfersInput, stopStaffSurfers } from './games/staffSurfers.js';
 import { startLaserTag, handleLaserTagInput, stopLaserTag } from './games/laserTag.js';
+
 export const arcadeState = {
     activeMiniGame: null,
     miniGameFallSpeedMs: 3800,
@@ -60,8 +61,6 @@ function injectNewArcadeButtons() {
         flappyBtn.innerHTML = `<span style="font-size:1.5rem;">🐦</span><strong>Flappy Pitch</strong><small>Steer with high & low notes</small>`;
         btnContainer.appendChild(flappyBtn);
     }
-
- 
 
     if (!document.getElementById('btn-arcade-rhythm-echo')) {
         const rhythmBtn = document.createElement('button');
@@ -152,11 +151,11 @@ export function returnToPlayerHome() {
 export function exitActiveMiniGame() {
     stopFlappyPitch();
     stopStaffSurfers();
+    stopLaserTag();
     arcadeState.activeMiniGame = null;
     bridge.setIsPlaying(false);
     arcadeState.raceActive = false;
     stopBattlePolling();
-    stopLaserTag();
     const runnerTrack = document.getElementById('runner-track');
     runnerTrack.style.display = 'none';
     runnerTrack.innerHTML = '';
@@ -174,6 +173,10 @@ export function handleMiniGameNoteInput(noteStr) {
     const mode = arcadeState.activeMiniGame;
     if (!mode) return false;
 
+    if (mode === 'laserTag') {
+        handleLaserTagInput(noteStr, gameBridgeHelper);
+        return true;
+    }
     if (mode === 'staffSurfers') {
         handleStaffSurfersInput(noteStr, gameBridgeHelper);
         return true;
@@ -190,11 +193,6 @@ export function handleMiniGameNoteInput(noteStr) {
         handleNoteSniperInput(noteStr, gameBridgeHelper);
         return true;
     }
-
-    if (mode === 'laserTag') {
-    handleLaserTagInput(noteStr, gameBridgeHelper);
-    return true;
-}
     if (mode === 'drop') {
         const { noteTimeline, playbackStartTime, accumulatedPauseMs, gameStats, keyPosMap } = bridge.getState();
         const canvas = document.getElementById('waterfall-canvas');
@@ -1096,6 +1094,6 @@ Object.assign(window, {
     launchRhythmEcho,
     launchNoteSniper,
     launchFlappyPitch,
-    launchStaffSurfers
+    launchStaffSurfers,
     launchLaserTag
 });
