@@ -55,12 +55,36 @@ function playSniperShotSound() {
     } catch(e) {}
 }
 
+// --- EXIT AND CLEANUP LOGIC ---
+function handleSniperKeyDown(e) {
+    if (e.key === 'Escape' && bridgeRef) {
+        stopNoteSniper();
+        bridgeRef.exitActiveMiniGame(); // Tells your main app to close the mini-game view
+    }
+}
+
 export function stopNoteSniper() {
     if (animFrameId !== null) {
         cancelAnimationFrame(animFrameId);
         animFrameId = null;
     }
     gameState = 'over';
+
+    // Remove the Escape key listener
+    window.removeEventListener('keydown', handleSniperKeyDown);
+
+    // Fully clear the canvas so the game visually exits
+    const canvas = document.getElementById('waterfall-canvas');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Clear the sniper text from the status bar
+    const statusText = document.getElementById('status');
+    if (statusText && statusText.textContent.includes('Sniper')) {
+        statusText.textContent = ''; 
+    }
 }
 
 export function startNoteSniper(bridge) {
@@ -71,6 +95,9 @@ export function startNoteSniper(bridge) {
     document.getElementById('arcade-hub').classList.remove('open');
     bridge.setActiveMiniGame('noteSniper');
     bridge.resetGameStats();
+
+    // Listen for the Escape key to exit
+    window.addEventListener('keydown', handleSniperKeyDown);
 
     targetsHit = 0;
     wrongTaps = 0;
