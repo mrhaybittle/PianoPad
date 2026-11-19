@@ -63,6 +63,25 @@ function handleSniperKeyDown(e) {
     }
 }
 
+// Intercept clicks on any UI exit or return buttons to properly shut down the loop
+function handleExitButtonClick(e) {
+    if (gameState === 'over') return;
+    
+    // Look for the closest button clicked
+    const btn = e.target.closest('button, .btn, [role="button"]');
+    if (!btn) return;
+    
+    const id = (btn.id || '').toLowerCase();
+    const text = (btn.textContent || '').toLowerCase();
+    
+    // If the button ID or text implies exiting/returning, kill the game
+    if (id.includes('exit') || id.includes('return') || id.includes('close') || 
+        text.includes('exit') || text.includes('return')) {
+        stopNoteSniper();
+        if (bridgeRef) bridgeRef.exitActiveMiniGame();
+    }
+}
+
 export function stopNoteSniper() {
     if (animFrameId !== null) {
         cancelAnimationFrame(animFrameId);
@@ -70,8 +89,9 @@ export function stopNoteSniper() {
     }
     gameState = 'over';
 
-    // Remove the Escape key listener
+    // Remove the Escape key and button click listeners
     window.removeEventListener('keydown', handleSniperKeyDown);
+    document.removeEventListener('click', handleExitButtonClick);
 
     // Fully clear the canvas so the game visually exits
     const canvas = document.getElementById('waterfall-canvas');
@@ -96,8 +116,9 @@ export function startNoteSniper(bridge) {
     bridge.setActiveMiniGame('noteSniper');
     bridge.resetGameStats();
 
-    // Listen for the Escape key to exit
+    // Listen for the Escape key and external UI Exit buttons
     window.addEventListener('keydown', handleSniperKeyDown);
+    document.addEventListener('click', handleExitButtonClick);
 
     targetsHit = 0;
     wrongTaps = 0;
