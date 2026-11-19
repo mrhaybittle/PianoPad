@@ -1,12 +1,5 @@
-import { initAudio, audioCtx } from './audio.js';
-import { autoTransposeSong, parsePianoPad } from './musicTheory.js';
-import {
-    generateNameThatTuneChoices,
-    playSongSnippet,
-    launchStudentNameThatTuneRound,
-    hideNameThatTuneModal,
-    updateNameThatTuneProgressText
-} from './nameThatTune.js';
+import { initAudio, audioCtx, playTone, playErrorClackSound } from './audio.js';
+import { autoTransposeSong, parsePianoPad, getNoteFrequency } from './musicTheory.js';
 
 export const ER_HOUSES = {
     Crown:     { name: 'Crown',     icon: '👑', color: '#facc15', textColor: '#000000' },
@@ -63,6 +56,36 @@ let lastProcessedOppEmoteId = null;
 let koSelfEmoteHideTimer = null;
 let koOppEmoteHideTimer = null;
 
+// --- NAME THAT TUNE STATE ---
+let nttSnippetTimers = [];
+let nttRoundStartTimeMs = 0;
+let nttHasAnsweredRound = false;
+let nttReplaysRemaining = 2;
+
+const NTT_FALLBACK_DISTRACTORS = [
+    "Twinkle Twinkle Little Star",
+    "Ode to Joy",
+    "Für Elise",
+    "Star Wars Main Theme",
+    "Hedwig's Theme (Harry Potter)",
+    "Super Mario Bros Theme",
+    "Happy Birthday",
+    "Baby Shark",
+    "Jingle Bells",
+    "Pirates of the Caribbean"
+];
+
+const NTT_CHOICE_COLORS = [
+    { bg: '#dc2626', border: '#f87171', badge: '1' },
+    { bg: '#2563eb', border: '#60a5fa', badge: '2' },
+    { bg: '#d97706', border: '#fbbf24', badge: '3' },
+    { bg: '#059669', border: '#34d399', badge: '4' },
+    { bg: '#7c3aed', border: '#a78bfa', badge: '5' },
+    { bg: '#db2777', border: '#f472b6', badge: '6' },
+    { bg: '#0891b2', border: '#22d3ee', badge: '7' },
+    { bg: '#4f46e5', border: '#818cf8', badge: '8' }
+];
+
 let bridge = null;
 
 const KO_HYPE_EMOTES = [
@@ -84,6 +107,311 @@ export function initKnockoutBridge(deps) {
     bridge = deps;
 }
 
+// ==========================================
+// NAME THAT TUNE AUDIO & QUIZ ENGINE
+// ==========================================
+function stopNameThatTuneAudio() {
+    nttSnippetTimers.forEach(id => clearTimeout(id));
+    nttSnippetTimers = [];
+    const wave = document.getElementById('ntt-soundwave');
+    if (wave) wave.classList.remove('playing');
+}
+
+function hideNameThatTuneModal() {
+    stopNameThatTuneAudio();
+    const modal = document.getElementById('ntt-quiz-modal');
+    if (modal) modal.classList.remove('open');
+}
+
+function generateNameThatTuneChoices(correctTitle, songList) {
+    const cleanCorrect = (correctTitle || '').trim();
+    const pool = new Set();
+
+    (songList || []).forEach(s => {
+        const t = (s.title || '').trim();
+        if (t && t.toLowerCase() !== cleanCorrect.toLowerCase()) {
+            pool.add(t);
+        }
+    });
+
+    for (const fallback of NTT_FALLBACK_DISTRACTORS) {
+        if (pool.size >= 12) break;
+        if (fallback.toLowerCase() !== cleanCorrect.toLowerCase()) {
+            pool.add(fallback);
+        }
+    }
+
+    const distractors = Array.from(pool)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 7);
+
+    return [cleanCorrect, ...distractors].sort(() => Math.random() - 0.5);
+}
+
+function playSongSnippet(songCode, noteCount = 5) {
+    stopNameThatTuneAudio();
+    initAudio();
+
+    const parsed = parsePianoPad(songCode || '');
+    if (!parsed || parsed.length === 0) return;
+
+    const transposed = autoTransposeSong(parsed);
+    const slice = transposed.slice(0, Math.max(2, noteCount));
+
+    const wave = document.getElementById('ntt-soundwave');
+    if (wave) wave.classList.add('playing');
+
+    let cumulativeMs = 150;
+    slice.forEach((step, idx) => {
+        if (idx > 0) {
+            cumulativeMs += Math.max(180, Math.min(900, step.rest || 320));
+        }
+        const durSec = Math.max(0.22, Math.min(0.85, ((step.rest || 320) * 0.85) / 1000));
+
+        const tId = setTimeout(() => {
+            (step.notes || []).forEach(noteStr => {
+                const freq = getNoteFrequency(noteStr);
+                if (freq) playTone(freq, durSec, 1.0);
+            });
+        }, cumulativeMs);
+        nttSnippetTimers.push(tId);
+    });
+
+    const endId = setTimeout(() => {
+        if (wave) wave.classList.remove('playing');
+    }, cumulativeMs + 550);
+    nttSnippetTimers.push(endId);
+}
+
+function playNttCorrectChime() {
+    try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(587.33, now);
+        osc.frequency.setValueAtTime(880.00, now + 0.08);
+        gain.gain.setValueAtTime(0.14, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.3);
+    } catch (e) {}
+}
+
+function ensureNameThatTuneModal() {
+    if (document.getElementById('ntt-quiz-modal')) return;
+
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes nttBarBounce {
+            0%, 100% { transform: scaleY(0.3); }
+            50% { transform: scaleY(1.0); }
+        }
+        #ntt-soundwave.playing .ntt-bar {
+            animation: nttBarBounce 0.45s infinite ease-in-out;
+        }
+        .ntt-bar {
+            width: 5px;
+            height: 22px;
+            background: #38bdf8;
+            border-radius: 3px;
+            transform: scaleY(0.3);
+            transition: transform 0.2s;
+        }
+        .ntt-choice-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 13px 14px;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.25);
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 0.92rem;
+            text-align: left;
+            cursor: pointer;
+            transition: transform 0.1s, filter 0.15s, opacity 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+        }
+        .ntt-choice-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            filter: brightness(1.12);
+        }
+        .ntt-choice-btn:disabled {
+            cursor: default;
+        }
+    `;
+    document.head.appendChild(style);
+
+    const modal = document.createElement('div');
+    modal.id = 'ntt-quiz-modal';
+    modal.className = 'modal-overlay';
+    modal.style.zIndex = '360';
+    modal.innerHTML = `
+        <div class="modal" style="max-width: 760px; width: 95%; background: #090d16; border: 2px solid #38bdf8; box-shadow: 0 0 40px rgba(56,189,248,0.35);">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1e293b; padding-bottom:10px;">
+                <div>
+                    <span id="ntt-round-badge" style="background:#38bdf8; color:#0f172a; font-weight:900; font-size:0.75rem; padding:3px 9px; border-radius:6px; text-transform:uppercase;">ROUND 1 • NAME THAT TUNE</span>
+                    <span id="ntt-house-pill" style="margin-left:6px; font-size:0.78rem; font-weight:800;"></span>
+                </div>
+                <button type="button" id="btn-ntt-replay" style="background:#1e293b; color:#facc15; border:1px solid #facc15; border-radius:8px; padding:6px 12px; font-weight:800; font-size:0.8rem; cursor:pointer;">
+                    🔊 Replay Notes (2 left)
+                </button>
+            </div>
+
+            <div style="text-align:center; margin:12px 0 8px 0;">
+                <div style="display:inline-flex; align-items:center; gap:5px; height:26px; margin-bottom:6px;" id="ntt-soundwave">
+                    <div class="ntt-bar" style="animation-delay:0.0s;"></div>
+                    <div class="ntt-bar" style="animation-delay:0.1s;"></div>
+                    <div class="ntt-bar" style="animation-delay:0.2s;"></div>
+                    <div class="ntt-bar" style="animation-delay:0.15s;"></div>
+                    <div class="ntt-bar" style="animation-delay:0.05s;"></div>
+                    <div class="ntt-bar" style="animation-delay:0.25s;"></div>
+                    <div class="ntt-bar" style="animation-delay:0.12s;"></div>
+                </div>
+                <h2 id="ntt-prompt-title" style="margin:0; color:#ffffff; font-size:1.25rem;">🎧 Listen to the first 5 notes & pick the song!</h2>
+                <div id="ntt-feedback-banner" style="margin-top:6px; font-size:0.92rem; font-weight:800; color:#94a3b8;">
+                    Faster correct answers earn up to 100% score! (Press keys 1–8 or tap below)
+                </div>
+            </div>
+
+            <div id="ntt-choices-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px; margin:12px 0;"></div>
+
+            <div id="ntt-live-progress" style="background:#0f172a; border:1px solid #1e293b; border-radius:8px; padding:8px 12px; font-size:0.78rem; color:#cbd5e1; display:flex; justify-content:space-between; align-items:center;">
+                <span id="ntt-answered-count">Waiting for your answer...</span>
+                <button type="button" class="btn-danger" style="padding:4px 10px; font-size:0.74rem;" onclick="leaveClassKnockout()">Leave</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    window.addEventListener('keydown', (e) => {
+        const m = document.getElementById('ntt-quiz-modal');
+        if (!m || !m.classList.contains('open') || nttHasAnsweredRound) return;
+        const num = parseInt(e.key, 10);
+        if (num >= 1 && num <= 8) {
+            const btn = document.querySelector(`.ntt-choice-btn[data-choice-idx="${num - 1}"]`);
+            if (btn && !btn.disabled) btn.click();
+        }
+    });
+}
+
+function launchStudentNameThatTuneRound(data, houseBadgeHtml, onAnswerSubmit) {
+    ensureNameThatTuneModal();
+
+    const ntt = data.nttData || {};
+    const choices = Array.isArray(ntt.choices) ? ntt.choices : Object.values(ntt.choices || {});
+    const noteCount = Number(ntt.noteCount || 5);
+    const correctTitle = data.songTitle || '';
+
+    nttHasAnsweredRound = false;
+    nttReplaysRemaining = 2;
+    nttRoundStartTimeMs = performance.now();
+
+    document.getElementById('ntt-round-badge').textContent = `ROUND ${data.round || 1} • NAME THAT TUNE`;
+    document.getElementById('ntt-house-pill').innerHTML = houseBadgeHtml || '';
+    document.getElementById('ntt-prompt-title').textContent = `🎧 Listen to the first ${noteCount} notes — Which song is it?`;
+    document.getElementById('ntt-feedback-banner').innerHTML = `<span style="color:#38bdf8;">Answer fast for up to 100% score! (Tap a title or press 1–8)</span>`;
+    document.getElementById('ntt-answered-count').textContent = 'Select 1 of the 8 songs above...';
+
+    const replayBtn = document.getElementById('btn-ntt-replay');
+    replayBtn.disabled = false;
+    replayBtn.style.opacity = '1';
+    replayBtn.textContent = `🔊 Replay Notes (${nttReplaysRemaining} left)`;
+    replayBtn.onclick = () => {
+        if (nttReplaysRemaining <= 0) return;
+        nttReplaysRemaining--;
+        replayBtn.textContent = nttReplaysRemaining > 0 ? `🔊 Replay Notes (${nttReplaysRemaining} left)` : '🔇 No Replays Left';
+        if (nttReplaysRemaining <= 0) {
+            replayBtn.disabled = true;
+            replayBtn.style.opacity = '0.5';
+        }
+        playSongSnippet(data.songCode, noteCount);
+    };
+
+    const grid = document.getElementById('ntt-choices-grid');
+    grid.innerHTML = choices.map((title, idx) => {
+        const theme = NTT_CHOICE_COLORS[idx % NTT_CHOICE_COLORS.length];
+        return `
+            <button type="button" class="ntt-choice-btn" data-choice-idx="${idx}" data-song-title="${title.replace(/"/g, '&quot;')}"
+                style="background:${theme.bg}; border-color:${theme.border};">
+                <span style="background:rgba(0,0,0,0.35); width:26px; height:26px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; font-weight:900; flex-shrink:0;">
+                    ${theme.badge}
+                </span>
+                <span style="line-height:1.25;">${title}</span>
+            </button>
+        `;
+    }).join('');
+
+    grid.querySelectorAll('.ntt-choice-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (nttHasAnsweredRound) return;
+            nttHasAnsweredRound = true;
+            stopNameThatTuneAudio();
+
+            const chosenTitle = btn.getAttribute('data-song-title');
+            const isCorrect = chosenTitle.trim().toLowerCase() === correctTitle.trim().toLowerCase();
+            const responseSec = Math.max(0.2, (performance.now() - nttRoundStartTimeMs) / 1000);
+
+            let roundScore = 0;
+            if (isCorrect) {
+                roundScore = Math.max(55, Math.min(100, 100 - Math.max(0, responseSec - 1.2) * 3.0));
+                playNttCorrectChime();
+                document.getElementById('ntt-feedback-banner').innerHTML =
+                    `<span style="color:#22c55e; font-size:1.05rem;">✅ CORRECT! "${correctTitle}" — Earned ${roundScore.toFixed(1)}% (${responseSec.toFixed(1)}s)</span>`;
+            } else {
+                playErrorClackSound();
+                document.getElementById('ntt-feedback-banner').innerHTML =
+                    `<span style="color:#ef4444; font-size:1.05rem;">❌ WRONG! The song was "${correctTitle}" (0.0%)</span>`;
+            }
+
+            grid.querySelectorAll('.ntt-choice-btn').forEach(b => {
+                b.disabled = true;
+                const bTitle = b.getAttribute('data-song-title');
+                if (bTitle.trim().toLowerCase() === correctTitle.trim().toLowerCase()) {
+                    b.style.background = '#16a34a';
+                    b.style.borderColor = '#bbf7d0';
+                    b.style.boxShadow = '0 0 18px rgba(34,197,94,0.85)';
+                    b.style.opacity = '1';
+                } else if (b === btn && !isCorrect) {
+                    b.style.background = '#991b1b';
+                    b.style.borderColor = '#fca5a5';
+                    b.style.opacity = '1';
+                } else {
+                    b.style.opacity = '0.32';
+                }
+            });
+
+            document.getElementById('ntt-answered-count').textContent = 'Answer locked! Waiting for classmates to finish...';
+
+            if (onAnswerSubmit) {
+                onAnswerSubmit({
+                    score: Number(roundScore.toFixed(1)),
+                    isCorrect,
+                    responseSec: Number(responseSec.toFixed(2)),
+                    chosenTitle
+                });
+            }
+        });
+    });
+
+    document.getElementById('ntt-quiz-modal').classList.add('open');
+    playSongSnippet(data.songCode, noteCount);
+}
+
+function updateNameThatTuneProgressText(answeredCount, totalCount) {
+    const el = document.getElementById('ntt-answered-count');
+    if (el && nttHasAnsweredRound) {
+        el.textContent = `⏳ ${answeredCount} of ${totalCount} students have answered...`;
+    }
+}
+
+// ==========================================
+// TOURNAMENT & AUTO-NEXT ENGINE
+// ==========================================
 function clearKnockoutAutoNextTimer() {
     if (koAutoNextInterval) {
         clearInterval(koAutoNextInterval);
@@ -199,7 +527,6 @@ export function initSwissTournamentUI() {
                         </div>
                     </div>
 
-                    <!-- Name That Tune Specific Teacher Controls -->
                     <div id="ko-ntt-settings-bar" style="display:none; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; background:#0f172a; padding:10px 12px; border-radius:8px; border:1px solid #38bdf8;">
                         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                             <label style="font-size:0.78rem; color:#38bdf8; font-weight:800;">🎵 NOTES TO PLAY:</label>
@@ -1200,7 +1527,6 @@ function handleKnockoutHostUpdate(data) {
         btnForce.style.display = 'inline-flex';
         btnFinish.style.display = (data.round || 0) >= 1 ? 'inline-flex' : 'none';
 
-        // NAME THAT TUNE LIVE ANSWER MONITOR
         if (mode === 'namethattune') {
             const allPlayers = Object.values(playersObj);
             let allDone = allPlayers.length > 0;
@@ -1239,7 +1565,6 @@ function handleKnockoutHostUpdate(data) {
             return;
         }
 
-        // STANDARD 1V1 SWISS BRACKET MONITOR
         const pairings = Object.values(data.pairings || {});
         let allDone = true;
 
@@ -1309,3 +1634,678 @@ function handleKnockoutHostUpdate(data) {
         if (allDone && pairings.length > 0 && knockoutLastRoundFinished !== data.round) {
             knockoutLastRoundFinished = data.round;
             scoreAndConcludeKnockoutRound(data);
+        }
+    } else if (data.status === 'round_results') {
+        btnForce.style.display = 'none';
+        btnStart.style.display = 'inline-flex';
+        btnStart.textContent = mode === 'namethattune'
+            ? `▶ Start Round ${data.round + 1} (Next Tune)`
+            : (mode === 'rooms'
+                ? `▶ Start Round ${data.round + 1} (Room Battle)`
+                : (mode === 'sides'
+                    ? `▶ Start Round ${data.round + 1} (North vs South)`
+                    : (mode === 'house'
+                        ? `▶ Start Round ${data.round + 1} (House Relay)`
+                        : `▶ Start Round ${data.round + 1} (Swiss Matched)`)));
+        btnFinish.style.display = 'inline-flex';
+
+        const autoToggle = document.getElementById('ko-auto-next-toggle');
+        if (autoToggle && autoToggle.checked) {
+            startKnockoutAutoNextTimer(data.round);
+        } else {
+            statusBanner.textContent = `Round ${data.round} Complete! Ready for Round ${data.round + 1}.`;
+        }
+    } else if (data.status === 'finished') {
+        btnStart.style.display = 'none';
+        btnForce.style.display = 'none';
+        btnFinish.style.display = 'none';
+        statusBanner.textContent = `🏆 Tournament Complete! Final Placings Logged to Leaderboard.`;
+
+        if (!knockoutFinaleShown) {
+            knockoutFinaleShown = true;
+            document.getElementById('knockout-modal')?.classList.remove('open');
+
+            let standings = data.finalStandings || [];
+            const finaleTitle = mode === 'namethattune'
+                ? `🎵 Name That Tune Championship Complete!`
+                : (mode === 'rooms'
+                    ? `🏫 Room Battle (G1 vs. G2 vs. G3) Complete!`
+                    : (mode === 'sides'
+                        ? `🧭 North vs. South Showdown Complete!`
+                        : (mode === 'house' ? `🏰 House Relay Championship Complete!` : `🏆 Class Knockout Complete!`)));
+            bridge.showGrandFinale(standings, true, finaleTitle);
+        }
+    }
+}
+
+async function forceEndKnockoutRound() {
+    if (!koState.isKnockoutHost || !knockoutDataCache) return;
+    if (knockoutLastRoundFinished === knockoutDataCache.round) return;
+    knockoutLastRoundFinished = knockoutDataCache.round;
+    await scoreAndConcludeKnockoutRound(knockoutDataCache);
+}
+
+function buildRoundScoreUpdates(data) {
+    const playersObj = data.players || {};
+    const mode = data.tournamentMode || 'solo';
+    const updates = { status: 'round_results' };
+
+    if (mode === 'namethattune') {
+        Object.values(playersObj).forEach(p => {
+            const answeredThisRound = p.finishedRound === data.round;
+            const won = answeredThisRound && Boolean(p.nttCorrect);
+            const roundScore = won ? Number(p.currentScore || 0) : 0;
+            const newStreak = won ? ((p.winStreak || 0) + 1) : 0;
+
+            updates[`players/${p.id}/wins`] = (p.wins || 0) + (won ? 1 : 0);
+            updates[`players/${p.id}/losses`] = (p.losses || 0) + (won ? 0 : 1);
+            updates[`players/${p.id}/winStreak`] = newStreak;
+            updates[`players/${p.id}/totalAcc`] = (p.totalAcc || 0) + roundScore;
+            updates[`players/${p.id}/roundsPlayed`] = (p.roundsPlayed || 0) + 1;
+            updates[`players/${p.id}/lastMatchResult`] = {
+                round: data.round,
+                isNameThatTune: true,
+                won,
+                myScore: roundScore,
+                songTitle: data.songTitle || 'Mystery Tune',
+                responseSec: Number(p.nttTimeSec || 0),
+                winStreak: newStreak
+            };
+        });
+        return updates;
+    }
+
+    const pairings = Object.values(data.pairings || {});
+    const rankedBefore = getRankedKnockoutPlayers(playersObj);
+    const currentLeaderId = (rankedBefore.length > 0 && (rankedBefore[0].roundsPlayed || 0) > 0) ? rankedBefore[0].id : null;
+
+    pairings.forEach(m => {
+        const p1 = playersObj[m.p1];
+        if (!p1) return;
+        const s1 = Number(p1.currentScore || 0);
+
+        if (m.isGhostMatch) {
+            const won = s1 >= (m.targetScore || 80);
+            const isPhotoFinish = Math.abs(s1 - (m.targetScore || 80)) <= 0.5;
+            const newStreak = won ? ((p1.winStreak || 0) + 1) : 0;
+            updates[`players/${p1.id}/wins`] = (p1.wins || 0) + (won ? 1 : 0);
+            updates[`players/${p1.id}/losses`] = (p1.losses || 0) + (won ? 0 : 1);
+            updates[`players/${p1.id}/winStreak`] = newStreak;
+            updates[`players/${p1.id}/totalAcc`] = (p1.totalAcc || 0) + s1;
+            updates[`players/${p1.id}/roundsPlayed`] = (p1.roundsPlayed || 0) + 1;
+            updates[`players/${p1.id}/lastMatchResult`] = {
+                round: data.round,
+                won: won,
+                photoFinish: isPhotoFinish,
+                tiebreakerUsed: false,
+                giantKiller: false,
+                winStreak: newStreak,
+                myScore: s1,
+                oppName: '80% Benchmark',
+                oppAvatar: '🎯',
+                oppScore: 80,
+                oppStats: { perfect: 8, earlyLate: 0, miss: 2 }
+            };
+        } else {
+            const p2 = playersObj[m.p2];
+            if (!p2) return;
+            const s2 = Number(p2.currentScore || 0);
+
+            const isPhotoFinish = Math.abs(s1 - s2) <= 0.5;
+            const p1Perfect = (p1.lastStats && p1.lastStats.perfect) ? Number(p1.lastStats.perfect) : 0;
+            const p2Perfect = (p2.lastStats && p2.lastStats.perfect) ? Number(p2.lastStats.perfect) : 0;
+            let p1Won = s1 > s2;
+            let tiebreakerUsed = false;
+
+            if (isPhotoFinish) {
+                tiebreakerUsed = true;
+                if (p1Perfect !== p2Perfect) {
+                    p1Won = p1Perfect > p2Perfect;
+                } else {
+                    p1Won = s1 >= s2;
+                }
+            }
+
+            const p1GiantKiller = p1Won && currentLeaderId === p2.id;
+            const p2GiantKiller = !p1Won && currentLeaderId === p1.id;
+            const p1Streak = p1Won ? ((p1.winStreak || 0) + 1) : 0;
+            const p2Streak = !p1Won ? ((p2.winStreak || 0) + 1) : 0;
+
+            const p1Opps = Array.isArray(p1.opponents) ? [...p1.opponents] : Object.values(p1.opponents || {});
+            const p2Opps = Array.isArray(p2.opponents) ? [...p2.opponents] : Object.values(p2.opponents || {});
+            if (!p1Opps.includes(p2.id)) p1Opps.push(p2.id);
+            if (!p2Opps.includes(p1.id)) p2Opps.push(p1.id);
+
+            updates[`players/${p1.id}/wins`] = (p1.wins || 0) + (p1Won ? 1 : 0);
+            updates[`players/${p1.id}/losses`] = (p1.losses || 0) + (p1Won ? 0 : 1);
+            updates[`players/${p1.id}/winStreak`] = p1Streak;
+            updates[`players/${p1.id}/totalAcc`] = (p1.totalAcc || 0) + s1;
+            updates[`players/${p1.id}/roundsPlayed`] = (p1.roundsPlayed || 0) + 1;
+            updates[`players/${p1.id}/opponents`] = p1Opps;
+            updates[`players/${p1.id}/lastMatchResult`] = {
+                round: data.round,
+                won: p1Won,
+                photoFinish: isPhotoFinish,
+                tiebreakerUsed: tiebreakerUsed,
+                myPerfect: p1Perfect,
+                oppPerfect: p2Perfect,
+                giantKiller: p1GiantKiller,
+                winStreak: p1Streak,
+                myScore: s1,
+                oppName: p2.name,
+                oppAvatar: p2.avatar || '🏃',
+                oppHouse: p2.house || '',
+                oppSide: p2.side || '',
+                oppRoom: p2.roomTeam || '',
+                oppScore: s2,
+                oppStats: p2.lastStats || { perfect: 0, earlyLate: 0, miss: 0 }
+            };
+
+            updates[`players/${p2.id}/wins`] = (p2.wins || 0) + (!p1Won ? 1 : 0);
+            updates[`players/${p2.id}/losses`] = (p2.losses || 0) + (!p1Won ? 0 : 1);
+            updates[`players/${p2.id}/winStreak`] = p2Streak;
+            updates[`players/${p2.id}/totalAcc`] = (p2.totalAcc || 0) + s2;
+            updates[`players/${p2.id}/roundsPlayed`] = (p2.roundsPlayed || 0) + 1;
+            updates[`players/${p2.id}/opponents`] = p2Opps;
+            updates[`players/${p2.id}/lastMatchResult`] = {
+                round: data.round,
+                won: !p1Won,
+                photoFinish: isPhotoFinish,
+                tiebreakerUsed: tiebreakerUsed,
+                myPerfect: p2Perfect,
+                oppPerfect: p1Perfect,
+                giantKiller: p2GiantKiller,
+                winStreak: p2Streak,
+                myScore: s2,
+                oppName: p1.name,
+                oppAvatar: p1.avatar || '🏃',
+                oppHouse: p1.house || '',
+                oppSide: p1.side || '',
+                oppRoom: p1.roomTeam || '',
+                oppScore: s1,
+                oppStats: p1.lastStats || { perfect: 0, earlyLate: 0, miss: 0 }
+            };
+        }
+    });
+
+    return updates;
+}
+
+async function scoreAndConcludeKnockoutRound(data) {
+    const updates = buildRoundScoreUpdates(data);
+    const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+    await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}`), updates);
+}
+
+async function finalizeClassKnockout() {
+    if (!koState.isKnockoutHost || !knockoutDataCache) return;
+    clearKnockoutAutoNextTimer();
+
+    let workingPlayers = JSON.parse(JSON.stringify(knockoutDataCache.players || {}));
+    const roundUpdates = {};
+    if (knockoutDataCache.status === 'playing' && knockoutLastRoundFinished !== knockoutDataCache.round) {
+        knockoutLastRoundFinished = knockoutDataCache.round;
+        const computed = buildRoundScoreUpdates(knockoutDataCache);
+        Object.entries(computed).forEach(([key, val]) => {
+            if (key.startsWith('players/')) {
+                roundUpdates[key] = val;
+                const [, pid, field] = key.split('/');
+                if (workingPlayers[pid]) workingPlayers[pid][field] = val;
+            }
+        });
+    }
+
+    const mode = knockoutDataCache.tournamentMode || 'solo';
+    const nttGroupHouses = knockoutDataCache.nttGroupHouses !== false;
+    const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms' || (mode === 'namethattune' && nttGroupHouses));
+    const ranked = getRankedKnockoutPlayers(workingPlayers);
+
+    const individualPayload = ranked.map(p => {
+        const tag = mode === 'rooms'
+            ? (p.roomTeam ? ` (${p.roomTeam})` : '')
+            : (mode === 'sides'
+                ? (p.side ? ` (${p.side})` : '')
+                : ((mode === 'house' || (mode === 'namethattune' && nttGroupHouses)) && p.house ? ` (${p.house})` : ''));
+        const avgAcc = p.roundsPlayed > 0
+            ? (p.totalAcc / p.roundsPlayed).toFixed(1)
+            : Number(p.currentScore || 0).toFixed(1);
+        return {
+            name: `${p.name}${tag}`,
+            score: avgAcc,
+            avatar: p.avatar || '🏃',
+            id: p.id
+        };
+    });
+
+    let podiumStandings = individualPayload;
+    if (isTeamMode) {
+        const rankedTeams = getRankedTeams(workingPlayers, mode);
+        if (rankedTeams.length > 0) {
+            podiumStandings = rankedTeams.map(g => {
+                const m = g.meta;
+                const avg = g.tourneyRounds > 0 ? g.tourneyAvg.toFixed(1) : g.liveAvg.toFixed(1);
+                return {
+                    name: `${m.label || m.name} (${g.count})`,
+                    score: avg,
+                    avatar: m.icon,
+                    id: `team_${g.key}`
+                };
+            });
+        }
+    }
+
+    if (podiumStandings.length === 0) {
+        podiumStandings = [{ name: 'No Players', score: '0.0', avatar: '🏆', id: 'none' }];
+    }
+
+    const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+    await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}`), {
+        ...roundUpdates,
+        status: 'finished',
+        finalStandings: podiumStandings
+    });
+
+    bridge.setCurrentSongTitle(
+        mode === 'namethattune'
+            ? `Name That Tune (${knockoutDataCache.songTitle || 'Quiz'})`
+            : (mode === 'rooms'
+                ? `Room Battle (${knockoutDataCache.songTitle || 'Tournament'})`
+                : (mode === 'sides'
+                    ? `North vs South (${knockoutDataCache.songTitle || 'Tournament'})`
+                    : (mode === 'house'
+                        ? `House Relay (${knockoutDataCache.songTitle || 'Tournament'})`
+                        : `Class Knockout (${knockoutDataCache.songTitle || 'Tournament'})`)))
+    );
+    if (individualPayload.length > 0) {
+        bridge.postBattleToSpreadsheet(individualPayload);
+    }
+}
+
+function handleKnockoutStudentUpdate(data) {
+    const { localStudentId, sessionStudentName, sessionStudentAvatar } = bridge.getState();
+    const playersObj = data.players || {};
+    const mode = data.tournamentMode || 'solo';
+    const nttGroupHouses = data.nttGroupHouses !== false;
+    const me = playersObj[localStudentId];
+    const ranked = getRankedKnockoutPlayers(playersObj);
+    const myRankIdx = ranked.findIndex(p => p.id === localStudentId);
+    const myPlaceText = myRankIdx >= 0 ? `Rank #${myRankIdx + 1} of ${ranked.length}` : 'Unranked';
+
+    if (me && me.house) koMyHouse = me.house;
+    if (me && me.side) koMySide = me.side;
+    if (me && me.roomTeam) koMyRoom = me.roomTeam;
+
+    const teamBox = document.getElementById('ko-team-picker-box');
+    if (teamBox) {
+        if (mode === 'rooms') {
+            renderStudentTeamPicker('rooms', koMyRoom || 'G1');
+        } else if (mode === 'sides') {
+            renderStudentTeamPicker('sides', koMySide || 'North');
+        } else if (mode === 'house' || (mode === 'namethattune' && nttGroupHouses)) {
+            renderStudentTeamPicker(mode, koMyHouse || 'Crown');
+        } else {
+            teamBox.style.display = 'none';
+        }
+    }
+
+    document.getElementById('ko-student-standings').innerHTML = buildStandingsHTML(ranked, mode, playersObj, nttGroupHouses);
+
+    if (data.status === 'playing' && mode === 'namethattune') {
+        const allArr = Object.values(playersObj);
+        const ansCnt = allArr.filter(p => p.finishedRound === data.round).length;
+        updateNameThatTuneProgressText(ansCnt, allArr.length);
+    }
+
+    if (koOpponentId && koOpponentId !== 'BENCHMARK_80' && playersObj[koOpponentId] && playersObj[koOpponentId].activeEmote) {
+        showOpponentQuickEmote(playersObj[koOpponentId].activeEmote);
+    }
+
+    if (data.status === 'playing' && mode !== 'namethattune' && me && me.incomingSabotage) {
+        applyIncomingSabotage(me.incomingSabotage);
+    }
+
+    if (data.status === 'playing' && mode !== 'namethattune' && me) {
+        const myLiveAcc = Number(me.currentScore !== undefined ? me.currentScore : 100);
+        let oppLiveAcc = 80.0;
+        if (koOpponentId && koOpponentId !== 'BENCHMARK_80' && playersObj[koOpponentId]) {
+            oppLiveAcc = Number(playersObj[koOpponentId].currentScore !== undefined ? playersObj[koOpponentId].currentScore : 100);
+        }
+        updateTugOfWarHUD(myLiveAcc, oppLiveAcc);
+    }
+
+    if (data.status === 'playing' && knockoutLastRoundStarted !== data.round) {
+        knockoutLastRoundStarted = data.round;
+
+        if (mode === 'namethattune') {
+            document.getElementById('knockout-modal').classList.remove('open');
+            document.getElementById('game-results-modal').classList.remove('open');
+            document.getElementById('arcade-hub').classList.remove('open');
+            const tugHud = document.getElementById('tug-of-war-hud');
+            if (tugHud) tugHud.style.display = 'none';
+
+            const houseBadgeHtml = (nttGroupHouses && me) ? getTeamBadgeHTML(me, 'namethattune', true) : '';
+
+            launchStudentNameThatTuneRound(data, houseBadgeHtml, async (result) => {
+                const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+                await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}/players/${localStudentId}`), {
+                    currentScore: result.score,
+                    finishedRound: data.round,
+                    nttCorrect: result.isCorrect,
+                    nttTimeSec: result.responseSec
+                });
+            });
+            return;
+        }
+
+        if (data.songCode) {
+            bridge.setCurrentSongTitle(data.songTitle);
+            const songSelect = document.getElementById('song-select');
+            if (songSelect) songSelect.value = data.songCode;
+            const parsed = parsePianoPad(data.songCode);
+            if (parsed.length > 0) bridge.setCurrentSong(autoTransposeSong(parsed));
+        }
+
+        const pairings = Object.values(data.pairings || {});
+        const myMatch = pairings.find(m => m.p1 === localStudentId || m.p2 === localStudentId);
+        let oppName = 'Class Opponent';
+        let oppAvatar = '🤖';
+        let oppRankText = 'Challenger';
+        koOpponentId = null;
+        koOppHouse = '';
+        koOppSide = '';
+        koOppRoom = '';
+
+        if (myMatch) {
+            if (myMatch.isGhostMatch) {
+                koOpponentId = 'BENCHMARK_80';
+                oppName = '80% Benchmark';
+                oppAvatar = '🎯';
+                oppRankText = 'Target Score';
+            } else {
+                const oppId = myMatch.p1 === localStudentId ? myMatch.p2 : myMatch.p1;
+                koOpponentId = oppId;
+                const oppObj = playersObj[oppId];
+                if (oppObj) {
+                    oppName = oppObj.name;
+                    oppAvatar = oppObj.avatar || '🏃';
+                    koOppHouse = oppObj.house || '';
+                    koOppSide = oppObj.side || '';
+                    koOppRoom = oppObj.roomTeam || '';
+                    const oppIdx = ranked.findIndex(p => p.id === oppId);
+                    const isBounty = oppIdx === 0 && (oppObj.roundsPlayed || 0) > 0;
+
+                    if (mode === 'rooms' && CLASS_ROOMS[koOppRoom]) {
+                        const or = CLASS_ROOMS[koOppRoom];
+                        oppRankText = `${or.icon} ${or.label}`;
+                    } else if (mode === 'sides' && ROOM_SIDES[koOppSide]) {
+                        const os = ROOM_SIDES[koOppSide];
+                        oppRankText = `${os.icon} ${os.label}`;
+                    } else if (mode === 'house' && ER_HOUSES[koOppHouse]) {
+                        const oh = ER_HOUSES[koOppHouse];
+                        oppRankText = `${oh.icon} ${oh.name} House`;
+                    } else {
+                        oppRankText = isBounty
+                            ? `🎯 #1 BOUNTY TARGET`
+                            : (oppIdx >= 0 ? `Rank #${oppIdx + 1}` : 'Challenger');
+                    }
+                }
+            }
+        }
+
+        koOpponentName = oppName;
+        koOpponentAvatar = oppAvatar;
+
+        document.getElementById('knockout-modal').classList.remove('open');
+        document.getElementById('game-results-modal').classList.remove('open');
+        document.getElementById('arcade-hub').classList.remove('open');
+
+        const myIsBounty = myRankIdx === 0 && (playersObj[localStudentId]?.roundsPlayed || 0) > 0;
+        const myTeamMeta = mode === 'rooms'
+            ? CLASS_ROOMS[koMyRoom]
+            : (mode === 'sides' ? ROOM_SIDES[koMySide] : (mode === 'house' ? ER_HOUSES[koMyHouse] : null));
+
+        document.getElementById('ko-vs-round-label').textContent = mode === 'rooms'
+            ? `🏫 ROOM BATTLE • ROUND ${data.round}`
+            : (mode === 'sides'
+                ? `🧭 NORTH VS. SOUTH • ROUND ${data.round}`
+                : (mode === 'house' ? `🏰 HOUSE RELAY • ROUND ${data.round}` : `ROUND ${data.round} MATCHUP`));
+        document.getElementById('ko-vs-p1-avatar').textContent = sessionStudentAvatar || '🏃';
+        document.getElementById('ko-vs-p1-name').textContent = sessionStudentName || 'You';
+        document.getElementById('ko-vs-p1-rank').textContent = myTeamMeta
+            ? `${myTeamMeta.icon} ${myTeamMeta.label || myTeamMeta.name}`
+            : (myIsBounty ? `👑 #1 DEFENDING BOUNTY` : myPlaceText);
+        document.getElementById('ko-vs-p2-avatar').textContent = oppAvatar;
+        document.getElementById('ko-vs-p2-name').textContent = oppName;
+        document.getElementById('ko-vs-p2-rank').textContent = oppRankText;
+        document.getElementById('ko-vs-song-label').textContent = `Song: ${data.songTitle}`;
+
+        const myPastOpps = (me && me.opponents)
+            ? (Array.isArray(me.opponents) ? me.opponents : Object.values(me.opponents))
+            : [];
+        const isRematch = Boolean(koOpponentId && koOpponentId !== 'BENCHMARK_80' && myPastOpps.includes(koOpponentId));
+        const rivalryBadge = document.getElementById('ko-vs-rivalry-badge');
+        if (rivalryBadge) {
+            rivalryBadge.style.display = isRematch ? 'inline-block' : 'none';
+        }
+
+        const p1Bubble = document.getElementById('ko-vs-p1-emote');
+        const p2Bubble = document.getElementById('ko-vs-p2-emote');
+        if (p1Bubble) p1Bubble.classList.remove('visible');
+        if (p2Bubble) p2Bubble.classList.remove('visible');
+        dealKnockoutEmoteDeck();
+
+        const vsOverlay = document.getElementById('ko-vs-overlay');
+        vsOverlay.style.display = 'flex';
+
+        setTimeout(() => {
+            vsOverlay.style.display = 'none';
+            bridge.prepareMatchStart();
+            updateTugOfWarHUD(100.0, koOpponentId === 'BENCHMARK_80' ? 80.0 : 100.0);
+            bridge.startCountdown(() => { bridge.playSong(); });
+        }, 3200);
+
+    } else if (data.status === 'round_results') {
+        const tugHud = document.getElementById('tug-of-war-hud');
+        if (tugHud) tugHud.style.display = 'none';
+        hideNameThatTuneModal();
+        resetKnockoutRoundEffects();
+
+        if (me && me.lastMatchResult && me.lastMatchResult.round === data.round && knockoutLastRoundFinished !== data.round) {
+            knockoutLastRoundFinished = data.round;
+
+            if (me.lastMatchResult.isNameThatTune) {
+                const res = me.lastMatchResult;
+                document.getElementById('ko-student-status').innerHTML = res.won
+                    ? `🎉 Round ${data.round} Correct! "${res.songTitle}" (+${Number(res.myScore).toFixed(1)}% in ${res.responseSec.toFixed(1)}s)`
+                    : `❌ Round ${data.round} Complete — The song was "${res.songTitle}"`;
+                document.getElementById('ko-student-pairing-box').textContent = `Waiting for Teacher to start Round ${data.round + 1}...`;
+                document.getElementById('knockout-modal').classList.add('open');
+            } else {
+                renderKnockoutPostRoundComparison(me, me.lastMatchResult, myPlaceText);
+            }
+        }
+    } else if (data.status === 'finished') {
+        const tugHud = document.getElementById('tug-of-war-hud');
+        if (tugHud) tugHud.style.display = 'none';
+        hideNameThatTuneModal();
+
+        if (!knockoutFinaleShown) {
+            knockoutFinaleShown = true;
+            document.getElementById('knockout-modal')?.classList.remove('open');
+
+            let standings = data.finalStandings || [];
+            if (standings.length === 0) {
+                const ranked = getRankedKnockoutPlayers(data.players || {});
+                standings = ranked.map(p => ({
+                    name: p.name, score: p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0', avatar: p.avatar, id: p.id
+                }));
+            }
+            const finaleTitle = mode === 'namethattune'
+                ? `🎵 Name That Tune Championship Complete!`
+                : (mode === 'rooms'
+                    ? `🏫 Room Battle (G1 vs. G2 vs. G3) Complete!`
+                    : (mode === 'sides'
+                        ? `🧭 North vs. South Showdown Complete!`
+                        : (mode === 'house' ? `🏰 House Relay Championship Complete!` : `🏆 Class Knockout Complete!`)));
+            bridge.showGrandFinale(standings, false, finaleTitle);
+        }
+    }
+}
+
+export function syncKnockoutLiveScore() {
+    if (!koState.isClassKnockout || !koState.knockoutRoomCode || !window.firebaseDb) return;
+    if (knockoutDataCache && knockoutDataCache.tournamentMode === 'namethattune') return;
+
+    const { gameStats, localStudentId } = bridge.getState();
+    const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+    const acc = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100) : 100;
+
+    let oppLiveAcc = 80.0;
+    if (knockoutDataCache && knockoutDataCache.players && koOpponentId && koOpponentId !== 'BENCHMARK_80') {
+        const oppObj = knockoutDataCache.players[koOpponentId];
+        if (oppObj && oppObj.currentScore !== undefined) oppLiveAcc = Number(oppObj.currentScore);
+    }
+    updateTugOfWarHUD(acc, oppLiveAcc);
+
+    clearTimeout(knockoutLiveSyncTimer);
+    knockoutLiveSyncTimer = setTimeout(async () => {
+        const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+        await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}/players/${localStudentId}`), {
+            currentScore: Number(acc.toFixed(1)),
+            lastStats: { ...gameStats }
+        });
+    }, 350);
+}
+
+export async function submitKnockoutRoundFinish() {
+    if (!koState.isClassKnockout || !koState.knockoutRoomCode || !window.firebaseDb) return;
+    if (knockoutDataCache && knockoutDataCache.tournamentMode === 'namethattune') return;
+
+    const { gameStats, localStudentId } = bridge.getState();
+    const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+    const acc = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100) : 0;
+    const roundNum = knockoutDataCache ? knockoutDataCache.round : 1;
+
+    const tugHud = document.getElementById('tug-of-war-hud');
+    if (tugHud) tugHud.style.display = 'none';
+    resetKnockoutRoundEffects();
+
+    const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+    await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}/players/${localStudentId}`), {
+        currentScore: Number(acc.toFixed(1)),
+        finishedRound: roundNum,
+        lastStats: { ...gameStats }
+    });
+
+    document.getElementById('ko-student-status').textContent = `✅ Round ${roundNum} Finished (${acc.toFixed(1)}%)! Waiting for remaining classmates...`;
+    document.getElementById('ko-student-pairing-box').textContent = `Pairings for the next round will generate automatically once all matches complete.`;
+    document.getElementById('knockout-modal').classList.add('open');
+}
+
+function renderKnockoutPostRoundComparison(me, res, myPlaceText) {
+    document.getElementById('knockout-modal').classList.remove('open');
+
+    const multiGraph = document.getElementById('multi-bar-graph');
+    multiGraph.innerHTML = '';
+    multiGraph.style.display = 'flex';
+    document.getElementById('single-bar-graph').style.display = 'none';
+    document.getElementById('btn-battle-again').style.display = 'none';
+
+    const myStats = me.lastStats || { perfect: 0, earlyLate: 0, miss: 0 };
+    const myTot = Math.max(1, myStats.perfect + myStats.earlyLate + myStats.miss);
+    const oppStats = res.oppStats || { perfect: 0, earlyLate: 0, miss: 0 };
+    const oppTot = Math.max(1, oppStats.perfect + oppStats.earlyLate + oppStats.miss);
+
+    const contenders = [
+        {
+            label: `${me.avatar || '🏃'} ${me.name} (You)`,
+            score: Number(res.myScore || 0).toFixed(1),
+            g: (myStats.perfect / myTot) * 100,
+            o: (myStats.earlyLate / myTot) * 100,
+            r: (myStats.miss / myTot) * 100,
+            winner: res.won
+        },
+        {
+            label: `${res.oppAvatar || '🏃'} ${res.oppName}`,
+            score: Number(res.oppScore || 0).toFixed(1),
+            g: (oppStats.perfect / oppTot) * 100,
+            o: (oppStats.earlyLate / oppTot) * 100,
+            r: (oppStats.miss / oppTot) * 100,
+            winner: !res.won
+        }
+    ];
+
+    contenders.forEach(c => {
+        const col = document.createElement('div');
+        col.className = 'multi-bar-column';
+        col.style.minWidth = '110px';
+        col.innerHTML = `
+            <div class="rank-medal-badge" style="color:${c.winner ? '#22c55e' : '#f97316'};">
+                ${c.winner ? '🏆 WINNER' : 'RUNNER-UP'} (${c.score}%)
+            </div>
+            <div class="stacked-bar" style="width:48px;">
+                <div class="bar-part-red" style="height:${c.r}%;"></div>
+                <div class="bar-part-orange" style="height:${c.o}%;"></div>
+                <div class="bar-part-green" style="height:${c.g}%;"></div>
+            </div>
+            <span style="font-size:0.8rem; font-weight:700; color:#fff;">${c.label}</span>
+        `;
+        multiGraph.appendChild(col);
+    });
+
+    const photoFinishHtml = res.photoFinish
+        ? `<div style="margin-top:6px;"><span class="photo-finish-badge">PHOTO FINISH 🔥</span> <span style="font-size:0.78rem; color:#facc15; font-weight:700;">Tiebreaker by Perfect Hits (${res.myPerfect ?? myStats.perfect} vs ${res.oppPerfect ?? oppStats.perfect})</span></div>`
+        : '';
+
+    const all50Buttons = KO_HYPE_EMOTES.map(emote => `
+        <button type="button" class="ko-emote-btn" style="font-size:0.72rem; padding:4px 6px;" onclick="sendKnockoutQuickEmote('${emote.replace(/'/g, "\\'")}')">${emote}</button>
+    `).join('');
+
+    document.getElementById('game-summary-text').innerHTML = `
+        <div style="font-size:1.25rem; font-weight:900; color:${res.won ? '#22c55e' : '#38bdf8'};">
+            ${res.won ? '🎉 Round Victory!' : '👏 Great Effort!'}
+        </div>
+        ${photoFinishHtml}
+        <div id="ko-post-opp-emote" style="display:none; margin-top:6px; font-size:0.85rem; color:#fff;"></div>
+        <div style="margin-top:10px; background:#111827; border:1px solid #374151; border-radius:8px; padding:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-size:0.72rem; font-weight:800; color:#9ca3af; text-transform:uppercase;">Post-Match Reactions (All ${KO_HYPE_EMOTES.length}):</span>
+                <span id="ko-post-emote-feedback" style="font-size:0.75rem; color:#cbd5e1;">Tap to react!</span>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(115px, 1fr)); gap:5px; max-height:135px; overflow-y:auto; padding-right:4px;">
+                ${all50Buttons}
+            </div>
+        </div>
+    `;
+    document.getElementById('badge-container').innerHTML = '';
+    document.getElementById('game-rank-text').textContent = `Current Class Placing: ${myPlaceText}`;
+    document.getElementById('game-results-modal').classList.add('open');
+}
+
+export function leaveClassKnockout() {
+    clearKnockoutAutoNextTimer();
+    hideNameThatTuneModal();
+    if (knockoutUnsubscribe) {
+        knockoutUnsubscribe();
+        knockoutUnsubscribe = null;
+    }
+    koState.isClassKnockout = false;
+    koState.isKnockoutHost = false;
+    bridge.setIsSongBattle(false);
+    koState.knockoutRoomCode = "";
+    knockoutDataCache = null;
+    knockoutFinaleShown = false;
+    resetKnockoutRoundEffects();
+    const tugHud = document.getElementById('tug-of-war-hud');
+    if (tugHud) tugHud.style.display = 'none';
+    const koModal = document.getElementById('knockout-modal');
+    if (koModal) koModal.classList.remove('open');
+    const vsOverlay = document.getElementById('ko-vs-overlay');
+    if (vsOverlay) vsOverlay.style.display = 'none';
+    bridge.stopSong();
+}
+
+window.selectKnockoutTeam = selectKnockoutTeam;
+window.dealKnockoutEmoteDeck = dealKnockoutEmoteDeck;
+window.sendKnockoutQuickEmote = sendKnockoutQuickEmote;
+window.leaveClassKnockout = leaveClassKnockout;
