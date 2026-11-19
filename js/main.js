@@ -1,3 +1,4 @@
+import { SPREADSHEET_CSV_URL, LEADERBOARD_CSV_URL, APPS_SCRIPT_URL, GAMEMODE_RANKS_CSV_URL } from './config.js';
 
         let audioCtx = null;
         let songList = [];
