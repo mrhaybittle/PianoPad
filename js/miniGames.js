@@ -3,7 +3,7 @@ import { getNoteFrequency, noteToPitch, pitchToNote, parsePianoPad, autoTranspos
 import { APPS_SCRIPT_URL } from './config.js';
 import { startRhythmEcho, handleRhythmEchoInput } from './games/rhythmEcho.js';
 import { startNoteSniper, handleNoteSniperInput } from './games/noteSniper.js';
-
+import { startFlappyPitch, handleFlappyPitchInput, stopFlappyPitch } from './games/flappyPitch.js';
 export const arcadeState = {
     activeMiniGame: null,
     miniGameFallSpeedMs: 3800,
@@ -46,7 +46,15 @@ export function initMiniGamesBridge(deps) {
 function injectNewArcadeButtons() {
     const hub = document.getElementById('arcade-hub');
     if (!hub) return;
-
+if (!document.getElementById('btn-arcade-flappy-pitch')) {
+    const flappyBtn = document.createElement('button');
+    flappyBtn.type = 'button';
+    flappyBtn.id = 'btn-arcade-flappy-pitch';
+    flappyBtn.className = 'arcade-card-btn';
+    flappyBtn.onclick = () => startFlappyPitch(gameBridgeHelper);
+    flappyBtn.innerHTML = `<span style="font-size:1.5rem;">🐦</span><strong>Flappy Pitch</strong><small>Steer with high & low notes</small>`;
+    btnContainer.appendChild(flappyBtn);
+}
     const btnContainer = hub.querySelector('.arcade-grid') || hub;
     if (!document.getElementById('btn-arcade-rhythm-echo')) {
         const rhythmBtn = document.createElement('button');
