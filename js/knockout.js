@@ -36,6 +36,10 @@ let knockoutLastRoundFinished = 0;
 let knockoutDataCache = null;
 let knockoutLiveSyncTimer = null;
 
+let koAutoNextInterval = null;
+let koAutoNextSecondsLeft = 15;
+let koAutoNextTargetRound = 0;
+
 let knockoutSabotageCount = 0;
 let lastProcessedSabotageId = null;
 let koOpponentId = null;
@@ -70,6 +74,55 @@ const KO_HYPE_EMOTES = [
 
 export function initKnockoutBridge(deps) {
     bridge = deps;
+}
+
+function clearKnockoutAutoNextTimer() {
+    if (koAutoNextInterval) {
+        clearInterval(koAutoNextInterval);
+        koAutoNextInterval = null;
+    }
+    koAutoNextTargetRound = 0;
+}
+
+function advanceToNextKnockoutSong() {
+    const koSongSel = document.getElementById('ko-song-select');
+    if (!koSongSel || koSongSel.options.length <= 1) return;
+    const nextIdx = (koSongSel.selectedIndex + 1) % koSongSel.options.length;
+    koSongSel.selectedIndex = nextIdx;
+}
+
+function startKnockoutAutoNextTimer(completedRound) {
+    if (koAutoNextInterval && koAutoNextTargetRound === completedRound) return;
+    clearKnockoutAutoNextTimer();
+
+    koAutoNextTargetRound = completedRound;
+    koAutoNextSecondsLeft = 15;
+
+    const updateBanner = () => {
+        const statusBanner = document.getElementById('ko-status-banner');
+        if (statusBanner) {
+            statusBanner.innerHTML = `Round ${completedRound} Complete! <span style="color:#facc15;">⏱️ Auto-starting Round ${completedRound + 1} with next song in ${koAutoNextSecondsLeft}s...</span>`;
+        }
+    };
+
+    updateBanner();
+
+    koAutoNextInterval = setInterval(() => {
+        const toggle = document.getElementById('ko-auto-next-toggle');
+        if (!toggle || !toggle.checked || !koState.isKnockoutHost || !knockoutDataCache || knockoutDataCache.status !== 'round_results') {
+            clearKnockoutAutoNextTimer();
+            return;
+        }
+
+        koAutoNextSecondsLeft--;
+        if (koAutoNextSecondsLeft > 0) {
+            updateBanner();
+        } else {
+            clearKnockoutAutoNextTimer();
+            advanceToNextKnockoutSong();
+            startNextKnockoutRound();
+        }
+    }, 1000);
 }
 
 export function initSwissTournamentUI() {
@@ -113,7 +166,11 @@ export function initSwissTournamentUI() {
                             <label style="font-size:0.72rem; color:#9ca3af; font-weight:700; display:block; margin-bottom:4px;">SELECT SONG FOR NEXT ROUND:</label>
                             <select id="ko-song-select" style="width:100%; max-width:100%; background:#000; color:#fff;"></select>
                         </div>
-                        <div style="display:flex; gap:8px; align-items:flex-end;">
+                        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                            <label id="ko-auto-next-label" title="Automatically advance to the next song and start the next round 15 seconds after a round ends" style="display:inline-flex; align-items:center; gap:6px; background:#1f2937; border:1px solid #4b5563; color:#facc15; padding:7px 10px; border-radius:6px; font-size:0.8rem; font-weight:800; cursor:pointer; user-select:none;">
+                                <input type="checkbox" id="ko-auto-next-toggle" style="accent-color:#22c55e; width:15px; height:15px; cursor:pointer; margin:0;">
+                                <span>⏱️ Auto-Next (15s)</span>
+                            </label>
                             <button type="button" id="btn-ko-start-round" class="btn-success" style="padding:8px 14px; font-size:0.85rem; background:#ef4444;">▶ Start Round 1</button>
                             <button type="button" id="btn-ko-force-end" class="btn-warning" style="display:none; padding:8px 12px; font-size:0.82rem;">⚡ Force End Round</button>
                             <button type="button" id="btn-ko-finish-tourney" class="btn-arcade" style="display:none; padding:8px 12px; font-size:0.82rem; background:#fff; color:#000;">🏅 End & Podium</button>
@@ -160,6 +217,26 @@ export function initSwissTournamentUI() {
             await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}`), {
                 tournamentMode: modeVal
             });
+        });
+
+        document.getElementById('ko-auto-next-toggle').addEventListener('change', (e) => {
+            const label = document.getElementById('ko-auto-next-label');
+            if (label) {
+                label.style.borderColor = e.target.checked ? '#22c55e' : '#4b5563';
+                label.style.background = e.target.checked ? '#052e16' : '#1f2937';
+            }
+
+            if (!e.target.checked) {
+                clearKnockoutAutoNextTimer();
+                if (knockoutDataCache && knockoutDataCache.status === 'round_results') {
+                    const statusBanner = document.getElementById('ko-status-banner');
+                    if (statusBanner) {
+                        statusBanner.textContent = `Round ${knockoutDataCache.round} Complete! Ready for Round ${knockoutDataCache.round + 1}.`;
+                    }
+                }
+            } else if (koState.isKnockoutHost && knockoutDataCache && knockoutDataCache.status === 'round_results') {
+                startKnockoutAutoNextTimer(knockoutDataCache.round);
+            }
         });
 
         document.getElementById('btn-ko-start-round').addEventListener('click', startNextKnockoutRound);
@@ -414,7 +491,6 @@ export async function sendKnockoutQuickEmote(emoteText) {
 
     playEmotePopSound();
 
-    // Update Pre-Match VS bubble if open
     const selfBubble = document.getElementById('ko-vs-p1-emote');
     if (selfBubble) {
         selfBubble.textContent = emoteText;
@@ -425,7 +501,6 @@ export async function sendKnockoutQuickEmote(emoteText) {
         }, 2600);
     }
 
-    // Update Post-Match feedback banner if open
     const postFeedback = document.getElementById('ko-post-emote-feedback');
     if (postFeedback) {
         postFeedback.innerHTML = `You sent: <span style="color:#facc15; font-weight:900;">${emoteText}</span>`;
@@ -450,7 +525,6 @@ function showOpponentQuickEmote(emoteObj) {
 
     playEmotePopSound();
 
-    // Show on Pre-Match VS screen
     const oppBubble = document.getElementById('ko-vs-p2-emote');
     if (oppBubble) {
         oppBubble.textContent = emoteObj.text;
@@ -461,7 +535,6 @@ function showOpponentQuickEmote(emoteObj) {
         }, 2600);
     }
 
-    // Show on Post-Match results screen if open
     const postIncoming = document.getElementById('ko-post-opp-emote');
     if (postIncoming) {
         postIncoming.innerHTML = `${koOpponentAvatar} ${koOpponentName} says: <span style="background:#ef4444; color:#fff; padding:2px 8px; border-radius:6px; font-weight:900;">${emoteObj.text}</span>`;
@@ -497,7 +570,6 @@ export function updateTugOfWarHUD(myAcc, oppAcc) {
         const myTeamKey = mode === 'rooms' ? koMyRoom : (mode === 'sides' ? koMySide : koMyHouse);
         let oppTeamKey = mode === 'rooms' ? koOppRoom : (mode === 'sides' ? (koMySide === 'North' ? 'South' : 'North') : koOppHouse);
 
-        // If matched against a benchmark or unassigned player in Room mode, pick the top rival room
         if (!oppTeamKey || !teamAvgs[oppTeamKey]) {
             const rivalEntry = Object.values(teamAvgs).find(g => g.key !== myTeamKey);
             if (rivalEntry) oppTeamKey = rivalEntry.key;
@@ -629,6 +701,7 @@ export async function openTeacherKnockoutSetup() {
 
     bridge.closeSprintOptionModal();
     initSwissTournamentUI();
+    clearKnockoutAutoNextTimer();
 
     koState.isClassKnockout = true;
     koState.isKnockoutHost = true;
@@ -639,6 +712,14 @@ export async function openTeacherKnockoutSetup() {
 
     const modeSelect = document.getElementById('ko-mode-select');
     if (modeSelect) modeSelect.value = 'solo';
+
+    const autoNextToggle = document.getElementById('ko-auto-next-toggle');
+    const autoNextLabel = document.getElementById('ko-auto-next-label');
+    if (autoNextToggle) autoNextToggle.checked = false;
+    if (autoNextLabel) {
+        autoNextLabel.style.borderColor = '#4b5563';
+        autoNextLabel.style.background = '#1f2937';
+    }
 
     const koSongSel = document.getElementById('ko-song-select');
     koSongSel.innerHTML = '';
@@ -868,7 +949,6 @@ function generateSwissPairings(playersObj, roundNum, mode = 'solo') {
         ordered = getRankedKnockoutPlayers(playersObj);
     }
 
-    // Avoid rematches and prioritize cross-team (cross-house, North vs South, or G1 vs G2 vs G3) opponents
     for (let i = 0; i < ordered.length - 1; i += 2) {
         const p1 = ordered[i];
         const p2 = ordered[i + 1];
@@ -928,6 +1008,8 @@ function generateSwissPairings(playersObj, roundNum, mode = 'solo') {
 
 async function startNextKnockoutRound() {
     if (!koState.isKnockoutHost || !knockoutDataCache) return;
+    clearKnockoutAutoNextTimer();
+
     const playersObj = knockoutDataCache.players || {};
     const playerIds = Object.keys(playersObj);
 
@@ -986,6 +1068,10 @@ function handleKnockoutHostUpdate(data) {
     const btnStart = document.getElementById('btn-ko-start-round');
     const btnForce = document.getElementById('btn-ko-force-end');
     const btnFinish = document.getElementById('btn-ko-finish-tourney');
+
+    if (data.status !== 'round_results') {
+        clearKnockoutAutoNextTimer();
+    }
 
     if (data.status === 'lobby') {
         if (mode === 'rooms') {
@@ -1092,7 +1178,13 @@ function handleKnockoutHostUpdate(data) {
                     ? `▶ Start Round ${data.round + 1} (House Relay)`
                     : `▶ Start Round ${data.round + 1} (Swiss Matched)`));
         btnFinish.style.display = 'inline-flex';
-        statusBanner.textContent = `Round ${data.round} Complete! Ready for Round ${data.round + 1}.`;
+
+        const autoToggle = document.getElementById('ko-auto-next-toggle');
+        if (autoToggle && autoToggle.checked) {
+            startKnockoutAutoNextTimer(data.round);
+        } else {
+            statusBanner.textContent = `Round ${data.round} Complete! Ready for Round ${data.round + 1}.`;
+        }
     } else if (data.status === 'finished') {
         btnStart.style.display = 'none';
         btnForce.style.display = 'none';
@@ -1239,6 +1331,8 @@ async function scoreAndConcludeKnockoutRound(data) {
 
 async function finalizeClassKnockout() {
     if (!koState.isKnockoutHost || !knockoutDataCache) return;
+    clearKnockoutAutoNextTimer();
+
     const mode = knockoutDataCache.tournamentMode || 'solo';
     const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms');
     const ranked = getRankedKnockoutPlayers(knockoutDataCache.players || {});
@@ -1601,6 +1695,7 @@ function renderKnockoutPostRoundComparison(me, res, myPlaceText) {
 }
 
 export function leaveClassKnockout() {
+    clearKnockoutAutoNextTimer();
     if (knockoutUnsubscribe) {
         knockoutUnsubscribe();
         knockoutUnsubscribe = null;
