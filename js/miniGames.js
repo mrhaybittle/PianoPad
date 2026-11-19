@@ -4,6 +4,7 @@ import { APPS_SCRIPT_URL } from './config.js';
 import { startRhythmEcho, handleRhythmEchoInput } from './games/rhythmEcho.js';
 import { startNoteSniper, handleNoteSniperInput } from './games/noteSniper.js';
 import { startFlappyPitch, handleFlappyPitchInput, stopFlappyPitch } from './games/flappyPitch.js';
+import { startStaffSurfers, handleStaffSurfersInput, stopStaffSurfers } from './games/staffSurfers.js';
 
 export const arcadeState = {
     activeMiniGame: null,
@@ -79,6 +80,16 @@ function injectNewArcadeButtons() {
         sniperBtn.innerHTML = `<span style="font-size:1.5rem;">🎯</span><strong>Note Sniper</strong><small>Sight-reading speed</small>`;
         btnContainer.appendChild(sniperBtn);
     }
+
+    if (!document.getElementById('btn-arcade-staff-surfers')) {
+        const staffBtn = document.createElement('button');
+        staffBtn.type = 'button';
+        staffBtn.id = 'btn-arcade-staff-surfers';
+        staffBtn.className = 'arcade-card-btn';
+        staffBtn.onclick = () => startStaffSurfers(gameBridgeHelper);
+        staffBtn.innerHTML = `<span style="font-size:1.5rem;">🚇</span><strong>Staff Surfers</strong><small>Dodge trains & hit notes</small>`;
+        btnContainer.appendChild(staffBtn);
+    }
 }
 
 const gameBridgeHelper = {
@@ -138,6 +149,7 @@ export function returnToPlayerHome() {
 
 export function exitActiveMiniGame() {
     stopFlappyPitch();
+    stopStaffSurfers();
     arcadeState.activeMiniGame = null;
     bridge.setIsPlaying(false);
     arcadeState.raceActive = false;
@@ -159,6 +171,10 @@ export function handleMiniGameNoteInput(noteStr) {
     const mode = arcadeState.activeMiniGame;
     if (!mode) return false;
 
+    if (mode === 'staffSurfers') {
+        handleStaffSurfersInput(noteStr, gameBridgeHelper);
+        return true;
+    }
     if (mode === 'flappyPitch') {
         handleFlappyPitchInput(noteStr, gameBridgeHelper);
         return true;
@@ -1049,6 +1065,7 @@ function handleSprintInput(noteStr) {
 export function launchRhythmEcho() { startRhythmEcho(gameBridgeHelper); }
 export function launchNoteSniper() { startNoteSniper(gameBridgeHelper); }
 export function launchFlappyPitch() { startFlappyPitch(gameBridgeHelper); }
+export function launchStaffSurfers() { startStaffSurfers(gameBridgeHelper); }
 
 Object.assign(window, {
     startSimonTaps,
@@ -1065,5 +1082,6 @@ Object.assign(window, {
     forceEndSongBattle,
     launchRhythmEcho,
     launchNoteSniper,
-    launchFlappyPitch
+    launchFlappyPitch,
+    launchStaffSurfers
 });
