@@ -373,11 +373,16 @@ export function dealKnockoutEmoteDeck() {
     if (!deckEl) return;
 
     const shuffled = [...KO_HYPE_EMOTES].sort(() => Math.random() - 0.5);
-    const hand = shuffled.slice(0, 4);
+    const hand = shuffled.slice(0, 10);
+
+    deckEl.style.display = 'grid';
+    deckEl.style.gridTemplateColumns = 'repeat(auto-fit, minmax(115px, 1fr))';
+    deckEl.style.gap = '6px';
+    deckEl.style.marginTop = '12px';
 
     deckEl.innerHTML = hand.map(emote => `
-        <button type="button" class="ko-emote-btn" onclick="sendKnockoutQuickEmote('${emote.replace(/'/g, "\\'")}')">${emote}</button>
-    `).join('') + `<button type="button" class="ko-shuffle-btn" title="Deal 4 new reactions" onclick="dealKnockoutEmoteDeck()">🎲</button>`;
+        <button type="button" class="ko-emote-btn" style="font-size:0.74rem; padding:5px 6px;" onclick="sendKnockoutQuickEmote('${emote.replace(/'/g, "\\'")}')">${emote}</button>
+    `).join('') + `<button type="button" class="ko-shuffle-btn" style="font-size:0.78rem; padding:5px 8px; font-weight:800;" title="Deal 10 new reactions" onclick="dealKnockoutEmoteDeck()">🎲 Shuffle</button>`;
 }
 
 function playEmotePopSound() {
@@ -404,6 +409,7 @@ export async function sendKnockoutQuickEmote(emoteText) {
 
     playEmotePopSound();
 
+    // Update Pre-Match VS bubble if open
     const selfBubble = document.getElementById('ko-vs-p1-emote');
     if (selfBubble) {
         selfBubble.textContent = emoteText;
@@ -412,6 +418,12 @@ export async function sendKnockoutQuickEmote(emoteText) {
         koSelfEmoteHideTimer = setTimeout(() => {
             selfBubble.classList.remove('visible');
         }, 2600);
+    }
+
+    // Update Post-Match feedback banner if open
+    const postFeedback = document.getElementById('ko-post-emote-feedback');
+    if (postFeedback) {
+        postFeedback.innerHTML = `You sent: <span style="color:#facc15; font-weight:900;">${emoteText}</span>`;
     }
 
     const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
@@ -432,6 +444,8 @@ function showOpponentQuickEmote(emoteObj) {
     if (ageMs > 5000) return;
 
     playEmotePopSound();
+
+    // Show on Pre-Match VS screen
     const oppBubble = document.getElementById('ko-vs-p2-emote');
     if (oppBubble) {
         oppBubble.textContent = emoteObj.text;
@@ -440,6 +454,13 @@ function showOpponentQuickEmote(emoteObj) {
         koOppEmoteHideTimer = setTimeout(() => {
             oppBubble.classList.remove('visible');
         }, 2600);
+    }
+
+    // Show on Post-Match results screen if open
+    const postIncoming = document.getElementById('ko-post-opp-emote');
+    if (postIncoming) {
+        postIncoming.innerHTML = `${koOpponentAvatar} ${koOpponentName} says: <span style="background:#ef4444; color:#fff; padding:2px 8px; border-radius:6px; font-weight:900;">${emoteObj.text}</span>`;
+        postIncoming.style.display = 'block';
     }
 }
 
@@ -1533,13 +1554,24 @@ function renderKnockoutPostRoundComparison(me, res, myPlaceText) {
         ? `<div style="margin-top:6px;"><span class="photo-finish-badge">PHOTO FINISH 🔥</span> <span style="font-size:0.78rem; color:#facc15; font-weight:700;">Tiebreaker by Perfect Hits (${res.myPerfect ?? myStats.perfect} vs ${res.oppPerfect ?? oppStats.perfect})</span></div>`
         : '';
 
+    const all50Buttons = KO_HYPE_EMOTES.map(emote => `
+        <button type="button" class="ko-emote-btn" style="font-size:0.72rem; padding:4px 6px;" onclick="sendKnockoutQuickEmote('${emote.replace(/'/g, "\\'")}')">${emote}</button>
+    `).join('');
+
     document.getElementById('game-summary-text').innerHTML = `
         <div style="font-size:1.25rem; font-weight:900; color:${res.won ? '#22c55e' : '#38bdf8'};">
             ${res.won ? '🎉 Round Victory!' : '👏 Great Effort!'}
         </div>
         ${photoFinishHtml}
-        <div style="font-size:0.88rem; color:#cbd5e1; margin-top:4px;">
-            Stay ready — Teacher will launch the next round shortly!
+        <div id="ko-post-opp-emote" style="display:none; margin-top:6px; font-size:0.85rem; color:#fff;"></div>
+        <div style="margin-top:10px; background:#111827; border:1px solid #374151; border-radius:8px; padding:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-size:0.72rem; font-weight:800; color:#9ca3af; text-transform:uppercase;">Post-Match Reactions (All 50):</span>
+                <span id="ko-post-emote-feedback" style="font-size:0.75rem; color:#cbd5e1;">Tap to react!</span>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(115px, 1fr)); gap:5px; max-height:135px; overflow-y:auto; padding-right:4px;">
+                ${all50Buttons}
+            </div>
         </div>
     `;
     document.getElementById('badge-container').innerHTML = '';
