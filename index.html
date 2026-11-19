@@ -361,6 +361,180 @@
             min-height: 380px;
         }
 
+        /* LIVE TUG-OF-WAR HUD & SABOTAGE EFFECTS */
+        .tug-of-war-hud {
+            display: none;
+            width: 100%;
+            background: linear-gradient(90deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            border: 1px solid #38bdf8;
+            border-radius: 8px;
+            padding: 5px 12px;
+            margin-bottom: 4px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+            flex-shrink: 0;
+            z-index: 15;
+        }
+
+        .tug-player-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 800;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .tug-track {
+            flex: 1;
+            height: 16px;
+            background: #1e293b;
+            border-radius: 999px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #475569;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8);
+        }
+
+        .tug-fill-left {
+            height: 100%;
+            width: 50%;
+            background: linear-gradient(90deg, #0284c7, #38bdf8, #22c55e);
+            transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
+        }
+
+        .tug-marker {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 4px;
+            background: #ffffff;
+            transform: translateX(-50%);
+            box-shadow: 0 0 8px #ffffff, 0 0 14px #facc15;
+            transition: left 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            z-index: 3;
+        }
+
+        .tug-center-notch {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 1px;
+            background: rgba(255, 255, 255, 0.35);
+            z-index: 2;
+        }
+
+        @keyframes canvasTremor {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            15% { transform: translate(-5px, 3px) rotate(-0.4deg); }
+            30% { transform: translate(5px, -3px) rotate(0.4deg); }
+            45% { transform: translate(-4px, -2px) rotate(-0.3deg); }
+            60% { transform: translate(4px, 3px) rotate(0.3deg); }
+            75% { transform: translate(-3px, 2px) rotate(-0.2deg); }
+            90% { transform: translate(3px, -2px) rotate(0.2deg); }
+        }
+
+        .canvas-shake-active {
+            animation: canvasTremor 0.18s infinite linear;
+        }
+
+        .photo-finish-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ef4444, #f97316);
+            color: #ffffff;
+            font-weight: 900;
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            border-radius: 5px;
+            letter-spacing: 0.04em;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.75);
+            animation: textBlink 1s infinite ease-in-out;
+        }
+
+        /* PRE-MATCH VS QUICK-EMOTE BUTTONS & SPEECH BUBBLES */
+        .ko-emote-deck {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #27272a;
+        }
+
+        .ko-emote-btn {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 1px solid #38bdf8;
+            color: #f8fafc;
+            font-size: 0.82rem;
+            font-weight: 800;
+            padding: 7px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: transform 0.12s, background 0.15s, box-shadow 0.15s;
+            box-shadow: 0 2px 8px rgba(56, 189, 248, 0.25);
+        }
+
+        .ko-emote-btn:hover {
+            background: linear-gradient(135deg, #0284c7, #2563eb);
+            transform: scale(1.06);
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.65);
+        }
+
+        .ko-emote-btn:active {
+            transform: scale(0.95);
+        }
+
+        .ko-shuffle-btn {
+            background: #27272a;
+            border: 1px solid #52525b;
+            color: #facc15;
+            font-size: 0.8rem;
+            font-weight: 800;
+            padding: 7px 10px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+
+        .ko-emote-bubble {
+            min-height: 28px;
+            margin-top: 6px;
+            display: inline-block;
+            background: #facc15;
+            color: #09090b;
+            font-weight: 900;
+            font-size: 0.78rem;
+            padding: 3px 10px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(250, 204, 21, 0.5);
+            opacity: 0;
+            transform: translateY(6px) scale(0.9);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            pointer-events: none;
+        }
+
+        .ko-emote-bubble.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .ko-bracket-emote-tag {
+            display: inline-block;
+            background: #facc15;
+            color: #000000;
+            font-weight: 900;
+            font-size: 0.68rem;
+            padding: 1px 6px;
+            border-radius: 8px;
+            margin-left: 6px;
+            animation: statusFlash 0.5s ease-in-out 3;
+        }
+
         #waterfall-canvas {
             background-color: var(--canvas-bg);
             border-bottom: 3px solid var(--hitline-color);
@@ -670,7 +844,6 @@
             color: white !important;
             box-shadow: 0 0 8px #3b82f6;
         }
-
         .graph-container {
             display: flex;
             flex-direction: column;
@@ -780,20 +953,6 @@
             border-radius: 8px;
             display: inline-block;
         }
-        
-        /* New Team Tags CSS */
-        .team-badge { padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 0.7rem; color: #fff; margin-left: 6px; display: inline-block;}
-        .team-east { background: #3b82f6; } 
-        .team-south { background: #ef4444; } 
-        .team-north { background: #22c55e; } 
-        .team-none { display: none; } 
-        
-        /* Mystery Blitz Styles */
-        .blitz-options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .blitz-btn { background: #1f2937; border: 2px solid #374151; color: #fff; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
-        .blitz-btn:hover { background: #374151; border-color: #8b5cf6; transform: scale(1.02); }
-        .blitz-btn.correct { background: #22c55e !important; border-color: #16a34a !important; color: #000; }
-        .blitz-btn.wrong { background: #ef4444 !important; border-color: #b91c1c !important; }
 
         .arcade-hub-overlay {
             display: none;
@@ -848,7 +1007,7 @@
             line-height: 1.3;
             flex: 1;
         }
-       
+
         .runner-track-wrapper {
             position: relative;
             width: 100%;
@@ -1212,7 +1371,7 @@
         </div>
     </div>
 
-    <!-- Room & Class Join Modal (Updated with Team Selection) -->
+    <!-- Room & Class Join Modal -->
     <div class="modal-overlay" id="room-join-modal" style="z-index: 300;">
         <div class="modal" style="max-width: 420px; text-align: center;">
             <h2 style="color: #4f46e5;">Welcome to PianoPad 26</h2>
@@ -1231,7 +1390,7 @@
                     <option value="🦄">🦄 Unicorn</option>
                     <option value="🎹">🎹 Piano Master</option>
                     <option value="🎧">🎧 DJ Beats</option>
-                   <option value="🎤">🎤 Rockstar</option>
+                    <option value="👨‍🎤">🎤 Rockstar</option>
                     <option value="😎">😎 Cool Player</option>
                     <option value="🐱">🐱 Cat</option>
                     <option value="🐲">🐉 Dragon</option>
@@ -1277,13 +1436,6 @@
                     <option value="G2">Room G2</option>
                     <option value="G3">Room G3</option>
                 </select>
-                
-                <select id="student-join-team" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#1e293b; color:#fff; font-size: 0.9rem; font-weight: 700;">
-                    <option value="none" selected>No Team (Individual)</option>
-                    <option value="east">🔵 East Side</option>
-                    <option value="south">🔴 South Side</option>
-                    <option value="north">🟢 North Side</option>
-                </select>
             </div>
             <div class="modal-footer" style="justify-content: center;">
                 <button type="button" class="btn-success" id="btn-join-room" style="padding: 10px 20px; font-size: 1rem;">Join PianoPad</button>
@@ -1291,21 +1443,495 @@
         </div>
     </div>
 
-    <!-- NEW: Mystery Song Blitz Student Response Modal -->
-    <div class="modal-overlay" id="blitz-student-modal" style="z-index: 500;">
-        <div class="modal" style="max-width: 520px; text-align: center; border: 2px solid #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.4); background: #111827;">
-            <h2 style="color: #a855f7; font-size: 1.6rem; text-transform: uppercase;">🎵 Name That Tune!</h2>
-            <p style="font-size: 1rem; color: #e5e7eb; margin: 10px 0;">Listen to the melody and choose the correct song title below:</p>
-            
-            <div id="blitz-options-container" class="blitz-options-grid">
-                <!-- Buttons injected dynamically -->
+    <div class="container">
+       <header>
+            <h1>PianoPad 26</h1>
+            <div class="controls" id="main-controls-bar">
+                <select id="song-select">
+                    <option value="">Choose a Song</option>
+                </select>
+
+                <select id="instrument-select">
+                    <option value="piano">Grand Piano</option>
+                    <option value="synth">Synth Lead</option>
+                    <option value="organ">Church Organ</option>
+                    <option value="marimba">Marimba</option>
+                    <option value="chiptune">8-Bit Chiptune</option>
+                </select>
+
+                <select id="theme-select">
+                    <option value="default">Dark</option>
+                    <option value="cyberpunk">Neon</option>
+                    <option value="synthwave">Retro</option>
+                    <option value="matrix">Green</option>
+                    <option value="gold">Gold</option>
+                </select>
+
+                <div class="speed-control">
+                    <label for="speed-input" style="cursor: pointer;">Speed: </label>
+                    <div style="display: inline-flex; align-items: center;">
+                        <input type="number" id="speed-input" min="10" max="500" value="100" 
+                               style="width: 48px; background: transparent; border: 1px solid #4b5563; border-radius: 4px; color: #facc15; font-weight: 700; font-size: 0.78rem; text-align: center; padding: 1px 2px; -moz-appearance: textfield;"
+                               title="Click to type a set speed (10% - 500%)">
+                        <span style="color: #cbd5e1; margin-left: 2px;">%</span>
+                    </div>
+                    <input type="range" id="speed-slider" min="10" max="500" value="100" step="1">
+                </div>
+
+                <button type="button" id="btn-mic-toggle" class="btn-secondary" title="Listen for Acoustic Piano Notes">
+                     MIC INPUT: OFF
+                </button>
+
+                <button type="button" id="btn-sheet-toggle" class="btn-secondary" style="background-color: #0d9488; font-weight: 700;" title="Toggle Sheet Music Display">
+                     Sheet: ON
+                </button>
+
+                <button type="button" id="btn-game" class="btn-game-active">
+                    <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    Game Mode: ON
+                </button>
+
+                <button type="button" id="btn-loop" class="btn-secondary">
+                    <svg class="icon" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                    Loop: OFF
+                </button>
+
+                <button type="button" id="btn-step" class="btn-step">
+                    <svg class="icon" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+                    Step Mode
+                </button>
+
+                <button type="button" id="btn-record" class="btn-secondary">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
+                    <span id="record-btn-text">Record</span>
+                </button>
+
+                <button type="button" id="btn-add-teacher-song" class="btn-teacher">
+                    <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Add SONG (Teacher)
+                </button>
+
+                <button type="button" id="btn-share" class="btn-share" style="display: none;">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                    Share Haycode
+                </button>
+
+                <label class="btn-file-label btn-midi">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                    Import MIDI
+                    <input type="file" id="midi-input" accept=".mid,.midi" style="display: none;">
+                </label>
+
+                <button type="button" id="btn-import">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Import Code
+                </button>
+
+                <button type="button" id="btn-settings" class="btn-settings" title="Settings">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </button>
+
+                <a href="https://sites.google.com/erc.nsw.edu.au/pianopad-leaderboard/home" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 15l-3 4-3-4"></path><path d="M5 6v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"></path><path d="M3 6h18"></path><path d="M5 2h14"></path></svg>
+                    Leaderboard
+                </a>
+
+                <button type="button" id="btn-play" class="btn-success">
+                    <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    Play
+                </button>
+                <button type="button" id="btn-pause" class="btn-warning">
+                    <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                    Pause
+                </button>
+                <button type="button" id="btn-stop" class="btn-danger">
+                    <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
+                    Stop
+                </button>
+
+                <button type="button" id="btn-open-arcade" class="btn-arcade">
+                     MINI-GAMES
+                </button>
+
+                <button type="button" id="btn-song-battle" class="btn-song-battle">
+                     SONG BATTLE
+                </button>
+
+                <div class="timeline-container-inline" id="timeline-box">
+                    <span>Trim:</span>
+                    <input type="range" id="loop-start" min="0" max="100" value="0" title="Loop Start %">
+                    <span>-</span>
+                    <input type="range" id="loop-end" min="0" max="100" value="100" title="Loop End %">
+                    <span id="loop-range-label" style="display:none;">0%-100%</span>
+                </div>
             </div>
+
+            <div class="controls" id="arcade-controls-bar" style="display: none;">
+                <button type="button" id="btn-home-screen" class="btn-success" style="font-weight: 800;">
+                     Return to Player
+                </button>
+                <button type="button" id="btn-stop-arcade" class="btn-danger">
+                     Exit Active Game
+                </button>
+            </div>
+        </header>
+
+        <!-- Student Leaderboard Stats Ticker Tape -->
+        <div class="ticker-tape-container" id="student-ticker-tape" style="display: none;">
+            <div class="ticker-tape-badge" id="ticker-badge"> MY RANKS</div>
+            <div class="ticker-tape-wrapper">
+                <div class="ticker-tape-track" id="ticker-track">Loading leaderboard stats...</div>
+            </div>
+        </div>
+
+        <div class="arcade-hub-overlay" id="arcade-hub">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #374151; padding-bottom: 8px;">
+                <h2 style="font-size: 1.2rem; color: #ec4899; display: flex; align-items: center; gap: 8px;"> PianoPad Arcade Mini-Games</h2>
+                <span style="font-size: 0.8rem; color: #cbd5e1; font-weight: 600;">Choose a Mini-Game to Play!</span>
+            </div>
+
+            <div class="arcade-grid">
+                <div class="game-card" onclick="startSimonTaps()">
+                    <h3> Simon Taps</h3>
+                    <p>Watch the stepwise C Major sequence and climb the multi-colored level staircase step-by-step!</p>
+                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Simon Taps</button>
+                </div>
+
+                <div class="game-card" onclick="startMysteryNote()">
+                    <h3> Mystery Note</h3>
+                    <p>Listen to the hidden note! Use Warm/Cold proximity cues to find and hit the secret key.</p>
+                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Mystery Note</button>
+                </div>
+
+                <div class="game-card" onclick="startDropDodge()">
+                    <h3> Drop Dodge</h3>
+                    <p>Wide walls fall slowly! You have 5 Lives to dodge blocks by hitting the safe empty key gap.</p>
+                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Drop Dodge</button>
+                </div>
+
+                <div class="game-card" onclick="startComboStrike()">
+                    <h3> Two-Note Combo</h3>
+                    <p>Pairs of notes fall together! Hit two-note intervals simultaneously with timing feedback.</p>
+                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Combo Strike</button>
+                </div>
+
+                <div class="game-card" onclick="openSprintModeSelector()">
+                    <h3> Finger Sprint Race</h3>
+                    <p>Challenge Robo-Opponent (🤖) or Host/Join Live Multi-Player Races with custom Room Codes!</p>
+                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Finger Sprint</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="runner-track-wrapper" id="runner-track" style="display: none;"></div>
+
+        <div class="visualizer-wrapper" id="visualizer-wrapper">
+            <div class="tug-of-war-hud" id="tug-of-war-hud">
+                <div class="tug-player-info">
+                    <span id="tug-p1-avatar" style="font-size:1.15rem;">🏃</span>
+                    <span id="tug-p1-name" style="color:#ffffff;">You</span>
+                    <span id="tug-p1-acc" style="color:#22c55e;">100.0%</span>
+                </div>
+                <div class="tug-track">
+                    <div class="tug-fill-left" id="tug-fill-left"></div>
+                    <div class="tug-center-notch"></div>
+                    <div class="tug-marker" id="tug-marker"></div>
+                </div>
+                <div class="tug-player-info">
+                    <span id="tug-p2-acc" style="color:#38bdf8;">100.0%</span>
+                    <span id="tug-p2-name" style="color:#ffffff;">Opponent</span>
+                    <span id="tug-p2-avatar" style="font-size:1.15rem;">🤖</span>
+                </div>
+            </div>
+            <canvas id="waterfall-canvas" width="1232" height="380"></canvas>
+            <div class="piano" id="keyboard"></div>
+        </div>
+
+        <div class="footer-bar">
+            <div class="version-stamp">v26.11.19 | 19-Nov 14:02 AEDT (West Wollongong)</div>
+            <div class="status-bar" id="status"> GAME MODE READY | Connecting to song database...</div>
             
-            <div id="blitz-feedback" style="margin-top: 15px; font-size: 1.1rem; font-weight: 800; min-height: 28px;"></div>
+            <div class="footer-right-group">
+                <div class="monitor-widget-box" id="monitor-widget">
+                    <div class="monitor-top-row">
+                        <span id="mon-student-avatar" style="font-size: 0.82rem;">🏃</span>
+                        <span class="monitor-student-name" id="mon-student-name">Student</span>
+                        <span class="monitor-class-badge" id="mon-class-badge">7G</span>
+                        <span class="monitor-badge-breaks" id="mon-breaks-badge">Breaks: 0</span>
+                        <span class="monitor-time-text" id="mon-time-text">0:00 / 60:00min</span>
+                        <span id="mon-level-badge" style="display:none; align-items:center; font-weight:800; font-size:0.75rem; margin-left:2px; margin-right:2px;"></span>
+                        <div class="monitor-divider"></div>
+                        <span class="monitor-song-text" id="mon-song-text"> Wipeout</span>
+                    </div>
+                    <div class="monitor-progress-bar-track" id="mon-bar-track">
+                        <div class="monitor-progress-bar-fill" id="mon-bar-fill"></div>
+                    </div>
+                </div>
+
+                <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
+            </div>
         </div>
     </div>
 
-    <script>
+    <!-- Live Sprint & Song Battle Setup Modal -->
+    <div class="modal-overlay" id="sprint-option-modal">
+        <div class="modal" style="text-align: center;">
+            <h2 id="battle-modal-title"> Setup Mode</h2>
+            <p style="font-size: 0.85rem; color: #9ca3af;" id="battle-modal-subtitle">Select your battle option:</p>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin: 10px 0;" id="sprint-menu-buttons">
+                <button type="button" class="btn-arcade" id="btn-sprint-bot-opt" onclick="initSinglePlayerSprint()"> Challenge Robot Opponent</button>
+                <button type="button" class="btn-success" onclick="openHostNamePrompt()"> Host Live Session</button>
+                <button type="button" class="btn-midi" onclick="openJoinNamePrompt()"> Join Live Session</button>
+            </div>
+            
+            <div id="sprint-form-container" style="display: none; flex-direction: column; gap: 8px; text-align: left;">
+                <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Your First Name & Surname Initial:</label>
+                <input type="text" id="sprint-player-name" placeholder="e.g. Alex M" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem;">
+                
+                <div id="host-song-selector-group" style="display:none; flex-direction:column; gap:4px; margin-top:4px;">
+                    <label style="font-size:0.75rem; color:#facc15; font-weight:700;">Select Battle Song:</label>
+                    <select id="host-battle-song-select" style="width:100%; max-width:100%;"></select>
+                </div>
+
+                <div id="inline-name-error" style="color:#ef4444; font-size:0.75rem; font-weight:700; display:none;"> Please enter your First Name & Surname Initial before continuing!</div>
+
+                <div id="code-input-group" style="display:none; flex-direction:column; gap:4px;">
+                    <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Enter Host Join Code:</label>
+                    <input type="text" id="sprint-room-code" placeholder="e.g. 766" maxlength="6" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; text-transform:uppercase;">
+                </div>
+
+                <div id="host-lobby-group" style="display:none; flex-direction:column; gap:4px; text-align:center;">
+                    <div style="font-size:1.1rem; color:#facc15; font-weight:800;" id="generated-room-code-display">Room Code: Generating...</div>
+                    <div class="lobby-players-grid" id="lobby-players-grid"></div>
+                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-content:center;" onclick="triggerHostStartRace()"> START LIVE SESSION FOR ALL PLAYERS</button>
+                </div>
+
+                <div id="client-waiting-group" style="display:none; flex-direction:column; gap:6px; text-align:center;">
+                    <p style="font-size:0.85rem; color:#22c55e; font-weight:700;">Connected to Host Room!</p>
+                    <div class="lobby-players-grid" id="client-lobby-grid"></div>
+                    <p style="font-size:0.75rem; color:#9ca3af;">Waiting for host to press start...</p>
+                </div>
+
+                <button type="button" class="btn-success" id="btn-confirm-sprint-action" style="margin-top:6px; justify-content:center;">Confirm & Continue</button>
+            </div>
+
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn-secondary" onclick="closeSprintOptionModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bonus Sound Unlock Notification Modal -->
+    <div class="modal-overlay" id="unlock-modal">
+        <div class="modal" style="text-align: center; border: 2px solid #22c55e; box-shadow: 0 0 25px rgba(34, 197, 94, 0.5);">
+            <h2 style="color: #facc15; font-size: 1.5rem;"> BONUS SOUNDS UNLOCKED!</h2>
+            <p id="unlock-modal-text" style="font-size: 0.95rem; color: #e5e7eb; line-height: 1.4;">
+                Outstanding accuracy! You scored <strong>>80%</strong> and unlocked 5 additional instrument sound engines:
+            </p>
+            <div style="background: #0b0f19; border: 1px solid #374151; border-radius: 8px; padding: 10px; margin: 10px 0; text-align: left; font-size: 0.85rem; color: #38bdf8;">
+                  Electric Piano<br>
+                  Harpsichord<br>
+                  80s Synth Lead<br>
+                  Xylophone<br>
+                  Accordion
+            </div>
+            <p style="font-size: 0.8rem; color: #9ca3af;">Try them out now in the Instrument selector dropdown at the top bar!</p>
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn-success" onclick="closeUnlockModal()">Awesome, Let's Play!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Countdown Overlay -->
+    <div class="countdown-overlay" id="countdown-overlay">
+        <div class="countdown-number" id="countdown-text">3</div>
+    </div>
+
+    <!-- Import Modal -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <h2>Import PianoPad Song</h2>
+            <p style="font-size: 0.85rem; color: #9ca3af;">Paste your PianoPad/Haycode music code below (Note sequence followed by Rests array):</p>
+            <textarea id="import-text" placeholder="Paste your song code here (e.g., G2,E2,g#2...Rests,0,250...)"></textarea>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="btn-cancel">Cancel</button>
+                <button type="button" id="btn-load-play">Load & Play</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MIDI Channel Selection Modal -->
+    <div class="modal-overlay" id="midi-channel-modal">
+        <div class="modal">
+            <h2>Select MIDI Channel</h2>
+            <p style="font-size: 0.85rem; color: #9ca3af;">Select which MIDI channel/track you would like to import into PianoPad:</p>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">MIDI Channels Found:</label>
+                <select id="midi-channel-select" style="width: 100%; max-width: 100%; padding: 8px; font-size: 0.85rem;"></select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="btn-midi-channel-cancel">Cancel</button>
+                <button type="button" class="btn-midi" id="btn-midi-channel-confirm">Import Channel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <h2>Settings</h2>
+            <p style="font-size: 0.85rem; color: #9ca3af;">Configure hardware and MIDI inputs below:</p>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin: 10px 0;">
+                <button type="button" id="btn-start-calib" class="btn-midi" style="justify-content: center; padding: 10px;">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20"></path></svg>
+                    Calibrate Piano (Lowest / Highest Keys)
+                </button>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="btn-settings-close">Close</button>
+            </div>
+        </div>
+    </div>
+
+   <!-- Calibration Wizard Modal -->
+    <div class="modal-overlay" id="calib-modal" style="z-index: 400;">
+        <div class="modal" style="max-width: 680px;">
+            <h2>MIDI Keyboard Calibration</h2>
+            <p id="calib-instructions" style="font-size: 0.9rem; color: #38bdf8; font-weight: 600;">
+                Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...
+            </p>
+
+            <div class="calib-piano-container">
+                <div class="calib-piano" id="calib-keyboard"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="btn-calib-skip" onclick="skipCalibration()">Skip Calibration</button>
+                <button type="button" class="btn-secondary" id="btn-calib-cancel" style="display:none;" onclick="cancelCalibration()">Cancel Calibration</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Mode Completion Pop-up Modal with Graph -->
+    <div class="modal-overlay" id="game-results-modal">
+        <div class="modal" style="text-align: center;">
+            <h2>Game Performance Summary</h2>
+            <p id="game-summary-text" style="font-size: 0.95rem; color: #e5e7eb; font-weight: 600;"></p>
+            
+            <div id="badge-container"></div>
+            <div id="game-rank-text" class="rank-display-box">Calculating Rank...</div>
+
+            <div class="graph-container">
+                <div class="multi-bar-container" id="multi-bar-graph" style="display: none;"></div>
+                
+                <div class="bar-chart-wrapper" id="single-bar-graph">
+                    <div class="stacked-bar">
+                        <div id="bar-red" class="bar-part-red"></div>
+                        <div id="bar-orange" class="bar-part-orange"></div>
+                        <div id="bar-green" class="bar-part-green"></div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 600; margin-top: 4px;">
+                    <span style="color: #22c55e;"> Perfect</span>
+                    <span style="color: #f97316;"> Early/Late</span>
+                    <span style="color: #ef4444;"> Missed</span>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
+                <a href="leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">View Entire Leaderboard</a>
+                <button type="button" class="btn-warning" id="btn-battle-again" style="display: none;" onclick="triggerBattleAgain()"> Battle Again</button>
+                <button type="button" class="btn-warning" id="btn-game-try-again">Play Again</button>
+                <button type="button" class="btn-arcade" id="btn-game-arcade-menu">Mini-Game Menu</button>
+                <button type="button" class="btn-success" id="btn-game-results-close">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export / Share Haycode Modal -->
+    <div class="modal-overlay" id="export-modal">
+        <div class="modal">
+            <h2>Recorded Performance Ready!</h2>
+            <p style="font-size: 0.85rem; color: #9ca3af;">Copy your generated Haycode or export your performance as a WAV audio file below:</p>
+            <textarea id="export-text" readonly></textarea>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="btn-export-close">Close</button>
+                <button type="button" class="btn-secondary" id="btn-copy-haycode">Copy Code</button>
+                <button type="button" class="btn-midi" id="btn-export-wav">Export WAV Audio</button>
+                <a id="btn-email-haycode" href="#" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">Email Haycode</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Teacher Add Song Modal Dialog -->
+    <div class="modal-overlay" id="teacher-modal">
+        <div class="modal">
+            <h2>Add Song (Teacher Access)</h2>
+            <p style="font-size: 0.85rem; color: #9ca3af;">Enter teacher password to add a new song directly to PianoPad & Google Sheet:</p>
+            
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">Teacher Password:</label>
+                <input type="password" id="teacher-pass" placeholder="Enter password..." style="width:100%; padding:7px 10px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; outline:none;">
+
+                <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">Song Title / Piece Name:</label>
+                <input type="text" id="teacher-title" placeholder="e.g. Moonlight Sonata" style="width:100%; padding:7px 10px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; outline:none;">
+
+                <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">HayCode String:</label>
+                <textarea id="teacher-code" placeholder="Paste HayCode or record live first..."></textarea>
+            </div>
+
+            <div id="teacher-error" style="color: #ef4444; font-size: 0.8rem; font-weight: 600; display: none;"></div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="btn-teacher-cancel">Cancel</button>
+                <button type="button" class="btn-teacher" id="btn-teacher-submit">Add Song Now</button>
+            </div>
+        </div>
+    </div> 
+
+    <!-- Class Selection Modal for Audio Upload -->
+    <div class="modal-overlay" id="class-select-modal" style="z-index: 400;">
+        <div class="modal" style="max-width: 420px; text-align: center;">
+            <h2 style="color: #4f46e5;">Confirm Your Class</h2>
+            <p style="font-size: 0.85rem; color: #9ca3af;">Select your Year Group and Class Letter to route your recording to the correct folder:</p>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px; margin: 15px 0; text-align: left;">
+                <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">Year Group:</label>
+                <select id="upload-year-select" style="width: 100%; padding: 10px;">
+                    <option value="" disabled selected>Select Year Group</option>
+                    <option value="7">Year 7</option>
+                    <option value="8">Year 8</option>
+                    <option value="9">Year 9</option>
+                    <option value="10">Year 10</option>
+                    <option value="11">Year 11</option>
+                    <option value="12">Year 12</option>
+                </select>
+
+                <div id="class-letter-group" style="display: none; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">Class Letter:</label>
+                    <select id="upload-class-letter-select" style="width: 100%; padding: 10px;">
+                        <option value="" disabled selected>Select Class Letter</option>
+                        <option value="A">Class A</option>
+                        <option value="B">Class B</option>
+                        <option value="C">Class C</option>
+                        <option value="D">Class D</option>
+                        <option value="E">Class E</option>
+                        <option value="F">Class F</option>
+                        <option value="G">Class G</option>
+                        <option value="H">Class H</option>
+                        <option value="I">Class I</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn-secondary" id="btn-cancel-class-select">Cancel</button>
+                <button type="button" class="btn-success" id="btn-confirm-class-select" style="padding: 8px 18px;">Confirm & Upload</button>
+            </div>
+        </div>
+    </div>
+<script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby67M5VwNiRpcySnun4wTW31nIfXauLXhMRP1w96r6yjMuV9iA8n_C-eEIKfJ_xEuUjKg/exec';
@@ -1333,7 +1959,6 @@
         let sessionStartTime = Date.now();
         let breakMarkerPositions = [];
         let sessionStudentAvatar = "🏃";
-        let sessionStudentTeam = "none";
 
         let showSheetMusic = localStorage.getItem('pianopad_sheet_music') !== 'false';
         const btnSheetToggle = document.getElementById('btn-sheet-toggle');
@@ -1416,18 +2041,6 @@
         let activeBattleRoomCode = "";
         let hasBattleStarted = false;
         let battleResultsShown = false;
-        
-        // NEW: Sabotage & Power-up States
-        let hostSabotageToggles = { fog: false, mirror: false, chipmunk: false };
-        let activeSabotage = null;
-        let sabotageTimer = null;
-        let hasShield = false;
-
-        // NEW: Mystery Blitz States
-        let isMysteryBlitz = false;
-        let blitzNotesCount = 4;
-        let currentBlitzAnswers = [];
-        let blitzScore = 0;
 
         // Swiss-System Class Knockout Tournament State
         let isClassKnockout = false;
@@ -1439,11 +2052,38 @@
         let knockoutDataCache = null;
         let knockoutLiveSyncTimer = null;
 
+        // Streak Sabotage, Tug-of-War HUD & 50-Emote Quick-Reaction State
+        let knockoutSabotageCount = 0;
+        let lastProcessedSabotageId = null;
+        let activeSabotageType = null;
+        let activeSabotageUntil = 0;
+        let smokeParticles = [];
+        let koOpponentId = null;
+        let koOpponentName = "Opponent";
+        let koOpponentAvatar = "🤖";
+        let lastProcessedOppEmoteId = null;
+        let koSelfEmoteHideTimer = null;
+        let koOppEmoteHideTimer = null;
+
+        const KO_HYPE_EMOTES = [
+            "😤 LOCKED IN", "🔥 TOO EASY", "😎 WATCH THIS", "⚡ LIGHT WORK", "👑 BOW DOWN",
+            "🚀 BUILT DIFFERENT", "🎯 100% INCOMING", "🧊 ICE COLD", "💪 NO SWEAT", "🧠 BIG BRAIN",
+            "🎹 PIANO GOD", "🦖 BEAST MODE", "🏆 ALREADY WON", "🌟 MAIN CHARACTER", "🔋 FULL POWER",
+            "💀 RIP BRO", "🪦 GG EZ", "🧹 GET SWEPT", "🧂 PASS THE SALT", "📉 YOUR ACCURACY",
+            "🐢 TOO SLOW", "🤡 NICE TRY", "🧯 CALL THE FIRE DEPT", "🎒 PACK YOUR BAGS", "💤 WAKE ME UP",
+            "🧀 SKILL ISSUE", "🚧 WRONG KEY BRO", "🗑️ OUTTA MY WAY", "👀 DON'T BLINK", "📉 CHOKING INCOMING",
+            "🙏 PRAY FOR ME", "💦 SWEATING BULLETS", "🫠 MY FINGERS HURT", "🐌 LAG!", "😬 OH NO...",
+            "🎲 PURE LUCK", "🆘 SEND HELP", "🫣 I FORGOT THE NOTES", "🍌 SLIPPERY KEYS", "🎲 YOLO",
+            "🐢 PRACTICE SPEED PLS", "😅 MERCY PLS", "🤝 GG", "🫡 RESPECT", "⚔️ BRING IT ON",
+            "🍿 POPCORN READY", "🚨 UPSET ALERT", "🌪️ CHAOS TIME", "💣 SABOTAGE INCOMING", "🎉 LET'S GOOO!"
+        ];
+
         const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄', '🎹', '🎧', '👨‍🎤', '😎', '🐱', '🐲', '🚀', '🥷'];
 
         let playersList = [];
         let miniGameFallSpeedMs = 3800;
         let confettiParticles = [];
+
         function spawnConfetti(x, y, baseColor) {
             for (let i = 0; i < 30; i++) {
                 confettiParticles.push({
@@ -1479,19 +2119,9 @@
             const badgeEl = document.getElementById('mon-level-badge');
 
             const activeClass = currentStudentClass || localStorage.getItem('pianopad_class') || "7G";
-            
-            // NEW: Fetch Team info to append to avatar badge
-            const activeTeam = sessionStudentTeam || localStorage.getItem('pianopad_team') || 'none';
-            let teamLabelHTML = '';
-            if (activeTeam === 'east') teamLabelHTML = '<span class="team-badge team-east">East</span>';
-            if (activeTeam === 'south') teamLabelHTML = '<span class="team-badge team-south">South</span>';
-            if (activeTeam === 'north') teamLabelHTML = '<span class="team-badge team-north">North</span>';
 
             if (studentEl) studentEl.textContent = sessionStudentName || localStorage.getItem('pianopad_name') || "Mr H";
-            if (avatarEl) {
-                const ava = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || "🏃";
-                avatarEl.innerHTML = `${ava} ${teamLabelHTML}`;
-            }
+            if (avatarEl) avatarEl.textContent = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || "🏃";
             if (classEl) classEl.textContent = activeClass;
             if (breaksEl) breaksEl.textContent = `Breaks: ${localTabSwitches}`;
             
@@ -1559,7 +2189,6 @@
             const activeAvatar = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || "🏃";
             const activeRoom = currentRoom || "Outside";
             const activeClass = currentStudentClass || localStorage.getItem('pianopad_class') || "7G";
-            const activeTeam = sessionStudentTeam || localStorage.getItem('pianopad_team') || "none";
             const activeStatus = statusOverride || (document.hidden ? "away" : "active");
 
             const myRef = window.firebaseRef(window.firebaseDb, `pianopad_roster/${localStudentId}`);
@@ -1569,7 +2198,6 @@
                 avatar: activeAvatar,
                 room: activeRoom,
                 class: activeClass,
-                team: activeTeam, // NEW Data point synced to Roster
                 studentClass: activeClass,
                 song: currentSongTitle || "Wipeout",
                 status: activeStatus,
@@ -1584,7 +2212,6 @@
             const name = document.getElementById('student-join-name').value.trim();
             const avatar = document.getElementById('student-join-avatar').value;
             const chosenClass = document.getElementById('student-join-class').value;
-            const chosenTeam = document.getElementById('student-join-team').value;
             const roomSelect = document.getElementById('student-join-room');
             const room = (roomSelect && roomSelect.style.display === 'none') ? "Outside" : (roomSelect ? roomSelect.value : "Outside");
             
@@ -1596,13 +2223,11 @@
             sessionStudentAvatar = avatar;
             currentStudentClass = chosenClass;
             currentRoom = room;
-            sessionStudentTeam = chosenTeam;
 
             localStorage.setItem('pianopad_name', sessionStudentName);
             localStorage.setItem('pianopad_avatar', sessionStudentAvatar);
             localStorage.setItem('pianopad_class', currentStudentClass);
             localStorage.setItem('pianopad_room', currentRoom);
-            localStorage.setItem('pianopad_team', sessionStudentTeam);
 
             document.getElementById('room-join-modal').classList.remove('open');
             
@@ -1689,7 +2314,6 @@
             isSongBattle = false;
             activeBattleRoomCode = "";
             battleResultsShown = false;
-            isMysteryBlitz = false; // reset blitz flag
             if (httpPollTimer) {
                 clearInterval(httpPollTimer);
                 httpPollTimer = null;
@@ -2041,11 +2665,6 @@
             stopBattlePolling();
             runnerTrack.style.display = 'none';
             runnerTrack.innerHTML = '';
-            
-            document.getElementById('sabotage-fog-overlay').style.display = 'none';
-            document.getElementById('sabotage-shield-overlay').style.display = 'none';
-            document.getElementById('powerup-container').style.display = 'none';
-
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             document.querySelectorAll('.key').forEach(k => {
                 k.classList.remove('active');
@@ -2154,6 +2773,7 @@
         function closeUnlockModal() {
             document.getElementById('unlock-modal').classList.remove('open');
         }
+
         function startSimonTaps() {
             initAudio();
             exitActiveMiniGame();
@@ -2412,24 +3032,13 @@
 
         function populateHostSongSelector() {
             const hostSelect = document.getElementById('host-battle-song-select');
-            hostSelect.innerHTML = '<option value="BLITZ" style="color:#a855f7; font-weight:900;">🎵 MYSTERY SONG BLITZ (10 Rounds)</option>';
+            hostSelect.innerHTML = '';
             songList.forEach(s => {
                 const opt = document.createElement('option');
                 opt.value = s.code;
                 opt.textContent = s.title;
                 if (s.title === currentSongTitle) opt.selected = true;
                 hostSelect.appendChild(opt);
-            });
-
-            // Toggle blitz specific options based on selection
-            hostSelect.addEventListener('change', (e) => {
-                if(e.target.value === 'BLITZ') {
-                    document.getElementById('mystery-blitz-options').style.display = 'flex';
-                    document.getElementById('host-sabotage-options').style.display = 'none';
-                } else {
-                    document.getElementById('mystery-blitz-options').style.display = 'none';
-                    document.getElementById('host-sabotage-options').style.display = 'flex';
-                }
             });
         }
 
@@ -2477,21 +3086,12 @@
             if (isSongBattle) {
                 populateHostSongSelector();
                 document.getElementById('host-song-selector-group').style.display = 'flex';
-                
-                // Set default visibility for Sabotage vs Blitz depending on initial dropdown state
-                if(document.getElementById('host-battle-song-select').value === 'BLITZ') {
-                    document.getElementById('mystery-blitz-options').style.display = 'flex';
-                    document.getElementById('host-sabotage-options').style.display = 'none';
-                } else {
-                    document.getElementById('mystery-blitz-options').style.display = 'none';
-                    document.getElementById('host-sabotage-options').style.display = 'flex';
-                }
             } else {
                 document.getElementById('host-song-selector-group').style.display = 'none';
             }
             
             confirmBtn.onclick = () => {
-                if (confirmBtn.disabled) return; 
+                if (confirmBtn.disabled) return;
 
                 const rawName = document.getElementById('sprint-player-name').value;
                 if (!rawName.trim()) {
@@ -2507,29 +3107,12 @@
                 document.getElementById('sprint-player-name').value = nameInput;
 
                 if (isSongBattle) {
-                    const hostSelect = document.getElementById('host-battle-song-select');
-                    const selectedCode = hostSelect.value;
-                    const opt = hostSelect.selectedOptions[0];
-                    
-                    isMysteryBlitz = (selectedCode === 'BLITZ');
-                    
-                    if (isMysteryBlitz) {
-                        blitzNotesCount = parseInt(document.getElementById('blitz-notes-count').value, 10) || 4;
-                        currentSongTitle = "Mystery Song Blitz";
-                    } else {
-                        if (opt) currentSongTitle = opt.text;
-                        songSelect.value = selectedCode;
-                        const parsed = parsePianoPad(selectedCode);
-                        if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
-                        
-                        // Capture Sabotage/Team settings
-                        hostSabotageToggles = {
-                            fog: document.getElementById('sabotage-fog-check').checked,
-                            mirror: document.getElementById('sabotage-mirror-check').checked,
-                            chipmunk: document.getElementById('sabotage-chipmunk-check').checked,
-                            tugOfWar: document.getElementById('team-tug-of-war-check').checked
-                        };
-                    }
+                    const selectedCode = document.getElementById('host-battle-song-select').value;
+                    const opt = document.getElementById('host-battle-song-select').selectedOptions[0];
+                    if (opt) currentSongTitle = opt.text;
+                    songSelect.value = selectedCode;
+                    const parsed = parsePianoPad(selectedCode);
+                    if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
                 }
 
                 showHostSetup(nameInput);
@@ -2551,7 +3134,7 @@
             confirmBtn.textContent = 'Confirm & Continue';
 
             confirmBtn.onclick = () => {
-                if (confirmBtn.disabled) return; 
+                if (confirmBtn.disabled) return;
 
                 const rawName = document.getElementById('sprint-player-name').value;
                 const roomCode = document.getElementById('sprint-room-code').value.trim().toUpperCase();
@@ -2636,22 +3219,8 @@
 
             isSprintHost = true;
             localPlayerIdRoom = 'p1';
-            playersList = [{ id: 'p1', name: hostName, avatar: sessionStudentAvatar || AVATARS[0], team: sessionStudentTeam, pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true, clearedHurdles: [] }];
+            playersList = [{ id: 'p1', name: hostName, avatar: sessionStudentAvatar || AVATARS[0], pxProgress: 0, finishTime: null, stats: { perfect:0, earlyLate:0, miss:0 }, finished: false, isLocal: true, clearedHurdles: [] }];
             renderLobbyGrid('lobby-players-grid');
-
-            // Save live configuration to Firebase RTDB for Power-ups / Blitz processing
-            if (window.firebaseDb && isSongBattle) {
-                const battleRef = window.firebaseRef(window.firebaseDb, `pianopad_live_battles/${activeBattleRoomCode}`);
-                window.firebaseSet(battleRef, {
-                    host: hostName,
-                    songTitle: currentSongTitle,
-                    isBlitz: isMysteryBlitz,
-                    blitzNotes: blitzNotesCount,
-                    sabotage: hostSabotageToggles,
-                    status: 'lobby'
-                });
-                window.firebaseOnDisconnect(battleRef).remove();
-            }
 
             const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(hostName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
             await sendJSONP(url);
@@ -2662,7 +3231,6 @@
         async function showJoinSetup(racerName, roomCode) {
             sessionStudentName = racerName;
 
-            // Check Firebase RTDB first to see if this room code belongs to a Class Knockout Tournament
             if (isSongBattle && window.firebaseDb) {
                 try {
                     const { get, child } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
@@ -2678,35 +3246,15 @@
             }
 
             activeBattleRoomCode = roomCode;
+
             localPlayerIdRoom = 'p' + (Date.now() % 10000);
             const playerAvatar = sessionStudentAvatar || AVATARS[Math.floor(Math.random() * AVATARS.length)];
-            const playerTeam = sessionStudentTeam || 'none';
-
-            // NEW: Sync client to Firebase to grab active Sabotage / Blitz settings
-            if (isSongBattle && window.firebaseDb) {
-                try {
-                    const { get, child } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-                    const snap = await get(child(window.firebaseRef(window.firebaseDb), `pianopad_live_battles/${roomCode}`));
-                    if (snap.exists()) {
-                        const bData = snap.val();
-                        isMysteryBlitz = bData.isBlitz || false;
-                        if (isMysteryBlitz) {
-                            blitzNotesCount = bData.blitzNotes || 4;
-                            currentSongTitle = "Mystery Song Blitz";
-                        } else {
-                            hostSabotageToggles = bData.sabotage || { fog: false, mirror: false, chipmunk: false, tugOfWar: false };
-                        }
-                    }
-                } catch (e) {
-                    console.warn("Could not fetch battle config:", e);
-                }
-            }
 
             document.getElementById('status').textContent = `Connecting to room ${roomCode}...`;
 
             let res = null;
             for (let attempt = 1; attempt <= 3; attempt++) {
-                const url = `${APPS_SCRIPT_URL}?action=JOIN_ROOM&roomCode=${roomCode}&playerId=${localPlayerIdRoom}&playerName=${encodeURIComponent(racerName)}&avatar=${encodeURIComponent(playerAvatar)}&team=${encodeURIComponent(playerTeam)}&t=${Date.now()}`;
+                const url = `${APPS_SCRIPT_URL}?action=JOIN_ROOM&roomCode=${roomCode}&playerId=${localPlayerIdRoom}&playerName=${encodeURIComponent(racerName)}&avatar=${encodeURIComponent(playerAvatar)}&t=${Date.now()}`;
                 res = await sendJSONP(url);
                 
                 if (res && !res.error) break;
@@ -2715,7 +3263,6 @@
 
             if (res && res.error) {
                 alert("Room not found! Check code and try again.");
-                
                 const confirmBtn = document.getElementById('btn-confirm-sprint-action');
                 if (confirmBtn) {
                     confirmBtn.disabled = false;
@@ -2768,7 +3315,7 @@
                     updateMultiplayerLanesUI();
                 }
 
-                if (res.songCode && !isHost && !isMysteryBlitz) {
+                if (res.songCode && !isHost) {
                     currentSongTitle = res.songTitle;
                     songSelect.value = res.songCode;
                     const parsed = parsePianoPad(res.songCode);
@@ -2790,15 +3337,7 @@
                         isGameMode = true;
                         btnGame.textContent = 'Game Mode: ON';
                         btnGame.classList.add('btn-game-active');
-
-                        if (isMysteryBlitz) {
-                            startMysteryBlitzSequence();
-                        } else {
-                            if (hostSabotageToggles.fog || hostSabotageToggles.mirror || hostSabotageToggles.chipmunk) {
-                                document.getElementById('powerup-container').style.display = 'block';
-                            }
-                            startCountdown(() => { playSong(); });
-                        }
+                        startCountdown(() => { playSong(); });
                     } else {
                         activeMiniGame = 'sprint';
                         renderSprintLanes();
@@ -2832,18 +3371,6 @@
         async function triggerHostStartRace() {
             if (!activeBattleRoomCode) return;
 
-            if (isSongBattle && window.firebaseDb) {
-                const battleRef = window.firebaseRef(window.firebaseDb, `pianopad_live_battles/${activeBattleRoomCode}`);
-                window.firebaseSet(battleRef, {
-                    status: 'started',
-                    host: sessionStudentName,
-                    songTitle: currentSongTitle,
-                    isBlitz: isMysteryBlitz,
-                    blitzNotes: blitzNotesCount,
-                    sabotage: hostSabotageToggles
-                });
-            }
-
             const url = `${APPS_SCRIPT_URL}?action=START_ROOM&roomCode=${activeBattleRoomCode}&t=${Date.now()}`;
             await sendJSONP(url);
 
@@ -2860,15 +3387,7 @@
                 isGameMode = true;
                 btnGame.textContent = 'Game Mode: ON';
                 btnGame.classList.add('btn-game-active');
-
-                if (isMysteryBlitz) {
-                    startMysteryBlitzSequence();
-                } else {
-                    if (hostSabotageToggles.fog || hostSabotageToggles.mirror || hostSabotageToggles.chipmunk) {
-                        document.getElementById('powerup-container').style.display = 'block';
-                    }
-                    startCountdown(() => { playSong(); });
-                }
+                startCountdown(() => { playSong(); });
             } else {
                 activeMiniGame = 'sprint';
                 renderSprintLanes();
@@ -2885,7 +3404,6 @@
             gameResultsModal.classList.remove('open');
             hasBattleStarted = false;
             battleResultsShown = false;
-            isMysteryBlitz = false;
 
             if (isSprintHost) {
                 const url = `${APPS_SCRIPT_URL}?action=CREATE_ROOM&roomCode=${activeBattleRoomCode}&hostName=${encodeURIComponent(sessionStudentName)}&songTitle=${encodeURIComponent(currentSongTitle)}&songCode=${encodeURIComponent(songSelect.value)}&t=${Date.now()}`;
@@ -2981,6 +3499,7 @@
                 }
             }
         }
+
         function finishSprintRace() {
             raceActive = false;
             currentSongTitle = "Finger Sprint";
@@ -3048,211 +3567,6 @@
             activeMiniGame = null;
         }
 
-        // =========================================================================
-        // NEW: MYSTERY SONG BLITZ ENGINE
-        // =========================================================================
-        function startMysteryBlitzSequence() {
-            blitzScore = 0;
-            currentBlitzAnswers = [];
-            
-            // Pick 10 random playable songs from the catalog
-            let validSongs = songList.filter(s => s.code && s.code.includes(','));
-            let shuffled = [...validSongs].sort(() => 0.5 - Math.random());
-            let selectedSongs = shuffled.slice(0, 10);
-            let round = 0;
-
-            function nextRound() {
-                if (round >= selectedSongs.length) {
-                    finishBlitz();
-                    return;
-                }
-                playBlitzRound(selectedSongs[round], round, nextRound);
-                round++;
-            }
-            
-            setTimeout(nextRound, 1000);
-        }
-
-        function playBlitzRound(songObj, roundIdx, nextCallback) {
-            document.getElementById('status').textContent = `🎵 Mystery Blitz Round ${roundIdx + 1}/10... Listen closely!`;
-            
-            let options = [songObj.title];
-            let otherSongs = [...songList].filter(s => s.title !== songObj.title).sort(() => 0.5 - Math.random());
-            options.push(otherSongs[0].title, otherSongs[1].title, otherSongs[2].title);
-            options.sort(() => 0.5 - Math.random()); // Shuffle options
-
-            let container = document.getElementById('blitz-options-container');
-            container.innerHTML = '';
-            options.forEach(opt => {
-                let btn = document.createElement('button');
-                btn.className = 'blitz-btn';
-                btn.textContent = opt;
-                btn.onclick = () => handleBlitzAnswer(btn, opt, songObj.title, nextCallback);
-                container.appendChild(btn);
-            });
-            
-            document.getElementById('blitz-feedback').textContent = '';
-            document.getElementById('blitz-student-modal').classList.add('open');
-
-            // Parse song code and play just the designated amount of notes
-            let parsed = parsePianoPad(songObj.code);
-            let flatNotes = [];
-            parsed.forEach(p => {
-                p.notes.forEach(n => flatNotes.push(n));
-            });
-            let notesToPlay = flatNotes.slice(0, blitzNotesCount);
-            
-            let cumulativeDelay = 0;
-            notesToPlay.forEach((n, idx) => {
-                setTimeout(() => {
-                    let freq = getNoteFrequency(n);
-                    if (freq) playTone(freq, 0.4);
-                    highlightKey(n, 300, '#a855f7'); // Highlight in purple for Blitz
-                }, cumulativeDelay);
-                cumulativeDelay += 400; // Fixed flat tempo for blitz clues
-            });
-        }
-
-        function handleBlitzAnswer(btn, chosenTitle, correctTitle, nextCallback) {
-            let btns = document.querySelectorAll('.blitz-btn');
-            btns.forEach(b => b.disabled = true);
-            
-            if (chosenTitle === correctTitle) {
-                btn.classList.add('correct');
-                document.getElementById('blitz-feedback').textContent = '✅ Correct! +10 Points';
-                document.getElementById('blitz-feedback').style.color = '#22c55e';
-                blitzScore += 10;
-            } else {
-                btn.classList.add('wrong');
-                document.getElementById('blitz-feedback').textContent = `❌ Wrong! It was: ${correctTitle}`;
-                document.getElementById('blitz-feedback').style.color = '#ef4444';
-                // Highlight the correct one
-                btns.forEach(b => {
-                    if (b.textContent === correctTitle) b.classList.add('correct');
-                });
-            }
-            
-            // Sync current score to Firebase so peers see live updates
-            gameStats.perfect = blitzScore;
-            pushPlayerState();
-
-            setTimeout(() => {
-                document.getElementById('blitz-student-modal').classList.remove('open');
-                setTimeout(nextCallback, 800);
-            }, 2500);
-        }
-
-        function finishBlitz() {
-            document.getElementById('status').textContent = `Blitz Complete! Total Score: ${blitzScore}/100`;
-            const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
-            if (localPlayer) {
-                localPlayer.finished = true;
-                pushPlayerState();
-            }
-            renderSongBattleResults();
-        }
-
-        // =========================================================================
-        // NEW: SABOTAGE & POWER-UP ENGINE
-        // =========================================================================
-        
-        async function listenForSabotages() {
-            if (!isSongBattle || !window.firebaseDb || !activeBattleRoomCode) return;
-            
-            const { onChildAdded } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-            const sabRef = window.firebaseRef(window.firebaseDb, `pianopad_live_battles/${activeBattleRoomCode}/sabotage_events`);
-            
-            onChildAdded(sabRef, (snap) => {
-                const data = snap.val();
-                if (!data) return;
-                
-                // Do not sabotage yourself
-                if (data.sender === sessionStudentName) return;
-                
-                // If Team Tug-of-war is active, do not sabotage teammates
-                if (hostSabotageToggles.tugOfWar && data.team !== 'none' && data.team === sessionStudentTeam) return;
-
-                if (hasShield) {
-                    hasShield = false;
-                    document.getElementById('pwr-shield').classList.remove('charged');
-                    document.getElementById('sabotage-shield-overlay').style.display = 'block';
-                    document.getElementById('status').textContent = `🛡️ Sabotage Blocked! Shield consumed.`;
-                    setTimeout(() => { document.getElementById('sabotage-shield-overlay').style.display = 'none'; }, 1500);
-                    return;
-                }
-
-                applySabotageEffect(data.type, data.sender);
-            });
-        }
-
-        function triggerPowerUp(type) {
-            if (currentPerfectStreak < 10) return;
-            
-            if (type === 'shield') {
-                hasShield = true;
-                document.getElementById('status').textContent = `🛡️ Shield Activated!`;
-            } else {
-                // Send offensive sabotage to Firebase
-                document.getElementById('status').textContent = `🔥 Fired ${type.toUpperCase()} Sabotage at Opponents!`;
-                if (window.firebaseDb && activeBattleRoomCode) {
-                    const sabRef = window.firebaseRef(window.firebaseDb, `pianopad_live_battles/${activeBattleRoomCode}/sabotage_events/${Date.now()}`);
-                    window.firebaseSet(sabRef, {
-                        type: type,
-                        sender: sessionStudentName,
-                        team: sessionStudentTeam
-                    });
-                }
-            }
-            
-            // Consume streak
-            currentPerfectStreak = 0;
-            updatePowerUpUI();
-        }
-
-        function updatePowerUpUI() {
-            const canFire = currentPerfectStreak >= 10;
-            const uiModes = ['fog', 'mirror', 'chipmunk', 'shield'];
-            
-            uiModes.forEach(mode => {
-                const el = document.getElementById(`pwr-${mode}`);
-                if (el) {
-                    if (canFire) {
-                        el.classList.add('charged');
-                        el.onclick = () => triggerPowerUp(mode);
-                    } else {
-                        el.classList.remove('charged');
-                        el.onclick = null;
-                    }
-                }
-            });
-        }
-
-        function applySabotageEffect(type, senderName) {
-            playErrorClackSound();
-            document.getElementById('status').textContent = `⚠️ SABOTAGE INCOMING FROM ${senderName}: ${type.toUpperCase()}!`;
-            
-            if (type === 'fog') {
-                document.getElementById('sabotage-fog-overlay').style.display = 'block';
-                setTimeout(() => { document.getElementById('sabotage-fog-overlay').style.display = 'none'; }, 4000);
-            }
-            
-            if (type === 'mirror') {
-                activeSabotage = 'mirror';
-                document.getElementById('keyboard').style.transform = 'scaleX(-1)';
-                setTimeout(() => {
-                    activeSabotage = null;
-                    document.getElementById('keyboard').style.transform = 'none';
-                }, 5000);
-            }
-
-            if (type === 'chipmunk') {
-                activeSabotage = 'chipmunk';
-                setTimeout(() => { activeSabotage = null; }, 5000);
-            }
-        }
-
-        // =========================================================================
-
         async function postBattleToSpreadsheet(battlePayload) {
             if (!APPS_SCRIPT_URL) return;
 
@@ -3313,8 +3627,7 @@
                     name: p.name,
                     score: accuracyPct.toFixed(1),
                     avatar: p.avatar || '🏃',
-                    id: p.id,
-                    team: p.team || 'none'
+                    id: p.id
                 });
             });
 
@@ -3443,8 +3756,7 @@
                 playErrorClackSound();
             }
         }
-
-        function initAudio() {
+    function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
@@ -3919,14 +4231,21 @@
         function resetGameStats() {
             gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
             currentPerfectStreak = 0;
-            updatePowerUpUI();
+            knockoutSabotageCount = 0;
+            activeSabotageType = null;
+            activeSabotageUntil = 0;
+            smokeParticles = [];
+            canvas.classList.remove('canvas-shake-active');
         }
 
         function updateGameStatus() {
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
             const streakLabel = currentPerfectStreak >= 10 ? ` | 🔥 STREAK (${currentPerfectStreak})` : '';
-            document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}${streakLabel}`;
+            const sabLabel = (activeSabotageType && performance.now() < activeSabotageUntil)
+                ? ` | ⚠️ SABOTAGED: ${activeSabotageType.toUpperCase()}!`
+                : '';
+            document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}${streakLabel}${sabLabel}`;
         }
 
         async function calculateAndDisplayRank(accuracyNum) {
@@ -4384,12 +4703,7 @@
 
             if (noteOffsets[name] === undefined) return null;
             const midiNumber = (realOctave + 1) * 12 + noteOffsets[name];
-            let baseFreq = 440 * Math.pow(2, (midiNumber - 69) / 12);
-            
-            // Apply chipmunk sabotage effect if active
-            if (activeSabotage === 'chipmunk') baseFreq *= 2.0;
-
-            return baseFreq;
+            return 440 * Math.pow(2, (midiNumber - 69) / 12);
         }
 
         const keyboardEl = document.getElementById('keyboard');
@@ -4685,6 +4999,11 @@
                         gameStats.perfect++;
                         currentPerfectStreak++;
                         highlightKey(noteStr, 220, '#22c55e');
+
+                        // Streak Sabotage trigger every 15-note Perfect streak during Class Knockout
+                        if (isClassKnockout && currentPerfectStreak > 0 && currentPerfectStreak % 15 === 0) {
+                            triggerStreakSabotage(currentPerfectStreak);
+                        }
                         
                         const normNote = noteStr.toLowerCase().trim();
                         const pos = keyPosMap[normNote];
@@ -4706,10 +5025,7 @@
                         }
                     }
 
-                    if (isGameMode) {
-                        updateGameStatus();
-                        updatePowerUpUI();
-                    }
+                    if (isGameMode) updateGameStatus();
                 } else {
                     gameStats.miss++;
                     currentPerfectStreak = 0;
@@ -4725,10 +5041,7 @@
                             pushPlayerState();
                         }
                     }
-                    if (isGameMode) {
-                        updateGameStatus();
-                        updatePowerUpUI();
-                    }
+                    if (isGameMode) updateGameStatus();
                 }
             } else {
                 highlightKey(noteStr);
@@ -4984,10 +5297,6 @@
             updateKeyPositions();
             buildTimeline();
             resetGameStats();
-            
-            if (isSongBattle && !isMysteryBlitz) {
-                listenForSabotages();
-            }
 
             isPlaying = true;
             isPaused = false;
@@ -5050,9 +5359,15 @@
                 shadowColor = palette.shadowActive;
             }
 
+            const isFrozen = (activeSabotageType === 'freeze' && performance.now() < activeSabotageUntil && gameStatus === 'pending');
+            if (isFrozen) {
+                blockColor = '#bae6fd';
+                shadowColor = 'rgba(224, 242, 254, 0.95)';
+            }
+
             ctx.fillStyle = blockColor;
             ctx.shadowColor = shadowColor;
-            ctx.shadowBlur = 8;
+            ctx.shadowBlur = isFrozen ? 14 : 8;
 
             const radius = Math.min(6, width / 2, height / 2);
             ctx.beginPath();
@@ -5068,14 +5383,20 @@
             ctx.closePath();
             ctx.fill();
 
+            if (isFrozen) {
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+
             if (height >= 18) {
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = isFrozen ? '#0f172a' : '#ffffff';
                 ctx.font = 'bold 11px -apple-system, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 const match = noteName.match(/^([a-g]#?)/i);
                 const label = match ? match[1].toUpperCase() : noteName.toUpperCase();
-                ctx.fillText(label, x + width / 2, y + height / 2);
+                ctx.fillText(isFrozen ? '❄️' : label, x + width / 2, y + height / 2);
             }
             ctx.restore();
         }
@@ -5236,10 +5557,7 @@
                             pushPlayerState();
                         }
                     }
-                    if (isGameMode) {
-                        updateGameStatus();
-                        updatePowerUpUI();
-                    }
+                    if (isGameMode) updateGameStatus();
                 }
 
                 const normNotes = item.notes.map(n => n.toLowerCase().trim());
@@ -5253,7 +5571,6 @@
                         const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * waterfallHeight;
                         let blockHeight = (item.duration / currentFallSpeed) * waterfallHeight;
 
-                        // Check if a subsequent event shares this exact pitch
                         let nextSamePitchItem = null;
                         for (let k = itemIdx + 1; k < noteTimeline.length; k++) {
                             if (noteTimeline[k].notes.some(n => n.toLowerCase().trim() === normNote)) {
@@ -5280,6 +5597,49 @@
                     }
                 });
             });
+
+            if (activeSabotageType && now < activeSabotageUntil) {
+                if (activeSabotageType === 'smoke') {
+                    const smokeZoneBottom = waterfallTop + waterfallHeight * 0.42;
+                    if (smokeParticles.length < 28) {
+                        smokeParticles.push({
+                            x: Math.random() * canvas.width,
+                            y: waterfallTop + Math.random() * (waterfallHeight * 0.35),
+                            r: 45 + Math.random() * 65,
+                            vx: (Math.random() - 0.5) * 2.4,
+                            alpha: 0.55 + Math.random() * 0.35
+                        });
+                    }
+                    ctx.save();
+                    const fogGrad = ctx.createLinearGradient(0, waterfallTop, 0, smokeZoneBottom + 25);
+                    fogGrad.addColorStop(0, 'rgba(203, 213, 225, 0.92)');
+                    fogGrad.addColorStop(0.75, 'rgba(148, 163, 184, 0.84)');
+                    fogGrad.addColorStop(1, 'rgba(148, 163, 184, 0)');
+                    ctx.fillStyle = fogGrad;
+                    ctx.fillRect(0, waterfallTop, canvas.width, waterfallHeight * 0.45);
+
+                    smokeParticles.forEach(sp => {
+                        sp.x += sp.vx;
+                        if (sp.x < -60) sp.x = canvas.width + 60;
+                        if (sp.x > canvas.width + 60) sp.x = -60;
+                        ctx.beginPath();
+                        ctx.fillStyle = `rgba(226, 232, 240, ${sp.alpha})`;
+                        ctx.arc(sp.x, sp.y, sp.r, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    ctx.restore();
+                } else if (activeSabotageType === 'freeze') {
+                    ctx.save();
+                    ctx.strokeStyle = 'rgba(186, 230, 253, 0.85)';
+                    ctx.lineWidth = 8;
+                    ctx.strokeRect(4, waterfallTop + 4, canvas.width - 8, waterfallHeight - 8);
+                    ctx.restore();
+                }
+            } else if (activeSabotageType && now >= activeSabotageUntil) {
+                activeSabotageType = null;
+                smokeParticles = [];
+                canvas.classList.remove('canvas-shake-active');
+            }
 
             if (confettiParticles.length > 0) {
                 for (let i = confettiParticles.length - 1; i >= 0; i--) {
@@ -5721,7 +6081,7 @@
 
             return new Blob([outBuffer], { type: 'audio/wav' });
         }
-// =========================================================================
+    // =========================================================================
         // GRAND FINALE CEREMONY ENGINE (Visuals, Fanfare & UI)
         // =========================================================================
         let fanfareLoopOscs = [];
@@ -5765,13 +6125,11 @@
                 });
             };
 
-            // 3-Second Triumphant Intro
             playBrassChord(['c4', 'e4', 'g4'], now, 0.5);
             playBrassChord(['f4', 'a4', 'c5'], now + 0.5, 0.5);
             playBrassChord(['g4', 'b4', 'd5'], now + 1.0, 0.5);
             playBrassChord(['c4', 'e4', 'g4', 'c5'], now + 1.5, 2.0);
 
-            // Upbeat Chiptune/Marimba Loop (starts at 3.5s)
             const loopStart = now + 3.5;
             const loopNotes = ['c4', 'e4', 'g4', 'e4', 'f4', 'a4', 'c5', 'a4', 'd4', 'f4', 'a4', 'f4', 'g4', 'b4', 'd5', 'b4'];
             for (let i = 0; i < 48; i++) {
@@ -5898,6 +6256,8 @@
             if (koModal) koModal.classList.remove('open');
             const vsOverlay = document.getElementById('ko-vs-overlay');
             if (vsOverlay) vsOverlay.style.display = 'none';
+            const tugHud = document.getElementById('tug-of-war-hud');
+            if (tugHud) tugHud.style.display = 'none';
 
             const modal = document.getElementById('finale-modal');
             modal.style.display = 'flex';
@@ -5983,10 +6343,10 @@
             loadStudentTickerStats(sessionStudentName);
             document.getElementById('status').textContent = 'Returned to PianoPad.';
         }
+
         // =========================================================================
         // SWISS-SYSTEM CLASS KNOCKOUT TOURNAMENT ENGINE (FIREBASE RTDB + GAS)
         // =========================================================================
-
 
         function initSwissTournamentUI() {
             const menuBtns = document.getElementById('sprint-menu-buttons');
@@ -5995,7 +6355,6 @@
                 btnKo.type = 'button';
                 btnKo.id = 'btn-host-knockout-opt';
                 btnKo.className = 'btn-teacher';
-                // Changed button color to Red for the new theme
                 btnKo.style.background = '#ef4444'; 
                 btnKo.style.justifyContent = 'center';
                 btnKo.innerHTML = '🏆 Host Class Knockout (Teacher)';
@@ -6008,7 +6367,6 @@
                 koModal.id = 'knockout-modal';
                 koModal.className = 'modal-overlay';
                 koModal.style.zIndex = '350';
-                // Swapped purple border for Red (#ef4444), set background to black/dark gray
                 koModal.innerHTML = `
                     <div class="modal" style="max-width: 780px; width: 95%; max-height: 90vh; overflow-y: auto; border: 2px solid #ef4444; background: #0a0a0a;">
                         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #374151; padding-bottom:10px;">
@@ -6064,31 +6422,202 @@
                 vsOverlay.id = 'ko-vs-overlay';
                 vsOverlay.className = 'countdown-overlay';
                 vsOverlay.style.zIndex = '250';
-                // Swapped VS overlay borders and glowing text to Red and White
                 vsOverlay.innerHTML = `
-                    <div style="background:#0a0a0a; border:3px solid #ffffff; border-radius:16px; padding:28px 36px; text-align:center; max-width:560px; width:90%; box-shadow:0 0 40px rgba(239,68,68,0.5);">
+                    <div style="background:#0a0a0a; border:3px solid #ffffff; border-radius:16px; padding:24px 32px; text-align:center; max-width:600px; width:92%; box-shadow:0 0 40px rgba(239,68,68,0.5);">
                         <div id="ko-vs-round-label" style="color:#ef4444; font-weight:900; font-size:1.1rem; letter-spacing:0.08em; text-transform:uppercase;">ROUND 1 MATCHUP</div>
-                        <div style="display:flex; align-items:center; justify-content:space-around; gap:16px; margin:20px 0;">
+                        <div style="display:flex; align-items:center; justify-content:space-around; gap:16px; margin:16px 0;">
                             <div style="flex:1;">
                                 <div id="ko-vs-p1-avatar" style="font-size:3.2rem;">🏃</div>
                                 <div id="ko-vs-p1-name" style="font-size:1.15rem; font-weight:800; color:#fff; margin-top:4px;">You</div>
                                 <div id="ko-vs-p1-rank" style="font-size:0.8rem; color:#ffffff; font-weight:700;">Rank #1</div>
+                                <div id="ko-vs-p1-emote" class="ko-emote-bubble">😤 LOCKED IN</div>
                             </div>
                             <div style="font-size:2.4rem; font-weight:900; color:#ef4444; text-shadow:0 0 15px #ef4444;">VS</div>
                             <div style="flex:1;">
                                 <div id="ko-vs-p2-avatar" style="font-size:3.2rem;">🤖</div>
                                 <div id="ko-vs-p2-name" style="font-size:1.15rem; font-weight:800; color:#fff; margin-top:4px;">Opponent</div>
                                 <div id="ko-vs-p2-rank" style="font-size:0.8rem; color:#ffffff; font-weight:700;">Rank #2</div>
+                                <div id="ko-vs-p2-emote" class="ko-emote-bubble">💀 RIP BRO</div>
                             </div>
                         </div>
                         <div id="ko-vs-song-label" style="font-size:0.9rem; color:#9ca3af; font-weight:700;">Song: Wipeout</div>
+                        <div class="ko-emote-deck" id="ko-emote-deck"></div>
                     </div>
                 `;
                 document.body.appendChild(vsOverlay);
             }
         }
 
-        // Override/wrap Song Battle & Sprint selectors + Results Close button cleanly
+        // =========================================================================
+        // 50-EMOTE PRE-MATCH QUICK REACTION DECK
+        // =========================================================================
+        function dealKnockoutEmoteDeck() {
+            const deckEl = document.getElementById('ko-emote-deck');
+            if (!deckEl) return;
+
+            const shuffled = [...KO_HYPE_EMOTES].sort(() => Math.random() - 0.5);
+            const hand = shuffled.slice(0, 4);
+
+            deckEl.innerHTML = hand.map(emote => `
+                <button type="button" class="ko-emote-btn" onclick="sendKnockoutQuickEmote('${emote.replace(/'/g, "\\'")}')">${emote}</button>
+            `).join('') + `<button type="button" class="ko-shuffle-btn" title="Deal 4 new reactions" onclick="dealKnockoutEmoteDeck()">🎲</button>`;
+        }
+
+        function playEmotePopSound() {
+            try {
+                initAudio();
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(520, now);
+                osc.frequency.exponentialRampToValueAtTime(980, now + 0.08);
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.09);
+            } catch (e) {}
+        }
+
+        async function sendKnockoutQuickEmote(emoteText) {
+            if (!isClassKnockout || !knockoutRoomCode || !window.firebaseDb) return;
+
+            playEmotePopSound();
+
+            const selfBubble = document.getElementById('ko-vs-p1-emote');
+            if (selfBubble) {
+                selfBubble.textContent = emoteText;
+                selfBubble.classList.add('visible');
+                clearTimeout(koSelfEmoteHideTimer);
+                koSelfEmoteHideTimer = setTimeout(() => {
+                    selfBubble.classList.remove('visible');
+                }, 2600);
+            }
+
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}/players/${localStudentId}`), {
+                activeEmote: {
+                    id: `${localStudentId}_${Date.now()}`,
+                    text: emoteText,
+                    timestamp: Date.now()
+                }
+            });
+        }
+
+        function showOpponentQuickEmote(emoteObj) {
+            if (!emoteObj || !emoteObj.id || emoteObj.id === lastProcessedOppEmoteId) return;
+            lastProcessedOppEmoteId = emoteObj.id;
+
+            const ageMs = Date.now() - (emoteObj.timestamp || Date.now());
+            if (ageMs > 5000) return;
+
+            playEmotePopSound();
+            const oppBubble = document.getElementById('ko-vs-p2-emote');
+            if (oppBubble) {
+                oppBubble.textContent = emoteObj.text;
+                oppBubble.classList.add('visible');
+                clearTimeout(koOppEmoteHideTimer);
+                koOppEmoteHideTimer = setTimeout(() => {
+                    oppBubble.classList.remove('visible');
+                }, 2600);
+            }
+        }
+
+        // =========================================================================
+        // 1. LIVE HEAD-TO-HEAD TUG-OF-WAR HUD & 2. STREAK SABOTAGE ENGINE
+        // =========================================================================
+        function updateTugOfWarHUD(myAcc, oppAcc) {
+            const hud = document.getElementById('tug-of-war-hud');
+            if (!hud) return;
+
+            if (!isClassKnockout) {
+                hud.style.display = 'none';
+                return;
+            }
+
+            hud.style.display = 'flex';
+            const myName = sessionStudentName || 'You';
+            const myAvatar = sessionStudentAvatar || '🏃';
+
+            document.getElementById('tug-p1-avatar').textContent = myAvatar;
+            document.getElementById('tug-p1-name').textContent = myName;
+            document.getElementById('tug-p1-acc').textContent = `${myAcc.toFixed(1)}%`;
+
+            document.getElementById('tug-p2-avatar').textContent = koOpponentAvatar || '🤖';
+            document.getElementById('tug-p2-name').textContent = koOpponentName || 'Opponent';
+            document.getElementById('tug-p2-acc').textContent = `${oppAcc.toFixed(1)}%`;
+
+            const diff = myAcc - oppAcc;
+            const ratio = Math.max(8, Math.min(92, 50 + (diff * 2.0)));
+            const fillLeft = document.getElementById('tug-fill-left');
+            const marker = document.getElementById('tug-marker');
+
+            if (fillLeft) {
+                fillLeft.style.width = `${ratio}%`;
+                if (diff > 0.5) {
+                    fillLeft.style.background = 'linear-gradient(90deg, #0284c7, #22c55e)';
+                } else if (diff < -0.5) {
+                    fillLeft.style.background = 'linear-gradient(90deg, #ef4444, #f97316)';
+                } else {
+                    fillLeft.style.background = 'linear-gradient(90deg, #38bdf8, #facc15)';
+                }
+            }
+            if (marker) marker.style.left = `${ratio}%`;
+        }
+
+        async function triggerStreakSabotage(streakVal) {
+            if (!isClassKnockout || !knockoutRoomCode || !window.firebaseDb || !koOpponentId || koOpponentId === 'BENCHMARK_80') return;
+
+            knockoutSabotageCount++;
+            const sabTypes = [
+                { type: 'freeze', label: '❄️ FREEZE FRAME' },
+                { type: 'smoke', label: '🌫️ SMOKE SCREEN' },
+                { type: 'shake', label: '🫨 SCREEN SHAKE' }
+            ];
+            const chosen = sabTypes[Math.floor(Math.random() * sabTypes.length)];
+            const sabId = `${localStudentId}_${Date.now()}`;
+
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}/players/${koOpponentId}`), {
+                incomingSabotage: {
+                    id: sabId,
+                    type: chosen.type,
+                    fromName: sessionStudentName || 'Opponent',
+                    timestamp: Date.now()
+                }
+            });
+
+            showFlashingStatus(`🔥 ${streakVal}-NOTE STREAK! Fired ${chosen.label} at ${koOpponentName}!`, 3500);
+        }
+
+        function applyIncomingSabotage(sabObj) {
+            if (!sabObj || !sabObj.id || sabObj.id === lastProcessedSabotageId) return;
+            lastProcessedSabotageId = sabObj.id;
+
+            const ageMs = Date.now() - (sabObj.timestamp || Date.now());
+            if (ageMs > 6000) return;
+
+            activeSabotageType = sabObj.type;
+            activeSabotageUntil = performance.now() + 3000;
+            smokeParticles = [];
+
+            if (sabObj.type === 'shake') {
+                canvas.classList.add('canvas-shake-active');
+                setTimeout(() => {
+                    canvas.classList.remove('canvas-shake-active');
+                }, 1000);
+            }
+
+            const labelMap = {
+                freeze: '❄️ FREEZE FRAME',
+                smoke: '🌫️ SMOKE SCREEN',
+                shake: '🫨 SCREEN SHAKE'
+            };
+            showFlashingStatus(`⚠️ SABOTAGED BY ${sabObj.fromName.toUpperCase()}: ${labelMap[sabObj.type] || 'DISTRACTION'}!`, 3200);
+        }
+
         (function bindKnockoutHooks() {
             const origBattleSel = openSongBattleSelector;
             openSongBattleSelector = function() {
@@ -6236,7 +6765,9 @@
                 opponents: [],
                 currentScore: 0,
                 finishedRound: 0,
-                lastStats: { perfect: 0, earlyLate: 0, miss: 0 }
+                lastStats: { perfect: 0, earlyLate: 0, miss: 0 },
+                incomingSabotage: null,
+                activeEmote: null
             });
             window.firebaseOnDisconnect(playerRef).remove();
 
@@ -6394,9 +6925,18 @@
                 updates[`players/${pid}/currentScore`] = 0;
                 updates[`players/${pid}/finishedRound`] = 0;
                 updates[`players/${pid}/lastStats`] = { perfect: 0, earlyLate: 0, miss: 0 };
+                updates[`players/${pid}/incomingSabotage`] = null;
+                updates[`players/${pid}/activeEmote`] = null;
             });
 
             await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}`), updates);
+        }
+
+        function formatBracketEmoteBadge(playerObj) {
+            if (!playerObj || !playerObj.activeEmote || !playerObj.activeEmote.text) return '';
+            const age = Date.now() - (playerObj.activeEmote.timestamp || 0);
+            if (age > 4500) return '';
+            return `<span class="ko-bracket-emote-tag">${playerObj.activeEmote.text}</span>`;
         }
 
         function handleKnockoutHostUpdate(data) {
@@ -6430,15 +6970,21 @@
                     const p1 = playersObj[m.p1];
                     if (!p1) return '';
                     const p1Done = p1.finishedRound === data.round;
-                    const p1Status = p1Done ? `✅ ${Number(p1.currentScore || 0).toFixed(1)}%` : `🎹 ${Number(p1.currentScore || 0).toFixed(1)}%...`;
+                    const s1 = Number(p1.currentScore || 0);
+                    const p1Status = p1Done ? `✅ ${s1.toFixed(1)}%` : `🎹 ${s1.toFixed(1)}%...`;
+                    const p1Emote = formatBracketEmoteBadge(p1);
 
                     if (m.isGhostMatch) {
                         if (!p1Done) allDone = false;
+                        const isClose = Math.abs(s1 - 80) <= 0.5;
                         return `
                             <div style="background:#141824; border:1px solid #8b5cf6; border-radius:8px; padding:10px;">
-                                <div style="font-size:0.72rem; color:#c084fc; font-weight:800;">MATCH ${idx + 1} • BENCHMARK CHALLENGE</div>
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="font-size:0.72rem; color:#c084fc; font-weight:800;">MATCH ${idx + 1} • BENCHMARK CHALLENGE</span>
+                                    ${isClose ? '<span class="photo-finish-badge">PHOTO FINISH 🔥</span>' : ''}
+                                </div>
                                 <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; font-weight:700;">
-                                    <span>${p1.avatar} ${p1.name}</span>
+                                    <span>${p1.avatar} ${p1.name}${p1Emote}</span>
                                     <span style="color:${p1Done ? '#22c55e' : '#facc15'};">${p1Status}</span>
                                 </div>
                                 <div style="font-size:0.75rem; color:#9ca3af; margin-top:4px;">Target to Win: ≥ 80.0% Accuracy</div>
@@ -6449,17 +6995,23 @@
                     const p2 = playersObj[m.p2];
                     const p2Done = p2 ? (p2.finishedRound === data.round) : true;
                     if (!p1Done || !p2Done) allDone = false;
-                    const p2Status = p2 ? (p2Done ? `✅ ${Number(p2.currentScore || 0).toFixed(1)}%` : `🎹 ${Number(p2.currentScore || 0).toFixed(1)}%...`) : 'Disconnected';
+                    const s2 = p2 ? Number(p2.currentScore || 0) : 0;
+                    const p2Status = p2 ? (p2Done ? `✅ ${s2.toFixed(1)}%` : `🎹 ${s2.toFixed(1)}%...`) : 'Disconnected';
+                    const p2Emote = formatBracketEmoteBadge(p2);
+                    const isPhotoFinish = p2 && Math.abs(s1 - s2) <= 0.5;
 
                     return `
-                        <div style="background:#141824; border:1px solid #374151; border-radius:8px; padding:10px;">
-                            <div style="font-size:0.72rem; color:#38bdf8; font-weight:800;">TABLE ${idx + 1} • ROUND ${data.round}</div>
+                        <div style="background:#141824; border:1px solid ${isPhotoFinish ? '#ef4444' : '#374151'}; border-radius:8px; padding:10px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-size:0.72rem; color:#38bdf8; font-weight:800;">TABLE ${idx + 1} • ROUND ${data.round}</span>
+                                ${isPhotoFinish ? '<span class="photo-finish-badge">PHOTO FINISH 🔥</span>' : ''}
+                            </div>
                             <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; font-weight:700;">
-                                <span>${p1.avatar} ${p1.name}</span>
+                                <span>${p1.avatar} ${p1.name}${p1Emote}</span>
                                 <span style="color:${p1Done ? '#22c55e' : '#facc15'};">${p1Status}</span>
                             </div>
                             <div style="display:flex; justify-content:space-between; margin-top:4px; font-size:0.85rem; font-weight:700;">
-                                <span>${p2 ? p2.avatar + ' ' + p2.name : '---'}</span>
+                                <span>${p2 ? p2.avatar + ' ' + p2.name + p2Emote : '---'}</span>
                                 <span style="color:${p2Done ? '#22c55e' : '#facc15'};">${p2Status}</span>
                             </div>
                         </div>
@@ -6514,6 +7066,7 @@
 
                 if (m.isGhostMatch) {
                     const won = s1 >= (m.targetScore || 80);
+                    const isPhotoFinish = Math.abs(s1 - (m.targetScore || 80)) <= 0.5;
                     const newStreak = won ? ((p1.winStreak || 0) + 1) : 0;
                     updates[`players/${p1.id}/wins`] = (p1.wins || 0) + (won ? 1 : 0);
                     updates[`players/${p1.id}/losses`] = (p1.losses || 0) + (won ? 0 : 1);
@@ -6523,6 +7076,8 @@
                     updates[`players/${p1.id}/lastMatchResult`] = {
                         round: data.round,
                         won: won,
+                        photoFinish: isPhotoFinish,
+                        tiebreakerUsed: false,
                         giantKiller: false,
                         winStreak: newStreak,
                         myScore: s1,
@@ -6535,7 +7090,21 @@
                     const p2 = playersObj[m.p2];
                     if (!p2) return;
                     const s2 = Number(p2.currentScore || 0);
-                    const p1Won = s1 >= s2;
+
+                    const isPhotoFinish = Math.abs(s1 - s2) <= 0.5;
+                    const p1Perfect = (p1.lastStats && p1.lastStats.perfect) ? Number(p1.lastStats.perfect) : 0;
+                    const p2Perfect = (p2.lastStats && p2.lastStats.perfect) ? Number(p2.lastStats.perfect) : 0;
+                    let p1Won = s1 > s2;
+                    let tiebreakerUsed = false;
+
+                    if (isPhotoFinish) {
+                        tiebreakerUsed = true;
+                        if (p1Perfect !== p2Perfect) {
+                            p1Won = p1Perfect > p2Perfect;
+                        } else {
+                            p1Won = s1 >= s2;
+                        }
+                    }
 
                     const p1GiantKiller = p1Won && currentLeaderId === p2.id;
                     const p2GiantKiller = !p1Won && currentLeaderId === p1.id;
@@ -6556,6 +7125,10 @@
                     updates[`players/${p1.id}/lastMatchResult`] = {
                         round: data.round,
                         won: p1Won,
+                        photoFinish: isPhotoFinish,
+                        tiebreakerUsed: tiebreakerUsed,
+                        myPerfect: p1Perfect,
+                        oppPerfect: p2Perfect,
                         giantKiller: p1GiantKiller,
                         winStreak: p1Streak,
                         myScore: s1,
@@ -6574,6 +7147,10 @@
                     updates[`players/${p2.id}/lastMatchResult`] = {
                         round: data.round,
                         won: !p1Won,
+                        photoFinish: isPhotoFinish,
+                        tiebreakerUsed: tiebreakerUsed,
+                        myPerfect: p2Perfect,
+                        oppPerfect: p1Perfect,
                         giantKiller: p2GiantKiller,
                         winStreak: p2Streak,
                         myScore: s2,
@@ -6614,11 +7191,32 @@
 
         function handleKnockoutStudentUpdate(data) {
             const playersObj = data.players || {};
+            const me = playersObj[localStudentId];
             const ranked = getRankedKnockoutPlayers(playersObj);
             const myRankIdx = ranked.findIndex(p => p.id === localStudentId);
             const myPlaceText = myRankIdx >= 0 ? `Rank #${myRankIdx + 1} of ${ranked.length}` : 'Unranked';
 
             document.getElementById('ko-student-standings').innerHTML = buildStandingsHTML(ranked);
+
+            // Listen for opponent's pre-match quick emote
+            if (koOpponentId && koOpponentId !== 'BENCHMARK_80' && playersObj[koOpponentId] && playersObj[koOpponentId].activeEmote) {
+                showOpponentQuickEmote(playersObj[koOpponentId].activeEmote);
+            }
+
+            // Listen for incoming Streak Sabotage during live match
+            if (data.status === 'playing' && me && me.incomingSabotage) {
+                applyIncomingSabotage(me.incomingSabotage);
+            }
+
+            // Update Live Tug-of-War HUD during active round
+            if (data.status === 'playing' && me) {
+                const myLiveAcc = Number(me.currentScore !== undefined ? me.currentScore : 100);
+                let oppLiveAcc = 80.0;
+                if (koOpponentId && koOpponentId !== 'BENCHMARK_80' && playersObj[koOpponentId]) {
+                    oppLiveAcc = Number(playersObj[koOpponentId].currentScore !== undefined ? playersObj[koOpponentId].currentScore : 100);
+                }
+                updateTugOfWarHUD(myLiveAcc, oppLiveAcc);
+            }
 
             if (data.status === 'playing' && knockoutLastRoundStarted !== data.round) {
                 knockoutLastRoundStarted = data.round;
@@ -6635,40 +7233,52 @@
                 let oppName = 'Class Opponent';
                 let oppAvatar = '🤖';
                 let oppRankText = 'Challenger';
+                koOpponentId = null;
 
                 if (myMatch) {
                     if (myMatch.isGhostMatch) {
+                        koOpponentId = 'BENCHMARK_80';
                         oppName = '80% Benchmark';
                         oppAvatar = '🎯';
                         oppRankText = 'Target Score';
                     } else {
                         const oppId = myMatch.p1 === localStudentId ? myMatch.p2 : myMatch.p1;
+                        koOpponentId = oppId;
                         const oppObj = playersObj[oppId];
                         if (oppObj) {
                             oppName = oppObj.name;
                             oppAvatar = oppObj.avatar || '🏃';
                             const oppIdx = ranked.findIndex(p => p.id === oppId);
-                        const isBounty = oppIdx === 0 && (oppObj.roundsPlayed || 0) > 0;
-                        oppRankText = isBounty
-                            ? `🎯 #1 BOUNTY TARGET`
-                            : (oppIdx >= 0 ? `Rank #${oppIdx + 1}` : 'Challenger');
+                            const isBounty = oppIdx === 0 && (oppObj.roundsPlayed || 0) > 0;
+                            oppRankText = isBounty
+                                ? `🎯 #1 BOUNTY TARGET`
+                                : (oppIdx >= 0 ? `Rank #${oppIdx + 1}` : 'Challenger');
+                        }
                     }
                 }
-            }
 
-            document.getElementById('knockout-modal').classList.remove('open');
-            gameResultsModal.classList.remove('open');
-            arcadeHub.classList.remove('open');
+                koOpponentName = oppName;
+                koOpponentAvatar = oppAvatar;
 
-            const myIsBounty = myRankIdx === 0 && (playersObj[localStudentId]?.roundsPlayed || 0) > 0;
-            document.getElementById('ko-vs-round-label').textContent = `ROUND ${data.round} MATCHUP`;
-            document.getElementById('ko-vs-p1-avatar').textContent = sessionStudentAvatar || '🏃';
-            document.getElementById('ko-vs-p1-name').textContent = sessionStudentName || 'You';
-            document.getElementById('ko-vs-p1-rank').textContent = myIsBounty ? `👑 #1 DEFENDING BOUNTY` : myPlaceText;
-            document.getElementById('ko-vs-p2-avatar').textContent = oppAvatar;
-            document.getElementById('ko-vs-p2-name').textContent = oppName;
-            document.getElementById('ko-vs-p2-rank').textContent = oppRankText;
-            document.getElementById('ko-vs-song-label').textContent = `Song: ${data.songTitle}`;
+                document.getElementById('knockout-modal').classList.remove('open');
+                gameResultsModal.classList.remove('open');
+                arcadeHub.classList.remove('open');
+
+                const myIsBounty = myRankIdx === 0 && (playersObj[localStudentId]?.roundsPlayed || 0) > 0;
+                document.getElementById('ko-vs-round-label').textContent = `ROUND ${data.round} MATCHUP`;
+                document.getElementById('ko-vs-p1-avatar').textContent = sessionStudentAvatar || '🏃';
+                document.getElementById('ko-vs-p1-name').textContent = sessionStudentName || 'You';
+                document.getElementById('ko-vs-p1-rank').textContent = myIsBounty ? `👑 #1 DEFENDING BOUNTY` : myPlaceText;
+                document.getElementById('ko-vs-p2-avatar').textContent = oppAvatar;
+                document.getElementById('ko-vs-p2-name').textContent = oppName;
+                document.getElementById('ko-vs-p2-rank').textContent = oppRankText;
+                document.getElementById('ko-vs-song-label').textContent = `Song: ${data.songTitle}`;
+
+                const p1Bubble = document.getElementById('ko-vs-p1-emote');
+                const p2Bubble = document.getElementById('ko-vs-p2-emote');
+                if (p1Bubble) p1Bubble.classList.remove('visible');
+                if (p2Bubble) p2Bubble.classList.remove('visible');
+                dealKnockoutEmoteDeck();
 
                 const vsOverlay = document.getElementById('ko-vs-overlay');
                 vsOverlay.style.display = 'flex';
@@ -6685,16 +7295,23 @@
                     btnGame.classList.add('btn-game-active');
 
                     resetGameStats();
+                    updateTugOfWarHUD(100.0, koOpponentId === 'BENCHMARK_80' ? 80.0 : 100.0);
                     startCountdown(() => { playSong(); });
-                }, 2800);
+                }, 3200);
 
             } else if (data.status === 'round_results') {
-                const me = playersObj[localStudentId];
+                const tugHud = document.getElementById('tug-of-war-hud');
+                if (tugHud) tugHud.style.display = 'none';
+                activeSabotageType = null;
+                canvas.classList.remove('canvas-shake-active');
+
                 if (me && me.lastMatchResult && me.lastMatchResult.round === data.round && knockoutLastRoundFinished !== data.round) {
                     knockoutLastRoundFinished = data.round;
                     renderKnockoutPostRoundComparison(me, me.lastMatchResult, myPlaceText);
                 }
             } else if (data.status === 'finished') {
+                const tugHud = document.getElementById('tug-of-war-hud');
+                if (tugHud) tugHud.style.display = 'none';
                 let standings = data.finalStandings || [];
                 if (standings.length === 0) {
                     const ranked = getRankedKnockoutPlayers(data.players || {});
@@ -6711,6 +7328,13 @@
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const acc = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100) : 100;
 
+            let oppLiveAcc = 80.0;
+            if (knockoutDataCache && knockoutDataCache.players && koOpponentId && koOpponentId !== 'BENCHMARK_80') {
+                const oppObj = knockoutDataCache.players[koOpponentId];
+                if (oppObj && oppObj.currentScore !== undefined) oppLiveAcc = Number(oppObj.currentScore);
+            }
+            updateTugOfWarHUD(acc, oppLiveAcc);
+
             clearTimeout(knockoutLiveSyncTimer);
             knockoutLiveSyncTimer = setTimeout(async () => {
                 const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
@@ -6726,6 +7350,11 @@
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const acc = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100) : 0;
             const roundNum = knockoutDataCache ? knockoutDataCache.round : 1;
+
+            const tugHud = document.getElementById('tug-of-war-hud');
+            if (tugHud) tugHud.style.display = 'none';
+            activeSabotageType = null;
+            canvas.classList.remove('canvas-shake-active');
 
             const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
             await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}/players/${localStudentId}`), {
@@ -6790,10 +7419,15 @@
                 multiGraph.appendChild(col);
             });
 
+            const photoFinishHtml = res.photoFinish
+                ? `<div style="margin-top:6px;"><span class="photo-finish-badge">PHOTO FINISH 🔥</span> <span style="font-size:0.78rem; color:#facc15; font-weight:700;">Tiebreaker by Perfect Hits (${res.myPerfect ?? myStats.perfect} vs ${res.oppPerfect ?? oppStats.perfect})</span></div>`
+                : '';
+
             document.getElementById('game-summary-text').innerHTML = `
                 <div style="font-size:1.25rem; font-weight:900; color:${res.won ? '#22c55e' : '#38bdf8'};">
                     ${res.won ? '🎉 Round Victory!' : '👏 Great Effort!'}
                 </div>
+                ${photoFinishHtml}
                 <div style="font-size:0.88rem; color:#cbd5e1; margin-top:4px;">
                     Stay ready — Teacher will launch the next skill-matched round shortly!
                 </div>
@@ -6813,6 +7447,10 @@
             isSongBattle = false;
             knockoutRoomCode = "";
             knockoutDataCache = null;
+            activeSabotageType = null;
+            canvas.classList.remove('canvas-shake-active');
+            const tugHud = document.getElementById('tug-of-war-hud');
+            if (tugHud) tugHud.style.display = 'none';
             const koModal = document.getElementById('knockout-modal');
             if (koModal) koModal.classList.remove('open');
             const vsOverlay = document.getElementById('ko-vs-overlay');
@@ -6833,13 +7471,10 @@
             const savedAvatar = localStorage.getItem('pianopad_avatar');
             const savedClass = localStorage.getItem('pianopad_class');
             const savedRoom = localStorage.getItem('pianopad_room');
-            const savedTeam = localStorage.getItem('pianopad_team');
-
             if (savedName) sessionStudentName = savedName;
             if (savedAvatar) sessionStudentAvatar = savedAvatar;
             if (savedClass) currentStudentClass = savedClass;
             if (savedRoom) currentRoom = savedRoom;
-            if (savedTeam) sessionStudentTeam = savedTeam;
 
            const now = new Date();
             const day = now.getDay();
@@ -6850,7 +7485,6 @@
             document.getElementById('student-join-name').value = savedName || "";
             if (savedAvatar) document.getElementById('student-join-avatar').value = savedAvatar;
             if (savedClass) document.getElementById('student-join-class').value = savedClass;
-            if (savedTeam) document.getElementById('student-join-team').value = savedTeam;
 
             if (isOOS) {
                 currentRoom = "Outside";
@@ -6883,7 +7517,6 @@
             const cleanName = (str) => String(str || '').replace(/\./g, '').replace(/\s+/g, ' ').trim().toLowerCase();
             const targetName = cleanName(studentName);
 
-            // 1. Fetch Dynamic Announcement from Cell A2 of "announcement" sheet
             const announceUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?sheet=announcement&range=A2:A2&tqx=responseHandler:parseAnnounceGviz&_ts=${Date.now()}`;
             const fetchAnnouncement = () => new Promise((resolve) => {
                 const script = document.createElement('script');
@@ -6909,7 +7542,6 @@
                 document.body.appendChild(script);
             });
 
-            // 2. Fetch Leaderboard Stats
             const gvizUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?sheet=GameModeRanks&tqx=responseHandler:parseTickerGvizResponse&_ts=${Date.now()}`;
             const fetchGvizData = () => new Promise((resolve) => {
                 const script = document.createElement('script');
@@ -6931,10 +7563,8 @@
                 document.body.appendChild(script);
             });
 
-            // 3. Execute both fetches concurrently
             const [announceText, tableData] = await Promise.all([fetchAnnouncement(), fetchGvizData()]);
 
-            // Build flashing announcement if cell A2 is not empty
             let teacherAnnouncement = "";
             if (announceText && announceText.toLowerCase() !== "null" && announceText !== "") {
                 teacherAnnouncement = `<span class="ticker-item" style="color:#facc15; font-weight:900; letter-spacing:0.02em; animation: textBlink 1.5s infinite ease-in-out;">📢 ${announceText}</span><span style="color:#64748b;"> • </span>`;
@@ -7018,3 +7648,4 @@
     </script>
 </body>
 </html>
+    
