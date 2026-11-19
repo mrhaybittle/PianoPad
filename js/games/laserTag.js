@@ -117,7 +117,7 @@ export function stopLaserTag() {
     gamePhase = 'lobby';
 }
 
-export async function startLaserTag(bridge) {
+export async function startLaserTag(bridge, autoRoomCode = null) {
     initAudio();
     stopLaserTag();
     bridge.exitActiveMiniGame();
@@ -126,7 +126,7 @@ export async function startLaserTag(bridge) {
 
     const state = bridge.getState();
     localId = state.localStudentId;
-    activeRoomCode = prompt("Enter a 3-Digit Room Code for Laser Tag Arena:", "123");
+   activeRoomCode = autoRoomCode || prompt("Enter a 3-Digit Room Code for Laser Tag Arena:", "123");
     if (!activeRoomCode || !window.firebaseDb) {
         alert("Firebase required for Laser Tag. Returning to menu.");
         bridge.exitActiveMiniGame();
