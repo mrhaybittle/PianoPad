@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PianoPad - by Haybittle</title>
@@ -286,25 +287,25 @@
         .btn-game-active:hover { background-color: #db2777 !important; }
 
         #btn-record {
-    background-color: var(--recording-active) !important;
-    color: #ffffff !important;
-}
+            background-color: var(--recording-active) !important;
+            color: #ffffff !important;
+        }
 
-#btn-record:hover {
-    background-color: #dc2626 !important;
-}
+        #btn-record:hover {
+            background-color: #dc2626 !important;
+        }
 
-.btn-rec-active {
-    background-color: var(--recording-active) !important;
-    color: #ffffff !important;
-    box-shadow: 0 0 14px rgba(239, 68, 68, 0.8) !important;
-    animation: btnRecordFlash 0.8s infinite ease-in-out;
-}
+        .btn-rec-active {
+            background-color: var(--recording-active) !important;
+            color: #ffffff !important;
+            box-shadow: 0 0 14px rgba(239, 68, 68, 0.8) !important;
+            animation: btnRecordFlash 0.8s infinite ease-in-out;
+        }
 
-@keyframes btnRecordFlash {
-    0%, 100% { opacity: 1; filter: brightness(1); }
-    50% { opacity: 0.45; filter: brightness(1.4); }
-}
+        @keyframes btnRecordFlash {
+            0%, 100% { opacity: 1; filter: brightness(1); }
+            50% { opacity: 0.45; filter: brightness(1.4); }
+        }
 
         .btn-rec-active span {
             animation: textBlink 0.8s infinite ease-in-out;
@@ -358,6 +359,180 @@
             width: 100%;
             flex: 1;
             min-height: 380px;
+        }
+
+        /* LIVE TUG-OF-WAR HUD & SABOTAGE EFFECTS */
+        .tug-of-war-hud {
+            display: none;
+            width: 100%;
+            background: linear-gradient(90deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            border: 1px solid #38bdf8;
+            border-radius: 8px;
+            padding: 5px 12px;
+            margin-bottom: 4px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+            flex-shrink: 0;
+            z-index: 15;
+        }
+
+        .tug-player-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 800;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .tug-track {
+            flex: 1;
+            height: 16px;
+            background: #1e293b;
+            border-radius: 999px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #475569;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8);
+        }
+
+        .tug-fill-left {
+            height: 100%;
+            width: 50%;
+            background: linear-gradient(90deg, #0284c7, #38bdf8, #22c55e);
+            transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
+        }
+
+        .tug-marker {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 4px;
+            background: #ffffff;
+            transform: translateX(-50%);
+            box-shadow: 0 0 8px #ffffff, 0 0 14px #facc15;
+            transition: left 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            z-index: 3;
+        }
+
+        .tug-center-notch {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 1px;
+            background: rgba(255, 255, 255, 0.35);
+            z-index: 2;
+        }
+
+        @keyframes canvasTremor {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            15% { transform: translate(-5px, 3px) rotate(-0.4deg); }
+            30% { transform: translate(5px, -3px) rotate(0.4deg); }
+            45% { transform: translate(-4px, -2px) rotate(-0.3deg); }
+            60% { transform: translate(4px, 3px) rotate(0.3deg); }
+            75% { transform: translate(-3px, 2px) rotate(-0.2deg); }
+            90% { transform: translate(3px, -2px) rotate(0.2deg); }
+        }
+
+        .canvas-shake-active {
+            animation: canvasTremor 0.18s infinite linear;
+        }
+
+        .photo-finish-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ef4444, #f97316);
+            color: #ffffff;
+            font-weight: 900;
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            border-radius: 5px;
+            letter-spacing: 0.04em;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.75);
+            animation: textBlink 1s infinite ease-in-out;
+        }
+
+        /* PRE-MATCH VS QUICK-EMOTE BUTTONS & SPEECH BUBBLES */
+        .ko-emote-deck {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #27272a;
+        }
+
+        .ko-emote-btn {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 1px solid #38bdf8;
+            color: #f8fafc;
+            font-size: 0.82rem;
+            font-weight: 800;
+            padding: 7px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: transform 0.12s, background 0.15s, box-shadow 0.15s;
+            box-shadow: 0 2px 8px rgba(56, 189, 248, 0.25);
+        }
+
+        .ko-emote-btn:hover {
+            background: linear-gradient(135deg, #0284c7, #2563eb);
+            transform: scale(1.06);
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.65);
+        }
+
+        .ko-emote-btn:active {
+            transform: scale(0.95);
+        }
+
+        .ko-shuffle-btn {
+            background: #27272a;
+            border: 1px solid #52525b;
+            color: #facc15;
+            font-size: 0.8rem;
+            font-weight: 800;
+            padding: 7px 10px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+
+        .ko-emote-bubble {
+            min-height: 28px;
+            margin-top: 6px;
+            display: inline-block;
+            background: #facc15;
+            color: #09090b;
+            font-weight: 900;
+            font-size: 0.78rem;
+            padding: 3px 10px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(250, 204, 21, 0.5);
+            opacity: 0;
+            transform: translateY(6px) scale(0.9);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            pointer-events: none;
+        }
+
+        .ko-emote-bubble.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .ko-bracket-emote-tag {
+            display: inline-block;
+            background: #facc15;
+            color: #000000;
+            font-weight: 900;
+            font-size: 0.68rem;
+            padding: 1px 6px;
+            border-radius: 8px;
+            margin-left: 6px;
+            animation: statusFlash 0.5s ease-in-out 3;
         }
 
         #waterfall-canvas {
@@ -669,7 +844,6 @@
             color: white !important;
             box-shadow: 0 0 8px #3b82f6;
         }
-
         .graph-container {
             display: flex;
             flex-direction: column;
@@ -1099,11 +1273,46 @@
             0% { transform: translate3d(0, 0, 0); }
             100% { transform: translate3d(-100%, 0, 0); }
         }
+        /* --- GRAND FINALE & CELEBRATION CSS --- */
+        #celebration-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 510; display: none; }
+        
+        #finale-modal {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.85); z-index: 500; display: none;
+            flex-direction: column; align-items: center; justify-content: flex-start;
+            padding-top: 40px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            backdrop-filter: blur(8px);
+        }
+        
+        .finale-header { text-align: center; margin-bottom: 40px; }
+        .finale-title { font-size: 3rem; font-weight: 900; color: #facc15; text-transform: uppercase; text-shadow: 0 0 25px rgba(250,204,21,0.6); margin-bottom: 8px; letter-spacing: 0.05em; }
+        .finale-subtitle { font-size: 1.4rem; color: #fff; font-weight: 800; background: rgba(0,0,0,0.5); padding: 4px 16px; border-radius: 8px; display: inline-block; }
+        
+        .podium-container { display: flex; align-items: flex-end; justify-content: center; gap: 20px; height: 350px; margin-bottom: 30px; width: 100%; max-width: 800px; }
+        .pedestal-wrap { display: flex; flex-direction: column; align-items: center; opacity: 0; transform: translateY(60px); transition: all 1s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .pedestal-wrap.show { opacity: 1; transform: translateY(0); }
+        
+        .pedestal { width: 150px; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; padding-top: 15px; color: #000; font-weight: 900; font-size: 2.5rem; border-top-left-radius: 12px; border-top-right-radius: 12px; box-shadow: inset 0 5px 15px rgba(255,255,255,0.4), 0 -10px 40px rgba(255,255,255,0.1); }
+        .pedestal-1 { height: 240px; background: linear-gradient(to bottom, #fbbf24, #b45309); border: 2px solid #fef08a; border-bottom: none; z-index: 3; }
+        .pedestal-2 { height: 170px; background: linear-gradient(to bottom, #cbd5e1, #64748b); border: 2px solid #f1f5f9; border-bottom: none; z-index: 2; }
+        .pedestal-3 { height: 120px; background: linear-gradient(to bottom, #d97706, #78350f); border: 2px solid #fcd34d; border-bottom: none; color: #fff; z-index: 1; }
+        
+        .pedestal-avatar { font-size: 4.5rem; margin-bottom: -15px; z-index: 10; text-shadow: 0 8px 15px rgba(0,0,0,0.6); }
+        .pedestal-name { font-size: 1.3rem; font-weight: 900; color: #fff; text-shadow: 0 2px 5px #000; margin-bottom: 4px; text-align: center; white-space: nowrap; }
+        .pedestal-score { font-size: 1.1rem; color: #22c55e; font-weight: 900; background: rgba(0,0,0,0.8); padding: 4px 10px; border-radius: 6px; border: 1px solid #22c55e; box-shadow: 0 0 10px rgba(34,197,94,0.4); }
+        
+        .honorable-mentions { display: flex; gap: 12px; max-width: 90%; overflow-x: auto; padding: 12px; background: rgba(11, 15, 25, 0.6); border-radius: 12px; border: 1px solid #374151; }
+        .honorable-mentions::-webkit-scrollbar { height: 8px; }
+        .honorable-mentions::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        .hm-card { background: #1f2937; padding: 8px 16px; border-radius: 8px; border: 1px solid #4b5563; text-align: center; min-width: 130px; box-shadow: inset 0 2px 4px rgba(255,255,255,0.05); }
+        .hm-rank { color: #9ca3af; font-size: 0.85rem; font-weight: 900; }
+        .hm-name { color: #f3f4f6; font-weight: 800; font-size: 0.95rem; margin: 4px 0; }
+        .hm-score { color: #38bdf8; font-size: 0.85rem; font-weight: 800; }
     </style>
 </head>
 <body>
 
-    <!-- FIREBASE INITIALIZATION FOR ROSTER -->
+    <!-- FIREBASE INITIALIZATION FOR ROSTER & CLASS KNOCKOUT -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getDatabase, ref, set, onDisconnect } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
@@ -1130,7 +1339,23 @@
             console.log("Firebase config error:", e);
         }
     </script>
-
+<!-- Grand Finale Celebration Canvas & Modal -->
+    <canvas id="celebration-canvas"></canvas>
+    <div id="finale-modal">
+        <div class="finale-header">
+            <div class="finale-title" id="finale-title-text">TOURNAMENT COMPLETE</div>
+            <div class="finale-subtitle" id="finale-subtitle-text">Calculating...</div>
+        </div>
+        
+        <div class="podium-container" id="podium-container"></div>
+        
+        <div class="honorable-mentions" id="honorable-mentions"></div>
+        
+        <div style="margin-top: 35px; display: flex; gap: 15px; z-index: 520;">
+            <button type="button" class="btn-success" style="font-size: 1.15rem; padding: 12px 24px; font-weight: 900; box-shadow: 0 0 15px rgba(34,197,94,0.5);" onclick="closeGrandFinale()">Return to PianoPad</button>
+            <button type="button" class="btn-secondary" style="font-size: 1.15rem; padding: 12px 24px; font-weight: 800;" id="btn-mute-fanfare" onclick="toggleFanfareMute()">🔇 Mute Music</button>
+        </div>
+    </div>
     <!-- Tab Switch Alert Modal -->
     <div class="modal-overlay" id="tab-switch-modal" style="z-index: 10000;">
         <div class="modal" style="max-width: 480px; text-align: center; border: 3px solid #ef4444; box-shadow: 0 0 25px rgba(239, 68, 68, 0.8); background-color: #1f2937;">
@@ -1303,8 +1528,8 @@
                 </button>
 
                 <button type="button" id="btn-settings" class="btn-settings" title="Settings">
-    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-</button>
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </button>
 
                 <a href="https://sites.google.com/erc.nsw.edu.au/pianopad-leaderboard/home" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M12 15l-3 4-3-4"></path><path d="M5 6v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"></path><path d="M3 6h18"></path><path d="M5 2h14"></path></svg>
@@ -1400,13 +1625,30 @@
 
         <div class="runner-track-wrapper" id="runner-track" style="display: none;"></div>
 
-        <div class="visualizer-wrapper">
+        <div class="visualizer-wrapper" id="visualizer-wrapper">
+            <div class="tug-of-war-hud" id="tug-of-war-hud">
+                <div class="tug-player-info">
+                    <span id="tug-p1-avatar" style="font-size:1.15rem;">🏃</span>
+                    <span id="tug-p1-name" style="color:#ffffff;">You</span>
+                    <span id="tug-p1-acc" style="color:#22c55e;">100.0%</span>
+                </div>
+                <div class="tug-track">
+                    <div class="tug-fill-left" id="tug-fill-left"></div>
+                    <div class="tug-center-notch"></div>
+                    <div class="tug-marker" id="tug-marker"></div>
+                </div>
+                <div class="tug-player-info">
+                    <span id="tug-p2-acc" style="color:#38bdf8;">100.0%</span>
+                    <span id="tug-p2-name" style="color:#ffffff;">Opponent</span>
+                    <span id="tug-p2-avatar" style="font-size:1.15rem;">🤖</span>
+                </div>
+            </div>
             <canvas id="waterfall-canvas" width="1232" height="380"></canvas>
             <div class="piano" id="keyboard"></div>
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.10.27 | 27-Oct 12:48 AEDT (West Wollongong)</div>
+            <div class="version-stamp">v26.11.19 | 19-Nov 14:02 AEDT (West Wollongong)</div>
             <div class="status-bar" id="status"> GAME MODE READY | Connecting to song database...</div>
             
             <div class="footer-right-group">
@@ -1551,8 +1793,8 @@
         </div>
     </div>
 
-    <!-- Calibration Wizard Modal -->
-    <div class="modal-overlay" id="calib-modal">
+   <!-- Calibration Wizard Modal -->
+    <div class="modal-overlay" id="calib-modal" style="z-index: 400;">
         <div class="modal" style="max-width: 680px;">
             <h2>MIDI Keyboard Calibration</h2>
             <p id="calib-instructions" style="font-size: 0.9rem; color: #38bdf8; font-weight: 600;">
@@ -1689,8 +1931,7 @@
             </div>
         </div>
     </div>
-
-    <script>
+<script>
         const SPREADSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/export?format=csv&gid=1630208958';
         const LEADERBOARD_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTah8Yo_iNb5PcmAjatGpwjPkFqVoLI4-TnJTLfSAQCR3uCuFzOI-XQia8LJ-Vq9E1ZXEX0MnOUWA2v/pub?gid=191904617&single=true&output=csv';
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby67M5VwNiRpcySnun4wTW31nIfXauLXhMRP1w96r6yjMuV9iA8n_C-eEIKfJ_xEuUjKg/exec';
@@ -1749,7 +1990,8 @@
         let lastDetectedNote = null;
         let noteHoldCounter = 0;
 
-       let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+        let gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
+        let sessionSongHistory = {};
         let currentPerfectStreak = 0;
         let sessionStudentName = "";
 
@@ -1799,6 +2041,42 @@
         let activeBattleRoomCode = "";
         let hasBattleStarted = false;
         let battleResultsShown = false;
+
+        // Swiss-System Class Knockout Tournament State
+        let isClassKnockout = false;
+        let isKnockoutHost = false;
+        let knockoutRoomCode = "";
+        let knockoutUnsubscribe = null;
+        let knockoutLastRoundStarted = 0;
+        let knockoutLastRoundFinished = 0;
+        let knockoutDataCache = null;
+        let knockoutLiveSyncTimer = null;
+
+        // Streak Sabotage, Tug-of-War HUD & 50-Emote Quick-Reaction State
+        let knockoutSabotageCount = 0;
+        let lastProcessedSabotageId = null;
+        let activeSabotageType = null;
+        let activeSabotageUntil = 0;
+        let smokeParticles = [];
+        let koOpponentId = null;
+        let koOpponentName = "Opponent";
+        let koOpponentAvatar = "🤖";
+        let lastProcessedOppEmoteId = null;
+        let koSelfEmoteHideTimer = null;
+        let koOppEmoteHideTimer = null;
+
+        const KO_HYPE_EMOTES = [
+            "😤 LOCKED IN", "🔥 TOO EASY", "😎 WATCH THIS", "⚡ LIGHT WORK", "👑 BOW DOWN",
+            "🚀 BUILT DIFFERENT", "🎯 100% INCOMING", "🧊 ICE COLD", "💪 NO SWEAT", "🧠 BIG BRAIN",
+            "🎹 PIANO GOD", "🦖 BEAST MODE", "🏆 ALREADY WON", "🌟 MAIN CHARACTER", "🔋 FULL POWER",
+            "💀 RIP BRO", "🪦 GG EZ", "🧹 GET SWEPT", "🧂 PASS THE SALT", "📉 YOUR ACCURACY",
+            "🐢 TOO SLOW", "🤡 NICE TRY", "🧯 CALL THE FIRE DEPT", "🎒 PACK YOUR BAGS", "💤 WAKE ME UP",
+            "🧀 SKILL ISSUE", "🚧 WRONG KEY BRO", "🗑️ OUTTA MY WAY", "👀 DON'T BLINK", "📉 CHOKING INCOMING",
+            "🙏 PRAY FOR ME", "💦 SWEATING BULLETS", "🫠 MY FINGERS HURT", "🐌 LAG!", "😬 OH NO...",
+            "🎲 PURE LUCK", "🆘 SEND HELP", "🫣 I FORGOT THE NOTES", "🍌 SLIPPERY KEYS", "🎲 YOLO",
+            "🐢 PRACTICE SPEED PLS", "😅 MERCY PLS", "🤝 GG", "🫡 RESPECT", "⚔️ BRING IT ON",
+            "🍿 POPCORN READY", "🚨 UPSET ALERT", "🌪️ CHAOS TIME", "💣 SABOTAGE INCOMING", "🎉 LET'S GOOO!"
+        ];
 
         const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄', '🎹', '🎧', '👨‍🎤', '😎', '🐱', '🐲', '🚀', '🥷'];
 
@@ -1953,18 +2231,19 @@
 
             document.getElementById('room-join-modal').classList.remove('open');
             
-            syncStudentToFirebase("active");
+           syncStudentToFirebase("active");
             updateMonitorWidget();
             loadStudentTickerStats(sessionStudentName);
-            checkFirstTimeCalibration();
         });
-function checkIsOutsideSchoolHours() {
+
+        function checkIsOutsideSchoolHours() {
             const now = new Date();
-            const day = now.getDay(); // 0 = Sunday, 6 = Saturday
+            const day = now.getDay();
             const timeMins = now.getHours() * 60 + now.getMinutes();
             return (day === 0 || day === 6) || (timeMins < 8 * 60) || (timeMins >= 14 * 60 + 5);
         }
-       document.addEventListener("visibilitychange", () => {
+
+        document.addEventListener("visibilitychange", () => {
             const isOOS = checkIsOutsideSchoolHours();
 
             if (document.hidden) {
@@ -2044,17 +2323,27 @@ function checkIsOutsideSchoolHours() {
         document.getElementById('btn-game-results-close').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
             stopBattlePolling();
+            if (isClassKnockout) {
+                const koModal = document.getElementById('knockout-modal');
+                if (koModal) koModal.classList.add('open');
+            }
         });
 
         document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
             stopBattlePolling();
+            if (isClassKnockout) leaveClassKnockout();
             openArcadeHub();
         });
 
         document.getElementById('btn-game-try-again').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
             stopBattlePolling();
+            if (isClassKnockout) {
+                const koModal = document.getElementById('knockout-modal');
+                if (koModal) koModal.classList.add('open');
+                return;
+            }
             if (currentSongTitle === "Mystery Note") startMysteryNote();
             else if (currentSongTitle === "Simon Taps") startSimonTaps();
             else if (currentSongTitle === "Drop Dodge") startDropDodge();
@@ -2100,7 +2389,7 @@ function checkIsOutsideSchoolHours() {
 
                 const del = url.includes('?') ? '&' : '?';
                 script.src = `${url}${del}callback=${cbName}`;
-               script.onerror = function() {
+                script.onerror = function() {
                     delete window[cbName];
                     if (document.body.contains(script)) document.body.removeChild(script);
                     resolve({ error: "SCRIPT_LOAD_ERROR" });
@@ -2108,16 +2397,7 @@ function checkIsOutsideSchoolHours() {
                 document.body.appendChild(script);
             });
         }
-function foldNoteIntoVisibleRange(noteStr) {
-            if (!noteStr) return noteStr;
-            const match = noteStr.trim().toLowerCase().match(/^([a-g]#?)([0-9]+)$/);
-            if (!match) return noteStr;
-            const letter = match[1];
-            let octave = parseInt(match[2], 10);
-            while (octave < 1) octave++;
-            while (octave > 4) octave--;
-            return `${letter}${octave}`;
-        }
+
         function getDiatonicStepAndShift(noteStr) {
             noteStr = noteStr.trim().toLowerCase();
             const match = noteStr.match(/^([a-g])(#?)([0-9]+)$/);
@@ -2736,7 +3016,10 @@ function foldNoteIntoVisibleRange(noteStr) {
 
         function openSprintModeSelector() {
             initAudio();
+            initSwissTournamentUI();
             isSongBattle = false;
+            const btnKo = document.getElementById('btn-host-knockout-opt');
+            if (btnKo) btnKo.style.display = 'none';
             document.getElementById('battle-modal-title').textContent = " Finger Sprint Setup";
             document.getElementById('battle-modal-subtitle').textContent = "Select your race mode:";
             document.getElementById('btn-sprint-bot-opt').style.display = 'inline-flex';
@@ -2761,6 +3044,7 @@ function foldNoteIntoVisibleRange(noteStr) {
 
         function openSongBattleSelector() {
             initAudio();
+            initSwissTournamentUI();
             isSongBattle = true;
             battleResultsShown = false;
             
@@ -2771,6 +3055,8 @@ function foldNoteIntoVisibleRange(noteStr) {
                 btnStep.classList.add('btn-step');
             }
 
+            const btnKo = document.getElementById('btn-host-knockout-opt');
+            if (btnKo) btnKo.style.display = 'inline-flex';
             document.getElementById('battle-modal-title').textContent = ` Song Battle Setup`;
             document.getElementById('battle-modal-subtitle').textContent = "Host or join a live song battle:";
             document.getElementById('btn-sprint-bot-opt').style.display = 'none';
@@ -2791,7 +3077,11 @@ function foldNoteIntoVisibleRange(noteStr) {
             document.getElementById('host-lobby-group').style.display = 'none';
             document.getElementById('client-waiting-group').style.display = 'none';
             document.getElementById('inline-name-error').style.display = 'none';
-            document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
+            
+            const confirmBtn = document.getElementById('btn-confirm-sprint-action');
+            confirmBtn.style.display = 'inline-flex';
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirm & Continue';
 
             if (isSongBattle) {
                 populateHostSongSelector();
@@ -2800,13 +3090,18 @@ function foldNoteIntoVisibleRange(noteStr) {
                 document.getElementById('host-song-selector-group').style.display = 'none';
             }
             
-            document.getElementById('btn-confirm-sprint-action').onclick = () => {
+            confirmBtn.onclick = () => {
+                if (confirmBtn.disabled) return;
+
                 const rawName = document.getElementById('sprint-player-name').value;
                 if (!rawName.trim()) {
                     document.getElementById('inline-name-error').style.display = 'block';
                     document.getElementById('sprint-player-name').focus();
                     return;
                 }
+
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Starting...';
 
                 const nameInput = sanitizeName(rawName);
                 document.getElementById('sprint-player-name').value = nameInput;
@@ -2832,9 +3127,15 @@ function foldNoteIntoVisibleRange(noteStr) {
             document.getElementById('host-lobby-group').style.display = 'none';
             document.getElementById('client-waiting-group').style.display = 'none';
             document.getElementById('inline-name-error').style.display = 'none';
-            document.getElementById('btn-confirm-sprint-action').style.display = 'inline-flex';
+            
+            const confirmBtn = document.getElementById('btn-confirm-sprint-action');
+            confirmBtn.style.display = 'inline-flex';
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirm & Continue';
 
-            document.getElementById('btn-confirm-sprint-action').onclick = () => {
+            confirmBtn.onclick = () => {
+                if (confirmBtn.disabled) return;
+
                 const rawName = document.getElementById('sprint-player-name').value;
                 const roomCode = document.getElementById('sprint-room-code').value.trim().toUpperCase();
 
@@ -2849,6 +3150,9 @@ function foldNoteIntoVisibleRange(noteStr) {
                     document.getElementById('sprint-room-code').focus();
                     return;
                 }
+
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Joining...';
 
                 const nameInput = sanitizeName(rawName);
                 document.getElementById('sprint-player-name').value = nameInput;
@@ -2926,6 +3230,21 @@ function foldNoteIntoVisibleRange(noteStr) {
 
         async function showJoinSetup(racerName, roomCode) {
             sessionStudentName = racerName;
+
+            if (isSongBattle && window.firebaseDb) {
+                try {
+                    const { get, child } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+                    const snap = await get(child(window.firebaseRef(window.firebaseDb), `pianopad_tournaments/${roomCode}`));
+                    if (snap.exists()) {
+                        closeSprintOptionModal();
+                        joinClassKnockoutStudent(racerName, roomCode);
+                        return;
+                    }
+                } catch (e) {
+                    console.warn("Tournament room check fallback to standard battle:", e);
+                }
+            }
+
             activeBattleRoomCode = roomCode;
 
             localPlayerIdRoom = 'p' + (Date.now() % 10000);
@@ -2944,6 +3263,11 @@ function foldNoteIntoVisibleRange(noteStr) {
 
             if (res && res.error) {
                 alert("Room not found! Check code and try again.");
+                const confirmBtn = document.getElementById('btn-confirm-sprint-action');
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = 'Confirm & Continue';
+                }
                 return;
             }
 
@@ -3255,23 +3579,24 @@ function foldNoteIntoVisibleRange(noteStr) {
             }
         }
 
+        async function forceEndSongBattle() {
+            if (!isSprintHost) return;
+            playersList.forEach(p => p.finished = true);
+            renderSongBattleResults();
+        }
+
         function renderSongBattleResults() {
             if (battleResultsShown) return;
 
             const allPlayersFinished = playersList.every(p => p.finished === true || p.finished === "true");
             
             if (!allPlayersFinished) {
-                document.getElementById('status').textContent = ` Battle finished for you! Waiting for remaining players to complete...`;
+                document.getElementById('status').innerHTML = ` Battle finished for you! Waiting for remaining players to complete... 
+                ${isSprintHost ? '<button type="button" class="btn-warning" onclick="forceEndSongBattle()" style="margin-left:10px; padding:2px 8px; font-size:0.75rem; border:none; border-radius:4px; cursor:pointer;">⚡ Force End Battle</button>' : ''}`;
                 return;
             }
 
             battleResultsShown = true;
-            const multiGraph = document.getElementById('multi-bar-graph');
-            multiGraph.innerHTML = '';
-            multiGraph.style.display = 'flex';
-            document.getElementById('badge-container').innerHTML = '';
-            document.getElementById('single-bar-graph').style.display = 'none';
-            document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
 
             const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
             if (localPlayer && localPlayer.stats) {
@@ -3293,47 +3618,24 @@ function foldNoteIntoVisibleRange(noteStr) {
             });
 
             const battlePayload = [];
-
             sortedRanked.forEach((p, idx) => {
-                const col = document.createElement('div');
-                col.className = 'multi-bar-column';
-
                 const pStats = p.stats || { perfect: 0, earlyLate: 0, miss: 0 };
                 const total = Math.max(1, pStats.perfect + pStats.earlyLate + pStats.miss);
-
                 const accuracyPct = ((pStats.perfect * 1.0 + pStats.earlyLate * 0.5) / total) * 100;
-
+                
                 battlePayload.push({
                     name: p.name,
-                    score: accuracyPct.toFixed(1)
+                    score: accuracyPct.toFixed(1),
+                    avatar: p.avatar || '🏃',
+                    id: p.id
                 });
-
-                const gPct = (pStats.perfect / total) * 100;
-                const oPct = (pStats.earlyLate / total) * 100;
-                const rPct = (pStats.miss / total) * 100;
-
-                const medal = idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `${idx + 1}th`;
-
-                col.innerHTML = `
-                    <div class="rank-medal-badge">${medal}</div>
-                    <div class="stacked-bar">
-                        <div class="bar-part-red" style="height:${rPct}%;"></div>
-                        <div class="bar-part-orange" style="height:${oPct}%;"></div>
-                        <div class="bar-part-green" style="height:${gPct}%;"></div>
-                    </div>
-                    <span style="font-size:0.75rem; font-weight:700; color:#fff;">${p.avatar || '🏃'} ${p.name}</span>
-                `;
-                multiGraph.appendChild(col);
             });
 
             if (isSprintHost) {
                 postBattleToSpreadsheet(battlePayload);
             }
 
-            document.getElementById('game-summary-text').innerHTML = `<div style="font-size:1.2rem; font-weight:800; color:#facc15;"> Song Battle Standings: ${currentSongTitle}</div>`;
-            document.getElementById('game-rank-text').textContent = `Song Battle Logged!`;
-            gameResultsModal.classList.add('open');
-
+            showGrandFinale(battlePayload, isSprintHost, `Song Battle: ${currentSongTitle}`);
             loadStudentTickerStats(sessionStudentName);
         }
 
@@ -3362,10 +3664,7 @@ function foldNoteIntoVisibleRange(noteStr) {
                 document.getElementById('status').textContent = `Failed to submit score for ${sessionStudentName}.`;
             }
         }
-function checkSprintTurboZone(pxProgress) {
-            const isTurboPad = (pxProgress % 640) >= 300 && (pxProgress % 640) <= 360;
-            return isTurboPad;
-        }
+
         function handleSprintInput(noteStr) {
             if (!raceActive) return;
 
@@ -3431,20 +3730,12 @@ function checkSprintTurboZone(pxProgress) {
                 sprintIndex++;
                 sprintKeystrokeCount++;
 
-                const isTurbo = checkSprintTurboZone(localPlayer.pxProgress);
-                const stepBoost = isTurbo ? 60 : 36;
-
                 const avatarEl = document.getElementById(`avatar-${localPlayer.id}`);
                 if (avatarEl && !avatarEl.classList.contains('jumping')) {
-                    avatarEl.textContent = isTurbo ? '⚡' : ((sprintKeystrokeCount % 2 === 0) ? '🏃‍♂️' : (sessionStudentAvatar || '🏃'));
+                    avatarEl.textContent = (sprintKeystrokeCount % 2 === 0) ? '🏃‍♂️' : (sessionStudentAvatar || '🏃');
                 }
 
-                if (isTurbo) {
-                    document.getElementById('status').textContent = '⚡ TURBO BOOST ACTIVATED! +Bonus Speed!';
-                    spawnConfetti(canvas.width / 2, canvas.height / 2, '#facc15');
-                }
-
-                localPlayer.pxProgress += stepBoost;
+                localPlayer.pxProgress = sprintKeystrokeCount * 36;
                 updateMultiplayerLanesUI();
 
                 if (localPlayer.pxProgress >= 3600 && !localPlayer.finishTime) {
@@ -3458,15 +3749,14 @@ function checkSprintTurboZone(pxProgress) {
                     return;
                 }
 
-               const nextExpected = sprintSequence[sprintIndex % 2];
+                const nextExpected = sprintSequence[sprintIndex % 2];
                 highlightKey(nextExpected, 300, '#eab308');
             } else {
                 gameStats.miss++;
                 playErrorClackSound();
             }
         }
-
-        function initAudio() {
+    function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
@@ -3718,6 +4008,13 @@ function checkSprintTurboZone(pxProgress) {
         const speedInput = document.getElementById('speed-input');
 
         function updateSpeed(newVal, restartPlayback = true) {
+            if (isSongBattle || isClassKnockout) {
+                document.getElementById('status').textContent = ' Tempo is locked at 100% during battles!';
+                speedSlider.value = 100;
+                if (speedInput) speedInput.value = 100;
+                return;
+            }
+
             let val = Math.max(10, Math.min(500, Math.round(Number(newVal) || 100)));
             speedSlider.value = val;
             if (speedInput) speedInput.value = val;
@@ -3859,7 +4156,7 @@ function checkSprintTurboZone(pxProgress) {
             const title = teacherTitleInput.value.trim();
             const code = teacherCodeTextarea.value.trim();
 
-            if (pass !== "Rocky") {
+            if (pass !== "ERC") {
                 teacherErrorDiv.textContent = "Incorrect Teacher Password!";
                 teacherErrorDiv.style.display = "block";
                 return;
@@ -3931,16 +4228,24 @@ function checkSprintTurboZone(pxProgress) {
             }
         }
 
-    function resetGameStats() {
+        function resetGameStats() {
             gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
             currentPerfectStreak = 0;
+            knockoutSabotageCount = 0;
+            activeSabotageType = null;
+            activeSabotageUntil = 0;
+            smokeParticles = [];
+            canvas.classList.remove('canvas-shake-active');
         }
 
-       function updateGameStatus() {
+        function updateGameStatus() {
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
             const streakLabel = currentPerfectStreak >= 10 ? ` | 🔥 STREAK (${currentPerfectStreak})` : '';
-            document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}${streakLabel}`;
+            const sabLabel = (activeSabotageType && performance.now() < activeSabotageUntil)
+                ? ` | ⚠️ SABOTAGED: ${activeSabotageType.toUpperCase()}!`
+                : '';
+            document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}${streakLabel}${sabLabel}`;
         }
 
         async function calculateAndDisplayRank(accuracyNum) {
@@ -4034,6 +4339,62 @@ function checkSprintTurboZone(pxProgress) {
             document.getElementById('bar-orange').style.height = `${orangePct}%`;
             document.getElementById('bar-red').style.height = `${redPct}%`;
 
+            const studentKey = (sessionStudentName || 'Student').trim().toLowerCase();
+            const historyKey = `${studentKey}|||${currentSongTitle}`;
+            if (!sessionSongHistory[historyKey]) {
+                sessionSongHistory[historyKey] = [];
+            }
+
+            sessionSongHistory[historyKey].push({
+                attempt: sessionSongHistory[historyKey].length + 1,
+                perfect: perfectHits,
+                earlyLate: earlyLateHits,
+                miss: missedHits,
+                total: totalHits,
+                accuracy: parseFloat(accuracy) || 0,
+                speed: parseInt(speedSlider.value, 10) || 100
+            });
+
+            const attempts = sessionSongHistory[historyKey];
+            const singleGraph = document.getElementById('single-bar-graph');
+            const multiGraph = document.getElementById('multi-bar-graph');
+
+            if (attempts.length === 1) {
+                multiGraph.style.display = 'none';
+                singleGraph.style.display = 'flex';
+            } else {
+                singleGraph.style.display = 'none';
+                multiGraph.innerHTML = '';
+                multiGraph.style.display = 'flex';
+
+                attempts.forEach((att, idx) => {
+                    const gPct = att.total > 0 ? (att.perfect / att.total) * 100 : 0;
+                    const oPct = att.total > 0 ? (att.earlyLate / att.total) * 100 : 0;
+                    const rPct = att.total > 0 ? (att.miss / att.total) * 100 : 0;
+                    const isLatest = idx === attempts.length - 1;
+
+                    const col = document.createElement('div');
+                    col.className = 'multi-bar-column';
+                    col.innerHTML = `
+                        <div class="rank-medal-badge" style="color: ${isLatest ? '#22c55e' : '#facc15'};">
+                            ${att.accuracy.toFixed(1)}%
+                        </div>
+                        <div class="stacked-bar" style="${isLatest ? 'outline: 2px solid #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);' : ''}">
+                            <div class="bar-part-red" style="height:${rPct}%;"></div>
+                            <div class="bar-part-orange" style="height:${oPct}%;"></div>
+                            <div class="bar-part-green" style="height:${gPct}%;"></div>
+                        </div>
+                        <span style="font-size:0.74rem; font-weight:700; color:${isLatest ? '#38bdf8' : '#cbd5e1'};">
+                            Try ${att.attempt}
+                        </span>
+                        <span style="font-size:0.65rem; color:#9ca3af;">@${att.speed}%</span>
+                    `;
+                    multiGraph.appendChild(col);
+                });
+
+                multiGraph.scrollLeft = multiGraph.scrollWidth;
+            }
+
             const currentSpeed = parseInt(speedSlider.value, 10);
             const badgeContainer = document.getElementById('badge-container');
             
@@ -4123,35 +4484,13 @@ function checkSprintTurboZone(pxProgress) {
                 return;
             }
 
-            if (e.key === '[' || e.key === ']') {
-                if (isPlaying && noteTimeline.length > 0) {
-                    const firstHit = noteTimeline[0].hitTime;
-                    const lastHit = noteTimeline[noteTimeline.length - 1].hitTime + noteTimeline[noteTimeline.length - 1].duration;
-                    const totalDuration = Math.max(1, lastHit - firstHit);
-                    const effectiveElapsed = (performance.now() - playbackStartTime) - accumulatedPauseMs;
-                    const currentPct = Math.max(0, Math.min(100, Math.round(((effectiveElapsed - firstHit) / totalDuration) * 100)));
-
-                    if (e.key === '[') {
-                        loopStartSlider.value = Math.min(currentPct, parseInt(loopEndSlider.value, 10) - 1);
-                        updateLoopRange();
-                        document.getElementById('status').textContent = `🔁 Loop Start Marker set to ${loopStartSlider.value}%`;
-                    } else if (e.key === ']') {
-                        loopEndSlider.value = Math.max(currentPct, parseInt(loopStartSlider.value, 10) + 1);
-                        updateLoopRange();
-                        document.getElementById('status').textContent = `🔁 Loop End Marker set to ${loopEndSlider.value}%`;
-                    }
-                    if (!isLooping) toggleLoopMode();
-                }
-                return;
-            }
-
             if (e.code === 'ArrowDown') {
                 e.preventDefault();
                 playSong();
                 return;
             }
 
-           if (e.code === 'Space') {
+            if (e.code === 'Space') {
                 e.preventDefault();
                 if (isRecording) {
                     toggleRecording();
@@ -4175,8 +4514,8 @@ function checkSprintTurboZone(pxProgress) {
         function toggleStepMode() {
             initAudio();
             
-            if (isSongBattle) {
-                document.getElementById('status').textContent = ' Step Mode is NOT permitted during Song Battles!';
+            if (isSongBattle || isClassKnockout) {
+                document.getElementById('status').textContent = ' Step Mode is NOT permitted during Song Battles or Class Knockouts!';
                 return;
             }
 
@@ -4660,13 +4999,15 @@ function checkSprintTurboZone(pxProgress) {
                         gameStats.perfect++;
                         currentPerfectStreak++;
                         highlightKey(noteStr, 220, '#22c55e');
+
+                        // Streak Sabotage trigger every 15-note Perfect streak during Class Knockout
+                        if (isClassKnockout && currentPerfectStreak > 0 && currentPerfectStreak % 15 === 0) {
+                            triggerStreakSabotage(currentPerfectStreak);
+                        }
                         
                         const normNote = noteStr.toLowerCase().trim();
                         const pos = keyPosMap[normNote];
-                        if (pos) {
-                            spawnConfetti(pos.left + pos.width / 2, canvas.height, '#22c55e');
-                            addKeyRipple(pos.left + pos.width / 2, canvas.height - 4, '#22c55e');
-                        }
+                        if (pos) spawnConfetti(pos.left + pos.width / 2, canvas.height, '#22c55e');
                     } else {
                         target.gameStatus = 'earlyLate';
                         gameStats.earlyLate++;
@@ -4674,7 +5015,9 @@ function checkSprintTurboZone(pxProgress) {
                         highlightKey(noteStr, 220, '#f97316');
                     }
 
-                    if (isSongBattle) {
+                    if (isClassKnockout) {
+                        syncKnockoutLiveScore();
+                    } else if (isSongBattle) {
                         const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
@@ -4689,7 +5032,9 @@ function checkSprintTurboZone(pxProgress) {
                     playErrorClackSound();
                     highlightKey(noteStr, 200, '#ef4444');
 
-                    if (isSongBattle) {
+                    if (isClassKnockout) {
+                        syncKnockoutLiveScore();
+                    } else if (isSongBattle) {
                         const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
@@ -4723,7 +5068,7 @@ function checkSprintTurboZone(pxProgress) {
             const song = [];
             for (let i = 0; i < rawNotes.length; i++) {
                 song.push({
-                    notes: rawNotes[i].split('+').filter(Boolean).map(n => foldNoteIntoVisibleRange(n.trim().toLowerCase())),
+                    notes: rawNotes[i].split('+').filter(Boolean),
                     rest: parseInt(rests[i] || '250', 10)
                 });
             }
@@ -4770,39 +5115,40 @@ function checkSprintTurboZone(pxProgress) {
         }
 
         function renderSongSelect() {
-    const uniqueMap = new Map();
-    songList.forEach(s => {
-        const key = s.title.toLowerCase().trim();
-        if (!uniqueMap.has(key)) uniqueMap.set(key, s);
-    });
-    const sortedList = Array.from(uniqueMap.values());
-    sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
+            const uniqueMap = new Map();
+            songList.forEach(s => {
+                const key = s.title.toLowerCase().trim();
+                if (!uniqueMap.has(key)) uniqueMap.set(key, s);
+            });
+            const sortedList = Array.from(uniqueMap.values());
+            sortedList.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true }));
 
-    songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
-    sortedList.forEach(song => {
-        const opt = document.createElement('option');
-        opt.value = song.code;
+            songSelect.innerHTML = '<option value="">-- Choose a Song --</option>';
+            sortedList.forEach(song => {
+                const opt = document.createElement('option');
+                opt.value = song.code;
 
-        let badge = '';
-        if (song.difficulty) {
-            const diff = song.difficulty.toLowerCase().trim();
-            if (diff === 'easy') {
-                badge = '🟢 ';
-                opt.style.color = '#22c55e';
-            } else if (diff === 'medium') {
-                badge = '🟠 ';
-                opt.style.color = '#f97316';
-            } else if (diff === 'hard') {
-                badge = '🔴 ';
-                opt.style.color = '#ef4444';
-            }
-            opt.dataset.diff = diff;
+                let badge = '';
+                if (song.difficulty) {
+                    const diff = song.difficulty.toLowerCase().trim();
+                    if (diff === 'easy') {
+                        badge = '🟢 ';
+                        opt.style.color = '#22c55e';
+                    } else if (diff === 'medium') {
+                        badge = '🟠 ';
+                        opt.style.color = '#f97316';
+                    } else if (diff === 'hard') {
+                        badge = '🔴 ';
+                        opt.style.color = '#ef4444';
+                    }
+                    opt.dataset.diff = diff;
+                }
+
+                opt.textContent = badge + song.title;
+                songSelect.appendChild(opt);
+            });
         }
 
-        opt.textContent = badge + song.title;
-        songSelect.appendChild(opt);
-    });
-}
         async function syncSongsWithGoogleSheet() {
             localStorage.removeItem('pianopad_sheet_songs');
 
@@ -4970,46 +5316,12 @@ function checkSprintTurboZone(pxProgress) {
 
             requestAnimationFrame(renderLoop);
         }
-let keyRipples = [];
-        function addKeyRipple(x, y, color = '#22c55e') {
-            keyRipples.push({ x: x, y: y, r: 4, alpha: 1.0, color: color });
-        }
 
-        function renderRipples(targetCtx) {
-            for (let i = keyRipples.length - 1; i >= 0; i--) {
-                const rip = keyRipples[i];
-                targetCtx.save();
-                targetCtx.strokeStyle = rip.color;
-                targetCtx.lineWidth = 3;
-                targetCtx.globalAlpha = Math.max(0, rip.alpha);
-                targetCtx.beginPath();
-                targetCtx.arc(rip.x, rip.y, rip.r, 0, Math.PI * 2);
-                targetCtx.stroke();
-                targetCtx.restore();
-                rip.r += 2.8;
-                rip.alpha -= 0.035;
-                if (rip.alpha <= 0) keyRipples.splice(i, 1);
-            }
-        }
-
-        function drawMiniRadar(ctx, currentProgressPct) {
-            const radarH = 6;
-            const radarY = (showSheetMusic && !activeMiniGame) ? 75 : 0;
-            ctx.save();
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
-            ctx.fillRect(0, radarY, ctx.canvas.width, radarH);
-            ctx.fillStyle = '#38bdf8';
-            ctx.shadowColor = '#00f0ff';
-            ctx.shadowBlur = 8;
-            ctx.fillRect(0, radarY, ctx.canvas.width * (Math.max(0, Math.min(100, currentProgressPct)) / 100), radarH);
-            ctx.restore();
-        }
         function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending') {
             ctx.save();
             
             const palette = themePalettes[currentTheme] || themePalettes.default;
 
-            // Pitch colour mapping (C: Red, D: Orange, E: Yellow, F: Green, G: Blue, A: Purple, B: Pink)
             const pitchColorMap = {
                 'c': '#ef4444',
                 'd': '#f97316',
@@ -5047,9 +5359,15 @@ let keyRipples = [];
                 shadowColor = palette.shadowActive;
             }
 
+            const isFrozen = (activeSabotageType === 'freeze' && performance.now() < activeSabotageUntil && gameStatus === 'pending');
+            if (isFrozen) {
+                blockColor = '#bae6fd';
+                shadowColor = 'rgba(224, 242, 254, 0.95)';
+            }
+
             ctx.fillStyle = blockColor;
             ctx.shadowColor = shadowColor;
-            ctx.shadowBlur = 8;
+            ctx.shadowBlur = isFrozen ? 14 : 8;
 
             const radius = Math.min(6, width / 2, height / 2);
             ctx.beginPath();
@@ -5065,14 +5383,20 @@ let keyRipples = [];
             ctx.closePath();
             ctx.fill();
 
+            if (isFrozen) {
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+
             if (height >= 18) {
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = isFrozen ? '#0f172a' : '#ffffff';
                 ctx.font = 'bold 11px -apple-system, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 const match = noteName.match(/^([a-g]#?)/i);
                 const label = match ? match[1].toUpperCase() : noteName.toUpperCase();
-                ctx.fillText(label, x + width / 2, y + height / 2);
+                ctx.fillText(isFrozen ? '❄️' : label, x + width / 2, y + height / 2);
             }
             ctx.restore();
         }
@@ -5138,13 +5462,6 @@ let keyRipples = [];
                 drawSimonStaircase(simonSequence.length);
             } else {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-            }
-
-            if (isPlaying && noteTimeline.length > 0 && !activeMiniGame) {
-                const firstHit = noteTimeline[0].hitTime;
-                const lastHit = noteTimeline[noteTimeline.length - 1].hitTime + noteTimeline[noteTimeline.length - 1].duration;
-                const progressPct = ((effectiveElapsed - firstHit) / Math.max(1, lastHit - firstHit)) * 100;
-                drawMiniRadar(ctx, progressPct);
             }
 
             const canvasHeight = canvas.height;
@@ -5231,7 +5548,9 @@ let keyRipples = [];
                     item.gameStatus = 'miss';
                     gameStats.miss++;
                     currentPerfectStreak = 0;
-                    if (isSongBattle) {
+                    if (isClassKnockout) {
+                        syncKnockoutLiveScore();
+                    } else if (isSongBattle) {
                         const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
                         if (localPlayer) {
                             localPlayer.stats = { ...gameStats };
@@ -5252,7 +5571,6 @@ let keyRipples = [];
                         const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * waterfallHeight;
                         let blockHeight = (item.duration / currentFallSpeed) * waterfallHeight;
 
-                        // Check if a subsequent event shares this exact pitch
                         let nextSamePitchItem = null;
                         for (let k = itemIdx + 1; k < noteTimeline.length; k++) {
                             if (noteTimeline[k].notes.some(n => n.toLowerCase().trim() === normNote)) {
@@ -5261,7 +5579,6 @@ let keyRipples = [];
                             }
                         }
 
-                        // Enforce at least 6px clear separation before the next rectangle of identical pitch
                         if (nextSamePitchItem) {
                             const timeGap = nextSamePitchItem.hitTime - item.hitTime;
                             const distanceToNext = (timeGap / currentFallSpeed) * waterfallHeight;
@@ -5280,6 +5597,49 @@ let keyRipples = [];
                     }
                 });
             });
+
+            if (activeSabotageType && now < activeSabotageUntil) {
+                if (activeSabotageType === 'smoke') {
+                    const smokeZoneBottom = waterfallTop + waterfallHeight * 0.42;
+                    if (smokeParticles.length < 28) {
+                        smokeParticles.push({
+                            x: Math.random() * canvas.width,
+                            y: waterfallTop + Math.random() * (waterfallHeight * 0.35),
+                            r: 45 + Math.random() * 65,
+                            vx: (Math.random() - 0.5) * 2.4,
+                            alpha: 0.55 + Math.random() * 0.35
+                        });
+                    }
+                    ctx.save();
+                    const fogGrad = ctx.createLinearGradient(0, waterfallTop, 0, smokeZoneBottom + 25);
+                    fogGrad.addColorStop(0, 'rgba(203, 213, 225, 0.92)');
+                    fogGrad.addColorStop(0.75, 'rgba(148, 163, 184, 0.84)');
+                    fogGrad.addColorStop(1, 'rgba(148, 163, 184, 0)');
+                    ctx.fillStyle = fogGrad;
+                    ctx.fillRect(0, waterfallTop, canvas.width, waterfallHeight * 0.45);
+
+                    smokeParticles.forEach(sp => {
+                        sp.x += sp.vx;
+                        if (sp.x < -60) sp.x = canvas.width + 60;
+                        if (sp.x > canvas.width + 60) sp.x = -60;
+                        ctx.beginPath();
+                        ctx.fillStyle = `rgba(226, 232, 240, ${sp.alpha})`;
+                        ctx.arc(sp.x, sp.y, sp.r, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    ctx.restore();
+                } else if (activeSabotageType === 'freeze') {
+                    ctx.save();
+                    ctx.strokeStyle = 'rgba(186, 230, 253, 0.85)';
+                    ctx.lineWidth = 8;
+                    ctx.strokeRect(4, waterfallTop + 4, canvas.width - 8, waterfallHeight - 8);
+                    ctx.restore();
+                }
+            } else if (activeSabotageType && now >= activeSabotageUntil) {
+                activeSabotageType = null;
+                smokeParticles = [];
+                canvas.classList.remove('canvas-shake-active');
+            }
 
             if (confettiParticles.length > 0) {
                 for (let i = confettiParticles.length - 1; i >= 0; i--) {
@@ -5310,7 +5670,10 @@ let keyRipples = [];
                     isPlaying = false;
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                    if (isSongBattle) {
+                    if (isClassKnockout) {
+                        submitKnockoutRoundFinish();
+                        return;
+                    } else if (isSongBattle) {
                         const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
                         if (localPlayer) {
                             localPlayer.finished = true;
@@ -5718,12 +6081,1391 @@ let keyRipples = [];
 
             return new Blob([outBuffer], { type: 'audio/wav' });
         }
+    // =========================================================================
+        // GRAND FINALE CEREMONY ENGINE (Visuals, Fanfare & UI)
+        // =========================================================================
+        let fanfareLoopOscs = [];
+        let fanfareGain = null;
+        let isFanfareMuted = false;
+        
+        let celCanvas, celCtx, celFrameId;
+        let fireworks = [];
+        let celConfetti = [];
 
-        document.addEventListener('DOMContentLoaded', () => {
+        function playVictoryFanfare() {
+            initAudio();
+            stopVictoryMusic();
+            isFanfareMuted = false;
+            document.getElementById('btn-mute-fanfare').textContent = "🔇 Mute Music";
+
+            fanfareGain = audioCtx.createGain();
+            fanfareGain.gain.value = 0.4;
+            fanfareGain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            
+            const playBrassChord = (pitches, time, duration) => {
+                pitches.forEach(p => {
+                    const osc = audioCtx.createOscillator();
+                    osc.type = 'sawtooth';
+                    osc.frequency.value = getNoteFrequency(p);
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(400, time);
+                    filter.frequency.exponentialRampToValueAtTime(3500, time + duration / 2);
+                    
+                    const env = audioCtx.createGain();
+                    env.gain.setValueAtTime(0, time);
+                    env.gain.linearRampToValueAtTime(0.25, time + 0.1);
+                    env.gain.exponentialRampToValueAtTime(0.01, time + duration);
+                    
+                    osc.connect(filter).connect(env).connect(fanfareGain);
+                    osc.start(time);
+                    osc.stop(time + duration);
+                });
+            };
+
+            playBrassChord(['c4', 'e4', 'g4'], now, 0.5);
+            playBrassChord(['f4', 'a4', 'c5'], now + 0.5, 0.5);
+            playBrassChord(['g4', 'b4', 'd5'], now + 1.0, 0.5);
+            playBrassChord(['c4', 'e4', 'g4', 'c5'], now + 1.5, 2.0);
+
+            const loopStart = now + 3.5;
+            const loopNotes = ['c4', 'e4', 'g4', 'e4', 'f4', 'a4', 'c5', 'a4', 'd4', 'f4', 'a4', 'f4', 'g4', 'b4', 'd5', 'b4'];
+            for (let i = 0; i < 48; i++) {
+                const time = loopStart + (i * 0.25);
+                const osc = audioCtx.createOscillator();
+                osc.type = 'square';
+                osc.frequency.value = getNoteFrequency(loopNotes[i % loopNotes.length]);
+                
+                const env = audioCtx.createGain();
+                env.gain.setValueAtTime(0, time);
+                env.gain.linearRampToValueAtTime(0.12, time + 0.03);
+                env.gain.exponentialRampToValueAtTime(0.01, time + 0.22);
+                
+                osc.connect(env).connect(fanfareGain);
+                osc.start(time);
+                osc.stop(time + 0.25);
+                fanfareLoopOscs.push(osc);
+            }
+        }
+
+        function toggleFanfareMute() {
+            if (!fanfareGain) return;
+            isFanfareMuted = !isFanfareMuted;
+            fanfareGain.gain.value = isFanfareMuted ? 0 : 0.4;
+            document.getElementById('btn-mute-fanfare').textContent = isFanfareMuted ? "🔊 Unmute" : "🔇 Mute Music";
+        }
+
+        function stopVictoryMusic() {
+            fanfareLoopOscs.forEach(o => { try { o.stop(); } catch (e) {} });
+            fanfareLoopOscs = [];
+            if (fanfareGain) {
+                fanfareGain.disconnect();
+                fanfareGain = null;
+            }
+        }
+
+        function startCelebrationCanvas() {
+            celCanvas = document.getElementById('celebration-canvas');
+            celCanvas.style.display = 'block';
+            celCanvas.width = window.innerWidth;
+            celCanvas.height = window.innerHeight;
+            celCtx = celCanvas.getContext('2d');
+            fireworks = [];
+            celConfetti = [];
+            celFrameId = requestAnimationFrame(renderCelebration);
+        }
+
+        function stopCelebrationCanvas() {
+            if (celFrameId) cancelAnimationFrame(celFrameId);
+            if (celCanvas) celCanvas.style.display = 'none';
+        }
+
+        function spawnFirework() {
+            fireworks.push({
+                x: Math.random() * (celCanvas.width - 300) + 150,
+                y: celCanvas.height,
+                vx: (Math.random() - 0.5) * 3,
+                vy: -(Math.random() * 6 + 12),
+                exploded: false,
+                particles: [],
+                hue: Math.random() * 360
+            });
+        }
+
+        function renderCelebration() {
+            celCtx.clearRect(0, 0, celCanvas.width, celCanvas.height);
+            
+            if (Math.random() < 0.04) spawnFirework();
+            if (Math.random() < 0.25) {
+                celConfetti.push({
+                    x: Math.random() * celCanvas.width, y: -10,
+                    vx: (Math.random() - 0.5) * 3, vy: Math.random() * 4 + 2,
+                    size: Math.random() * 10 + 5, color: `hsl(${Math.random()*360}, 100%, 50%)`,
+                    rot: 0, rotSpeed: (Math.random()-0.5)*0.3
+                });
+            }
+
+            for (let i = celConfetti.length - 1; i >= 0; i--) {
+                let c = celConfetti[i];
+                c.x += c.vx; c.y += c.vy; c.rot += c.rotSpeed;
+                celCtx.save();
+                celCtx.translate(c.x, c.y); celCtx.rotate(c.rot);
+                celCtx.fillStyle = c.color;
+                celCtx.fillRect(-c.size/2, -c.size/2, c.size, c.size);
+                celCtx.restore();
+                if (c.y > celCanvas.height) celConfetti.splice(i, 1);
+            }
+
+            for (let i = fireworks.length - 1; i >= 0; i--) {
+                let fw = fireworks[i];
+                if (!fw.exploded) {
+                    fw.x += fw.vx; fw.y += fw.vy; fw.vy += 0.2; 
+                    celCtx.fillStyle = '#fff';
+                    celCtx.beginPath(); celCtx.arc(fw.x, fw.y, 4, 0, Math.PI*2); celCtx.fill();
+                    if (fw.vy >= 0) {
+                        fw.exploded = true;
+                        for (let j = 0; j < 60; j++) {
+                            let angle = Math.random() * Math.PI * 2;
+                            let speed = Math.random() * 7 + 1;
+                            fw.particles.push({
+                                x: fw.x, y: fw.y,
+                                vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
+                                alpha: 1, hue: fw.hue + (Math.random()-0.5)*40
+                            });
+                        }
+                    }
+                } else {
+                    for (let j = fw.particles.length - 1; j >= 0; j--) {
+                        let p = fw.particles[j];
+                        p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.vx *= 0.97; p.alpha -= 0.02;
+                        celCtx.fillStyle = `hsla(${p.hue}, 100%, 60%, ${p.alpha})`;
+                        celCtx.beginPath(); celCtx.arc(p.x, p.y, 3, 0, Math.PI*2); celCtx.fill();
+                        if (p.alpha <= 0) fw.particles.splice(j, 1);
+                    }
+                    if (fw.particles.length === 0) fireworks.splice(i, 1);
+                }
+            }
+            celFrameId = requestAnimationFrame(renderCelebration);
+        }
+
+        function showGrandFinale(standings, isHost, titleText) {
+            document.getElementById('game-results-modal').classList.remove('open');
+            const koModal = document.getElementById('knockout-modal');
+            if (koModal) koModal.classList.remove('open');
+            const vsOverlay = document.getElementById('ko-vs-overlay');
+            if (vsOverlay) vsOverlay.style.display = 'none';
+            const tugHud = document.getElementById('tug-of-war-hud');
+            if (tugHud) tugHud.style.display = 'none';
+
+            const modal = document.getElementById('finale-modal');
+            modal.style.display = 'flex';
+            document.getElementById('finale-title-text').textContent = titleText || "GRAND FINALE!";
+
+            let myRank = -1;
+            standings.forEach((p, idx) => {
+                if (p.name === sessionStudentName || p.id === localStudentId) myRank = idx + 1;
+            });
+
+            const subText = document.getElementById('finale-subtitle-text');
+            if (myRank === 1) {
+                subText.innerHTML = "🏆 <span style='color:#facc15;'>CLASS CHAMPION!</span>";
+            } else if (myRank > 1) {
+                subText.innerHTML = `🎉 YOU FINISHED <span style='color:#38bdf8;'>#${myRank}</span> OUT OF ${standings.length}!`;
+            } else {
+                subText.innerHTML = `Spectator Mode`;
+            }
+
+            const podiumMap = [
+                { rank: 2, class: 'pedestal-2', label: '🥈 2nd' },
+                { rank: 1, class: 'pedestal-1', label: '👑 1st' },
+                { rank: 3, class: 'pedestal-3', label: '🥉 3rd' }
+            ];
+
+            const podiumContainer = document.getElementById('podium-container');
+            podiumContainer.innerHTML = '';
+            
+            podiumMap.forEach((spot) => {
+                const p = standings[spot.rank - 1];
+                if (p) {
+                    const delay = spot.rank === 1 ? 2800 : (spot.rank === 2 ? 1800 : 800);
+                    const scoreText = p.score !== undefined ? `${p.score}%` : (p.avgAcc ? `${p.avgAcc}%` : '');
+                    
+                    podiumContainer.innerHTML += `
+                        <div class="pedestal-wrap" id="ped-wrap-${spot.rank}" style="transition-delay: ${delay}ms;">
+                            <div class="pedestal-avatar">${p.avatar || '🏃'}</div>
+                            <div class="pedestal-name">${p.name}</div>
+                            <div class="pedestal-score">${scoreText}</div>
+                            <div class="pedestal ${spot.class}">${spot.label}</div>
+                        </div>
+                    `;
+                }
+            });
+
+            setTimeout(() => {
+                [3, 2, 1].forEach(r => {
+                    const el = document.getElementById(`ped-wrap-${r}`);
+                    if (el) el.classList.add('show');
+                });
+            }, 100);
+
+            const hmContainer = document.getElementById('honorable-mentions');
+            hmContainer.innerHTML = '';
+            if (standings.length > 3) {
+                standings.slice(3).forEach((p, idx) => {
+                    const scoreText = p.score !== undefined ? `${p.score}%` : (p.avgAcc ? `${p.avgAcc}%` : '');
+                    hmContainer.innerHTML += `
+                        <div class="hm-card">
+                            <div class="hm-rank">#${idx + 4} Rank</div>
+                            <div class="hm-name">${p.avatar || '🏃'} ${p.name}</div>
+                            <div class="hm-score">${scoreText}</div>
+                        </div>
+                    `;
+                });
+            }
+
+            playVictoryFanfare();
+            startCelebrationCanvas();
+        }
+
+        function closeGrandFinale() {
+            stopVictoryMusic();
+            stopCelebrationCanvas();
+            document.getElementById('finale-modal').style.display = 'none';
+            
+            if (isSongBattle) {
+                stopBattlePolling();
+            } else if (isClassKnockout) {
+                leaveClassKnockout();
+            }
+            
+            loadStudentTickerStats(sessionStudentName);
+            document.getElementById('status').textContent = 'Returned to PianoPad.';
+        }
+
+        // =========================================================================
+        // SWISS-SYSTEM CLASS KNOCKOUT TOURNAMENT ENGINE (FIREBASE RTDB + GAS)
+        // =========================================================================
+
+        function initSwissTournamentUI() {
+            const menuBtns = document.getElementById('sprint-menu-buttons');
+            if (menuBtns && !document.getElementById('btn-host-knockout-opt')) {
+                const btnKo = document.createElement('button');
+                btnKo.type = 'button';
+                btnKo.id = 'btn-host-knockout-opt';
+                btnKo.className = 'btn-teacher';
+                btnKo.style.background = '#ef4444'; 
+                btnKo.style.justifyContent = 'center';
+                btnKo.innerHTML = '🏆 Host Class Knockout (Teacher)';
+                btnKo.onclick = openTeacherKnockoutSetup;
+                menuBtns.appendChild(btnKo);
+            }
+
+            if (!document.getElementById('knockout-modal')) {
+                const koModal = document.createElement('div');
+                koModal.id = 'knockout-modal';
+                koModal.className = 'modal-overlay';
+                koModal.style.zIndex = '350';
+                koModal.innerHTML = `
+                    <div class="modal" style="max-width: 780px; width: 95%; max-height: 90vh; overflow-y: auto; border: 2px solid #ef4444; background: #0a0a0a;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #374151; padding-bottom:10px;">
+                            <h2 id="ko-modal-title" style="color:#ffffff; margin:0;">🏆 Class Swiss Knockout Tournament</h2>
+                            <span id="ko-room-badge" style="background:#ef4444; color:#fff; padding:4px 12px; border-radius:6px; font-weight:800; font-size:0.95rem;">Code: ---</span>
+                        </div>
+
+                        <div id="ko-teacher-panel" style="display:none; flex-direction:column; gap:12px;">
+                            <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:#111; padding:10px; border-radius:8px; border:1px solid #374151;">
+                                <div style="flex:1; min-width:200px;">
+                                    <label style="font-size:0.72rem; color:#9ca3af; font-weight:700; display:block; margin-bottom:4px;">SELECT SONG FOR NEXT ROUND:</label>
+                                    <select id="ko-song-select" style="width:100%; max-width:100%; background:#000; color:#fff;"></select>
+                                </div>
+                                <div style="display:flex; gap:8px; align-items:flex-end;">
+                                    <button type="button" id="btn-ko-start-round" class="btn-success" style="padding:8px 14px; font-size:0.85rem; background:#ef4444;">▶ Start Round 1</button>
+                                    <button type="button" id="btn-ko-force-end" class="btn-warning" style="display:none; padding:8px 12px; font-size:0.82rem;">⚡ Force End Round</button>
+                                    <button type="button" id="btn-ko-finish-tourney" class="btn-arcade" style="display:none; padding:8px 12px; font-size:0.82rem; background:#fff; color:#000;">🏅 End & Podium</button>
+                                </div>
+                            </div>
+
+                            <div id="ko-status-banner" style="font-size:0.85rem; color:#ffffff; font-weight:700; text-align:center;">
+                                Waiting for students to join using Room Code above...
+                            </div>
+
+                            <div id="ko-bracket-container" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px; max-height:320px; overflow-y:auto;"></div>
+
+                            <div id="ko-standings-container" style="background:#111; border:1px solid #374151; border-radius:8px; padding:10px; max-height:200px; overflow-y:auto;"></div>
+                        </div>
+
+                        <div id="ko-student-panel" style="display:none; flex-direction:column; gap:12px; text-align:center;">
+                            <div id="ko-student-status" style="font-size:1rem; color:#ffffff; font-weight:800;">
+                                Connected to Class Knockout! Waiting for Teacher to start Round 1...
+                            </div>
+                            <div id="ko-student-pairing-box" style="background:#111; border:1px solid #374151; border-radius:8px; padding:12px; font-size:0.9rem; color:#fff;"></div>
+                            <div id="ko-student-standings" style="background:#111; border:1px solid #374151; border-radius:8px; padding:10px; max-height:240px; overflow-y:auto; text-align:left;"></div>
+                        </div>
+
+                        <div class="modal-footer" style="justify-content:space-between; border-top:1px solid #374151; padding-top:10px;">
+                            <span style="font-size:0.75rem; color:#9ca3af;">Swiss Placement Ladder • Zero Elimination • Everyone plays every round</span>
+                            <button type="button" class="btn-danger" style="background:#ef4444;" onclick="leaveClassKnockout()">Exit Tournament</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(koModal);
+
+                document.getElementById('btn-ko-start-round').addEventListener('click', startNextKnockoutRound);
+                document.getElementById('btn-ko-force-end').addEventListener('click', forceEndKnockoutRound);
+                document.getElementById('btn-ko-finish-tourney').addEventListener('click', finalizeClassKnockout);
+            }
+
+            if (!document.getElementById('ko-vs-overlay')) {
+                const vsOverlay = document.createElement('div');
+                vsOverlay.id = 'ko-vs-overlay';
+                vsOverlay.className = 'countdown-overlay';
+                vsOverlay.style.zIndex = '250';
+                vsOverlay.innerHTML = `
+                    <div style="background:#0a0a0a; border:3px solid #ffffff; border-radius:16px; padding:24px 32px; text-align:center; max-width:600px; width:92%; box-shadow:0 0 40px rgba(239,68,68,0.5);">
+                        <div id="ko-vs-round-label" style="color:#ef4444; font-weight:900; font-size:1.1rem; letter-spacing:0.08em; text-transform:uppercase;">ROUND 1 MATCHUP</div>
+                        <div style="display:flex; align-items:center; justify-content:space-around; gap:16px; margin:16px 0;">
+                            <div style="flex:1;">
+                                <div id="ko-vs-p1-avatar" style="font-size:3.2rem;">🏃</div>
+                                <div id="ko-vs-p1-name" style="font-size:1.15rem; font-weight:800; color:#fff; margin-top:4px;">You</div>
+                                <div id="ko-vs-p1-rank" style="font-size:0.8rem; color:#ffffff; font-weight:700;">Rank #1</div>
+                                <div id="ko-vs-p1-emote" class="ko-emote-bubble">😤 LOCKED IN</div>
+                            </div>
+                            <div style="font-size:2.4rem; font-weight:900; color:#ef4444; text-shadow:0 0 15px #ef4444;">VS</div>
+                            <div style="flex:1;">
+                                <div id="ko-vs-p2-avatar" style="font-size:3.2rem;">🤖</div>
+                                <div id="ko-vs-p2-name" style="font-size:1.15rem; font-weight:800; color:#fff; margin-top:4px;">Opponent</div>
+                                <div id="ko-vs-p2-rank" style="font-size:0.8rem; color:#ffffff; font-weight:700;">Rank #2</div>
+                                <div id="ko-vs-p2-emote" class="ko-emote-bubble">💀 RIP BRO</div>
+                            </div>
+                        </div>
+                        <div id="ko-vs-song-label" style="font-size:0.9rem; color:#9ca3af; font-weight:700;">Song: Wipeout</div>
+                        <div class="ko-emote-deck" id="ko-emote-deck"></div>
+                    </div>
+                `;
+                document.body.appendChild(vsOverlay);
+            }
+        }
+
+        // =========================================================================
+        // 50-EMOTE PRE-MATCH QUICK REACTION DECK
+        // =========================================================================
+        function dealKnockoutEmoteDeck() {
+            const deckEl = document.getElementById('ko-emote-deck');
+            if (!deckEl) return;
+
+            const shuffled = [...KO_HYPE_EMOTES].sort(() => Math.random() - 0.5);
+            const hand = shuffled.slice(0, 4);
+
+            deckEl.innerHTML = hand.map(emote => `
+                <button type="button" class="ko-emote-btn" onclick="sendKnockoutQuickEmote('${emote.replace(/'/g, "\\'")}')">${emote}</button>
+            `).join('') + `<button type="button" class="ko-shuffle-btn" title="Deal 4 new reactions" onclick="dealKnockoutEmoteDeck()">🎲</button>`;
+        }
+
+        function playEmotePopSound() {
+            try {
+                initAudio();
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(520, now);
+                osc.frequency.exponentialRampToValueAtTime(980, now + 0.08);
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.09);
+            } catch (e) {}
+        }
+
+        async function sendKnockoutQuickEmote(emoteText) {
+            if (!isClassKnockout || !knockoutRoomCode || !window.firebaseDb) return;
+
+            playEmotePopSound();
+
+            const selfBubble = document.getElementById('ko-vs-p1-emote');
+            if (selfBubble) {
+                selfBubble.textContent = emoteText;
+                selfBubble.classList.add('visible');
+                clearTimeout(koSelfEmoteHideTimer);
+                koSelfEmoteHideTimer = setTimeout(() => {
+                    selfBubble.classList.remove('visible');
+                }, 2600);
+            }
+
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}/players/${localStudentId}`), {
+                activeEmote: {
+                    id: `${localStudentId}_${Date.now()}`,
+                    text: emoteText,
+                    timestamp: Date.now()
+                }
+            });
+        }
+
+        function showOpponentQuickEmote(emoteObj) {
+            if (!emoteObj || !emoteObj.id || emoteObj.id === lastProcessedOppEmoteId) return;
+            lastProcessedOppEmoteId = emoteObj.id;
+
+            const ageMs = Date.now() - (emoteObj.timestamp || Date.now());
+            if (ageMs > 5000) return;
+
+            playEmotePopSound();
+            const oppBubble = document.getElementById('ko-vs-p2-emote');
+            if (oppBubble) {
+                oppBubble.textContent = emoteObj.text;
+                oppBubble.classList.add('visible');
+                clearTimeout(koOppEmoteHideTimer);
+                koOppEmoteHideTimer = setTimeout(() => {
+                    oppBubble.classList.remove('visible');
+                }, 2600);
+            }
+        }
+
+        // =========================================================================
+        // 1. LIVE HEAD-TO-HEAD TUG-OF-WAR HUD & 2. STREAK SABOTAGE ENGINE
+        // =========================================================================
+        function updateTugOfWarHUD(myAcc, oppAcc) {
+            const hud = document.getElementById('tug-of-war-hud');
+            if (!hud) return;
+
+            if (!isClassKnockout) {
+                hud.style.display = 'none';
+                return;
+            }
+
+            hud.style.display = 'flex';
+            const myName = sessionStudentName || 'You';
+            const myAvatar = sessionStudentAvatar || '🏃';
+
+            document.getElementById('tug-p1-avatar').textContent = myAvatar;
+            document.getElementById('tug-p1-name').textContent = myName;
+            document.getElementById('tug-p1-acc').textContent = `${myAcc.toFixed(1)}%`;
+
+            document.getElementById('tug-p2-avatar').textContent = koOpponentAvatar || '🤖';
+            document.getElementById('tug-p2-name').textContent = koOpponentName || 'Opponent';
+            document.getElementById('tug-p2-acc').textContent = `${oppAcc.toFixed(1)}%`;
+
+            const diff = myAcc - oppAcc;
+            const ratio = Math.max(8, Math.min(92, 50 + (diff * 2.0)));
+            const fillLeft = document.getElementById('tug-fill-left');
+            const marker = document.getElementById('tug-marker');
+
+            if (fillLeft) {
+                fillLeft.style.width = `${ratio}%`;
+                if (diff > 0.5) {
+                    fillLeft.style.background = 'linear-gradient(90deg, #0284c7, #22c55e)';
+                } else if (diff < -0.5) {
+                    fillLeft.style.background = 'linear-gradient(90deg, #ef4444, #f97316)';
+                } else {
+                    fillLeft.style.background = 'linear-gradient(90deg, #38bdf8, #facc15)';
+                }
+            }
+            if (marker) marker.style.left = `${ratio}%`;
+        }
+
+        async function triggerStreakSabotage(streakVal) {
+            if (!isClassKnockout || !knockoutRoomCode || !window.firebaseDb || !koOpponentId || koOpponentId === 'BENCHMARK_80') return;
+
+            knockoutSabotageCount++;
+            const sabTypes = [
+                { type: 'freeze', label: '❄️ FREEZE FRAME' },
+                { type: 'smoke', label: '🌫️ SMOKE SCREEN' },
+                { type: 'shake', label: '🫨 SCREEN SHAKE' }
+            ];
+            const chosen = sabTypes[Math.floor(Math.random() * sabTypes.length)];
+            const sabId = `${localStudentId}_${Date.now()}`;
+
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}/players/${koOpponentId}`), {
+                incomingSabotage: {
+                    id: sabId,
+                    type: chosen.type,
+                    fromName: sessionStudentName || 'Opponent',
+                    timestamp: Date.now()
+                }
+            });
+
+            showFlashingStatus(`🔥 ${streakVal}-NOTE STREAK! Fired ${chosen.label} at ${koOpponentName}!`, 3500);
+        }
+
+        function applyIncomingSabotage(sabObj) {
+            if (!sabObj || !sabObj.id || sabObj.id === lastProcessedSabotageId) return;
+            lastProcessedSabotageId = sabObj.id;
+
+            const ageMs = Date.now() - (sabObj.timestamp || Date.now());
+            if (ageMs > 6000) return;
+
+            activeSabotageType = sabObj.type;
+            activeSabotageUntil = performance.now() + 3000;
+            smokeParticles = [];
+
+            if (sabObj.type === 'shake') {
+                canvas.classList.add('canvas-shake-active');
+                setTimeout(() => {
+                    canvas.classList.remove('canvas-shake-active');
+                }, 1000);
+            }
+
+            const labelMap = {
+                freeze: '❄️ FREEZE FRAME',
+                smoke: '🌫️ SMOKE SCREEN',
+                shake: '🫨 SCREEN SHAKE'
+            };
+            showFlashingStatus(`⚠️ SABOTAGED BY ${sabObj.fromName.toUpperCase()}: ${labelMap[sabObj.type] || 'DISTRACTION'}!`, 3200);
+        }
+
+        (function bindKnockoutHooks() {
+            const origBattleSel = openSongBattleSelector;
+            openSongBattleSelector = function() {
+                initSwissTournamentUI();
+                origBattleSel();
+                const btnKo = document.getElementById('btn-host-knockout-opt');
+                if (btnKo) btnKo.style.display = 'inline-flex';
+            };
+
+            const origSprintSel = openSprintModeSelector;
+            openSprintModeSelector = function() {
+                initSwissTournamentUI();
+                origSprintSel();
+                const btnKo = document.getElementById('btn-host-knockout-opt');
+                if (btnKo) btnKo.style.display = 'none';
+            };
+
+            const origJoinSetup = showJoinSetup;
+            showJoinSetup = async function(racerName, roomCode) {
+                if (isSongBattle && window.firebaseDb) {
+                    try {
+                        const { get, child } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+                        const snap = await get(child(window.firebaseRef(window.firebaseDb), `pianopad_tournaments/${roomCode}`));
+                        if (snap.exists()) {
+                            closeSprintOptionModal();
+                            joinClassKnockoutStudent(racerName, roomCode);
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn("Tournament room check fallback to standard battle:", e);
+                    }
+                }
+                return origJoinSetup(racerName, roomCode);
+            };
+
+            const origToggleStep = toggleStepMode;
+            toggleStepMode = function() {
+                if (isClassKnockout) {
+                    document.getElementById('status').textContent = ' Step Mode is NOT permitted during Class Knockouts!';
+                    return;
+                }
+                return origToggleStep();
+            };
+
+            const origPlayManual = playManualNote;
+            playManualNote = function(noteStr) {
+                origPlayManual(noteStr);
+                if (isClassKnockout && isPlaying && !isPaused) {
+                    syncKnockoutLiveScore();
+                }
+            };
+
+            const closeBtn = document.getElementById('btn-game-results-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    if (isClassKnockout) {
+                        const koModal = document.getElementById('knockout-modal');
+                        if (koModal) koModal.classList.add('open');
+                    }
+                });
+            }
+        })();
+
+        async function openTeacherKnockoutSetup() {
+            const pass = prompt("Enter Teacher Password to Host Class Knockout:");
+            if (pass !== "ERC") {
+                if (pass !== null) alert("Incorrect Teacher Password!");
+                return;
+            }
+
+            if (!window.firebaseDb) {
+                alert("Firebase Realtime Database is not connected yet. Please wait a moment and try again.");
+                return;
+            }
+
+            closeSprintOptionModal();
+            initSwissTournamentUI();
+
+            isClassKnockout = true;
+            isKnockoutHost = true;
+            isSongBattle = false;
+            knockoutLastRoundStarted = 0;
+            knockoutLastRoundFinished = 0;
+            knockoutRoomCode = '' + Math.floor(100 + Math.random() * 900);
+
+            const koSongSel = document.getElementById('ko-song-select');
+            koSongSel.innerHTML = '';
+            songList.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.code;
+                opt.textContent = s.title;
+                if (s.title === currentSongTitle) opt.selected = true;
+                koSongSel.appendChild(opt);
+            });
+
+            document.getElementById('ko-room-badge').textContent = `Join Code: ${knockoutRoomCode}`;
+            document.getElementById('ko-teacher-panel').style.display = 'flex';
+            document.getElementById('ko-student-panel').style.display = 'none';
+            document.getElementById('btn-ko-start-round').style.display = 'inline-flex';
+            document.getElementById('btn-ko-start-round').textContent = '▶ Start Round 1 (Random Draw)';
+            document.getElementById('btn-ko-force-end').style.display = 'none';
+            document.getElementById('btn-ko-finish-tourney').style.display = 'none';
+            document.getElementById('knockout-modal').classList.add('open');
+
+            const tourneyRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}`);
+            await window.firebaseSet(tourneyRef, {
+                roomCode: knockoutRoomCode,
+                status: 'lobby',
+                round: 0,
+                songTitle: currentSongTitle,
+                songCode: songSelect.value || (songList[0] ? songList[0].code : ''),
+                createdAt: Date.now(),
+                players: {},
+                pairings: {}
+            });
+            window.firebaseOnDisconnect(tourneyRef).remove();
+
+            attachKnockoutListener(knockoutRoomCode);
+        }
+
+        async function joinClassKnockoutStudent(studentName, roomCode) {
+            initSwissTournamentUI();
+            isClassKnockout = true;
+            isKnockoutHost = false;
+            isSongBattle = false;
+            knockoutRoomCode = roomCode;
+            knockoutLastRoundStarted = 0;
+            knockoutLastRoundFinished = 0;
+            sessionStudentName = studentName;
+
+            const avatar = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || '🏃';
+            const studentClass = currentStudentClass || localStorage.getItem('pianopad_class') || '';
+
+            const playerRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${roomCode}/players/${localStudentId}`);
+            await window.firebaseSet(playerRef, {
+                id: localStudentId,
+                name: studentName,
+                avatar: avatar,
+                studentClass: studentClass,
+                wins: 0,
+                losses: 0,
+                winStreak: 0,
+                totalAcc: 0,
+                roundsPlayed: 0,
+                opponents: [],
+                currentScore: 0,
+                finishedRound: 0,
+                lastStats: { perfect: 0, earlyLate: 0, miss: 0 },
+                incomingSabotage: null,
+                activeEmote: null
+            });
+            window.firebaseOnDisconnect(playerRef).remove();
+
+            document.getElementById('ko-room-badge').textContent = `Room: ${roomCode}`;
+            document.getElementById('ko-teacher-panel').style.display = 'none';
+            document.getElementById('ko-student-panel').style.display = 'flex';
+            document.getElementById('knockout-modal').classList.add('open');
+
+            attachKnockoutListener(roomCode);
+        }
+
+        async function attachKnockoutListener(roomCode) {
+            if (knockoutUnsubscribe) {
+                knockoutUnsubscribe();
+                knockoutUnsubscribe = null;
+            }
+            const { onValue } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            const tourneyRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${roomCode}`);
+
+            knockoutUnsubscribe = onValue(tourneyRef, (snapshot) => {
+                const data = snapshot.val();
+                if (!data) {
+                    if (isClassKnockout) {
+                        alert("The teacher has closed the Class Knockout tournament.");
+                        leaveClassKnockout();
+                    }
+                    return;
+                }
+                knockoutDataCache = data;
+                if (isKnockoutHost) {
+                    handleKnockoutHostUpdate(data);
+                } else {
+                    handleKnockoutStudentUpdate(data);
+                }
+            });
+        }
+
+        function getRankedKnockoutPlayers(playersObj) {
+            const arr = Object.values(playersObj || {});
+            arr.sort((a, b) => {
+                if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0);
+                return (b.totalAcc || 0) - (a.totalAcc || 0);
+            });
+            return arr;
+        }
+
+        function buildStandingsHTML(rankedPlayers) {
+            if (rankedPlayers.length === 0) {
+                return `<div style="color:#9ca3af; font-size:0.8rem; text-align:center; padding:8px;">No students joined yet...</div>`;
+            }
+            let rows = rankedPlayers.map((p, idx) => {
+                const rankBadge = idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `#${idx + 1}`;
+                const avgAcc = p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0';
+                const bountyTag = (idx === 0 && (p.roundsPlayed || 0) > 0)
+                    ? ` <span style="background:#ef4444; color:#fff; font-size:0.65rem; padding:1px 5px; border-radius:4px; font-weight:900; margin-left:4px;">🎯 BOUNTY</span>`
+                    : '';
+                const streak = p.winStreak || 0;
+                const streakTag = streak >= 2
+                    ? ` <span style="background:#f97316; color:#000; font-size:0.65rem; padding:1px 5px; border-radius:4px; font-weight:900; margin-left:4px;">🔥 ${streak}W</span>`
+                    : '';
+
+                return `
+                    <tr style="${p.id === localStudentId ? 'background:rgba(56,189,248,0.15);' : ''}">
+                        <td style="font-weight:800; color:#facc15;">${rankBadge}</td>
+                        <td style="font-weight:700;">${p.avatar || '🏃'} ${p.name}${bountyTag}${streakTag}</td>
+                        <td style="color:#22c55e; font-weight:800;">${p.wins || 0}W - ${p.losses || 0}L</td>
+                        <td style="color:#38bdf8; font-weight:700;">${avgAcc}% avg</td>
+                    </tr>
+                `;
+            }).join('');
+
+            return `
+                <div style="font-size:0.75rem; font-weight:800; color:#facc15; margin-bottom:6px; text-transform:uppercase;">Live Class Standings (${rankedPlayers.length} Players)</div>
+                <table class="race-results-table" style="margin-top:0;">
+                    <thead>
+                        <tr><th>Place</th><th>Student</th><th>Record</th><th>Avg Acc</th></tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+        }
+
+        function generateSwissPairings(playersObj, roundNum) {
+            const players = Object.values(playersObj || {});
+            let ordered = [];
+
+            if (roundNum === 1) {
+                ordered = [...players].sort(() => Math.random() - 0.5);
+            } else {
+                ordered = getRankedKnockoutPlayers(playersObj);
+                for (let i = 0; i < ordered.length - 1; i += 2) {
+                    const p1 = ordered[i];
+                    const p2 = ordered[i + 1];
+                    const p1History = Array.isArray(p1.opponents) ? p1.opponents : Object.values(p1.opponents || {});
+                    if (p1History.includes(p2.id) && i + 2 < ordered.length) {
+                        const temp = ordered[i + 1];
+                        ordered[i + 1] = ordered[i + 2];
+                        ordered[i + 2] = temp;
+                    }
+                }
+            }
+
+            const pairings = {};
+            let matchIdx = 1;
+            for (let i = 0; i < ordered.length; i += 2) {
+                if (i + 1 < ordered.length) {
+                    pairings[`m${matchIdx}`] = {
+                        matchId: `m${matchIdx}`,
+                        p1: ordered[i].id,
+                        p2: ordered[i + 1].id,
+                        isGhostMatch: false,
+                        targetScore: 0
+                    };
+                } else {
+                    pairings[`m${matchIdx}`] = {
+                        matchId: `m${matchIdx}`,
+                        p1: ordered[i].id,
+                        p2: 'BENCHMARK_80',
+                        isGhostMatch: true,
+                        targetScore: 80
+                    };
+                }
+                matchIdx++;
+            }
+            return pairings;
+        }
+
+        async function startNextKnockoutRound() {
+            if (!isKnockoutHost || !knockoutDataCache) return;
+            const playersObj = knockoutDataCache.players || {};
+            const playerIds = Object.keys(playersObj);
+
+            if (playerIds.length < 2) {
+                alert("At least 2 students must join the room before starting Round 1!");
+                return;
+            }
+
+            const nextRound = (knockoutDataCache.round || 0) + 1;
+            const koSongSel = document.getElementById('ko-song-select');
+            const selectedCode = koSongSel.value;
+            const selectedTitle = koSongSel.selectedOptions[0] ? koSongSel.selectedOptions[0].text : currentSongTitle;
+
+            const pairings = generateSwissPairings(playersObj, nextRound);
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+
+            const updates = {
+                status: 'playing',
+                round: nextRound,
+                songTitle: selectedTitle,
+                songCode: selectedCode,
+                pairings: pairings
+            };
+
+            playerIds.forEach(pid => {
+                updates[`players/${pid}/currentScore`] = 0;
+                updates[`players/${pid}/finishedRound`] = 0;
+                updates[`players/${pid}/lastStats`] = { perfect: 0, earlyLate: 0, miss: 0 };
+                updates[`players/${pid}/incomingSabotage`] = null;
+                updates[`players/${pid}/activeEmote`] = null;
+            });
+
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}`), updates);
+        }
+
+        function formatBracketEmoteBadge(playerObj) {
+            if (!playerObj || !playerObj.activeEmote || !playerObj.activeEmote.text) return '';
+            const age = Date.now() - (playerObj.activeEmote.timestamp || 0);
+            if (age > 4500) return '';
+            return `<span class="ko-bracket-emote-tag">${playerObj.activeEmote.text}</span>`;
+        }
+
+        function handleKnockoutHostUpdate(data) {
+            const playersObj = data.players || {};
+            const ranked = getRankedKnockoutPlayers(playersObj);
+            document.getElementById('ko-standings-container').innerHTML = buildStandingsHTML(ranked);
+
+            const bracketDiv = document.getElementById('ko-bracket-container');
+            const statusBanner = document.getElementById('ko-status-banner');
+            const btnStart = document.getElementById('btn-ko-start-round');
+            const btnForce = document.getElementById('btn-ko-force-end');
+            const btnFinish = document.getElementById('btn-ko-finish-tourney');
+
+            if (data.status === 'lobby') {
+                statusBanner.textContent = `Lobby Open (${ranked.length} students connected). Select Round 1 song & click Start!`;
+                bracketDiv.innerHTML = ranked.map(p => `
+                    <div class="lobby-player-card"><span>${p.avatar || '🏃'}</span><span>${p.name} (${p.studentClass || 'Class'})</span></div>
+                `).join('');
+                return;
+            }
+
+            if (data.status === 'playing') {
+                btnStart.style.display = 'none';
+                btnForce.style.display = 'inline-flex';
+                btnFinish.style.display = 'none';
+
+                const pairings = Object.values(data.pairings || {});
+                let allDone = true;
+
+                bracketDiv.innerHTML = pairings.map((m, idx) => {
+                    const p1 = playersObj[m.p1];
+                    if (!p1) return '';
+                    const p1Done = p1.finishedRound === data.round;
+                    const s1 = Number(p1.currentScore || 0);
+                    const p1Status = p1Done ? `✅ ${s1.toFixed(1)}%` : `🎹 ${s1.toFixed(1)}%...`;
+                    const p1Emote = formatBracketEmoteBadge(p1);
+
+                    if (m.isGhostMatch) {
+                        if (!p1Done) allDone = false;
+                        const isClose = Math.abs(s1 - 80) <= 0.5;
+                        return `
+                            <div style="background:#141824; border:1px solid #8b5cf6; border-radius:8px; padding:10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="font-size:0.72rem; color:#c084fc; font-weight:800;">MATCH ${idx + 1} • BENCHMARK CHALLENGE</span>
+                                    ${isClose ? '<span class="photo-finish-badge">PHOTO FINISH 🔥</span>' : ''}
+                                </div>
+                                <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; font-weight:700;">
+                                    <span>${p1.avatar} ${p1.name}${p1Emote}</span>
+                                    <span style="color:${p1Done ? '#22c55e' : '#facc15'};">${p1Status}</span>
+                                </div>
+                                <div style="font-size:0.75rem; color:#9ca3af; margin-top:4px;">Target to Win: ≥ 80.0% Accuracy</div>
+                            </div>
+                        `;
+                    }
+
+                    const p2 = playersObj[m.p2];
+                    const p2Done = p2 ? (p2.finishedRound === data.round) : true;
+                    if (!p1Done || !p2Done) allDone = false;
+                    const s2 = p2 ? Number(p2.currentScore || 0) : 0;
+                    const p2Status = p2 ? (p2Done ? `✅ ${s2.toFixed(1)}%` : `🎹 ${s2.toFixed(1)}%...`) : 'Disconnected';
+                    const p2Emote = formatBracketEmoteBadge(p2);
+                    const isPhotoFinish = p2 && Math.abs(s1 - s2) <= 0.5;
+
+                    return `
+                        <div style="background:#141824; border:1px solid ${isPhotoFinish ? '#ef4444' : '#374151'}; border-radius:8px; padding:10px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-size:0.72rem; color:#38bdf8; font-weight:800;">TABLE ${idx + 1} • ROUND ${data.round}</span>
+                                ${isPhotoFinish ? '<span class="photo-finish-badge">PHOTO FINISH 🔥</span>' : ''}
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; font-weight:700;">
+                                <span>${p1.avatar} ${p1.name}${p1Emote}</span>
+                                <span style="color:${p1Done ? '#22c55e' : '#facc15'};">${p1Status}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-top:4px; font-size:0.85rem; font-weight:700;">
+                                <span>${p2 ? p2.avatar + ' ' + p2.name + p2Emote : '---'}</span>
+                                <span style="color:${p2Done ? '#22c55e' : '#facc15'};">${p2Status}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                statusBanner.textContent = `Round ${data.round} in progress (${data.songTitle}) — Waiting for all matches to finish...`;
+
+                if (allDone && pairings.length > 0 && knockoutLastRoundFinished !== data.round) {
+                    knockoutLastRoundFinished = data.round;
+                    scoreAndConcludeKnockoutRound(data);
+                }
+            } else if (data.status === 'round_results') {
+                btnForce.style.display = 'none';
+                btnStart.style.display = 'inline-flex';
+                btnStart.textContent = `▶ Start Round ${data.round + 1} (Swiss Matched)`;
+                btnFinish.style.display = 'inline-flex';
+                statusBanner.textContent = `Round ${data.round} Complete! Students paired by similar accuracy for Round ${data.round + 1}.`;
+            } else if (data.status === 'finished') {
+                btnStart.style.display = 'none';
+                btnForce.style.display = 'none';
+                btnFinish.style.display = 'none';
+                statusBanner.textContent = `🏆 Tournament Complete! Final Class Placings Logged to Leaderboard.`;
+                
+                let standings = data.finalStandings || [];
+                showGrandFinale(standings, true, `🏆 Class Knockout Complete!`);
+            }
+        }
+
+        async function forceEndKnockoutRound() {
+            if (!isKnockoutHost || !knockoutDataCache) return;
+            if (knockoutLastRoundFinished === knockoutDataCache.round) return;
+            knockoutLastRoundFinished = knockoutDataCache.round;
+            await scoreAndConcludeKnockoutRound(knockoutDataCache);
+        }
+
+        async function scoreAndConcludeKnockoutRound(data) {
+            const playersObj = data.players || {};
+            const pairings = Object.values(data.pairings || {});
+            const rankedBefore = getRankedKnockoutPlayers(playersObj);
+            const currentLeaderId = (rankedBefore.length > 0 && (rankedBefore[0].roundsPlayed || 0) > 0) ? rankedBefore[0].id : null;
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+
+            const updates = {
+                status: 'round_results'
+            };
+
+            pairings.forEach(m => {
+                const p1 = playersObj[m.p1];
+                if (!p1) return;
+                const s1 = Number(p1.currentScore || 0);
+
+                if (m.isGhostMatch) {
+                    const won = s1 >= (m.targetScore || 80);
+                    const isPhotoFinish = Math.abs(s1 - (m.targetScore || 80)) <= 0.5;
+                    const newStreak = won ? ((p1.winStreak || 0) + 1) : 0;
+                    updates[`players/${p1.id}/wins`] = (p1.wins || 0) + (won ? 1 : 0);
+                    updates[`players/${p1.id}/losses`] = (p1.losses || 0) + (won ? 0 : 1);
+                    updates[`players/${p1.id}/winStreak`] = newStreak;
+                    updates[`players/${p1.id}/totalAcc`] = (p1.totalAcc || 0) + s1;
+                    updates[`players/${p1.id}/roundsPlayed`] = (p1.roundsPlayed || 0) + 1;
+                    updates[`players/${p1.id}/lastMatchResult`] = {
+                        round: data.round,
+                        won: won,
+                        photoFinish: isPhotoFinish,
+                        tiebreakerUsed: false,
+                        giantKiller: false,
+                        winStreak: newStreak,
+                        myScore: s1,
+                        oppName: '80% Benchmark',
+                        oppAvatar: '🎯',
+                        oppScore: 80,
+                        oppStats: { perfect: 8, earlyLate: 0, miss: 2 }
+                    };
+                } else {
+                    const p2 = playersObj[m.p2];
+                    if (!p2) return;
+                    const s2 = Number(p2.currentScore || 0);
+
+                    const isPhotoFinish = Math.abs(s1 - s2) <= 0.5;
+                    const p1Perfect = (p1.lastStats && p1.lastStats.perfect) ? Number(p1.lastStats.perfect) : 0;
+                    const p2Perfect = (p2.lastStats && p2.lastStats.perfect) ? Number(p2.lastStats.perfect) : 0;
+                    let p1Won = s1 > s2;
+                    let tiebreakerUsed = false;
+
+                    if (isPhotoFinish) {
+                        tiebreakerUsed = true;
+                        if (p1Perfect !== p2Perfect) {
+                            p1Won = p1Perfect > p2Perfect;
+                        } else {
+                            p1Won = s1 >= s2;
+                        }
+                    }
+
+                    const p1GiantKiller = p1Won && currentLeaderId === p2.id;
+                    const p2GiantKiller = !p1Won && currentLeaderId === p1.id;
+                    const p1Streak = p1Won ? ((p1.winStreak || 0) + 1) : 0;
+                    const p2Streak = !p1Won ? ((p2.winStreak || 0) + 1) : 0;
+
+                    const p1Opps = Array.isArray(p1.opponents) ? [...p1.opponents] : Object.values(p1.opponents || {});
+                    const p2Opps = Array.isArray(p2.opponents) ? [...p2.opponents] : Object.values(p2.opponents || {});
+                    if (!p1Opps.includes(p2.id)) p1Opps.push(p2.id);
+                    if (!p2Opps.includes(p1.id)) p2Opps.push(p1.id);
+
+                    updates[`players/${p1.id}/wins`] = (p1.wins || 0) + (p1Won ? 1 : 0);
+                    updates[`players/${p1.id}/losses`] = (p1.losses || 0) + (p1Won ? 0 : 1);
+                    updates[`players/${p1.id}/winStreak`] = p1Streak;
+                    updates[`players/${p1.id}/totalAcc`] = (p1.totalAcc || 0) + s1;
+                    updates[`players/${p1.id}/roundsPlayed`] = (p1.roundsPlayed || 0) + 1;
+                    updates[`players/${p1.id}/opponents`] = p1Opps;
+                    updates[`players/${p1.id}/lastMatchResult`] = {
+                        round: data.round,
+                        won: p1Won,
+                        photoFinish: isPhotoFinish,
+                        tiebreakerUsed: tiebreakerUsed,
+                        myPerfect: p1Perfect,
+                        oppPerfect: p2Perfect,
+                        giantKiller: p1GiantKiller,
+                        winStreak: p1Streak,
+                        myScore: s1,
+                        oppName: p2.name,
+                        oppAvatar: p2.avatar || '🏃',
+                        oppScore: s2,
+                        oppStats: p2.lastStats || { perfect: 0, earlyLate: 0, miss: 0 }
+                    };
+
+                    updates[`players/${p2.id}/wins`] = (p2.wins || 0) + (!p1Won ? 1 : 0);
+                    updates[`players/${p2.id}/losses`] = (p2.losses || 0) + (!p1Won ? 0 : 1);
+                    updates[`players/${p2.id}/winStreak`] = p2Streak;
+                    updates[`players/${p2.id}/totalAcc`] = (p2.totalAcc || 0) + s2;
+                    updates[`players/${p2.id}/roundsPlayed`] = (p2.roundsPlayed || 0) + 1;
+                    updates[`players/${p2.id}/opponents`] = p2Opps;
+                    updates[`players/${p2.id}/lastMatchResult`] = {
+                        round: data.round,
+                        won: !p1Won,
+                        photoFinish: isPhotoFinish,
+                        tiebreakerUsed: tiebreakerUsed,
+                        myPerfect: p2Perfect,
+                        oppPerfect: p1Perfect,
+                        giantKiller: p2GiantKiller,
+                        winStreak: p2Streak,
+                        myScore: s2,
+                        oppName: p1.name,
+                        oppAvatar: p1.avatar || '🏃',
+                        oppScore: s1,
+                        oppStats: p1.lastStats || { perfect: 0, earlyLate: 0, miss: 0 }
+                    };
+                }
+            });
+
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}`), updates);
+        }
+
+        async function finalizeClassKnockout() {
+            if (!isKnockoutHost || !knockoutDataCache) return;
+            const ranked = getRankedKnockoutPlayers(knockoutDataCache.players || {});
+
+            const battlePayload = ranked.map(p => {
+                const avgAcc = p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0';
+                return {
+                    name: p.name,
+                    score: avgAcc,
+                    avatar: p.avatar || '🏃',
+                    id: p.id
+                };
+            });
+
+            currentSongTitle = `Class Knockout (${knockoutDataCache.songTitle || 'Tournament'})`;
+            await postBattleToSpreadsheet(battlePayload);
+
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}`), {
+                status: 'finished',
+                finalStandings: battlePayload
+            });
+        }
+
+        function handleKnockoutStudentUpdate(data) {
+            const playersObj = data.players || {};
+            const me = playersObj[localStudentId];
+            const ranked = getRankedKnockoutPlayers(playersObj);
+            const myRankIdx = ranked.findIndex(p => p.id === localStudentId);
+            const myPlaceText = myRankIdx >= 0 ? `Rank #${myRankIdx + 1} of ${ranked.length}` : 'Unranked';
+
+            document.getElementById('ko-student-standings').innerHTML = buildStandingsHTML(ranked);
+
+            // Listen for opponent's pre-match quick emote
+            if (koOpponentId && koOpponentId !== 'BENCHMARK_80' && playersObj[koOpponentId] && playersObj[koOpponentId].activeEmote) {
+                showOpponentQuickEmote(playersObj[koOpponentId].activeEmote);
+            }
+
+            // Listen for incoming Streak Sabotage during live match
+            if (data.status === 'playing' && me && me.incomingSabotage) {
+                applyIncomingSabotage(me.incomingSabotage);
+            }
+
+            // Update Live Tug-of-War HUD during active round
+            if (data.status === 'playing' && me) {
+                const myLiveAcc = Number(me.currentScore !== undefined ? me.currentScore : 100);
+                let oppLiveAcc = 80.0;
+                if (koOpponentId && koOpponentId !== 'BENCHMARK_80' && playersObj[koOpponentId]) {
+                    oppLiveAcc = Number(playersObj[koOpponentId].currentScore !== undefined ? playersObj[koOpponentId].currentScore : 100);
+                }
+                updateTugOfWarHUD(myLiveAcc, oppLiveAcc);
+            }
+
+            if (data.status === 'playing' && knockoutLastRoundStarted !== data.round) {
+                knockoutLastRoundStarted = data.round;
+
+                if (data.songCode) {
+                    currentSongTitle = data.songTitle;
+                    songSelect.value = data.songCode;
+                    const parsed = parsePianoPad(data.songCode);
+                    if (parsed.length > 0) currentSong = autoTransposeSong(parsed);
+                }
+
+                const pairings = Object.values(data.pairings || {});
+                const myMatch = pairings.find(m => m.p1 === localStudentId || m.p2 === localStudentId);
+                let oppName = 'Class Opponent';
+                let oppAvatar = '🤖';
+                let oppRankText = 'Challenger';
+                koOpponentId = null;
+
+                if (myMatch) {
+                    if (myMatch.isGhostMatch) {
+                        koOpponentId = 'BENCHMARK_80';
+                        oppName = '80% Benchmark';
+                        oppAvatar = '🎯';
+                        oppRankText = 'Target Score';
+                    } else {
+                        const oppId = myMatch.p1 === localStudentId ? myMatch.p2 : myMatch.p1;
+                        koOpponentId = oppId;
+                        const oppObj = playersObj[oppId];
+                        if (oppObj) {
+                            oppName = oppObj.name;
+                            oppAvatar = oppObj.avatar || '🏃';
+                            const oppIdx = ranked.findIndex(p => p.id === oppId);
+                            const isBounty = oppIdx === 0 && (oppObj.roundsPlayed || 0) > 0;
+                            oppRankText = isBounty
+                                ? `🎯 #1 BOUNTY TARGET`
+                                : (oppIdx >= 0 ? `Rank #${oppIdx + 1}` : 'Challenger');
+                        }
+                    }
+                }
+
+                koOpponentName = oppName;
+                koOpponentAvatar = oppAvatar;
+
+                document.getElementById('knockout-modal').classList.remove('open');
+                gameResultsModal.classList.remove('open');
+                arcadeHub.classList.remove('open');
+
+                const myIsBounty = myRankIdx === 0 && (playersObj[localStudentId]?.roundsPlayed || 0) > 0;
+                document.getElementById('ko-vs-round-label').textContent = `ROUND ${data.round} MATCHUP`;
+                document.getElementById('ko-vs-p1-avatar').textContent = sessionStudentAvatar || '🏃';
+                document.getElementById('ko-vs-p1-name').textContent = sessionStudentName || 'You';
+                document.getElementById('ko-vs-p1-rank').textContent = myIsBounty ? `👑 #1 DEFENDING BOUNTY` : myPlaceText;
+                document.getElementById('ko-vs-p2-avatar').textContent = oppAvatar;
+                document.getElementById('ko-vs-p2-name').textContent = oppName;
+                document.getElementById('ko-vs-p2-rank').textContent = oppRankText;
+                document.getElementById('ko-vs-song-label').textContent = `Song: ${data.songTitle}`;
+
+                const p1Bubble = document.getElementById('ko-vs-p1-emote');
+                const p2Bubble = document.getElementById('ko-vs-p2-emote');
+                if (p1Bubble) p1Bubble.classList.remove('visible');
+                if (p2Bubble) p2Bubble.classList.remove('visible');
+                dealKnockoutEmoteDeck();
+
+                const vsOverlay = document.getElementById('ko-vs-overlay');
+                vsOverlay.style.display = 'flex';
+
+                setTimeout(() => {
+                    vsOverlay.style.display = 'none';
+                    isStepMode = false;
+                    btnStep.textContent = 'Step Mode';
+                    btnStep.classList.remove('btn-step-active');
+                    btnStep.classList.add('btn-step');
+
+                    isGameMode = true;
+                    btnGame.textContent = 'Game Mode: ON';
+                    btnGame.classList.add('btn-game-active');
+
+                    resetGameStats();
+                    updateTugOfWarHUD(100.0, koOpponentId === 'BENCHMARK_80' ? 80.0 : 100.0);
+                    startCountdown(() => { playSong(); });
+                }, 3200);
+
+            } else if (data.status === 'round_results') {
+                const tugHud = document.getElementById('tug-of-war-hud');
+                if (tugHud) tugHud.style.display = 'none';
+                activeSabotageType = null;
+                canvas.classList.remove('canvas-shake-active');
+
+                if (me && me.lastMatchResult && me.lastMatchResult.round === data.round && knockoutLastRoundFinished !== data.round) {
+                    knockoutLastRoundFinished = data.round;
+                    renderKnockoutPostRoundComparison(me, me.lastMatchResult, myPlaceText);
+                }
+            } else if (data.status === 'finished') {
+                const tugHud = document.getElementById('tug-of-war-hud');
+                if (tugHud) tugHud.style.display = 'none';
+                let standings = data.finalStandings || [];
+                if (standings.length === 0) {
+                    const ranked = getRankedKnockoutPlayers(data.players || {});
+                    standings = ranked.map(p => ({
+                        name: p.name, score: p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0', avatar: p.avatar, id: p.id
+                    }));
+                }
+                showGrandFinale(standings, false, `🏆 Class Knockout Complete!`);
+            }
+        }
+
+        function syncKnockoutLiveScore() {
+            if (!isClassKnockout || !knockoutRoomCode || !window.firebaseDb) return;
+            const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+            const acc = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100) : 100;
+
+            let oppLiveAcc = 80.0;
+            if (knockoutDataCache && knockoutDataCache.players && koOpponentId && koOpponentId !== 'BENCHMARK_80') {
+                const oppObj = knockoutDataCache.players[koOpponentId];
+                if (oppObj && oppObj.currentScore !== undefined) oppLiveAcc = Number(oppObj.currentScore);
+            }
+            updateTugOfWarHUD(acc, oppLiveAcc);
+
+            clearTimeout(knockoutLiveSyncTimer);
+            knockoutLiveSyncTimer = setTimeout(async () => {
+                const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+                await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}/players/${localStudentId}`), {
+                    currentScore: Number(acc.toFixed(1)),
+                    lastStats: { ...gameStats }
+                });
+            }, 350);
+        }
+
+        async function submitKnockoutRoundFinish() {
+            if (!isClassKnockout || !knockoutRoomCode || !window.firebaseDb) return;
+            const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
+            const acc = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100) : 0;
+            const roundNum = knockoutDataCache ? knockoutDataCache.round : 1;
+
+            const tugHud = document.getElementById('tug-of-war-hud');
+            if (tugHud) tugHud.style.display = 'none';
+            activeSabotageType = null;
+            canvas.classList.remove('canvas-shake-active');
+
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}/players/${localStudentId}`), {
+                currentScore: Number(acc.toFixed(1)),
+                finishedRound: roundNum,
+                lastStats: { ...gameStats }
+            });
+
+            document.getElementById('ko-student-status').textContent = `✅ Round ${roundNum} Finished (${acc.toFixed(1)}%)! Waiting for remaining classmates...`;
+            document.getElementById('ko-student-pairing-box').textContent = `Swiss pairings for the next round will generate automatically once all matches complete.`;
+            document.getElementById('knockout-modal').classList.add('open');
+        }
+
+        function renderKnockoutPostRoundComparison(me, res, myPlaceText) {
+            document.getElementById('knockout-modal').classList.remove('open');
+
+            const multiGraph = document.getElementById('multi-bar-graph');
+            multiGraph.innerHTML = '';
+            multiGraph.style.display = 'flex';
+            document.getElementById('single-bar-graph').style.display = 'none';
+            document.getElementById('btn-battle-again').style.display = 'none';
+
+            const myStats = me.lastStats || { perfect: 0, earlyLate: 0, miss: 0 };
+            const myTot = Math.max(1, myStats.perfect + myStats.earlyLate + myStats.miss);
+            const oppStats = res.oppStats || { perfect: 0, earlyLate: 0, miss: 0 };
+            const oppTot = Math.max(1, oppStats.perfect + oppStats.earlyLate + oppStats.miss);
+
+            const contenders = [
+                {
+                    label: `${me.avatar || '🏃'} ${me.name} (You)`,
+                    score: Number(res.myScore || 0).toFixed(1),
+                    g: (myStats.perfect / myTot) * 100,
+                    o: (myStats.earlyLate / myTot) * 100,
+                    r: (myStats.miss / myTot) * 100,
+                    winner: res.won
+                },
+                {
+                    label: `${res.oppAvatar || '🏃'} ${res.oppName}`,
+                    score: Number(res.oppScore || 0).toFixed(1),
+                    g: (oppStats.perfect / oppTot) * 100,
+                    o: (oppStats.earlyLate / oppTot) * 100,
+                    r: (oppStats.miss / oppTot) * 100,
+                    winner: !res.won
+                }
+            ];
+
+            contenders.forEach(c => {
+                const col = document.createElement('div');
+                col.className = 'multi-bar-column';
+                col.style.minWidth = '110px';
+                col.innerHTML = `
+                    <div class="rank-medal-badge" style="color:${c.winner ? '#22c55e' : '#f97316'};">
+                        ${c.winner ? '🏆 WINNER' : 'RUNNER-UP'} (${c.score}%)
+                    </div>
+                    <div class="stacked-bar" style="width:48px;">
+                        <div class="bar-part-red" style="height:${c.r}%;"></div>
+                        <div class="bar-part-orange" style="height:${c.o}%;"></div>
+                        <div class="bar-part-green" style="height:${c.g}%;"></div>
+                    </div>
+                    <span style="font-size:0.8rem; font-weight:700; color:#fff;">${c.label}</span>
+                `;
+                multiGraph.appendChild(col);
+            });
+
+            const photoFinishHtml = res.photoFinish
+                ? `<div style="margin-top:6px;"><span class="photo-finish-badge">PHOTO FINISH 🔥</span> <span style="font-size:0.78rem; color:#facc15; font-weight:700;">Tiebreaker by Perfect Hits (${res.myPerfect ?? myStats.perfect} vs ${res.oppPerfect ?? oppStats.perfect})</span></div>`
+                : '';
+
+            document.getElementById('game-summary-text').innerHTML = `
+                <div style="font-size:1.25rem; font-weight:900; color:${res.won ? '#22c55e' : '#38bdf8'};">
+                    ${res.won ? '🎉 Round Victory!' : '👏 Great Effort!'}
+                </div>
+                ${photoFinishHtml}
+                <div style="font-size:0.88rem; color:#cbd5e1; margin-top:4px;">
+                    Stay ready — Teacher will launch the next skill-matched round shortly!
+                </div>
+            `;
+            document.getElementById('badge-container').innerHTML = '';
+            document.getElementById('game-rank-text').textContent = `Current Class Placing: ${myPlaceText}`;
+            gameResultsModal.classList.add('open');
+        }
+
+        function leaveClassKnockout() {
+            if (knockoutUnsubscribe) {
+                knockoutUnsubscribe();
+                knockoutUnsubscribe = null;
+            }
+            isClassKnockout = false;
+            isKnockoutHost = false;
+            isSongBattle = false;
+            knockoutRoomCode = "";
+            knockoutDataCache = null;
+            activeSabotageType = null;
+            canvas.classList.remove('canvas-shake-active');
+            const tugHud = document.getElementById('tug-of-war-hud');
+            if (tugHud) tugHud.style.display = 'none';
+            const koModal = document.getElementById('knockout-modal');
+            if (koModal) koModal.classList.remove('open');
+            const vsOverlay = document.getElementById('ko-vs-overlay');
+            if (vsOverlay) vsOverlay.style.display = 'none';
+            stopSong();
+        }
+        // =========================================================================
+
+       document.addEventListener('DOMContentLoaded', () => {
             initMIDIHardware();
             resetGameStats();
             syncSongsWithGoogleSheet();
             setTimeout(updateKeyPositions, 100);
+            
+            checkFirstTimeCalibration();
 
             const savedName = localStorage.getItem('pianopad_name');
             const savedAvatar = localStorage.getItem('pianopad_avatar');
@@ -5775,35 +7517,60 @@ let keyRipples = [];
             const cleanName = (str) => String(str || '').replace(/\./g, '').replace(/\s+/g, ' ').trim().toLowerCase();
             const targetName = cleanName(studentName);
 
-            const gvizUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?sheet=GameModeRanks&tqx=responseHandler:parseTickerGvizResponse&_ts=${Date.now()}`;
+            const announceUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?sheet=announcement&range=A2:A2&tqx=responseHandler:parseAnnounceGviz&_ts=${Date.now()}`;
+            const fetchAnnouncement = () => new Promise((resolve) => {
+                const script = document.createElement('script');
+                window.parseAnnounceGviz = function(gvizData) {
+                    delete window.parseAnnounceGviz;
+                    if (document.body.contains(script)) document.body.removeChild(script);
+                    let val = "";
+                    if (gvizData && gvizData.table) {
+                        if (gvizData.table.rows && gvizData.table.rows.length > 0 && gvizData.table.rows[0].c && gvizData.table.rows[0].c[0]) {
+                            val = gvizData.table.rows[0].c[0].v;
+                        } else if (gvizData.table.cols && gvizData.table.cols.length > 0) {
+                            val = gvizData.table.cols[0].label;
+                        }
+                    }
+                    resolve(val ? String(val).trim() : "");
+                };
+                script.src = announceUrl;
+                script.onerror = function() {
+                    delete window.parseAnnounceGviz;
+                    if (document.body.contains(script)) document.body.removeChild(script);
+                    resolve("");
+                };
+                document.body.appendChild(script);
+            });
 
+            const gvizUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?sheet=GameModeRanks&tqx=responseHandler:parseTickerGvizResponse&_ts=${Date.now()}`;
             const fetchGvizData = () => new Promise((resolve) => {
                 const script = document.createElement('script');
-                
                 window.parseTickerGvizResponse = function(gvizData) {
                     delete window.parseTickerGvizResponse;
                     if (document.body.contains(script)) document.body.removeChild(script);
-                    
                     if (gvizData && gvizData.table && gvizData.table.rows) {
                         resolve(gvizData.table);
                     } else {
                         resolve(null);
                     }
                 };
-
                 script.src = gvizUrl;
                 script.onerror = function() {
                     delete window.parseTickerGvizResponse;
                     if (document.body.contains(script)) document.body.removeChild(script);
                     resolve(null);
                 };
-
                 document.body.appendChild(script);
             });
 
-            const tableData = await fetchGvizData();
-            const stats = [];
+            const [announceText, tableData] = await Promise.all([fetchAnnouncement(), fetchGvizData()]);
 
+            let teacherAnnouncement = "";
+            if (announceText && announceText.toLowerCase() !== "null" && announceText !== "") {
+                teacherAnnouncement = `<span class="ticker-item" style="color:#facc15; font-weight:900; letter-spacing:0.02em; animation: textBlink 1.5s infinite ease-in-out;">📢 ${announceText}</span><span style="color:#64748b;"> • </span>`;
+            }
+
+            const stats = [];
             if (tableData) {
                 const cols = tableData.cols || [];
                 let titleIdx = 0, nameIdx = 1, scoreIdx = 2, rankIdx = 3, attemptsIdx = 4;
@@ -5842,7 +7609,7 @@ let keyRipples = [];
             stats.sort((a, b) => a.rank !== b.rank ? a.rank - b.rank : b.score - a.score);
 
             if (stats.length === 0) {
-                tickerTrack.innerHTML = `<span class="ticker-item">Welcome <span class="ticker-item-title">${studentName}</span>! No Game Mode scores logged yet. Play songs in Game Mode to earn your ranks!</span>`;
+                tickerTrack.innerHTML = teacherAnnouncement + `<span class="ticker-item">Welcome <span class="ticker-item-title">${studentName}</span>! No Game Mode scores logged yet. Play songs in Game Mode to earn your ranks!</span>`;
                 tickerContainer.style.display = 'flex';
                 return;
             }
@@ -5851,7 +7618,7 @@ let keyRipples = [];
             const rank2Count = stats.filter(s => s.rank === 2).length;
             const rank3Count = stats.filter(s => s.rank === 3).length;
 
-            let itemsHtml = `
+            let itemsHtml = teacherAnnouncement + `
                 <span class="ticker-item" style="color:#38bdf8;">
                     Logged in as <strong>${studentName}</strong> | Ranked in ${stats.length} Songs (${rank1Count > 0 ? '🥇x' + rank1Count + ' ' : ''}${rank2Count > 0 ? '🥈x' + rank2Count + ' ' : ''}${rank3Count > 0 ? '🥉x' + rank3Count : ''})
                 </span>
@@ -5881,3 +7648,4 @@ let keyRipples = [];
     </script>
 </body>
 </html>
+    
