@@ -180,7 +180,10 @@ export function initSwissTournamentUI() {
                         <div id="ko-vs-p1-rank" style="font-size:0.8rem; color:#ffffff; font-weight:700;">Rank #1</div>
                         <div id="ko-vs-p1-emote" class="ko-emote-bubble">😤 LOCKED IN</div>
                     </div>
-                    <div style="font-size:2.4rem; font-weight:900; color:#ef4444; text-shadow:0 0 15px #ef4444;">VS</div>
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+                        <div style="font-size:2.4rem; font-weight:900; color:#ef4444; text-shadow:0 0 15px #ef4444;">VS</div>
+                        <div id="ko-vs-rivalry-badge" style="display:none; background:linear-gradient(90deg, #f97316, #ef4444); color:#ffffff; font-size:0.68rem; font-weight:900; padding:3px 9px; border-radius:999px; letter-spacing:0.05em; box-shadow:0 0 14px rgba(239,68,68,0.85); white-space:nowrap;">🔥 REMATCH RIVALRY</div>
+                    </div>
                     <div style="flex:1;">
                         <div id="ko-vs-p2-avatar" style="font-size:3.2rem;">🤖</div>
                         <div id="ko-vs-p2-name" style="font-size:1.15rem; font-weight:800; color:#fff; margin-top:4px;">Opponent</div>
