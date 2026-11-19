@@ -361,6 +361,101 @@
             min-height: 380px;
         }
 
+        /* LIVE TUG-OF-WAR HUD & SABOTAGE EFFECTS */
+        .tug-of-war-hud {
+            display: none;
+            width: 100%;
+            background: linear-gradient(90deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            border: 1px solid #38bdf8;
+            border-radius: 8px;
+            padding: 5px 12px;
+            margin-bottom: 4px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+            flex-shrink: 0;
+            z-index: 15;
+        }
+
+        .tug-player-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 800;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .tug-track {
+            flex: 1;
+            height: 16px;
+            background: #1e293b;
+            border-radius: 999px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #475569;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8);
+        }
+
+        .tug-fill-left {
+            height: 100%;
+            width: 50%;
+            background: linear-gradient(90deg, #0284c7, #38bdf8, #22c55e);
+            transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
+        }
+
+        .tug-marker {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 4px;
+            background: #ffffff;
+            transform: translateX(-50%);
+            box-shadow: 0 0 8px #ffffff, 0 0 14px #facc15;
+            transition: left 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            z-index: 3;
+        }
+
+        .tug-center-notch {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 1px;
+            background: rgba(255, 255, 255, 0.35);
+            z-index: 2;
+        }
+
+        @keyframes canvasTremor {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            15% { transform: translate(-5px, 3px) rotate(-0.4deg); }
+            30% { transform: translate(5px, -3px) rotate(0.4deg); }
+            45% { transform: translate(-4px, -2px) rotate(-0.3deg); }
+            60% { transform: translate(4px, 3px) rotate(0.3deg); }
+            75% { transform: translate(-3px, 2px) rotate(-0.2deg); }
+            90% { transform: translate(3px, -2px) rotate(0.2deg); }
+        }
+
+        .canvas-shake-active {
+            animation: canvasTremor 0.18s infinite linear;
+        }
+
+        .photo-finish-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ef4444, #f97316);
+            color: #ffffff;
+            font-weight: 900;
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            border-radius: 5px;
+            letter-spacing: 0.04em;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.75);
+            animation: textBlink 1s infinite ease-in-out;
+        }
+
         #waterfall-canvas {
             background-color: var(--canvas-bg);
             border-bottom: 3px solid var(--hitline-color);
@@ -1452,13 +1547,30 @@
 
         <div class="runner-track-wrapper" id="runner-track" style="display: none;"></div>
 
-        <div class="visualizer-wrapper">
+        <div class="visualizer-wrapper" id="visualizer-wrapper">
+            <div class="tug-of-war-hud" id="tug-of-war-hud">
+                <div class="tug-player-info">
+                    <span id="tug-p1-avatar" style="font-size:1.15rem;">🏃</span>
+                    <span id="tug-p1-name" style="color:#ffffff;">You</span>
+                    <span id="tug-p1-acc" style="color:#22c55e;">100.0%</span>
+                </div>
+                <div class="tug-track">
+                    <div class="tug-fill-left" id="tug-fill-left"></div>
+                    <div class="tug-center-notch"></div>
+                    <div class="tug-marker" id="tug-marker"></div>
+                </div>
+                <div class="tug-player-info">
+                    <span id="tug-p2-acc" style="color:#38bdf8;">100.0%</span>
+                    <span id="tug-p2-name" style="color:#ffffff;">Opponent</span>
+                    <span id="tug-p2-avatar" style="font-size:1.15rem;">🤖</span>
+                </div>
+            </div>
             <canvas id="waterfall-canvas" width="1232" height="380"></canvas>
             <div class="piano" id="keyboard"></div>
         </div>
 
         <div class="footer-bar">
-            <div class="version-stamp">v26.11.17 | 17-Nov 11:58 AEDT (West Wollongong)</div>
+            <div class="version-stamp">v26.11.19 | 19-Nov 13:25 AEDT (West Wollongong)</div>
             <div class="status-bar" id="status"> GAME MODE READY | Connecting to song database...</div>
             
             <div class="footer-right-group">
@@ -1863,6 +1975,15 @@
         let knockoutDataCache = null;
         let knockoutLiveSyncTimer = null;
 
+        // Streak Sabotage & Tug-of-War HUD State
+        let knockoutSabotageCount = 0;
+        let lastProcessedSabotageId = null;
+        let activeSabotageType = null;
+        let activeSabotageUntil = 0;
+        let smokeParticles = [];
+        let koOpponentId = null;
+        let koOpponentName = "Opponent";
+        let koOpponentAvatar = "🤖";
         const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄', '🎹', '🎧', '👨‍🎤', '😎', '🐱', '🐲', '🚀', '🥷'];
 
         let playersList = [];
@@ -2876,7 +2997,7 @@
             }
             
             confirmBtn.onclick = () => {
-                if (confirmBtn.disabled) return; // Guard against autoclickers
+                if (confirmBtn.disabled) return;
 
                 const rawName = document.getElementById('sprint-player-name').value;
                 if (!rawName.trim()) {
@@ -2885,7 +3006,6 @@
                     return;
                 }
 
-                // Immediately disable button
                 confirmBtn.disabled = true;
                 confirmBtn.textContent = 'Starting...';
 
@@ -2920,7 +3040,7 @@
             confirmBtn.textContent = 'Confirm & Continue';
 
             confirmBtn.onclick = () => {
-                if (confirmBtn.disabled) return; // Guard against autoclickers
+                if (confirmBtn.disabled) return;
 
                 const rawName = document.getElementById('sprint-player-name').value;
                 const roomCode = document.getElementById('sprint-room-code').value.trim().toUpperCase();
@@ -2937,7 +3057,6 @@
                     return;
                 }
 
-                // Immediately disable button to prevent spam/crashing
                 confirmBtn.disabled = true;
                 confirmBtn.textContent = 'Joining...';
 
@@ -3018,7 +3137,6 @@
         async function showJoinSetup(racerName, roomCode) {
             sessionStudentName = racerName;
 
-            // Check Firebase RTDB first to see if this room code belongs to a Class Knockout Tournament
             if (isSongBattle && window.firebaseDb) {
                 try {
                     const { get, child } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
@@ -3051,8 +3169,6 @@
 
             if (res && res.error) {
                 alert("Room not found! Check code and try again.");
-                
-                // Re-enable the button so the user can fix the code and retry
                 const confirmBtn = document.getElementById('btn-confirm-sprint-action');
                 if (confirmBtn) {
                     confirmBtn.disabled = false;
@@ -3425,7 +3541,6 @@
                 postBattleToSpreadsheet(battlePayload);
             }
 
-            // Launch the Grand Finale Canvas Overlay instead of the small chart
             showGrandFinale(battlePayload, isSprintHost, `Song Battle: ${currentSongTitle}`);
             loadStudentTickerStats(sessionStudentName);
         }
@@ -3800,7 +3915,6 @@
         const speedInput = document.getElementById('speed-input');
 
         function updateSpeed(newVal, restartPlayback = true) {
-            // Prevent tempo alterations during active battles or class knockouts
             if (isSongBattle || isClassKnockout) {
                 document.getElementById('status').textContent = ' Tempo is locked at 100% during battles!';
                 speedSlider.value = 100;
@@ -4024,13 +4138,21 @@
         function resetGameStats() {
             gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
             currentPerfectStreak = 0;
+            knockoutSabotageCount = 0;
+            activeSabotageType = null;
+            activeSabotageUntil = 0;
+            smokeParticles = [];
+            canvas.classList.remove('canvas-shake-active');
         }
 
         function updateGameStatus() {
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
             const streakLabel = currentPerfectStreak >= 10 ? ` | 🔥 STREAK (${currentPerfectStreak})` : '';
-            document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}${streakLabel}`;
+            const sabLabel = (activeSabotageType && performance.now() < activeSabotageUntil)
+                ? ` | ⚠️ SABOTAGED: ${activeSabotageType.toUpperCase()}!`
+                : '';
+            document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}${streakLabel}${sabLabel}`;
         }
 
         async function calculateAndDisplayRank(accuracyNum) {
@@ -4784,6 +4906,11 @@
                         gameStats.perfect++;
                         currentPerfectStreak++;
                         highlightKey(noteStr, 220, '#22c55e');
+
+                        // Streak Sabotage trigger every 15-note Perfect streak during Class Knockout
+                        if (isClassKnockout && currentPerfectStreak > 0 && currentPerfectStreak % 15 === 0) {
+                            triggerStreakSabotage(currentPerfectStreak);
+                        }
                         
                         const normNote = noteStr.toLowerCase().trim();
                         const pos = keyPosMap[normNote];
@@ -5140,9 +5267,16 @@
                 shadowColor = palette.shadowActive;
             }
 
+            // ❄️ Freeze Frame Sabotage override: icy blue/white hides color-coded pitch hints
+            const isFrozen = (activeSabotageType === 'freeze' && performance.now() < activeSabotageUntil && gameStatus === 'pending');
+            if (isFrozen) {
+                blockColor = '#bae6fd';
+                shadowColor = 'rgba(224, 242, 254, 0.95)';
+            }
+
             ctx.fillStyle = blockColor;
             ctx.shadowColor = shadowColor;
-            ctx.shadowBlur = 8;
+            ctx.shadowBlur = isFrozen ? 14 : 8;
 
             const radius = Math.min(6, width / 2, height / 2);
             ctx.beginPath();
@@ -5158,14 +5292,20 @@
             ctx.closePath();
             ctx.fill();
 
+            if (isFrozen) {
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+
             if (height >= 18) {
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = isFrozen ? '#0f172a' : '#ffffff';
                 ctx.font = 'bold 11px -apple-system, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 const match = noteName.match(/^([a-g]#?)/i);
                 const label = match ? match[1].toUpperCase() : noteName.toUpperCase();
-                ctx.fillText(label, x + width / 2, y + height / 2);
+                ctx.fillText(isFrozen ? '❄️' : label, x + width / 2, y + height / 2);
             }
             ctx.restore();
         }
@@ -5340,7 +5480,6 @@
                         const yBottom = canvasHeight - (timeUntilHit / currentFallSpeed) * waterfallHeight;
                         let blockHeight = (item.duration / currentFallSpeed) * waterfallHeight;
 
-                        // Check if a subsequent event shares this exact pitch
                         let nextSamePitchItem = null;
                         for (let k = itemIdx + 1; k < noteTimeline.length; k++) {
                             if (noteTimeline[k].notes.some(n => n.toLowerCase().trim() === normNote)) {
@@ -5349,7 +5488,6 @@
                             }
                         }
 
-                        // Enforce at least 6px clear separation before the next rectangle of identical pitch
                         if (nextSamePitchItem) {
                             const timeGap = nextSamePitchItem.hitTime - item.hitTime;
                             const distanceToNext = (timeGap / currentFallSpeed) * waterfallHeight;
@@ -5369,6 +5507,49 @@
                 });
             });
 
+            // 🌫️ Smoke Screen & Active Sabotage Overlay Effects
+            if (activeSabotageType && now < activeSabotageUntil) {
+                if (activeSabotageType === 'smoke') {
+                    const smokeZoneBottom = waterfallTop + waterfallHeight * 0.42;
+                    if (smokeParticles.length < 28) {
+                        smokeParticles.push({
+                            x: Math.random() * canvas.width,
+                            y: waterfallTop + Math.random() * (waterfallHeight * 0.35),
+                            r: 45 + Math.random() * 65,
+                            vx: (Math.random() - 0.5) * 2.4,
+                            alpha: 0.55 + Math.random() * 0.35
+                        });
+                    }
+                    ctx.save();
+                    const fogGrad = ctx.createLinearGradient(0, waterfallTop, 0, smokeZoneBottom + 25);
+                    fogGrad.addColorStop(0, 'rgba(203, 213, 225, 0.92)');
+                    fogGrad.addColorStop(0.75, 'rgba(148, 163, 184, 0.84)');
+                    fogGrad.addColorStop(1, 'rgba(148, 163, 184, 0)');
+                    ctx.fillStyle = fogGrad;
+                    ctx.fillRect(0, waterfallTop, canvas.width, waterfallHeight * 0.45);
+
+                    smokeParticles.forEach(sp => {
+                        sp.x += sp.vx;
+                        if (sp.x < -60) sp.x = canvas.width + 60;
+                        if (sp.x > canvas.width + 60) sp.x = -60;
+                        ctx.beginPath();
+                        ctx.fillStyle = `rgba(226, 232, 240, ${sp.alpha})`;
+                        ctx.arc(sp.x, sp.y, sp.r, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    ctx.restore();
+                } else if (activeSabotageType === 'freeze') {
+                    ctx.save();
+                    ctx.strokeStyle = 'rgba(186, 230, 253, 0.85)';
+                    ctx.lineWidth = 8;
+                    ctx.strokeRect(4, waterfallTop + 4, canvas.width - 8, waterfallHeight - 8);
+                    ctx.restore();
+                }
+            } else if (activeSabotageType && now >= activeSabotageUntil) {
+                activeSabotageType = null;
+                smokeParticles = [];
+                canvas.classList.remove('canvas-shake-active');
+            }
             if (confettiParticles.length > 0) {
                 for (let i = confettiParticles.length - 1; i >= 0; i--) {
                     let p = confettiParticles[i];
@@ -5809,7 +5990,8 @@
 
             return new Blob([outBuffer], { type: 'audio/wav' });
         }
-// =========================================================================
+
+        // =========================================================================
         // GRAND FINALE CEREMONY ENGINE (Visuals, Fanfare & UI)
         // =========================================================================
         let fanfareLoopOscs = [];
@@ -5853,13 +6035,11 @@
                 });
             };
 
-            // 3-Second Triumphant Intro
             playBrassChord(['c4', 'e4', 'g4'], now, 0.5);
             playBrassChord(['f4', 'a4', 'c5'], now + 0.5, 0.5);
             playBrassChord(['g4', 'b4', 'd5'], now + 1.0, 0.5);
             playBrassChord(['c4', 'e4', 'g4', 'c5'], now + 1.5, 2.0);
 
-            // Upbeat Chiptune/Marimba Loop (starts at 3.5s)
             const loopStart = now + 3.5;
             const loopNotes = ['c4', 'e4', 'g4', 'e4', 'f4', 'a4', 'c5', 'a4', 'd4', 'f4', 'a4', 'f4', 'g4', 'b4', 'd5', 'b4'];
             for (let i = 0; i < 48; i++) {
@@ -5986,6 +6166,8 @@
             if (koModal) koModal.classList.remove('open');
             const vsOverlay = document.getElementById('ko-vs-overlay');
             if (vsOverlay) vsOverlay.style.display = 'none';
+            const tugHud = document.getElementById('tug-of-war-hud');
+            if (tugHud) tugHud.style.display = 'none';
 
             const modal = document.getElementById('finale-modal');
             modal.style.display = 'flex';
@@ -6071,10 +6253,10 @@
             loadStudentTickerStats(sessionStudentName);
             document.getElementById('status').textContent = 'Returned to PianoPad.';
         }
+
         // =========================================================================
         // SWISS-SYSTEM CLASS KNOCKOUT TOURNAMENT ENGINE (FIREBASE RTDB + GAS)
         // =========================================================================
-
 
         function initSwissTournamentUI() {
             const menuBtns = document.getElementById('sprint-menu-buttons');
@@ -6083,7 +6265,6 @@
                 btnKo.type = 'button';
                 btnKo.id = 'btn-host-knockout-opt';
                 btnKo.className = 'btn-teacher';
-                // Changed button color to Red for the new theme
                 btnKo.style.background = '#ef4444'; 
                 btnKo.style.justifyContent = 'center';
                 btnKo.innerHTML = '🏆 Host Class Knockout (Teacher)';
@@ -6096,7 +6277,6 @@
                 koModal.id = 'knockout-modal';
                 koModal.className = 'modal-overlay';
                 koModal.style.zIndex = '350';
-                // Swapped purple border for Red (#ef4444), set background to black/dark gray
                 koModal.innerHTML = `
                     <div class="modal" style="max-width: 780px; width: 95%; max-height: 90vh; overflow-y: auto; border: 2px solid #ef4444; background: #0a0a0a;">
                         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #374151; padding-bottom:10px;">
@@ -6152,7 +6332,6 @@
                 vsOverlay.id = 'ko-vs-overlay';
                 vsOverlay.className = 'countdown-overlay';
                 vsOverlay.style.zIndex = '250';
-                // Swapped VS overlay borders and glowing text to Red and White
                 vsOverlay.innerHTML = `
                     <div style="background:#0a0a0a; border:3px solid #ffffff; border-radius:16px; padding:28px 36px; text-align:center; max-width:560px; width:90%; box-shadow:0 0 40px rgba(239,68,68,0.5);">
                         <div id="ko-vs-round-label" style="color:#ef4444; font-weight:900; font-size:1.1rem; letter-spacing:0.08em; text-transform:uppercase;">ROUND 1 MATCHUP</div>
@@ -6174,6 +6353,100 @@
                 `;
                 document.body.appendChild(vsOverlay);
             }
+        }
+
+        // =========================================================================
+        // 1. LIVE HEAD-TO-HEAD TUG-OF-WAR HUD & 2. STREAK SABOTAGE ENGINE
+        // =========================================================================
+        function updateTugOfWarHUD(myAcc, oppAcc) {
+            const hud = document.getElementById('tug-of-war-hud');
+            if (!hud) return;
+
+            if (!isClassKnockout) {
+                hud.style.display = 'none';
+                return;
+            }
+
+            hud.style.display = 'flex';
+            const myName = sessionStudentName || 'You';
+            const myAvatar = sessionStudentAvatar || '🏃';
+
+            document.getElementById('tug-p1-avatar').textContent = myAvatar;
+            document.getElementById('tug-p1-name').textContent = myName;
+            document.getElementById('tug-p1-acc').textContent = `${myAcc.toFixed(1)}%`;
+
+            document.getElementById('tug-p2-avatar').textContent = koOpponentAvatar || '🤖';
+            document.getElementById('tug-p2-name').textContent = koOpponentName || 'Opponent';
+            document.getElementById('tug-p2-acc').textContent = `${oppAcc.toFixed(1)}%`;
+
+            // Difference of +/- 25% accuracy slides the bar to full advantage
+            const diff = myAcc - oppAcc;
+            const ratio = Math.max(8, Math.min(92, 50 + (diff * 2.0)));
+            const fillLeft = document.getElementById('tug-fill-left');
+            const marker = document.getElementById('tug-marker');
+
+            if (fillLeft) {
+                fillLeft.style.width = `${ratio}%`;
+                if (diff > 0.5) {
+                    fillLeft.style.background = 'linear-gradient(90deg, #0284c7, #22c55e)';
+                } else if (diff < -0.5) {
+                    fillLeft.style.background = 'linear-gradient(90deg, #ef4444, #f97316)';
+                } else {
+                    fillLeft.style.background = 'linear-gradient(90deg, #38bdf8, #facc15)';
+                }
+            }
+            if (marker) marker.style.left = `${ratio}%`;
+        }
+
+        async function triggerStreakSabotage(streakVal) {
+            if (!isClassKnockout || !knockoutRoomCode || !window.firebaseDb || !koOpponentId || koOpponentId === 'BENCHMARK_80') return;
+
+            knockoutSabotageCount++;
+            const sabTypes = [
+                { type: 'freeze', label: '❄️ FREEZE FRAME' },
+                { type: 'smoke', label: '🌫️ SMOKE SCREEN' },
+                { type: 'shake', label: '🫨 SCREEN SHAKE' }
+            ];
+            const chosen = sabTypes[Math.floor(Math.random() * sabTypes.length)];
+            const sabId = `${localStudentId}_${Date.now()}`;
+
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}/players/${koOpponentId}`), {
+                incomingSabotage: {
+                    id: sabId,
+                    type: chosen.type,
+                    fromName: sessionStudentName || 'Opponent',
+                    timestamp: Date.now()
+                }
+            });
+
+            showFlashingStatus(`🔥 ${streakVal}-NOTE STREAK! Fired ${chosen.label} at ${koOpponentName}!`, 3500);
+        }
+
+        function applyIncomingSabotage(sabObj) {
+            if (!sabObj || !sabObj.id || sabObj.id === lastProcessedSabotageId) return;
+            lastProcessedSabotageId = sabObj.id;
+
+            const ageMs = Date.now() - (sabObj.timestamp || Date.now());
+            if (ageMs > 6000) return; // Ignore stale events
+
+            activeSabotageType = sabObj.type;
+            activeSabotageUntil = performance.now() + 3000;
+            smokeParticles = [];
+
+            if (sabObj.type === 'shake') {
+                canvas.classList.add('canvas-shake-active');
+                setTimeout(() => {
+                    canvas.classList.remove('canvas-shake-active');
+                }, 1000);
+            }
+
+            const labelMap = {
+                freeze: '❄️ FREEZE FRAME',
+                smoke: '🌫️ SMOKE SCREEN',
+                shake: '🫨 SCREEN SHAKE'
+            };
+            showFlashingStatus(`⚠️ SABOTAGED BY ${sabObj.fromName.toUpperCase()}: ${labelMap[sabObj.type] || 'DISTRACTION'}!`, 3200);
         }
 
         // Override/wrap Song Battle & Sprint selectors + Results Close button cleanly
@@ -6324,7 +6597,8 @@
                 opponents: [],
                 currentScore: 0,
                 finishedRound: 0,
-                lastStats: { perfect: 0, earlyLate: 0, miss: 0 }
+                lastStats: { perfect: 0, earlyLate: 0, miss: 0 },
+                incomingSabotage: null
             });
             window.firebaseOnDisconnect(playerRef).remove();
 
@@ -6482,6 +6756,7 @@
                 updates[`players/${pid}/currentScore`] = 0;
                 updates[`players/${pid}/finishedRound`] = 0;
                 updates[`players/${pid}/lastStats`] = { perfect: 0, earlyLate: 0, miss: 0 };
+                updates[`players/${pid}/incomingSabotage`] = null;
             });
 
             await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}`), updates);
@@ -6518,13 +6793,18 @@
                     const p1 = playersObj[m.p1];
                     if (!p1) return '';
                     const p1Done = p1.finishedRound === data.round;
-                    const p1Status = p1Done ? `✅ ${Number(p1.currentScore || 0).toFixed(1)}%` : `🎹 ${Number(p1.currentScore || 0).toFixed(1)}%...`;
+                    const s1 = Number(p1.currentScore || 0);
+                    const p1Status = p1Done ? `✅ ${s1.toFixed(1)}%` : `🎹 ${s1.toFixed(1)}%...`;
 
                     if (m.isGhostMatch) {
                         if (!p1Done) allDone = false;
+                        const isClose = Math.abs(s1 - 80) <= 0.5;
                         return `
                             <div style="background:#141824; border:1px solid #8b5cf6; border-radius:8px; padding:10px;">
-                                <div style="font-size:0.72rem; color:#c084fc; font-weight:800;">MATCH ${idx + 1} • BENCHMARK CHALLENGE</div>
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="font-size:0.72rem; color:#c084fc; font-weight:800;">MATCH ${idx + 1} • BENCHMARK CHALLENGE</span>
+                                    ${isClose ? '<span class="photo-finish-badge">PHOTO FINISH 🔥</span>' : ''}
+                                </div>
                                 <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; font-weight:700;">
                                     <span>${p1.avatar} ${p1.name}</span>
                                     <span style="color:${p1Done ? '#22c55e' : '#facc15'};">${p1Status}</span>
@@ -6537,11 +6817,16 @@
                     const p2 = playersObj[m.p2];
                     const p2Done = p2 ? (p2.finishedRound === data.round) : true;
                     if (!p1Done || !p2Done) allDone = false;
-                    const p2Status = p2 ? (p2Done ? `✅ ${Number(p2.currentScore || 0).toFixed(1)}%` : `🎹 ${Number(p2.currentScore || 0).toFixed(1)}%...`) : 'Disconnected';
+                    const s2 = p2 ? Number(p2.currentScore || 0) : 0;
+                    const p2Status = p2 ? (p2Done ? `✅ ${s2.toFixed(1)}%` : `🎹 ${s2.toFixed(1)}%...`) : 'Disconnected';
+                    const isPhotoFinish = p2 && Math.abs(s1 - s2) <= 0.5;
 
                     return `
-                        <div style="background:#141824; border:1px solid #374151; border-radius:8px; padding:10px;">
-                            <div style="font-size:0.72rem; color:#38bdf8; font-weight:800;">TABLE ${idx + 1} • ROUND ${data.round}</div>
+                        <div style="background:#141824; border:1px solid ${isPhotoFinish ? '#ef4444' : '#374151'}; border-radius:8px; padding:10px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-size:0.72rem; color:#38bdf8; font-weight:800;">TABLE ${idx + 1} • ROUND ${data.round}</span>
+                                ${isPhotoFinish ? '<span class="photo-finish-badge">PHOTO FINISH 🔥</span>' : ''}
+                            </div>
                             <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; font-weight:700;">
                                 <span>${p1.avatar} ${p1.name}</span>
                                 <span style="color:${p1Done ? '#22c55e' : '#facc15'};">${p1Status}</span>
@@ -6602,6 +6887,7 @@
 
                 if (m.isGhostMatch) {
                     const won = s1 >= (m.targetScore || 80);
+                    const isPhotoFinish = Math.abs(s1 - (m.targetScore || 80)) <= 0.5;
                     const newStreak = won ? ((p1.winStreak || 0) + 1) : 0;
                     updates[`players/${p1.id}/wins`] = (p1.wins || 0) + (won ? 1 : 0);
                     updates[`players/${p1.id}/losses`] = (p1.losses || 0) + (won ? 0 : 1);
@@ -6611,6 +6897,8 @@
                     updates[`players/${p1.id}/lastMatchResult`] = {
                         round: data.round,
                         won: won,
+                        photoFinish: isPhotoFinish,
+                        tiebreakerUsed: false,
                         giantKiller: false,
                         winStreak: newStreak,
                         myScore: s1,
@@ -6623,7 +6911,22 @@
                     const p2 = playersObj[m.p2];
                     if (!p2) return;
                     const s2 = Number(p2.currentScore || 0);
-                    const p1Won = s1 >= s2;
+
+                    // 3. Live "Photo Finish" & Precision Tiebreaker (within 0.5% -> break ties by Total Perfect Hits)
+                    const isPhotoFinish = Math.abs(s1 - s2) <= 0.5;
+                    const p1Perfect = (p1.lastStats && p1.lastStats.perfect) ? Number(p1.lastStats.perfect) : 0;
+                    const p2Perfect = (p2.lastStats && p2.lastStats.perfect) ? Number(p2.lastStats.perfect) : 0;
+                    let p1Won = s1 > s2;
+                    let tiebreakerUsed = false;
+
+                    if (isPhotoFinish) {
+                        tiebreakerUsed = true;
+                        if (p1Perfect !== p2Perfect) {
+                            p1Won = p1Perfect > p2Perfect;
+                        } else {
+                            p1Won = s1 >= s2;
+                        }
+                    }
 
                     const p1GiantKiller = p1Won && currentLeaderId === p2.id;
                     const p2GiantKiller = !p1Won && currentLeaderId === p1.id;
@@ -6644,6 +6947,10 @@
                     updates[`players/${p1.id}/lastMatchResult`] = {
                         round: data.round,
                         won: p1Won,
+                        photoFinish: isPhotoFinish,
+                        tiebreakerUsed: tiebreakerUsed,
+                        myPerfect: p1Perfect,
+                        oppPerfect: p2Perfect,
                         giantKiller: p1GiantKiller,
                         winStreak: p1Streak,
                         myScore: s1,
@@ -6662,6 +6969,10 @@
                     updates[`players/${p2.id}/lastMatchResult`] = {
                         round: data.round,
                         won: !p1Won,
+                        photoFinish: isPhotoFinish,
+                        tiebreakerUsed: tiebreakerUsed,
+                        myPerfect: p2Perfect,
+                        oppPerfect: p1Perfect,
                         giantKiller: p2GiantKiller,
                         winStreak: p2Streak,
                         myScore: s2,
@@ -6702,11 +7013,27 @@
 
         function handleKnockoutStudentUpdate(data) {
             const playersObj = data.players || {};
+            const me = playersObj[localStudentId];
             const ranked = getRankedKnockoutPlayers(playersObj);
             const myRankIdx = ranked.findIndex(p => p.id === localStudentId);
             const myPlaceText = myRankIdx >= 0 ? `Rank #${myRankIdx + 1} of ${ranked.length}` : 'Unranked';
 
             document.getElementById('ko-student-standings').innerHTML = buildStandingsHTML(ranked);
+
+            // Check for incoming Streak Sabotage during live match
+            if (data.status === 'playing' && me && me.incomingSabotage) {
+                applyIncomingSabotage(me.incomingSabotage);
+            }
+
+            // Update Live Tug-of-War HUD during active round
+            if (data.status === 'playing' && me) {
+                const myLiveAcc = Number(me.currentScore !== undefined ? me.currentScore : 100);
+                let oppLiveAcc = 80.0;
+                if (koOpponentId && koOpponentId !== 'BENCHMARK_80' && playersObj[koOpponentId]) {
+                    oppLiveAcc = Number(playersObj[koOpponentId].currentScore !== undefined ? playersObj[koOpponentId].currentScore : 100);
+                }
+                updateTugOfWarHUD(myLiveAcc, oppLiveAcc);
+            }
 
             if (data.status === 'playing' && knockoutLastRoundStarted !== data.round) {
                 knockoutLastRoundStarted = data.round;
@@ -6723,40 +7050,46 @@
                 let oppName = 'Class Opponent';
                 let oppAvatar = '🤖';
                 let oppRankText = 'Challenger';
+                koOpponentId = null;
 
                 if (myMatch) {
                     if (myMatch.isGhostMatch) {
+                        koOpponentId = 'BENCHMARK_80';
                         oppName = '80% Benchmark';
                         oppAvatar = '🎯';
                         oppRankText = 'Target Score';
                     } else {
                         const oppId = myMatch.p1 === localStudentId ? myMatch.p2 : myMatch.p1;
+                        koOpponentId = oppId;
                         const oppObj = playersObj[oppId];
                         if (oppObj) {
                             oppName = oppObj.name;
                             oppAvatar = oppObj.avatar || '🏃';
                             const oppIdx = ranked.findIndex(p => p.id === oppId);
-                        const isBounty = oppIdx === 0 && (oppObj.roundsPlayed || 0) > 0;
-                        oppRankText = isBounty
-                            ? `🎯 #1 BOUNTY TARGET`
-                            : (oppIdx >= 0 ? `Rank #${oppIdx + 1}` : 'Challenger');
+                            const isBounty = oppIdx === 0 && (oppObj.roundsPlayed || 0) > 0;
+                            oppRankText = isBounty
+                                ? `🎯 #1 BOUNTY TARGET`
+                                : (oppIdx >= 0 ? `Rank #${oppIdx + 1}` : 'Challenger');
+                        }
                     }
                 }
-            }
 
-            document.getElementById('knockout-modal').classList.remove('open');
-            gameResultsModal.classList.remove('open');
-            arcadeHub.classList.remove('open');
+                koOpponentName = oppName;
+                koOpponentAvatar = oppAvatar;
 
-            const myIsBounty = myRankIdx === 0 && (playersObj[localStudentId]?.roundsPlayed || 0) > 0;
-            document.getElementById('ko-vs-round-label').textContent = `ROUND ${data.round} MATCHUP`;
-            document.getElementById('ko-vs-p1-avatar').textContent = sessionStudentAvatar || '🏃';
-            document.getElementById('ko-vs-p1-name').textContent = sessionStudentName || 'You';
-            document.getElementById('ko-vs-p1-rank').textContent = myIsBounty ? `👑 #1 DEFENDING BOUNTY` : myPlaceText;
-            document.getElementById('ko-vs-p2-avatar').textContent = oppAvatar;
-            document.getElementById('ko-vs-p2-name').textContent = oppName;
-            document.getElementById('ko-vs-p2-rank').textContent = oppRankText;
-            document.getElementById('ko-vs-song-label').textContent = `Song: ${data.songTitle}`;
+                document.getElementById('knockout-modal').classList.remove('open');
+                gameResultsModal.classList.remove('open');
+                arcadeHub.classList.remove('open');
+
+                const myIsBounty = myRankIdx === 0 && (playersObj[localStudentId]?.roundsPlayed || 0) > 0;
+                document.getElementById('ko-vs-round-label').textContent = `ROUND ${data.round} MATCHUP`;
+                document.getElementById('ko-vs-p1-avatar').textContent = sessionStudentAvatar || '🏃';
+                document.getElementById('ko-vs-p1-name').textContent = sessionStudentName || 'You';
+                document.getElementById('ko-vs-p1-rank').textContent = myIsBounty ? `👑 #1 DEFENDING BOUNTY` : myPlaceText;
+                document.getElementById('ko-vs-p2-avatar').textContent = oppAvatar;
+                document.getElementById('ko-vs-p2-name').textContent = oppName;
+                document.getElementById('ko-vs-p2-rank').textContent = oppRankText;
+                document.getElementById('ko-vs-song-label').textContent = `Song: ${data.songTitle}`;
 
                 const vsOverlay = document.getElementById('ko-vs-overlay');
                 vsOverlay.style.display = 'flex';
@@ -6773,16 +7106,23 @@
                     btnGame.classList.add('btn-game-active');
 
                     resetGameStats();
+                    updateTugOfWarHUD(100.0, koOpponentId === 'BENCHMARK_80' ? 80.0 : 100.0);
                     startCountdown(() => { playSong(); });
                 }, 2800);
 
             } else if (data.status === 'round_results') {
-                const me = playersObj[localStudentId];
+                const tugHud = document.getElementById('tug-of-war-hud');
+                if (tugHud) tugHud.style.display = 'none';
+                activeSabotageType = null;
+                canvas.classList.remove('canvas-shake-active');
+
                 if (me && me.lastMatchResult && me.lastMatchResult.round === data.round && knockoutLastRoundFinished !== data.round) {
                     knockoutLastRoundFinished = data.round;
                     renderKnockoutPostRoundComparison(me, me.lastMatchResult, myPlaceText);
                 }
             } else if (data.status === 'finished') {
+                const tugHud = document.getElementById('tug-of-war-hud');
+                if (tugHud) tugHud.style.display = 'none';
                 let standings = data.finalStandings || [];
                 if (standings.length === 0) {
                     const ranked = getRankedKnockoutPlayers(data.players || {});
@@ -6799,6 +7139,14 @@
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const acc = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100) : 100;
 
+            // Instant local Tug-of-War update
+            let oppLiveAcc = 80.0;
+            if (knockoutDataCache && knockoutDataCache.players && koOpponentId && koOpponentId !== 'BENCHMARK_80') {
+                const oppObj = knockoutDataCache.players[koOpponentId];
+                if (oppObj && oppObj.currentScore !== undefined) oppLiveAcc = Number(oppObj.currentScore);
+            }
+            updateTugOfWarHUD(acc, oppLiveAcc);
+
             clearTimeout(knockoutLiveSyncTimer);
             knockoutLiveSyncTimer = setTimeout(async () => {
                 const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
@@ -6814,6 +7162,11 @@
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const acc = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100) : 0;
             const roundNum = knockoutDataCache ? knockoutDataCache.round : 1;
+
+            const tugHud = document.getElementById('tug-of-war-hud');
+            if (tugHud) tugHud.style.display = 'none';
+            activeSabotageType = null;
+            canvas.classList.remove('canvas-shake-active');
 
             const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
             await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${knockoutRoomCode}/players/${localStudentId}`), {
@@ -6878,10 +7231,15 @@
                 multiGraph.appendChild(col);
             });
 
+            const photoFinishHtml = res.photoFinish
+                ? `<div style="margin-top:6px;"><span class="photo-finish-badge">PHOTO FINISH 🔥</span> <span style="font-size:0.78rem; color:#facc15; font-weight:700;">Tiebreaker by Perfect Hits (${res.myPerfect ?? myStats.perfect} vs ${res.oppPerfect ?? oppStats.perfect})</span></div>`
+                : '';
+
             document.getElementById('game-summary-text').innerHTML = `
                 <div style="font-size:1.25rem; font-weight:900; color:${res.won ? '#22c55e' : '#38bdf8'};">
                     ${res.won ? '🎉 Round Victory!' : '👏 Great Effort!'}
                 </div>
+                ${photoFinishHtml}
                 <div style="font-size:0.88rem; color:#cbd5e1; margin-top:4px;">
                     Stay ready — Teacher will launch the next skill-matched round shortly!
                 </div>
@@ -6901,6 +7259,10 @@
             isSongBattle = false;
             knockoutRoomCode = "";
             knockoutDataCache = null;
+            activeSabotageType = null;
+            canvas.classList.remove('canvas-shake-active');
+            const tugHud = document.getElementById('tug-of-war-hud');
+            if (tugHud) tugHud.style.display = 'none';
             const koModal = document.getElementById('knockout-modal');
             if (koModal) koModal.classList.remove('open');
             const vsOverlay = document.getElementById('ko-vs-overlay');
@@ -6967,7 +7329,6 @@
             const cleanName = (str) => String(str || '').replace(/\./g, '').replace(/\s+/g, ' ').trim().toLowerCase();
             const targetName = cleanName(studentName);
 
-            // 1. Fetch Dynamic Announcement from Cell A2 of "announcement" sheet
             const announceUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?sheet=announcement&range=A2:A2&tqx=responseHandler:parseAnnounceGviz&_ts=${Date.now()}`;
             const fetchAnnouncement = () => new Promise((resolve) => {
                 const script = document.createElement('script');
@@ -6993,7 +7354,6 @@
                 document.body.appendChild(script);
             });
 
-            // 2. Fetch Leaderboard Stats
             const gvizUrl = `https://docs.google.com/spreadsheets/d/1euEFrGRf_fRAJ_U1SLgXdERRWL_DDd3iPbm16G--MSM/gviz/tq?sheet=GameModeRanks&tqx=responseHandler:parseTickerGvizResponse&_ts=${Date.now()}`;
             const fetchGvizData = () => new Promise((resolve) => {
                 const script = document.createElement('script');
@@ -7015,10 +7375,8 @@
                 document.body.appendChild(script);
             });
 
-            // 3. Execute both fetches concurrently
             const [announceText, tableData] = await Promise.all([fetchAnnouncement(), fetchGvizData()]);
 
-            // Build flashing announcement if cell A2 is not empty
             let teacherAnnouncement = "";
             if (announceText && announceText.toLowerCase() !== "null" && announceText !== "") {
                 teacherAnnouncement = `<span class="ticker-item" style="color:#facc15; font-weight:900; letter-spacing:0.02em; animation: textBlink 1.5s infinite ease-in-out;">📢 ${announceText}</span><span style="color:#64748b;"> • </span>`;
