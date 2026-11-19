@@ -2120,6 +2120,7 @@ function handleKnockoutStudentUpdate(data) {
         const tugHud = document.getElementById('tug-of-war-hud');
         if (tugHud) tugHud.style.display = 'none';
         hideNameThatTuneModal();
+        if (window.exitActiveMiniGame) window.exitActiveMiniGame();
         resetKnockoutRoundEffects();
 
         if (me && me.lastMatchResult && me.lastMatchResult.round === data.round && knockoutLastRoundFinished !== data.round) {
@@ -2140,6 +2141,7 @@ function handleKnockoutStudentUpdate(data) {
         const tugHud = document.getElementById('tug-of-war-hud');
         if (tugHud) tugHud.style.display = 'none';
         hideNameThatTuneModal();
+        if (window.exitActiveMiniGame) window.exitActiveMiniGame();
 
         if (!knockoutFinaleShown) {
             knockoutFinaleShown = true;
@@ -2297,6 +2299,7 @@ function renderKnockoutPostRoundComparison(me, res, myPlaceText) {
 export function leaveClassKnockout() {
     clearKnockoutAutoNextTimer();
     hideNameThatTuneModal();
+    if (window.exitActiveMiniGame) window.exitActiveMiniGame();
     if (knockoutUnsubscribe) {
         knockoutUnsubscribe();
         knockoutUnsubscribe = null;
