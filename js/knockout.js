@@ -1,6 +1,6 @@
 import { initAudio, audioCtx, playTone, playErrorClackSound } from './audio.js';
 import { autoTransposeSong, parsePianoPad, getNoteFrequency } from './musicTheory.js';
-import { startLaserTag } from './games/laserTag.js';
+
 
 export const ER_HOUSES = {
     Crown:     { name: 'Crown',     icon: '👑', color: '#facc15', textColor: '#000000' },
@@ -1981,12 +1981,11 @@ function handleKnockoutStudentUpdate(data) {
         if (mode === 'lasertag') {
             document.getElementById('knockout-modal').classList.remove('open');
             document.getElementById('game-results-modal').classList.remove('open');
-            document.getElementById('arcade-hub').classList.remove('open');
             const tugHud = document.getElementById('tug-of-war-hud');
             if (tugHud) tugHud.style.display = 'none';
 
-            // Launch the arena using the teacher's active room code
-            startLaserTag(bridge, koState.knockoutRoomCode);
+            // Launch the arena securely using the global mini-games bridge
+            if (window.launchLaserTag) window.launchLaserTag(koState.knockoutRoomCode);
             return;
         }
         if (mode === 'namethattune') {
