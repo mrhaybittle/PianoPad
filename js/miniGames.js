@@ -1075,6 +1075,11 @@ export function launchNoteSniper() { startNoteSniper(gameBridgeHelper); }
 export function launchFlappyPitch() { startFlappyPitch(gameBridgeHelper); }
 export function launchStaffSurfers() { startStaffSurfers(gameBridgeHelper); }
 
+export function launchLaserTag(roomCode) {
+    openArcadeHub(); // Hides the main Piano UI
+    startLaserTag(gameBridgeHelper, roomCode);
+}
+
 Object.assign(window, {
     startSimonTaps,
     startMysteryNote,
@@ -1092,4 +1097,5 @@ Object.assign(window, {
     launchNoteSniper,
     launchFlappyPitch,
     launchStaffSurfers
+    launchLaserTag
 });
