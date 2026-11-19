@@ -15,6 +15,12 @@ export const ROOM_SIDES = {
     South: { name: 'South', label: 'South Side', icon: '⬇️', color: '#f97316', textColor: '#ffffff' }
 };
 
+export const CLASS_ROOMS = {
+    G1: { name: 'G1', label: 'Room G1', icon: '🎹', color: '#38bdf8', textColor: '#000000' },
+    G2: { name: 'G2', label: 'Room G2', icon: '🎧', color: '#facc15', textColor: '#000000' },
+    G3: { name: 'G3', label: 'Room G3', icon: '🎼', color: '#22c55e', textColor: '#000000' }
+};
+
 export const koState = {
     isClassKnockout: false,
     isKnockoutHost: false,
@@ -39,6 +45,8 @@ let koMyHouse = "";
 let koOppHouse = "";
 let koMySide = "";
 let koOppSide = "";
+let koMyRoom = "";
+let koOppRoom = "";
 let lastProcessedOppEmoteId = null;
 let koSelfEmoteHideTimer = null;
 let koOppEmoteHideTimer = null;
@@ -90,12 +98,13 @@ export function initSwissTournamentUI() {
 
                 <div id="ko-teacher-panel" style="display:none; flex-direction:column; gap:12px;">
                     <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:#111; padding:10px; border-radius:8px; border:1px solid #374151;">
-                        <div style="min-width:210px;">
+                        <div style="min-width:225px;">
                             <label style="font-size:0.72rem; color:#9ca3af; font-weight:700; display:block; margin-bottom:4px;">TOURNAMENT MODE:</label>
                             <select id="ko-mode-select" style="width:100%; background:#000; color:#fff; border:1px solid #4b5563; border-radius:6px; padding:6px 8px; font-weight:700;">
                                 <option value="solo" selected>⚔️ Individual Swiss (Default)</option>
                                 <option value="house">🏰 House Relay Mode (6 Houses)</option>
                                 <option value="sides">🧭 North Side vs. South Side</option>
+                                <option value="rooms">🏫 Room Battle (G1 vs. G2 vs. G3)</option>
                             </select>
                         </div>
                         <div style="flex:1; min-width:200px;">
@@ -198,6 +207,11 @@ function getTeamBadgeHTML(player, mode) {
         if (!s) return '';
         return `<span style="display:inline-flex; align-items:center; gap:3px; background:${s.color}; color:${s.textColor}; font-size:0.68rem; font-weight:900; padding:1px 6px; border-radius:4px; margin-left:5px;">${s.icon} ${s.label}</span>`;
     }
+    if (mode === 'rooms') {
+        const r = CLASS_ROOMS[player.roomTeam];
+        if (!r) return '';
+        return `<span style="display:inline-flex; align-items:center; gap:3px; background:${r.color}; color:${r.textColor}; font-size:0.68rem; font-weight:900; padding:1px 6px; border-radius:4px; margin-left:5px;">${r.icon} ${r.name}</span>`;
+    }
     return '';
 }
 
@@ -208,6 +222,35 @@ function renderStudentTeamPicker(mode, selectedVal) {
     if (!box || !grid) return;
 
     box.style.display = 'block';
+
+    if (mode === 'rooms') {
+        title.textContent = '🏫 ROOM BATTLE ACTIVE — CONFIRM YOUR MUSIC ROOM:';
+        grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+        grid.innerHTML = Object.values(CLASS_ROOMS).map(r => {
+            const isSelected = selectedVal === r.name;
+            return `
+                <button type="button" onclick="selectKnockoutTeam('rooms', '${r.name}')" style="
+                    background: ${isSelected ? r.color : '#1f2937'};
+                    color: ${isSelected ? r.textColor : '#ffffff'};
+                    border: 2px solid ${r.color};
+                    border-radius: 8px;
+                    padding: 12px 8px;
+                    font-weight: 900;
+                    font-size: 0.95rem;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    box-shadow: ${isSelected ? `0 0 14px ${r.color}` : 'none'};
+                ">
+                    <span style="font-size:1.25rem;">${r.icon}</span>
+                    <span>${r.label}</span>
+                </button>
+            `;
+        }).join('');
+        return;
+    }
 
     if (mode === 'sides') {
         title.textContent = '🧭 NORTH VS. SOUTH ACTIVE — WHICH SIDE OF THE ROOM ARE YOU ON?';
@@ -270,7 +313,14 @@ export async function selectKnockoutTeam(mode, value) {
     const { localStudentId } = bridge.getState();
     const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
 
-    if (mode === 'sides' && ROOM_SIDES[value]) {
+    if (mode === 'rooms' && CLASS_ROOMS[value]) {
+        koMyRoom = value;
+        localStorage.setItem('pianopad_room', value);
+        renderStudentTeamPicker('rooms', value);
+        await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}/players/${localStudentId}`), {
+            roomTeam: value
+        });
+    } else if (mode === 'sides' && ROOM_SIDES[value]) {
         koMySide = value;
         localStorage.setItem('pianopad_side', value);
         renderStudentTeamPicker('sides', value);
@@ -287,9 +337,14 @@ export async function selectKnockoutTeam(mode, value) {
     }
 }
 
+function getTeamConfig(mode) {
+    if (mode === 'rooms') return { dictionary: CLASS_ROOMS, fieldName: 'roomTeam' };
+    if (mode === 'sides') return { dictionary: ROOM_SIDES, fieldName: 'side' };
+    return { dictionary: ER_HOUSES, fieldName: 'house' };
+}
+
 function computeLiveTeamAverages(playersObj, mode) {
-    const dictionary = mode === 'sides' ? ROOM_SIDES : ER_HOUSES;
-    const fieldName = mode === 'sides' ? 'side' : 'house';
+    const { dictionary, fieldName } = getTeamConfig(mode);
     const groups = {};
 
     Object.values(playersObj || {}).forEach(p => {
@@ -399,7 +454,7 @@ export function updateTugOfWarHUD(myAcc, oppAcc) {
 
     const { sessionStudentName, sessionStudentAvatar } = bridge.getState();
     const mode = knockoutDataCache ? knockoutDataCache.tournamentMode : 'solo';
-    const isTeamMode = (mode === 'house' || mode === 'sides');
+    const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms');
     hud.style.display = 'flex';
 
     let leftLabel = sessionStudentName || 'You';
@@ -413,10 +468,14 @@ export function updateTugOfWarHUD(myAcc, oppAcc) {
 
     if (isTeamMode && knockoutDataCache && knockoutDataCache.players) {
         const teamAvgs = computeLiveTeamAverages(knockoutDataCache.players, mode);
-        const myTeamKey = mode === 'sides' ? koMySide : koMyHouse;
-        const oppTeamKey = mode === 'sides'
-            ? (koMySide === 'North' ? 'South' : 'North')
-            : koOppHouse;
+        const myTeamKey = mode === 'rooms' ? koMyRoom : (mode === 'sides' ? koMySide : koMyHouse);
+        let oppTeamKey = mode === 'rooms' ? koOppRoom : (mode === 'sides' ? (koMySide === 'North' ? 'South' : 'North') : koOppHouse);
+
+        // If matched against a benchmark or unassigned player in Room mode, pick the top rival room
+        if (!oppTeamKey || !teamAvgs[oppTeamKey]) {
+            const rivalEntry = Object.values(teamAvgs).find(g => g.key !== myTeamKey);
+            if (rivalEntry) oppTeamKey = rivalEntry.key;
+        }
 
         if (myTeamKey && teamAvgs[myTeamKey]) {
             const m = teamAvgs[myTeamKey].meta;
@@ -601,13 +660,17 @@ export async function joinClassKnockoutStudent(studentName, roomCode) {
     knockoutLastRoundFinished = 0;
     bridge.setStudentName(studentName);
 
-    const { localStudentId, sessionStudentAvatar, currentStudentClass } = bridge.getState();
+    const { localStudentId, sessionStudentAvatar, currentStudentClass, currentRoom } = bridge.getState();
     const avatar = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || '🏃';
     const studentClass = currentStudentClass || localStorage.getItem('pianopad_class') || '';
     const savedHouse = localStorage.getItem('pianopad_house') || 'Crown';
     const savedSide = localStorage.getItem('pianopad_side') || 'North';
+    const rawRoom = currentRoom || localStorage.getItem('pianopad_room') || 'G1';
+    const defaultRoom = CLASS_ROOMS[rawRoom] ? rawRoom : 'G1';
+
     koMyHouse = savedHouse;
     koMySide = savedSide;
+    koMyRoom = defaultRoom;
 
     const playerRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${roomCode}/players/${localStudentId}`);
     await window.firebaseSet(playerRef, {
@@ -617,6 +680,7 @@ export async function joinClassKnockoutStudent(studentName, roomCode) {
         studentClass: studentClass,
         house: savedHouse,
         side: savedSide,
+        roomTeam: defaultRoom,
         wins: 0,
         losses: 0,
         winStreak: 0,
@@ -686,9 +750,11 @@ function buildTeamStandingsHTML(playersObj, mode) {
     const rankedTeams = getRankedTeams(playersObj, mode);
     if (rankedTeams.length === 0) return '';
 
-    const myTeamKey = mode === 'sides' ? koMySide : koMyHouse;
-    const headerTitle = mode === 'sides' ? '🧭 North vs. South Standings' : '🏰 House Relay Ladder';
-    const colLabel = mode === 'sides' ? 'Side' : 'House';
+    const myTeamKey = mode === 'rooms' ? koMyRoom : (mode === 'sides' ? koMySide : koMyHouse);
+    const headerTitle = mode === 'rooms'
+        ? '🏫 Room Battle Ladder (G1 vs. G2 vs. G3)'
+        : (mode === 'sides' ? '🧭 North vs. South Standings' : '🏰 House Relay Ladder');
+    const colLabel = mode === 'rooms' ? 'Room' : (mode === 'sides' ? 'Side' : 'House');
 
     const rows = rankedTeams.map((g, idx) => {
         const m = g.meta;
@@ -727,7 +793,7 @@ function buildStandingsHTML(rankedPlayers, mode = 'solo', playersObj = {}) {
         return `<div style="color:#9ca3af; font-size:0.8rem; text-align:center; padding:8px;">No students joined yet...</div>`;
     }
     const { localStudentId } = bridge.getState();
-    const isTeamMode = (mode === 'house' || mode === 'sides');
+    const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms');
     const teamTable = isTeamMode ? buildTeamStandingsHTML(playersObj, mode) : '';
 
     let rows = rankedPlayers.map((p, idx) => {
@@ -766,8 +832,8 @@ function buildStandingsHTML(rankedPlayers, mode = 'solo', playersObj = {}) {
 
 function generateSwissPairings(playersObj, roundNum, mode = 'solo') {
     const players = Object.values(playersObj || {});
-    const isTeamMode = (mode === 'house' || mode === 'sides');
-    const teamField = mode === 'sides' ? 'side' : 'house';
+    const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms');
+    const { fieldName: teamField } = getTeamConfig(mode);
     let ordered = [];
 
     if (roundNum === 1) {
@@ -776,7 +842,7 @@ function generateSwissPairings(playersObj, roundNum, mode = 'solo') {
         ordered = getRankedKnockoutPlayers(playersObj);
     }
 
-    // Avoid rematches and prioritize cross-team (cross-house or North vs South) opponents
+    // Avoid rematches and prioritize cross-team (cross-house, North vs South, or G1 vs G2 vs G3) opponents
     for (let i = 0; i < ordered.length - 1; i += 2) {
         const p1 = ordered[i];
         const p2 = ordered[i + 1];
@@ -885,7 +951,7 @@ function formatBracketEmoteBadge(playerObj) {
 function handleKnockoutHostUpdate(data) {
     const playersObj = data.players || {};
     const mode = data.tournamentMode || 'solo';
-    const isTeamMode = (mode === 'house' || mode === 'sides');
+    const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms');
     const ranked = getRankedKnockoutPlayers(playersObj);
     document.getElementById('ko-standings-container').innerHTML = buildStandingsHTML(ranked, mode, playersObj);
 
@@ -896,7 +962,9 @@ function handleKnockoutHostUpdate(data) {
     const btnFinish = document.getElementById('btn-ko-finish-tourney');
 
     if (data.status === 'lobby') {
-        if (mode === 'sides') {
+        if (mode === 'rooms') {
+            statusBanner.textContent = `🏫 Room Battle Lobby Open (${ranked.length} students connected). G1 vs. G2 vs. G3 ready!`;
+        } else if (mode === 'sides') {
             statusBanner.textContent = `🧭 North vs. South Lobby Open (${ranked.length} students connected). Students are choosing North or South!`;
         } else if (mode === 'house') {
             statusBanner.textContent = `🏰 House Relay Lobby Open (${ranked.length} students connected). Students are choosing their Houses!`;
@@ -983,11 +1051,13 @@ function handleKnockoutHostUpdate(data) {
     } else if (data.status === 'round_results') {
         btnForce.style.display = 'none';
         btnStart.style.display = 'inline-flex';
-        btnStart.textContent = mode === 'sides'
-            ? `▶ Start Round ${data.round + 1} (North vs South)`
-            : (mode === 'house'
-                ? `▶ Start Round ${data.round + 1} (House Relay)`
-                : `▶ Start Round ${data.round + 1} (Swiss Matched)`);
+        btnStart.textContent = mode === 'rooms'
+            ? `▶ Start Round ${data.round + 1} (Room Battle)`
+            : (mode === 'sides'
+                ? `▶ Start Round ${data.round + 1} (North vs South)`
+                : (mode === 'house'
+                    ? `▶ Start Round ${data.round + 1} (House Relay)`
+                    : `▶ Start Round ${data.round + 1} (Swiss Matched)`));
         btnFinish.style.display = 'inline-flex';
         statusBanner.textContent = `Round ${data.round} Complete! Ready for Round ${data.round + 1}.`;
     } else if (data.status === 'finished') {
@@ -997,9 +1067,11 @@ function handleKnockoutHostUpdate(data) {
         statusBanner.textContent = `🏆 Tournament Complete! Final Placings Logged to Leaderboard.`;
 
         let standings = data.finalStandings || [];
-        const finaleTitle = mode === 'sides'
-            ? `🧭 North vs. South Showdown Complete!`
-            : (mode === 'house' ? `🏰 House Relay Championship Complete!` : `🏆 Class Knockout Complete!`);
+        const finaleTitle = mode === 'rooms'
+            ? `🏫 Room Battle (G1 vs. G2 vs. G3) Complete!`
+            : (mode === 'sides'
+                ? `🧭 North vs. South Showdown Complete!`
+                : (mode === 'house' ? `🏰 House Relay Championship Complete!` : `🏆 Class Knockout Complete!`));
         bridge.showGrandFinale(standings, true, finaleTitle);
     }
 }
@@ -1097,6 +1169,7 @@ async function scoreAndConcludeKnockoutRound(data) {
                 oppAvatar: p2.avatar || '🏃',
                 oppHouse: p2.house || '',
                 oppSide: p2.side || '',
+                oppRoom: p2.roomTeam || '',
                 oppScore: s2,
                 oppStats: p2.lastStats || { perfect: 0, earlyLate: 0, miss: 0 }
             };
@@ -1121,6 +1194,7 @@ async function scoreAndConcludeKnockoutRound(data) {
                 oppAvatar: p1.avatar || '🏃',
                 oppHouse: p1.house || '',
                 oppSide: p1.side || '',
+                oppRoom: p1.roomTeam || '',
                 oppScore: s1,
                 oppStats: p1.lastStats || { perfect: 0, earlyLate: 0, miss: 0 }
             };
@@ -1133,11 +1207,13 @@ async function scoreAndConcludeKnockoutRound(data) {
 async function finalizeClassKnockout() {
     if (!koState.isKnockoutHost || !knockoutDataCache) return;
     const mode = knockoutDataCache.tournamentMode || 'solo';
-    const isTeamMode = (mode === 'house' || mode === 'sides');
+    const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms');
     const ranked = getRankedKnockoutPlayers(knockoutDataCache.players || {});
 
     const individualPayload = ranked.map(p => {
-        const tag = mode === 'sides' ? (p.side ? ` (${p.side})` : '') : (mode === 'house' && p.house ? ` (${p.house})` : '');
+        const tag = mode === 'rooms'
+            ? (p.roomTeam ? ` (${p.roomTeam})` : '')
+            : (mode === 'sides' ? (p.side ? ` (${p.side})` : '') : (mode === 'house' && p.house ? ` (${p.house})` : ''));
         const avgAcc = p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0';
         return {
             name: `${p.name}${tag}`,
@@ -1165,11 +1241,13 @@ async function finalizeClassKnockout() {
     }
 
     bridge.setCurrentSongTitle(
-        mode === 'sides'
-            ? `North vs South (${knockoutDataCache.songTitle || 'Tournament'})`
-            : (mode === 'house'
-                ? `House Relay (${knockoutDataCache.songTitle || 'Tournament'})`
-                : `Class Knockout (${knockoutDataCache.songTitle || 'Tournament'})`)
+        mode === 'rooms'
+            ? `Room Battle (${knockoutDataCache.songTitle || 'Tournament'})`
+            : (mode === 'sides'
+                ? `North vs South (${knockoutDataCache.songTitle || 'Tournament'})`
+                : (mode === 'house'
+                    ? `House Relay (${knockoutDataCache.songTitle || 'Tournament'})`
+                    : `Class Knockout (${knockoutDataCache.songTitle || 'Tournament'})`))
     );
     await bridge.postBattleToSpreadsheet(individualPayload);
 
@@ -1184,7 +1262,6 @@ function handleKnockoutStudentUpdate(data) {
     const { localStudentId, sessionStudentName, sessionStudentAvatar } = bridge.getState();
     const playersObj = data.players || {};
     const mode = data.tournamentMode || 'solo';
-    const isTeamMode = (mode === 'house' || mode === 'sides');
     const me = playersObj[localStudentId];
     const ranked = getRankedKnockoutPlayers(playersObj);
     const myRankIdx = ranked.findIndex(p => p.id === localStudentId);
@@ -1192,10 +1269,13 @@ function handleKnockoutStudentUpdate(data) {
 
     if (me && me.house) koMyHouse = me.house;
     if (me && me.side) koMySide = me.side;
+    if (me && me.roomTeam) koMyRoom = me.roomTeam;
 
     const teamBox = document.getElementById('ko-team-picker-box');
     if (teamBox) {
-        if (mode === 'sides') {
+        if (mode === 'rooms') {
+            renderStudentTeamPicker('rooms', koMyRoom || 'G1');
+        } else if (mode === 'sides') {
             renderStudentTeamPicker('sides', koMySide || 'North');
         } else if (mode === 'house') {
             renderStudentTeamPicker('house', koMyHouse || 'Crown');
@@ -1242,6 +1322,7 @@ function handleKnockoutStudentUpdate(data) {
         koOpponentId = null;
         koOppHouse = '';
         koOppSide = '';
+        koOppRoom = '';
 
         if (myMatch) {
             if (myMatch.isGhostMatch) {
@@ -1258,10 +1339,14 @@ function handleKnockoutStudentUpdate(data) {
                     oppAvatar = oppObj.avatar || '🏃';
                     koOppHouse = oppObj.house || '';
                     koOppSide = oppObj.side || '';
+                    koOppRoom = oppObj.roomTeam || '';
                     const oppIdx = ranked.findIndex(p => p.id === oppId);
                     const isBounty = oppIdx === 0 && (oppObj.roundsPlayed || 0) > 0;
 
-                    if (mode === 'sides' && ROOM_SIDES[koOppSide]) {
+                    if (mode === 'rooms' && CLASS_ROOMS[koOppRoom]) {
+                        const or = CLASS_ROOMS[koOppRoom];
+                        oppRankText = `${or.icon} ${or.label}`;
+                    } else if (mode === 'sides' && ROOM_SIDES[koOppSide]) {
                         const os = ROOM_SIDES[koOppSide];
                         oppRankText = `${os.icon} ${os.label}`;
                     } else if (mode === 'house' && ER_HOUSES[koOppHouse]) {
@@ -1284,13 +1369,15 @@ function handleKnockoutStudentUpdate(data) {
         document.getElementById('arcade-hub').classList.remove('open');
 
         const myIsBounty = myRankIdx === 0 && (playersObj[localStudentId]?.roundsPlayed || 0) > 0;
-        const myTeamMeta = mode === 'sides'
-            ? ROOM_SIDES[koMySide]
-            : (mode === 'house' ? ER_HOUSES[koMyHouse] : null);
+        const myTeamMeta = mode === 'rooms'
+            ? CLASS_ROOMS[koMyRoom]
+            : (mode === 'sides' ? ROOM_SIDES[koMySide] : (mode === 'house' ? ER_HOUSES[koMyHouse] : null));
 
-        document.getElementById('ko-vs-round-label').textContent = mode === 'sides'
-            ? `🧭 NORTH VS. SOUTH • ROUND ${data.round}`
-            : (mode === 'house' ? `🏰 HOUSE RELAY • ROUND ${data.round}` : `ROUND ${data.round} MATCHUP`);
+        document.getElementById('ko-vs-round-label').textContent = mode === 'rooms'
+            ? `🏫 ROOM BATTLE • ROUND ${data.round}`
+            : (mode === 'sides'
+                ? `🧭 NORTH VS. SOUTH • ROUND ${data.round}`
+                : (mode === 'house' ? `🏰 HOUSE RELAY • ROUND ${data.round}` : `ROUND ${data.round} MATCHUP`));
         document.getElementById('ko-vs-p1-avatar').textContent = sessionStudentAvatar || '🏃';
         document.getElementById('ko-vs-p1-name').textContent = sessionStudentName || 'You';
         document.getElementById('ko-vs-p1-rank').textContent = myTeamMeta
@@ -1336,9 +1423,11 @@ function handleKnockoutStudentUpdate(data) {
                 name: p.name, score: p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0', avatar: p.avatar, id: p.id
             }));
         }
-        const finaleTitle = mode === 'sides'
-            ? `🧭 North vs. South Showdown Complete!`
-            : (mode === 'house' ? `🏰 House Relay Championship Complete!` : `🏆 Class Knockout Complete!`);
+        const finaleTitle = mode === 'rooms'
+            ? `🏫 Room Battle (G1 vs. G2 vs. G3) Complete!`
+            : (mode === 'sides'
+                ? `🧭 North vs. South Showdown Complete!`
+                : (mode === 'house' ? `🏰 House Relay Championship Complete!` : `🏆 Class Knockout Complete!`));
         bridge.showGrandFinale(standings, false, finaleTitle);
     }
 }
@@ -1477,4 +1566,8 @@ export function leaveClassKnockout() {
     if (vsOverlay) vsOverlay.style.display = 'none';
     bridge.stopSong();
 }
+
 window.selectKnockoutTeam = selectKnockoutTeam;
+window.dealKnockoutEmoteDeck = dealKnockoutEmoteDeck;
+window.sendKnockoutQuickEmote = sendKnockoutQuickEmote;
+window.leaveClassKnockout = leaveClassKnockout;
