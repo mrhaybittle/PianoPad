@@ -1,5 +1,12 @@
 import { initAudio, audioCtx } from './audio.js';
 import { autoTransposeSong, parsePianoPad } from './musicTheory.js';
+import {
+    generateNameThatTuneChoices,
+    playSongSnippet,
+    launchStudentNameThatTuneRound,
+    hideNameThatTuneModal,
+    updateNameThatTuneProgressText
+} from './nameThatTune.js';
 
 export const ER_HOUSES = {
     Crown:     { name: 'Crown',     icon: '👑', color: '#facc15', textColor: '#000000' },
@@ -125,6 +132,19 @@ function startKnockoutAutoNextTimer(completedRound) {
     }, 1000);
 }
 
+function updateTeacherNttControlsVisibility(modeVal) {
+    const nttBar = document.getElementById('ko-ntt-settings-bar');
+    const footer = document.getElementById('ko-footer-caption');
+    if (nttBar) {
+        nttBar.style.display = modeVal === 'namethattune' ? 'flex' : 'none';
+    }
+    if (footer) {
+        footer.textContent = modeVal === 'namethattune'
+            ? '🎵 Name That Tune • 8-Choice Audio Quiz • No Piano Keyboard Needed • Individual or House Scoring'
+            : 'Swiss Placement Ladder • Zero Elimination • Everyone plays every round';
+    }
+}
+
 export function initSwissTournamentUI() {
     const menuBtns = document.getElementById('sprint-menu-buttons');
     if (menuBtns && !document.getElementById('btn-host-knockout-opt')) {
@@ -145,21 +165,22 @@ export function initSwissTournamentUI() {
         koModal.className = 'modal-overlay';
         koModal.style.zIndex = '350';
         koModal.innerHTML = `
-            <div class="modal" style="max-width: 820px; width: 95%; max-height: 90vh; overflow-y: auto; border: 2px solid #ef4444; background: #0a0a0a;">
+            <div class="modal" style="max-width: 840px; width: 95%; max-height: 90vh; overflow-y: auto; border: 2px solid #ef4444; background: #0a0a0a;">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #374151; padding-bottom:10px;">
-                    <h2 id="ko-modal-title" style="color:#ffffff; margin:0;">🏆 Class Swiss Knockout Tournament</h2>
+                    <h2 id="ko-modal-title" style="color:#ffffff; margin:0;">🏆 Class Tournament & Battle Arena</h2>
                     <span id="ko-room-badge" style="background:#ef4444; color:#fff; padding:4px 12px; border-radius:6px; font-weight:800; font-size:0.95rem;">Code: ---</span>
                 </div>
 
                 <div id="ko-teacher-panel" style="display:none; flex-direction:column; gap:12px;">
                     <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:#111; padding:10px; border-radius:8px; border:1px solid #374151;">
-                        <div style="min-width:225px;">
-                            <label style="font-size:0.72rem; color:#9ca3af; font-weight:700; display:block; margin-bottom:4px;">TOURNAMENT MODE:</label>
+                        <div style="min-width:235px;">
+                            <label style="font-size:0.72rem; color:#9ca3af; font-weight:700; display:block; margin-bottom:4px;">BATTLE MODE:</label>
                             <select id="ko-mode-select" style="width:100%; background:#000; color:#fff; border:1px solid #4b5563; border-radius:6px; padding:6px 8px; font-weight:700;">
                                 <option value="solo" selected>⚔️ Individual Swiss (Default)</option>
                                 <option value="house">🏰 House Relay Mode (6 Houses)</option>
                                 <option value="sides">🧭 North Side vs. South Side</option>
                                 <option value="rooms">🏫 Room Battle (G1 vs. G2 vs. G3)</option>
+                                <option value="namethattune">🎵 Name That Tune (8-Choice Quiz)</option>
                             </select>
                         </div>
                         <div style="flex:1; min-width:200px;">
@@ -177,18 +198,42 @@ export function initSwissTournamentUI() {
                         </div>
                     </div>
 
+                    <!-- Name That Tune Specific Teacher Controls -->
+                    <div id="ko-ntt-settings-bar" style="display:none; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; background:#0f172a; padding:10px 12px; border-radius:8px; border:1px solid #38bdf8;">
+                        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                            <label style="font-size:0.78rem; color:#38bdf8; font-weight:800;">🎵 NOTES TO PLAY:</label>
+                            <select id="ko-ntt-note-count" style="background:#000; color:#fff; border:1px solid #38bdf8; border-radius:6px; padding:5px 8px; font-weight:800;">
+                                <option value="3">First 3 Notes (Expert)</option>
+                                <option value="4">First 4 Notes (Hard)</option>
+                                <option value="5" selected>First 5 Notes (Standard)</option>
+                                <option value="6">First 6 Notes (Medium)</option>
+                                <option value="8">First 8 Notes (Easy)</option>
+                                <option value="10">First 10 Notes (Beginner)</option>
+                            </select>
+
+                            <label style="display:inline-flex; align-items:center; gap:6px; background:#1e293b; border:1px solid #475569; color:#facc15; padding:5px 10px; border-radius:6px; font-size:0.78rem; font-weight:800; cursor:pointer; user-select:none;">
+                                <input type="checkbox" id="ko-ntt-house-toggle" checked style="accent-color:#facc15; width:15px; height:15px; cursor:pointer; margin:0;">
+                                <span>🏰 Group in Houses</span>
+                            </label>
+                        </div>
+
+                        <button type="button" id="btn-ko-ntt-teacher-play" style="background:#38bdf8; color:#0f172a; border:none; border-radius:6px; padding:6px 12px; font-weight:900; font-size:0.8rem; cursor:pointer;">
+                            🔊 Preview Snippet Here
+                        </button>
+                    </div>
+
                     <div id="ko-status-banner" style="font-size:0.85rem; color:#ffffff; font-weight:700; text-align:center;">
                         Waiting for students to join using Room Code above...
                     </div>
 
-                    <div id="ko-bracket-container" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px; max-height:320px; overflow-y:auto;"></div>
+                    <div id="ko-bracket-container" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:10px; max-height:320px; overflow-y:auto;"></div>
 
                     <div id="ko-standings-container" style="background:#111; border:1px solid #374151; border-radius:8px; padding:10px; max-height:220px; overflow-y:auto;"></div>
                 </div>
 
                 <div id="ko-student-panel" style="display:none; flex-direction:column; gap:12px; text-align:center;">
                     <div id="ko-student-status" style="font-size:1rem; color:#ffffff; font-weight:800;">
-                        Connected to Class Knockout! Waiting for Teacher to start Round 1...
+                        Connected to Class Battle! Waiting for Teacher to start Round 1...
                     </div>
 
                     <div id="ko-team-picker-box" style="display:none; background:#111; border:1px solid #4b5563; border-radius:10px; padding:12px;">
@@ -211,12 +256,31 @@ export function initSwissTournamentUI() {
         document.body.appendChild(koModal);
 
         document.getElementById('ko-mode-select').addEventListener('change', async (e) => {
-            if (!koState.isKnockoutHost || !koState.knockoutRoomCode || !window.firebaseDb) return;
             const modeVal = e.target.value;
+            updateTeacherNttControlsVisibility(modeVal);
+            if (!koState.isKnockoutHost || !koState.knockoutRoomCode || !window.firebaseDb) return;
+            const houseEnabled = document.getElementById('ko-ntt-house-toggle')?.checked ?? true;
             const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
             await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}`), {
-                tournamentMode: modeVal
+                tournamentMode: modeVal,
+                nttGroupHouses: houseEnabled
             });
+        });
+
+        document.getElementById('ko-ntt-house-toggle').addEventListener('change', async (e) => {
+            if (!koState.isKnockoutHost || !koState.knockoutRoomCode || !window.firebaseDb) return;
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}`), {
+                nttGroupHouses: e.target.checked
+            });
+        });
+
+        document.getElementById('btn-ko-ntt-teacher-play').addEventListener('click', () => {
+            const koSongSel = document.getElementById('ko-song-select');
+            const noteCountSel = document.getElementById('ko-ntt-note-count');
+            const code = koSongSel ? koSongSel.value : '';
+            const count = noteCountSel ? parseInt(noteCountSel.value, 10) : 5;
+            if (code) playSongSnippet(code, count);
         });
 
         document.getElementById('ko-auto-next-toggle').addEventListener('change', (e) => {
@@ -278,8 +342,15 @@ export function initSwissTournamentUI() {
     }
 }
 
-function getTeamBadgeHTML(player, mode) {
-    if (mode === 'house') {
+function isEffectiveHouseMode(data) {
+    const mode = data?.tournamentMode || 'solo';
+    if (mode === 'house') return true;
+    if (mode === 'namethattune' && data?.nttGroupHouses !== false) return true;
+    return false;
+}
+
+function getTeamBadgeHTML(player, mode, nttGroupHouses = true) {
+    if (mode === 'house' || (mode === 'namethattune' && nttGroupHouses)) {
         const h = ER_HOUSES[player.house];
         if (!h) return '';
         return `<span style="display:inline-flex; align-items:center; gap:3px; background:${h.color}; color:${h.textColor}; font-size:0.68rem; font-weight:900; padding:1px 6px; border-radius:4px; margin-left:5px; border:1px solid rgba(255,255,255,0.25);">${h.icon} ${h.name}</span>`;
@@ -363,7 +434,9 @@ function renderStudentTeamPicker(mode, selectedVal) {
         return;
     }
 
-    title.textContent = '🏰 HOUSE RELAY MODE ACTIVE — CHOOSE YOUR HOUSE:';
+    title.textContent = mode === 'namethattune'
+        ? '🎵 NAME THAT TUNE (HOUSE CUP) — CHOOSE YOUR HOUSE:'
+        : '🏰 HOUSE RELAY MODE ACTIVE — CHOOSE YOUR HOUSE:';
     grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
     grid.innerHTML = Object.values(ER_HOUSES).map(h => {
         const isSelected = selectedVal === h.name;
@@ -412,7 +485,7 @@ export async function selectKnockoutTeam(mode, value) {
     } else if (mode === 'house' && ER_HOUSES[value]) {
         koMyHouse = value;
         localStorage.setItem('pianopad_house', value);
-        renderStudentTeamPicker('house', value);
+        renderStudentTeamPicker(knockoutDataCache?.tournamentMode || 'house', value);
         await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}/players/${localStudentId}`), {
             house: value
         });
@@ -546,13 +619,13 @@ export function updateTugOfWarHUD(myAcc, oppAcc) {
     const hud = document.getElementById('tug-of-war-hud');
     if (!hud) return;
 
-    if (!koState.isClassKnockout) {
+    const mode = knockoutDataCache ? knockoutDataCache.tournamentMode : 'solo';
+    if (!koState.isClassKnockout || mode === 'namethattune') {
         hud.style.display = 'none';
         return;
     }
 
     const { sessionStudentName, sessionStudentAvatar } = bridge.getState();
-    const mode = knockoutDataCache ? knockoutDataCache.tournamentMode : 'solo';
     const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms');
     hud.style.display = 'flex';
 
@@ -712,6 +785,7 @@ export async function openTeacherKnockoutSetup() {
 
     const modeSelect = document.getElementById('ko-mode-select');
     if (modeSelect) modeSelect.value = 'solo';
+    updateTeacherNttControlsVisibility('solo');
 
     const autoNextToggle = document.getElementById('ko-auto-next-toggle');
     const autoNextLabel = document.getElementById('ko-auto-next-label');
@@ -744,13 +818,15 @@ export async function openTeacherKnockoutSetup() {
     await window.firebaseSet(tourneyRef, {
         roomCode: koState.knockoutRoomCode,
         tournamentMode: 'solo',
+        nttGroupHouses: true,
         status: 'lobby',
         round: 0,
         songTitle: currentSongTitle,
         songCode: songSelect.value || (songList[0] ? songList[0].code : ''),
         createdAt: Date.now(),
         players: {},
-        pairings: {}
+        pairings: {},
+        nttData: null
     });
     window.firebaseOnDisconnect(tourneyRef).remove();
 
@@ -796,6 +872,8 @@ export async function joinClassKnockoutStudent(studentName, roomCode) {
         opponents: [],
         currentScore: 0,
         finishedRound: 0,
+        nttCorrect: null,
+        nttTimeSec: 0,
         lastStats: { perfect: 0, earlyLate: 0, miss: 0 },
         incomingSabotage: null,
         activeEmote: null
@@ -822,7 +900,7 @@ async function attachKnockoutListener(roomCode) {
         const data = snapshot.val();
         if (!data) {
             if (koState.isClassKnockout) {
-                alert("The teacher has closed the Class Knockout tournament.");
+                alert("The teacher has closed the Class Tournament.");
                 leaveClassKnockout();
             }
             return;
@@ -846,7 +924,8 @@ function getRankedKnockoutPlayers(playersObj) {
 }
 
 function getRankedTeams(playersObj, mode) {
-    const groups = computeLiveTeamAverages(playersObj, mode);
+    const effectiveMode = mode === 'namethattune' ? 'house' : mode;
+    const groups = computeLiveTeamAverages(playersObj, effectiveMode);
     return Object.values(groups).sort((a, b) => {
         if (Math.abs(b.tourneyAvg - a.tourneyAvg) > 0.05) return b.tourneyAvg - a.tourneyAvg;
         return b.liveAvg - a.liveAvg;
@@ -854,14 +933,17 @@ function getRankedTeams(playersObj, mode) {
 }
 
 function buildTeamStandingsHTML(playersObj, mode) {
-    const rankedTeams = getRankedTeams(playersObj, mode);
+    const effectiveMode = mode === 'namethattune' ? 'house' : mode;
+    const rankedTeams = getRankedTeams(playersObj, effectiveMode);
     if (rankedTeams.length === 0) return '';
 
-    const myTeamKey = mode === 'rooms' ? koMyRoom : (mode === 'sides' ? koMySide : koMyHouse);
-    const headerTitle = mode === 'rooms'
+    const myTeamKey = effectiveMode === 'rooms' ? koMyRoom : (effectiveMode === 'sides' ? koMySide : koMyHouse);
+    const headerTitle = effectiveMode === 'rooms'
         ? '🏫 Room Battle Ladder (G1 vs. G2 vs. G3)'
-        : (mode === 'sides' ? '🧭 North vs. South Standings' : '🏰 House Relay Ladder');
-    const colLabel = mode === 'rooms' ? 'Room' : (mode === 'sides' ? 'Side' : 'House');
+        : (effectiveMode === 'sides'
+            ? '🧭 North vs. South Standings'
+            : (mode === 'namethattune' ? '🏰 Name That Tune — House Standings' : '🏰 House Relay Ladder'));
+    const colLabel = effectiveMode === 'rooms' ? 'Room' : (effectiveMode === 'sides' ? 'Side' : 'House');
 
     const rows = rankedTeams.map((g, idx) => {
         const m = g.meta;
@@ -887,7 +969,7 @@ function buildTeamStandingsHTML(playersObj, mode) {
             <div style="font-size:0.75rem; font-weight:800; color:#facc15; margin-bottom:6px; text-transform:uppercase;">${headerTitle}</div>
             <table class="race-results-table" style="margin-top:0;">
                 <thead>
-                    <tr><th>Place</th><th>${colLabel}</th><th>Match Wins</th><th>Team Avg</th></tr>
+                    <tr><th>Place</th><th>${colLabel}</th><th>Correct / Wins</th><th>House Avg</th></tr>
                 </thead>
                 <tbody>${rows}</tbody>
             </table>
@@ -895,24 +977,24 @@ function buildTeamStandingsHTML(playersObj, mode) {
     `;
 }
 
-function buildStandingsHTML(rankedPlayers, mode = 'solo', playersObj = {}) {
+function buildStandingsHTML(rankedPlayers, mode = 'solo', playersObj = {}, nttGroupHouses = true) {
     if (rankedPlayers.length === 0) {
         return `<div style="color:#9ca3af; font-size:0.8rem; text-align:center; padding:8px;">No students joined yet...</div>`;
     }
     const { localStudentId } = bridge.getState();
-    const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms');
+    const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms' || (mode === 'namethattune' && nttGroupHouses));
     const teamTable = isTeamMode ? buildTeamStandingsHTML(playersObj, mode) : '';
 
     let rows = rankedPlayers.map((p, idx) => {
         const rankBadge = idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `#${idx + 1}`;
         const avgAcc = p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0';
-        const teamBadge = isTeamMode ? getTeamBadgeHTML(p, mode) : '';
+        const teamBadge = isTeamMode ? getTeamBadgeHTML(p, mode, nttGroupHouses) : '';
         const bountyTag = (idx === 0 && (p.roundsPlayed || 0) > 0)
-            ? ` <span style="background:#ef4444; color:#fff; font-size:0.65rem; padding:1px 5px; border-radius:4px; font-weight:900; margin-left:4px;">🎯 BOUNTY</span>`
+            ? ` <span style="background:#ef4444; color:#fff; font-size:0.65rem; padding:1px 5px; border-radius:4px; font-weight:900; margin-left:4px;">🎯 LEADER</span>`
             : '';
         const streak = p.winStreak || 0;
         const streakTag = streak >= 2
-            ? ` <span style="background:#f97316; color:#000; font-size:0.65rem; padding:1px 5px; border-radius:4px; font-weight:900; margin-left:4px;">🔥 ${streak}W</span>`
+            ? ` <span style="background:#f97316; color:#000; font-size:0.65rem; padding:1px 5px; border-radius:4px; font-weight:900; margin-left:4px;">🔥 ${streak}</span>`
             : '';
 
         return `
@@ -930,7 +1012,7 @@ function buildStandingsHTML(rankedPlayers, mode = 'solo', playersObj = {}) {
         <div style="font-size:0.75rem; font-weight:800; color:#facc15; margin-bottom:6px; text-transform:uppercase;">Live Individual Standings (${rankedPlayers.length} Players)</div>
         <table class="race-results-table" style="margin-top:0;">
             <thead>
-                <tr><th>Place</th><th>Student</th><th>Record</th><th>Avg Acc</th></tr>
+                <tr><th>Place</th><th>Student</th><th>Record</th><th>Avg Score</th></tr>
             </thead>
             <tbody>${rows}</tbody>
         </table>
@@ -938,6 +1020,8 @@ function buildStandingsHTML(rankedPlayers, mode = 'solo', playersObj = {}) {
 }
 
 function generateSwissPairings(playersObj, roundNum, mode = 'solo') {
+    if (mode === 'namethattune') return {}; // Whole-class quiz — no 1v1 pairings
+
     const players = Object.values(playersObj || {});
     const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms');
     const { fieldName: teamField } = getTeamConfig(mode);
@@ -1012,35 +1096,51 @@ async function startNextKnockoutRound() {
 
     const playersObj = knockoutDataCache.players || {};
     const playerIds = Object.keys(playersObj);
+    const modeSel = document.getElementById('ko-mode-select');
+    const modeVal = modeSel ? modeSel.value : 'solo';
 
-    if (playerIds.length < 2) {
-        alert("At least 2 students must join the room before starting Round 1!");
+    const minPlayers = modeVal === 'namethattune' ? 1 : 2;
+    if (playerIds.length < minPlayers) {
+        alert(`At least ${minPlayers} student(s) must join the room before starting Round 1!`);
         return;
     }
 
-    const { currentSongTitle } = bridge.getState();
+    const { songList, currentSongTitle } = bridge.getState();
     const nextRound = (knockoutDataCache.round || 0) + 1;
     const koSongSel = document.getElementById('ko-song-select');
     const selectedCode = koSongSel.value;
-    const selectedTitle = koSongSel.selectedOptions[0] ? koSongSel.selectedOptions[0].text : currentSongTitle;
-    const modeSel = document.getElementById('ko-mode-select');
-    const modeVal = modeSel ? modeSel.value : 'solo';
+    const selectedTitle = koSongSel.selectedOptions[0] ? koSongSel.selectedOptions[0].text.replace(/^[🟢🟠🔴]\s*/, '') : currentSongTitle;
 
     const pairings = generateSwissPairings(playersObj, nextRound, modeVal);
     const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
 
+    let nttPayload = null;
+    const nttGroupHouses = document.getElementById('ko-ntt-house-toggle')?.checked ?? true;
+    if (modeVal === 'namethattune') {
+        const noteCount = parseInt(document.getElementById('ko-ntt-note-count')?.value || '5', 10);
+        const choices = generateNameThatTuneChoices(selectedTitle, songList);
+        nttPayload = {
+            noteCount,
+            choices
+        };
+    }
+
     const updates = {
         tournamentMode: modeVal,
+        nttGroupHouses,
         status: 'playing',
         round: nextRound,
         songTitle: selectedTitle,
         songCode: selectedCode,
-        pairings: pairings
+        pairings: pairings,
+        nttData: nttPayload
     };
 
     playerIds.forEach(pid => {
         updates[`players/${pid}/currentScore`] = 0;
         updates[`players/${pid}/finishedRound`] = 0;
+        updates[`players/${pid}/nttCorrect`] = null;
+        updates[`players/${pid}/nttTimeSec`] = 0;
         updates[`players/${pid}/lastStats`] = { perfect: 0, earlyLate: 0, miss: 0 };
         updates[`players/${pid}/incomingSabotage`] = null;
         updates[`players/${pid}/activeEmote`] = null;
@@ -1059,9 +1159,10 @@ function formatBracketEmoteBadge(playerObj) {
 function handleKnockoutHostUpdate(data) {
     const playersObj = data.players || {};
     const mode = data.tournamentMode || 'solo';
-    const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms');
+    const nttGroupHouses = data.nttGroupHouses !== false;
+    const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms' || (mode === 'namethattune' && nttGroupHouses));
     const ranked = getRankedKnockoutPlayers(playersObj);
-    document.getElementById('ko-standings-container').innerHTML = buildStandingsHTML(ranked, mode, playersObj);
+    document.getElementById('ko-standings-container').innerHTML = buildStandingsHTML(ranked, mode, playersObj, nttGroupHouses);
 
     const bracketDiv = document.getElementById('ko-bracket-container');
     const statusBanner = document.getElementById('ko-status-banner');
@@ -1074,7 +1175,9 @@ function handleKnockoutHostUpdate(data) {
     }
 
     if (data.status === 'lobby') {
-        if (mode === 'rooms') {
+        if (mode === 'namethattune') {
+            statusBanner.textContent = `🎵 Name That Tune Lobby (${ranked.length} students connected). Pick a song & note count, then click Start!`;
+        } else if (mode === 'rooms') {
             statusBanner.textContent = `🏫 Room Battle Lobby Open (${ranked.length} students connected). G1 vs. G2 vs. G3 ready!`;
         } else if (mode === 'sides') {
             statusBanner.textContent = `🧭 North vs. South Lobby Open (${ranked.length} students connected). Students are choosing North or South!`;
@@ -1086,7 +1189,7 @@ function handleKnockoutHostUpdate(data) {
         bracketDiv.innerHTML = ranked.map(p => `
             <div class="lobby-player-card">
                 <span>${p.avatar || '🏃'}</span>
-                <span>${p.name} (${p.studentClass || 'Class'})${isTeamMode ? getTeamBadgeHTML(p, mode) : ''}</span>
+                <span>${p.name} (${p.studentClass || 'Class'})${isTeamMode ? getTeamBadgeHTML(p, mode, nttGroupHouses) : ''}</span>
             </div>
         `).join('');
         return;
@@ -1097,6 +1200,46 @@ function handleKnockoutHostUpdate(data) {
         btnForce.style.display = 'inline-flex';
         btnFinish.style.display = 'none';
 
+        // NAME THAT TUNE LIVE ANSWER MONITOR
+        if (mode === 'namethattune') {
+            const allPlayers = Object.values(playersObj);
+            let allDone = allPlayers.length > 0;
+            let answeredCount = 0;
+
+            bracketDiv.innerHTML = allPlayers.map(p => {
+                const done = p.finishedRound === data.round;
+                if (done) answeredCount++;
+                else allDone = false;
+
+                const teamBadge = nttGroupHouses ? getTeamBadgeHTML(p, 'namethattune', true) : '';
+                let badgeHtml = `<span style="color:#facc15; font-weight:800;">🎧 Listening...</span>`;
+                if (done) {
+                    if (p.nttCorrect) {
+                        badgeHtml = `<span style="color:#22c55e; font-weight:900;">✅ ${Number(p.currentScore || 0).toFixed(1)}% (${Number(p.nttTimeSec || 0).toFixed(1)}s)</span>`;
+                    } else {
+                        badgeHtml = `<span style="color:#ef4444; font-weight:900;">❌ 0.0% (${Number(p.nttTimeSec || 0).toFixed(1)}s)</span>`;
+                    }
+                }
+
+                return `
+                    <div style="background:#141824; border:1px solid ${done ? (p.nttCorrect ? '#22c55e' : '#ef4444') : '#334155'}; border-radius:8px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:0.85rem; font-weight:700; color:#fff;">${p.avatar || '🏃'} ${p.name}${teamBadge}</span>
+                        <span style="font-size:0.8rem;">${badgeHtml}</span>
+                    </div>
+                `;
+            }).join('');
+
+            const noteCnt = data.nttData?.noteCount || 5;
+            statusBanner.textContent = `🎵 Round ${data.round}: "${data.songTitle}" (${noteCnt} notes) — ${answeredCount}/${allPlayers.length} students answered...`;
+
+            if (allDone && knockoutLastRoundFinished !== data.round) {
+                knockoutLastRoundFinished = data.round;
+                scoreAndConcludeKnockoutRound(data);
+            }
+            return;
+        }
+
+        // STANDARD 1V1 SWISS BRACKET MONITOR
         const pairings = Object.values(data.pairings || {});
         let allDone = true;
 
@@ -1107,7 +1250,7 @@ function handleKnockoutHostUpdate(data) {
             const s1 = Number(p1.currentScore || 0);
             const p1Status = p1Done ? `✅ ${s1.toFixed(1)}%` : `🎹 ${s1.toFixed(1)}%...`;
             const p1Emote = formatBracketEmoteBadge(p1);
-            const p1Team = isTeamMode ? getTeamBadgeHTML(p1, mode) : '';
+            const p1Team = isTeamMode ? getTeamBadgeHTML(p1, mode, nttGroupHouses) : '';
 
             if (m.isGhostMatch) {
                 if (!p1Done) allDone = false;
@@ -1133,7 +1276,7 @@ function handleKnockoutHostUpdate(data) {
             const s2 = p2 ? Number(p2.currentScore || 0) : 0;
             const p2Status = p2 ? (p2Done ? `✅ ${s2.toFixed(1)}%` : `🎹 ${s2.toFixed(1)}%...`) : 'Disconnected';
             const p2Emote = formatBracketEmoteBadge(p2);
-            const p2Team = (isTeamMode && p2) ? getTeamBadgeHTML(p2, mode) : '';
+            const p2Team = (isTeamMode && p2) ? getTeamBadgeHTML(p2, mode, nttGroupHouses) : '';
             const isPhotoFinish = p2 && Math.abs(s1 - s2) <= 0.5;
             const p1PastOpps = (p1 && p1.opponents)
                 ? (Array.isArray(p1.opponents) ? p1.opponents : Object.values(p1.opponents))
@@ -1170,13 +1313,15 @@ function handleKnockoutHostUpdate(data) {
     } else if (data.status === 'round_results') {
         btnForce.style.display = 'none';
         btnStart.style.display = 'inline-flex';
-        btnStart.textContent = mode === 'rooms'
-            ? `▶ Start Round ${data.round + 1} (Room Battle)`
-            : (mode === 'sides'
-                ? `▶ Start Round ${data.round + 1} (North vs South)`
-                : (mode === 'house'
-                    ? `▶ Start Round ${data.round + 1} (House Relay)`
-                    : `▶ Start Round ${data.round + 1} (Swiss Matched)`));
+        btnStart.textContent = mode === 'namethattune'
+            ? `▶ Start Round ${data.round + 1} (Next Tune)`
+            : (mode === 'rooms'
+                ? `▶ Start Round ${data.round + 1} (Room Battle)`
+                : (mode === 'sides'
+                    ? `▶ Start Round ${data.round + 1} (North vs South)`
+                    : (mode === 'house'
+                        ? `▶ Start Round ${data.round + 1} (House Relay)`
+                        : `▶ Start Round ${data.round + 1} (Swiss Matched)`)));
         btnFinish.style.display = 'inline-flex';
 
         const autoToggle = document.getElementById('ko-auto-next-toggle');
@@ -1192,11 +1337,13 @@ function handleKnockoutHostUpdate(data) {
         statusBanner.textContent = `🏆 Tournament Complete! Final Placings Logged to Leaderboard.`;
 
         let standings = data.finalStandings || [];
-        const finaleTitle = mode === 'rooms'
-            ? `🏫 Room Battle (G1 vs. G2 vs. G3) Complete!`
-            : (mode === 'sides'
-                ? `🧭 North vs. South Showdown Complete!`
-                : (mode === 'house' ? `🏰 House Relay Championship Complete!` : `🏆 Class Knockout Complete!`));
+        const finaleTitle = mode === 'namethattune'
+            ? `🎵 Name That Tune Championship Complete!`
+            : (mode === 'rooms'
+                ? `🏫 Room Battle (G1 vs. G2 vs. G3) Complete!`
+                : (mode === 'sides'
+                    ? `🧭 North vs. South Showdown Complete!`
+                    : (mode === 'house' ? `🏰 House Relay Championship Complete!` : `🏆 Class Knockout Complete!`)));
         bridge.showGrandFinale(standings, true, finaleTitle);
     }
 }
@@ -1210,12 +1357,43 @@ async function forceEndKnockoutRound() {
 
 async function scoreAndConcludeKnockoutRound(data) {
     const playersObj = data.players || {};
-    const pairings = Object.values(data.pairings || {});
-    const rankedBefore = getRankedKnockoutPlayers(playersObj);
-    const currentLeaderId = (rankedBefore.length > 0 && (rankedBefore[0].roundsPlayed || 0) > 0) ? rankedBefore[0].id : null;
+    const mode = data.tournamentMode || 'solo';
     const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
 
     const updates = { status: 'round_results' };
+
+    // NAME THAT TUNE SCORING (No 1v1 pairings)
+    if (mode === 'namethattune') {
+        Object.values(playersObj).forEach(p => {
+            const answeredThisRound = p.finishedRound === data.round;
+            const won = answeredThisRound && Boolean(p.nttCorrect);
+            const roundScore = won ? Number(p.currentScore || 0) : 0;
+            const newStreak = won ? ((p.winStreak || 0) + 1) : 0;
+
+            updates[`players/${p.id}/wins`] = (p.wins || 0) + (won ? 1 : 0);
+            updates[`players/${p.id}/losses`] = (p.losses || 0) + (won ? 0 : 1);
+            updates[`players/${p.id}/winStreak`] = newStreak;
+            updates[`players/${p.id}/totalAcc`] = (p.totalAcc || 0) + roundScore;
+            updates[`players/${p.id}/roundsPlayed`] = (p.roundsPlayed || 0) + 1;
+            updates[`players/${p.id}/lastMatchResult`] = {
+                round: data.round,
+                isNameThatTune: true,
+                won,
+                myScore: roundScore,
+                songTitle: data.songTitle || 'Mystery Tune',
+                responseSec: Number(p.nttTimeSec || 0),
+                winStreak: newStreak
+            };
+        });
+
+        await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}`), updates);
+        return;
+    }
+
+    // STANDARD 1V1 SWISS PAIRINGS SCORING
+    const pairings = Object.values(data.pairings || {});
+    const rankedBefore = getRankedKnockoutPlayers(playersObj);
+    const currentLeaderId = (rankedBefore.length > 0 && (rankedBefore[0].roundsPlayed || 0) > 0) ? rankedBefore[0].id : null;
 
     pairings.forEach(m => {
         const p1 = playersObj[m.p1];
@@ -1334,13 +1512,16 @@ async function finalizeClassKnockout() {
     clearKnockoutAutoNextTimer();
 
     const mode = knockoutDataCache.tournamentMode || 'solo';
-    const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms');
+    const nttGroupHouses = knockoutDataCache.nttGroupHouses !== false;
+    const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms' || (mode === 'namethattune' && nttGroupHouses));
     const ranked = getRankedKnockoutPlayers(knockoutDataCache.players || {});
 
     const individualPayload = ranked.map(p => {
         const tag = mode === 'rooms'
             ? (p.roomTeam ? ` (${p.roomTeam})` : '')
-            : (mode === 'sides' ? (p.side ? ` (${p.side})` : '') : (mode === 'house' && p.house ? ` (${p.house})` : ''));
+            : (mode === 'sides'
+                ? (p.side ? ` (${p.side})` : '')
+                : ((mode === 'house' || (mode === 'namethattune' && nttGroupHouses)) && p.house ? ` (${p.house})` : ''));
         const avgAcc = p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0';
         return {
             name: `${p.name}${tag}`,
@@ -1368,13 +1549,15 @@ async function finalizeClassKnockout() {
     }
 
     bridge.setCurrentSongTitle(
-        mode === 'rooms'
-            ? `Room Battle (${knockoutDataCache.songTitle || 'Tournament'})`
-            : (mode === 'sides'
-                ? `North vs South (${knockoutDataCache.songTitle || 'Tournament'})`
-                : (mode === 'house'
-                    ? `House Relay (${knockoutDataCache.songTitle || 'Tournament'})`
-                    : `Class Knockout (${knockoutDataCache.songTitle || 'Tournament'})`))
+        mode === 'namethattune'
+            ? `Name That Tune (${knockoutDataCache.songTitle || 'Quiz'})`
+            : (mode === 'rooms'
+                ? `Room Battle (${knockoutDataCache.songTitle || 'Tournament'})`
+                : (mode === 'sides'
+                    ? `North vs South (${knockoutDataCache.songTitle || 'Tournament'})`
+                    : (mode === 'house'
+                        ? `House Relay (${knockoutDataCache.songTitle || 'Tournament'})`
+                        : `Class Knockout (${knockoutDataCache.songTitle || 'Tournament'})`)))
     );
     await bridge.postBattleToSpreadsheet(individualPayload);
 
@@ -1389,6 +1572,7 @@ function handleKnockoutStudentUpdate(data) {
     const { localStudentId, sessionStudentName, sessionStudentAvatar } = bridge.getState();
     const playersObj = data.players || {};
     const mode = data.tournamentMode || 'solo';
+    const nttGroupHouses = data.nttGroupHouses !== false;
     const me = playersObj[localStudentId];
     const ranked = getRankedKnockoutPlayers(playersObj);
     const myRankIdx = ranked.findIndex(p => p.id === localStudentId);
@@ -1404,24 +1588,31 @@ function handleKnockoutStudentUpdate(data) {
             renderStudentTeamPicker('rooms', koMyRoom || 'G1');
         } else if (mode === 'sides') {
             renderStudentTeamPicker('sides', koMySide || 'North');
-        } else if (mode === 'house') {
-            renderStudentTeamPicker('house', koMyHouse || 'Crown');
+        } else if (mode === 'house' || (mode === 'namethattune' && nttGroupHouses)) {
+            renderStudentTeamPicker(mode, koMyHouse || 'Crown');
         } else {
             teamBox.style.display = 'none';
         }
     }
 
-    document.getElementById('ko-student-standings').innerHTML = buildStandingsHTML(ranked, mode, playersObj);
+    document.getElementById('ko-student-standings').innerHTML = buildStandingsHTML(ranked, mode, playersObj, nttGroupHouses);
+
+    // Update live answered progress inside Name That Tune quiz modal if student is waiting
+    if (data.status === 'playing' && mode === 'namethattune') {
+        const allArr = Object.values(playersObj);
+        const ansCnt = allArr.filter(p => p.finishedRound === data.round).length;
+        updateNameThatTuneProgressText(ansCnt, allArr.length);
+    }
 
     if (koOpponentId && koOpponentId !== 'BENCHMARK_80' && playersObj[koOpponentId] && playersObj[koOpponentId].activeEmote) {
         showOpponentQuickEmote(playersObj[koOpponentId].activeEmote);
     }
 
-    if (data.status === 'playing' && me && me.incomingSabotage) {
+    if (data.status === 'playing' && mode !== 'namethattune' && me && me.incomingSabotage) {
         applyIncomingSabotage(me.incomingSabotage);
     }
 
-    if (data.status === 'playing' && me) {
+    if (data.status === 'playing' && mode !== 'namethattune' && me) {
         const myLiveAcc = Number(me.currentScore !== undefined ? me.currentScore : 100);
         let oppLiveAcc = 80.0;
         if (koOpponentId && koOpponentId !== 'BENCHMARK_80' && playersObj[koOpponentId]) {
@@ -1430,9 +1621,33 @@ function handleKnockoutStudentUpdate(data) {
         updateTugOfWarHUD(myLiveAcc, oppLiveAcc);
     }
 
+    // ROUND START HANDLER
     if (data.status === 'playing' && knockoutLastRoundStarted !== data.round) {
         knockoutLastRoundStarted = data.round;
 
+        // NAME THAT TUNE STUDENT ROUND START (No piano needed!)
+        if (mode === 'namethattune') {
+            document.getElementById('knockout-modal').classList.remove('open');
+            document.getElementById('game-results-modal').classList.remove('open');
+            document.getElementById('arcade-hub').classList.remove('open');
+            const tugHud = document.getElementById('tug-of-war-hud');
+            if (tugHud) tugHud.style.display = 'none';
+
+            const houseBadgeHtml = (nttGroupHouses && me) ? getTeamBadgeHTML(me, 'namethattune', true) : '';
+
+            launchStudentNameThatTuneRound(data, houseBadgeHtml, async (result) => {
+                const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+                await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}/players/${localStudentId}`), {
+                    currentScore: result.score,
+                    finishedRound: data.round,
+                    nttCorrect: result.isCorrect,
+                    nttTimeSec: result.responseSec
+                });
+            });
+            return;
+        }
+
+        // STANDARD PIANO BATTLE ROUND START
         if (data.songCode) {
             bridge.setCurrentSongTitle(data.songTitle);
             const songSelect = document.getElementById('song-select');
@@ -1543,15 +1758,28 @@ function handleKnockoutStudentUpdate(data) {
     } else if (data.status === 'round_results') {
         const tugHud = document.getElementById('tug-of-war-hud');
         if (tugHud) tugHud.style.display = 'none';
+        hideNameThatTuneModal();
         resetKnockoutRoundEffects();
 
         if (me && me.lastMatchResult && me.lastMatchResult.round === data.round && knockoutLastRoundFinished !== data.round) {
             knockoutLastRoundFinished = data.round;
-            renderKnockoutPostRoundComparison(me, me.lastMatchResult, myPlaceText);
+
+            if (me.lastMatchResult.isNameThatTune) {
+                const res = me.lastMatchResult;
+                document.getElementById('ko-student-status').innerHTML = res.won
+                    ? `🎉 Round ${data.round} Correct! "${res.songTitle}" (+${Number(res.myScore).toFixed(1)}% in ${res.responseSec.toFixed(1)}s)`
+                    : `❌ Round ${data.round} Complete — The song was "${res.songTitle}"`;
+                document.getElementById('ko-student-pairing-box').textContent = `Waiting for Teacher to start Round ${data.round + 1}...`;
+                document.getElementById('knockout-modal').classList.add('open');
+            } else {
+                renderKnockoutPostRoundComparison(me, me.lastMatchResult, myPlaceText);
+            }
         }
     } else if (data.status === 'finished') {
         const tugHud = document.getElementById('tug-of-war-hud');
         if (tugHud) tugHud.style.display = 'none';
+        hideNameThatTuneModal();
+
         let standings = data.finalStandings || [];
         if (standings.length === 0) {
             const ranked = getRankedKnockoutPlayers(data.players || {});
@@ -1559,17 +1787,21 @@ function handleKnockoutStudentUpdate(data) {
                 name: p.name, score: p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0', avatar: p.avatar, id: p.id
             }));
         }
-        const finaleTitle = mode === 'rooms'
-            ? `🏫 Room Battle (G1 vs. G2 vs. G3) Complete!`
-            : (mode === 'sides'
-                ? `🧭 North vs. South Showdown Complete!`
-                : (mode === 'house' ? `🏰 House Relay Championship Complete!` : `🏆 Class Knockout Complete!`));
+        const finaleTitle = mode === 'namethattune'
+            ? `🎵 Name That Tune Championship Complete!`
+            : (mode === 'rooms'
+                ? `🏫 Room Battle (G1 vs. G2 vs. G3) Complete!`
+                : (mode === 'sides'
+                    ? `🧭 North vs. South Showdown Complete!`
+                    : (mode === 'house' ? `🏰 House Relay Championship Complete!` : `🏆 Class Knockout Complete!`)));
         bridge.showGrandFinale(standings, false, finaleTitle);
     }
 }
 
 export function syncKnockoutLiveScore() {
     if (!koState.isClassKnockout || !koState.knockoutRoomCode || !window.firebaseDb) return;
+    if (knockoutDataCache && knockoutDataCache.tournamentMode === 'namethattune') return;
+
     const { gameStats, localStudentId } = bridge.getState();
     const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
     const acc = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100) : 100;
@@ -1593,6 +1825,8 @@ export function syncKnockoutLiveScore() {
 
 export async function submitKnockoutRoundFinish() {
     if (!koState.isClassKnockout || !koState.knockoutRoomCode || !window.firebaseDb) return;
+    if (knockoutDataCache && knockoutDataCache.tournamentMode === 'namethattune') return;
+
     const { gameStats, localStudentId } = bridge.getState();
     const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
     const acc = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100) : 0;
@@ -1696,6 +1930,7 @@ function renderKnockoutPostRoundComparison(me, res, myPlaceText) {
 
 export function leaveClassKnockout() {
     clearKnockoutAutoNextTimer();
+    hideNameThatTuneModal();
     if (knockoutUnsubscribe) {
         knockoutUnsubscribe();
         knockoutUnsubscribe = null;
