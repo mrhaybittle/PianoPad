@@ -1,6 +1,6 @@
 import { SPREADSHEET_CSV_URL, LEADERBOARD_CSV_URL, APPS_SCRIPT_URL, GAMEMODE_RANKS_CSV_URL } from './config.js';
 import { noteNames, midiNoteToName, noteToPitch, pitchToNote, autoTransposeSong, getNoteFrequency, parsePianoPad, getDiatonicStepAndShift } from './musicTheory.js';
-
+import { drawSheetMusicStaff, drawStemlessNote, drawLedgerLines } from './sheetMusic.js';
         let audioCtx = null;
         let songList = [];
         let currentSong = [];
