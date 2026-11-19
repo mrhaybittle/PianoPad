@@ -3890,7 +3890,7 @@ import { SPREADSHEET_CSV_URL, LEADERBOARD_CSV_URL, APPS_SCRIPT_URL, GAMEMODE_RAN
         let pendingExportFileName = null;
         let pendingExportMode = 'download';
 
-      document.addEventListener('DOMContentLoaded', () => {
+   
             const yearSelect = document.getElementById('upload-year-select');
             const letterGroup = document.getElementById('class-letter-group');
             const letterSelect = document.getElementById('upload-class-letter-select');
@@ -3914,7 +3914,7 @@ import { SPREADSHEET_CSV_URL, LEADERBOARD_CSV_URL, APPS_SCRIPT_URL, GAMEMODE_RAN
             });
 
             document.getElementById('btn-confirm-class-select')?.addEventListener('click', processConfirmedClassUpload);
-        });
+
 
         function processConfirmedClassUpload() {
             const yearVal = document.getElementById('upload-year-select').value;
@@ -5522,7 +5522,7 @@ import { SPREADSHEET_CSV_URL, LEADERBOARD_CSV_URL, APPS_SCRIPT_URL, GAMEMODE_RAN
         }
         // =========================================================================
 
-       document.addEventListener('DOMContentLoaded', () => {
+      function initApp() {
             initMIDIHardware();
             resetGameStats();
             syncSongsWithGoogleSheet();
@@ -5568,7 +5568,7 @@ import { SPREADSHEET_CSV_URL, LEADERBOARD_CSV_URL, APPS_SCRIPT_URL, GAMEMODE_RAN
             }
 
             setInterval(updateMonitorWidget, 1000);
-        });
+       }
 
         async function loadStudentTickerStats(studentName) {
             if (!studentName || studentName === "Student" || studentName === "Anonymous") return;
