@@ -10,7 +10,8 @@ let score = 0;
 let coins = 0;
 let multiplier = 1;
 let noteStreak = 0;
-let bestScore = parseInt(localStorage.getItem('pianopad_staff_surfers_best') || '0', 10);
+// Gracefully migrate best score from the old name to the new name if needed
+let bestScore = parseInt(localStorage.getItem('pianopad_scale_surfers_best') || localStorage.getItem('pianopad_staff_surfers_best') || '0', 10);
 
 // Surfer state (lane: -1 = Left Track, 0 = Center Track, 1 = Right Track)
 const player = {
@@ -41,11 +42,19 @@ const WHITE_LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 
 // Authentic Subway Surfers Style Train Liveries
 const TRAIN_THEMES = [
-    { body: '#1d4ed8', dark: '#1e3a8a', stripe: '#facc15', roof: '#93c5fd', tag: 'STAFF EXPRESS' },
+    { body: '#1d4ed8', dark: '#1e3a8a', stripe: '#facc15', roof: '#93c5fd', tag: 'SCALE EXPRESS' },
     { body: '#dc2626', dark: '#991b1b', stripe: '#ffffff', roof: '#fca5a5', tag: 'TREBLE LINE' },
     { body: '#059669', dark: '#065f46', stripe: '#fde047', roof: '#6ee7b7', tag: 'BASS METRO' },
     { body: '#7c3aed', dark: '#5b21b6', stripe: '#38bdf8', roof: '#c4b5fd', tag: 'CHORD RAIL' }
 ];
+
+// --- EVENT INTERCEPTOR FOR SPACE BAR FIX ---
+function preventSpaceBar(e) {
+    if (e.code === 'Space') {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+}
 
 // --- ARCADE SOUND EFFECTS ---
 function playWhooshSound(pitchMult = 1.0) {
@@ -144,8 +153,11 @@ export function stopStaffSurfers() {
     }
     gamePhase = 'over';
     
+    // Remove space bar interceptor
+    window.removeEventListener('keydown', preventSpaceBar, { capture: true });
+
     // Clean up popup if the game is stopped early
-    const popup = document.getElementById('staff-surfers-popup');
+    const popup = document.getElementById('scale-surfers-popup');
     if (popup) popup.style.display = 'none';
 }
 
@@ -154,8 +166,11 @@ export function startStaffSurfers(bridge) {
     stopStaffSurfers();
     bridge.exitActiveMiniGame();
     document.getElementById('arcade-hub').classList.remove('open');
-    bridge.setActiveMiniGame('staffSurfers');
+    bridge.setActiveMiniGame('staffSurfers'); // kept same to prevent bridge failure
     bridge.resetGameStats();
+
+    // Prevent space bar from leaking into parent app (Step Mode)
+    window.addEventListener('keydown', preventSpaceBar, { capture: true });
 
     score = 0;
     coins = 0;
@@ -197,7 +212,7 @@ export function startStaffSurfers(bridge) {
         });
     }
 
-    document.getElementById('status').textContent = '🚇 Staff Surfers: Oct 1 = Left | Oct 2 = Center | Oct 3 = Right | Black Key = JUMP | Same Lane = ROLL!';
+    document.getElementById('status').textContent = '🚇 Scale Surfers: Oct 1 = Left | Oct 2 = Center | Oct 3 = Right | Black Key = JUMP | Same Lane = ROLL!';
     
     // Set phase to instructions and show the popup instead of starting immediately
     gamePhase = 'instructions'; 
@@ -206,12 +221,12 @@ export function startStaffSurfers(bridge) {
 
 // --- NEW FUNCTION: Displays the Instructions Pop-up ---
 function showInstructionsPopup(bridge) {
-    let popup = document.getElementById('staff-surfers-popup');
+    let popup = document.getElementById('scale-surfers-popup');
     
     // Create the pop-up dynamically if it doesn't exist
     if (!popup) {
         popup = document.createElement('div');
-        popup.id = 'staff-surfers-popup';
+        popup.id = 'scale-surfers-popup';
         popup.style.cssText = `
             position: fixed;
             top: 50%;
@@ -233,7 +248,23 @@ function showInstructionsPopup(bridge) {
     }
 
     popup.innerHTML = `
-        <h2 style="color: #facc15; margin: 0 0 16px 0; font-weight: 900; font-size: 26px; text-transform: uppercase;">🚇 Staff Surfers</h2>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <svg width="80" height="60" viewBox="0 0 100 100" style="margin-bottom: -15px; filter: drop-shadow(0px 4px 2px rgba(0,0,0,0.5));">
+                <path d="M0,80 Q25,40 50,80 T100,80 L100,100 L0,100 Z" fill="#0ea5e9"/>
+                <path d="M0,95 Q25,60 50,95 T100,95 L100,100 L0,100 Z" fill="#38bdf8"/>
+                <text x="50" y="55" font-size="45" text-anchor="middle" fill="#facc15">🎵</text>
+            </svg>
+            <h2 style="
+                margin: 0;
+                font-family: 'Arial Black', Impact, sans-serif;
+                font-size: 34px;
+                color: #facc15;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                text-shadow: 3px 3px 0 #ea580c, 6px 6px 0 #9a3412, 0 0 20px rgba(250,204,21,0.4);
+                transform: skew(-5deg) rotate(-2deg);
+            ">Scale Surfers</h2>
+        </div>
         <div style="background: rgba(0,0,0,0.3); padding: 16px; border-radius: 8px; text-align: left; font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
             <div style="margin-bottom: 8px;"><b>⬅️ LEFT TRACK:</b> Play Octave 1</div>
             <div style="margin-bottom: 8px;"><b>⏺️ CENTER TRACK:</b> Play Octave 2</div>
@@ -497,14 +528,14 @@ function triggerCrash(bridge) {
     const finalScore = Math.floor(score);
     if (finalScore > bestScore) {
         bestScore = finalScore;
-        localStorage.setItem('pianopad_staff_surfers_best', String(bestScore));
+        localStorage.setItem('pianopad_scale_surfers_best', String(bestScore));
     }
 
     setTimeout(() => {
         if (bridge.getActiveMiniGame() !== 'staffSurfers') return;
         stopStaffSurfers();
         bridge.finishCustomMiniGame(
-            'Staff Surfers',
+            'Scale Surfers',
             finalScore,
             `Distance Score: <span style="color:#22c55e; font-size:1.45rem; font-weight:900;">${finalScore}</span><br>` +
             `<span style="font-size:0.85rem; color:#facc15;">🪙 Coins: ${coins}  •  🏆 Best: ${bestScore}</span>`
@@ -1315,7 +1346,7 @@ function drawStaffSurfersHUD(ctx, W, H) {
     ctx.textAlign = 'left';
     ctx.fillStyle = '#94a3b8';
     ctx.font = '800 9.5px -apple-system, sans-serif';
-    ctx.fillText('STAFF SURFERS CHALLENGE (ANY OCTAVE):', 18, 20);
+    ctx.fillText('SCALE SURFERS CHALLENGE (ANY OCTAVE):', 18, 20);
 
     ctx.fillStyle = '#22c55e';
     ctx.font = '900 14px -apple-system, sans-serif';
