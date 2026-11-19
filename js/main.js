@@ -4076,6 +4076,29 @@ import { SPREADSHEET_CSV_URL, LEADERBOARD_CSV_URL, APPS_SCRIPT_URL, GAMEMODE_RAN
             const dynamicDuration = Math.max(30, stats.length * 6);
             tickerTrack.style.animationDuration = `${dynamicDuration}s`;
         }
+// Expose functions used by inline HTML onclick="..." attributes to the global window object
+Object.assign(window, {
+    closeGrandFinale,
+    toggleFanfareMute,
+    startSimonTaps,
+    startMysteryNote,
+    startDropDodge,
+    startComboStrike,
+    openSprintModeSelector,
+    initSinglePlayerSprint,
+    openHostNamePrompt,
+    openJoinNamePrompt,
+    triggerHostStartRace,
+    closeSprintOptionModal,
+    closeUnlockModal,
+    skipCalibration,
+    cancelCalibration,
+    triggerBattleAgain,
+    forceEndSongBattle,
+    leaveClassKnockout,
+    dealKnockoutEmoteDeck,
+    sendKnockoutQuickEmote
+});
 // Check if the browser already loaded the page before the module finished downloading
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initApp);
