@@ -1,6 +1,20 @@
 import { initAudio, audioCtx } from './audio.js';
 import { autoTransposeSong, parsePianoPad } from './musicTheory.js';
 
+export const ER_HOUSES = {
+    Crown:     { name: 'Crown',     icon: '👑', color: '#facc15', textColor: '#000000' },
+    Ignatius:  { name: 'Ignatius',  icon: '🔥', color: '#ef4444', textColor: '#ffffff' },
+    Keira:     { name: 'Keira',     icon: '⛰️', color: '#22c55e', textColor: '#000000' },
+    McMahon:   { name: 'McMahon',   icon: '🛡️', color: '#a855f7', textColor: '#ffffff' },
+    Rice:      { name: 'Rice',      icon: '🕊️', color: '#f8fafc', textColor: '#0f172a' },
+    Waterford: { name: 'Waterford', icon: '🌊', color: '#38bdf8', textColor: '#000000' }
+};
+
+export const ROOM_SIDES = {
+    North: { name: 'North', label: 'North Side', icon: '⬆️', color: '#38bdf8', textColor: '#000000' },
+    South: { name: 'South', label: 'South Side', icon: '⬇️', color: '#f97316', textColor: '#ffffff' }
+};
+
 export const koState = {
     isClassKnockout: false,
     isKnockoutHost: false,
@@ -21,6 +35,10 @@ let lastProcessedSabotageId = null;
 let koOpponentId = null;
 let koOpponentName = "Opponent";
 let koOpponentAvatar = "🤖";
+let koMyHouse = "";
+let koOppHouse = "";
+let koMySide = "";
+let koOppSide = "";
 let lastProcessedOppEmoteId = null;
 let koSelfEmoteHideTimer = null;
 let koOppEmoteHideTimer = null;
@@ -64,7 +82,7 @@ export function initSwissTournamentUI() {
         koModal.className = 'modal-overlay';
         koModal.style.zIndex = '350';
         koModal.innerHTML = `
-            <div class="modal" style="max-width: 780px; width: 95%; max-height: 90vh; overflow-y: auto; border: 2px solid #ef4444; background: #0a0a0a;">
+            <div class="modal" style="max-width: 820px; width: 95%; max-height: 90vh; overflow-y: auto; border: 2px solid #ef4444; background: #0a0a0a;">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #374151; padding-bottom:10px;">
                     <h2 id="ko-modal-title" style="color:#ffffff; margin:0;">🏆 Class Swiss Knockout Tournament</h2>
                     <span id="ko-room-badge" style="background:#ef4444; color:#fff; padding:4px 12px; border-radius:6px; font-weight:800; font-size:0.95rem;">Code: ---</span>
@@ -72,6 +90,14 @@ export function initSwissTournamentUI() {
 
                 <div id="ko-teacher-panel" style="display:none; flex-direction:column; gap:12px;">
                     <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:#111; padding:10px; border-radius:8px; border:1px solid #374151;">
+                        <div style="min-width:210px;">
+                            <label style="font-size:0.72rem; color:#9ca3af; font-weight:700; display:block; margin-bottom:4px;">TOURNAMENT MODE:</label>
+                            <select id="ko-mode-select" style="width:100%; background:#000; color:#fff; border:1px solid #4b5563; border-radius:6px; padding:6px 8px; font-weight:700;">
+                                <option value="solo" selected>⚔️ Individual Swiss (Default)</option>
+                                <option value="house">🏰 House Relay Mode (6 Houses)</option>
+                                <option value="sides">🧭 North Side vs. South Side</option>
+                            </select>
+                        </div>
                         <div style="flex:1; min-width:200px;">
                             <label style="font-size:0.72rem; color:#9ca3af; font-weight:700; display:block; margin-bottom:4px;">SELECT SONG FOR NEXT ROUND:</label>
                             <select id="ko-song-select" style="width:100%; max-width:100%; background:#000; color:#fff;"></select>
@@ -89,24 +115,41 @@ export function initSwissTournamentUI() {
 
                     <div id="ko-bracket-container" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px; max-height:320px; overflow-y:auto;"></div>
 
-                    <div id="ko-standings-container" style="background:#111; border:1px solid #374151; border-radius:8px; padding:10px; max-height:200px; overflow-y:auto;"></div>
+                    <div id="ko-standings-container" style="background:#111; border:1px solid #374151; border-radius:8px; padding:10px; max-height:220px; overflow-y:auto;"></div>
                 </div>
 
                 <div id="ko-student-panel" style="display:none; flex-direction:column; gap:12px; text-align:center;">
                     <div id="ko-student-status" style="font-size:1rem; color:#ffffff; font-weight:800;">
                         Connected to Class Knockout! Waiting for Teacher to start Round 1...
                     </div>
+
+                    <div id="ko-team-picker-box" style="display:none; background:#111; border:1px solid #4b5563; border-radius:10px; padding:12px;">
+                        <div id="ko-team-picker-title" style="font-size:0.8rem; font-weight:800; color:#facc15; margin-bottom:8px; letter-spacing:0.04em;">
+                            CHOOSE YOUR TEAM:
+                        </div>
+                        <div id="ko-team-buttons" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;"></div>
+                    </div>
+
                     <div id="ko-student-pairing-box" style="background:#111; border:1px solid #374151; border-radius:8px; padding:12px; font-size:0.9rem; color:#fff;"></div>
                     <div id="ko-student-standings" style="background:#111; border:1px solid #374151; border-radius:8px; padding:10px; max-height:240px; overflow-y:auto; text-align:left;"></div>
                 </div>
 
                 <div class="modal-footer" style="justify-content:space-between; border-top:1px solid #374151; padding-top:10px;">
-                    <span style="font-size:0.75rem; color:#9ca3af;">Swiss Placement Ladder • Zero Elimination • Everyone plays every round</span>
+                    <span id="ko-footer-caption" style="font-size:0.75rem; color:#9ca3af;">Swiss Placement Ladder • Zero Elimination • Everyone plays every round</span>
                     <button type="button" class="btn-danger" style="background:#ef4444;" onclick="leaveClassKnockout()">Exit Tournament</button>
                 </div>
             </div>
         `;
         document.body.appendChild(koModal);
+
+        document.getElementById('ko-mode-select').addEventListener('change', async (e) => {
+            if (!koState.isKnockoutHost || !koState.knockoutRoomCode || !window.firebaseDb) return;
+            const modeVal = e.target.value;
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}`), {
+                tournamentMode: modeVal
+            });
+        });
 
         document.getElementById('btn-ko-start-round').addEventListener('click', startNextKnockoutRound);
         document.getElementById('btn-ko-force-end').addEventListener('click', forceEndKnockoutRound);
@@ -142,6 +185,132 @@ export function initSwissTournamentUI() {
         `;
         document.body.appendChild(vsOverlay);
     }
+}
+
+function getTeamBadgeHTML(player, mode) {
+    if (mode === 'house') {
+        const h = ER_HOUSES[player.house];
+        if (!h) return '';
+        return `<span style="display:inline-flex; align-items:center; gap:3px; background:${h.color}; color:${h.textColor}; font-size:0.68rem; font-weight:900; padding:1px 6px; border-radius:4px; margin-left:5px; border:1px solid rgba(255,255,255,0.25);">${h.icon} ${h.name}</span>`;
+    }
+    if (mode === 'sides') {
+        const s = ROOM_SIDES[player.side];
+        if (!s) return '';
+        return `<span style="display:inline-flex; align-items:center; gap:3px; background:${s.color}; color:${s.textColor}; font-size:0.68rem; font-weight:900; padding:1px 6px; border-radius:4px; margin-left:5px;">${s.icon} ${s.label}</span>`;
+    }
+    return '';
+}
+
+function renderStudentTeamPicker(mode, selectedVal) {
+    const box = document.getElementById('ko-team-picker-box');
+    const title = document.getElementById('ko-team-picker-title');
+    const grid = document.getElementById('ko-team-buttons');
+    if (!box || !grid) return;
+
+    box.style.display = 'block';
+
+    if (mode === 'sides') {
+        title.textContent = '🧭 NORTH VS. SOUTH ACTIVE — WHICH SIDE OF THE ROOM ARE YOU ON?';
+        grid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+        grid.innerHTML = Object.values(ROOM_SIDES).map(s => {
+            const isSelected = selectedVal === s.name;
+            return `
+                <button type="button" onclick="selectKnockoutTeam('sides', '${s.name}')" style="
+                    background: ${isSelected ? s.color : '#1f2937'};
+                    color: ${isSelected ? s.textColor : '#ffffff'};
+                    border: 2px solid ${s.color};
+                    border-radius: 8px;
+                    padding: 12px 8px;
+                    font-weight: 900;
+                    font-size: 0.95rem;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    box-shadow: ${isSelected ? `0 0 14px ${s.color}` : 'none'};
+                ">
+                    <span style="font-size:1.3rem;">${s.icon}</span>
+                    <span>${s.label}</span>
+                </button>
+            `;
+        }).join('');
+        return;
+    }
+
+    title.textContent = '🏰 HOUSE RELAY MODE ACTIVE — CHOOSE YOUR HOUSE:';
+    grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+    grid.innerHTML = Object.values(ER_HOUSES).map(h => {
+        const isSelected = selectedVal === h.name;
+        return `
+            <button type="button" onclick="selectKnockoutTeam('house', '${h.name}')" style="
+                background: ${isSelected ? h.color : '#1f2937'};
+                color: ${isSelected ? h.textColor : '#ffffff'};
+                border: 2px solid ${h.color};
+                border-radius: 8px;
+                padding: 8px 6px;
+                font-weight: 800;
+                font-size: 0.82rem;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 5px;
+                box-shadow: ${isSelected ? `0 0 12px ${h.color}` : 'none'};
+            ">
+                <span style="font-size:1.1rem;">${h.icon}</span>
+                <span>${h.name}</span>
+            </button>
+        `;
+    }).join('');
+}
+
+export async function selectKnockoutTeam(mode, value) {
+    if (!koState.knockoutRoomCode || !window.firebaseDb) return;
+    const { localStudentId } = bridge.getState();
+    const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+
+    if (mode === 'sides' && ROOM_SIDES[value]) {
+        koMySide = value;
+        localStorage.setItem('pianopad_side', value);
+        renderStudentTeamPicker('sides', value);
+        await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}/players/${localStudentId}`), {
+            side: value
+        });
+    } else if (mode === 'house' && ER_HOUSES[value]) {
+        koMyHouse = value;
+        localStorage.setItem('pianopad_house', value);
+        renderStudentTeamPicker('house', value);
+        await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}/players/${localStudentId}`), {
+            house: value
+        });
+    }
+}
+
+function computeLiveTeamAverages(playersObj, mode) {
+    const dictionary = mode === 'sides' ? ROOM_SIDES : ER_HOUSES;
+    const fieldName = mode === 'sides' ? 'side' : 'house';
+    const groups = {};
+
+    Object.values(playersObj || {}).forEach(p => {
+        const key = p[fieldName];
+        if (!key || !dictionary[key]) return;
+        if (!groups[key]) {
+            groups[key] = { key, meta: dictionary[key], liveSum: 0, count: 0, tourneyAccSum: 0, tourneyRounds: 0, wins: 0 };
+        }
+        const liveAcc = p.currentScore !== undefined ? Number(p.currentScore) : 100;
+        groups[key].liveSum += liveAcc;
+        groups[key].count += 1;
+        groups[key].tourneyAccSum += Number(p.totalAcc || 0);
+        groups[key].tourneyRounds += Number(p.roundsPlayed || 0);
+        groups[key].wins += Number(p.wins || 0);
+    });
+
+    Object.values(groups).forEach(g => {
+        g.liveAvg = g.count > 0 ? g.liveSum / g.count : 0;
+        g.tourneyAvg = g.tourneyRounds > 0 ? g.tourneyAccSum / g.tourneyRounds : 0;
+    });
+    return groups;
 }
 
 export function dealKnockoutEmoteDeck() {
@@ -229,26 +398,63 @@ export function updateTugOfWarHUD(myAcc, oppAcc) {
     }
 
     const { sessionStudentName, sessionStudentAvatar } = bridge.getState();
+    const mode = knockoutDataCache ? knockoutDataCache.tournamentMode : 'solo';
+    const isTeamMode = (mode === 'house' || mode === 'sides');
     hud.style.display = 'flex';
-    const myName = sessionStudentName || 'You';
-    const myAvatar = sessionStudentAvatar || '🏃';
 
-    document.getElementById('tug-p1-avatar').textContent = myAvatar;
-    document.getElementById('tug-p1-name').textContent = myName;
-    document.getElementById('tug-p1-acc').textContent = `${myAcc.toFixed(1)}%`;
+    let leftLabel = sessionStudentName || 'You';
+    let leftAvatar = sessionStudentAvatar || '🏃';
+    let leftScore = myAcc;
+    let leftColor = '#22c55e';
 
-    document.getElementById('tug-p2-avatar').textContent = koOpponentAvatar || '🤖';
-    document.getElementById('tug-p2-name').textContent = koOpponentName || 'Opponent';
-    document.getElementById('tug-p2-acc').textContent = `${oppAcc.toFixed(1)}%`;
+    let rightLabel = koOpponentName || 'Opponent';
+    let rightAvatar = koOpponentAvatar || '🤖';
+    let rightScore = oppAcc;
 
-    const diff = myAcc - oppAcc;
+    if (isTeamMode && knockoutDataCache && knockoutDataCache.players) {
+        const teamAvgs = computeLiveTeamAverages(knockoutDataCache.players, mode);
+        const myTeamKey = mode === 'sides' ? koMySide : koMyHouse;
+        const oppTeamKey = mode === 'sides'
+            ? (koMySide === 'North' ? 'South' : 'North')
+            : koOppHouse;
+
+        if (myTeamKey && teamAvgs[myTeamKey]) {
+            const m = teamAvgs[myTeamKey].meta;
+            leftAvatar = m.icon;
+            leftLabel = `${m.label || m.name} Avg`;
+            leftScore = teamAvgs[myTeamKey].liveAvg;
+            leftColor = m.color;
+        }
+        if (oppTeamKey && teamAvgs[oppTeamKey]) {
+            const m = teamAvgs[oppTeamKey].meta;
+            rightAvatar = m.icon;
+            rightLabel = `${m.label || m.name} Avg`;
+            rightScore = teamAvgs[oppTeamKey].liveAvg;
+        } else if (koOpponentId === 'BENCHMARK_80') {
+            rightAvatar = '🎯';
+            rightLabel = '80% Target';
+            rightScore = 80.0;
+        }
+    }
+
+    document.getElementById('tug-p1-avatar').textContent = leftAvatar;
+    document.getElementById('tug-p1-name').textContent = leftLabel;
+    document.getElementById('tug-p1-acc').textContent = `${leftScore.toFixed(1)}%`;
+
+    document.getElementById('tug-p2-avatar').textContent = rightAvatar;
+    document.getElementById('tug-p2-name').textContent = rightLabel;
+    document.getElementById('tug-p2-acc').textContent = `${rightScore.toFixed(1)}%`;
+
+    const diff = leftScore - rightScore;
     const ratio = Math.max(8, Math.min(92, 50 + (diff * 2.0)));
     const fillLeft = document.getElementById('tug-fill-left');
     const marker = document.getElementById('tug-marker');
 
     if (fillLeft) {
         fillLeft.style.width = `${ratio}%`;
-        if (diff > 0.5) {
+        if (isTeamMode) {
+            fillLeft.style.background = `linear-gradient(90deg, ${leftColor}, #ffffff)`;
+        } else if (diff > 0.5) {
             fillLeft.style.background = 'linear-gradient(90deg, #0284c7, #22c55e)';
         } else if (diff < -0.5) {
             fillLeft.style.background = 'linear-gradient(90deg, #ef4444, #f97316)';
@@ -346,6 +552,9 @@ export async function openTeacherKnockoutSetup() {
     knockoutLastRoundFinished = 0;
     koState.knockoutRoomCode = '' + Math.floor(100 + Math.random() * 900);
 
+    const modeSelect = document.getElementById('ko-mode-select');
+    if (modeSelect) modeSelect.value = 'solo';
+
     const koSongSel = document.getElementById('ko-song-select');
     koSongSel.innerHTML = '';
     songList.forEach(s => {
@@ -368,6 +577,7 @@ export async function openTeacherKnockoutSetup() {
     const tourneyRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}`);
     await window.firebaseSet(tourneyRef, {
         roomCode: koState.knockoutRoomCode,
+        tournamentMode: 'solo',
         status: 'lobby',
         round: 0,
         songTitle: currentSongTitle,
@@ -394,6 +604,10 @@ export async function joinClassKnockoutStudent(studentName, roomCode) {
     const { localStudentId, sessionStudentAvatar, currentStudentClass } = bridge.getState();
     const avatar = sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || '🏃';
     const studentClass = currentStudentClass || localStorage.getItem('pianopad_class') || '';
+    const savedHouse = localStorage.getItem('pianopad_house') || 'Crown';
+    const savedSide = localStorage.getItem('pianopad_side') || 'North';
+    koMyHouse = savedHouse;
+    koMySide = savedSide;
 
     const playerRef = window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${roomCode}/players/${localStudentId}`);
     await window.firebaseSet(playerRef, {
@@ -401,6 +615,8 @@ export async function joinClassKnockoutStudent(studentName, roomCode) {
         name: studentName,
         avatar: avatar,
         studentClass: studentClass,
+        house: savedHouse,
+        side: savedSide,
         wins: 0,
         losses: 0,
         winStreak: 0,
@@ -458,14 +674,66 @@ function getRankedKnockoutPlayers(playersObj) {
     return arr;
 }
 
-function buildStandingsHTML(rankedPlayers) {
+function getRankedTeams(playersObj, mode) {
+    const groups = computeLiveTeamAverages(playersObj, mode);
+    return Object.values(groups).sort((a, b) => {
+        if (Math.abs(b.tourneyAvg - a.tourneyAvg) > 0.05) return b.tourneyAvg - a.tourneyAvg;
+        return b.liveAvg - a.liveAvg;
+    });
+}
+
+function buildTeamStandingsHTML(playersObj, mode) {
+    const rankedTeams = getRankedTeams(playersObj, mode);
+    if (rankedTeams.length === 0) return '';
+
+    const myTeamKey = mode === 'sides' ? koMySide : koMyHouse;
+    const headerTitle = mode === 'sides' ? '🧭 North vs. South Standings' : '🏰 House Relay Ladder';
+    const colLabel = mode === 'sides' ? 'Side' : 'House';
+
+    const rows = rankedTeams.map((g, idx) => {
+        const m = g.meta;
+        const rankBadge = idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `#${idx + 1}`;
+        const displayScore = g.tourneyRounds > 0 ? g.tourneyAvg.toFixed(1) : g.liveAvg.toFixed(1);
+        return `
+            <tr style="${g.key === myTeamKey ? 'background:rgba(250,204,21,0.14);' : ''}">
+                <td style="font-weight:800; color:#facc15;">${rankBadge}</td>
+                <td style="font-weight:800;">
+                    <span style="display:inline-flex; align-items:center; gap:5px; background:${m.color}; color:${m.textColor}; padding:2px 8px; border-radius:5px;">
+                        ${m.icon} ${m.label || m.name}
+                    </span>
+                    <span style="font-size:0.72rem; color:#9ca3af; margin-left:6px;">(${g.count} players)</span>
+                </td>
+                <td style="color:#22c55e; font-weight:800;">${g.wins}W</td>
+                <td style="color:#38bdf8; font-weight:800;">${displayScore}% avg</td>
+            </tr>
+        `;
+    }).join('');
+
+    return `
+        <div style="margin-bottom:10px;">
+            <div style="font-size:0.75rem; font-weight:800; color:#facc15; margin-bottom:6px; text-transform:uppercase;">${headerTitle}</div>
+            <table class="race-results-table" style="margin-top:0;">
+                <thead>
+                    <tr><th>Place</th><th>${colLabel}</th><th>Match Wins</th><th>Team Avg</th></tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+function buildStandingsHTML(rankedPlayers, mode = 'solo', playersObj = {}) {
     if (rankedPlayers.length === 0) {
         return `<div style="color:#9ca3af; font-size:0.8rem; text-align:center; padding:8px;">No students joined yet...</div>`;
     }
     const { localStudentId } = bridge.getState();
+    const isTeamMode = (mode === 'house' || mode === 'sides');
+    const teamTable = isTeamMode ? buildTeamStandingsHTML(playersObj, mode) : '';
+
     let rows = rankedPlayers.map((p, idx) => {
         const rankBadge = idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `#${idx + 1}`;
         const avgAcc = p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0';
+        const teamBadge = isTeamMode ? getTeamBadgeHTML(p, mode) : '';
         const bountyTag = (idx === 0 && (p.roundsPlayed || 0) > 0)
             ? ` <span style="background:#ef4444; color:#fff; font-size:0.65rem; padding:1px 5px; border-radius:4px; font-weight:900; margin-left:4px;">🎯 BOUNTY</span>`
             : '';
@@ -477,7 +745,7 @@ function buildStandingsHTML(rankedPlayers) {
         return `
             <tr style="${p.id === localStudentId ? 'background:rgba(56,189,248,0.15);' : ''}">
                 <td style="font-weight:800; color:#facc15;">${rankBadge}</td>
-                <td style="font-weight:700;">${p.avatar || '🏃'} ${p.name}${bountyTag}${streakTag}</td>
+                <td style="font-weight:700;">${p.avatar || '🏃'} ${p.name}${teamBadge}${bountyTag}${streakTag}</td>
                 <td style="color:#22c55e; font-weight:800;">${p.wins || 0}W - ${p.losses || 0}L</td>
                 <td style="color:#38bdf8; font-weight:700;">${avgAcc}% avg</td>
             </tr>
@@ -485,7 +753,8 @@ function buildStandingsHTML(rankedPlayers) {
     }).join('');
 
     return `
-        <div style="font-size:0.75rem; font-weight:800; color:#facc15; margin-bottom:6px; text-transform:uppercase;">Live Class Standings (${rankedPlayers.length} Players)</div>
+        ${teamTable}
+        <div style="font-size:0.75rem; font-weight:800; color:#facc15; margin-bottom:6px; text-transform:uppercase;">Live Individual Standings (${rankedPlayers.length} Players)</div>
         <table class="race-results-table" style="margin-top:0;">
             <thead>
                 <tr><th>Place</th><th>Student</th><th>Record</th><th>Avg Acc</th></tr>
@@ -495,22 +764,47 @@ function buildStandingsHTML(rankedPlayers) {
     `;
 }
 
-function generateSwissPairings(playersObj, roundNum) {
+function generateSwissPairings(playersObj, roundNum, mode = 'solo') {
     const players = Object.values(playersObj || {});
+    const isTeamMode = (mode === 'house' || mode === 'sides');
+    const teamField = mode === 'sides' ? 'side' : 'house';
     let ordered = [];
 
     if (roundNum === 1) {
         ordered = [...players].sort(() => Math.random() - 0.5);
     } else {
         ordered = getRankedKnockoutPlayers(playersObj);
-        for (let i = 0; i < ordered.length - 1; i += 2) {
-            const p1 = ordered[i];
-            const p2 = ordered[i + 1];
-            const p1History = Array.isArray(p1.opponents) ? p1.opponents : Object.values(p1.opponents || {});
-            if (p1History.includes(p2.id) && i + 2 < ordered.length) {
+    }
+
+    // Avoid rematches and prioritize cross-team (cross-house or North vs South) opponents
+    for (let i = 0; i < ordered.length - 1; i += 2) {
+        const p1 = ordered[i];
+        const p2 = ordered[i + 1];
+        const p1History = Array.isArray(p1.opponents) ? p1.opponents : Object.values(p1.opponents || {});
+        const sameTeam = isTeamMode && p1[teamField] && p2[teamField] && p1[teamField] === p2[teamField];
+
+        if ((p1History.includes(p2.id) || sameTeam) && i + 2 < ordered.length) {
+            let swapIdx = -1;
+            for (let j = i + 2; j < ordered.length; j++) {
+                const candidate = ordered[j];
+                const diffTeam = !isTeamMode || (candidate[teamField] !== p1[teamField]);
+                if (!p1History.includes(candidate.id) && diffTeam) {
+                    swapIdx = j;
+                    break;
+                }
+            }
+            if (swapIdx === -1 && sameTeam) {
+                for (let j = i + 2; j < ordered.length; j++) {
+                    if (ordered[j][teamField] !== p1[teamField]) {
+                        swapIdx = j;
+                        break;
+                    }
+                }
+            }
+            if (swapIdx !== -1) {
                 const temp = ordered[i + 1];
-                ordered[i + 1] = ordered[i + 2];
-                ordered[i + 2] = temp;
+                ordered[i + 1] = ordered[swapIdx];
+                ordered[swapIdx] = temp;
             }
         }
     }
@@ -555,11 +849,14 @@ async function startNextKnockoutRound() {
     const koSongSel = document.getElementById('ko-song-select');
     const selectedCode = koSongSel.value;
     const selectedTitle = koSongSel.selectedOptions[0] ? koSongSel.selectedOptions[0].text : currentSongTitle;
+    const modeSel = document.getElementById('ko-mode-select');
+    const modeVal = modeSel ? modeSel.value : 'solo';
 
-    const pairings = generateSwissPairings(playersObj, nextRound);
+    const pairings = generateSwissPairings(playersObj, nextRound, modeVal);
     const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
 
     const updates = {
+        tournamentMode: modeVal,
         status: 'playing',
         round: nextRound,
         songTitle: selectedTitle,
@@ -587,8 +884,10 @@ function formatBracketEmoteBadge(playerObj) {
 
 function handleKnockoutHostUpdate(data) {
     const playersObj = data.players || {};
+    const mode = data.tournamentMode || 'solo';
+    const isTeamMode = (mode === 'house' || mode === 'sides');
     const ranked = getRankedKnockoutPlayers(playersObj);
-    document.getElementById('ko-standings-container').innerHTML = buildStandingsHTML(ranked);
+    document.getElementById('ko-standings-container').innerHTML = buildStandingsHTML(ranked, mode, playersObj);
 
     const bracketDiv = document.getElementById('ko-bracket-container');
     const statusBanner = document.getElementById('ko-status-banner');
@@ -597,9 +896,18 @@ function handleKnockoutHostUpdate(data) {
     const btnFinish = document.getElementById('btn-ko-finish-tourney');
 
     if (data.status === 'lobby') {
-        statusBanner.textContent = `Lobby Open (${ranked.length} students connected). Select Round 1 song & click Start!`;
+        if (mode === 'sides') {
+            statusBanner.textContent = `🧭 North vs. South Lobby Open (${ranked.length} students connected). Students are choosing North or South!`;
+        } else if (mode === 'house') {
+            statusBanner.textContent = `🏰 House Relay Lobby Open (${ranked.length} students connected). Students are choosing their Houses!`;
+        } else {
+            statusBanner.textContent = `Lobby Open (${ranked.length} students connected). Select Round 1 song & click Start!`;
+        }
         bracketDiv.innerHTML = ranked.map(p => `
-            <div class="lobby-player-card"><span>${p.avatar || '🏃'}</span><span>${p.name} (${p.studentClass || 'Class'})</span></div>
+            <div class="lobby-player-card">
+                <span>${p.avatar || '🏃'}</span>
+                <span>${p.name} (${p.studentClass || 'Class'})${isTeamMode ? getTeamBadgeHTML(p, mode) : ''}</span>
+            </div>
         `).join('');
         return;
     }
@@ -619,6 +927,7 @@ function handleKnockoutHostUpdate(data) {
             const s1 = Number(p1.currentScore || 0);
             const p1Status = p1Done ? `✅ ${s1.toFixed(1)}%` : `🎹 ${s1.toFixed(1)}%...`;
             const p1Emote = formatBracketEmoteBadge(p1);
+            const p1Team = isTeamMode ? getTeamBadgeHTML(p1, mode) : '';
 
             if (m.isGhostMatch) {
                 if (!p1Done) allDone = false;
@@ -630,7 +939,7 @@ function handleKnockoutHostUpdate(data) {
                             ${isClose ? '<span class="photo-finish-badge">PHOTO FINISH 🔥</span>' : ''}
                         </div>
                         <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; font-weight:700;">
-                            <span>${p1.avatar} ${p1.name}${p1Emote}</span>
+                            <span>${p1.avatar} ${p1.name}${p1Team}${p1Emote}</span>
                             <span style="color:${p1Done ? '#22c55e' : '#facc15'};">${p1Status}</span>
                         </div>
                         <div style="font-size:0.75rem; color:#9ca3af; margin-top:4px;">Target to Win: ≥ 80.0% Accuracy</div>
@@ -644,6 +953,7 @@ function handleKnockoutHostUpdate(data) {
             const s2 = p2 ? Number(p2.currentScore || 0) : 0;
             const p2Status = p2 ? (p2Done ? `✅ ${s2.toFixed(1)}%` : `🎹 ${s2.toFixed(1)}%...`) : 'Disconnected';
             const p2Emote = formatBracketEmoteBadge(p2);
+            const p2Team = (isTeamMode && p2) ? getTeamBadgeHTML(p2, mode) : '';
             const isPhotoFinish = p2 && Math.abs(s1 - s2) <= 0.5;
 
             return `
@@ -653,11 +963,11 @@ function handleKnockoutHostUpdate(data) {
                         ${isPhotoFinish ? '<span class="photo-finish-badge">PHOTO FINISH 🔥</span>' : ''}
                     </div>
                     <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.85rem; font-weight:700;">
-                        <span>${p1.avatar} ${p1.name}${p1Emote}</span>
+                        <span>${p1.avatar} ${p1.name}${p1Team}${p1Emote}</span>
                         <span style="color:${p1Done ? '#22c55e' : '#facc15'};">${p1Status}</span>
                     </div>
                     <div style="display:flex; justify-content:space-between; margin-top:4px; font-size:0.85rem; font-weight:700;">
-                        <span>${p2 ? p2.avatar + ' ' + p2.name + p2Emote : '---'}</span>
+                        <span>${p2 ? p2.avatar + ' ' + p2.name + p2Team + p2Emote : '---'}</span>
                         <span style="color:${p2Done ? '#22c55e' : '#facc15'};">${p2Status}</span>
                     </div>
                 </div>
@@ -673,17 +983,24 @@ function handleKnockoutHostUpdate(data) {
     } else if (data.status === 'round_results') {
         btnForce.style.display = 'none';
         btnStart.style.display = 'inline-flex';
-        btnStart.textContent = `▶ Start Round ${data.round + 1} (Swiss Matched)`;
+        btnStart.textContent = mode === 'sides'
+            ? `▶ Start Round ${data.round + 1} (North vs South)`
+            : (mode === 'house'
+                ? `▶ Start Round ${data.round + 1} (House Relay)`
+                : `▶ Start Round ${data.round + 1} (Swiss Matched)`);
         btnFinish.style.display = 'inline-flex';
-        statusBanner.textContent = `Round ${data.round} Complete! Students paired by similar accuracy for Round ${data.round + 1}.`;
+        statusBanner.textContent = `Round ${data.round} Complete! Ready for Round ${data.round + 1}.`;
     } else if (data.status === 'finished') {
         btnStart.style.display = 'none';
         btnForce.style.display = 'none';
         btnFinish.style.display = 'none';
-        statusBanner.textContent = `🏆 Tournament Complete! Final Class Placings Logged to Leaderboard.`;
-        
+        statusBanner.textContent = `🏆 Tournament Complete! Final Placings Logged to Leaderboard.`;
+
         let standings = data.finalStandings || [];
-        bridge.showGrandFinale(standings, true, `🏆 Class Knockout Complete!`);
+        const finaleTitle = mode === 'sides'
+            ? `🧭 North vs. South Showdown Complete!`
+            : (mode === 'house' ? `🏰 House Relay Championship Complete!` : `🏆 Class Knockout Complete!`);
+        bridge.showGrandFinale(standings, true, finaleTitle);
     }
 }
 
@@ -778,6 +1095,8 @@ async function scoreAndConcludeKnockoutRound(data) {
                 myScore: s1,
                 oppName: p2.name,
                 oppAvatar: p2.avatar || '🏃',
+                oppHouse: p2.house || '',
+                oppSide: p2.side || '',
                 oppScore: s2,
                 oppStats: p2.lastStats || { perfect: 0, earlyLate: 0, miss: 0 }
             };
@@ -800,6 +1119,8 @@ async function scoreAndConcludeKnockoutRound(data) {
                 myScore: s2,
                 oppName: p1.name,
                 oppAvatar: p1.avatar || '🏃',
+                oppHouse: p1.house || '',
+                oppSide: p1.side || '',
                 oppScore: s1,
                 oppStats: p1.lastStats || { perfect: 0, earlyLate: 0, miss: 0 }
             };
@@ -811,37 +1132,79 @@ async function scoreAndConcludeKnockoutRound(data) {
 
 async function finalizeClassKnockout() {
     if (!koState.isKnockoutHost || !knockoutDataCache) return;
+    const mode = knockoutDataCache.tournamentMode || 'solo';
+    const isTeamMode = (mode === 'house' || mode === 'sides');
     const ranked = getRankedKnockoutPlayers(knockoutDataCache.players || {});
 
-    const battlePayload = ranked.map(p => {
+    const individualPayload = ranked.map(p => {
+        const tag = mode === 'sides' ? (p.side ? ` (${p.side})` : '') : (mode === 'house' && p.house ? ` (${p.house})` : '');
         const avgAcc = p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0';
         return {
-            name: p.name,
+            name: `${p.name}${tag}`,
             score: avgAcc,
             avatar: p.avatar || '🏃',
             id: p.id
         };
     });
 
-    bridge.setCurrentSongTitle(`Class Knockout (${knockoutDataCache.songTitle || 'Tournament'})`);
-    await bridge.postBattleToSpreadsheet(battlePayload);
+    let podiumStandings = individualPayload;
+    if (isTeamMode) {
+        const rankedTeams = getRankedTeams(knockoutDataCache.players || {}, mode);
+        if (rankedTeams.length > 0) {
+            podiumStandings = rankedTeams.map(g => {
+                const m = g.meta;
+                const avg = g.tourneyRounds > 0 ? g.tourneyAvg.toFixed(1) : g.liveAvg.toFixed(1);
+                return {
+                    name: `${m.label || m.name} (${g.count})`,
+                    score: avg,
+                    avatar: m.icon,
+                    id: `team_${g.key}`
+                };
+            });
+        }
+    }
+
+    bridge.setCurrentSongTitle(
+        mode === 'sides'
+            ? `North vs South (${knockoutDataCache.songTitle || 'Tournament'})`
+            : (mode === 'house'
+                ? `House Relay (${knockoutDataCache.songTitle || 'Tournament'})`
+                : `Class Knockout (${knockoutDataCache.songTitle || 'Tournament'})`)
+    );
+    await bridge.postBattleToSpreadsheet(individualPayload);
 
     const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
     await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}`), {
         status: 'finished',
-        finalStandings: battlePayload
+        finalStandings: podiumStandings
     });
 }
 
 function handleKnockoutStudentUpdate(data) {
     const { localStudentId, sessionStudentName, sessionStudentAvatar } = bridge.getState();
     const playersObj = data.players || {};
+    const mode = data.tournamentMode || 'solo';
+    const isTeamMode = (mode === 'house' || mode === 'sides');
     const me = playersObj[localStudentId];
     const ranked = getRankedKnockoutPlayers(playersObj);
     const myRankIdx = ranked.findIndex(p => p.id === localStudentId);
     const myPlaceText = myRankIdx >= 0 ? `Rank #${myRankIdx + 1} of ${ranked.length}` : 'Unranked';
 
-    document.getElementById('ko-student-standings').innerHTML = buildStandingsHTML(ranked);
+    if (me && me.house) koMyHouse = me.house;
+    if (me && me.side) koMySide = me.side;
+
+    const teamBox = document.getElementById('ko-team-picker-box');
+    if (teamBox) {
+        if (mode === 'sides') {
+            renderStudentTeamPicker('sides', koMySide || 'North');
+        } else if (mode === 'house') {
+            renderStudentTeamPicker('house', koMyHouse || 'Crown');
+        } else {
+            teamBox.style.display = 'none';
+        }
+    }
+
+    document.getElementById('ko-student-standings').innerHTML = buildStandingsHTML(ranked, mode, playersObj);
 
     if (koOpponentId && koOpponentId !== 'BENCHMARK_80' && playersObj[koOpponentId] && playersObj[koOpponentId].activeEmote) {
         showOpponentQuickEmote(playersObj[koOpponentId].activeEmote);
@@ -877,6 +1240,8 @@ function handleKnockoutStudentUpdate(data) {
         let oppAvatar = '🤖';
         let oppRankText = 'Challenger';
         koOpponentId = null;
+        koOppHouse = '';
+        koOppSide = '';
 
         if (myMatch) {
             if (myMatch.isGhostMatch) {
@@ -891,11 +1256,22 @@ function handleKnockoutStudentUpdate(data) {
                 if (oppObj) {
                     oppName = oppObj.name;
                     oppAvatar = oppObj.avatar || '🏃';
+                    koOppHouse = oppObj.house || '';
+                    koOppSide = oppObj.side || '';
                     const oppIdx = ranked.findIndex(p => p.id === oppId);
                     const isBounty = oppIdx === 0 && (oppObj.roundsPlayed || 0) > 0;
-                    oppRankText = isBounty
-                        ? `🎯 #1 BOUNTY TARGET`
-                        : (oppIdx >= 0 ? `Rank #${oppIdx + 1}` : 'Challenger');
+
+                    if (mode === 'sides' && ROOM_SIDES[koOppSide]) {
+                        const os = ROOM_SIDES[koOppSide];
+                        oppRankText = `${os.icon} ${os.label}`;
+                    } else if (mode === 'house' && ER_HOUSES[koOppHouse]) {
+                        const oh = ER_HOUSES[koOppHouse];
+                        oppRankText = `${oh.icon} ${oh.name} House`;
+                    } else {
+                        oppRankText = isBounty
+                            ? `🎯 #1 BOUNTY TARGET`
+                            : (oppIdx >= 0 ? `Rank #${oppIdx + 1}` : 'Challenger');
+                    }
                 }
             }
         }
@@ -908,10 +1284,18 @@ function handleKnockoutStudentUpdate(data) {
         document.getElementById('arcade-hub').classList.remove('open');
 
         const myIsBounty = myRankIdx === 0 && (playersObj[localStudentId]?.roundsPlayed || 0) > 0;
-        document.getElementById('ko-vs-round-label').textContent = `ROUND ${data.round} MATCHUP`;
+        const myTeamMeta = mode === 'sides'
+            ? ROOM_SIDES[koMySide]
+            : (mode === 'house' ? ER_HOUSES[koMyHouse] : null);
+
+        document.getElementById('ko-vs-round-label').textContent = mode === 'sides'
+            ? `🧭 NORTH VS. SOUTH • ROUND ${data.round}`
+            : (mode === 'house' ? `🏰 HOUSE RELAY • ROUND ${data.round}` : `ROUND ${data.round} MATCHUP`);
         document.getElementById('ko-vs-p1-avatar').textContent = sessionStudentAvatar || '🏃';
         document.getElementById('ko-vs-p1-name').textContent = sessionStudentName || 'You';
-        document.getElementById('ko-vs-p1-rank').textContent = myIsBounty ? `👑 #1 DEFENDING BOUNTY` : myPlaceText;
+        document.getElementById('ko-vs-p1-rank').textContent = myTeamMeta
+            ? `${myTeamMeta.icon} ${myTeamMeta.label || myTeamMeta.name}`
+            : (myIsBounty ? `👑 #1 DEFENDING BOUNTY` : myPlaceText);
         document.getElementById('ko-vs-p2-avatar').textContent = oppAvatar;
         document.getElementById('ko-vs-p2-name').textContent = oppName;
         document.getElementById('ko-vs-p2-rank').textContent = oppRankText;
@@ -952,7 +1336,10 @@ function handleKnockoutStudentUpdate(data) {
                 name: p.name, score: p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0', avatar: p.avatar, id: p.id
             }));
         }
-        bridge.showGrandFinale(standings, false, `🏆 Class Knockout Complete!`);
+        const finaleTitle = mode === 'sides'
+            ? `🧭 North vs. South Showdown Complete!`
+            : (mode === 'house' ? `🏰 House Relay Championship Complete!` : `🏆 Class Knockout Complete!`);
+        bridge.showGrandFinale(standings, false, finaleTitle);
     }
 }
 
@@ -998,7 +1385,7 @@ export async function submitKnockoutRoundFinish() {
     });
 
     document.getElementById('ko-student-status').textContent = `✅ Round ${roundNum} Finished (${acc.toFixed(1)}%)! Waiting for remaining classmates...`;
-    document.getElementById('ko-student-pairing-box').textContent = `Swiss pairings for the next round will generate automatically once all matches complete.`;
+    document.getElementById('ko-student-pairing-box').textContent = `Pairings for the next round will generate automatically once all matches complete.`;
     document.getElementById('knockout-modal').classList.add('open');
 }
 
@@ -1063,7 +1450,7 @@ function renderKnockoutPostRoundComparison(me, res, myPlaceText) {
         </div>
         ${photoFinishHtml}
         <div style="font-size:0.88rem; color:#cbd5e1; margin-top:4px;">
-            Stay ready — Teacher will launch the next skill-matched round shortly!
+            Stay ready — Teacher will launch the next round shortly!
         </div>
     `;
     document.getElementById('badge-container').innerHTML = '';
