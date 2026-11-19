@@ -3705,46 +3705,7 @@ import { audioCtx, initAudio, playErrorClackSound, playTone, bufferToWavBlob } f
 
         
 
-            function setUint16(data) {
-                view.setUint16(pos, data, true);
-                pos += 2;
-            }
-
-            function setUint32(data) {
-                view.setUint32(pos, data, true);
-                pos += 4;
-            }
-
-            writeString('RIFF');
-            setUint32(length - 8);
-            writeString('WAVE');
-            writeString('fmt ');
-            setUint32(16);
-            setUint16(1);
-            setUint16(numOfChan);
-            setUint32(buffer.sampleRate);
-            setUint32(buffer.sampleRate * 2 * numOfChan);
-            setUint16(numOfChan * 2);
-            setUint16(16);
-            writeString('data');
-            setUint32(length - pos - 4);
-
-            for (let i = 0; i < buffer.numberOfChannels; i++) {
-                channels.push(buffer.getChannelData(i));
-            }
-
-            while (offset < buffer.length) {
-                for (let i = 0; i < numOfChan; i++) {
-                    sample = Math.max(-1, Math.min(1, channels[i][offset]));
-                    sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
-                    view.setInt16(pos, sample, true);
-                    pos += 2;
-                }
-                offset++;
-            }
-
-            return new Blob([outBuffer], { type: 'audio/wav' });
-        }
+          
     // =========================================================================
         // GRAND FINALE CEREMONY ENGINE (Visuals, Fanfare & UI)
         // =========================================================================
