@@ -355,7 +355,7 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
         document.getElementById('btn-game-results-close').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
             stopBattlePolling();
-            if (isClassKnockout) {
+            if (koState.isClassKnockout) {
                 const koModal = document.getElementById('knockout-modal');
                 if (koModal) koModal.classList.add('open');
             }
@@ -364,14 +364,14 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
         document.getElementById('btn-game-arcade-menu').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
             stopBattlePolling();
-            if (isClassKnockout) leaveClassKnockout();
+            if (koState.isClassKnockout) leaveClassKnockout();
             openArcadeHub();
         });
 
         document.getElementById('btn-game-try-again').addEventListener('click', () => {
             gameResultsModal.classList.remove('open');
             stopBattlePolling();
-            if (isClassKnockout) {
+            if (koState.isClassKnockout) {
                 const koModal = document.getElementById('knockout-modal');
                 if (koModal) koModal.classList.add('open');
                 return;
@@ -1889,7 +1889,7 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
         const speedInput = document.getElementById('speed-input');
 
         function updateSpeed(newVal, restartPlayback = true) {
-            if (isSongBattle || isClassKnockout) {
+            if (isSongBattle || koState.isClassKnockout) {
                 document.getElementById('status').textContent = ' Tempo is locked at 100% during battles!';
                 speedSlider.value = 100;
                 if (speedInput) speedInput.value = 100;
@@ -2113,9 +2113,9 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
             gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
             currentPerfectStreak = 0;
             knockoutSabotageCount = 0;
-            activeSabotageType = null;
-            activeSabotageUntil = 0;
-            smokeParticles = [];
+            koState.activeSabotageType = null;
+            koState.activeSabotageUntile = 0;
+            koState.smokeParticles = [];
             canvas.classList.remove('canvas-shake-active');
         }
 
@@ -2123,8 +2123,8 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
             const streakLabel = currentPerfectStreak >= 10 ? ` | 🔥 STREAK (${currentPerfectStreak})` : '';
-            const sabLabel = (activeSabotageType && performance.now() < activeSabotageUntil)
-                ? ` | ⚠️ SABOTAGED: ${activeSabotageType.toUpperCase()}!`
+            const sabLabel = (koState.activeSabotageType && performance.now() < koState.activeSabotageUntile)
+                ? ` | ⚠️ SABOTAGED: ${koState.activeSabotageType.toUpperCase()}!`
                 : '';
             document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}${streakLabel}${sabLabel}`;
         }
@@ -2395,7 +2395,7 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
         function toggleStepMode() {
             initAudio();
             
-            if (isSongBattle || isClassKnockout) {
+            if (isSongBattle || koState.isClassKnockout) {
                 document.getElementById('status').textContent = ' Step Mode is NOT permitted during Song Battles or Class Knockouts!';
                 return;
             }
@@ -2664,7 +2664,7 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
                         highlightKey(noteStr, 220, '#22c55e');
 
                         // Streak Sabotage trigger every 15-note Perfect streak during Class Knockout
-                        if (isClassKnockout && currentPerfectStreak > 0 && currentPerfectStreak % 15 === 0) {
+                        if (koState.isClassKnockout && currentPerfectStreak > 0 && currentPerfectStreak % 15 === 0) {
                             triggerStreakSabotage(currentPerfectStreak);
                         }
                         
@@ -2678,7 +2678,7 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
                         highlightKey(noteStr, 220, '#f97316');
                     }
 
-                    if (isClassKnockout) {
+                    if (koState.isClassKnockout) {
                         syncKnockoutLiveScore();
                     } else if (isSongBattle) {
                         const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
@@ -2695,7 +2695,7 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
                     playErrorClackSound();
                     highlightKey(noteStr, 200, '#ef4444');
 
-                    if (isClassKnockout) {
+                    if (koState.isClassKnockout) {
                         syncKnockoutLiveScore();
                     } else if (isSongBattle) {
                         const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
@@ -3004,7 +3004,7 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
                 shadowColor = palette.shadowActive;
             }
 
-            const isFrozen = (activeSabotageType === 'freeze' && performance.now() < activeSabotageUntil && gameStatus === 'pending');
+            const isFrozen = (koState.activeSabotageType === 'freeze' && performance.now() < koState.activeSabotageUntile && gameStatus === 'pending');
             if (isFrozen) {
                 blockColor = '#bae6fd';
                 shadowColor = 'rgba(224, 242, 254, 0.95)';
@@ -3193,7 +3193,7 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
                     item.gameStatus = 'miss';
                     gameStats.miss++;
                     currentPerfectStreak = 0;
-                    if (isClassKnockout) {
+                    if (koState.isClassKnockout) {
                         syncKnockoutLiveScore();
                     } else if (isSongBattle) {
                         const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
@@ -3243,11 +3243,11 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
                 });
             });
 
-            if (activeSabotageType && now < activeSabotageUntil) {
-                if (activeSabotageType === 'smoke') {
+            if (koState.activeSabotageType && now < koState.activeSabotageUntile) {
+                if (koState.activeSabotageType === 'smoke') {
                     const smokeZoneBottom = waterfallTop + waterfallHeight * 0.42;
-                    if (smokeParticles.length < 28) {
-                        smokeParticles.push({
+                    if (koState.smokeParticles.length < 28) {
+                        koState.smokeParticles.push({
                             x: Math.random() * canvas.width,
                             y: waterfallTop + Math.random() * (waterfallHeight * 0.35),
                             r: 45 + Math.random() * 65,
@@ -3263,7 +3263,7 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
                     ctx.fillStyle = fogGrad;
                     ctx.fillRect(0, waterfallTop, canvas.width, waterfallHeight * 0.45);
 
-                    smokeParticles.forEach(sp => {
+                    koState.smokeParticles.forEach(sp => {
                         sp.x += sp.vx;
                         if (sp.x < -60) sp.x = canvas.width + 60;
                         if (sp.x > canvas.width + 60) sp.x = -60;
@@ -3273,16 +3273,16 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
                         ctx.fill();
                     });
                     ctx.restore();
-                } else if (activeSabotageType === 'freeze') {
+                } else if (koState.activeSabotageType === 'freeze') {
                     ctx.save();
                     ctx.strokeStyle = 'rgba(186, 230, 253, 0.85)';
                     ctx.lineWidth = 8;
                     ctx.strokeRect(4, waterfallTop + 4, canvas.width - 8, waterfallHeight - 8);
                     ctx.restore();
                 }
-            } else if (activeSabotageType && now >= activeSabotageUntil) {
-                activeSabotageType = null;
-                smokeParticles = [];
+            } else if (koState.activeSabotageType && now >= koState.activeSabotageUntile) {
+                koState.activeSabotageType = null;
+                koState.smokeParticles = [];
                 canvas.classList.remove('canvas-shake-active');
             }
 
@@ -3315,7 +3315,7 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
                     isPlaying = false;
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                    if (isClassKnockout) {
+                    if (koState.isClassKnockout) {
                         submitKnockoutRoundFinish();
                         return;
                     } else if (isSongBattle) {
@@ -3928,7 +3928,7 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
             
             if (isSongBattle) {
                 stopBattlePolling();
-            } else if (isClassKnockout) {
+            } else if (koState.isClassKnockout) {
                 leaveClassKnockout();
             }
             
@@ -3939,6 +3939,30 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
      
 
       function initApp() {
+           initKnockoutBridge({
+    getState: () => ({ localStudentId, sessionStudentName, sessionStudentAvatar, currentStudentClass, songList, currentSongTitle, gameStats }),
+    setStudentName: (name) => { sessionStudentName = name; },
+    setCurrentSongTitle: (title) => { currentSongTitle = title; },
+    setCurrentSong: (song) => { currentSong = song; },
+    setIsSongBattle: (val) => { isSongBattle = val; },
+    closeSprintOptionModal,
+    showFlashingStatus,
+    showGrandFinale,
+    postBattleToSpreadsheet,
+    startCountdown,
+    playSong,
+    stopSong,
+    prepareMatchStart: () => {
+        isStepMode = false;
+        btnStep.textContent = 'Step Mode';
+        btnStep.classList.remove('btn-step-active');
+        btnStep.classList.add('btn-step');
+        isGameMode = true;
+        btnGame.textContent = 'Game Mode: ON';
+        btnGame.classList.add('btn-game-active');
+        resetGameStats();
+    }
+});
             initMIDIHardware();
             resetGameStats();
             syncSongsWithGoogleSheet();
