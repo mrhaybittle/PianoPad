@@ -5,7 +5,7 @@ import { startRhythmEcho, handleRhythmEchoInput } from './games/rhythmEcho.js';
 import { startNoteSniper, handleNoteSniperInput } from './games/noteSniper.js';
 import { startFlappyPitch, handleFlappyPitchInput, stopFlappyPitch } from './games/flappyPitch.js';
 import { startStaffSurfers, handleStaffSurfersInput, stopStaffSurfers } from './games/staffSurfers.js';
-
+import { startLaserTag, handleLaserTagInput, stopLaserTag } from './games/laserTag.js';
 export const arcadeState = {
     activeMiniGame: null,
     miniGameFallSpeedMs: 3800,
