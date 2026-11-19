@@ -2112,9 +2112,9 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
         function resetGameStats() {
             gameStats = { perfect: 0, earlyLate: 0, miss: 0 };
             currentPerfectStreak = 0;
-            knockoutSabotageCount = 0;
+        
             koState.activeSabotageType = null;
-            koState.activeSabotageUntile = 0;
+            koState.activeSabotageUntil = 0;
             koState.smokeParticles = [];
             canvas.classList.remove('canvas-shake-active');
         }
@@ -2123,7 +2123,7 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
             const total = gameStats.perfect + gameStats.earlyLate + gameStats.miss;
             const accuracy = total > 0 ? (((gameStats.perfect * 1.0 + gameStats.earlyLate * 0.5) / total) * 100).toFixed(1) : '100.0';
             const streakLabel = currentPerfectStreak >= 10 ? ` | 🔥 STREAK (${currentPerfectStreak})` : '';
-            const sabLabel = (koState.activeSabotageType && performance.now() < koState.activeSabotageUntile)
+            const sabLabel = (koState.activeSabotageType && performance.now() < koState.activeSabotageUntil)
                 ? ` | ⚠️ SABOTAGED: ${koState.activeSabotageType.toUpperCase()}!`
                 : '';
             document.getElementById('status').textContent = ` Accuracy: ${accuracy}% |  Perfect: ${gameStats.perfect} |  Early/Late: ${gameStats.earlyLate} |  Missed: ${gameStats.miss}${streakLabel}${sabLabel}`;
@@ -3004,7 +3004,7 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
                 shadowColor = palette.shadowActive;
             }
 
-            const isFrozen = (koState.activeSabotageType === 'freeze' && performance.now() < koState.activeSabotageUntile && gameStatus === 'pending');
+            const isFrozen = (koState.activeSabotageType === 'freeze' && performance.now() < koState.activeSabotageUntil && gameStatus === 'pending');
             if (isFrozen) {
                 blockColor = '#bae6fd';
                 shadowColor = 'rgba(224, 242, 254, 0.95)';
@@ -3243,7 +3243,7 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
                 });
             });
 
-            if (koState.activeSabotageType && now < koState.activeSabotageUntile) {
+            if (koState.activeSabotageType && now < koState.activeSabotageUntil) {
                 if (koState.activeSabotageType === 'smoke') {
                     const smokeZoneBottom = waterfallTop + waterfallHeight * 0.42;
                     if (koState.smokeParticles.length < 28) {
@@ -3280,7 +3280,7 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
                     ctx.strokeRect(4, waterfallTop + 4, canvas.width - 8, waterfallHeight - 8);
                     ctx.restore();
                 }
-            } else if (koState.activeSabotageType && now >= koState.activeSabotageUntile) {
+            } else if (koState.activeSabotageType && now >= koState.activeSabotageUntil) {
                 koState.activeSabotageType = null;
                 koState.smokeParticles = [];
                 canvas.classList.remove('canvas-shake-active');
