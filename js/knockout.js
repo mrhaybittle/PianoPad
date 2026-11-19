@@ -1566,7 +1566,7 @@ function renderKnockoutPostRoundComparison(me, res, myPlaceText) {
         <div id="ko-post-opp-emote" style="display:none; margin-top:6px; font-size:0.85rem; color:#fff;"></div>
         <div style="margin-top:10px; background:#111827; border:1px solid #374151; border-radius:8px; padding:8px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <span style="font-size:0.72rem; font-weight:800; color:#9ca3af; text-transform:uppercase;">Post-Match Reactions (All 50):</span>
+                <span style="font-size:0.72rem; font-weight:800; color:#9ca3af; text-transform:uppercase;">Post-Match Reactions (All ${KO_HYPE_EMOTES.length}):</span>
                 <span id="ko-post-emote-feedback" style="font-size:0.75rem; color:#cbd5e1;">Tap to react!</span>
             </div>
             <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(115px, 1fr)); gap:5px; max-height:135px; overflow-y:auto; padding-right:4px;">
