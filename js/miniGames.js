@@ -515,8 +515,8 @@ export function initSinglePlayerSprint() {
 
     const { sessionStudentAvatar } = bridge.getState();
     playersList = [
-        { id: 'p1', name: 'YOU', avatar: sessionStudentAvatar || '🏃', pxProgress: 0, finishTime: null, isLocal: true, clearedHurdles: [] },
-        { id: 'bot', name: 'ROBO-OPPONENT', avatar: '🤖', pxProgress: 0, finishTime: null, isBot: true, clearedHurdles: [] }
+        { id: 'p1', name: 'YOU', avatar: sessionStudentAvatar || '🏃', pxProgress: 0, finishTime: null, finished: false, isLocal: true, clearedHurdles: [] },
+        { id: 'bot', name: 'ROBO-OPPONENT', avatar: '🤖', pxProgress: 0, finishTime: null, finished: false, isBot: true, clearedHurdles: [] }
     ];
     localPlayerIdRoom = 'p1';
 
@@ -526,15 +526,19 @@ export function initSinglePlayerSprint() {
         sprintStartTime = performance.now();
         sprintKeystrokeCount = 0;
         sprintIndex = 0;
+        bridge.highlightKey(sprintSequence[0], 500, '#eab308');
+        document.getElementById('status').textContent = '🏃 SPRINT! Alternate C1 (Z) and D1 (X) fast! Play HIGH notes (Octave 2+) on hurdles for a boost!';
 
         const botInt = setInterval(() => {
             if (!arcadeState.raceActive) { clearInterval(botInt); return; }
             const bot = playersList.find(p => p.id === 'bot');
-            if (bot && !bot.finishTime) {
+            if (bot && !bot.finished) {
                 bot.pxProgress += 42.0 + Math.random() * 6.0;
                 updateMultiplayerLanesUI();
                 if (bot.pxProgress >= 3600) {
+                    bot.pxProgress = 3600;
                     bot.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
+                    bot.finished = true;
                     checkAllFinished();
                 }
             }
@@ -634,11 +638,17 @@ function startGoogleAppsScriptPolling(roomCode, isHost) {
         playersList = res.players.map(remotePlayer => {
             const localMatch = playersList.find(p => p.id === remotePlayer.id);
             const isLocal = remotePlayer.id === localPlayerIdRoom;
-            const finished = isLocal ? (localMatch ? (localMatch.finished || remotePlayer.finished) : remotePlayer.finished) : remotePlayer.finished;
+            const hasValidTime = remotePlayer.finishTime !== null && remotePlayer.finishTime !== "" && !isNaN(parseFloat(remotePlayer.finishTime));
+            const finished = isLocal
+                ? Boolean((localMatch && localMatch.finished) || remotePlayer.finished === true || remotePlayer.finished === "true" || hasValidTime)
+                : Boolean(remotePlayer.finished === true || remotePlayer.finished === "true" || hasValidTime || Number(remotePlayer.pxProgress) >= 3600);
+
             return {
                 ...remotePlayer,
+                pxProgress: isLocal && localMatch ? Math.max(Number(localMatch.pxProgress || 0), Number(remotePlayer.pxProgress || 0)) : Number(remotePlayer.pxProgress || 0),
+                finishTime: (isLocal && localMatch && localMatch.finishTime) ? localMatch.finishTime : (hasValidTime ? remotePlayer.finishTime : null),
                 isLocal,
-                finished: finished === true || finished === "true",
+                finished,
                 clearedHurdles: localMatch ? localMatch.clearedHurdles : [],
                 stats: remotePlayer.stats || { perfect: 0, earlyLate: 0, miss: 0 }
             };
@@ -651,7 +661,15 @@ function startGoogleAppsScriptPolling(roomCode, isHost) {
             if (localPlayer && localPlayer.finished) pushPlayerState();
             renderSongBattleResults();
         } else {
+            const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
+            if (localPlayer && localPlayer.finished) {
+                pushPlayerState();
+                if (arcadeState.raceActive) {
+                    document.getElementById('status').innerHTML = `🏁 Finished in ${localPlayer.finishTime}s! Waiting for other racers... ${isSprintHost ? '<button type="button" class="btn-warning" onclick="forceEndSongBattle()" style="margin-left:10px; padding:2px 8px; font-size:0.75rem; border:none; border-radius:4px; cursor:pointer;">⚡ Force End Race</button>' : ''}`;
+                }
+            }
             updateMultiplayerLanesUI();
+            if (arcadeState.raceActive) checkAllFinished();
         }
 
         if (res.songCode && !isHost) {
@@ -678,6 +696,8 @@ function startGoogleAppsScriptPolling(roomCode, isHost) {
                     sprintStartTime = performance.now();
                     sprintKeystrokeCount = 0;
                     sprintIndex = 0;
+                    bridge.highlightKey(sprintSequence[0], 500, '#eab308');
+                    document.getElementById('status').textContent = '🏃 SPRINT! Alternate C1 (Z) and D1 (X) fast!';
                 });
             }
         }
@@ -735,6 +755,8 @@ export async function triggerHostStartRace() {
             sprintStartTime = performance.now();
             sprintKeystrokeCount = 0;
             sprintIndex = 0;
+            bridge.highlightKey(sprintSequence[0], 500, '#eab308');
+            document.getElementById('status').textContent = '🏃 SPRINT! Alternate C1 (Z) and D1 (X) fast!';
         });
     }
 }
@@ -804,7 +826,13 @@ function updateMultiplayerLanesUI() {
 }
 
 function checkAllFinished() {
-    const allFinished = playersList.every(p => p.finished === true || p.finished === "true" || p.finishTime !== null || p.pxProgress >= 3600);
+    if (playersList.length === 0) return;
+    const allFinished = playersList.every(p =>
+        p.finished === true ||
+        p.finished === "true" ||
+        (p.finishTime !== null && p.finishTime !== "" && !isNaN(parseFloat(p.finishTime))) ||
+        Number(p.pxProgress) >= 3600
+    );
     if (allFinished) {
         if (arcadeState.raceActive) {
             arcadeState.raceActive = false;
@@ -817,6 +845,7 @@ function checkAllFinished() {
 
 function finishSprintRace() {
     arcadeState.raceActive = false;
+    stopBattlePolling();
     bridge.setCurrentSongTitle("Finger Sprint");
     const { gameStats, sessionStudentName } = bridge.getState();
 
@@ -865,8 +894,17 @@ function finishSprintRace() {
 
 export async function forceEndSongBattle() {
     if (!isSprintHost) return;
-    playersList.forEach(p => p.finished = true);
-    renderSongBattleResults();
+    playersList.forEach(p => {
+        p.finished = true;
+        if (!p.finishTime && arcadeState.activeMiniGame === 'sprint') {
+            p.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
+        }
+    });
+    if (arcadeState.activeMiniGame === 'sprint') {
+        finishSprintRace();
+    } else {
+        renderSongBattleResults();
+    }
 }
 
 function renderSongBattleResults() {
@@ -912,7 +950,7 @@ function handleSprintInput(noteStr) {
     if (!arcadeState.raceActive) return;
     const rawNoteName = noteStr.toLowerCase().trim();
     const localPlayer = playersList.find(p => p.id === localPlayerIdRoom);
-    if (!localPlayer || localPlayer.finishTime) return;
+    if (!localPlayer || localPlayer.finished) return;
 
     const { gameStats, sessionStudentAvatar } = bridge.getState();
     const canvas = document.getElementById('waterfall-canvas');
@@ -935,28 +973,31 @@ function handleSprintInput(noteStr) {
         const octave = parseInt(parsedNote[2], 10);
         localPlayer.clearedHurdles = localPlayer.clearedHurdles || [];
 
-        if (!localPlayer.clearedHurdles.includes(nearHurdleIndex)) {
-            if (letter === expectedHurdleNote && octave >= 2) {
-                gameStats.perfect++;
-                localPlayer.clearedHurdles.push(nearHurdleIndex);
-                localPlayer.pxProgress += 60;
-                sprintKeystrokeCount += 2;
-                updateMultiplayerLanesUI();
-                const avatarEl = document.getElementById(`avatar-${localPlayer.id}`);
-                if (avatarEl) {
-                    avatarEl.textContent = '🤸';
-                    avatarEl.classList.add('jumping');
-                    setTimeout(() => { avatarEl.classList.remove('jumping'); avatarEl.textContent = sessionStudentAvatar || '🏃'; }, 450);
-                }
-                document.getElementById('status').textContent = ` Jumped Hurdle ${expectedHurdleNote}!`;
-                bridge.spawnConfetti(canvas.width / 2, canvas.height / 2, '#22c55e');
-                pushPlayerState();
-                return;
-            } else if (letter === expectedHurdleNote && octave < 2) {
-                playErrorClackSound();
-                document.getElementById('status').textContent = ` Play a HIGH ${expectedHurdleNote} (Octave 2+) to jump!`;
-                return;
+        if (!localPlayer.clearedHurdles.includes(nearHurdleIndex) && letter === expectedHurdleNote && octave >= 2) {
+            gameStats.perfect++;
+            localPlayer.clearedHurdles.push(nearHurdleIndex);
+            sprintKeystrokeCount += 2;
+            localPlayer.pxProgress = sprintKeystrokeCount * 36;
+            updateMultiplayerLanesUI();
+
+            const avatarEl = document.getElementById(`avatar-${localPlayer.id}`);
+            if (avatarEl) {
+                avatarEl.textContent = '🤸';
+                avatarEl.classList.add('jumping');
+                setTimeout(() => { avatarEl.classList.remove('jumping'); avatarEl.textContent = sessionStudentAvatar || '🏃'; }, 450);
             }
+            document.getElementById('status').textContent = `🤸 Jumped Hurdle ${expectedHurdleNote}! Boost +2!`;
+            bridge.spawnConfetti(canvas.width / 2, canvas.height / 2, '#22c55e');
+
+            if (localPlayer.pxProgress >= 3600 && !localPlayer.finished) {
+                localPlayer.pxProgress = 3600;
+                localPlayer.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
+                localPlayer.finished = true;
+                document.getElementById('status').textContent = `🏁 YOU FINISHED in ${localPlayer.finishTime}s! Waiting for other racers...`;
+            }
+            pushPlayerState();
+            if (localPlayer.pxProgress >= 3600) { checkAllFinished(); }
+            return;
         }
     }
 
@@ -971,10 +1012,15 @@ function handleSprintInput(noteStr) {
         }
         localPlayer.pxProgress = sprintKeystrokeCount * 36;
         updateMultiplayerLanesUI();
-        if (localPlayer.pxProgress >= 3600 && !localPlayer.finishTime) {
+
+        if (localPlayer.pxProgress >= 3600 && !localPlayer.finished) {
+            localPlayer.pxProgress = 3600;
             localPlayer.finishTime = ((performance.now() - sprintStartTime) / 1000).toFixed(2);
+            localPlayer.finished = true;
+            document.getElementById('status').textContent = `🏁 YOU FINISHED in ${localPlayer.finishTime}s! Waiting for other racers...`;
         }
         pushPlayerState();
+
         if (localPlayer.pxProgress >= 3600) { checkAllFinished(); return; }
         bridge.highlightKey(sprintSequence[sprintIndex % 2], 300, '#eab308');
     } else {
