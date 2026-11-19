@@ -1,7 +1,6 @@
 import { initAudio, audioCtx, playTone, playErrorClackSound } from './audio.js';
 import { autoTransposeSong, parsePianoPad, getNoteFrequency } from './musicTheory.js';
 
-
 export const ER_HOUSES = {
     Crown:     { name: 'Crown',     icon: '👑', color: '#facc15', textColor: '#000000' },
     Ignatius:  { name: 'Ignatius',  icon: '🔥', color: '#ef4444', textColor: '#ffffff' },
@@ -529,6 +528,7 @@ export function initSwissTournamentUI() {
                         </div>
                     </div>
 
+                    <!-- Name That Tune Specific Teacher Controls -->
                     <div id="ko-ntt-settings-bar" style="display:none; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; background:#0f172a; padding:10px 12px; border-radius:8px; border:1px solid #38bdf8;">
                         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                             <label style="font-size:0.78rem; color:#38bdf8; font-weight:800;">🎵 NOTES TO PLAY:</label>
@@ -943,7 +943,7 @@ export function updateTugOfWarHUD(myAcc, oppAcc) {
     if (!hud) return;
 
     const mode = knockoutDataCache ? knockoutDataCache.tournamentMode : 'solo';
-    if (!koState.isClassKnockout || mode === 'namethattune') {
+    if (!koState.isClassKnockout || mode === 'namethattune' || mode === 'lasertag') {
         hud.style.display = 'none';
         return;
     }
@@ -1345,7 +1345,7 @@ function buildStandingsHTML(rankedPlayers, mode = 'solo', playersObj = {}, nttGr
 }
 
 function generateSwissPairings(playersObj, roundNum, mode = 'solo') {
-    if (mode === 'namethattune') return {};
+    if (mode === 'namethattune' || mode === 'lasertag') return {}; // No 1v1 pairings
 
     const players = Object.values(playersObj || {});
     const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms');
@@ -1424,7 +1424,7 @@ async function startNextKnockoutRound() {
     const modeSel = document.getElementById('ko-mode-select');
     const modeVal = modeSel ? modeSel.value : 'solo';
 
-const minPlayers = (modeVal === 'namethattune' || modeVal === 'lasertag') ? 1 : 2;
+    const minPlayers = (modeVal === 'namethattune' || modeVal === 'lasertag') ? 1 : 2;
     if (playerIds.length < minPlayers) {
         alert(`At least ${minPlayers} student(s) must join the room before starting Round 1!`);
         return;
@@ -1529,6 +1529,7 @@ function handleKnockoutHostUpdate(data) {
         btnForce.style.display = 'inline-flex';
         btnFinish.style.display = (data.round || 0) >= 1 ? 'inline-flex' : 'none';
 
+        // NAME THAT TUNE LIVE ANSWER MONITOR
         if (mode === 'namethattune') {
             const allPlayers = Object.values(playersObj);
             let allDone = allPlayers.length > 0;
@@ -1566,7 +1567,14 @@ function handleKnockoutHostUpdate(data) {
             }
             return;
         }
+        
+        // LASER TAG TEACHER VIEW
+        if (mode === 'lasertag') {
+            bracketDiv.innerHTML = `<div style="padding:20px; font-size:1.1rem; color:#38bdf8; font-weight:900; text-align:center;">🛸 Laser Tag Arena is Live! (Monitoring matches...)</div>`;
+            return;
+        }
 
+        // STANDARD 1V1 SWISS BRACKET MONITOR
         const pairings = Object.values(data.pairings || {});
         let allDone = true;
 
@@ -1714,6 +1722,11 @@ function buildRoundScoreUpdates(data) {
                 winStreak: newStreak
             };
         });
+        return updates;
+    }
+    
+    if (mode === 'lasertag') {
+        // Laser tag has its own scoring/ending logic, skip pairings
         return updates;
     }
 
@@ -1966,7 +1979,7 @@ function handleKnockoutStudentUpdate(data) {
         applyIncomingSabotage(me.incomingSabotage);
     }
 
-    if (data.status === 'playing' && mode !== 'namethattune' && me) {
+    if (data.status === 'playing' && mode !== 'namethattune' && mode !== 'lasertag' && me) {
         const myLiveAcc = Number(me.currentScore !== undefined ? me.currentScore : 100);
         let oppLiveAcc = 80.0;
         if (koOpponentId && koOpponentId !== 'BENCHMARK_80' && playersObj[koOpponentId]) {
@@ -1975,19 +1988,23 @@ function handleKnockoutStudentUpdate(data) {
         updateTugOfWarHUD(myLiveAcc, oppLiveAcc);
     }
 
+    // ROUND START HANDLER
     if (data.status === 'playing' && knockoutLastRoundStarted !== data.round) {
         knockoutLastRoundStarted = data.round;
-// LASER TAG ARENA LAUNCH
+
+        // LASER TAG ARENA LAUNCH
         if (mode === 'lasertag') {
             document.getElementById('knockout-modal').classList.remove('open');
             document.getElementById('game-results-modal').classList.remove('open');
+            document.getElementById('arcade-hub').classList.remove('open');
             const tugHud = document.getElementById('tug-of-war-hud');
             if (tugHud) tugHud.style.display = 'none';
 
-            // Launch the arena securely using the global mini-games bridge
             if (window.launchLaserTag) window.launchLaserTag(koState.knockoutRoomCode);
             return;
         }
+
+        // NAME THAT TUNE STUDENT ROUND START
         if (mode === 'namethattune') {
             document.getElementById('knockout-modal').classList.remove('open');
             document.getElementById('game-results-modal').classList.remove('open');
@@ -2009,6 +2026,7 @@ function handleKnockoutStudentUpdate(data) {
             return;
         }
 
+        // STANDARD PIANO BATTLE ROUND START
         if (data.songCode) {
             bridge.setCurrentSongTitle(data.songTitle);
             const songSelect = document.getElementById('song-select');
@@ -2119,8 +2137,10 @@ function handleKnockoutStudentUpdate(data) {
     } else if (data.status === 'round_results') {
         const tugHud = document.getElementById('tug-of-war-hud');
         if (tugHud) tugHud.style.display = 'none';
+        
         hideNameThatTuneModal();
         if (window.exitActiveMiniGame) window.exitActiveMiniGame();
+        
         resetKnockoutRoundEffects();
 
         if (me && me.lastMatchResult && me.lastMatchResult.round === data.round && knockoutLastRoundFinished !== data.round) {
@@ -2140,6 +2160,7 @@ function handleKnockoutStudentUpdate(data) {
     } else if (data.status === 'finished') {
         const tugHud = document.getElementById('tug-of-war-hud');
         if (tugHud) tugHud.style.display = 'none';
+        
         hideNameThatTuneModal();
         if (window.exitActiveMiniGame) window.exitActiveMiniGame();
 
