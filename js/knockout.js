@@ -2026,7 +2026,7 @@ function handleKnockoutStudentUpdate(data) {
             const tugHud = document.getElementById('tug-of-war-hud');
             if (tugHud) tugHud.style.display = 'none';
 
-            if (window.launchLaserTag) window.launchLaserTag(koState.knockoutRoomCode);
+            if (window.launchLaserTag) window.launchLaserTag(koState.knockoutRoomCode, false);
             return;
         }
 
