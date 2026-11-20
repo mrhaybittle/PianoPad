@@ -3,8 +3,6 @@ import {
     TILE_SIZE,
     MAP_COLS,
     MAP_ROWS,
-    ARENA_CENTER_X,
-    ARENA_CENTER_Y,
     WALL_THEMES
 } from './constants.js';
 import { gameState } from './state.js';
@@ -12,7 +10,6 @@ import {
     ARENA_MAP,
     isInsideEmeraldHub,
     getZoneInfoForCoords,
-    getCurrentStormRadius,
     castRay
 } from './arena.js';
 import { getSuitColorForAvatar, normalizePitchClass, isPlayerActiveInRoom } from './utils.js';
@@ -320,27 +317,6 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
             ctx.restore();
         }
 
-        // Storm Warning Banner
-        const stormRadius = getCurrentStormRadius(now);
-        const distFromCenter = Math.hypot(lp.x - ARENA_CENTER_X, lp.y - ARENA_CENTER_Y);
-        if (distFromCenter > stormRadius) {
-            ctx.save();
-            ctx.fillStyle = 'rgba(185, 28, 28, 0.35)';
-            ctx.fillRect(0, 0, W, H);
-            ctx.fillStyle = 'rgba(127, 29, 29, 0.94)';
-            ctx.strokeStyle = '#ef4444';
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            ctx.roundRect(W / 2 - 190, 42, 380, 34, 8);
-            ctx.fill();
-            ctx.stroke();
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '900 12px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('🌪️ OUTSIDE SAFE ZONE — RUN TO EMERALD HUB!', W / 2, 63);
-            ctx.restore();
-        }
-
         // EMP Scramble Glitch Overlay
         if (isEmpScrambled) {
             ctx.save();
@@ -506,19 +482,6 @@ export function renderMinimapAndTopHud(ctx, W, H, now, activePlayers) {
             }
         }
 
-        // Dynamic Storm Circle on Minimap
-        const stormRadius = getCurrentStormRadius(now);
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(mmX, mmY, mmSize, mmSize);
-        ctx.clip();
-        ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(mmX + ARENA_CENTER_X * scaleX, mmY + ARENA_CENTER_Y * scaleY, stormRadius * scaleX, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-
         // Boost Pads & Med-Kits on Minimap
         ctx.fillStyle = '#22c55e';
         for (const pad of gameState.speedBoostPads) {
@@ -672,13 +635,6 @@ export function renderSpectatorOverheadView(ctx, W, H, dt, now) {
             }
         }
     }
-
-    const stormRadius = getCurrentStormRadius(now);
-    ctx.strokeStyle = 'rgba(239, 68, 68, 0.75)';
-    ctx.lineWidth = 10;
-    ctx.beginPath();
-    ctx.arc(ARENA_CENTER_X, ARENA_CENTER_Y, stormRadius, 0, Math.PI * 2);
-    ctx.stroke();
 
     for (const pad of gameState.speedBoostPads) {
         ctx.fillStyle = '#22c55e';
