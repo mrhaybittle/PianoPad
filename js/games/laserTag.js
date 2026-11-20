@@ -14,22 +14,22 @@ const localPlayer = {
     turnDir: 0, // -1 left, 1 right
     isAlive: true,
     score: 0,
-    noteTag: 'D', // Assigned pitch class (11 non-C pitches)
+    noteTag: 'D',
     bobPhase: 0,
     recoil: 0,
     muzzleFlash: 0,
     hitFlash: 0
 };
 
-// Remote Players, Projectiles & Explosions
+// Remote Players, Beams & Explosions
 let remotePlayers = {};
-let activeBeams = [];      // 3D screen-space & world-space laser beams
-let worldExplosions = [];  // 3D world-space explosion particles
+let activeBeams = [];
+let worldExplosions = [];
 let activeRoomCode = null;
 let localId = null;
 let zBuffer = [];
 
-// Expansive 32x32 Arena (Mazes + Open Courtyards for 25+ Students)
+// Expansive 32x32 Arena (Mazes + Central Open Courtyard for 25+ Students)
 const TILE_SIZE = 64;
 const MAP_COLS = 32;
 const MAP_ROWS = 32;
@@ -75,6 +75,14 @@ function normalizePitchClass(noteStr) {
     const clean = (noteStr || '').toUpperCase().trim().replace(/[0-9]/g, '');
     const flatMap = { 'DB': 'C#', 'EB': 'D#', 'GB': 'F#', 'AB': 'G#', 'BB': 'A#' };
     return flatMap[clean] || clean;
+}
+
+function isPlayerActiveInRoom(p) {
+    if (!p || p.isAlive === false) return false;
+    if (typeof p.x !== 'number' || typeof p.y !== 'number') return false;
+    // Ignore stale ghost entries older than 12 seconds
+    if (p.updatedAt && (Date.now() - p.updatedAt) > 12000) return false;
+    return true;
 }
 
 function playLaserPew() {
@@ -133,7 +141,7 @@ function spawn3DExplosion(wx, wy, color, count = 28) {
 
 function hasLineOfSight(x1, y1, x2, y2) {
     const dist = Math.hypot(x2 - x1, y2 - y1);
-    const steps = Math.max(8, Math.ceil(dist / 16));
+    const steps = Math.max(8, Math.ceil(dist / 14));
     for (let i = 1; i < steps; i++) {
         const tx = x1 + (x2 - x1) * (i / steps);
         const ty = y1 + (y2 - y1) * (i / steps);
@@ -156,9 +164,10 @@ function ensureCanvasSized(canvas) {
 }
 
 function getSafeSpawnPoint() {
-    for (let attempt = 0; attempt < 800; attempt++) {
-        const c = Math.floor(Math.random() * MAP_COLS);
-        const r = Math.floor(Math.random() * MAP_ROWS);
+    // Prefer central & mid-ring walkable tiles so players encounter each other quickly while still having full 32x32 corridors
+    for (let attempt = 0; attempt < 600; attempt++) {
+        const c = 6 + Math.floor(Math.random() * 20);
+        const r = 6 + Math.floor(Math.random() * 20);
         if (ARENA_MAP[r] && ARENA_MAP[r][c] === 0) {
             return {
                 x: c * TILE_SIZE + TILE_SIZE / 2,
@@ -166,7 +175,14 @@ function getSafeSpawnPoint() {
             };
         }
     }
-    return { x: TILE_SIZE * 1.5, y: TILE_SIZE * 1.5 };
+    for (let r = 1; r < MAP_ROWS - 1; r++) {
+        for (let c = 1; c < MAP_COLS - 1; c++) {
+            if (ARENA_MAP[r][c] === 0) {
+                return { x: c * TILE_SIZE + TILE_SIZE / 2, y: r * TILE_SIZE + TILE_SIZE / 2 };
+            }
+        }
+    }
+    return { x: TILE_SIZE * 15.5, y: TILE_SIZE * 15.5 };
 }
 
 export function stopLaserTag() {
@@ -200,7 +216,7 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
 
     const state = bridge.getState ? bridge.getState() : {};
     localId = state.localStudentId || ('stu_' + Math.random().toString(36).slice(2, 9));
-    activeRoomCode = autoRoomCode || prompt("Enter a 3-Digit Room Code for 3D Laser Tag:", "123");
+    activeRoomCode = String(autoRoomCode || prompt("Enter a 3-Digit Room Code for 3D Laser Tag:", "123") || '').trim();
 
     if (!activeRoomCode || !window.firebaseDb) {
         alert("Firebase required for Laser Tag. Returning to menu.");
@@ -211,7 +227,8 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
     const spawn = getSafeSpawnPoint();
     localPlayer.x = spawn.x;
     localPlayer.y = spawn.y;
-    localPlayer.angle = Math.random() * Math.PI * 2;
+    // Face toward the center of the arena on spawn so players spot each other faster
+    localPlayer.angle = Math.atan2((MAP_ROWS * TILE_SIZE) / 2 - spawn.y, (MAP_COLS * TILE_SIZE) / 2 - spawn.x);
     localPlayer.turnDir = 0;
     localPlayer.isAlive = true;
     localPlayer.score = 0;
@@ -229,21 +246,38 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = `🛸 3D LASER TAG! Your Shield Note: [${localPlayer.noteTag}] | Low C = Turn Left • High C = Turn Right • Play enemy's note to BLAST!`;
+        statusEl.textContent = `🛸 3D LASER TAG! Your Shield Pitch: [${localPlayer.noteTag}] | Low C = Turn Left • High C = Turn Right • Play enemy's pitch to BLAST!`;
     }
 
     animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
 
     try {
-        const { onValue, update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-        const roomRef = window.firebaseRef(window.firebaseDb, `pianopad_lasertag/${activeRoomCode}`);
+        const { onValue, set, update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+        const myPlayerRef = window.firebaseRef(window.firebaseDb, `pianopad_lasertag/${activeRoomCode}/${localId}`);
 
+        // Write fresh initial state immediately BEFORE listening so old 'isAlive: false' records are overwritten
+        await set(myPlayerRef, {
+            id: localId,
+            x: Number(localPlayer.x.toFixed(1)),
+            y: Number(localPlayer.y.toFixed(1)),
+            angle: Number(localPlayer.angle.toFixed(3)),
+            isAlive: true,
+            noteTag: localPlayer.noteTag,
+            score: 0,
+            name: state.sessionStudentName || 'Player',
+            avatar: state.sessionStudentAvatar || '🏃',
+            updatedAt: Date.now()
+        });
+        if (window.firebaseOnDisconnect) {
+            window.firebaseOnDisconnect(myPlayerRef).remove();
+        }
+
+        const roomRef = window.firebaseRef(window.firebaseDb, `pianopad_lasertag/${activeRoomCode}`);
         roomUnsubscribe = onValue(roomRef, (snapshot) => {
-            const data = snapshot.val();
-            if (!data) return;
+            const data = snapshot.val() || {};
             remotePlayers = data;
 
-            // Detect if another player eliminated us
+            // Only trigger elimination if our own record in Firebase explicitly flipped to isAlive === false
             if (remotePlayers[localId] && remotePlayers[localId].isAlive === false && localPlayer.isAlive) {
                 localPlayer.isAlive = false;
                 localPlayer.hitFlash = 1.0;
@@ -251,14 +285,14 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
                 playExplosionSound();
                 spawn3DExplosion(localPlayer.x, localPlayer.y, '#ef4444', 35);
                 if (statusEl) {
-                    statusEl.textContent = '💥 TAGGED! Drone Cam Activated (High-Altitude Arena View) — Tap any key to send reactions!';
+                    statusEl.textContent = '💥 TAGGED! Drone Cam Activated (Full Arena Vision) — Tap any key to send reactions!';
                 }
             }
         });
 
         syncIntervalId = setInterval(() => {
-            if (bridge.getActiveMiniGame() !== 'laserTag') return;
-            update(window.firebaseRef(window.firebaseDb, `pianopad_lasertag/${activeRoomCode}/${localId}`), {
+            if (bridge.getActiveMiniGame() !== 'laserTag' || !localPlayer.isAlive) return;
+            update(myPlayerRef, {
                 x: Number(localPlayer.x.toFixed(1)),
                 y: Number(localPlayer.y.toFixed(1)),
                 angle: Number(localPlayer.angle.toFixed(3)),
@@ -266,7 +300,8 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
                 noteTag: localPlayer.noteTag,
                 score: localPlayer.score,
                 name: state.sessionStudentName || 'Player',
-                avatar: state.sessionStudentAvatar || '🏃'
+                avatar: state.sessionStudentAvatar || '🏃',
+                updatedAt: Date.now()
             }).catch(() => {});
         }, 100);
     } catch (err) {
@@ -276,7 +311,7 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
 
 export async function handleLaserTagInput(noteStr, bridge) {
     if (gamePhase === 'spectating') {
-        spawn3DExplosion(localPlayer.x, localPlayer.y, '#facc15', 12);
+        spawn3DExplosion(localPlayer.x, localPlayer.y, '#facc15', 14);
         return;
     }
 
@@ -287,14 +322,14 @@ export async function handleLaserTagInput(noteStr, bridge) {
     const pitchClass = normalizePitchClass(raw);
     const octave = match ? parseInt(match[2], 10) : 2;
 
-    // Any Low C (C1, C2) turns Left; any High C (C3, C4, C5, C6...) turns Right
+    // Any Low C (C1, C2) turns Left; any High C (C3, C4, C5...) turns Right
     if (pitchClass === 'C') {
         if (octave <= 2) {
             localPlayer.turnDir = -1;
-            setTimeout(() => { if (localPlayer.turnDir === -1) localPlayer.turnDir = 0; }, 210);
+            setTimeout(() => { if (localPlayer.turnDir === -1) localPlayer.turnDir = 0; }, 220);
         } else {
             localPlayer.turnDir = 1;
-            setTimeout(() => { if (localPlayer.turnDir === 1) localPlayer.turnDir = 0; }, 210);
+            setTimeout(() => { if (localPlayer.turnDir === 1) localPlayer.turnDir = 0; }, 220);
         }
         return;
     }
@@ -304,13 +339,13 @@ export async function handleLaserTagInput(noteStr, bridge) {
     localPlayer.recoil = 1.0;
     localPlayer.muzzleFlash = 1.0;
 
-    // Find the best visible opponent in our forward field-of-view whose assigned note matches `pitchClass`
-    const FOV = Math.PI / 3; // 60-degree forward cone
+    // Check forward field-of-view for visible opponents matching `pitchClass`
+    const FOV = Math.PI / 3;
     let bestTarget = null;
-    let bestDist = 900;
+    let bestDist = 1100;
 
     for (const [id, opp] of Object.entries(remotePlayers)) {
-        if (id === localId || !opp.isAlive) continue;
+        if (id === localId || !isPlayerActiveInRoom(opp)) continue;
         if (normalizePitchClass(opp.noteTag) !== pitchClass) continue;
 
         const dx = opp.x - localPlayer.x;
@@ -318,12 +353,11 @@ export async function handleLaserTagInput(noteStr, bridge) {
         const dist = Math.hypot(dx, dy);
         if (dist > bestDist) continue;
 
-        // Check angle relative to player's 3D view
         let relAngle = Math.atan2(dy, dx) - localPlayer.angle;
         while (relAngle > Math.PI) relAngle -= Math.PI * 2;
         while (relAngle < -Math.PI) relAngle += Math.PI * 2;
 
-        if (Math.abs(relAngle) <= FOV * 0.55 && hasLineOfSight(localPlayer.x, localPlayer.y, opp.x, opp.y)) {
+        if (Math.abs(relAngle) <= FOV * 0.58 && hasLineOfSight(localPlayer.x, localPlayer.y, opp.x, opp.y)) {
             bestDist = dist;
             bestTarget = { id, opp, relAngle, dist };
         }
@@ -353,7 +387,8 @@ export async function handleLaserTagInput(noteStr, bridge) {
             const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
             await update(window.firebaseRef(window.firebaseDb, `pianopad_lasertag/${activeRoomCode}/${bestTarget.id}`), {
                 isAlive: false,
-                killedBy: localId
+                killedBy: localId,
+                updatedAt: Date.now()
             });
         } catch (e) {}
 
@@ -362,7 +397,6 @@ export async function handleLaserTagInput(noteStr, bridge) {
             statusEl.textContent = `🎯 DIRECT HIT! You blasted ${bestTarget.opp.name || 'Opponent'} with [${pitchClass}]! (+100 pts • Score: ${localPlayer.score})`;
         }
     } else {
-        // Beam fires straight down center crosshair
         activeBeams.push({
             endX: W * 0.5,
             endY: H * 0.5,
@@ -428,11 +462,11 @@ function castRay(rayAngle) {
 }
 
 function renderFirstPerson3D(ctx, W, H, dt) {
-    const FOV = Math.PI / 3; // 60 deg
-    const bobOffset = localPlayer.isAlive ? Math.sin(localPlayer.bobPhase) * 5 : 0;
-    const horizon = H * 0.5 + bobOffset;
+    const FOV = Math.PI / 3;
+    const bobOffset = localPlayer.isAlive ? Math.sin(localPlayer.bobPhase) * 4 : 0;
+    const horizon = H * 0.52 + bobOffset;
 
-    // 1. Sci-Fi Ceiling & Floor Gradient
+    // 1. Sci-Fi Ceiling & Floor
     const ceilGrad = ctx.createLinearGradient(0, 0, 0, horizon);
     ceilGrad.addColorStop(0, '#020617');
     ceilGrad.addColorStop(1, '#0f172a');
@@ -445,7 +479,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
     ctx.fillStyle = floorGrad;
     ctx.fillRect(0, horizon, W, H - horizon);
 
-    // Subtle perspective floor grid lines
     ctx.strokeStyle = 'rgba(56, 189, 248, 0.14)';
     ctx.lineWidth = 1;
     for (let i = 1; i <= 6; i++) {
@@ -456,7 +489,7 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.stroke();
     }
 
-    // 2. Raycast 3D Neon Maze Walls
+    // 2. Raycast 3D Neon Walls
     const numRays = Math.min(320, Math.floor(W / 3));
     const stripW = W / numRays;
     zBuffer = new Array(numRays);
@@ -470,9 +503,8 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         const wallHeight = Math.min(H * 1.6, (TILE_SIZE * H) / Math.max(1, correctedDist));
         const wallTop = horizon - wallHeight / 2;
 
-        const shade = Math.max(0.15, 1 - correctedDist / 1100) * (hit.side === 1 ? 0.78 : 1.0);
+        const shade = Math.max(0.15, 1 - correctedDist / 1200) * (hit.side === 1 ? 0.78 : 1.0);
 
-        // Color-coded zones: 1 = Outer Cyan Fortress, 2 = Maze Magenta/Indigo, 3 = Courtyard Emerald Pillars
         let r = 14, g = 116, b = 144;
         let edgeColor = `rgba(56, 189, 248, ${shade})`;
         if (hit.wallType === 2) {
@@ -486,18 +518,17 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.fillStyle = `rgb(${Math.floor(r * shade)}, ${Math.floor(g * shade)}, ${Math.floor(b * shade)})`;
         ctx.fillRect(i * stripW, wallTop, stripW + 1, wallHeight);
 
-        // Glowing neon top & bottom trim strips
         ctx.fillStyle = edgeColor;
         const trimH = Math.max(2, wallHeight * 0.045);
         ctx.fillRect(i * stripW, wallTop, stripW + 1, trimH);
         ctx.fillRect(i * stripW, wallTop + wallHeight - trimH, stripW + 1, trimH);
     }
 
-    // 3. Collect & Depth-Sort 3D Sprites (Opponents + Explosion Particles)
+    // 3. Depth-Sorted 3D Opponents & Explosion Particles
     const sprites = [];
 
     for (const [id, opp] of Object.entries(remotePlayers)) {
-        if (id === localId || !opp.isAlive) continue;
+        if (id === localId || !isPlayerActiveInRoom(opp)) continue;
         const dx = opp.x - localPlayer.x;
         const dy = opp.y - localPlayer.y;
         const dist = Math.hypot(dx, dy);
@@ -527,12 +558,29 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         while (relAngle > Math.PI) relAngle -= Math.PI * 2;
         while (relAngle < -Math.PI) relAngle += Math.PI * 2;
 
-        if (Math.abs(relAngle) > FOV * 0.65 || sp.dist < 12) continue;
+        if (Math.abs(relAngle) > FOV * 0.68 || sp.dist < 10) continue;
 
         const screenX = (0.5 + relAngle / FOV) * W;
-        const rayIdx = Math.floor(screenX / stripW);
-        if (rayIdx >= 0 && rayIdx < numRays && zBuffer[rayIdx] < sp.dist) {
-            continue; // Occluded behind a 3D wall
+
+        // Multi-ray occlusion check: visible if line-of-sight is clear OR any ray across body width is unoccluded
+        if (sp.type === 'player') {
+            const visibleByLOS = hasLineOfSight(localPlayer.x, localPlayer.y, sp.opp.x, sp.opp.y);
+            if (!visibleByLOS) {
+                const centerRay = Math.floor(screenX / stripW);
+                const leftRay = Math.max(0, centerRay - 4);
+                const rightRay = Math.min(numRays - 1, centerRay + 4);
+                let anyRayOpen = false;
+                for (let rIdx = leftRay; rIdx <= rightRay; rIdx++) {
+                    if (zBuffer[rIdx] >= sp.dist - 12) {
+                        anyRayOpen = true;
+                        break;
+                    }
+                }
+                if (!anyRayOpen) continue;
+            }
+        } else {
+            const rayIdx = Math.floor(screenX / stripW);
+            if (rayIdx >= 0 && rayIdx < numRays && zBuffer[rayIdx] < sp.dist) continue;
         }
 
         if (sp.type === 'particle') {
@@ -549,55 +597,69 @@ function renderFirstPerson3D(ctx, W, H, dt) {
             continue;
         }
 
-        // Render Opponent Sci-Fi Visor Suit & Hovering Note Target Badge
-        const spriteH = Math.min(H * 1.1, (TILE_SIZE * 0.85 * H) / sp.dist);
+        // Render Opponent Sci-Fi Visor Suit + Large High-Contrast Target Pitch Sign
+        const spriteH = Math.min(H * 1.05, Math.max(46, (TILE_SIZE * 0.88 * H) / sp.dist));
         const spriteW = spriteH * 0.65;
-        const topY = horizon - spriteH * 0.45;
+        const topY = horizon - spriteH * 0.42;
 
         ctx.save();
         // Glowing Body Armor
         ctx.fillStyle = '#1e293b';
-        ctx.strokeStyle = '#facc15';
+        ctx.strokeStyle = '#38bdf8';
         ctx.lineWidth = Math.max(2, spriteW * 0.06);
         ctx.beginPath();
-        ctx.roundRect(screenX - spriteW / 2, topY + spriteH * 0.22, spriteW, spriteH * 0.72, 10);
+        ctx.roundRect(screenX - spriteW / 2, topY + spriteH * 0.24, spriteW, spriteH * 0.72, 10);
         ctx.fill();
         ctx.stroke();
 
         // Neon Chest Core
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
-        ctx.arc(screenX, topY + spriteH * 0.52, spriteW * 0.18, 0, Math.PI * 2);
+        ctx.arc(screenX, topY + spriteH * 0.54, spriteW * 0.18, 0, Math.PI * 2);
         ctx.fill();
 
-        // Avatar Head
-        const avatarSize = Math.max(14, Math.floor(spriteH * 0.28));
+        // Student Avatar Head
+        const avatarSize = Math.max(18, Math.floor(spriteH * 0.30));
         ctx.font = `${avatarSize}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(sp.opp.avatar || '🤖', screenX, topY + spriteH * 0.12);
 
-        // Hovering Target Pitch Badge Above Opponent
-        const badgeW = Math.max(46, spriteW * 0.95);
-        const badgeH = Math.max(22, spriteH * 0.22);
-        const badgeY = topY - badgeH - 8;
+        // LARGE HIGH-CONTRAST TARGET NOTE SIGN ABOVE HEAD (e.g. "🎯 C#")
+        const pitchLabel = normalizePitchClass(sp.opp.noteTag || 'G');
+        const badgeW = Math.max(66, spriteW * 1.15);
+        const badgeH = Math.max(28, spriteH * 0.28);
+        const badgeY = Math.max(12, topY - badgeH - 12);
 
-        ctx.fillStyle = '#ef4444';
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = '#facc15';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.roundRect(screenX - badgeW / 2, badgeY, badgeW, badgeH, 6);
+        ctx.roundRect(screenX - badgeW / 2, badgeY, badgeW, badgeH, 8);
         ctx.fill();
         ctx.stroke();
+        ctx.shadowBlur = 0;
 
+        // Pointer triangle under the sign
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.moveTo(screenX - 6, badgeY + badgeH);
+        ctx.lineTo(screenX + 6, badgeY + badgeH);
+        ctx.lineTo(screenX, badgeY + badgeH + 7);
+        ctx.closePath();
+        ctx.fill();
+
+        // Crisp black pitch text inside yellow sign
+        ctx.fillStyle = '#000000';
+        ctx.font = `900 ${Math.max(16, Math.floor(badgeH * 0.68))}px sans-serif`;
+        ctx.fillText(`🎯 ${pitchLabel}`, screenX, badgeY + badgeH * 0.54);
+
+        // Student Nameplate below suit
         ctx.fillStyle = '#ffffff';
-        ctx.font = `900 ${Math.max(13, Math.floor(badgeH * 0.72))}px sans-serif`;
-        ctx.fillText(sp.opp.noteTag || 'G', screenX, badgeY + badgeH * 0.54);
-
-        // Player Nameplate below feet
-        ctx.fillStyle = '#f8fafc';
-        ctx.font = `bold ${Math.max(10, Math.floor(spriteH * 0.11))}px sans-serif`;
-        ctx.fillText(sp.opp.name || 'Player', screenX, topY + spriteH + 10);
+        ctx.font = `800 ${Math.max(11, Math.floor(spriteH * 0.13))}px sans-serif`;
+        ctx.fillText(sp.opp.name || 'Player', screenX, topY + spriteH + 12);
         ctx.restore();
     }
 
@@ -630,7 +692,7 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.restore();
     }
 
-    // 5. First-Person Space Blaster Viewmodel (Bottom-Right)
+    // 5. First-Person Space Blaster Viewmodel
     if (localPlayer.isAlive) {
         localPlayer.recoil = Math.max(0, localPlayer.recoil - dt * 5);
         localPlayer.muzzleFlash = Math.max(0, localPlayer.muzzleFlash - dt * 8);
@@ -641,7 +703,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         const gy = H * 0.78 + gunBobY;
 
         ctx.save();
-        // Blaster Barrel
         ctx.fillStyle = '#1e293b';
         ctx.strokeStyle = '#38bdf8';
         ctx.lineWidth = 2.5;
@@ -654,7 +715,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.fill();
         ctx.stroke();
 
-        // Glowing Plasma Coils
         ctx.fillStyle = '#22c55e';
         ctx.fillRect(gx - 4, gy + 4, 12, 8);
         ctx.fillRect(gx - 6, gy + 20, 16, 8);
@@ -668,7 +728,7 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         }
         ctx.restore();
 
-        // Center Targeting Reticle
+        // Center Crosshair
         ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -678,7 +738,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.fillRect(W / 2 - 2, H / 2 - 2, 4, 4);
     }
 
-    // Red Damage Flash if Tagged
     if (localPlayer.hitFlash > 0) {
         localPlayer.hitFlash = Math.max(0, localPlayer.hitFlash - dt * 1.5);
         ctx.fillStyle = `rgba(239, 68, 68, ${localPlayer.hitFlash * 0.55})`;
@@ -687,7 +746,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
 }
 
 function renderSpectatorOverheadView(ctx, W, H, dt) {
-    // High-altitude tactical drone view when eliminated
     const scale = Math.min(W / (MAP_COLS * TILE_SIZE), H / (MAP_ROWS * TILE_SIZE)) * 0.92;
     const offsetX = (W - MAP_COLS * TILE_SIZE * scale) / 2;
     const offsetY = (H - MAP_ROWS * TILE_SIZE * scale) / 2;
@@ -714,9 +772,8 @@ function renderSpectatorOverheadView(ctx, W, H, dt) {
         }
     }
 
-    // Render all active players + their assigned pitch tags across the entire arena
     for (const [id, opp] of Object.entries(remotePlayers)) {
-        if (!opp.isAlive) continue;
+        if (!isPlayerActiveInRoom(opp)) continue;
         ctx.fillStyle = '#facc15';
         ctx.beginPath();
         ctx.arc(opp.x, opp.y, 18, 0, Math.PI * 2);
@@ -728,7 +785,6 @@ function renderSpectatorOverheadView(ctx, W, H, dt) {
         ctx.fillText(`${opp.name} [${opp.noteTag}]`, opp.x, opp.y - 24);
     }
 
-    // Update & draw explosion reactions
     for (let i = worldExplosions.length - 1; i >= 0; i--) {
         const p = worldExplosions[i];
         p.x += p.vx * dt;
@@ -775,13 +831,12 @@ function gameLoop(now, bridge) {
     const W = canvas.width;
     const H = canvas.height;
 
-    // First-Person Movement & Collision Physics
     if (localPlayer.isAlive) {
         localPlayer.angle += localPlayer.turnDir * 3.1 * dt;
         localPlayer.bobPhase += dt * 9.5;
 
         const speed = 150;
-        const pad = 16; // Wall clearance buffer
+        const pad = 16;
         const dx = Math.cos(localPlayer.angle) * speed * dt;
         const dy = Math.sin(localPlayer.angle) * speed * dt;
 
@@ -806,12 +861,12 @@ function gameLoop(now, bridge) {
         renderSpectatorOverheadView(ctx, W, H, dt);
     }
 
-    // Bottom-Left Minimap Overlay (Shows all student avatars across the 32x32 arena)
+    // Bottom-Left Minimap Overlay
     if (localPlayer.isAlive) {
-        const mmSize = 136;
+        const mmSize = 148;
         const mmX = 12;
         const mmY = H - mmSize - 12;
-        ctx.fillStyle = 'rgba(2, 6, 23, 0.84)';
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
         ctx.fillRect(mmX, mmY, mmSize, mmSize);
         ctx.strokeStyle = '#38bdf8';
         ctx.lineWidth = 1.5;
@@ -820,8 +875,7 @@ function gameLoop(now, bridge) {
         const scaleX = mmSize / (MAP_COLS * TILE_SIZE);
         const scaleY = mmSize / (MAP_ROWS * TILE_SIZE);
 
-        // Minimap Walls
-        ctx.fillStyle = 'rgba(56, 189, 248, 0.32)';
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.34)';
         for (let r = 0; r < MAP_ROWS; r++) {
             for (let c = 0; c < MAP_COLS; c++) {
                 if (ARENA_MAP[r][c] > 0) {
@@ -830,44 +884,56 @@ function gameLoop(now, bridge) {
             }
         }
 
-        // Minimap Remote Student Avatars
-        ctx.font = '10px sans-serif';
+        // Draw every active opponent on the minimap with a bright red beacon + their avatar + pitch label
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         for (const [id, opp] of Object.entries(remotePlayers)) {
-            if (id === localId || !opp.isAlive) continue;
+            if (id === localId || !isPlayerActiveInRoom(opp)) continue;
             const ox = mmX + opp.x * scaleX;
             const oy = mmY + opp.y * scaleY;
+
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(ox, oy, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.font = '11px sans-serif';
             ctx.fillText(opp.avatar || '🔴', ox, oy);
+
+            ctx.fillStyle = '#facc15';
+            ctx.font = 'bold 8px sans-serif';
+            ctx.fillText(normalizePitchClass(opp.noteTag || ''), ox, oy - 8);
         }
 
-        // Minimap Local Player + View Direction Cone
+        // Draw local player green dot + sightline
         const lx = mmX + localPlayer.x * scaleX;
         const ly = mmY + localPlayer.y * scaleY;
         ctx.strokeStyle = '#22c55e';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(lx, ly);
-        ctx.lineTo(lx + Math.cos(localPlayer.angle) * 12, ly + Math.sin(localPlayer.angle) * 12);
+        ctx.lineTo(lx + Math.cos(localPlayer.angle) * 14, ly + Math.sin(localPlayer.angle) * 14);
         ctx.stroke();
 
         ctx.fillStyle = '#22c55e';
         ctx.beginPath();
-        ctx.arc(lx, ly, 3.5, 0, Math.PI * 2);
+        ctx.arc(lx, ly, 4.5, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // Top-Right HUD (Score, Shield Note, Controls)
-    const aliveCount = Object.values(remotePlayers).filter(p => p && p.isAlive).length;
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.82)';
-    ctx.fillRect(W - 265, 10, 255, 52);
+    // Top-Right HUD
+    const activePlayers = Object.values(remotePlayers).filter(isPlayerActiveInRoom);
+    const aliveCount = Math.max(1, activePlayers.length);
+
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
+    ctx.fillRect(W - 280, 10, 270, 54);
     ctx.strokeStyle = '#22c55e';
-    ctx.strokeRect(W - 265, 10, 255, 52);
+    ctx.strokeRect(W - 280, 10, 270, 54);
 
     ctx.fillStyle = '#22c55e';
     ctx.font = '900 13px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText(`SCORE: ${localPlayer.score} | ALIVE: ${aliveCount} | TAG: ${localPlayer.noteTag}`, W - 18, 30);
+    ctx.fillText(`SCORE: ${localPlayer.score} | ALIVE: ${aliveCount} | YOUR TAG: ${localPlayer.noteTag}`, W - 18, 30);
 
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 11px sans-serif';
