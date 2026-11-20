@@ -36,6 +36,96 @@ import {
 import { renderFirstPerson3D } from './laserTag/render3d.js';
 import { renderSpectatorOverheadView, renderMinimapAndTopHud } from './laserTag/hud.js';
 
+const MIDI_PITCH_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+function clearAllHeldMovement() {
+    gameState.physicallyHeldNotes.clear();
+    gameState.heldMoveKeys.clear();
+    gameState.localPlayer.turnDir = 0;
+    gameState.localPlayer.turnHoldStart = 0;
+    gameState.localPlayer.isMovingForward = false;
+}
+
+function isPitchStillPhysicallyHeld(pitchClass) {
+    for (const held of gameState.physicallyHeldNotes) {
+        if (normalizePitchClass(held) === pitchClass) return true;
+    }
+    return false;
+}
+
+function attachUniversalReleaseListeners() {
+    if (gameState.autoReleaseListenersAttached) return;
+    gameState.autoReleaseListenersAttached = true;
+
+    const activeComputerKeys = new Set();
+
+    // 1. Computer Keyboard Release (stops movement immediately when key is lifted)
+    window.addEventListener('keydown', (e) => {
+        if (gameState.gamePhase !== 'playing' && gameState.gamePhase !== 'spectating') return;
+        if (!e.repeat && e.code) {
+            activeComputerKeys.add(e.code);
+        }
+        if (e.key && e.key.length === 1) {
+            gameState.typedCheatBuffer = (gameState.typedCheatBuffer + e.key).slice(-8);
+            if (gameState.typedCheatBuffer.toLowerCase().endsWith('test')) {
+                gameState.typedCheatBuffer = '';
+                spawn50CombatBots();
+            }
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.code) activeComputerKeys.delete(e.code);
+        if (activeComputerKeys.size === 0) {
+            clearAllHeldMovement();
+        }
+    });
+
+    // 2. Mouse / Touchscreen Piano Key Release
+    window.addEventListener('pointerup', () => clearAllHeldMovement());
+    window.addEventListener('pointercancel', () => clearAllHeldMovement());
+    window.addEventListener('mouseup', () => clearAllHeldMovement());
+    window.addEventListener('touchend', (e) => {
+        if (!e.touches || e.touches.length === 0) clearAllHeldMovement();
+    });
+
+    // 3. Window Focus Lost Safety Net
+    window.addEventListener('blur', () => {
+        activeComputerKeys.clear();
+        clearAllHeldMovement();
+    });
+
+    // 4. Physical MIDI Piano Note-Off Listener
+    if (navigator.requestMIDIAccess) {
+        navigator.requestMIDIAccess().then((midiAccess) => {
+            const bindMidiInput = (input) => {
+                input.addEventListener('midimessage', (msg) => {
+                    if (gameState.gamePhase !== 'playing' || !msg.data || msg.data.length < 2) return;
+                    const status = msg.data[0] & 0xf0;
+                    const noteNum = msg.data[1];
+                    const velocity = msg.data.length > 2 ? msg.data[2] : 0;
+
+                    // MIDI Note Off (0x80) OR Note On with velocity 0
+                    if (status === 0x80 || (status === 0x90 && velocity === 0)) {
+                        const pitch = MIDI_PITCH_NAMES[noteNum % 12];
+                        const octave = Math.floor(noteNum / 12) - 1;
+                        handleLaserTagRelease(`${pitch}${octave}`);
+                    }
+                });
+            };
+
+            for (const input of midiAccess.inputs.values()) {
+                bindMidiInput(input);
+            }
+            midiAccess.addEventListener('statechange', (e) => {
+                if (e.port && e.port.type === 'input' && e.port.state === 'connected') {
+                    bindMidiInput(e.port);
+                }
+            });
+        }).catch(() => {});
+    }
+}
+
 function addKillFeedEntry(id, text, color = '#facc15') {
     if (!id || gameState.seenFeedIds.has(id)) return;
     gameState.seenFeedIds.add(id);
@@ -627,11 +717,7 @@ export function stopLaserTag() {
     gameState.syncIntervalId = null;
     gameState.pendingActionTimer = null;
     gameState.recentNoteBuffer = [];
-    gameState.heldMoveKeys.clear();
-    gameState.localPlayer.turnDir = 0;
-    gameState.localPlayer.turnUntil = 0;
-    gameState.localPlayer.turnHoldStart = 0;
-    gameState.localPlayer.moveUntil = 0;
+    clearAllHeldMovement();
     gameState.typedCheatBuffer = '';
     gameState.processedHitIds.clear();
     gameState.processedEmpIds.clear();
@@ -652,31 +738,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     stopLaserTag();
 
     window._laserTagBridge = bridge;
-
-    if (!gameState.blurListenerAttached) {
-        gameState.blurListenerAttached = true;
-        window.addEventListener('blur', () => {
-            gameState.heldMoveKeys.clear();
-            gameState.localPlayer.turnDir = 0;
-            gameState.localPlayer.turnUntil = 0;
-            gameState.localPlayer.turnHoldStart = 0;
-            gameState.localPlayer.moveUntil = 0;
-        });
-    }
-
-    if (!gameState.globalKeyListenerAttached) {
-        gameState.globalKeyListenerAttached = true;
-        window.addEventListener('keydown', (e) => {
-            if (gameState.gamePhase !== 'playing' && gameState.gamePhase !== 'spectating') return;
-            if (e.key && e.key.length === 1) {
-                gameState.typedCheatBuffer = (gameState.typedCheatBuffer + e.key).slice(-8);
-                if (gameState.typedCheatBuffer.toLowerCase().endsWith('test')) {
-                    gameState.typedCheatBuffer = '';
-                    spawn50CombatBots();
-                }
-            }
-        });
-    }
+    attachUniversalReleaseListeners();
 
     if (!gameState.spectatorClickListenerAttached) {
         const canvasEl = document.getElementById('waterfall-canvas');
@@ -718,9 +780,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     lp.y = spawn.y;
     lp.angle = Math.random() * Math.PI * 2;
     lp.turnDir = 0;
-    lp.turnUntil = 0;
     lp.turnHoldStart = 0;
-    lp.moveUntil = 0;
     lp.isMovingForward = false;
     lp.lives = 3;
     lp.hitsTaken = 0;
@@ -763,7 +823,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     gameState.empWaveRings = [];
     gameState.remotePlayers = {};
     gameState.recentNoteBuffer = [];
-    gameState.heldMoveKeys.clear();
+    clearAllHeldMovement();
     gameState.processedHitIds.clear();
     gameState.processedEmpIds.clear();
     gameState.processedAlertIds.clear();
@@ -872,9 +932,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
                 if (lp.lives <= 0) {
                     lp.lives = 0;
                     lp.isAlive = false;
-                    lp.moveUntil = 0;
-                    lp.turnDir = 0;
-                    gameState.heldMoveKeys.clear();
+                    clearAllHeldMovement();
                     lp.damageFlash = 1.0;
                     lp.damageFlashColor = '#ef4444';
                     playExplosionSound();
@@ -900,9 +958,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
                     lp.x = newSpawn.x;
                     lp.y = newSpawn.y;
                     lp.angle = Math.random() * Math.PI * 2;
-                    lp.moveUntil = 0;
-                    lp.turnDir = 0;
-                    gameState.heldMoveKeys.clear();
+                    clearAllHeldMovement();
                     lp.invulnerableUntil = performance.now() + 3500;
                     lp.damageFlash = 1.0;
                     lp.damageFlashColor = '#f97316';
@@ -1217,16 +1273,22 @@ async function executeSingleNoteAction(pitchClass, bridge) {
     if (gameState.gamePhase !== 'playing' || !lp.isAlive) return;
 
     if (pitchClass === 'C' || pitchClass === 'D') {
-        gameState.heldMoveKeys.add(pitchClass);
-        lp.turnDir = pitchClass === 'C' ? -1 : 1;
-        lp.turnUntil = performance.now() + 300; // Fallback window until handleLaserTagRelease fires
-        if (!lp.turnHoldStart) lp.turnHoldStart = performance.now();
+        // Only hold-turn if the key is STILL pressed down right now (prevents stuck spinning on quick taps)
+        if (isPitchStillPhysicallyHeld(pitchClass)) {
+            gameState.heldMoveKeys.add(pitchClass);
+            lp.turnDir = pitchClass === 'C' ? -1 : 1;
+            if (!lp.turnHoldStart) lp.turnHoldStart = performance.now();
+        } else {
+            // Tiny micro-nudge for a quick tap (<85ms)
+            lp.angle += (pitchClass === 'C' ? -1 : 1) * 0.05;
+        }
         return;
     }
 
     if (pitchClass === 'C#') {
-        gameState.heldMoveKeys.add('C#');
-        lp.moveUntil = performance.now() + 260;
+        if (isPitchStillPhysicallyHeld('C#')) {
+            gameState.heldMoveKeys.add('C#');
+        }
         return;
     }
 
@@ -1234,14 +1296,31 @@ async function executeSingleNoteAction(pitchClass, bridge) {
 }
 
 export function handleLaserTagRelease(noteStr) {
-    gameState.releaseHookActive = true;
+    const clean = (noteStr || '').toUpperCase().trim();
     const { pitchClass } = parseNoteDetails(noteStr);
     if (!pitchClass) return;
 
+    // Remove exact note (e.g. 'C4') and any note of that pitch class from physical tracking
+    gameState.physicallyHeldNotes.delete(clean);
+    for (const held of Array.from(gameState.physicallyHeldNotes)) {
+        if (normalizePitchClass(held) === pitchClass) {
+            gameState.physicallyHeldNotes.delete(held);
+        }
+    }
+
     gameState.heldMoveKeys.delete(pitchClass);
 
+    if (pitchClass === 'C' || pitchClass === 'D') {
+        const leftHeld = gameState.heldMoveKeys.has('C');
+        const rightHeld = gameState.heldMoveKeys.has('D');
+        gameState.localPlayer.turnDir = (leftHeld && !rightHeld) ? -1 : (rightHeld && !leftHeld) ? 1 : 0;
+        if (gameState.localPlayer.turnDir === 0) {
+            gameState.localPlayer.turnHoldStart = 0;
+        }
+    }
+
     if (pitchClass === 'C#') {
-        gameState.localPlayer.moveUntil = 0;
+        gameState.localPlayer.isMovingForward = false;
     }
 }
 
@@ -1255,13 +1334,16 @@ export async function handleLaserTagInput(noteStr, bridge) {
     if (gameState.gamePhase !== 'playing' || !lp.isAlive) return;
 
     const now = performance.now();
+    const clean = (noteStr || '').toUpperCase().trim();
     const { pitchClass, octave } = parseNoteDetails(noteStr);
     if (!pitchClass) return;
 
-    // C# is never part of any chord — engage thrust immediately so player can steer & shoot while moving
+    // Track physical key-down immediately (before any chord debounce timer)
+    gameState.physicallyHeldNotes.add(clean || `${pitchClass}${octave}`);
+
+    // C# is never part of any chord — engage thrust immediately while held
     if (pitchClass === 'C#') {
         gameState.heldMoveKeys.add('C#');
-        lp.moveUntil = now + 260;
         return;
     }
 
@@ -1284,7 +1366,6 @@ export async function handleLaserTagInput(noteStr, bridge) {
                 gameState.lastOctaveFlipTime = now;
                 lp.angle += Math.PI;
                 lp.turnDir = 0;
-                lp.turnUntil = 0;
                 lp.turnHoldStart = 0;
                 playOctaveSnapSound();
                 const statusEl = document.getElementById('status');
@@ -1304,6 +1385,7 @@ export async function handleLaserTagInput(noteStr, bridge) {
         }
         gameState.recentNoteBuffer = [];
         gameState.heldMoveKeys.delete('D');
+        lp.turnDir = 0;
         if (now >= lp.empReadyAt) {
             await triggerEmpShockwave(bridge);
         } else {
@@ -1325,6 +1407,7 @@ export async function handleLaserTagInput(noteStr, bridge) {
         gameState.recentNoteBuffer = [];
         gameState.heldMoveKeys.delete('C');
         gameState.heldMoveKeys.delete('D');
+        lp.turnDir = 0;
         if (now >= lp.decoyReadyAt) {
             spawnHoloDecoy(matchedDecoy.label, bridge);
         } else {
@@ -1345,6 +1428,7 @@ export async function handleLaserTagInput(noteStr, bridge) {
         }
         gameState.recentNoteBuffer = [];
         gameState.heldMoveKeys.delete('C');
+        lp.turnDir = 0;
 
         if (now >= lp.overchargeReadyAt) {
             lp.overchargeReadyAt = now + 15000;
@@ -1373,9 +1457,9 @@ export async function handleLaserTagInput(noteStr, bridge) {
             gameState.recentNoteBuffer = [];
             gameState.heldMoveKeys.delete('C');
             gameState.heldMoveKeys.delete('D');
+            lp.turnDir = 0;
             const tNow = performance.now();
 
-            // Toggle off early if already zoomed in
             if (tNow < (lp.sniperUntil || 0)) {
                 if ((tNow - (lp.sniperActivatedAt || 0)) > 550) {
                     lp.sniperUntil = 0;
@@ -1420,7 +1504,6 @@ export async function handleLaserTagInput(noteStr, bridge) {
 
                 lp.currentGear = matchedGear;
                 lp.turnDir = 0;
-                lp.turnUntil = 0;
                 lp.turnHoldStart = 0;
                 lp.gearBannerFlash = 1.0;
                 playGearShiftSound(matchedGear.mult);
@@ -1526,14 +1609,13 @@ function gameLoop(now, bridge) {
 
     const lp = gameState.localPlayer;
     if (lp.isAlive) {
-        // Hold-to-Turn Steering with 140ms Micro-Aim Ramp
-        if (gameState.releaseHookActive) {
-            const leftHeld = gameState.heldMoveKeys.has('C');
-            const rightHeld = gameState.heldMoveKeys.has('D');
-            lp.turnDir = (leftHeld && !rightHeld) ? -1 : (rightHeld && !leftHeld) ? 1 : 0;
-        } else if (now >= (lp.turnUntil || 0)) {
-            lp.turnDir = 0;
-        }
+        // Strict Hold-to-Turn: only turns while 'C' or 'D' is actively held down
+        const leftHeld = gameState.heldMoveKeys.has('C') && isPitchStillPhysicallyHeld('C');
+        const rightHeld = gameState.heldMoveKeys.has('D') && isPitchStillPhysicallyHeld('D');
+        if (!leftHeld) gameState.heldMoveKeys.delete('C');
+        if (!rightHeld) gameState.heldMoveKeys.delete('D');
+
+        lp.turnDir = (leftHeld && !rightHeld) ? -1 : (rightHeld && !leftHeld) ? 1 : 0;
 
         if (lp.turnDir !== 0) {
             if (!lp.turnHoldStart) lp.turnHoldStart = now;
@@ -1569,7 +1651,7 @@ function gameLoop(now, bridge) {
                 playShieldHitSound();
                 if (lp.lives <= 0) {
                     lp.isAlive = false;
-                    gameState.heldMoveKeys.clear();
+                    clearAllHeldMovement();
                     gameState.gamePhase = 'spectating';
                 }
             }
@@ -1577,7 +1659,11 @@ function gameLoop(now, bridge) {
             lp.stormTickTimer = 0;
         }
 
-        lp.isMovingForward = gameState.heldMoveKeys.has('C#') || (now < lp.moveUntil);
+        // Strict Hold-to-Move: only moves forward while 'C#' is actively held down
+        const forwardHeld = gameState.heldMoveKeys.has('C#') && isPitchStillPhysicallyHeld('C#');
+        if (!forwardHeld) gameState.heldMoveKeys.delete('C#');
+        lp.isMovingForward = forwardHeld;
+
         const isBoosted = now < lp.boostUntil;
         const speedMult = lp.currentGear.mult * (isBoosted ? 1.5 : 1.0);
 
