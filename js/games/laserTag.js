@@ -42,6 +42,7 @@ const localPlayer = {
     isAlive: true,
     currentGear: DEFAULT_GEAR,
     invulnerableUntil: 0,
+    portalCooldownUntil: 0,
     suitColor: '#38bdf8',
     score: 0,
     noteTag: 'F#',
@@ -50,18 +51,29 @@ const localPlayer = {
     muzzleFlash: 0,
     damageFlash: 0,
     damageFlashColor: '#f97316',
+    portalFlash: 0,
     jamFlash: 0,
     gearBannerFlash: 0
 };
 
-// Hit Event Deduplication & Chord/Anti-Spam Buffer
+// Two Randomly Generated Linked Quantum Portals
+let arenaPortals = []; // [{ id, name, x, y, color, secondaryColor }]
+
+// Spectator Drone Interactive Alert State
+let spectatorSelectedTarget = null; // { id, name, screenX, screenY }
+let incomingAlertBanner = null;     // { text, fromName, until }
+let processedAlertIds = new Set();
+let spectatorClickListenerAttached = false;
+
+// Hit Event Deduplication, Chord/Anti-Spam Buffer & "TEST" Typing Buffer
 let processedHitIds = new Set();
 let recentNoteBuffer = [];
 let pendingActionTimer = null;
 let lastChordTriggerTime = 0;
 let lastTriggeredChordId = '';
+let typedCheatBuffer = '';
 
-// Remote Players, Beams, Explosions & Host Stress-Test Bots
+// Remote Players, Beams, Explosions & Combat Bots
 let remotePlayers = {};
 let activeBeams = [];
 let worldExplosions = [];
@@ -69,16 +81,16 @@ let activeRoomCode = null;
 let localId = null;
 let zBuffer = [];
 
-let isHostSession = false;
 let simulatedBots = {};
-let botKeyListenerAttached = false;
+let globalKeyListenerAttached = false;
 
-const AUSSIE_TEEN_BOYS = [
+// 50 Contemporary 2026 Australian Teenage Male Names (born ~2009–2013)
+const AUSSIE_2026_TEEN_BOYS = [
     "Lachlan", "Jack", "Oliver", "Noah", "William", "Leo", "Lucas", "Henry", "Charlie", "Liam",
     "Thomas", "Ethan", "Cooper", "Harrison", "Archer", "Oscar", "Hudson", "Harvey", "Darcy", "Riley",
     "Hunter", "Levi", "Flynn", "Jaxon", "Sebastian", "Isaac", "Xavier", "Beau", "Max", "Mason",
-    "Toby", "Zac", "Angus", "Hamish", "Callum", "Declan", "Brodie", "Koby", "Jett", "Ryder",
-    "Tyler", "Jake", "Nate", "Eli", "Kai", "Fletcher", "Caleb", "Baxter", "Ashton", "Mitchell"
+    "Bodhi", "Sonny", "Koa", "Lenny", "Archie", "Huxley", "Banjo", "Taj", "Cruz", "Angus",
+    "Hamish", "Callum", "Declan", "Brodie", "Jett", "Ryder", "Kai", "Fletcher", "Ashton", "Toby"
 ];
 
 const BOT_AVATARS = ['🏃', '🏄', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄', '🎹', '🎧', '👨‍🎤', '😎', '🐱', '🐲', '🚀', '🥷'];
@@ -100,7 +112,6 @@ function buildFastPacedArenaMap() {
     }
 
     // 2. GOLD NW SECTOR (rows 2..18, cols 2..18): Curved Rotundas & Sweeping Arches (type 2)
-    // Large central rotunda ring with 4 wide entryways
     const nwCenterR = 10, nwCenterC = 10;
     for (let r = 4; r <= 16; r++) {
         for (let c = 4; c <= 16; c++) {
@@ -111,9 +122,7 @@ function buildFastPacedArenaMap() {
             }
         }
     }
-    // Inner curved sanctuary pillar
     grid[10][10] = 2;
-    // Outer curved corner arcs
     const nwArcs = [
         [3, 4], [4, 3], [3, 16], [4, 17],
         [16, 3], [17, 4], [16, 17], [17, 16]
@@ -145,17 +154,11 @@ function buildFastPacedArenaMap() {
     placeTriangleCluster(14, 40, false);
 
     // 4. CORAL SW SECTOR (rows 27..43, cols 2..18): Wide Tactical Chicane Walls (type 4)
-    // Spacious 3-4 tile lanes with sleek L-shaped cover barriers
     const swBlocks = [
-        // Top-left L
         [29, 4], [29, 5], [29, 6], [30, 4], [31, 4],
-        // Top-right L
         [29, 14], [29, 15], [29, 16], [30, 16], [31, 16],
-        // Center tactical island
         [34, 9], [34, 10], [34, 11], [36, 9], [36, 10], [36, 11],
-        // Bottom-left L
         [39, 4], [40, 4], [41, 4], [41, 5], [41, 6],
-        // Bottom-right L
         [39, 16], [40, 16], [41, 16], [41, 14], [41, 15]
     ];
     for (const [r, c] of swBlocks) grid[r][c] = 4;
@@ -191,9 +194,32 @@ function buildFastPacedArenaMap() {
 
 let ARENA_MAP = buildFastPacedArenaMap();
 
+function generateRandomPortals() {
+    const p1 = getSafeSpawnPoint();
+    const p2 = getSafeSpawnPoint(p1.x, p1.y);
+    arenaPortals = [
+        {
+            id: 'portal_alpha',
+            name: 'ALPHA PORTAL',
+            x: p1.x,
+            y: p1.y,
+            color: '#06b6d4',
+            secondaryColor: '#a5f3fc'
+        },
+        {
+            id: 'portal_omega',
+            name: 'OMEGA PORTAL',
+            x: p2.x,
+            y: p2.y,
+            color: '#d946ef',
+            secondaryColor: '#f5d0fe'
+        }
+    ];
+}
+
 function generateSeededArena(roomCode) {
-    // Keep layout consistent and fast-paced across all clients in the room
     ARENA_MAP = buildFastPacedArenaMap();
+    generateRandomPortals();
 }
 
 function getZoneInfoForCoords(wx, wy) {
@@ -263,6 +289,43 @@ function playLaserPew() {
         gain.connect(audioCtx.destination);
         osc.start(now);
         osc.stop(now + 0.18);
+    } catch (e) {}
+}
+
+function playPortalWarpSound() {
+    try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(280, now);
+        osc.frequency.exponentialRampToValueAtTime(1280, now + 0.22);
+        osc.frequency.exponentialRampToValueAtTime(420, now + 0.38);
+        gain.gain.setValueAtTime(0.20, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.40);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.42);
+    } catch (e) {}
+}
+
+function playRadioAlertChime() {
+    try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(740, now);
+        osc.frequency.setValueAtTime(987.77, now + 0.09);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
     } catch (e) {}
 }
 
@@ -385,7 +448,7 @@ function getSafeSpawnPoint(avoidX = null, avoidY = null) {
     let best = { x: TILE_SIZE * 22.5, y: TILE_SIZE * 22.5 };
     let bestDist = -1;
 
-    for (let attempt = 0; attempt < 150; attempt++) {
+    for (let attempt = 0; attempt < 180; attempt++) {
         const c = 2 + Math.floor(Math.random() * (MAP_COLS - 4));
         const r = 2 + Math.floor(Math.random() * (MAP_ROWS - 4));
         if (ARENA_MAP[r] && ARENA_MAP[r][c] === 0) {
@@ -399,24 +462,24 @@ function getSafeSpawnPoint(avoidX = null, avoidY = null) {
                 bestDist = d;
                 best = { x: candX, y: candY };
             }
-            if (d > TILE_SIZE * 14) return best;
+            if (d > TILE_SIZE * 16) return best;
         }
     }
     return best;
 }
 
-async function spawn50AussieBots() {
-    if (!isHostSession || !activeRoomCode || !window.firebaseDb) return;
+async function spawn50CombatBots() {
+    if (!activeRoomCode || !window.firebaseDb) return;
 
     const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
     const basePath = `pianopad_tournaments/${activeRoomCode}/lasertag`;
     const updates = {};
 
-    simulatedBots = {};
-    const shuffledNames = [...AUSSIE_TEEN_BOYS].sort(() => Math.random() - 0.5);
+    const batchStamp = Date.now() % 10000;
+    const shuffledNames = [...AUSSIE_2026_TEEN_BOYS].sort(() => Math.random() - 0.5);
 
     for (let i = 0; i < 50; i++) {
-        const botId = `bot_au_${i + 1}`;
+        const botId = `bot_2026_${batchStamp}_${i + 1}`;
         const name = shuffledNames[i % shuffledNames.length];
         const avatar = BOT_AVATARS[i % BOT_AVATARS.length];
         const pos = getSafeSpawnPoint();
@@ -439,7 +502,8 @@ async function spawn50AussieBots() {
             noteTag: pitch,
             score: 0,
             isBot: true,
-            turnTimer: Math.random() * 2.5
+            turnTimer: Math.random() * 2.0,
+            fireCooldown: 1.5 + Math.random() * 3.0
         };
 
         simulatedBots[botId] = botData;
@@ -450,7 +514,7 @@ async function spawn50AussieBots() {
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = `🤖 HOST STRESS TEST: Spawned 50 Aussie Teenage Bots into the Fast-Paced Arena!`;
+        statusEl.textContent = `🤖 TEST MODE ACTIVATED: 50 Aussie Teen Combat Bots spawned and fighting in the arena!`;
     }
 }
 
@@ -458,10 +522,12 @@ function updateSimulatedBots(dt) {
     const botList = Object.values(simulatedBots);
     if (botList.length === 0) return;
 
-    const speed = 155;
+    const speed = 160;
     const pad = 12;
+    const now = performance.now();
 
     for (const bot of botList) {
+        // Check if this bot was hit by a real player or another bot
         const serverBot = remotePlayers[bot.id];
         if (serverBot && serverBot.lastHitEvent && serverBot.lastHitEvent.id !== bot.lastProcessedHit) {
             bot.lastProcessedHit = serverBot.lastHitEvent.id;
@@ -469,21 +535,36 @@ function updateSimulatedBots(dt) {
             bot.lives = Math.max(0, 3 - bot.hitsTaken);
             if (bot.lives <= 0) {
                 bot.isAlive = false;
+                spawn3DExplosion(bot.x, bot.y, '#ef4444', 24);
             } else {
                 const respawn = getSafeSpawnPoint(bot.x, bot.y);
                 bot.x = respawn.x;
                 bot.y = respawn.y;
-                bot.invulnerableUntil = performance.now() + 3500;
+                bot.invulnerableUntil = now + 3500;
             }
         }
 
         if (!bot.isAlive) continue;
-        bot.isInvulnerable = performance.now() < (bot.invulnerableUntil || 0);
+        bot.isInvulnerable = now < (bot.invulnerableUntil || 0);
+
+        // Portal check for bots
+        if (arenaPortals.length === 2 && now >= (bot.portalCooldown || 0)) {
+            for (let pIdx = 0; pIdx < 2; pIdx++) {
+                const p = arenaPortals[pIdx];
+                if (Math.hypot(bot.x - p.x, bot.y - p.y) < 34) {
+                    const dest = arenaPortals[pIdx === 0 ? 1 : 0];
+                    bot.x = dest.x;
+                    bot.y = dest.y;
+                    bot.portalCooldown = now + 3000;
+                    break;
+                }
+            }
+        }
 
         bot.turnTimer -= dt;
         if (bot.turnTimer <= 0) {
-            bot.angle += (Math.random() - 0.5) * Math.PI * 0.85;
-            bot.turnTimer = 1.6 + Math.random() * 2.8;
+            bot.angle += (Math.random() - 0.5) * Math.PI * 0.9;
+            bot.turnTimer = 1.4 + Math.random() * 2.4;
         }
 
         const dx = Math.cos(bot.angle) * speed * dt;
@@ -505,6 +586,110 @@ function updateSimulatedBots(dt) {
         if (blocked) {
             bot.angle += (Math.random() > 0.5 ? 1 : -1) * (Math.PI / 2);
         }
+
+        // Bot Combat AI: Fight other bots (and occasionally shoot at players in line of sight)
+        bot.fireCooldown = (bot.fireCooldown || 2.0) - dt;
+        if (bot.fireCooldown <= 0) {
+            bot.fireCooldown = 2.2 + Math.random() * 3.5;
+
+            for (const otherBot of botList) {
+                if (otherBot.id === bot.id || !otherBot.isAlive || otherBot.isInvulnerable) continue;
+                const d = Math.hypot(otherBot.x - bot.x, otherBot.y - bot.y);
+                if (d < 420 && hasLineOfSight(bot.x, bot.y, otherBot.x, otherBot.y)) {
+                    otherBot.hitsTaken += 1;
+                    otherBot.lives = Math.max(0, 3 - otherBot.hitsTaken);
+                    bot.score += 50;
+                    if (otherBot.lives <= 0) {
+                        otherBot.isAlive = false;
+                        bot.score += 100;
+                        spawn3DExplosion(otherBot.x, otherBot.y, '#ef4444', 20);
+                    } else {
+                        const rp = getSafeSpawnPoint(otherBot.x, otherBot.y);
+                        otherBot.x = rp.x;
+                        otherBot.y = rp.y;
+                        otherBot.invulnerableUntil = now + 3500;
+                        spawn3DExplosion(otherBot.x, otherBot.y, '#f97316', 12);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+}
+
+async function sendSpectatorDroneAlert(targetPlayerId, targetName, messageText) {
+    if (!activeRoomCode || !window.firebaseDb || !targetPlayerId) return;
+
+    playRadioAlertChime();
+    const state = window._laserTagBridge && window._laserTagBridge.getState ? window._laserTagBridge.getState() : {};
+    const senderName = state.sessionStudentName || 'Spectator';
+
+    try {
+        const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+        const basePath = `pianopad_tournaments/${activeRoomCode}/lasertag`;
+        await update(window.firebaseRef(window.firebaseDb, `${basePath}/${targetPlayerId}`), {
+            spectatorAlert: {
+                id: `${localId}_${Date.now()}_${Math.floor(Math.random() * 999)}`,
+                text: messageText,
+                fromName: senderName,
+                timestamp: Date.now()
+            }
+        });
+    } catch (e) {}
+
+    const statusEl = document.getElementById('status');
+    if (statusEl) {
+        statusEl.textContent = `📡 SENT ALERT TO ${targetName.toUpperCase()}: "${messageText}"`;
+    }
+    spectatorSelectedTarget = null;
+}
+
+function handleSpectatorCanvasClick(e) {
+    if (gamePhase !== 'spectating' || localPlayer.isAlive) return;
+
+    const canvas = document.getElementById('waterfall-canvas');
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleCanvasX = canvas.width / rect.width;
+    const scaleCanvasY = canvas.height / rect.height;
+    const clickX = (e.clientX - rect.left) * scaleCanvasX;
+    const clickY = (e.clientY - rect.top) * scaleCanvasY;
+
+    // 1. Check if clicking one of the 3 popup alert buttons when a target is already selected
+    if (spectatorSelectedTarget && spectatorSelectedTarget.buttons) {
+        for (const btn of spectatorSelectedTarget.buttons) {
+            if (clickX >= btn.x && clickX <= btn.x + btn.w && clickY >= btn.y && clickY <= btn.y + btn.h) {
+                sendSpectatorDroneAlert(spectatorSelectedTarget.id, spectatorSelectedTarget.name, btn.msg);
+                return;
+            }
+        }
+    }
+
+    // 2. Check if clicking near any active player on the overhead map
+    const W = canvas.width;
+    const H = canvas.height;
+    const mapScale = Math.min(W / (MAP_COLS * TILE_SIZE), H / (MAP_ROWS * TILE_SIZE)) * 0.92;
+    const offsetX = (W - MAP_COLS * TILE_SIZE * mapScale) / 2;
+    const offsetY = (H - MAP_ROWS * TILE_SIZE * mapScale) / 2;
+
+    let closestPlayer = null;
+    let closestDist = 36;
+
+    for (const [id, opp] of Object.entries(remotePlayers)) {
+        if (!isPlayerActiveInRoom(opp)) continue;
+        const px = offsetX + opp.x * mapScale;
+        const py = offsetY + opp.y * mapScale;
+        const d = Math.hypot(clickX - px, clickY - py);
+        if (d < closestDist) {
+            closestDist = d;
+            closestPlayer = { id, name: opp.name || 'Player', screenX: px, screenY: py };
+        }
+    }
+
+    spectatorSelectedTarget = closestPlayer;
+    if (closestPlayer) {
+        playRadioAlertChime();
     }
 }
 
@@ -520,9 +705,12 @@ export function stopLaserTag() {
     syncIntervalId = null;
     pendingActionTimer = null;
     recentNoteBuffer = [];
+    typedCheatBuffer = '';
     processedHitIds.clear();
+    processedAlertIds.clear();
     simulatedBots = {};
-    isHostSession = false;
+    spectatorSelectedTarget = null;
+    incomingAlertBanner = null;
     gamePhase = 'lobby';
 }
 
@@ -530,16 +718,30 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     initAudio();
     stopLaserTag();
 
-    isHostSession = Boolean(isHost || !autoRoomCode);
+    window._laserTagBridge = bridge;
 
-    if (!botKeyListenerAttached) {
-        botKeyListenerAttached = true;
+    // Global keyboard listener for typing "test" or "TEST" during gameplay to spawn 50 bots
+    if (!globalKeyListenerAttached) {
+        globalKeyListenerAttached = true;
         window.addEventListener('keydown', (e) => {
-            if (e.key === '@' && isHostSession && gamePhase === 'playing') {
-                e.preventDefault();
-                spawn50AussieBots();
+            if (gamePhase !== 'playing' && gamePhase !== 'spectating') return;
+            if (e.key && e.key.length === 1) {
+                typedCheatBuffer = (typedCheatBuffer + e.key).slice(-8);
+                if (typedCheatBuffer.toLowerCase().endsWith('test')) {
+                    typedCheatBuffer = '';
+                    spawn50CombatBots();
+                }
             }
         });
+    }
+
+    // Spectator map click listener for sending callouts
+    if (!spectatorClickListenerAttached) {
+        const canvasEl = document.getElementById('waterfall-canvas');
+        if (canvasEl) {
+            spectatorClickListenerAttached = true;
+            canvasEl.addEventListener('click', handleSpectatorCanvasClick);
+        }
     }
 
     document.getElementById('arcade-hub')?.classList.remove('open');
@@ -580,6 +782,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     localPlayer.isAlive = true;
     localPlayer.currentGear = DEFAULT_GEAR;
     localPlayer.invulnerableUntil = 0;
+    localPlayer.portalCooldownUntil = 0;
     localPlayer.suitColor = getSuitColorForAvatar(avatar, localId);
     localPlayer.score = 0;
     localPlayer.noteTag = ASSIGNABLE_PITCHES[Math.floor(Math.random() * ASSIGNABLE_PITCHES.length)];
@@ -588,6 +791,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     localPlayer.muzzleFlash = 0;
     localPlayer.damageFlash = 0;
     localPlayer.damageFlashColor = '#f97316';
+    localPlayer.portalFlash = 0;
     localPlayer.jamFlash = 0;
     localPlayer.gearBannerFlash = 1.0;
 
@@ -596,14 +800,13 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     remotePlayers = {};
     recentNoteBuffer = [];
     processedHitIds.clear();
+    processedAlertIds.clear();
     gamePhase = 'playing';
     lastFrameTime = performance.now();
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = isHostSession
-            ? `🛸 3D LASER TAG (HOST)! Shield: [${localPlayer.noteTag}] | Press @ to spawn 50 test bots | Hold C#: Forward • C/D: Turn`
-            : `🛸 3D LASER TAG! Shield: [${localPlayer.noteTag}] | Hold C#: Forward • C: Left • D: Right • Chords: Speed • Notes: Fire!`;
+        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${localPlayer.noteTag}] | Hold C#: Forward • C: Left • D: Right • Portals Teleport • Notes: Fire!`;
     }
 
     animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
@@ -629,7 +832,8 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
             score: 0,
             name: state.sessionStudentName || 'Player',
             avatar: avatar,
-            lastHitEvent: null
+            lastHitEvent: null,
+            spectatorAlert: null
         });
         if (window.firebaseOnDisconnect) {
             window.firebaseOnDisconnect(myPlayerRef).remove();
@@ -643,6 +847,19 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
             const myServerRecord = remotePlayers[localId];
             if (!myServerRecord || !localPlayer.isAlive) return;
 
+            // Check for incoming Spectator Radio Alert ("Watch Out", "Turn Left", "Turn Right")
+            const alertEvt = myServerRecord.spectatorAlert;
+            if (alertEvt && alertEvt.id && !processedAlertIds.has(alertEvt.id)) {
+                processedAlertIds.add(alertEvt.id);
+                incomingAlertBanner = {
+                    text: alertEvt.text,
+                    fromName: alertEvt.fromName || 'Teammate',
+                    until: performance.now() + 3400
+                };
+                playRadioAlertChime();
+            }
+
+            // Check for incoming Laser Hit Event
             const hitEvt = myServerRecord.lastHitEvent;
             if (hitEvt && hitEvt.id && !processedHitIds.has(hitEvt.id)) {
                 processedHitIds.add(hitEvt.id);
@@ -670,7 +887,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
                     }).catch(() => {});
 
                     if (statusEl) {
-                        statusEl.textContent = `💥 ELIMINATED by ${hitEvt.byName || 'Opponent'}! Drone Cam Activated — Tap any key to send reactions!`;
+                        statusEl.textContent = `💥 ELIMINATED! Click any player on the Spectator Map to send "Watch Out", "Turn Left", or "Turn Right"!`;
                     }
                 } else {
                     const oldX = localPlayer.x;
@@ -727,7 +944,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
                 }).catch(() => {});
             }
 
-            if (isHostSession && Object.keys(simulatedBots).length > 0) {
+            if (Object.keys(simulatedBots).length > 0) {
                 const botBatch = {};
                 for (const bot of Object.values(simulatedBots)) {
                     botBatch[`${bot.id}/x`] = Number(bot.x.toFixed(1));
@@ -737,6 +954,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
                     botBatch[`${bot.id}/hitsTaken`] = bot.hitsTaken;
                     botBatch[`${bot.id}/isAlive`] = bot.isAlive;
                     botBatch[`${bot.id}/isInvulnerable`] = Boolean(bot.isInvulnerable);
+                    botBatch[`${bot.id}/score`] = bot.score;
                 }
                 update(window.firebaseRef(window.firebaseDb, basePath), botBatch).catch(() => {});
             }
@@ -749,27 +967,23 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
 async function executeSingleNoteAction(pitchClass, bridge) {
     if (gamePhase !== 'playing' || !localPlayer.isAlive) return;
 
-    // C = Turn Left
     if (pitchClass === 'C') {
         localPlayer.turnDir = -1;
         setTimeout(() => { if (localPlayer.turnDir === -1) localPlayer.turnDir = 0; }, 220);
         return;
     }
 
-    // D = Turn Right
     if (pitchClass === 'D') {
         localPlayer.turnDir = 1;
         setTimeout(() => { if (localPlayer.turnDir === 1) localPlayer.turnDir = 0; }, 220);
         return;
     }
 
-    // C# = Forward Throttle (must be held/pulsed to move forward at locked chord speed)
     if (pitchClass === 'C#') {
         localPlayer.moveUntil = performance.now() + 220;
         return;
     }
 
-    // Any of the remaining 9 pitches fires a single laser shot
     playLaserPew();
     localPlayer.recoil = 1.0;
     localPlayer.muzzleFlash = 1.0;
@@ -952,7 +1166,6 @@ export async function handleLaserTagInput(noteStr, bridge) {
     }, 75);
 }
 
-// Geometric Raycaster: Supports Curved Cylindrical Walls, Triangular Prisms, Diamonds & Boxes
 function castRay(rayAngle) {
     const sin = Math.sin(rayAngle);
     const cos = Math.cos(rayAngle);
@@ -1006,7 +1219,6 @@ function castRay(rayAngle) {
         if (cellType > 0) {
             const theme = WALL_THEMES[cellType] || WALL_THEMES[1];
 
-            // True analytical ray-circle intersection for Curved Walls & Rotundas
             if (theme.shape === 'curved') {
                 const cx = (mapX + 0.5) * TILE_SIZE;
                 const cy = (mapY + 0.5) * TILE_SIZE;
@@ -1026,11 +1238,9 @@ function castRay(rayAngle) {
                         return { dist: t, side: 0, wallType: cellType, customShade: curveShade, stripeCoord: (normAngle + Math.PI) / (Math.PI * 2) };
                     }
                 }
-                // Ray grazed past the curved cylinder inside this tile -> continue tracing!
                 continue;
             }
 
-            // Triangular / Diagonal Prism Walls (Magenta NE Zone)
             if (theme.shape === 'triangle') {
                 const boxDist = (side === 0 ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY)) * TILE_SIZE;
                 const hitX = localPlayer.x + cos * boxDist;
@@ -1041,7 +1251,6 @@ function castRay(rayAngle) {
                 return { dist: Math.max(1, diagDist), side, wallType: cellType, customShade: side === 0 ? 1.0 : 0.72, stripeCoord: (localU + localV) * 0.5 };
             }
 
-            // Diamond Faceted Pylons (Cobalt SE Zone)
             if (theme.shape === 'diamond') {
                 const boxDist = (side === 0 ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY)) * TILE_SIZE;
                 const hitX = localPlayer.x + cos * boxDist;
@@ -1070,7 +1279,7 @@ function castRay(rayAngle) {
     };
 }
 
-function renderFirstPerson3D(ctx, W, H, dt) {
+function renderFirstPerson3D(ctx, W, H, dt, now) {
     const FOV = Math.PI / 3;
     const gearMult = localPlayer.currentGear.mult;
     const activelyMoving = localPlayer.isMovingForward && gearMult > 0;
@@ -1122,7 +1331,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.fillStyle = `rgb(${Math.floor(theme.r * shade)}, ${Math.floor(theme.g * shade)}, ${Math.floor(theme.b * shade)})`;
         ctx.fillRect(i * stripW, wallTop, stripW + 1, wallHeight);
 
-        // Architectural Pattern Accent per Shape Type
         const [tr, tg, tb] = theme.trim;
         const trimAlpha = Math.min(1, distShade * 1.15);
         ctx.fillStyle = `rgba(${tr}, ${tg}, ${tb}, ${trimAlpha})`;
@@ -1131,7 +1339,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.fillRect(i * stripW, wallTop, stripW + 1, trimH);
         ctx.fillRect(i * stripW, wallTop + wallHeight - trimH, stripW + 1, trimH);
 
-        // Triangular chevron stripe in Magenta NE Zone & Diamond vertical ribs in Cobalt SE Zone
         if (theme.shape === 'triangle') {
             const diagY = wallTop + wallHeight * (0.25 + 0.5 * Math.abs((hit.stripeCoord % 1) - 0.5));
             ctx.fillRect(i * stripW, diagY, stripW + 1, Math.max(2, trimH * 0.75));
@@ -1141,8 +1348,15 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         }
     }
 
-    // 3. Depth-Sorted 3D Opponents & Explosion Particles
+    // 3. Depth-Sorted 3D Sprites (Opponents + Glowing Quantum Portals + Explosion Particles)
     const sprites = [];
+
+    for (const portal of arenaPortals) {
+        const dx = portal.x - localPlayer.x;
+        const dy = portal.y - localPlayer.y;
+        const dist = Math.hypot(dx, dy);
+        sprites.push({ type: 'portal', portal, dx, dy, dist });
+    }
 
     for (const [id, opp] of Object.entries(remotePlayers)) {
         if (id === localId || !isPlayerActiveInRoom(opp)) continue;
@@ -1179,8 +1393,10 @@ function renderFirstPerson3D(ctx, W, H, dt) {
 
         const screenX = (0.5 + relAngle / FOV) * W;
 
-        if (sp.type === 'player') {
-            const visibleByLOS = hasLineOfSight(localPlayer.x, localPlayer.y, sp.opp.x, sp.opp.y);
+        if (sp.type === 'player' || sp.type === 'portal') {
+            const targetX = sp.type === 'player' ? sp.opp.x : sp.portal.x;
+            const targetY = sp.type === 'player' ? sp.opp.y : sp.portal.y;
+            const visibleByLOS = hasLineOfSight(localPlayer.x, localPlayer.y, targetX, targetY);
             if (!visibleByLOS) {
                 const centerRay = Math.floor(screenX / stripW);
                 const leftRay = Math.max(0, centerRay - 5);
@@ -1197,6 +1413,52 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         } else {
             const rayIdx = Math.floor(screenX / stripW);
             if (rayIdx >= 0 && rayIdx < numRays && zBuffer[rayIdx] < sp.dist) continue;
+        }
+
+        if (sp.type === 'portal') {
+            const portalH = Math.min(H * 1.15, Math.max(48, (TILE_SIZE * 0.95 * H) / sp.dist));
+            const portalW = portalH * 0.62;
+            const spin = now * 0.004;
+
+            ctx.save();
+            ctx.translate(screenX, horizon);
+
+            // Outer glowing energy vortex
+            ctx.shadowColor = sp.portal.color;
+            ctx.shadowBlur = 22;
+            ctx.strokeStyle = sp.portal.color;
+            ctx.lineWidth = Math.max(3, portalW * 0.09);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, portalW * 0.5, portalH * 0.48, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Rotating inner swirl rings
+            ctx.strokeStyle = sp.portal.secondaryColor;
+            ctx.lineWidth = Math.max(2, portalW * 0.05);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, portalW * 0.34, portalH * 0.34, spin, 0, Math.PI * 1.5);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.ellipse(0, 0, portalW * 0.20, portalH * 0.20, -spin * 1.4, 0, Math.PI * 1.5);
+            ctx.stroke();
+
+            // Core glow
+            ctx.fillStyle = sp.portal.color;
+            ctx.globalAlpha = 0.28 + 0.12 * Math.sin(now * 0.008);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, portalW * 0.44, portalH * 0.44, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+
+            // Floating Portal Sign
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = sp.portal.secondaryColor;
+            ctx.font = `900 ${Math.max(11, Math.floor(portalH * 0.14))}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillText(`🌀 ${sp.portal.name}`, 0, -portalH * 0.54);
+            ctx.restore();
+            continue;
         }
 
         if (sp.type === 'particle') {
@@ -1223,7 +1485,7 @@ function renderFirstPerson3D(ctx, W, H, dt) {
 
         ctx.save();
         if (isGhostRespawning) {
-            ctx.globalAlpha = 0.35 + 0.15 * Math.sin(performance.now() * 0.015);
+            ctx.globalAlpha = 0.35 + 0.15 * Math.sin(now * 0.015);
         } else if (isSneaky) {
             ctx.globalAlpha = 0.48;
         }
@@ -1319,7 +1581,7 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         localPlayer.jamFlash = Math.max(0, localPlayer.jamFlash - dt * 2.5);
         localPlayer.gearBannerFlash = Math.max(0, localPlayer.gearBannerFlash - dt * 0.6);
 
-        const localRespawning = performance.now() < localPlayer.invulnerableUntil;
+        const localRespawning = now < localPlayer.invulnerableUntil;
         const gunBobX = !activelyMoving ? 0 : Math.cos(localPlayer.bobPhase * 0.5) * (4 + gearMult * 2);
         const gunBobY = (!activelyMoving ? 0 : Math.abs(Math.sin(localPlayer.bobPhase * 0.5)) * (4 + gearMult * 2)) + localPlayer.recoil * 18;
         const gx = W * 0.72 + gunBobX;
@@ -1377,6 +1639,30 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.textAlign = 'center';
         ctx.fillText(`📍 ${myZone.label}`, 109, 30);
         ctx.restore();
+
+        // Incoming Spectator Alert Banner ("Watch Out", "Turn Left", "Turn Right")
+        if (incomingAlertBanner && now < incomingAlertBanner.until) {
+            const pulse = 0.75 + 0.25 * Math.sin(now * 0.02);
+            ctx.save();
+            ctx.globalAlpha = pulse;
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.roundRect(W / 2 - 195, 52, 390, 44, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#facc15';
+            ctx.font = '900 16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`📡 ${incomingAlertBanner.text.toUpperCase()}!`, W / 2, 73);
+
+            ctx.fillStyle = '#e2e8f0';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillText(`Drone Callout from ${incomingAlertBanner.fromName}`, W / 2, 89);
+            ctx.restore();
+        }
 
         if (localRespawning) {
             ctx.save();
@@ -1436,6 +1722,15 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         }
     }
 
+    if (localPlayer.portalFlash > 0) {
+        localPlayer.portalFlash = Math.max(0, localPlayer.portalFlash - dt * 1.8);
+        ctx.save();
+        ctx.globalAlpha = localPlayer.portalFlash * 0.55;
+        ctx.fillStyle = '#22d3ee';
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+    }
+
     if (localPlayer.damageFlash > 0) {
         localPlayer.damageFlash = Math.max(0, localPlayer.damageFlash - dt * 1.15);
         ctx.save();
@@ -1474,7 +1769,7 @@ function drawShapedMapTile(ctx, x, y, w, h, tileType) {
     }
 }
 
-function renderSpectatorOverheadView(ctx, W, H, dt) {
+function renderSpectatorOverheadView(ctx, W, H, dt, now) {
     const scale = Math.min(W / (MAP_COLS * TILE_SIZE), H / (MAP_ROWS * TILE_SIZE)) * 0.92;
     const offsetX = (W - MAP_COLS * TILE_SIZE * scale) / 2;
     const offsetY = (H - MAP_ROWS * TILE_SIZE * scale) / 2;
@@ -1500,6 +1795,24 @@ function renderSpectatorOverheadView(ctx, W, H, dt) {
         }
     }
 
+    // Render Animated Portals on Spectator Overhead Map
+    for (const portal of arenaPortals) {
+        const pulse = (Math.sin(now * 0.008) + 1) * 0.5;
+        ctx.save();
+        ctx.strokeStyle = portal.color;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(portal.x, portal.y, 26 + pulse * 14, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = portal.secondaryColor;
+        ctx.beginPath();
+        ctx.arc(portal.x, portal.y, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // Render Active Players on Spectator Map
     for (const [id, opp] of Object.entries(remotePlayers)) {
         if (!isPlayerActiveInRoom(opp)) continue;
         const oppColor = opp.isInvulnerable ? '#ffffff' : (opp.suitColor || getSuitColorForAvatar(opp.avatar, id));
@@ -1507,14 +1820,14 @@ function renderSpectatorOverheadView(ctx, W, H, dt) {
         if (opp.isInvulnerable) ctx.globalAlpha = 0.45;
         ctx.fillStyle = oppColor;
         ctx.beginPath();
-        ctx.arc(opp.x, opp.y, 22, 0, Math.PI * 2);
+        ctx.arc(opp.x, opp.y, 24, 0, Math.PI * 2);
         ctx.fill();
 
         const oppLives = opp.lives !== undefined ? Number(opp.lives) : 3;
         ctx.fillStyle = '#ffffff';
         ctx.font = '900 22px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`${opp.name} [${opp.noteTag}] ${'❤️'.repeat(oppLives)}`, opp.x, opp.y - 30);
+        ctx.fillText(`${opp.name} [${opp.noteTag}] ${'❤️'.repeat(oppLives)}`, opp.x, opp.y - 32);
         ctx.restore();
     }
 
@@ -1537,6 +1850,61 @@ function renderSpectatorOverheadView(ctx, W, H, dt) {
 
     ctx.restore();
 
+    // If Spectator clicked a player, draw interactive callout buttons ("Watch Out", "Turn Left", "Turn Right")
+    if (spectatorSelectedTarget) {
+        const targetObj = remotePlayers[spectatorSelectedTarget.id];
+        if (!targetObj || !isPlayerActiveInRoom(targetObj)) {
+            spectatorSelectedTarget = null;
+        } else {
+            const px = offsetX + targetObj.x * scale;
+            const py = offsetY + targetObj.y * scale;
+            spectatorSelectedTarget.screenX = px;
+            spectatorSelectedTarget.screenY = py;
+
+            const options = [
+                { msg: 'Watch Out', color: '#ef4444' },
+                { msg: 'Turn Left', color: '#38bdf8' },
+                { msg: 'Turn Right', color: '#22c55e' }
+            ];
+            const btnW = 94;
+            const btnH = 26;
+            const gap = 6;
+            const totalW = options.length * btnW + (options.length - 1) * gap;
+            const startX = Math.max(10, Math.min(W - totalW - 10, px - totalW / 2));
+            const startY = Math.max(54, py - 48);
+
+            // Highlight ring around selected player
+            ctx.save();
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(px, py, 16, 0, Math.PI * 2);
+            ctx.stroke();
+
+            spectatorSelectedTarget.buttons = [];
+            options.forEach((opt, idx) => {
+                const bx = startX + idx * (btnW + gap);
+                const by = startY;
+                spectatorSelectedTarget.buttons.push({ x: bx, y: by, w: btnW, h: btnH, msg: opt.msg });
+
+                ctx.fillStyle = '#0f172a';
+                ctx.strokeStyle = opt.color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(bx, by, btnW, btnH, 6);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = opt.color;
+                ctx.font = '900 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(opt.msg, bx + btnW / 2, by + btnH / 2);
+            });
+            ctx.restore();
+        }
+    }
+
     if (localPlayer.damageFlash > 0) {
         localPlayer.damageFlash = Math.max(0, localPlayer.damageFlash - dt * 0.85);
         ctx.save();
@@ -1546,14 +1914,14 @@ function renderSpectatorOverheadView(ctx, W, H, dt) {
         ctx.restore();
     }
 
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
-    ctx.fillRect(W / 2 - 220, 12, 440, 36);
-    ctx.strokeStyle = '#ef4444';
-    ctx.strokeRect(W / 2 - 220, 12, 440, 36);
-    ctx.fillStyle = '#ef4444';
-    ctx.font = '900 14px sans-serif';
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.90)';
+    ctx.fillRect(W / 2 - 270, 10, 540, 36);
+    ctx.strokeStyle = '#facc15';
+    ctx.strokeRect(W / 2 - 270, 10, 540, 36);
+    ctx.fillStyle = '#facc15';
+    ctx.font = '900 12.5px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('💥 ELIMINATED — SPECTATOR DRONE VIEW (FULL ARENA)', W / 2, 35);
+    ctx.fillText('🛰️ SPECTATOR DRONE — CLICK ANY PLAYER TO SEND "WATCH OUT", "TURN LEFT", OR "TURN RIGHT"', W / 2, 32);
 }
 
 function gameLoop(now, bridge) {
@@ -1573,7 +1941,7 @@ function gameLoop(now, bridge) {
     const W = canvas.width;
     const H = canvas.height;
 
-    if (isHostSession && Object.keys(simulatedBots).length > 0) {
+    if (Object.keys(simulatedBots).length > 0) {
         updateSimulatedBots(dt);
     }
 
@@ -1588,7 +1956,7 @@ function gameLoop(now, bridge) {
 
             const baseSpeed = 180;
             const speed = baseSpeed * speedMult;
-            const pad = 12; // Sleek collision radius so players glide smoothly past corners
+            const pad = 12;
             const dx = Math.cos(localPlayer.angle) * speed * dt;
             const dy = Math.sin(localPlayer.angle) * speed * dt;
 
@@ -1606,15 +1974,38 @@ function gameLoop(now, bridge) {
                 localPlayer.y += dy;
             }
         }
+
+        // Check Quantum Portal Teleportation
+        if (arenaPortals.length === 2 && now >= localPlayer.portalCooldownUntil) {
+            for (let pIdx = 0; pIdx < 2; pIdx++) {
+                const p = arenaPortals[pIdx];
+                if (Math.hypot(localPlayer.x - p.x, localPlayer.y - p.y) < 36) {
+                    const dest = arenaPortals[pIdx === 0 ? 1 : 0];
+                    spawn3DExplosion(localPlayer.x, localPlayer.y, p.color, 20);
+                    localPlayer.x = dest.x;
+                    localPlayer.y = dest.y;
+                    localPlayer.portalCooldownUntil = now + 2600;
+                    localPlayer.portalFlash = 1.0;
+                    playPortalWarpSound();
+                    spawn3DExplosion(dest.x, dest.y, dest.color, 24);
+
+                    const statusEl = document.getElementById('status');
+                    if (statusEl) {
+                        statusEl.textContent = `🌀 TELEPORTED via ${p.name} → ${dest.name}!`;
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     if (localPlayer.isAlive) {
-        renderFirstPerson3D(ctx, W, H, dt);
+        renderFirstPerson3D(ctx, W, H, dt, now);
     } else {
-        renderSpectatorOverheadView(ctx, W, H, dt);
+        renderSpectatorOverheadView(ctx, W, H, dt, now);
     }
 
-    // Bottom-Left Color & Shape Coded Minimap Overlay (46x46 Arena)
+    // Bottom-Left Color & Shape Coded Minimap Overlay (46x46 Arena + Portals)
     if (localPlayer.isAlive) {
         const mmSize = 162;
         const mmX = 12;
@@ -1642,6 +2033,23 @@ function gameLoop(now, bridge) {
                     );
                 }
             }
+        }
+
+        // Draw Pulsing Portals on Minimap
+        const pPulse = (Math.sin(now * 0.01) + 1) * 0.5;
+        for (const portal of arenaPortals) {
+            const px = mmX + portal.x * scaleX;
+            const py = mmY + portal.y * scaleY;
+            ctx.strokeStyle = portal.color;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(px, py, 3 + pPulse * 3, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = portal.secondaryColor;
+            ctx.beginPath();
+            ctx.arc(px, py, 2.2, 0, Math.PI * 2);
+            ctx.fill();
         }
 
         ctx.textAlign = 'center';
