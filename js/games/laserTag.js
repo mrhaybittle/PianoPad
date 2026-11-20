@@ -6,6 +6,19 @@ let roomUnsubscribe = null;
 let lastFrameTime = 0;
 let gamePhase = 'lobby'; // 'lobby' | 'playing' | 'spectating'
 
+// 7 Diatonic White-Key Triad Speed Gears
+const CHORD_GEARS = [
+    { id: 'C',    notes: ['C', 'E', 'G'], label: 'C MAJOR • PAUSED (0x)',      short: '⏸️ PAUSED',   mult: 0.00, color: '#facc15', stealth: false },
+    { id: 'Dm',   notes: ['D', 'F', 'A'], label: 'D MINOR • SNEAKY (0.35x)',   short: '🥷 SNEAKY',   mult: 0.35, color: '#a855f7', stealth: true  },
+    { id: 'Em',   notes: ['E', 'G', 'B'], label: 'E MINOR • CAUTIOUS (0.65x)', short: '🚶 CAUTIOUS', mult: 0.65, color: '#2dd4bf', stealth: false },
+    { id: 'F',    notes: ['F', 'A', 'C'], label: 'F MAJOR • NORMAL (1.0x)',    short: '🏃 NORMAL',   mult: 1.00, color: '#22c55e', stealth: false },
+    { id: 'G',    notes: ['G', 'B', 'D'], label: 'G MAJOR • BRISK (1.35x)',    short: '⚡ BRISK',    mult: 1.35, color: '#38bdf8', stealth: false },
+    { id: 'Am',   notes: ['A', 'C', 'E'], label: 'A MINOR • DASH (1.68x)',     short: '🔥 DASH',     mult: 1.68, color: '#fb923c', stealth: false },
+    { id: 'Bdim', notes: ['B', 'D', 'F'], label: 'B DIM • SPRINT X2 (2.0x)',   short: '🚀 SPRINT X2',mult: 2.00, color: '#ef4444', stealth: false }
+];
+
+const DEFAULT_GEAR = CHORD_GEARS[3]; // F Major (1.0x Normal Speed)
+
 // Local First-Person Player State
 const localPlayer = {
     x: 0,
@@ -15,21 +28,26 @@ const localPlayer = {
     lives: 3,
     hitsTaken: 0,
     isAlive: true,
-    isPaused: false,
+    currentGear: DEFAULT_GEAR,
+    invulnerableUntil: 0,
+    suitColor: '#38bdf8',
     score: 0,
     noteTag: 'F#',
     bobPhase: 0,
     recoil: 0,
     muzzleFlash: 0,
     damageFlash: 0,
-    damageFlashColor: '#f97316', // Orange on hits 1-2, Red on elimination
-    jamFlash: 0
+    damageFlashColor: '#f97316',
+    jamFlash: 0,
+    gearBannerFlash: 0
 };
 
-// Chord & Anti-Spam Buffer
-let recentNoteBuffer = []; // [{ pitchClass, time }]
+// Hit Event Deduplication & Chord/Anti-Spam Buffer
+let processedHitIds = new Set();
+let recentNoteBuffer = [];
 let pendingActionTimer = null;
-let lastChordToggleTime = 0;
+let lastChordTriggerTime = 0;
+let lastTriggeredChordId = '';
 
 // Remote Players, Beams & Explosions
 let remotePlayers = {};
@@ -39,7 +57,7 @@ let activeRoomCode = null;
 let localId = null;
 let zBuffer = [];
 
-// ~100% Larger 46x46 Procedural Sci-Fi Maze + 4 Open Courtyards
+// ~100% Larger 46x46 Procedural Sci-Fi Maze + 5 Open Courtyards
 const TILE_SIZE = 64;
 const MAP_COLS = 46;
 const MAP_ROWS = 46;
@@ -47,7 +65,6 @@ const MAP_ROWS = 46;
 function buildLargeArenaMap() {
     const grid = Array.from({ length: MAP_ROWS }, () => Array(MAP_COLS).fill(1));
 
-    // Carve winding maze corridors on odd coordinates
     function carve(r, c) {
         grid[r][c] = 0;
         const dirs = [[0, 2], [0, -2], [2, 0], [-2, 0]].sort(() => Math.random() - 0.5);
@@ -62,12 +79,11 @@ function buildLargeArenaMap() {
     }
     carve(1, 1);
 
-    // Add extra loops/doorways & color-code maze walls (type 2 = Neon Violet)
     for (let r = 2; r < MAP_ROWS - 2; r++) {
         for (let c = 2; c < MAP_COLS - 2; c++) {
             if (grid[r][c] === 1) {
                 if (Math.random() < 0.22) {
-                    grid[r][c] = 0; // Loops so players never hit dead-end traps
+                    grid[r][c] = 0;
                 } else {
                     grid[r][c] = 2;
                 }
@@ -75,13 +91,12 @@ function buildLargeArenaMap() {
         }
     }
 
-    // Carve 4 Open Courtyards with Emerald Pillars (type 3) for multi-player firefights
     const rooms = [
         { r0: 7, r1: 14, c0: 7, c1: 14 },
         { r0: 7, r1: 14, c0: 31, c1: 38 },
         { r0: 31, r1: 38, c0: 7, c1: 14 },
         { r0: 31, r1: 38, c0: 31, c1: 38 },
-        { r0: 19, r1: 26, c0: 19, c1: 26 } // Central Hub Arena
+        { r0: 19, r1: 26, c0: 19, c1: 26 }
     ];
 
     for (const rm of rooms) {
@@ -90,7 +105,6 @@ function buildLargeArenaMap() {
                 grid[r][c] = 0;
             }
         }
-        // Symmetrical cover pillars inside each open arena
         grid[rm.r0 + 2][rm.c0 + 2] = 3;
         grid[rm.r0 + 2][rm.c1 - 2] = 3;
         grid[rm.r1 - 2][rm.c0 + 2] = 3;
@@ -100,7 +114,6 @@ function buildLargeArenaMap() {
     return grid;
 }
 
-// Deterministic seeded map per room code so all students share the exact same 46x46 layout
 let ARENA_MAP = buildLargeArenaMap();
 
 function generateSeededArena(roomCode) {
@@ -118,13 +131,37 @@ function generateSeededArena(roomCode) {
     Math.random = origRandom;
 }
 
-// 10 assignable pitches (C and D are reserved for Left/Right turning!)
+// 10 assignable pitches (C and D are reserved for Left/Right turning)
 const ASSIGNABLE_PITCHES = ['C#', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+const SUIT_PALETTE = [
+    '#38bdf8', '#22c55e', '#f472b6', '#a855f7', '#fb923c',
+    '#2dd4bf', '#facc15', '#818cf8', '#fb7185', '#34d399'
+];
+
+function getSuitColorForAvatar(avatarStr, idStr) {
+    const src = `${avatarStr || ''}_${idStr || ''}`;
+    let hash = 0;
+    for (let i = 0; i < src.length; i++) {
+        hash = (hash * 33 + src.charCodeAt(i)) >>> 0;
+    }
+    return SUIT_PALETTE[hash % SUIT_PALETTE.length];
+}
 
 function normalizePitchClass(noteStr) {
     const clean = (noteStr || '').toUpperCase().trim().replace(/[0-9]/g, '');
     const flatMap = { 'DB': 'C#', 'EB': 'D#', 'GB': 'F#', 'AB': 'G#', 'BB': 'A#' };
     return flatMap[clean] || clean;
+}
+
+function matchDiatonicTriad(pitchSet) {
+    if (pitchSet.size !== 3) return null;
+    for (const gear of CHORD_GEARS) {
+        if (gear.notes.every(n => pitchSet.has(n))) {
+            return gear;
+        }
+    }
+    return null;
 }
 
 function isPlayerActiveInRoom(p) {
@@ -168,21 +205,22 @@ function playJamBuzzSound() {
     } catch (e) {}
 }
 
-function playBrakeToggleSound(paused) {
+function playGearShiftSound(speedMult) {
     try {
         initAudio();
         const now = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(paused ? 540 : 320, now);
-        osc.frequency.exponentialRampToValueAtTime(paused ? 320 : 620, now + 0.14);
-        gain.gain.setValueAtTime(0.13, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.type = 'triangle';
+        const baseFreq = 260 + speedMult * 220;
+        osc.frequency.setValueAtTime(baseFreq * 0.85, now);
+        osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.25, now + 0.14);
+        gain.gain.setValueAtTime(0.14, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         osc.start(now);
-        osc.stop(now + 0.16);
+        osc.stop(now + 0.17);
     } catch (e) {}
 }
 
@@ -264,18 +302,28 @@ function ensureCanvasSized(canvas) {
     }
 }
 
-function getSafeSpawnPoint() {
-    for (let attempt = 0; attempt < 900; attempt++) {
+function getSafeSpawnPoint(avoidX = null, avoidY = null) {
+    let best = { x: TILE_SIZE * 1.5, y: TILE_SIZE * 1.5 };
+    let bestDist = -1;
+
+    for (let attempt = 0; attempt < 150; attempt++) {
         const c = 2 + Math.floor(Math.random() * (MAP_COLS - 4));
         const r = 2 + Math.floor(Math.random() * (MAP_ROWS - 4));
         if (ARENA_MAP[r] && ARENA_MAP[r][c] === 0) {
-            return {
-                x: c * TILE_SIZE + TILE_SIZE / 2,
-                y: r * TILE_SIZE + TILE_SIZE / 2
-            };
+            const candX = c * TILE_SIZE + TILE_SIZE / 2;
+            const candY = r * TILE_SIZE + TILE_SIZE / 2;
+            if (avoidX === null || avoidY === null) {
+                return { x: candX, y: candY };
+            }
+            const d = Math.hypot(candX - avoidX, candY - avoidY);
+            if (d > bestDist) {
+                bestDist = d;
+                best = { x: candX, y: candY };
+            }
+            if (d > TILE_SIZE * 14) return best;
         }
     }
-    return { x: TILE_SIZE * 1.5, y: TILE_SIZE * 1.5 };
+    return best;
 }
 
 export function stopLaserTag() {
@@ -290,6 +338,7 @@ export function stopLaserTag() {
     syncIntervalId = null;
     pendingActionTimer = null;
     recentNoteBuffer = [];
+    processedHitIds.clear();
     gamePhase = 'lobby';
 }
 
@@ -320,9 +369,9 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
         return;
     }
 
-    // Build identical 46x46 arena on all devices sharing this room code
     generateSeededArena(activeRoomCode);
 
+    const avatar = state.sessionStudentAvatar || '🏃';
     const spawn = getSafeSpawnPoint();
     localPlayer.x = spawn.x;
     localPlayer.y = spawn.y;
@@ -331,7 +380,9 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
     localPlayer.lives = 3;
     localPlayer.hitsTaken = 0;
     localPlayer.isAlive = true;
-    localPlayer.isPaused = false;
+    localPlayer.currentGear = DEFAULT_GEAR; // F Major = Normal Speed
+    localPlayer.invulnerableUntil = 0;
+    localPlayer.suitColor = getSuitColorForAvatar(avatar, localId);
     localPlayer.score = 0;
     localPlayer.noteTag = ASSIGNABLE_PITCHES[Math.floor(Math.random() * ASSIGNABLE_PITCHES.length)];
     localPlayer.bobPhase = 0;
@@ -340,17 +391,19 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
     localPlayer.damageFlash = 0;
     localPlayer.damageFlashColor = '#f97316';
     localPlayer.jamFlash = 0;
+    localPlayer.gearBannerFlash = 1.0;
 
     activeBeams = [];
     worldExplosions = [];
     remotePlayers = {};
     recentNoteBuffer = [];
+    processedHitIds.clear();
     gamePhase = 'playing';
     lastFrameTime = performance.now();
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = `🛸 3D LASER TAG (3 LIVES)! Shield: [${localPlayer.noteTag}] | C: Left • D: Right • C Major (C+E+G): Toggle Pause • Single Note: Shoot!`;
+        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${localPlayer.noteTag}] | Chords = Speed (C: Pause → Dm: Sneak → F: Normal → Bdim: Sprint 2x) | C: Left • D: Right`;
     }
 
     animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
@@ -368,11 +421,15 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
             lives: 3,
             hitsTaken: 0,
             isAlive: true,
-            isPaused: false,
+            gearId: localPlayer.currentGear.id,
+            isStealth: localPlayer.currentGear.stealth,
+            isInvulnerable: false,
+            suitColor: localPlayer.suitColor,
             noteTag: localPlayer.noteTag,
             score: 0,
             name: state.sessionStudentName || 'Player',
-            avatar: state.sessionStudentAvatar || '🏃'
+            avatar: avatar,
+            lastHitEvent: null
         });
         if (window.firebaseOnDisconnect) {
             window.firebaseOnDisconnect(myPlayerRef).remove();
@@ -386,32 +443,60 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
             const myServerRecord = remotePlayers[localId];
             if (!myServerRecord || !localPlayer.isAlive) return;
 
-            const serverHits = Number(myServerRecord.hitsTaken || 0);
-            if (serverHits > localPlayer.hitsTaken) {
-                localPlayer.hitsTaken = serverHits;
-                localPlayer.lives = Math.max(0, 3 - serverHits);
+            const hitEvt = myServerRecord.lastHitEvent;
+            if (hitEvt && hitEvt.id && !processedHitIds.has(hitEvt.id)) {
+                processedHitIds.add(hitEvt.id);
 
-                if (localPlayer.lives <= 0 || myServerRecord.isAlive === false) {
-                    // 3rd Hit -> RED ELIMINATION FLASH & SPECTATOR DRONE CAM
+                if (performance.now() < localPlayer.invulnerableUntil) return;
+
+                localPlayer.hitsTaken += 1;
+                localPlayer.lives = Math.max(0, 3 - localPlayer.hitsTaken);
+
+                if (localPlayer.lives <= 0) {
                     localPlayer.lives = 0;
                     localPlayer.isAlive = false;
-                    localPlayer.isPaused = false;
                     localPlayer.damageFlash = 1.0;
                     localPlayer.damageFlashColor = '#ef4444';
-                    gamePhase = 'spectating';
                     playExplosionSound();
-                    spawn3DExplosion(localPlayer.x, localPlayer.y, '#ef4444', 38);
+                    spawn3DExplosion(localPlayer.x, localPlayer.y, '#ef4444', 42);
+                    gamePhase = 'spectating';
+
+                    update(myPlayerRef, {
+                        lives: 0,
+                        hitsTaken: localPlayer.hitsTaken,
+                        isAlive: false,
+                        isInvulnerable: false
+                    }).catch(() => {});
+
                     if (statusEl) {
-                        statusEl.textContent = '💥 ELIMINATED (0 Lives Left)! Drone Cam Activated — Tap any key to send reactions!';
+                        statusEl.textContent = `💥 ELIMINATED by ${hitEvt.byName || 'Opponent'}! Drone Cam Activated — Tap any key to send reactions!`;
                     }
                 } else {
-                    // 1st or 2nd Hit -> BRIGHT ORANGE SHIELD DAMAGE FLASH
+                    const oldX = localPlayer.x;
+                    const oldY = localPlayer.y;
+                    spawn3DExplosion(oldX, oldY, '#f97316', 24);
+
+                    const newSpawn = getSafeSpawnPoint(oldX, oldY);
+                    localPlayer.x = newSpawn.x;
+                    localPlayer.y = newSpawn.y;
+                    localPlayer.angle = Math.random() * Math.PI * 2;
+                    localPlayer.invulnerableUntil = performance.now() + 3500;
                     localPlayer.damageFlash = 1.0;
                     localPlayer.damageFlashColor = '#f97316';
                     playShieldHitSound();
-                    spawn3DExplosion(localPlayer.x, localPlayer.y, '#f97316', 18);
+
+                    update(myPlayerRef, {
+                        x: Number(localPlayer.x.toFixed(1)),
+                        y: Number(localPlayer.y.toFixed(1)),
+                        angle: Number(localPlayer.angle.toFixed(3)),
+                        lives: localPlayer.lives,
+                        hitsTaken: localPlayer.hitsTaken,
+                        isAlive: true,
+                        isInvulnerable: true
+                    }).catch(() => {});
+
                     if (statusEl) {
-                        statusEl.textContent = `⚠️ SHIELD HIT! ${localPlayer.lives} ${localPlayer.lives === 1 ? 'LIFE' : 'LIVES'} REMAINING!`;
+                        statusEl.textContent = `⚠️ HIT BY ${hitEvt.byName || 'Opponent'}! Respawned (${localPlayer.lives} ${localPlayer.lives === 1 ? 'LIFE' : 'LIVES'} LEFT) — Ghost Shield active for 3.5s!`;
                     }
                 }
             }
@@ -419,6 +504,7 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
 
         syncIntervalId = setInterval(() => {
             if (bridge.getActiveMiniGame() !== 'laserTag' || !localPlayer.isAlive) return;
+            const isInvuln = performance.now() < localPlayer.invulnerableUntil;
             update(myPlayerRef, {
                 x: Number(localPlayer.x.toFixed(1)),
                 y: Number(localPlayer.y.toFixed(1)),
@@ -426,11 +512,14 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
                 lives: localPlayer.lives,
                 hitsTaken: localPlayer.hitsTaken,
                 isAlive: localPlayer.isAlive,
-                isPaused: localPlayer.isPaused,
+                gearId: localPlayer.currentGear.id,
+                isStealth: localPlayer.currentGear.stealth,
+                isInvulnerable: isInvuln,
+                suitColor: localPlayer.suitColor,
                 noteTag: localPlayer.noteTag,
                 score: localPlayer.score,
                 name: state.sessionStudentName || 'Player',
-                avatar: state.sessionStudentAvatar || '🏃'
+                avatar: avatar
             }).catch(() => {});
         }, 100);
     } catch (err) {
@@ -438,24 +527,24 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
     }
 }
 
-async function executeSingleNoteAction(pitchClass) {
+async function executeSingleNoteAction(pitchClass, bridge) {
     if (gamePhase !== 'playing' || !localPlayer.isAlive) return;
 
-    // C = Turn Left (works even while paused so player can rotate 360°)
+    // C = Turn Left (works in any speed gear including C Major Pause)
     if (pitchClass === 'C') {
         localPlayer.turnDir = -1;
         setTimeout(() => { if (localPlayer.turnDir === -1) localPlayer.turnDir = 0; }, 220);
         return;
     }
 
-    // D = Turn Right (works even while paused so player can rotate 360°)
+    // D = Turn Right (works in any speed gear including C Major Pause)
     if (pitchClass === 'D') {
         localPlayer.turnDir = 1;
         setTimeout(() => { if (localPlayer.turnDir === 1) localPlayer.turnDir = 0; }, 220);
         return;
     }
 
-    // Any of the other 10 pitches fires a single laser shot!
+    // Any of the other 10 pitches fires a single laser shot
     playLaserPew();
     localPlayer.recoil = 1.0;
     localPlayer.muzzleFlash = 1.0;
@@ -465,7 +554,7 @@ async function executeSingleNoteAction(pitchClass) {
     let bestDist = 1400;
 
     for (const [id, opp] of Object.entries(remotePlayers)) {
-        if (id === localId || !isPlayerActiveInRoom(opp)) continue;
+        if (id === localId || !isPlayerActiveInRoom(opp) || opp.isInvulnerable) continue;
         if (normalizePitchClass(opp.noteTag) !== pitchClass) continue;
 
         const dx = opp.x - localPlayer.x;
@@ -491,10 +580,9 @@ async function executeSingleNoteAction(pitchClass) {
         const targetScreenX = (0.5 + (bestTarget.relAngle / FOV)) * W;
         const targetScreenY = H * 0.5;
 
-        const currentHits = Number(bestTarget.opp.hitsTaken || 0);
-        const nextHits = currentHits + 1;
-        const remainingLives = Math.max(0, 3 - nextHits);
-        const eliminated = remainingLives <= 0;
+        const currentLives = bestTarget.opp.lives !== undefined ? Number(bestTarget.opp.lives) : 3;
+        const predictedRemaining = Math.max(0, currentLives - 1);
+        const eliminated = predictedRemaining <= 0;
 
         activeBeams.push({
             endX: targetScreenX,
@@ -510,18 +598,24 @@ async function executeSingleNoteAction(pitchClass) {
             localPlayer.score += 150;
         } else {
             playShieldHitSound();
-            spawn3DExplosion(bestTarget.opp.x, bestTarget.opp.y, '#f97316', 18);
+            spawn3DExplosion(bestTarget.opp.x, bestTarget.opp.y, '#f97316', 20);
             localPlayer.score += 50;
         }
+
+        const state = bridge && bridge.getState ? bridge.getState() : {};
+        const hitEventId = `${localId}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
         try {
             const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
             const basePath = `pianopad_tournaments/${activeRoomCode}/lasertag`;
             await update(window.firebaseRef(window.firebaseDb, `${basePath}/${bestTarget.id}`), {
-                hitsTaken: nextHits,
-                lives: remainingLives,
-                isAlive: !eliminated,
-                lastHitBy: localId
+                lastHitEvent: {
+                    id: hitEventId,
+                    byId: localId,
+                    byName: state.sessionStudentName || 'Opponent',
+                    pitch: pitchClass,
+                    timestamp: Date.now()
+                }
             });
         } catch (e) {}
 
@@ -529,13 +623,13 @@ async function executeSingleNoteAction(pitchClass) {
         if (statusEl) {
             statusEl.textContent = eliminated
                 ? `💥 ELIMINATED ${bestTarget.opp.name || 'Opponent'} with [${pitchClass}]! (+150 pts • Score: ${localPlayer.score})`
-                : `🔥 HIT ${bestTarget.opp.name || 'Opponent'} (${remainingLives} ${remainingLives === 1 ? 'life' : 'lives'} left)! (+50 pts • Score: ${localPlayer.score})`;
+                : `🔥 HIT ${bestTarget.opp.name || 'Opponent'} (${predictedRemaining} ${predictedRemaining === 1 ? 'life' : 'lives'} left) — they respawned! (+50 pts)`;
         }
     } else {
         activeBeams.push({
             endX: W * 0.5,
             endY: H * 0.5,
-            color: '#38bdf8',
+            color: localPlayer.suitColor || '#38bdf8',
             glow: '#0284c7',
             life: 1.0
         });
@@ -554,39 +648,56 @@ export async function handleLaserTagInput(noteStr, bridge) {
     const pitchClass = normalizePitchClass(noteStr);
     if (!pitchClass) return;
 
-    // Record note in short 85ms chord/spam buffer
     recentNoteBuffer.push({ pitchClass, time: now });
-    recentNoteBuffer = recentNoteBuffer.filter(item => (now - item.time) <= 85);
+    recentNoteBuffer = recentNoteBuffer.filter(item => (now - item.time) <= 95);
 
     const distinctPitches = new Set(recentNoteBuffer.map(item => item.pitchClass));
 
-    // Check if C Major Triad (C + E + G) was pressed together -> Toggle Pause On/Off!
-    if (distinctPitches.size === 3 && distinctPitches.has('C') && distinctPitches.has('E') && distinctPitches.has('G')) {
+    // Check if the 3 notes match any of the 7 white-key diatonic triads (C, Dm, Em, F, G, Am, Bdim)
+    const matchedGear = matchDiatonicTriad(distinctPitches);
+    if (matchedGear) {
         if (pendingActionTimer !== null) {
             clearTimeout(pendingActionTimer);
             pendingActionTimer = null;
         }
         recentNoteBuffer = [];
 
-        // Debounce 450ms so holding the chord doesn't rapidly flicker pause on/off
-        if ((now - lastChordToggleTime) > 450) {
-            lastChordToggleTime = now;
-            localPlayer.isPaused = !localPlayer.isPaused;
+        // Debounce 350ms so holding the chord doesn't re-trigger audio repeatedly
+        if ((now - lastChordTriggerTime) > 350 || lastTriggeredChordId !== matchedGear.id) {
+            lastChordTriggerTime = now;
+            lastTriggeredChordId = matchedGear.id;
+
+            localPlayer.currentGear = matchedGear;
             localPlayer.turnDir = 0;
-            playBrakeEngageSound();
+            localPlayer.gearBannerFlash = 1.0;
+            playGearShiftSound(matchedGear.mult);
 
             const statusEl = document.getElementById('status');
             if (statusEl) {
-                statusEl.textContent = localPlayer.isPaused
-                    ? `⏸️ PAUSED IN PLACE! Use C & D to rotate 360° and snipe — play C Major again to resume moving!`
-                    : `▶️ MOVEMENT RESUMED!`;
+                statusEl.textContent = `🎛️ GEAR SHIFT: ${matchedGear.label} — Use C/D to turn, single note to shoot!`;
             }
         }
         return;
     }
 
-    // Anti-Spam Protection: If 2 or more notes are played simultaneously (and it's not C Major), JAM the laser!
+    // Anti-Spam Protection: 2+ simultaneous notes that do NOT form a valid white-key triad jam the blaster
     if (distinctPitches.size >= 2) {
+        // Allow up to 3 notes within 95ms if all 3 are valid white keys that could complete a triad
+        const WHITE_KEYS = new Set(['C', 'D', 'E', 'F', 'G', 'A', 'B']);
+        const allWhite = Array.from(distinctPitches).every(n => WHITE_KEYS.has(n));
+
+        if (allWhite && distinctPitches.size === 2) {
+            // Wait briefly for the 3rd note of the triad before declaring a jam
+            if (pendingActionTimer !== null) clearTimeout(pendingActionTimer);
+            pendingActionTimer = setTimeout(() => {
+                pendingActionTimer = null;
+                localPlayer.jamFlash = 1.0;
+                playJamBuzzSound();
+                recentNoteBuffer = [];
+            }, 85);
+            return;
+        }
+
         if (pendingActionTimer !== null) {
             clearTimeout(pendingActionTimer);
             pendingActionTimer = null;
@@ -595,30 +706,26 @@ export async function handleLaserTagInput(noteStr, bridge) {
         playJamBuzzSound();
         const statusEl = document.getElementById('status');
         if (statusEl) {
-            statusEl.textContent = `⚠️ MULTI-NOTE SPAM BLOCKED! Play ONE single note at a time to fire!`;
+            statusEl.textContent = `⚠️ MULTI-NOTE SPAM BLOCKED! Play 1 note to shoot, or a white-key triad (C, Dm, Em, F, G, Am, Bdim) for speed!`;
         }
         return;
     }
 
-    // Wait 65ms before executing single-note action so simultaneous chord/spam presses are caught cleanly
+    // Wait 75ms before executing single-note action so 3-note triads are caught cleanly
     if (pendingActionTimer !== null) {
         clearTimeout(pendingActionTimer);
     }
     pendingActionTimer = setTimeout(() => {
         pendingActionTimer = null;
         const checkNow = performance.now();
-        const activeNotes = recentNoteBuffer.filter(item => (checkNow - item.time) <= 95);
+        const activeNotes = recentNoteBuffer.filter(item => (checkNow - item.time) <= 105);
         const uniqueNow = new Set(activeNotes.map(item => item.pitchClass));
         if (uniqueNow.size === 1) {
             const singlePitch = Array.from(uniqueNow)[0];
             recentNoteBuffer = [];
-            executeSingleNoteAction(singlePitch);
+            executeSingleNoteAction(singlePitch, bridge);
         }
-    }, 65);
-}
-
-function playBrakeEngageSound() {
-    playBrakeToggleSound(localPlayer.isPaused);
+    }, 75);
 }
 
 function castRay(rayAngle) {
@@ -677,7 +784,9 @@ function castRay(rayAngle) {
 
 function renderFirstPerson3D(ctx, W, H, dt) {
     const FOV = Math.PI / 3;
-    const bobOffset = (localPlayer.isAlive && !localPlayer.isPaused) ? Math.sin(localPlayer.bobPhase) * 4 : 0;
+    const gearMult = localPlayer.currentGear.mult;
+    const bobAmp = gearMult === 0 ? 0 : Math.min(7, 2.5 + gearMult * 2.2);
+    const bobOffset = localPlayer.isAlive ? Math.sin(localPlayer.bobPhase) * bobAmp : 0;
     const horizon = H * 0.52 + bobOffset;
 
     // 1. Sci-Fi Ceiling & Floor
@@ -814,18 +923,28 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         const spriteW = spriteH * 0.65;
         const topY = horizon - spriteH * 0.42;
 
+        const isGhostRespawning = Boolean(sp.opp.isInvulnerable);
+        const isSneaky = Boolean(sp.opp.isStealth);
+        const oppSuitColor = sp.opp.suitColor || getSuitColorForAvatar(sp.opp.avatar, sp.id);
+
         ctx.save();
-        ctx.fillStyle = sp.opp.isPaused ? '#0f172a' : '#1e293b';
-        ctx.strokeStyle = sp.opp.isPaused ? '#facc15' : '#38bdf8';
-        ctx.lineWidth = Math.max(2, spriteW * 0.06);
+        if (isGhostRespawning) {
+            ctx.globalAlpha = 0.35 + 0.15 * Math.sin(performance.now() * 0.015);
+        } else if (isSneaky) {
+            ctx.globalAlpha = 0.48; // D Minor Sneaky mode cloaking effect
+        }
+
+        ctx.fillStyle = isGhostRespawning ? '#f8fafc' : '#0f172a';
+        ctx.strokeStyle = isGhostRespawning ? '#ffffff' : oppSuitColor;
+        ctx.lineWidth = Math.max(2.5, spriteW * 0.07);
         ctx.beginPath();
         ctx.roundRect(screenX - spriteW / 2, topY + spriteH * 0.24, spriteW, spriteH * 0.72, 10);
         ctx.fill();
         ctx.stroke();
 
-        ctx.fillStyle = '#ef4444';
+        ctx.fillStyle = isGhostRespawning ? '#e2e8f0' : oppSuitColor;
         ctx.beginPath();
-        ctx.arc(screenX, topY + spriteH * 0.54, spriteW * 0.18, 0, Math.PI * 2);
+        ctx.arc(screenX, topY + spriteH * 0.54, spriteW * 0.20, 0, Math.PI * 2);
         ctx.fill();
 
         const avatarSize = Math.max(18, Math.floor(spriteH * 0.30));
@@ -834,15 +953,14 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.textBaseline = 'middle';
         ctx.fillText(sp.opp.avatar || '🤖', screenX, topY + spriteH * 0.12);
 
-        // High-Contrast Target Pitch Sign Above Opponent
         const pitchLabel = normalizePitchClass(sp.opp.noteTag || 'F#');
         const badgeW = Math.max(68, spriteW * 1.15);
         const badgeH = Math.max(28, spriteH * 0.28);
         const badgeY = Math.max(12, topY - badgeH - 12);
 
-        ctx.shadowColor = '#facc15';
+        ctx.shadowColor = isGhostRespawning ? '#ffffff' : '#facc15';
         ctx.shadowBlur = 12;
-        ctx.fillStyle = '#facc15';
+        ctx.fillStyle = isGhostRespawning ? '#f1f5f9' : '#facc15';
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -851,7 +969,7 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.stroke();
         ctx.shadowBlur = 0;
 
-        ctx.fillStyle = '#facc15';
+        ctx.fillStyle = isGhostRespawning ? '#f1f5f9' : '#facc15';
         ctx.beginPath();
         ctx.moveTo(screenX - 6, badgeY + badgeH);
         ctx.lineTo(screenX + 6, badgeY + badgeH);
@@ -861,12 +979,11 @@ function renderFirstPerson3D(ctx, W, H, dt) {
 
         ctx.fillStyle = '#000000';
         ctx.font = `900 ${Math.max(16, Math.floor(badgeH * 0.68))}px sans-serif`;
-        ctx.fillText(`🎯 ${pitchLabel}`, screenX, badgeY + badgeH * 0.54);
+        ctx.fillText(isGhostRespawning ? `👻 ${pitchLabel}` : `🎯 ${pitchLabel}`, screenX, badgeY + badgeH * 0.54);
 
-        // Opponent Hearts + Nameplate below suit
         const oppLives = sp.opp.lives !== undefined ? Number(sp.opp.lives) : 3;
         const oppHearts = '❤️'.repeat(Math.max(0, oppLives));
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = isGhostRespawning ? '#e2e8f0' : '#ffffff';
         ctx.font = `800 ${Math.max(11, Math.floor(spriteH * 0.13))}px sans-serif`;
         ctx.fillText(`${sp.opp.name || 'Player'} ${oppHearts}`, screenX, topY + spriteH + 12);
         ctx.restore();
@@ -906,15 +1023,21 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         localPlayer.recoil = Math.max(0, localPlayer.recoil - dt * 5);
         localPlayer.muzzleFlash = Math.max(0, localPlayer.muzzleFlash - dt * 8);
         localPlayer.jamFlash = Math.max(0, localPlayer.jamFlash - dt * 2.5);
+        localPlayer.gearBannerFlash = Math.max(0, localPlayer.gearBannerFlash - dt * 0.6);
 
-        const gunBobX = localPlayer.isPaused ? 0 : Math.cos(localPlayer.bobPhase * 0.5) * 6;
-        const gunBobY = (localPlayer.isPaused ? 0 : Math.abs(Math.sin(localPlayer.bobPhase * 0.5)) * 6) + localPlayer.recoil * 18;
+        const localRespawning = performance.now() < localPlayer.invulnerableUntil;
+        const isPaused = localPlayer.currentGear.mult === 0;
+        const gunBobX = isPaused ? 0 : Math.cos(localPlayer.bobPhase * 0.5) * (4 + gearMult * 2);
+        const gunBobY = (isPaused ? 0 : Math.abs(Math.sin(localPlayer.bobPhase * 0.5)) * (4 + gearMult * 2)) + localPlayer.recoil * 18;
         const gx = W * 0.72 + gunBobX;
         const gy = H * 0.78 + gunBobY;
 
         ctx.save();
-        ctx.fillStyle = '#1e293b';
-        ctx.strokeStyle = localPlayer.jamFlash > 0 ? '#ef4444' : (localPlayer.isPaused ? '#facc15' : '#38bdf8');
+        if (localRespawning) ctx.globalAlpha = 0.45;
+        else if (localPlayer.currentGear.stealth) ctx.globalAlpha = 0.55;
+
+        ctx.fillStyle = localRespawning ? '#e2e8f0' : '#1e293b';
+        ctx.strokeStyle = localRespawning ? '#ffffff' : (localPlayer.jamFlash > 0 ? '#ef4444' : localPlayer.suitColor);
         ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.moveTo(gx - 22, gy + 70);
@@ -925,13 +1048,13 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.fill();
         ctx.stroke();
 
-        ctx.fillStyle = localPlayer.jamFlash > 0 ? '#ef4444' : (localPlayer.isPaused ? '#facc15' : '#22c55e');
+        ctx.fillStyle = localRespawning ? '#ffffff' : (localPlayer.jamFlash > 0 ? '#ef4444' : localPlayer.currentGear.color);
         ctx.fillRect(gx - 4, gy + 4, 12, 8);
         ctx.fillRect(gx - 6, gy + 20, 16, 8);
 
         if (localPlayer.muzzleFlash > 0) {
             ctx.globalAlpha = localPlayer.muzzleFlash;
-            ctx.fillStyle = '#38bdf8';
+            ctx.fillStyle = localPlayer.suitColor;
             ctx.beginPath();
             ctx.arc(gx + 2, gy - 18, 22 * localPlayer.muzzleFlash, 0, Math.PI * 2);
             ctx.fill();
@@ -939,54 +1062,77 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.restore();
 
         // Center Crosshair
-        ctx.strokeStyle = localPlayer.isPaused ? 'rgba(250, 204, 21, 0.9)' : 'rgba(56, 189, 248, 0.75)';
+        ctx.strokeStyle = localPlayer.currentGear.color;
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(W / 2, H / 2, 14, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.fillStyle = localPlayer.isPaused ? '#facc15' : '#22c55e';
+        ctx.fillStyle = localPlayer.suitColor;
         ctx.fillRect(W / 2 - 2, H / 2 - 2, 4, 4);
 
-        // Tactical Pause Banner (when toggled with C Major)
-        if (localPlayer.isPaused) {
+        if (localRespawning) {
             ctx.save();
-            ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
-            ctx.strokeStyle = '#facc15';
+            ctx.fillStyle = 'rgba(248, 250, 252, 0.14)';
+            ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+            ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.roundRect(W / 2 - 185, H - 56, 370, 34, 8);
+            ctx.roundRect(W / 2 - 165, 14, 330, 32, 8);
             ctx.fill();
             ctx.stroke();
-
-            ctx.fillStyle = '#facc15';
+            ctx.fillStyle = '#ffffff';
             ctx.font = '900 12px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('⏸️ PAUSED — C/D: Look 360° • Play C Major Again to Move', W / 2, H - 35);
+            ctx.fillText('👻 GHOST RESPAWN SHIELD ACTIVE', W / 2, 34);
             ctx.restore();
-        } else if (localPlayer.jamFlash > 0) {
+        }
+
+        // Bottom-Center Chord Speed Gear HUD Pill
+        const g = localPlayer.currentGear;
+        ctx.save();
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
+        ctx.strokeStyle = g.color;
+        ctx.lineWidth = localPlayer.gearBannerFlash > 0 ? 3 : 1.8;
+        ctx.beginPath();
+        ctx.roundRect(W / 2 - 175, H - 56, 350, 36, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = g.color;
+        ctx.font = '900 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`CHORD GEAR: ${g.label}`, W / 2, H - 39);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 9.5px sans-serif';
+        ctx.fillText('C:0x • Dm:0.35x • Em:0.65x • F:1x • G:1.35x • Am:1.68x • Bdim:2x', W / 2, H - 26);
+        ctx.restore();
+
+        if (localPlayer.jamFlash > 0) {
             ctx.save();
             ctx.globalAlpha = Math.min(1, localPlayer.jamFlash * 1.4);
-            ctx.fillStyle = 'rgba(127, 29, 29, 0.9)';
+            ctx.fillStyle = 'rgba(127, 29, 29, 0.92)';
             ctx.strokeStyle = '#ef4444';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.roundRect(W / 2 - 150, H - 56, 300, 34, 8);
+            ctx.roundRect(W / 2 - 155, H - 96, 310, 30, 8);
             ctx.fill();
             ctx.stroke();
 
             ctx.fillStyle = '#ffffff';
-            ctx.font = '900 12px sans-serif';
+            ctx.font = '900 11.5px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('⚠️ BLASTER JAMMED! Play 1 Note at a Time', W / 2, H - 35);
+            ctx.fillText('⚠️ BLASTER JAMMED! Play 1 Note or White Triad', W / 2, H - 77);
             ctx.restore();
         }
     }
 
     // Orange Shield Flash (Hits 1 & 2) or Red Elimination Flash (3rd Hit)
     if (localPlayer.damageFlash > 0) {
-        localPlayer.damageFlash = Math.max(0, localPlayer.damageFlash - dt * 1.3);
+        localPlayer.damageFlash = Math.max(0, localPlayer.damageFlash - dt * 1.15);
         ctx.save();
-        ctx.globalAlpha = localPlayer.damageFlash * 0.65;
+        ctx.globalAlpha = localPlayer.damageFlash * 0.72;
         ctx.fillStyle = localPlayer.damageFlashColor;
         ctx.fillRect(0, 0, W, H);
         ctx.restore();
@@ -1022,7 +1168,10 @@ function renderSpectatorOverheadView(ctx, W, H, dt) {
 
     for (const [id, opp] of Object.entries(remotePlayers)) {
         if (!isPlayerActiveInRoom(opp)) continue;
-        ctx.fillStyle = '#facc15';
+        const oppColor = opp.isInvulnerable ? '#ffffff' : (opp.suitColor || getSuitColorForAvatar(opp.avatar, id));
+        ctx.save();
+        if (opp.isInvulnerable) ctx.globalAlpha = 0.45;
+        ctx.fillStyle = oppColor;
         ctx.beginPath();
         ctx.arc(opp.x, opp.y, 22, 0, Math.PI * 2);
         ctx.fill();
@@ -1032,6 +1181,7 @@ function renderSpectatorOverheadView(ctx, W, H, dt) {
         ctx.font = '900 22px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(`${opp.name} [${opp.noteTag}] ${'❤️'.repeat(oppLives)}`, opp.x, opp.y - 30);
+        ctx.restore();
     }
 
     for (let i = worldExplosions.length - 1; i >= 0; i--) {
@@ -1053,11 +1203,10 @@ function renderSpectatorOverheadView(ctx, W, H, dt) {
 
     ctx.restore();
 
-    // Red Elimination Screen Glow fades out over Spectator Drone View
     if (localPlayer.damageFlash > 0) {
-        localPlayer.damageFlash = Math.max(0, localPlayer.damageFlash - dt * 0.9);
+        localPlayer.damageFlash = Math.max(0, localPlayer.damageFlash - dt * 0.85);
         ctx.save();
-        ctx.globalAlpha = localPlayer.damageFlash * 0.72;
+        ctx.globalAlpha = localPlayer.damageFlash * 0.78;
         ctx.fillStyle = '#ef4444';
         ctx.fillRect(0, 0, W, H);
         ctx.restore();
@@ -1091,14 +1240,15 @@ function gameLoop(now, bridge) {
     const H = canvas.height;
 
     if (localPlayer.isAlive) {
-        // Player can rotate 360° with C & D even while paused!
+        // Player can rotate 360° with C & D in any chord gear (including C Major 0x pause)
         localPlayer.angle += localPlayer.turnDir * 3.1 * dt;
 
-        // Only advance forward when NOT paused
-        if (!localPlayer.isPaused) {
-            localPlayer.bobPhase += dt * 9.5;
+        const speedMult = localPlayer.currentGear.mult;
+        if (speedMult > 0) {
+            localPlayer.bobPhase += dt * (6.5 + speedMult * 5.0);
 
-            const speed = 155;
+            const baseSpeed = 155;
+            const speed = baseSpeed * speedMult;
             const pad = 16;
             const dx = Math.cos(localPlayer.angle) * speed * dt;
             const dy = Math.sin(localPlayer.angle) * speed * dt;
@@ -1154,8 +1304,12 @@ function gameLoop(now, bridge) {
             if (id === localId || !isPlayerActiveInRoom(opp)) continue;
             const ox = mmX + opp.x * scaleX;
             const oy = mmY + opp.y * scaleY;
+            const oppColor = opp.isInvulnerable ? '#ffffff' : (opp.suitColor || getSuitColorForAvatar(opp.avatar, id));
 
-            ctx.fillStyle = '#ef4444';
+            ctx.save();
+            if (opp.isInvulnerable) ctx.globalAlpha = 0.45;
+            else if (opp.isStealth) ctx.globalAlpha = 0.55;
+            ctx.fillStyle = oppColor;
             ctx.beginPath();
             ctx.arc(ox, oy, 4.5, 0, Math.PI * 2);
             ctx.fill();
@@ -1166,41 +1320,43 @@ function gameLoop(now, bridge) {
             ctx.fillStyle = '#facc15';
             ctx.font = 'bold 7.5px sans-serif';
             ctx.fillText(normalizePitchClass(opp.noteTag || ''), ox, oy - 7);
+            ctx.restore();
         }
 
         const lx = mmX + localPlayer.x * scaleX;
         const ly = mmY + localPlayer.y * scaleY;
-        ctx.strokeStyle = localPlayer.isPaused ? '#facc15' : '#22c55e';
+        const myColor = (now < localPlayer.invulnerableUntil) ? '#ffffff' : localPlayer.suitColor;
+        ctx.strokeStyle = localPlayer.currentGear.color;
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(lx, ly);
         ctx.lineTo(lx + Math.cos(localPlayer.angle) * 14, ly + Math.sin(localPlayer.angle) * 14);
         ctx.stroke();
 
-        ctx.fillStyle = localPlayer.isPaused ? '#facc15' : '#22c55e';
+        ctx.fillStyle = myColor;
         ctx.beginPath();
         ctx.arc(lx, ly, 4, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // Top-Right HUD (Lives, Score, Shield Note, Controls)
+    // Top-Right HUD
     const activePlayers = Object.values(remotePlayers).filter(isPlayerActiveInRoom);
     const aliveCount = Math.max(1, activePlayers.length);
     const heartsDisplay = '❤️'.repeat(localPlayer.lives) + '🖤'.repeat(Math.max(0, 3 - localPlayer.lives));
 
     ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
-    ctx.fillRect(W - 335, 10, 325, 56);
-    ctx.strokeStyle = localPlayer.isPaused ? '#facc15' : '#22c55e';
-    ctx.strokeRect(W - 335, 10, 325, 56);
+    ctx.fillRect(W - 345, 10, 335, 56);
+    ctx.strokeStyle = localPlayer.currentGear.color;
+    ctx.strokeRect(W - 345, 10, 335, 56);
 
-    ctx.fillStyle = localPlayer.isPaused ? '#facc15' : '#22c55e';
+    ctx.fillStyle = localPlayer.currentGear.color;
     ctx.font = '900 13px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText(`${heartsDisplay} | SCORE: ${localPlayer.score} | ALIVE: ${aliveCount} | TAG: ${localPlayer.noteTag}`, W - 18, 30);
 
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(`C: Left • D: Right • C Major: Pause • 1 Note: Fire`, W - 18, 50);
+    ctx.fillText(`C: Left • D: Right • White Triads: Speed • 1 Note: Fire`, W - 18, 50);
 
     animFrameId = requestAnimationFrame((t) => gameLoop(t, bridge));
 }
