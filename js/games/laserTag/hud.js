@@ -12,7 +12,8 @@ import {
     ARENA_MAP,
     isInsideEmeraldHub,
     getZoneInfoForCoords,
-    getCurrentStormRadius
+    getCurrentStormRadius,
+    castRay
 } from './arena.js';
 import { getSuitColorForAvatar, normalizePitchClass, isPlayerActiveInRoom } from './utils.js';
 
@@ -154,6 +155,96 @@ export function renderProximityThreatRadar(ctx, W, H, now) {
     ctx.restore();
 }
 
+function renderSniperScopeOverlay(ctx, W, H, now) {
+    const lp = gameState.localPlayer;
+    const cx = W / 2;
+    const cy = H / 2;
+    const scopeRadius = Math.min(W, H) * 0.44;
+    const secsLeft = Math.max(0, (lp.sniperUntil - now) / 1000).toFixed(1);
+
+    ctx.save();
+
+    // 1. Darkened Vignette Outside Optic Lens
+    const grad = ctx.createRadialGradient(cx, cy, scopeRadius * 0.78, cx, cy, Math.max(W, H) * 0.72);
+    grad.addColorStop(0, 'rgba(2, 6, 23, 0)');
+    grad.addColorStop(0.55, 'rgba(2, 6, 23, 0.72)');
+    grad.addColorStop(1, 'rgba(2, 6, 23, 0.96)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // 2. Outer Lens Ring & Rangefinder Hairlines
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, scopeRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.42)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - scopeRadius, cy);
+    ctx.lineTo(cx + scopeRadius, cy);
+    ctx.moveTo(cx, cy - scopeRadius);
+    ctx.lineTo(cx, cy + scopeRadius);
+    ctx.stroke();
+
+    // Mil-Dot Range Ticks
+    for (let step = 1; step <= 4; step++) {
+        const offset = (scopeRadius / 5) * step;
+        const tick = step % 2 === 0 ? 7 : 4;
+        ctx.beginPath();
+        ctx.moveTo(cx - offset, cy - tick); ctx.lineTo(cx - offset, cy + tick);
+        ctx.moveTo(cx + offset, cy - tick); ctx.lineTo(cx + offset, cy + tick);
+        ctx.moveTo(cx - tick, cy - offset); ctx.lineTo(cx + tick, cy - offset);
+        ctx.moveTo(cx - tick, cy + offset); ctx.lineTo(cx + tick, cy + offset);
+        ctx.stroke();
+    }
+
+    // Center Precision Diamond
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 8);
+    ctx.lineTo(cx + 8, cy);
+    ctx.lineTo(cx, cy + 8);
+    ctx.lineTo(cx - 8, cy);
+    ctx.closePath();
+    ctx.stroke();
+
+    // 3. Live Laser Rangefinder Distance & Target Lock Check
+    const wallHit = castRay(lp.angle);
+    let rangeMeters = Math.round(wallHit.dist / 8);
+    let lockedTarget = null;
+
+    for (const [id, opp] of Object.entries(gameState.remotePlayers)) {
+        if (id === gameState.localId || !isPlayerActiveInRoom(opp) || opp.isInvulnerable) continue;
+        const dx = opp.x - lp.x;
+        const dy = opp.y - lp.y;
+        const d = Math.hypot(dx, dy);
+        if (d > 2600 || d > wallHit.dist) continue;
+        let rel = Math.atan2(dy, dx) - lp.angle;
+        while (rel > Math.PI) rel -= Math.PI * 2;
+        while (rel < -Math.PI) rel += Math.PI * 2;
+        if (Math.abs(rel) <= 0.14) {
+            rangeMeters = Math.round(d / 8);
+            lockedTarget = opp;
+            break;
+        }
+    }
+
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
+    ctx.fillRect(cx - 115, cy + scopeRadius - 34, 230, 22);
+    ctx.fillStyle = lockedTarget ? '#facc15' : '#38bdf8';
+    ctx.font = '900 10.5px sans-serif';
+    ctx.textAlign = 'center';
+    const lockText = lockedTarget
+        ? `🎯 LOCKED [${normalizePitchClass(lockedTarget.noteTag)}] • ${rangeMeters}m`
+        : `🔭 2.0x OPTIC • RNG: ${rangeMeters}m • ${secsLeft}s`;
+    ctx.fillText(lockText, cx, cy + scopeRadius - 19);
+
+    ctx.restore();
+}
+
 export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoosted) {
     const lp = gameState.localPlayer;
 
@@ -163,6 +254,11 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
 
         const localRespawning = now < lp.invulnerableUntil;
         const isEmpScrambled = now < lp.empScrambledUntil;
+
+        // 2x Sniper Scope Optic Overlay (when sus4 active)
+        if (now < (lp.sniperUntil || 0)) {
+            renderSniperScopeOverlay(ctx, W, H, now);
+        }
 
         // Center Reticle + Hit-Marker Crosshair Snap
         ctx.strokeStyle = lp.currentGear.color;
@@ -313,6 +409,9 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
         const comboTag = (lp.comboCount >= 2 && now < lp.comboExpiresAt) ? ' • 🌈 2x COMBO!' : '';
         const throttleText = activelyMoving ? ` • 🟢 C# THRUST${boostTag}${comboTag}` : ` • ⚪ HOLD C#${boostTag}${comboTag}`;
 
+        const snpStr = now < (lp.sniperUntil || 0)
+            ? `Sniper:${Math.ceil((lp.sniperUntil - now) / 1000)}s`
+            : (now >= (lp.sniperReadyAt || 0) ? 'sus4:🔭' : `Sniper:${Math.ceil((lp.sniperReadyAt - now) / 1000)}s`);
         const ocStr = now >= lp.overchargeReadyAt ? 'Cmaj7/Fmaj7:⚡' : `Maj7:${Math.ceil((lp.overchargeReadyAt - now) / 1000)}s`;
         const empStr = now >= lp.empReadyAt ? 'Bdim7:🌀' : `EMP:${Math.ceil((lp.empReadyAt - now) / 1000)}s`;
         const decStr = now >= lp.decoyReadyAt ? 'Dm7/Em7:👥' : `Decoy:${Math.ceil((lp.decoyReadyAt - now) / 1000)}s`;
@@ -322,7 +421,7 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
         ctx.strokeStyle = isBoosted ? '#22c55e' : g.color;
         ctx.lineWidth = (lp.gearBannerFlash > 0 || isBoosted) ? 3 : 1.8;
         ctx.beginPath();
-        ctx.roundRect(W / 2 - 230, H - 56, 460, 38, 8);
+        ctx.roundRect(W / 2 - 250, H - 56, 500, 38, 8);
         ctx.fill();
         ctx.stroke();
 
@@ -333,7 +432,7 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
 
         ctx.fillStyle = '#cbd5e1';
         ctx.font = 'bold 9.5px sans-serif';
-        ctx.fillText(`C2+C4:180° • ${ocStr} • ${empStr} • ${decStr}`, W / 2, H - 25);
+        ctx.fillText(`C2+C4:180° • ${snpStr} • ${ocStr} • ${empStr} • ${decStr}`, W / 2, H - 25);
         ctx.restore();
 
         if (lp.jamFlash > 0) {
