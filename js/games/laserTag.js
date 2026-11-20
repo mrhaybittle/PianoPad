@@ -1,5 +1,21 @@
 import { initAudio, audioCtx } from '../audio.js';
-
+import {
+    CHORD_GEARS,
+    OVERCHARGE_CHORDS,
+    EMP_CHORD_NOTES,
+    DECOY_CHORDS,
+    DEFAULT_GEAR,
+    WALL_THEMES,
+    TILE_SIZE,
+    MAP_COLS,
+    MAP_ROWS,
+    ARENA_CENTER_X,
+    ARENA_CENTER_Y,
+    ASSIGNABLE_PITCHES,
+    SUIT_PALETTE,
+    AUSSIE_2026_TEEN_BOYS,
+    BOT_AVATARS
+} from './laserTag/constants.js';
 let animFrameId = null;
 let syncIntervalId = null;
 let roomUnsubscribe = null;
