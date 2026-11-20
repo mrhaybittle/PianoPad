@@ -4,7 +4,8 @@ let animFrameId = null;
 let syncIntervalId = null;
 let roomUnsubscribe = null;
 let lastFrameTime = 0;
-let gamePhase = 'lobby'; // 'lobby' | 'playing' | 'spectating' | 'podium'
+let matchStartTime = 0;
+let gamePhase = 'lobby'; // 'lobby' | 'playing' | 'spectating'
 
 // 7 Diatonic White-Key Triad Speed Gears (locked in until another chord is played)
 const CHORD_GEARS = [
@@ -17,10 +18,19 @@ const CHORD_GEARS = [
     { id: 'Bdim', notes: ['B', 'D', 'F'], label: 'B DIM • SPRINT X2 (2.0x)',   short: '🚀 SPRINT X2',   mult: 2.00, color: '#ef4444', stealth: false }
 ];
 
-// 4-Note Major 7th Overcharge Chords (Wide-cone shockwave ignoring target pitch, 15s cooldown)
+// 4-Note Overcharge Chords (Wide-cone shockwave ignoring target pitch, 15s cooldown)
 const OVERCHARGE_CHORDS = [
     { id: 'Cmaj7', notes: ['C', 'E', 'G', 'B'], label: 'C MAJ7 OVERCHARGE' },
     { id: 'Fmaj7', notes: ['F', 'A', 'C', 'E'], label: 'F MAJ7 OVERCHARGE' }
+];
+
+// Feature #2: Diminished 7th EMP Chord (B + D + F + G#)
+const EMP_CHORD_NOTES = ['B', 'D', 'F', 'G#'];
+
+// Feature #3: Minor 7th Decoy Chords (Dm7 or Em7)
+const DECOY_CHORDS = [
+    { id: 'Dm7', notes: ['D', 'F', 'A', 'C'], label: 'Dm7 HOLO-DECOY' },
+    { id: 'Em7', notes: ['E', 'G', 'B', 'D'], label: 'Em7 HOLO-DECOY' }
 ];
 
 const DEFAULT_GEAR = CHORD_GEARS[3]; // F Major (1.0x Normal Speed)
@@ -52,6 +62,15 @@ const localPlayer = {
     portalCooldownUntil: 0,
     boostUntil: 0,
     overchargeReadyAt: 0,
+    empReadyAt: 0,
+    decoyReadyAt: 0,
+    empScrambledUntil: 0,
+    hubScoreTimer: 0,
+    stormTickTimer: 0,
+    comboCount: 0,
+    comboExpiresAt: 0,
+    lastComboTargetId: null,
+    revengeTargetId: null,
     hitMarkerUntil: 0,
     hitMarkerElim: false,
     suitColor: '#38bdf8',
@@ -71,9 +90,11 @@ const localPlayer = {
 let arenaPortals = [];    // 2 Random Quantum Portals
 let speedBoostPads = [];  // 4 Avenue Speed Boost Pads
 let medKitNodes = [];     // 3 Outer Courtyard Heart Pickups
+let activeDecoys = [];    // Feature #3: Running Holo-Decoys
+let empWaveRings = [];    // Feature #2: Expanding EMP Visual Rings
 
 // Kill Feed & Podium Tracking
-let killFeedEntries = []; // [{ id, text, color, expiresAt }]
+let killFeedEntries = [];
 let seenFeedIds = new Set();
 let maxPeakPlayers = 1;
 
@@ -83,12 +104,14 @@ let incomingAlertBanner = null;
 let processedAlertIds = new Set();
 let spectatorClickListenerAttached = false;
 
-// Hit Event Deduplication, Chord/Anti-Spam Buffer & "TEST" Typing Buffer
+// Hit/EMP Deduplication, Chord/Anti-Spam Buffer & "TEST" Typing Buffer
 let processedHitIds = new Set();
-let recentNoteBuffer = [];
+let processedEmpIds = new Set();
+let recentNoteBuffer = []; // [{ pitchClass, octave, time }]
 let pendingActionTimer = null;
 let lastChordTriggerTime = 0;
 let lastTriggeredChordId = '';
+let lastOctaveFlipTime = 0;
 let typedCheatBuffer = '';
 
 // Remote Players, Beams, Explosions & Combat Bots
@@ -117,6 +140,8 @@ const BOT_AVATARS = ['🏃', '🏄', '🚴', '🦊', '🐯', '🤖', '🛸', '�
 const TILE_SIZE = 64;
 const MAP_COLS = 46;
 const MAP_ROWS = 46;
+const ARENA_CENTER_X = (MAP_COLS * TILE_SIZE) / 2;
+const ARENA_CENTER_Y = (MAP_ROWS * TILE_SIZE) / 2;
 
 function buildFastPacedArenaMap() {
     const grid = Array.from({ length: MAP_ROWS }, () => Array(MAP_COLS).fill(0));
@@ -184,7 +209,7 @@ function buildFastPacedArenaMap() {
     ];
     for (const [r, c] of swWalls) grid[r][c] = 4;
 
-    // 5. COBALT SE SECTOR: Diamond & Cross Pillar Grid (type 5)
+    // 5. COBALT SE SECTOR: Mirror-Faceted Diamond Pillar Grid (type 5)
     const placeDiamond = (cr, cc) => {
         grid[cr - 1][cc] = 5;
         grid[cr][cc - 1] = 5;
@@ -226,7 +251,6 @@ function buildFastPacedArenaMap() {
 let ARENA_MAP = buildFastPacedArenaMap();
 
 function setupArenaFeatures() {
-    // 1. Two Randomly Generated Linked Quantum Portals
     const p1 = getSafeSpawnPoint();
     const p2 = getSafeSpawnPoint(p1.x, p1.y);
     arenaPortals = [
@@ -234,7 +258,6 @@ function setupArenaFeatures() {
         { id: 'portal_omega', name: 'OMEGA PORTAL', x: p2.x, y: p2.y, color: '#d946ef', secondaryColor: '#f5d0fe' }
     ];
 
-    // 2. Four Avenue Speed Boost Pads (North, South, West, East highways)
     speedBoostPads = [
         { id: 'boost_n', x: 22.5 * TILE_SIZE, y: 11.5 * TILE_SIZE, angle: Math.PI * 0.5 },
         { id: 'boost_s', x: 22.5 * TILE_SIZE, y: 33.5 * TILE_SIZE, angle: -Math.PI * 0.5 },
@@ -242,11 +265,10 @@ function setupArenaFeatures() {
         { id: 'boost_e', x: 33.5 * TILE_SIZE, y: 22.5 * TILE_SIZE, angle: Math.PI }
     ];
 
-    // 3. Three Floating Med-Kit / Shield Recharge Nodes in Outer Zones
     const medCoords = [
-        { r: 6, c: 10 },  // Gold NW outer ring
-        { r: 10, c: 35 }, // Magenta NE center
-        { r: 35, c: 10 }  // Coral SW center
+        { r: 6, c: 10 },
+        { r: 10, c: 35 },
+        { r: 35, c: 10 }
     ];
     medKitNodes = medCoords.map((pt, idx) => ({
         id: `med_${idx}`,
@@ -261,18 +283,34 @@ function generateSeededArena(roomCode) {
     setupArenaFeatures();
 }
 
-function getZoneInfoForCoords(wx, wy) {
+function isInsideEmeraldHub(wx, wy) {
     const col = Math.floor(wx / TILE_SIZE);
     const row = Math.floor(wy / TILE_SIZE);
-    if (row >= 18 && row <= 27 && col >= 18 && col <= 27) {
-        return { label: 'EMERALD HUB', color: '#34d399' };
+    return row >= 18 && row <= 27 && col >= 18 && col <= 27;
+}
+
+function getZoneInfoForCoords(wx, wy) {
+    if (isInsideEmeraldHub(wx, wy)) {
+        return { label: 'EMERALD HUB (+5/s)', color: '#34d399' };
     }
     const midR = Math.floor(MAP_ROWS / 2);
     const midC = Math.floor(MAP_COLS / 2);
+    const col = Math.floor(wx / TILE_SIZE);
+    const row = Math.floor(wy / TILE_SIZE);
     if (row < midR && col < midC) return { label: 'GOLD CURVED NW', color: '#facc15' };
     if (row < midR && col >= midC) return { label: 'MAGENTA TRIANGLE NE', color: '#e879f9' };
     if (row >= midR && col < midC) return { label: 'CORAL CHICANE SW', color: '#fb923c' };
-    return { label: 'COBALT DIAMOND SE', color: '#60a5fa' };
+    return { label: 'COBALT MIRROR SE', color: '#60a5fa' };
+}
+
+// Feature #6: Dynamic Battle Royale Storm Safe Radius (shrinks after 90s)
+function getCurrentStormRadius(now) {
+    const elapsedSec = (now - matchStartTime) / 1000;
+    const maxRadius = Math.hypot(ARENA_CENTER_X, ARENA_CENTER_Y);
+    if (elapsedSec <= 90) return maxRadius;
+    const shrinkProgress = Math.min(1, (elapsedSec - 90) / 120); // Shrinks over 2 mins down to Emerald Hub
+    const minRadius = TILE_SIZE * 5.2;
+    return maxRadius - shrinkProgress * (maxRadius - minRadius);
 }
 
 function addKillFeedEntry(id, text, color = '#facc15') {
@@ -304,10 +342,20 @@ function getSuitColorForAvatar(avatarStr, idStr) {
     return SUIT_PALETTE[hash % SUIT_PALETTE.length];
 }
 
-function normalizePitchClass(noteStr) {
-    const clean = (noteStr || '').toUpperCase().trim().replace(/[0-9]/g, '');
+function parseNoteDetails(noteStr) {
+    const clean = (noteStr || '').toUpperCase().trim();
+    const match = clean.match(/^([A-G][#B]?)([0-9]*)$/);
+    const rawPitch = match ? match[1] : clean.replace(/[0-9]/g, '');
+    const octave = (match && match[2]) ? parseInt(match[2], 10) : 4;
     const flatMap = { 'DB': 'C#', 'EB': 'D#', 'GB': 'F#', 'AB': 'G#', 'BB': 'A#' };
-    return flatMap[clean] || clean;
+    return {
+        pitchClass: flatMap[rawPitch] || rawPitch,
+        octave
+    };
+}
+
+function normalizePitchClass(noteStr) {
+    return parseNoteDetails(noteStr).pitchClass;
 }
 
 function matchDiatonicTriad(pitchSet) {
@@ -325,6 +373,21 @@ function matchOverchargeChord(pitchSet) {
     for (const oc of OVERCHARGE_CHORDS) {
         if (oc.notes.every(n => pitchSet.has(n))) {
             return oc;
+        }
+    }
+    return null;
+}
+
+function matchEmpChord(pitchSet) {
+    if (pitchSet.size !== 4) return false;
+    return EMP_CHORD_NOTES.every(n => pitchSet.has(n));
+}
+
+function matchDecoyChord(pitchSet) {
+    if (pitchSet.size !== 4) return null;
+    for (const dc of DECOY_CHORDS) {
+        if (dc.notes.every(n => pitchSet.has(n))) {
+            return dc;
         }
     }
     return null;
@@ -353,6 +416,61 @@ function playLaserPew() {
         gain.connect(audioCtx.destination);
         osc.start(now);
         osc.stop(now + 0.18);
+    } catch (e) {}
+}
+
+function playEmpPulseSound() {
+    try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(680, now);
+        osc.frequency.exponentialRampToValueAtTime(48, now + 0.45);
+        gain.gain.setValueAtTime(0.24, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.49);
+    } catch (e) {}
+}
+
+function playDecoySpawnSound() {
+    try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(660, now + 0.08);
+        osc.frequency.setValueAtTime(880, now + 0.16);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.29);
+    } catch (e) {}
+}
+
+function playOctaveSnapSound() {
+    try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(360, now);
+        osc.frequency.exponentialRampToValueAtTime(720, now + 0.11);
+        gain.gain.setValueAtTime(0.16, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.13);
     } catch (e) {}
 }
 
@@ -842,9 +960,12 @@ export function stopLaserTag() {
     recentNoteBuffer = [];
     typedCheatBuffer = '';
     processedHitIds.clear();
+    processedEmpIds.clear();
     processedAlertIds.clear();
     seenFeedIds.clear();
     killFeedEntries = [];
+    activeDecoys = [];
+    empWaveRings = [];
     simulatedBots = {};
     spectatorSelectedTarget = null;
     incomingAlertBanner = null;
@@ -922,6 +1043,15 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     localPlayer.portalCooldownUntil = 0;
     localPlayer.boostUntil = 0;
     localPlayer.overchargeReadyAt = 0;
+    localPlayer.empReadyAt = 0;
+    localPlayer.decoyReadyAt = 0;
+    localPlayer.empScrambledUntil = 0;
+    localPlayer.hubScoreTimer = 0;
+    localPlayer.stormTickTimer = 0;
+    localPlayer.comboCount = 0;
+    localPlayer.comboExpiresAt = 0;
+    localPlayer.lastComboTargetId = null;
+    localPlayer.revengeTargetId = null;
     localPlayer.hitMarkerUntil = 0;
     localPlayer.hitMarkerElim = false;
     localPlayer.suitColor = getSuitColorForAvatar(avatar, localId);
@@ -938,19 +1068,23 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
 
     activeBeams = [];
     worldExplosions = [];
+    activeDecoys = [];
+    empWaveRings = [];
     remotePlayers = {};
     recentNoteBuffer = [];
     processedHitIds.clear();
+    processedEmpIds.clear();
     processedAlertIds.clear();
     seenFeedIds.clear();
     killFeedEntries = [];
     maxPeakPlayers = 1;
     gamePhase = 'playing';
     lastFrameTime = performance.now();
+    matchStartTime = lastFrameTime;
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${localPlayer.noteTag}] | Hold C#: Forward • C/D: Turn • Triads: Speed • Cmaj7/Fmaj7: Shockwave!`;
+        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${localPlayer.noteTag}] | C#: Move • C/D: Turn • C2+C4: 180° Flip • Bdim7: EMP • Dm7/Em7: Decoy!`;
     }
 
     animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
@@ -978,6 +1112,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
             name: state.sessionStudentName || 'Player',
             avatar: avatar,
             lastHitEvent: null,
+            lastEmpEvent: null,
             spectatorAlert: null
         });
         if (window.firebaseOnDisconnect) {
@@ -989,7 +1124,6 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
             const data = snapshot.val() || {};
             remotePlayers = data;
 
-            // Populate Kill Feed from all players' latest hit events
             for (const [pid, pObj] of Object.entries(remotePlayers)) {
                 if (pObj && pObj.lastHitEvent && pObj.lastHitEvent.id) {
                     const ev = pObj.lastHitEvent;
@@ -1005,6 +1139,19 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
             const myServerRecord = remotePlayers[localId];
             if (!myServerRecord || !localPlayer.isAlive) return;
 
+            // Feature #2: Check for incoming Bdim7 EMP Pulse
+            const empEvt = myServerRecord.lastEmpEvent;
+            if (empEvt && empEvt.id && !processedEmpIds.has(empEvt.id)) {
+                processedEmpIds.add(empEvt.id);
+                localPlayer.empScrambledUntil = performance.now() + 3500;
+                localPlayer.currentGear = CHORD_GEARS[1]; // Forced into 0.35x Sneaky slow gear
+                playEmpPulseSound();
+                if (statusEl) {
+                    statusEl.textContent = `⚡ EMP SCRAMBLED by ${empEvt.byName || 'Opponent'}! Slowed to 0.35x for 3.5s!`;
+                }
+            }
+
+            // Spectator Callout Alert
             const alertEvt = myServerRecord.spectatorAlert;
             if (alertEvt && alertEvt.id && !processedAlertIds.has(alertEvt.id)) {
                 processedAlertIds.add(alertEvt.id);
@@ -1016,11 +1163,17 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
                 playRadioAlertChime();
             }
 
+            // Incoming Laser Hit Event
             const hitEvt = myServerRecord.lastHitEvent;
             if (hitEvt && hitEvt.id && !processedHitIds.has(hitEvt.id)) {
                 processedHitIds.add(hitEvt.id);
 
                 if (performance.now() < localPlayer.invulnerableUntil) return;
+
+                // Feature #5: Mark attacker as Revenge Bounty Target
+                if (hitEvt.byId) {
+                    localPlayer.revengeTargetId = hitEvt.byId;
+                }
 
                 localPlayer.hitsTaken += 1;
                 localPlayer.lives = Math.max(0, 3 - localPlayer.hitsTaken);
@@ -1071,7 +1224,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
                     }).catch(() => {});
 
                     if (statusEl) {
-                        statusEl.textContent = `⚠️ HIT BY ${hitEvt.byName || 'Opponent'}! Respawned (${localPlayer.lives} ${localPlayer.lives === 1 ? 'LIFE' : 'LIVES'} LEFT) — Ghost Shield active for 3.5s!`;
+                        statusEl.textContent = `⚠️ HIT BY ${hitEvt.byName || 'Opponent'}! Respawned (${localPlayer.lives} ${localPlayer.lives === 1 ? 'LIFE' : 'LIVES'} LEFT) — Revenge Target marked!`;
                     }
                 }
             }
@@ -1122,9 +1275,74 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     }
 }
 
+// Feature #2: Diminished 7th EMP Shockwave (B + D + F + G#)
+async function triggerEmpShockwave(bridge) {
+    const now = performance.now();
+    playEmpPulseSound();
+    localPlayer.empReadyAt = now + 18000;
+    empWaveRings.push({ x: localPlayer.x, y: localPlayer.y, radius: 10, maxRadius: 260, life: 1.0 });
+
+    const state = bridge && bridge.getState ? bridge.getState() : {};
+    const empId = `emp_${localId}_${Date.now()}`;
+    let hitCount = 0;
+
+    try {
+        const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+        const basePath = `pianopad_tournaments/${activeRoomCode}/lasertag`;
+        const updates = {};
+
+        for (const [id, opp] of Object.entries(remotePlayers)) {
+            if (id === localId || !isPlayerActiveInRoom(opp)) continue;
+            if (Math.hypot(opp.x - localPlayer.x, opp.y - localPlayer.y) <= 260) {
+                hitCount++;
+                updates[`${id}/lastEmpEvent`] = {
+                    id: empId,
+                    byId: localId,
+                    byName: state.sessionStudentName || 'Opponent',
+                    timestamp: Date.now()
+                };
+            }
+        }
+        if (hitCount > 0) {
+            await update(window.firebaseRef(window.firebaseDb, basePath), updates);
+        }
+    } catch (e) {}
+
+    const statusEl = document.getElementById('status');
+    if (statusEl) {
+        statusEl.textContent = `🌀 Bdim7 EMP PULSE FIRED! Scrambled ${hitCount} nearby ${hitCount === 1 ? 'opponent' : 'opponents'}! (18s recharge)`;
+    }
+}
+
+// Feature #3: Musical Echo Holo-Decoy (Dm7 or Em7)
+function spawnHoloDecoy(chordLabel, bridge) {
+    const now = performance.now();
+    playDecoySpawnSound();
+    localPlayer.decoyReadyAt = now + 14000;
+
+    const state = bridge && bridge.getState ? bridge.getState() : {};
+    activeDecoys.push({
+        id: `decoy_${Date.now()}`,
+        x: localPlayer.x + Math.cos(localPlayer.angle) * 28,
+        y: localPlayer.y + Math.sin(localPlayer.angle) * 28,
+        angle: localPlayer.angle,
+        avatar: state.sessionStudentAvatar || '🏃',
+        name: state.sessionStudentName || 'Player',
+        noteTag: localPlayer.noteTag,
+        suitColor: localPlayer.suitColor,
+        expiresAt: now + 5500
+    });
+
+    const statusEl = document.getElementById('status');
+    if (statusEl) {
+        statusEl.textContent = `👥 ${chordLabel} DEPLOYED! Holographic decoy running forward for 5.5s!`;
+    }
+}
+
 async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
     if (gamePhase !== 'playing' || !localPlayer.isAlive) return;
 
+    const now = performance.now();
     if (isOvercharge) {
         playOverchargeBlastSound();
     } else {
@@ -1169,29 +1387,47 @@ async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
         const predictedRemaining = Math.max(0, currentLives - 1);
         const eliminated = predictedRemaining <= 0;
 
-        // Feature #4: Crisp Hit-Marker Crosshair Snap & High Tick
-        localPlayer.hitMarkerUntil = performance.now() + 260;
+        // Feature #4: Combo Note-Chain Multiplier (hitting 2 different opponents within 8s triggers 2x Rainbow Plasma)
+        if (now < localPlayer.comboExpiresAt && localPlayer.lastComboTargetId !== bestTarget.id) {
+            localPlayer.comboCount = 2;
+        } else {
+            localPlayer.comboCount = 1;
+        }
+        localPlayer.lastComboTargetId = bestTarget.id;
+        localPlayer.comboExpiresAt = now + 8000;
+        const isCombo2x = localPlayer.comboCount >= 2;
+
+        // Feature #5: Revenge Bounty Bonus (+100 pts if tagging your Revenge Target)
+        const isRevenge = localPlayer.revengeTargetId === bestTarget.id;
+        if (isRevenge) {
+            localPlayer.revengeTargetId = null;
+        }
+
+        localPlayer.hitMarkerUntil = now + 260;
         localPlayer.hitMarkerElim = eliminated;
         playHitMarkerTick();
 
         activeBeams.push({
             endX: targetScreenX,
             endY: targetScreenY,
-            color: isOvercharge ? '#facc15' : (eliminated ? '#ef4444' : '#f97316'),
+            color: isCombo2x ? 'rainbow' : (isOvercharge ? '#facc15' : (eliminated ? '#ef4444' : '#f97316')),
             glow: isOvercharge ? '#fef08a' : (eliminated ? '#dc2626' : '#fb923c'),
-            widthMult: isOvercharge ? 2.2 : 1.0,
+            widthMult: (isOvercharge || isCombo2x) ? 2.2 : 1.0,
             life: 1.0
         });
+
+        let basePts = eliminated ? 150 : 50;
+        if (isCombo2x) basePts *= 2;
+        if (isRevenge) basePts += 100;
+        localPlayer.score += basePts;
 
         if (eliminated) {
             playExplosionSound();
             spawn3DExplosion(bestTarget.opp.x, bestTarget.opp.y, '#ef4444', 36);
-            localPlayer.score += 150;
             localPlayer.eliminations += 1;
         } else {
             playShieldHitSound();
             spawn3DExplosion(bestTarget.opp.x, bestTarget.opp.y, '#f97316', 20);
-            localPlayer.score += 50;
         }
 
         const state = bridge && bridge.getState ? bridge.getState() : {};
@@ -1200,7 +1436,7 @@ async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
 
         addKillFeedEntry(
             hitEventId,
-            `${state.sessionStudentName || 'You'} [${tagLabel}] ${eliminated ? '💥 eliminated' : '🔥 tagged'} ${bestTarget.opp.name || 'Opponent'}`,
+            `${state.sessionStudentName || 'You'} [${tagLabel}] ${eliminated ? '💥 eliminated' : '🔥 tagged'} ${bestTarget.opp.name || 'Opponent'}${isRevenge ? ' 🎯REVENGE!' : ''}`,
             eliminated ? '#ef4444' : '#fb923c'
         );
 
@@ -1221,18 +1457,55 @@ async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
 
         const statusEl = document.getElementById('status');
         if (statusEl) {
+            const tags = [
+                isCombo2x ? '🌈 2x COMBO!' : '',
+                isRevenge ? '🎯 +100 REVENGE!' : ''
+            ].filter(Boolean).join(' ');
             statusEl.textContent = eliminated
-                ? `💥 ELIMINATED ${bestTarget.opp.name || 'Opponent'} with [${tagLabel}]! (+150 pts • Score: ${localPlayer.score})`
-                : `🔥 HIT ${bestTarget.opp.name || 'Opponent'} (${predictedRemaining} ${predictedRemaining === 1 ? 'life' : 'lives'} left) — they respawned! (+50 pts)`;
+                ? `💥 ELIMINATED ${bestTarget.opp.name || 'Opponent'}! (+${basePts} pts ${tags})`
+                : `🔥 HIT ${bestTarget.opp.name || 'Opponent'} (${predictedRemaining} lives left)! (+${basePts} pts ${tags})`;
         }
     } else {
-        // Feature #9: 3D Laser Wall Ricochet Sparks at exact wall impact point
+        // Missing a shot resets the 2x Note-Chain Combo
+        localPlayer.comboCount = 0;
+
+        // Feature #8: Ricochet Mirror Walls in the Cobalt SE Zone (wallType === 5 reflects once at 90°)
         const wallHit = castRay(localPlayer.angle);
         const impactDist = Math.max(16, wallHit.dist - 8);
         const impactX = localPlayer.x + Math.cos(localPlayer.angle) * impactDist;
         const impactY = localPlayer.y + Math.sin(localPlayer.angle) * impactDist;
         const sparkColor = isOvercharge ? '#facc15' : (localPlayer.suitColor || '#38bdf8');
-        spawn3DExplosion(impactX, impactY, sparkColor, isOvercharge ? 16 : 7);
+        spawn3DExplosion(impactX, impactY, sparkColor, isOvercharge ? 16 : 8);
+
+        if (wallHit.wallType === 5) {
+            // Bank-shot 90° mirror reflection inside the Cobalt SE Diamond Sector!
+            const reflectAngle = localPlayer.angle + Math.PI / 2;
+            const bankRay = castRayFromPoint(impactX, impactY, reflectAngle);
+            const bankEndX = impactX + Math.cos(reflectAngle) * Math.max(12, bankRay.dist - 8);
+            const bankEndY = impactY + Math.sin(reflectAngle) * Math.max(12, bankRay.dist - 8);
+            spawn3DExplosion(bankEndX, bankEndY, '#60a5fa', 12);
+
+            // Check if any opponent stands along the reflected bank-shot ray
+            for (const [id, opp] of Object.entries(remotePlayers)) {
+                if (id === localId || !isPlayerActiveInRoom(opp) || opp.isInvulnerable) continue;
+                if (!isOvercharge && normalizePitchClass(opp.noteTag) !== pitchClass) continue;
+                const dToOpp = Math.hypot(opp.x - impactX, opp.y - impactY);
+                if (dToOpp < bankRay.dist && hasLineOfSight(impactX, impactY, opp.x, opp.y)) {
+                    let angDiff = Math.atan2(opp.y - impactY, opp.x - impactX) - reflectAngle;
+                    while (angDiff > Math.PI) angDiff -= Math.PI * 2;
+                    while (angDiff < -Math.PI) angDiff += Math.PI * 2;
+                    if (Math.abs(angDiff) < 0.35) {
+                        localPlayer.score += 125;
+                        localPlayer.hitMarkerUntil = now + 260;
+                        playHitMarkerTick();
+                        spawn3DExplosion(opp.x, opp.y, '#60a5fa', 28);
+                        const statusEl = document.getElementById('status');
+                        if (statusEl) statusEl.textContent = `💎 COBALT MIRROR BANK SHOT! Reflected laser tagged ${opp.name}! (+125 pts)`;
+                        break;
+                    }
+                }
+            }
+        }
 
         activeBeams.push({
             endX: W * 0.5,
@@ -1277,7 +1550,7 @@ export async function handleLaserTagInput(noteStr, bridge) {
     if (gamePhase !== 'playing' || !localPlayer.isAlive) return;
 
     const now = performance.now();
-    const pitchClass = normalizePitchClass(noteStr);
+    const { pitchClass, octave } = parseNoteDetails(noteStr);
     if (!pitchClass) return;
 
     if (pitchClass === 'C#' && recentNoteBuffer.length === 0) {
@@ -1285,12 +1558,72 @@ export async function handleLaserTagInput(noteStr, bridge) {
         return;
     }
 
-    recentNoteBuffer.push({ pitchClass, time: now });
-    recentNoteBuffer = recentNoteBuffer.filter(item => (now - item.time) <= 115);
+    recentNoteBuffer.push({ pitchClass, octave, time: now });
+    recentNoteBuffer = recentNoteBuffer.filter(item => (now - item.time) <= 125);
 
     const distinctPitches = new Set(recentNoteBuffer.map(item => item.pitchClass));
 
-    // Feature #6: 4-Note Overcharge Shockwave (Cmaj7 or Fmaj7)
+    // Feature #7: Quick-Turn 180° Snap (Octave C Jump: e.g. C2 + C4 played together)
+    if (distinctPitches.size === 1 && distinctPitches.has('C') && recentNoteBuffer.length >= 2) {
+        const distinctOctaves = new Set(recentNoteBuffer.map(item => item.octave));
+        if (distinctOctaves.size >= 2) {
+            if (pendingActionTimer !== null) {
+                clearTimeout(pendingActionTimer);
+                pendingActionTimer = null;
+            }
+            recentNoteBuffer = [];
+            if ((now - lastOctaveFlipTime) > 400) {
+                lastOctaveFlipTime = now;
+                localPlayer.angle += Math.PI;
+                localPlayer.turnDir = 0;
+                playOctaveSnapSound();
+                const statusEl = document.getElementById('status');
+                if (statusEl) {
+                    statusEl.textContent = `🔄 OCTAVE C SNAP! Flipped 180° to check your rear flank!`;
+                }
+            }
+            return;
+        }
+    }
+
+    // Feature #2: Diminished 7th EMP Pulse (B + D + F + G#)
+    if (matchEmpChord(distinctPitches)) {
+        if (pendingActionTimer !== null) {
+            clearTimeout(pendingActionTimer);
+            pendingActionTimer = null;
+        }
+        recentNoteBuffer = [];
+        if (now >= localPlayer.empReadyAt) {
+            await triggerEmpShockwave(bridge);
+        } else {
+            const secsLeft = Math.ceil((localPlayer.empReadyAt - now) / 1000);
+            playJamBuzzSound();
+            const statusEl = document.getElementById('status');
+            if (statusEl) statusEl.textContent = `⏳ Bdim7 EMP RECHARGING (${secsLeft}s)...`;
+        }
+        return;
+    }
+
+    // Feature #3: Musical Echo Holo-Decoys (Dm7 or Em7)
+    const matchedDecoy = matchDecoyChord(distinctPitches);
+    if (matchedDecoy) {
+        if (pendingActionTimer !== null) {
+            clearTimeout(pendingActionTimer);
+            pendingActionTimer = null;
+        }
+        recentNoteBuffer = [];
+        if (now >= localPlayer.decoyReadyAt) {
+            spawnHoloDecoy(matchedDecoy.label, bridge);
+        } else {
+            const secsLeft = Math.ceil((localPlayer.decoyReadyAt - now) / 1000);
+            playJamBuzzSound();
+            const statusEl = document.getElementById('status');
+            if (statusEl) statusEl.textContent = `⏳ HOLO-DECOY RECHARGING (${secsLeft}s)...`;
+        }
+        return;
+    }
+
+    // 4-Note Overcharge Shockwave (Cmaj7 or Fmaj7)
     const matchedOvercharge = matchOverchargeChord(distinctPitches);
     if (matchedOvercharge) {
         if (pendingActionTimer !== null) {
@@ -1300,7 +1633,7 @@ export async function handleLaserTagInput(noteStr, bridge) {
         recentNoteBuffer = [];
 
         if (now >= localPlayer.overchargeReadyAt) {
-            localPlayer.overchargeReadyAt = now + 15000; // 15s cooldown
+            localPlayer.overchargeReadyAt = now + 15000;
             const statusEl = document.getElementById('status');
             if (statusEl) {
                 statusEl.textContent = `⚡ ${matchedOvercharge.label} FIRED! Wide-cone shockwave hits ANY target pitch! (15s recharge)`;
@@ -1320,11 +1653,6 @@ export async function handleLaserTagInput(noteStr, bridge) {
     // Check 3-note White-Key Diatonic Triads for Speed Gears
     const matchedGear = matchDiatonicTriad(distinctPitches);
     if (matchedGear) {
-        if (pendingActionTimer !== null) {
-            clearTimeout(pendingActionTimer);
-            pendingActionTimer = null;
-        }
-        // Keep buffer alive briefly in case a 4th note (B or E) arrives within 45ms to complete Cmaj7/Fmaj7
         if (pendingActionTimer !== null) clearTimeout(pendingActionTimer);
         pendingActionTimer = setTimeout(() => {
             pendingActionTimer = null;
@@ -1343,23 +1671,23 @@ export async function handleLaserTagInput(noteStr, bridge) {
                     statusEl.textContent = `🎛️ SPEED LOCKED: ${matchedGear.label} — Hold C# to move forward!`;
                 }
             }
-        }, 50);
+        }, 55);
         return;
     }
 
-    // Anti-Spam Protection (allows 2-3 white keys briefly while building a triad or Major 7th chord)
+    // Anti-Spam Protection (allows 2–3 valid chord tones briefly while building a triad or 7th chord)
     if (distinctPitches.size >= 2) {
-        const WHITE_KEYS = new Set(['C', 'D', 'E', 'F', 'G', 'A', 'B']);
-        const allWhite = Array.from(distinctPitches).every(n => WHITE_KEYS.has(n));
+        const CHORD_CANDIDATE_KEYS = new Set(['C', 'D', 'E', 'F', 'G', 'G#', 'A', 'B']);
+        const allValid = Array.from(distinctPitches).every(n => CHORD_CANDIDATE_KEYS.has(n));
 
-        if (allWhite && (distinctPitches.size === 2 || distinctPitches.size === 3)) {
+        if (allValid && (distinctPitches.size === 2 || distinctPitches.size === 3)) {
             if (pendingActionTimer !== null) clearTimeout(pendingActionTimer);
             pendingActionTimer = setTimeout(() => {
                 pendingActionTimer = null;
                 localPlayer.jamFlash = 1.0;
                 playJamBuzzSound();
                 recentNoteBuffer = [];
-            }, 95);
+            }, 105);
             return;
         }
 
@@ -1371,7 +1699,7 @@ export async function handleLaserTagInput(noteStr, bridge) {
         playJamBuzzSound();
         const statusEl = document.getElementById('status');
         if (statusEl) {
-            statusEl.textContent = `⚠️ MULTI-NOTE SPAM BLOCKED! Play 1 note to shoot, C# to move, or a white triad for speed!`;
+            statusEl.textContent = `⚠️ MULTI-NOTE SPAM BLOCKED! Play 1 note to shoot, C# to move, or a valid chord!`;
         }
         return;
     }
@@ -1382,22 +1710,22 @@ export async function handleLaserTagInput(noteStr, bridge) {
     pendingActionTimer = setTimeout(() => {
         pendingActionTimer = null;
         const checkNow = performance.now();
-        const activeNotes = recentNoteBuffer.filter(item => (checkNow - item.time) <= 120);
+        const activeNotes = recentNoteBuffer.filter(item => (checkNow - item.time) <= 130);
         const uniqueNow = new Set(activeNotes.map(item => item.pitchClass));
         if (uniqueNow.size === 1) {
             const singlePitch = Array.from(uniqueNow)[0];
             recentNoteBuffer = [];
             executeSingleNoteAction(singlePitch, bridge);
         }
-    }, 80);
+    }, 85);
 }
 
-function castRay(rayAngle) {
+function castRayFromPoint(startX, startY, rayAngle) {
     const sin = Math.sin(rayAngle);
     const cos = Math.cos(rayAngle);
 
-    let mapX = Math.floor(localPlayer.x / TILE_SIZE);
-    let mapY = Math.floor(localPlayer.y / TILE_SIZE);
+    let mapX = Math.floor(startX / TILE_SIZE);
+    let mapY = Math.floor(startY / TILE_SIZE);
 
     const deltaDistX = Math.abs(1 / (cos || 1e-6));
     const deltaDistY = Math.abs(1 / (sin || 1e-6));
@@ -1405,19 +1733,19 @@ function castRay(rayAngle) {
     let stepX, sideDistX;
     if (cos < 0) {
         stepX = -1;
-        sideDistX = (localPlayer.x / TILE_SIZE - mapX) * deltaDistX;
+        sideDistX = (startX / TILE_SIZE - mapX) * deltaDistX;
     } else {
         stepX = 1;
-        sideDistX = (mapX + 1.0 - localPlayer.x / TILE_SIZE) * deltaDistX;
+        sideDistX = (mapX + 1.0 - startX / TILE_SIZE) * deltaDistX;
     }
 
     let stepY, sideDistY;
     if (sin < 0) {
         stepY = -1;
-        sideDistY = (localPlayer.y / TILE_SIZE - mapY) * deltaDistY;
+        sideDistY = (startY / TILE_SIZE - mapY) * deltaDistY;
     } else {
         stepY = 1;
-        sideDistY = (mapY + 1.0 - localPlayer.y / TILE_SIZE) * deltaDistY;
+        sideDistY = (mapY + 1.0 - startY / TILE_SIZE) * deltaDistY;
     }
 
     let hit = 0;
@@ -1449,16 +1777,16 @@ function castRay(rayAngle) {
                 const cx = (mapX + 0.5) * TILE_SIZE;
                 const cy = (mapY + 0.5) * TILE_SIZE;
                 const radius = TILE_SIZE * 0.48;
-                const ocX = localPlayer.x - cx;
-                const ocY = localPlayer.y - cy;
+                const ocX = startX - cx;
+                const ocY = startY - cy;
                 const b = ocX * cos + ocY * sin;
                 const c = ocX * ocX + ocY * ocY - radius * radius;
                 const disc = b * b - c;
                 if (disc >= 0) {
                     const t = -b - Math.sqrt(disc);
                     if (t > 1) {
-                        const hitX = localPlayer.x + cos * t;
-                        const hitY = localPlayer.y + sin * t;
+                        const hitX = startX + cos * t;
+                        const hitY = startY + sin * t;
                         const normAngle = Math.atan2(hitY - cy, hitX - cx);
                         const curveShade = 0.65 + 0.35 * Math.cos(normAngle - 0.8);
                         return { dist: t, side: 0, wallType: cellType, customShade: curveShade, stripeCoord: (normAngle + Math.PI) / (Math.PI * 2) };
@@ -1469,8 +1797,8 @@ function castRay(rayAngle) {
 
             if (theme.shape === 'triangle') {
                 const boxDist = (side === 0 ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY)) * TILE_SIZE;
-                const hitX = localPlayer.x + cos * boxDist;
-                const hitY = localPlayer.y + sin * boxDist;
+                const hitX = startX + cos * boxDist;
+                const hitY = startY + sin * boxDist;
                 const localU = (hitX - mapX * TILE_SIZE) / TILE_SIZE;
                 const localV = (hitY - mapY * TILE_SIZE) / TILE_SIZE;
                 const diagDist = boxDist + Math.abs(localU - localV) * TILE_SIZE * 0.35;
@@ -1479,8 +1807,8 @@ function castRay(rayAngle) {
 
             if (theme.shape === 'diamond') {
                 const boxDist = (side === 0 ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY)) * TILE_SIZE;
-                const hitX = localPlayer.x + cos * boxDist;
-                const hitY = localPlayer.y + sin * boxDist;
+                const hitX = startX + cos * boxDist;
+                const hitY = startY + sin * boxDist;
                 const localU = Math.abs((hitX - mapX * TILE_SIZE) / TILE_SIZE - 0.5);
                 const localV = Math.abs((hitY - mapY * TILE_SIZE) / TILE_SIZE - 0.5);
                 const diamondDist = boxDist + (localU + localV) * TILE_SIZE * 0.28;
@@ -1492,8 +1820,8 @@ function castRay(rayAngle) {
     }
 
     const perpWallDist = (side === 0 ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY)) * TILE_SIZE;
-    const hitX = localPlayer.x + cos * perpWallDist;
-    const hitY = localPlayer.y + sin * perpWallDist;
+    const hitX = startX + cos * perpWallDist;
+    const hitY = startY + sin * perpWallDist;
     const wallU = side === 0 ? ((hitY % TILE_SIZE) / TILE_SIZE) : ((hitX % TILE_SIZE) / TILE_SIZE);
 
     return {
@@ -1505,7 +1833,10 @@ function castRay(rayAngle) {
     };
 }
 
-// Feature #7: Top-Center Compass Ribbon
+function castRay(rayAngle) {
+    return castRayFromPoint(localPlayer.x, localPlayer.y, rayAngle);
+}
+
 function renderCompassRibbon(ctx, W) {
     const compW = 240;
     const compH = 24;
@@ -1555,13 +1886,11 @@ function renderCompassRibbon(ctx, W) {
         }
     }
 
-    // Center pointer tick
     ctx.fillStyle = '#facc15';
     ctx.fillRect(cx - 1, topY, 2, 5);
     ctx.restore();
 }
 
-// Feature #1: Proximity Threat Radar (Rear/Flank Edge Glow)
 function renderProximityThreatRadar(ctx, W, H, now) {
     let leftThreat = 0;
     let rightThreat = 0;
@@ -1580,7 +1909,6 @@ function renderProximityThreatRadar(ctx, W, H, now) {
         while (rel > Math.PI) rel -= Math.PI * 2;
         while (rel < -Math.PI) rel += Math.PI * 2;
 
-        // Only warn about enemies outside our front center vision (flanks & rear)
         if (Math.abs(rel) > Math.PI * 0.28) {
             if (Math.abs(rel) > Math.PI * 0.72) {
                 rearThreat = Math.max(rearThreat, intensity);
@@ -1688,8 +2016,13 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         }
     }
 
-    // 3. Depth-Sorted 3D Sprites (Opponents, Portals, Boost Pads, Med-Kits, Explosion Sparks)
+    // 3. Depth-Sorted 3D Sprites (Opponents, Decoys, Portals, Boost Pads, Med-Kits, Hub Beacon, Sparks)
     const sprites = [];
+
+    // Feature #1: King of the Emerald Hub Central Sky Beacon
+    const hubDx = ARENA_CENTER_X - localPlayer.x;
+    const hubDy = ARENA_CENTER_Y - localPlayer.y;
+    sprites.push({ type: 'hub_beacon', dx: hubDx, dy: hubDy, dist: Math.hypot(hubDx, hubDy) });
 
     for (const portal of arenaPortals) {
         const dx = portal.x - localPlayer.x;
@@ -1710,11 +2043,18 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         sprites.push({ type: 'medkit', med, dx, dy, dist: Math.hypot(dx, dy) });
     }
 
+    // Feature #3: Active Holographic Decoys
+    for (const decoy of activeDecoys) {
+        const dx = decoy.x - localPlayer.x;
+        const dy = decoy.y - localPlayer.y;
+        sprites.push({ type: 'player', id: decoy.id, opp: decoy, isDecoy: true, dx, dy, dist: Math.hypot(dx, dy) });
+    }
+
     for (const [id, opp] of Object.entries(remotePlayers)) {
         if (id === localId || !isPlayerActiveInRoom(opp)) continue;
         const dx = opp.x - localPlayer.x;
         const dy = opp.y - localPlayer.y;
-        sprites.push({ type: 'player', id, opp, dx, dy, dist: Math.hypot(dx, dy) });
+        sprites.push({ type: 'player', id, opp, isDecoy: false, dx, dy, dist: Math.hypot(dx, dy) });
     }
 
     for (let i = worldExplosions.length - 1; i >= 0; i--) {
@@ -1743,6 +2083,19 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
 
         const screenX = (0.5 + relAngle / FOV) * W;
 
+        // Emerald Hub Vertical Beacon
+        if (sp.type === 'hub_beacon') {
+            const beamW = Math.max(8, (TILE_SIZE * 0.45 * H) / Math.max(60, sp.dist));
+            ctx.save();
+            const grad = ctx.createLinearGradient(0, 0, 0, horizon);
+            grad.addColorStop(0, 'rgba(52, 211, 153, 0)');
+            grad.addColorStop(1, 'rgba(52, 211, 153, 0.28)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(screenX - beamW / 2, 0, beamW, horizon);
+            ctx.restore();
+            continue;
+        }
+
         if (sp.type === 'player' || sp.type === 'portal' || sp.type === 'medkit' || sp.type === 'boostpad') {
             const tx = sp.type === 'player' ? sp.opp.x : (sp.type === 'portal' ? sp.portal.x : (sp.type === 'medkit' ? sp.med.x : sp.pad.x));
             const ty = sp.type === 'player' ? sp.opp.y : (sp.type === 'portal' ? sp.portal.y : (sp.type === 'medkit' ? sp.med.y : sp.pad.y));
@@ -1765,7 +2118,6 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
             if (rayIdx >= 0 && rayIdx < numRays && zBuffer[rayIdx] < sp.dist) continue;
         }
 
-        // Feature #2: 3D Floor Speed Boost Chevron Pad
         if (sp.type === 'boostpad') {
             const padScale = (TILE_SIZE * H) / sp.dist;
             const floorY = horizon + padScale * 0.44;
@@ -1791,7 +2143,6 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
             continue;
         }
 
-        // Feature #8: Floating Med-Kit / Shield Recharge Heart Crystal
         if (sp.type === 'medkit') {
             const medScale = (TILE_SIZE * H) / sp.dist;
             const floatY = horizon + Math.sin(now * 0.005) * (medScale * 0.08);
@@ -1875,19 +2226,22 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
 
         const isGhostRespawning = Boolean(sp.opp.isInvulnerable);
         const isSneaky = Boolean(sp.opp.isStealth);
-        const isLeader = Number(sp.opp.score || 0) >= 300;
+        const isLeader = !sp.isDecoy && Number(sp.opp.score || 0) >= 300;
+        const isRevengeBounty = !sp.isDecoy && localPlayer.revengeTargetId === sp.id;
         const oppSuitColor = sp.opp.suitColor || getSuitColorForAvatar(sp.opp.avatar, sp.id);
 
         ctx.save();
         if (isGhostRespawning) {
             ctx.globalAlpha = 0.35 + 0.15 * Math.sin(now * 0.015);
+        } else if (sp.isDecoy) {
+            ctx.globalAlpha = 0.68 + 0.15 * Math.sin(now * 0.025);
         } else if (isSneaky) {
             ctx.globalAlpha = 0.48;
         }
 
         ctx.fillStyle = isGhostRespawning ? '#f8fafc' : '#0f172a';
-        ctx.strokeStyle = isGhostRespawning ? '#ffffff' : (isLeader ? '#facc15' : oppSuitColor);
-        ctx.lineWidth = Math.max(2.5, spriteW * (isLeader ? 0.09 : 0.07));
+        ctx.strokeStyle = isGhostRespawning ? '#ffffff' : (isRevengeBounty ? '#ef4444' : (isLeader ? '#facc15' : oppSuitColor));
+        ctx.lineWidth = Math.max(2.5, spriteW * (isLeader || isRevengeBounty ? 0.095 : 0.07));
         ctx.beginPath();
         ctx.roundRect(screenX - spriteW / 2, topY + spriteH * 0.24, spriteW, spriteH * 0.72, 10);
         ctx.fill();
@@ -1909,15 +2263,18 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         const badgeH = Math.max(28, spriteH * 0.28);
         const badgeY = Math.max(12, topY - badgeH - 12);
 
-        // Feature #5: Floating Gold Crown above 300+ pt Kill-Streak Leaders
-        if (isLeader && !isGhostRespawning) {
+        if (isRevengeBounty) {
+            ctx.fillStyle = '#ef4444';
+            ctx.font = `900 ${Math.max(10, Math.floor(badgeH * 0.45))}px sans-serif`;
+            ctx.fillText('🎯 REVENGE (+100)', screenX, badgeY - badgeH * 0.48);
+        } else if (isLeader && !isGhostRespawning) {
             ctx.font = `${Math.max(16, Math.floor(badgeH * 0.85))}px sans-serif`;
             ctx.fillText('👑', screenX, badgeY - badgeH * 0.55);
         }
 
-        ctx.shadowColor = isGhostRespawning ? '#ffffff' : '#facc15';
+        ctx.shadowColor = isGhostRespawning ? '#ffffff' : (isRevengeBounty ? '#ef4444' : '#facc15');
         ctx.shadowBlur = 12;
-        ctx.fillStyle = isGhostRespawning ? '#f1f5f9' : '#facc15';
+        ctx.fillStyle = isGhostRespawning ? '#f1f5f9' : (isRevengeBounty ? '#ef4444' : '#facc15');
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -1926,7 +2283,7 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         ctx.stroke();
         ctx.shadowBlur = 0;
 
-        ctx.fillStyle = isGhostRespawning ? '#f1f5f9' : '#facc15';
+        ctx.fillStyle = isGhostRespawning ? '#f1f5f9' : (isRevengeBounty ? '#ef4444' : '#facc15');
         ctx.beginPath();
         ctx.moveTo(screenX - 6, badgeY + badgeH);
         ctx.lineTo(screenX + 6, badgeY + badgeH);
@@ -1934,19 +2291,19 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         ctx.closePath();
         ctx.fill();
 
-        ctx.fillStyle = '#000000';
+        ctx.fillStyle = isRevengeBounty ? '#ffffff' : '#000000';
         ctx.font = `900 ${Math.max(16, Math.floor(badgeH * 0.68))}px sans-serif`;
         ctx.fillText(isGhostRespawning ? `👻 ${pitchLabel}` : `🎯 ${pitchLabel}`, screenX, badgeY + badgeH * 0.54);
 
         const oppLives = sp.opp.lives !== undefined ? Number(sp.opp.lives) : 3;
-        const oppHearts = '❤️'.repeat(Math.max(0, oppLives));
+        const oppHearts = sp.isDecoy ? '👥 DECOY' : '❤️'.repeat(Math.max(0, oppLives));
         ctx.fillStyle = isGhostRespawning ? '#e2e8f0' : '#ffffff';
         ctx.font = `800 ${Math.max(11, Math.floor(spriteH * 0.13))}px sans-serif`;
         ctx.fillText(`${sp.opp.name || 'Player'} ${oppHearts}`, screenX, topY + spriteH + 12);
         ctx.restore();
     }
 
-    // 4. First-Person Laser Beams
+    // 4. First-Person Laser Beams (supports Rainbow Plasma during 2x Note-Chain Combo)
     for (let i = activeBeams.length - 1; i >= 0; i--) {
         const b = activeBeams[i];
         b.life -= dt * 4.5;
@@ -1958,9 +2315,15 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         const gunTipY = H * 0.76 + localPlayer.recoil * 14;
         const wm = b.widthMult || 1.0;
 
+        let beamGlow = b.glow;
+        if (b.color === 'rainbow') {
+            const hue = Math.floor((now * 0.6) % 360);
+            beamGlow = `hsl(${hue}, 100%, 55%)`;
+        }
+
         ctx.save();
         ctx.globalAlpha = Math.max(0, b.life);
-        ctx.strokeStyle = b.glow;
+        ctx.strokeStyle = beamGlow;
         ctx.lineWidth = 12 * wm * b.life;
         ctx.beginPath();
         ctx.moveTo(gunTipX, gunTipY);
@@ -1984,6 +2347,7 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         localPlayer.gearBannerFlash = Math.max(0, localPlayer.gearBannerFlash - dt * 0.6);
 
         const localRespawning = now < localPlayer.invulnerableUntil;
+        const isEmpScrambled = now < localPlayer.empScrambledUntil;
         const gunBobX = !activelyMoving ? 0 : Math.cos(localPlayer.bobPhase * 0.5) * (4 + gearMult * 2);
         const gunBobY = (!activelyMoving ? 0 : Math.abs(Math.sin(localPlayer.bobPhase * 0.5)) * (4 + gearMult * 2)) + localPlayer.recoil * 18;
         const gx = W * 0.72 + gunBobX;
@@ -2018,7 +2382,7 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         }
         ctx.restore();
 
-        // Center Reticle + Feature #4: Hit-Marker Crosshair Snap
+        // Center Reticle + Hit-Marker Crosshair Snap
         ctx.strokeStyle = localPlayer.currentGear.color;
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -2041,30 +2405,28 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
             ctx.restore();
         }
 
-        // Feature #7: Top-Center Compass Ribbon
         renderCompassRibbon(ctx, W);
-
-        // Feature #1: Proximity Threat Radar Edge Glows
         renderProximityThreatRadar(ctx, W, H, now);
 
-        // Top-Left Current Sector Badge
+        // Top-Left Current Sector Badge (highlights King of the Emerald Hub)
+        const inHub = isInsideEmeraldHub(localPlayer.x, localPlayer.y);
         const myZone = getZoneInfoForCoords(localPlayer.x, localPlayer.y);
         ctx.save();
-        ctx.fillStyle = 'rgba(2, 6, 23, 0.86)';
+        ctx.fillStyle = inHub ? 'rgba(6, 78, 59, 0.90)' : 'rgba(2, 6, 23, 0.86)';
         ctx.strokeStyle = myZone.color;
-        ctx.lineWidth = 1.8;
+        ctx.lineWidth = inHub ? 2.5 : 1.8;
         ctx.beginPath();
-        ctx.roundRect(12, 10, 195, 32, 8);
+        ctx.roundRect(12, 10, 205, 32, 8);
         ctx.fill();
         ctx.stroke();
 
         ctx.fillStyle = myZone.color;
         ctx.font = '900 11px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`📍 ${myZone.label}`, 109, 30);
+        ctx.fillText(inHub ? `👑 KING OF HUB (+5/s)` : `📍 ${myZone.label}`, 114, 30);
         ctx.restore();
 
-        // Feature #3: Kill Feed Ticker (Top-Left below Zone Pill)
+        // Kill Feed Ticker
         killFeedEntries = killFeedEntries.filter(k => now < k.expiresAt);
         if (killFeedEntries.length > 0) {
             ctx.save();
@@ -2073,14 +2435,54 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
             killFeedEntries.forEach((entry, idx) => {
                 const ky = 50 + idx * 20;
                 ctx.fillStyle = 'rgba(2, 6, 23, 0.78)';
-                ctx.fillRect(12, ky, 245, 17);
+                ctx.fillRect(12, ky, 255, 17);
                 ctx.fillStyle = entry.color;
                 ctx.fillText(entry.text, 18, ky + 12);
             });
             ctx.restore();
         }
 
-        // Incoming Spectator Alert Banner ("Watch Out", "Turn Left", "Turn Right")
+        // Feature #6: Storm Warning Banner if outside shrinking perimeter
+        const stormRadius = getCurrentStormRadius(now);
+        const distFromCenter = Math.hypot(localPlayer.x - ARENA_CENTER_X, localPlayer.y - ARENA_CENTER_Y);
+        if (distFromCenter > stormRadius) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(185, 28, 28, 0.35)';
+            ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = 'rgba(127, 29, 29, 0.94)';
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.roundRect(W / 2 - 190, 42, 380, 34, 8);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('🌪️ OUTSIDE SAFE ZONE — RUN TO EMERALD HUB!', W / 2, 63);
+            ctx.restore();
+        }
+
+        // Feature #2: EMP Scramble Glitch Overlay
+        if (isEmpScrambled) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(168, 85, 247, 0.22)';
+            ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+            ctx.strokeStyle = '#a855f7';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(W / 2 - 165, 82, 330, 30, 8);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#e9d5ff';
+            ctx.font = '900 11.5px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('⚡ EMP SCRAMBLED — SPEED LOCKED AT 0.35x', W / 2, 101);
+            ctx.restore();
+        }
+
+        // Incoming Spectator Alert Banner
         if (incomingAlertBanner && now < incomingAlertBanner.until) {
             const pulse = 0.75 + 0.25 * Math.sin(now * 0.02);
             ctx.save();
@@ -2122,19 +2524,22 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
             ctx.restore();
         }
 
-        // Bottom-Center Chord Speed Gear, Boost & Overcharge HUD Pill
+        // Bottom-Center Chord Speed Gear & Ability Cooldowns HUD Pill
         const g = localPlayer.currentGear;
-        const boostTag = isBoosted ? ' • ⚡ 2.5x PAD BOOST!' : '';
-        const throttleText = activelyMoving ? ` • 🟢 C# THRUSTING${boostTag}` : ` • ⚪ HOLD C# TO MOVE${boostTag}`;
-        const ocReady = now >= localPlayer.overchargeReadyAt;
-        const ocText = ocReady ? '⚡ Cmaj7/Fmaj7: OVERCHARGE READY' : `⏳ OVERCHARGE: ${Math.ceil((localPlayer.overchargeReadyAt - now) / 1000)}s`;
+        const boostTag = isBoosted ? ' • ⚡ 2.5x BOOST!' : '';
+        const comboTag = (localPlayer.comboCount >= 2 && now < localPlayer.comboExpiresAt) ? ' • 🌈 2x COMBO!' : '';
+        const throttleText = activelyMoving ? ` • 🟢 C# THRUST${boostTag}${comboTag}` : ` • ⚪ HOLD C#${boostTag}${comboTag}`;
+
+        const ocStr = now >= localPlayer.overchargeReadyAt ? 'Cmaj7/Fmaj7:⚡' : `Maj7:${Math.ceil((localPlayer.overchargeReadyAt - now) / 1000)}s`;
+        const empStr = now >= localPlayer.empReadyAt ? 'Bdim7:🌀' : `EMP:${Math.ceil((localPlayer.empReadyAt - now) / 1000)}s`;
+        const decStr = now >= localPlayer.decoyReadyAt ? 'Dm7/Em7:👥' : `Decoy:${Math.ceil((localPlayer.decoyReadyAt - now) / 1000)}s`;
 
         ctx.save();
         ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
         ctx.strokeStyle = isBoosted ? '#22c55e' : g.color;
         ctx.lineWidth = (localPlayer.gearBannerFlash > 0 || isBoosted) ? 3 : 1.8;
         ctx.beginPath();
-        ctx.roundRect(W / 2 - 220, H - 56, 440, 38, 8);
+        ctx.roundRect(W / 2 - 230, H - 56, 460, 38, 8);
         ctx.fill();
         ctx.stroke();
 
@@ -2143,9 +2548,9 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         ctx.textAlign = 'center';
         ctx.fillText(`GEAR: ${g.label}${throttleText}`, W / 2, H - 40);
 
-        ctx.fillStyle = ocReady ? '#facc15' : '#94a3b8';
+        ctx.fillStyle = '#cbd5e1';
         ctx.font = 'bold 9.5px sans-serif';
-        ctx.fillText(`C:0x • Dm:0.35x • Em:0.65x • F:1x • G:1.35x • Am:1.68x • Bdim:2x | ${ocText}`, W / 2, H - 25);
+        ctx.fillText(`C2+C4:180° • ${ocStr} • ${empStr} • ${decStr}`, W / 2, H - 25);
         ctx.restore();
 
         if (localPlayer.jamFlash > 0) {
@@ -2162,7 +2567,7 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
             ctx.fillStyle = '#ffffff';
             ctx.font = '900 11.5px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('⚠️ BLASTER JAMMED! Play 1 Note or White Triad', W / 2, H - 77);
+            ctx.fillText('⚠️ BLASTER JAMMED! Play 1 Note or Valid Chord', W / 2, H - 77);
             ctx.restore();
         }
     }
@@ -2240,7 +2645,14 @@ function renderSpectatorOverheadView(ctx, W, H, dt, now) {
         }
     }
 
-    // Speed Boost Pads on Spectator Map
+    // Dynamic Storm Boundary Ring on Spectator Map
+    const stormRadius = getCurrentStormRadius(now);
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.75)';
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.arc(ARENA_CENTER_X, ARENA_CENTER_Y, stormRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
     for (const pad of speedBoostPads) {
         ctx.fillStyle = '#22c55e';
         ctx.beginPath();
@@ -2248,7 +2660,6 @@ function renderSpectatorOverheadView(ctx, W, H, dt, now) {
         ctx.fill();
     }
 
-    // Med-Kits on Spectator Map
     for (const med of medKitNodes) {
         if (now < med.respawnAt) continue;
         ctx.font = '26px sans-serif';
@@ -2257,7 +2668,6 @@ function renderSpectatorOverheadView(ctx, W, H, dt, now) {
         ctx.fillText('💖', med.x, med.y);
     }
 
-    // Portals on Spectator Map
     for (const portal of arenaPortals) {
         const pulse = (Math.sin(now * 0.008) + 1) * 0.5;
         ctx.save();
@@ -2274,7 +2684,6 @@ function renderSpectatorOverheadView(ctx, W, H, dt, now) {
         ctx.restore();
     }
 
-    // Active Players on Spectator Map
     for (const [id, opp] of Object.entries(remotePlayers)) {
         if (!isPlayerActiveInRoom(opp)) continue;
         const oppColor = opp.isInvulnerable ? '#ffffff' : (opp.suitColor || getSuitColorForAvatar(opp.avatar, id));
@@ -2391,7 +2800,6 @@ function renderSpectatorOverheadView(ctx, W, H, dt, now) {
     ctx.fillText('🛰️ SPECTATOR DRONE — CLICK ANY PLAYER TO SEND "WATCH OUT", "TURN LEFT", OR "TURN RIGHT"', W / 2, 32);
 }
 
-// Feature #10: End-of-Round MVP Podium Overlay
 function renderMvpPodiumOverlay(ctx, W, H) {
     const allPlayers = Object.values(remotePlayers);
     if (allPlayers.length === 0) return;
@@ -2474,12 +2882,64 @@ function gameLoop(now, bridge) {
         updateSimulatedBots(dt);
     }
 
+    // Update running Holo-Decoys (Feature #3)
+    for (let i = activeDecoys.length - 1; i >= 0; i--) {
+        const dec = activeDecoys[i];
+        if (now >= dec.expiresAt) {
+            activeDecoys.splice(i, 1);
+            continue;
+        }
+        const dSpeed = 195;
+        const nx = dec.x + Math.cos(dec.angle) * dSpeed * dt;
+        const ny = dec.y + Math.sin(dec.angle) * dSpeed * dt;
+        const col = Math.floor(nx / TILE_SIZE);
+        const row = Math.floor(ny / TILE_SIZE);
+        if (ARENA_MAP[row] && ARENA_MAP[row][col] === 0) {
+            dec.x = nx;
+            dec.y = ny;
+        } else {
+            dec.angle += Math.PI / 2;
+        }
+    }
+
     const activePlayers = Object.values(remotePlayers).filter(isPlayerActiveInRoom);
     const totalCount = Object.keys(remotePlayers).length;
     if (totalCount > maxPeakPlayers) maxPeakPlayers = totalCount;
 
     if (localPlayer.isAlive) {
         localPlayer.angle += localPlayer.turnDir * 1.55 * dt;
+
+        // Feature #1: King of the Emerald Hub (+5 points per second inside central hub)
+        if (isInsideEmeraldHub(localPlayer.x, localPlayer.y)) {
+            localPlayer.hubScoreTimer += dt;
+            if (localPlayer.hubScoreTimer >= 1.0) {
+                localPlayer.hubScoreTimer -= 1.0;
+                localPlayer.score += 5;
+            }
+        } else {
+            localPlayer.hubScoreTimer = 0;
+        }
+
+        // Feature #6: Battle Royale Storm Damage if outside safe radius after 90s
+        const stormRadius = getCurrentStormRadius(now);
+        const distFromCenter = Math.hypot(localPlayer.x - ARENA_CENTER_X, localPlayer.y - ARENA_CENTER_Y);
+        if (distFromCenter > stormRadius) {
+            localPlayer.stormTickTimer += dt;
+            if (localPlayer.stormTickTimer >= 2.5) {
+                localPlayer.stormTickTimer = 0;
+                localPlayer.hitsTaken += 1;
+                localPlayer.lives = Math.max(0, 3 - localPlayer.hitsTaken);
+                localPlayer.damageFlash = 1.0;
+                localPlayer.damageFlashColor = '#ef4444';
+                playShieldHitSound();
+                if (localPlayer.lives <= 0) {
+                    localPlayer.isAlive = false;
+                    gamePhase = 'spectating';
+                }
+            }
+        } else {
+            localPlayer.stormTickTimer = 0;
+        }
 
         localPlayer.isMovingForward = now < localPlayer.moveUntil;
         const isBoosted = now < localPlayer.boostUntil;
@@ -2509,7 +2969,7 @@ function gameLoop(now, bridge) {
             }
         }
 
-        // Feature #2: Speed Boost Pads Pickup Check
+        // Speed Boost Pads Pickup
         for (const pad of speedBoostPads) {
             if (Math.hypot(localPlayer.x - pad.x, localPlayer.y - pad.y) < 34 && now >= localPlayer.boostUntil - 1200) {
                 localPlayer.boostUntil = now + 2200;
@@ -2519,7 +2979,7 @@ function gameLoop(now, bridge) {
             }
         }
 
-        // Feature #8: Floating Med-Kit Pickup Check
+        // Floating Med-Kit Pickup
         for (const med of medKitNodes) {
             if (now >= med.respawnAt && localPlayer.lives < 3 && Math.hypot(localPlayer.x - med.x, localPlayer.y - med.y) < 34) {
                 med.respawnAt = now + 18000;
@@ -2532,7 +2992,7 @@ function gameLoop(now, bridge) {
             }
         }
 
-        // Quantum Portal Teleportation Check
+        // Quantum Portal Teleportation
         if (arenaPortals.length === 2 && now >= localPlayer.portalCooldownUntil) {
             for (let pIdx = 0; pIdx < 2; pIdx++) {
                 const p = arenaPortals[pIdx];
@@ -2592,6 +3052,19 @@ function gameLoop(now, bridge) {
             }
         }
 
+        // Dynamic Storm Circle on Minimap
+        const stormRadius = getCurrentStormRadius(now);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(mmX, mmY, mmSize, mmSize);
+        ctx.clip();
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(mmX + ARENA_CENTER_X * scaleX, mmY + ARENA_CENTER_Y * scaleY, stormRadius * scaleX, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
         // Boost Pads & Med-Kits on Minimap
         ctx.fillStyle = '#22c55e';
         for (const pad of speedBoostPads) {
@@ -2631,6 +3104,7 @@ function gameLoop(now, bridge) {
             const oy = mmY + opp.y * scaleY;
             const oppColor = opp.isInvulnerable ? '#ffffff' : (opp.suitColor || getSuitColorForAvatar(opp.avatar, id));
             const isLeader = Number(opp.score || 0) >= 300;
+            const isRevenge = localPlayer.revengeTargetId === id;
 
             ctx.save();
             if (opp.isInvulnerable) ctx.globalAlpha = 0.45;
@@ -2640,7 +3114,14 @@ function gameLoop(now, bridge) {
             ctx.arc(ox, oy, 4.5, 0, Math.PI * 2);
             ctx.fill();
 
-            if (isLeader) {
+            // Feature #5: Pulsing Red Crosshair Ring around Revenge Bounty Target on Minimap
+            if (isRevenge) {
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(ox, oy, 7 + pPulse * 4, 0, Math.PI * 2);
+                ctx.stroke();
+            } else if (isLeader) {
                 ctx.strokeStyle = '#facc15';
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
@@ -2649,7 +3130,7 @@ function gameLoop(now, bridge) {
             ctx.font = '10px sans-serif';
             ctx.fillText(opp.avatar || '🔴', ox, oy);
 
-            ctx.fillStyle = '#facc15';
+            ctx.fillStyle = isRevenge ? '#ef4444' : '#facc15';
             ctx.font = 'bold 7.5px sans-serif';
             ctx.fillText(normalizePitchClass(opp.noteTag || ''), ox, oy - 7);
             ctx.restore();
@@ -2707,7 +3188,6 @@ function gameLoop(now, bridge) {
     ctx.font = 'bold 11px sans-serif';
     ctx.fillText(`C: Left • D: Right • Hold C#: Forward • Chords: Speed`, W - 18, 50);
 
-    // Feature #10: End-of-Round MVP Podium when only 1 survivor remains after a multi-player match
     if (maxPeakPlayers >= 2 && activePlayers.length === 1) {
         renderMvpPodiumOverlay(ctx, W, H);
     }
