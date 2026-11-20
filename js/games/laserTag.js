@@ -10,8 +10,6 @@ import {
     TILE_SIZE,
     MAP_COLS,
     MAP_ROWS,
-    ARENA_CENTER_X,
-    ARENA_CENTER_Y,
     ASSIGNABLE_PITCHES,
     AUSSIE_2026_TEEN_BOYS,
     BOT_AVATARS
@@ -28,7 +26,6 @@ import {
     generateSeededArena,
     getSafeSpawnPoint,
     isInsideEmeraldHub,
-    getCurrentStormRadius,
     hasLineOfSight,
     castRay,
     castRayFromPoint
@@ -798,7 +795,6 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     lp.sniperActivatedAt = 0;
     lp.empScrambledUntil = 0;
     lp.hubScoreTimer = 0;
-    lp.stormTickTimer = 0;
     lp.comboCount = 0;
     lp.comboExpiresAt = 0;
     lp.lastComboTargetId = null;
@@ -1635,28 +1631,6 @@ function gameLoop(now, bridge) {
             }
         } else {
             lp.hubScoreTimer = 0;
-        }
-
-        // Battle Royale Storm Damage if outside safe radius after 90s
-        const stormRadius = getCurrentStormRadius(now);
-        const distFromCenter = Math.hypot(lp.x - ARENA_CENTER_X, lp.y - ARENA_CENTER_Y);
-        if (distFromCenter > stormRadius) {
-            lp.stormTickTimer += dt;
-            if (lp.stormTickTimer >= 2.5) {
-                lp.stormTickTimer = 0;
-                lp.hitsTaken += 1;
-                lp.lives = Math.max(0, 3 - lp.hitsTaken);
-                lp.damageFlash = 1.0;
-                lp.damageFlashColor = '#ef4444';
-                playShieldHitSound();
-                if (lp.lives <= 0) {
-                    lp.isAlive = false;
-                    clearAllHeldMovement();
-                    gameState.gamePhase = 'spectating';
-                }
-            }
-        } else {
-            lp.stormTickTimer = 0;
         }
 
         // Strict Hold-to-Move: only moves forward while 'C#' is actively held down
