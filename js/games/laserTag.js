@@ -627,6 +627,11 @@ export function stopLaserTag() {
     gameState.syncIntervalId = null;
     gameState.pendingActionTimer = null;
     gameState.recentNoteBuffer = [];
+    gameState.heldMoveKeys.clear();
+    gameState.localPlayer.turnDir = 0;
+    gameState.localPlayer.turnUntil = 0;
+    gameState.localPlayer.turnHoldStart = 0;
+    gameState.localPlayer.moveUntil = 0;
     gameState.typedCheatBuffer = '';
     gameState.processedHitIds.clear();
     gameState.processedEmpIds.clear();
@@ -647,6 +652,17 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     stopLaserTag();
 
     window._laserTagBridge = bridge;
+
+    if (!gameState.blurListenerAttached) {
+        gameState.blurListenerAttached = true;
+        window.addEventListener('blur', () => {
+            gameState.heldMoveKeys.clear();
+            gameState.localPlayer.turnDir = 0;
+            gameState.localPlayer.turnUntil = 0;
+            gameState.localPlayer.turnHoldStart = 0;
+            gameState.localPlayer.moveUntil = 0;
+        });
+    }
 
     if (!gameState.globalKeyListenerAttached) {
         gameState.globalKeyListenerAttached = true;
@@ -702,6 +718,8 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     lp.y = spawn.y;
     lp.angle = Math.random() * Math.PI * 2;
     lp.turnDir = 0;
+    lp.turnUntil = 0;
+    lp.turnHoldStart = 0;
     lp.moveUntil = 0;
     lp.isMovingForward = false;
     lp.lives = 3;
@@ -745,6 +763,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     gameState.empWaveRings = [];
     gameState.remotePlayers = {};
     gameState.recentNoteBuffer = [];
+    gameState.heldMoveKeys.clear();
     gameState.processedHitIds.clear();
     gameState.processedEmpIds.clear();
     gameState.processedAlertIds.clear();
@@ -757,7 +776,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${lp.noteTag}] | C#: Move • C/D: Turn • sus4: Sniper 2x • Bdim7: EMP • Dm7/Em7: Decoy!`;
+        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${lp.noteTag}] | Hold C#: Move • Hold C/D: Turn • sus4: Sniper 2x • Bdim7: EMP • Dm7/Em7: Decoy!`;
     }
 
     gameState.animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
@@ -854,6 +873,8 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
                     lp.lives = 0;
                     lp.isAlive = false;
                     lp.moveUntil = 0;
+                    lp.turnDir = 0;
+                    gameState.heldMoveKeys.clear();
                     lp.damageFlash = 1.0;
                     lp.damageFlashColor = '#ef4444';
                     playExplosionSound();
@@ -880,6 +901,8 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
                     lp.y = newSpawn.y;
                     lp.angle = Math.random() * Math.PI * 2;
                     lp.moveUntil = 0;
+                    lp.turnDir = 0;
+                    gameState.heldMoveKeys.clear();
                     lp.invulnerableUntil = performance.now() + 3500;
                     lp.damageFlash = 1.0;
                     lp.damageFlashColor = '#f97316';
@@ -1193,24 +1216,33 @@ async function executeSingleNoteAction(pitchClass, bridge) {
     const lp = gameState.localPlayer;
     if (gameState.gamePhase !== 'playing' || !lp.isAlive) return;
 
-    if (pitchClass === 'C') {
-        lp.turnDir = -1;
-        setTimeout(() => { if (lp.turnDir === -1) lp.turnDir = 0; }, 220);
-        return;
-    }
-
-    if (pitchClass === 'D') {
-        lp.turnDir = 1;
-        setTimeout(() => { if (lp.turnDir === 1) lp.turnDir = 0; }, 220);
+    if (pitchClass === 'C' || pitchClass === 'D') {
+        gameState.heldMoveKeys.add(pitchClass);
+        lp.turnDir = pitchClass === 'C' ? -1 : 1;
+        lp.turnUntil = performance.now() + 300; // Fallback window until handleLaserTagRelease fires
+        if (!lp.turnHoldStart) lp.turnHoldStart = performance.now();
         return;
     }
 
     if (pitchClass === 'C#') {
-        lp.moveUntil = performance.now() + 220;
+        gameState.heldMoveKeys.add('C#');
+        lp.moveUntil = performance.now() + 260;
         return;
     }
 
     await fireLaserAttack(pitchClass, bridge, false);
+}
+
+export function handleLaserTagRelease(noteStr) {
+    gameState.releaseHookActive = true;
+    const { pitchClass } = parseNoteDetails(noteStr);
+    if (!pitchClass) return;
+
+    gameState.heldMoveKeys.delete(pitchClass);
+
+    if (pitchClass === 'C#') {
+        gameState.localPlayer.moveUntil = 0;
+    }
 }
 
 export async function handleLaserTagInput(noteStr, bridge) {
@@ -1226,8 +1258,10 @@ export async function handleLaserTagInput(noteStr, bridge) {
     const { pitchClass, octave } = parseNoteDetails(noteStr);
     if (!pitchClass) return;
 
-    if (pitchClass === 'C#' && gameState.recentNoteBuffer.length === 0) {
-        lp.moveUntil = now + 220;
+    // C# is never part of any chord — engage thrust immediately so player can steer & shoot while moving
+    if (pitchClass === 'C#') {
+        gameState.heldMoveKeys.add('C#');
+        lp.moveUntil = now + 260;
         return;
     }
 
@@ -1245,10 +1279,13 @@ export async function handleLaserTagInput(noteStr, bridge) {
                 gameState.pendingActionTimer = null;
             }
             gameState.recentNoteBuffer = [];
+            gameState.heldMoveKeys.delete('C');
             if ((now - gameState.lastOctaveFlipTime) > 400) {
                 gameState.lastOctaveFlipTime = now;
                 lp.angle += Math.PI;
                 lp.turnDir = 0;
+                lp.turnUntil = 0;
+                lp.turnHoldStart = 0;
                 playOctaveSnapSound();
                 const statusEl = document.getElementById('status');
                 if (statusEl) {
@@ -1266,6 +1303,7 @@ export async function handleLaserTagInput(noteStr, bridge) {
             gameState.pendingActionTimer = null;
         }
         gameState.recentNoteBuffer = [];
+        gameState.heldMoveKeys.delete('D');
         if (now >= lp.empReadyAt) {
             await triggerEmpShockwave(bridge);
         } else {
@@ -1285,6 +1323,8 @@ export async function handleLaserTagInput(noteStr, bridge) {
             gameState.pendingActionTimer = null;
         }
         gameState.recentNoteBuffer = [];
+        gameState.heldMoveKeys.delete('C');
+        gameState.heldMoveKeys.delete('D');
         if (now >= lp.decoyReadyAt) {
             spawnHoloDecoy(matchedDecoy.label, bridge);
         } else {
@@ -1304,6 +1344,7 @@ export async function handleLaserTagInput(noteStr, bridge) {
             gameState.pendingActionTimer = null;
         }
         gameState.recentNoteBuffer = [];
+        gameState.heldMoveKeys.delete('C');
 
         if (now >= lp.overchargeReadyAt) {
             lp.overchargeReadyAt = now + 15000;
@@ -1330,6 +1371,8 @@ export async function handleLaserTagInput(noteStr, bridge) {
         gameState.pendingActionTimer = setTimeout(() => {
             gameState.pendingActionTimer = null;
             gameState.recentNoteBuffer = [];
+            gameState.heldMoveKeys.delete('C');
+            gameState.heldMoveKeys.delete('D');
             const tNow = performance.now();
 
             // Toggle off early if already zoomed in
@@ -1369,12 +1412,16 @@ export async function handleLaserTagInput(noteStr, bridge) {
         gameState.pendingActionTimer = setTimeout(() => {
             gameState.pendingActionTimer = null;
             gameState.recentNoteBuffer = [];
+            gameState.heldMoveKeys.delete('C');
+            gameState.heldMoveKeys.delete('D');
             if ((performance.now() - gameState.lastChordTriggerTime) > 350 || gameState.lastTriggeredChordId !== matchedGear.id) {
                 gameState.lastChordTriggerTime = performance.now();
                 gameState.lastTriggeredChordId = matchedGear.id;
 
                 lp.currentGear = matchedGear;
                 lp.turnDir = 0;
+                lp.turnUntil = 0;
+                lp.turnHoldStart = 0;
                 lp.gearBannerFlash = 1.0;
                 playGearShiftSound(matchedGear.mult);
 
@@ -1479,7 +1526,23 @@ function gameLoop(now, bridge) {
 
     const lp = gameState.localPlayer;
     if (lp.isAlive) {
-        lp.angle += lp.turnDir * 1.55 * dt;
+        // Hold-to-Turn Steering with 140ms Micro-Aim Ramp
+        if (gameState.releaseHookActive) {
+            const leftHeld = gameState.heldMoveKeys.has('C');
+            const rightHeld = gameState.heldMoveKeys.has('D');
+            lp.turnDir = (leftHeld && !rightHeld) ? -1 : (rightHeld && !leftHeld) ? 1 : 0;
+        } else if (now >= (lp.turnUntil || 0)) {
+            lp.turnDir = 0;
+        }
+
+        if (lp.turnDir !== 0) {
+            if (!lp.turnHoldStart) lp.turnHoldStart = now;
+            const holdMs = now - lp.turnHoldStart;
+            const turnRamp = Math.min(1, 0.45 + (holdMs / 140) * 0.55);
+            lp.angle += lp.turnDir * 1.65 * turnRamp * dt;
+        } else {
+            lp.turnHoldStart = 0;
+        }
 
         // King of the Emerald Hub (+5 points per second inside central hub)
         if (isInsideEmeraldHub(lp.x, lp.y)) {
@@ -1506,6 +1569,7 @@ function gameLoop(now, bridge) {
                 playShieldHitSound();
                 if (lp.lives <= 0) {
                     lp.isAlive = false;
+                    gameState.heldMoveKeys.clear();
                     gameState.gamePhase = 'spectating';
                 }
             }
@@ -1513,7 +1577,7 @@ function gameLoop(now, bridge) {
             lp.stormTickTimer = 0;
         }
 
-        lp.isMovingForward = now < lp.moveUntil;
+        lp.isMovingForward = gameState.heldMoveKeys.has('C#') || (now < lp.moveUntil);
         const isBoosted = now < lp.boostUntil;
         const speedMult = lp.currentGear.mult * (isBoosted ? 1.5 : 1.0);
 
