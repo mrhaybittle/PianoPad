@@ -1297,7 +1297,7 @@ function gameLoop(now, bridge) {
     const H = canvas.height;
 
     if (localPlayer.isAlive) {
-        localPlayer.angle += localPlayer.turnDir * 3.1 * dt;
+       localPlayer.angle += localPlayer.turnDir * 1.55 * dt;
 
         localPlayer.isMovingForward = now < localPlayer.moveUntil;
         const speedMult = localPlayer.currentGear.mult;
