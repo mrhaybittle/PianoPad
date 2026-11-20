@@ -36,6 +36,8 @@ let hasBattleStarted = false;
 let battleResultsShown = false;
 let playersList = [];
 
+let lastCustomMiniGameReplay = null;
+
 const cMajorScaleNotes = ['c1', 'd1', 'e1', 'f1', 'g1', 'a1', 'b1', 'c2'];
 const AVATARS = ['🏃', '🏃‍♀️', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄', '🎹', '🎧', '👨‍🎤', '😎', '🐱', '🐲', '🚀', '🥷'];
 
@@ -57,7 +59,7 @@ function injectNewArcadeButtons() {
         flappyBtn.type = 'button';
         flappyBtn.id = 'btn-arcade-flappy-pitch';
         flappyBtn.className = 'arcade-card-btn';
-        flappyBtn.onclick = () => startFlappyPitch(gameBridgeHelper);
+        flappyBtn.onclick = () => launchFlappyPitch();
         flappyBtn.innerHTML = `<span style="font-size:1.5rem;">🐦</span><strong>Flappy Pitch</strong><small>Steer with high & low notes</small>`;
         btnContainer.appendChild(flappyBtn);
     }
@@ -67,7 +69,7 @@ function injectNewArcadeButtons() {
         rhythmBtn.type = 'button';
         rhythmBtn.id = 'btn-arcade-rhythm-echo';
         rhythmBtn.className = 'arcade-card-btn';
-        rhythmBtn.onclick = () => startRhythmEcho(gameBridgeHelper);
+        rhythmBtn.onclick = () => launchRhythmEcho();
         rhythmBtn.innerHTML = `<span style="font-size:1.5rem;">🥁</span><strong>Rhythm Echo</strong><small>Tap back the beat</small>`;
         btnContainer.appendChild(rhythmBtn);
     }
@@ -77,20 +79,51 @@ function injectNewArcadeButtons() {
         sniperBtn.type = 'button';
         sniperBtn.id = 'btn-arcade-note-sniper';
         sniperBtn.className = 'arcade-card-btn';
-        sniperBtn.onclick = () => startNoteSniper(gameBridgeHelper);
+        sniperBtn.onclick = () => launchNoteSniper();
         sniperBtn.innerHTML = `<span style="font-size:1.5rem;">🎯</span><strong>Note Sniper</strong><small>Sight-reading speed</small>`;
         btnContainer.appendChild(sniperBtn);
     }
 
-    if (!document.getElementById('btn-arcade-staff-surfers')) {
-        const staffBtn = document.createElement('button');
-        staffBtn.type = 'button';
-        staffBtn.id = 'btn-arcade-staff-surfers';
-        staffBtn.className = 'arcade-card-btn';
-        staffBtn.onclick = () => startStaffSurfers(gameBridgeHelper);
-        staffBtn.innerHTML = `<span style="font-size:1.5rem;">🚇</span><strong>Staff Surfers</strong><small>Dodge trains & hit notes</small>`;
-        btnContainer.appendChild(staffBtn);
+    if (!document.getElementById('btn-arcade-staff-surfers') && !document.getElementById('btn-arcade-scale-surfers')) {
+        const surfersBtn = document.createElement('button');
+        surfersBtn.type = 'button';
+        surfersBtn.id = 'btn-arcade-staff-surfers';
+        surfersBtn.className = 'arcade-card-btn';
+        surfersBtn.onclick = () => launchScaleSurfers();
+        surfersBtn.innerHTML = `<span style="font-size:1.5rem;">🚇</span><strong>Scale Surfers</strong><small>Dodge trains & hit notes</small>`;
+        btnContainer.appendChild(surfersBtn);
     }
+}
+
+function resolveReplayHandler(title, explicitReplayFn) {
+    if (typeof explicitReplayFn === 'function') return explicitReplayFn;
+
+    const normalized = (title || '').trim().toLowerCase();
+    if (normalized === 'scale surfers' || normalized === 'staff surfers') {
+        return () => launchScaleSurfers();
+    }
+    if (normalized === 'flappy pitch') {
+        return () => launchFlappyPitch();
+    }
+    if (normalized === 'rhythm echo') {
+        return () => launchRhythmEcho();
+    }
+    if (normalized === 'note sniper') {
+        return () => launchNoteSniper();
+    }
+    if (normalized === 'simon taps') {
+        return () => startSimonTaps();
+    }
+    if (normalized === 'mystery note') {
+        return () => startMysteryNote();
+    }
+    if (normalized === 'drop dodge') {
+        return () => startDropDodge();
+    }
+    if (normalized === 'combo strike') {
+        return () => startComboStrike();
+    }
+    return null;
 }
 
 const gameBridgeHelper = {
@@ -101,19 +134,44 @@ const gameBridgeHelper = {
     resetGameStats: () => bridge.resetGameStats(),
     highlightKey: (n, d, c) => bridge.highlightKey(n, d, c),
     spawnConfetti: (x, y, c) => bridge.spawnConfetti(x, y, c),
-    finishCustomMiniGame: (title, scoreVal, summaryHtml) => {
-        bridge.setCurrentSongTitle(title);
+    finishCustomMiniGame: (title, scoreVal, summaryHtml, replayFn = null) => {
+        const displayTitle = /^staff surfers$/i.test((title || '').trim()) ? 'Scale Surfers' : title;
+        const resolvedReplay = resolveReplayHandler(displayTitle, replayFn);
+        lastCustomMiniGameReplay = resolvedReplay;
+
+        bridge.setCurrentSongTitle(displayTitle);
         const studentName = bridge.ensureStudentName();
         document.getElementById('game-summary-text').innerHTML =
             `Student: <span style="color:#38bdf8;">${studentName}</span><br>${summaryHtml}`;
         document.getElementById('single-bar-graph').style.display = 'flex';
         document.getElementById('multi-bar-graph').style.display = 'none';
-        document.getElementById('btn-battle-again').style.display = 'none';
+
+        const battleAgainBtn = document.getElementById('btn-battle-again');
+        if (battleAgainBtn) {
+            if (typeof resolvedReplay === 'function') {
+                battleAgainBtn.textContent = '🔄 Play Again';
+                battleAgainBtn.style.display = 'inline-flex';
+                battleAgainBtn.onclick = () => {
+                    document.getElementById('game-results-modal')?.classList.remove('open');
+                    resolvedReplay();
+                };
+            } else {
+                battleAgainBtn.style.display = 'none';
+            }
+        }
+
         document.getElementById('bar-green').style.height = '100%';
         document.getElementById('bar-orange').style.height = '0%';
         document.getElementById('bar-red').style.height = '0%';
-        document.getElementById('game-rank-text').textContent = `${title} Score Logged!`;
+        document.getElementById('game-rank-text').textContent = `${displayTitle} Score Logged!`;
         document.getElementById('game-results-modal').classList.add('open');
+
+        // Re-open the Arcade Hub behind the results modal so closing the modal returns to game selection
+        const arcadeControls = document.getElementById('arcade-controls-bar');
+        if (arcadeControls && arcadeControls.style.display !== 'none') {
+            document.getElementById('arcade-hub')?.classList.add('open');
+        }
+
         bridge.postScoreToLeaderboard(scoreVal);
         arcadeState.activeMiniGame = null;
     }
@@ -153,6 +211,9 @@ export function exitActiveMiniGame() {
     stopFlappyPitch();
     stopStaffSurfers();
     stopLaserTag();
+    const surfersPopup = document.getElementById('scale-surfers-popup');
+    if (surfersPopup) surfersPopup.style.display = 'none';
+
     arcadeState.activeMiniGame = null;
     bridge.setIsPlaying(false);
     arcadeState.raceActive = false;
@@ -178,7 +239,7 @@ export function handleMiniGameNoteInput(noteStr) {
         handleLaserTagInput(noteStr, gameBridgeHelper);
         return true;
     }
-    if (mode === 'staffSurfers') {
+    if (mode === 'staffSurfers' || mode === 'scaleSurfers') {
         handleStaffSurfersInput(noteStr, gameBridgeHelper);
         return true;
     }
@@ -248,6 +309,7 @@ export function handleMiniGameNoteInput(noteStr) {
 export function startSimonTaps() {
     initAudio();
     exitActiveMiniGame();
+    document.getElementById('game-results-modal')?.classList.remove('open');
     document.getElementById('arcade-hub').classList.remove('open');
     arcadeState.activeMiniGame = 'simon';
     simonSequence = [];
@@ -332,7 +394,12 @@ function handleSimonInput(noteStr) {
     } else {
         playErrorClackSound();
         const maxLevelRemembered = Math.max(1, simonSequence.length - 1);
-        gameBridgeHelper.finishCustomMiniGame("Simon Taps", maxLevelRemembered, `Max Level Remembered: <span style="color:#22c55e; font-size:1.3rem;">Level ${maxLevelRemembered}</span>`);
+        gameBridgeHelper.finishCustomMiniGame(
+            "Simon Taps",
+            maxLevelRemembered,
+            `Max Level Remembered: <span style="color:#22c55e; font-size:1.3rem;">Level ${maxLevelRemembered}</span>`,
+            () => startSimonTaps()
+        );
     }
 }
 
@@ -340,6 +407,7 @@ function handleSimonInput(noteStr) {
 export function startMysteryNote() {
     initAudio();
     exitActiveMiniGame();
+    document.getElementById('game-results-modal')?.classList.remove('open');
     document.getElementById('arcade-hub').classList.remove('open');
     arcadeState.activeMiniGame = 'mystery';
     mysteryGuessCount = 0;
@@ -365,7 +433,12 @@ function handleMysteryInput(noteStr) {
         const canvas = document.getElementById('waterfall-canvas');
         const mPos = keyPosMap[noteStr.toLowerCase().trim()];
         if (mPos) bridge.spawnConfetti(mPos.left + mPos.width / 2, canvas.height, '#22c55e');
-        gameBridgeHelper.finishCustomMiniGame("Mystery Note", mysteryGuessCount, `Guesses Taken: <span style="color:#22c55e; font-size:1.4rem; font-weight:800;">${mysteryGuessCount}</span>`);
+        gameBridgeHelper.finishCustomMiniGame(
+            "Mystery Note",
+            mysteryGuessCount,
+            `Guesses Taken: <span style="color:#22c55e; font-size:1.4rem; font-weight:800;">${mysteryGuessCount}</span>`,
+            () => startMysteryNote()
+        );
     } else if (diff <= 2) {
         bridge.highlightKey(noteStr, 250, '#ef4444');
         document.getElementById('status').textContent = ` Sizzle HOT! You are right next to it! (Guesses: ${mysteryGuessCount})`;
@@ -382,6 +455,7 @@ function handleMysteryInput(noteStr) {
 export function startDropDodge() {
     initAudio();
     exitActiveMiniGame();
+    document.getElementById('game-results-modal')?.classList.remove('open');
     document.getElementById('arcade-hub').classList.remove('open');
     arcadeState.activeMiniGame = 'drop';
     dodgeLives = 5;
@@ -403,6 +477,7 @@ export function startDropDodge() {
 export function startComboStrike() {
     initAudio();
     exitActiveMiniGame();
+    document.getElementById('game-results-modal')?.classList.remove('open');
     document.getElementById('arcade-hub').classList.remove('open');
     arcadeState.activeMiniGame = 'combo';
     bridge.resetGameStats();
@@ -549,6 +624,7 @@ export function openJoinNamePrompt() {
 export function initSinglePlayerSprint() {
     closeSprintOptionModal();
     exitActiveMiniGame();
+    document.getElementById('game-results-modal')?.classList.remove('open');
     document.getElementById('arcade-hub').classList.remove('open');
     arcadeState.activeMiniGame = 'sprint';
     bridge.resetGameStats();
@@ -914,7 +990,13 @@ function finishSprintRace() {
     document.getElementById('badge-container').innerHTML = '';
     document.getElementById('single-bar-graph').style.display = 'flex';
     document.getElementById('multi-bar-graph').style.display = 'none';
-    document.getElementById('btn-battle-again').style.display = isSprintHost ? 'inline-flex' : 'none';
+
+    const battleAgainBtn = document.getElementById('btn-battle-again');
+    if (battleAgainBtn) {
+        battleAgainBtn.textContent = '⚔️ Battle Again';
+        battleAgainBtn.onclick = () => triggerBattleAgain();
+        battleAgainBtn.style.display = isSprintHost ? 'inline-flex' : 'none';
+    }
 
     const totalHits = gameStats.perfect + gameStats.miss;
     document.getElementById('bar-green').style.height = `${totalHits > 0 ? (gameStats.perfect / totalHits) * 100 : 100}%`;
@@ -1069,10 +1151,30 @@ function handleSprintInput(noteStr) {
     }
 }
 
-export function launchRhythmEcho() { startRhythmEcho(gameBridgeHelper); }
-export function launchNoteSniper() { startNoteSniper(gameBridgeHelper); }
-export function launchFlappyPitch() { startFlappyPitch(gameBridgeHelper); }
-export function launchStaffSurfers() { startStaffSurfers(gameBridgeHelper); }
+export function launchRhythmEcho() {
+    document.getElementById('game-results-modal')?.classList.remove('open');
+    startRhythmEcho(gameBridgeHelper);
+}
+
+export function launchNoteSniper() {
+    document.getElementById('game-results-modal')?.classList.remove('open');
+    startNoteSniper(gameBridgeHelper);
+}
+
+export function launchFlappyPitch() {
+    document.getElementById('game-results-modal')?.classList.remove('open');
+    startFlappyPitch(gameBridgeHelper);
+}
+
+export function launchScaleSurfers() {
+    document.getElementById('game-results-modal')?.classList.remove('open');
+    startStaffSurfers(gameBridgeHelper);
+}
+
+// Backward-compatible alias if any HTML/module still calls launchStaffSurfers
+export function launchStaffSurfers() {
+    launchScaleSurfers();
+}
 
 export function launchLaserTag(roomCode, isHost = false) {
     openArcadeHub();
@@ -1096,6 +1198,21 @@ Object.assign(window, {
     launchRhythmEcho,
     launchNoteSniper,
     launchFlappyPitch,
+    launchScaleSurfers,
     launchStaffSurfers,
+    startScaleSurfers: (b) => {
+        document.getElementById('game-results-modal')?.classList.remove('open');
+        startStaffSurfers(b || gameBridgeHelper);
+    },
+    startStaffSurfers: (b) => {
+        document.getElementById('game-results-modal')?.classList.remove('open');
+        startStaffSurfers(b || gameBridgeHelper);
+    },
+    replayLastCustomMiniGame: () => {
+        if (typeof lastCustomMiniGameReplay === 'function') {
+            document.getElementById('game-results-modal')?.classList.remove('open');
+            lastCustomMiniGameReplay();
+        }
+    },
     launchLaserTag
 });
