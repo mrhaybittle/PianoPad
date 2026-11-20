@@ -94,6 +94,7 @@ function injectNewArcadeButtons() {
 }
 
 const gameBridgeHelper = {
+    getState: () => bridge.getState(),
     getActiveMiniGame: () => arcadeState.activeMiniGame,
     setActiveMiniGame: (val) => { arcadeState.activeMiniGame = val; },
     exitActiveMiniGame,
