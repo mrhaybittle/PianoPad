@@ -7,6 +7,7 @@ import { arcadeState, initMiniGamesBridge, stopBattlePolling, openArcadeHub, ret
 import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDeck, sendKnockoutQuickEmote, selectKnockoutTeam, triggerStreakSabotage, resetKnockoutRoundEffects, joinClassKnockoutStudent, syncKnockoutLiveScore, submitKnockoutRoundFinish, leaveClassKnockout } from './knockout.js';
 import { initFinaleBridge, showGrandFinale, closeGrandFinale, toggleFanfareMute } from './finale.js';
 import { initEyesFront, stopEyesFront, isEyesFrontFrozen, openEyesFrontPrompt } from './eyesFront.js';
+
 let songList = [];
 let currentSong = [];
 let currentSongTitle = "Wipeout";
@@ -204,23 +205,24 @@ function syncStudentToFirebase(statusOverride = null) {
     });
     window.firebaseOnDisconnect(myRef).remove();
 }
+
 function isAuthorizedTeacher() {
     const activeName = (sessionStudentName || localStorage.getItem('pianopad_name') || '').trim();
     return /^mr\.?\s*[hbt]$/i.test(activeName);
 }
+
 document.getElementById('btn-join-room').addEventListener('click', () => {
     const name = document.getElementById('student-join-name').value.trim();
     const avatar = document.getElementById('student-join-avatar').value;
     const chosenClass = document.getElementById('student-join-class').value;
     const roomSelect = document.getElementById('student-join-room');
     const room = (roomSelect && roomSelect.style.display === 'none') ? "Outside" : (roomSelect ? roomSelect.value : "Outside");
-    // Initialize Eyes Front listener (enables host pill automatically for Mr H, Mr B, or Mr T)
-    initEyesFront(currentRoom, { isHost: isAuthorizedTeacher() });
     
     if (!name || !chosenClass || (roomSelect && roomSelect.style.display !== 'none' && !room)) {
         alert('Please enter your Name and select your Class.');
         return;
     }
+    
     sessionStudentName = sanitizeName(name);
     sessionStudentAvatar = avatar;
     currentStudentClass = chosenClass;
@@ -231,8 +233,8 @@ document.getElementById('btn-join-room').addEventListener('click', () => {
     localStorage.setItem('pianopad_class', currentStudentClass);
     localStorage.setItem('pianopad_room', currentRoom);
 
-    // Initialize Eyes Front listener now that we have the room code
-    initEyesFront(currentRoom, { isHost: false });
+    // Initialize Eyes Front listener now that we have the room code and student name
+    initEyesFront(currentRoom, { isHost: isAuthorizedTeacher() });
 
     document.getElementById('room-join-modal').classList.remove('open');
     
@@ -1515,7 +1517,6 @@ function highlightKey(noteStr, duration = 200, color = null) {
 }
 
 function playManualNote(noteStr) {
-    // 1. Immediately block all sound, keyboard UI, and game interaction if the teacher has frozen the class
     if (isEyesFrontFrozen()) return;
 
     initAudio();
