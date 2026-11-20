@@ -267,8 +267,9 @@ export function collectWorldSprites(dt, now) {
 }
 
 export function drawWorldSprite(ctx, sp, zBuffer, numRays, stripW, horizon, W, H, now) {
-    const FOV = Math.PI / 3;
     const lp = gameState.localPlayer;
+    const isSniper = now < (lp.sniperUntil || 0);
+    const FOV = isSniper ? (Math.PI / 6) : (Math.PI / 3);
 
     let relAngle = Math.atan2(sp.dy, sp.dx) - lp.angle;
     while (relAngle > Math.PI) relAngle -= Math.PI * 2;
