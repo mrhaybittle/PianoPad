@@ -13,7 +13,7 @@ let bestScore = parseInt(localStorage.getItem('pianopad_gridiron_groove_best') |
 
 // Football drive state (Field is 0 to 100 yards; 100 = Opponent Endzone)
 let down = 1;
-let lineOfScrimmage = 40; // Start on own 40-yd line (60 yds to TD)
+let lineOfScrimmage = 40;
 let firstDownLine = 50;
 let cameraYard = 36;
 
@@ -43,7 +43,7 @@ const ball = {
     targetLaneY: 0.5,
     targetReceiverIdx: -1,
     progress: 0,
-    duration: 0.55,
+    duration: 0.52,
     yard: 0,
     laneY: 0.5,
     height: 0
@@ -64,7 +64,7 @@ let carrier = {
 
 // Extra Point (PAT) Kick Meter
 const patState = {
-    cursor: 0.5, // 0..1 oscillating across uprights
+    cursor: 0.5,
     dir: 1,
     speed: 1.45,
     kickNote: 'C',
@@ -235,7 +235,7 @@ function showInstructionsPopup(bridge) {
             transform: translate(-50%, -50%);
             background: #0f172a;
             border: 4px solid #facc15;
-            box-shadow: 0 0 0 4px #1e3a8a, 0 18px 40px rgba(0,0,0,0.85);
+            box-shadow: 0 0 0 4px #1d428a, 0 18px 40px rgba(0,0,0,0.85);
             padding: 22px;
             color: #f8fafc;
             font-family: 'Courier New', Courier, monospace;
@@ -248,7 +248,7 @@ function showInstructionsPopup(bridge) {
     }
 
     popup.innerHTML = `
-        <div style="background:#1e3a8a; border:2px solid #facc15; padding:10px; margin-bottom:14px;">
+        <div style="background:#1d428a; border:2px solid #facc15; padding:10px; margin-bottom:14px;">
             <div style="font-size:12px; color:#93c5fd; font-weight:bold; letter-spacing:2px;">16-BIT RETRO BOWL EDITION</div>
             <h2 style="margin:4px 0 0 0; font-size:28px; color:#facc15; text-shadow: 3px 3px 0 #991b1b; letter-spacing:1px;">
                 🏈 GRIDIRON GROOVE
@@ -304,7 +304,6 @@ function setupNextPlay() {
     pocketTimer = 0;
     maxPocketTime = Math.max(3.4, 5.4 - (driveNumber - 1) * 0.35);
 
-    // 3 Retro Bowl Receivers running distinct routes
     const routeConfigs = [
         { label: 'WR1', startY: 0.20, targetY: 0.16, speed: 12.2 + driveNumber * 0.4, breakYard: lineOfScrimmage + 6 },
         { label: 'TE',  startY: 0.50, targetY: 0.36, speed: 10.8 + driveNumber * 0.35, breakYard: lineOfScrimmage + 4 },
@@ -324,7 +323,6 @@ function setupNextPlay() {
         animPhase: i * 1.3
     }));
 
-    // Defenders: 2 pass rushers + 3 secondary coverage defenders
     const rushSpeed = 2.1 + driveNumber * 0.25;
     const dbSpeed = 8.4 + driveNumber * 0.45;
     defenders = [
@@ -367,7 +365,7 @@ export function handleGridironGrooveInput(noteStr, bridge) {
     const isSharp = match[2] === '#';
     const octave = parseInt(match[3], 10);
 
-    // 1. PRE-SNAP: Any key snaps the ball (and if it matches a receiver right away, snaps cleanly!)
+    // 1. PRE-SNAP: Any key snaps the ball
     if (gamePhase === 'presnap') {
         gamePhase = 'passing';
         playRetroSound('snap');
@@ -376,12 +374,11 @@ export function handleGridironGrooveInput(noteStr, bridge) {
         return;
     }
 
-    // 2. IN THE POCKET (PASSING): Match a Receiver's Note Letter to throw a spiral!
+    // 2. IN THE POCKET (PASSING): Match a Receiver's Note Letter to throw a spiral
     if (gamePhase === 'passing') {
         const targetIdx = receivers.findIndex(r => r.note === letter);
         if (targetIdx !== -1) {
             const rec = receivers[targetIdx];
-            // Lead the receiver like Retro Bowl!
             const flightTime = 0.48;
             const leadYard = Math.min(104, rec.yard + rec.speed * flightTime);
             const leadLaneY = rec.laneY + (rec.targetY - rec.laneY) * 0.35;
@@ -403,20 +400,18 @@ export function handleGridironGrooveInput(noteStr, bridge) {
             bridge.highlightKey(noteStr, 250, '#22c55e');
             spawnPixelBurst(qb.yard, qb.laneY, '#facc15', 6);
         } else if (isSharp) {
-            // Black key in pocket dodges pass rush slightly!
             qb.yard = Math.max(1, qb.yard - 1.5);
             pocketTimer = Math.max(0, pocketTimer - 0.65);
             playRetroSound('juke');
             bridge.highlightKey(noteStr, 180, '#ec4899');
             triggerBanner('POCKET STEP!', '#ec4899', 0.7);
         } else {
-            // Wrong note letter -> visual feedback only
             bridge.highlightKey(noteStr, 140, '#ef4444');
         }
         return;
     }
 
-    // 3. RUNNING AFTER CATCH: Octave 1/2/3 switches lanes, Black Key = Juke, Boost Note = Turbo!
+    // 3. RUNNING AFTER CATCH: Octave 1/2/3 switches lanes, Black Key = Juke, Boost Note = Turbo
     if (gamePhase === 'running' && carrier.active) {
         if (octave <= 1) carrier.targetLaneY = 0.20;
         else if (octave === 2) carrier.targetLaneY = 0.50;
@@ -443,11 +438,10 @@ export function handleGridironGrooveInput(noteStr, bridge) {
         return;
     }
 
-    // 4. EXTRA POINT KICK (PAT): Any key kicks when meter is sweeping!
+    // 4. EXTRA POINT KICK (PAT)
     if (gamePhase === 'pat' && !patState.kicked) {
         patState.kicked = true;
         patState.ballProgress = 0;
-        // Center green zone is 0.36 to 0.64 (wider if playing the target kick note!)
         const tolerance = letter === patState.kickNote ? 0.19 : 0.12;
         patState.kickGood = Math.abs(patState.cursor - 0.5) <= tolerance;
         playRetroSound('kick');
@@ -486,7 +480,6 @@ function resolveDownEnded(endYard, reasonText, reasonColor, bridge) {
             gamePhase = 'presnap';
         }, 1250);
     } else {
-        // Turnover on Downs -> End Game!
         triggerEndGame('TURNOVER ON DOWNS!', bridge);
     }
 }
@@ -560,7 +553,6 @@ function gameLoop(now, bridge) {
         pocketTimer += dt;
         qb.animPhase += dt * 10;
 
-        // Move receivers along their Retro Bowl routes
         receivers.forEach(r => {
             r.animPhase += dt * 14;
             r.yard = Math.min(106, r.yard + r.speed * dt);
@@ -569,7 +561,6 @@ function gameLoop(now, bridge) {
             }
         });
 
-        // Rushers close in on QB; DBs shadow receivers
         defenders.forEach((d, idx) => {
             d.animPhase += dt * 13;
             if (d.role === 'rush') {
@@ -623,7 +614,6 @@ function gameLoop(now, bridge) {
         if (ball.progress >= 1) {
             ball.active = false;
             const rec = receivers[ball.targetReceiverIdx];
-            // Check if a defender is sitting right on the catch spot (Interception!)
             const interceptingDb = defenders.find(d => d.role === 'db' && Math.hypot(d.yard - ball.yard, (d.laneY - ball.laneY) * 18) < 1.55);
 
             if (interceptingDb && Math.random() < 0.45) {
@@ -631,7 +621,6 @@ function gameLoop(now, bridge) {
                 spawnPixelBurst(ball.yard, ball.laneY, '#ef4444', 18);
                 triggerEndGame('INTERCEPTED!', bridge);
             } else if (rec && Math.hypot(rec.yard - ball.yard, (rec.laneY - ball.laneY) * 18) < 4.5) {
-                // CAUGHT! Transition into Retro Bowl YAC (Run After Catch)!
                 carrier.active = true;
                 carrier.yard = rec.yard;
                 carrier.laneY = rec.laneY;
@@ -663,18 +652,16 @@ function gameLoop(now, bridge) {
         carrier.laneY += (carrier.targetLaneY - carrier.laneY) * Math.min(1, dt * 8.5);
         cameraYard += ((carrier.yard + 6) - cameraYard) * Math.min(1, dt * 8);
 
-        // Touchdown check!
         if (carrier.yard >= 100) {
             triggerTouchdown(bridge);
         } else {
-            // Defenders pursue ball carrier
             for (const d of defenders) {
                 if (d.stunned > 0) {
                     d.stunned = Math.max(0, d.stunned - dt);
                     continue;
                 }
                 d.animPhase += dt * 15;
-                const pursueSpeed = (9.6 + driveNumber * 0.45);
+                const pursueSpeed = 9.6 + driveNumber * 0.45;
                 const dx = carrier.yard - d.yard;
                 const dy = (carrier.laneY - d.laneY) * 18;
                 const dist = Math.hypot(dx, dy) || 1;
@@ -683,7 +670,6 @@ function gameLoop(now, bridge) {
 
                 if (dist < 1.35) {
                     if (carrier.jukeTimer > 0) {
-                        // Broken tackle!
                         d.stunned = 1.4;
                         score += 75 * multiplier;
                         playRetroSound('juke');
@@ -730,7 +716,6 @@ function gameLoop(now, bridge) {
         }
     }
 
-    // Update particles
     for (let i = particles.length - 1; i >= 0; i--) {
         const pt = particles[i];
         pt.yard += pt.vYard * dt;
@@ -739,7 +724,7 @@ function gameLoop(now, bridge) {
         if (pt.life <= 0) particles.splice(i, 1);
     }
 
-    // --- RENDER RETRO BOWL 16-BIT PIXEL GRAPHICS ---
+    // --- RENDER AUTHENTIC RETRO BOWL 16-BIT PIXEL GRAPHICS ---
     const canvas = document.getElementById('waterfall-canvas');
     const ctx = canvas.getContext('2d');
     const W = canvas.width;
@@ -752,14 +737,14 @@ function gameLoop(now, bridge) {
         ctx.translate(Math.round((Math.random() - 0.5) * mag), Math.round((Math.random() - 0.5) * mag));
     }
 
-    drawRetroBowlField(ctx, W, H, now);
+    drawRetroBowlStadiumAndField(ctx, W, H, now);
 
     if (gamePhase === 'pat') {
         drawPatKickScene(ctx, W, H);
     } else {
-        drawPassTrajectories(ctx, W, H);
+        drawRetroPassTrajectories(ctx, W, H);
 
-        // Depth-sort all players by laneY (painter's algorithm)
+        // Depth-sort all sprites by laneY (painter's algorithm)
         const sprites = [];
         if (!carrier.active) {
             sprites.push({ kind: 'qb', yard: qb.yard, laneY: qb.laneY, anim: qb.animPhase });
@@ -772,20 +757,20 @@ function gameLoop(now, bridge) {
 
         sprites.forEach(sp => {
             if (sp.kind === 'qb') {
-                drawRetroPlayer(ctx, W, H, sp.yard, sp.laneY, '#2563eb', '#facc15', sp.anim, null, false);
+                drawRetroBowlSprite(ctx, W, H, sp.yard, sp.laneY, '#234d9e', '#facc15', '#ffffff', sp.anim, null, false);
             } else if (sp.kind === 'wr') {
-                drawRetroPlayer(ctx, W, H, sp.yard, sp.laneY, '#2563eb', '#facc15', sp.anim, sp.data.note, false);
+                drawRetroBowlSprite(ctx, W, H, sp.yard, sp.laneY, '#234d9e', '#facc15', '#ffffff', sp.anim, sp.data.note, false);
             } else if (sp.kind === 'carrier') {
-                drawRetroPlayer(
+                drawRetroBowlSprite(
                     ctx, W, H, sp.yard, sp.laneY,
-                    carrier.boostTimer > 0 ? '#22c55e' : '#2563eb',
-                    '#facc15', sp.anim, null, true, carrier.jukeTimer > 0
+                    carrier.boostTimer > 0 ? '#16a34a' : '#234d9e',
+                    '#facc15', '#ffffff', sp.anim, null, true, carrier.jukeTimer > 0
                 );
             } else if (sp.kind === 'def') {
-                drawRetroPlayer(
+                drawRetroBowlSprite(
                     ctx, W, H, sp.yard, sp.laneY,
-                    sp.data.stunned > 0 ? '#64748b' : '#dc2626',
-                    '#e2e8f0', sp.anim, null, false
+                    sp.data.stunned > 0 ? '#64748b' : '#b91c1c',
+                    '#e2e8f0', '#facc15', sp.anim, null, false
                 );
             }
         });
@@ -811,133 +796,245 @@ function gameLoop(now, bridge) {
     }
 }
 
-function yardToScreen(yard, laneY, W, H) {
-    const pxPerYard = Math.max(14, W / 28);
-    const topY = H * 0.19;
-    const bottomY = H * 0.91;
-    const x = W * 0.24 + (yard - cameraYard) * pxPerYard;
-    const y = topY + laneY * (bottomY - topY);
-    return { x, y, topY, bottomY, pxPerYard };
+// Layout geometry matching the Retro Bowl sprite sheet proportions
+function getFieldLayout(W, H) {
+    const hudH = 24;
+    const standsH = Math.max(22, Math.round(H * 0.12));
+    const topApronH = Math.max(12, Math.round(H * 0.06));
+    const botApronH = Math.max(12, Math.round(H * 0.06));
+    const footerH = 14;
+
+    const standsTop = hudH;
+    const wallY = standsTop + standsH;
+    const topApronY = wallY + 4;
+    const fieldTopY = topApronY + topApronH;
+    const fieldBottomY = H - footerH - botApronH;
+    const fieldH = Math.max(60, fieldBottomY - fieldTopY);
+    const pxPerYard = Math.max(15, W / 27);
+
+    return { hudH, standsTop, standsH, wallY, topApronY, topApronH, fieldTopY, fieldBottomY, fieldH, botApronH, footerH, pxPerYard };
 }
 
-function drawRetroBowlField(ctx, W, H, now) {
-    const topY = Math.round(H * 0.19);
-    const bottomY = Math.round(H * 0.91);
-    const fieldH = bottomY - topY;
-    const pxPerYard = Math.max(14, W / 28);
+function yardToScreen(yard, laneY, W, H) {
+    const L = getFieldLayout(W, H);
+    const x = W * 0.24 + (yard - cameraYard) * L.pxPerYard;
+    const y = L.fieldTopY + 8 + laneY * (L.fieldH - 16);
+    return { x, y, ...L };
+}
 
-    // 1. Retro Stadium Wall & Pixel Crowd (Top Strip)
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(0, 0, W, topY);
+function drawRetroBowlStadiumAndField(ctx, W, H, now) {
+    const L = getFieldLayout(W, H);
+    const isSnowBowl = driveNumber >= 3 && driveNumber % 2 === 1;
 
-    // Pixel crowd dots cheering
-    const crowdColors = ['#facc15', '#38bdf8', '#f87171', '#4ade80', '#ffffff'];
-    for (let cx = 6; cx < W; cx += 10) {
-        const bounce = Math.floor(Math.sin(now / 180 + cx) * 1.5);
-        ctx.fillStyle = crowdColors[(cx / 10) % crowdColors.length];
-        ctx.fillRect(cx, Math.max(4, topY - 18 + bounce), 6, 6);
-        ctx.fillStyle = crowdColors[((cx / 10) + 2) % crowdColors.length];
-        ctx.fillRect(cx + 3, Math.max(2, topY - 26 - bounce), 5, 5);
+    // 1. MULTI-TIERED RETRO BOWL CROWD STANDS (Top)
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(0, L.standsTop, W, L.standsH);
+
+    // Concrete bleacher steps
+    for (let row = 0; row < 3; row++) {
+        const ry = L.standsTop + Math.floor((L.standsH / 3) * row);
+        ctx.fillStyle = row % 2 === 0 ? '#475569' : '#334155';
+        ctx.fillRect(0, ry, W, Math.ceil(L.standsH / 3));
+
+        // Pixel spectators in team colors
+        const fanPalette = ['#234d9e', '#facc15', '#ffffff', '#dc2626', '#38bdf8', '#4ade80'];
+        for (let fx = (row * 4) + 2; fx < W; fx += 7) {
+            const cheer = Math.floor(Math.sin(now / 160 + fx * 0.3 + row) * 1.4);
+            ctx.fillStyle = fanPalette[(fx + row * 3) % fanPalette.length];
+            ctx.fillRect(fx, ry + 2 + cheer, 4, 4);
+            // Tiny skin/hat pixel above jersey
+            ctx.fillStyle = '#fed7aa';
+            ctx.fillRect(fx + 1, ry + cheer, 2, 2);
+        }
     }
 
-    // Stadium Retaining Wall & Retro Ribbon Board
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, topY - 10, W, 10);
-    ctx.fillStyle = '#facc15';
-    ctx.font = 'bold 9px monospace';
-    ctx.textAlign = 'left';
-    for (let bx = 20; bx < W; bx += 220) {
-        ctx.fillText('★ RETRO GROOVE STADIUM ★', bx, topY - 2);
+    // 2. RED BRICK RETAINING WALL WITH WHITE TRIM & "GGtv" SIGNS
+    ctx.fillStyle = '#8b261d';
+    ctx.fillRect(0, L.wallY, W, 5);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillRect(0, L.wallY, W, 1);
+
+    // Broadcast signs along wall (like "RBtv" in the sprite sheet)
+    for (let sx = 35; sx < W; sx += 165) {
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(sx, L.wallY - 4, 30, 8);
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx, L.wallY - 4, 30, 8);
+        ctx.fillStyle = '#facc15';
+        ctx.font = 'bold 7px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('GGtv', sx + 15, L.wallY + 2);
     }
 
-    // 2. Alternating Two-Tone Green Retro Turf Strips (Every 5 yards)
+    // 3. OUTER BRIGHT GRASS APRON (Top & Bottom Sideline Surround)
+    const apronGreen = isSnowBowl ? '#cbd5e1' : '#659d32';
+    ctx.fillStyle = apronGreen;
+    ctx.fillRect(0, L.topApronY, W, L.topApronH);
+    ctx.fillRect(0, L.fieldBottomY, W, L.botApronH);
+
+    // Sideline coaches, cheerleaders & cameramen standing on top & bottom aprons
+    for (let cx = 24; cx < W; cx += 68) {
+        const pY = L.topApronY + Math.max(2, L.topApronH - 8);
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fillRect(cx - 1, pY + 5, 6, 2);
+        ctx.fillStyle = (cx % 136 === 24) ? '#facc15' : '#1e293b'; // Coach / Cameraman
+        ctx.fillRect(cx, pY, 4, 5);
+        ctx.fillStyle = '#fed7aa';
+        ctx.fillRect(cx + 1, pY - 2, 2, 2);
+
+        // Bottom apron photographer
+        const bY = L.fieldBottomY + 3;
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(cx + 28, bY, 4, 4);
+        ctx.fillStyle = '#fed7aa';
+        ctx.fillRect(cx + 29, bY - 2, 2, 2);
+    }
+
+    // 4. TWO-TONE RETRO BOWL PLAYING FIELD & ROYAL BLUE ENDZONES
+    const turfDark = isSnowBowl ? '#dce7ec' : '#4e7a27';
+    const turfLight = isSnowBowl ? '#e7f0f4' : '#57872c';
+    const endzoneBlue = '#214999';
+
     const startYard = Math.floor((cameraYard - 10) / 5) * 5;
     const endYard = Math.ceil((cameraYard + 32) / 5) * 5;
 
+    const upperHashY = Math.round(L.fieldTopY + L.fieldH * 0.34);
+    const lowerHashY = Math.round(L.fieldTopY + L.fieldH * 0.66);
+
     for (let y = startYard; y <= endYard; y += 5) {
-        const leftX = Math.round(W * 0.24 + (y - cameraYard) * pxPerYard);
-        const stripW = Math.ceil(5 * pxPerYard);
+        const leftX = Math.round(W * 0.24 + (y - cameraYard) * L.pxPerYard);
+        const stripW = Math.ceil(5 * L.pxPerYard);
 
-        if (y < 0) {
-            ctx.fillStyle = '#1e3a8a'; // Home Endzone
-        } else if (y >= 100) {
-            ctx.fillStyle = '#991b1b'; // Opponent Endzone
+        if (y < 0 || y >= 100) {
+            ctx.fillStyle = endzoneBlue;
         } else {
-            ctx.fillStyle = (Math.floor(y / 5) % 2 === 0) ? '#2e8b3c' : '#359c44';
+            ctx.fillStyle = (Math.floor(y / 5) % 2 === 0) ? turfDark : turfLight;
         }
-        ctx.fillRect(leftX, topY, stripW, fieldH);
+        ctx.fillRect(leftX, L.fieldTopY, stripW, L.fieldH);
 
-        // Crisp White Yard Lines every 5 yards
+        // 5-yard white stripe
         if (y >= 0 && y <= 100) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
-            ctx.fillRect(leftX, topY, 2, fieldH);
+            ctx.fillStyle = isSnowBowl ? '#64748b' : 'rgba(255, 255, 255, 0.9)';
+            ctx.fillRect(leftX, L.fieldTopY, y === 0 || y === 100 || y === 50 ? 3 : 2, L.fieldH);
 
-            // Retro Hash Marks
-            for (let hy = topY + 12; hy < bottomY - 8; hy += 16) {
-                ctx.fillRect(leftX - 2, hy, 6, 2);
+            // 1-yard pixel hash ticks along top sideline, upper hash, lower hash, and bottom sideline!
+            if (y < 100) {
+                for (let sub = 1; sub <= 4; sub++) {
+                    const tickX = Math.round(leftX + (sub * L.pxPerYard));
+                    ctx.fillRect(tickX, L.fieldTopY + 3, 1, 3);
+                    ctx.fillRect(tickX, upperHashY, 1, 3);
+                    ctx.fillRect(tickX, lowerHashY, 1, 3);
+                    ctx.fillRect(tickX, L.fieldBottomY - 6, 1, 3);
+                }
             }
 
-            // Bold Pixel Yard Numbers every 10 yards
-            if (y > 0 && y < 100 && y % 10 === 0) {
-                const displayNum = y <= 50 ? y : 100 - y;
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
-                ctx.font = `900 ${Math.max(11, Math.round(H * 0.065))}px monospace`;
+            // Painted "G·G" Turf Emblem at the 25 & 75 yard lines (just like "R·B" in the texture)
+            if (y === 25 || y === 75) {
+                ctx.fillStyle = isSnowBowl ? 'rgba(33, 73, 153, 0.45)' : 'rgba(255, 255, 255, 0.42)';
+                ctx.font = '900 10px monospace';
                 ctx.textAlign = 'center';
-                ctx.fillText(String(displayNum), leftX, topY + 18);
-                ctx.fillText(String(displayNum), leftX, bottomY - 6);
+                ctx.fillText('G·G', leftX, L.fieldTopY + 14);
+                ctx.fillText('G·G', leftX, L.fieldBottomY - 6);
+            }
+
+            // Authentic Retro Bowl Yard Numbers (Upside-down on top, upright on bottom + directional arrows)
+            if (y > 0 && y < 100 && y % 10 === 0) {
+                const numVal = y <= 50 ? y : 100 - y;
+                const arrowLeft = y < 50;
+                const arrowRight = y > 50;
+                const labelText = arrowLeft ? `◀${numVal}` : (arrowRight ? `${numVal}▶` : `${numVal}`);
+
+                const fontSize = Math.max(10, Math.round(L.fieldH * 0.13));
+                ctx.fillStyle = isSnowBowl ? 'rgba(30, 41, 59, 0.65)' : 'rgba(255, 255, 255, 0.78)';
+                ctx.font = `900 ${fontSize}px monospace`;
+                ctx.textAlign = 'center';
+
+                // Bottom upright numbers
+                ctx.fillText(labelText, leftX, lowerHashY + fontSize + 4);
+
+                // Top upside-down numbers (rotated 180° just like Retro Bowl)
+                ctx.save();
+                ctx.translate(leftX, upperHashY - fontSize - 2);
+                ctx.rotate(Math.PI);
+                ctx.fillText(labelText, 0, 0);
+                ctx.restore();
             }
         }
     }
 
-    // Painted Endzone Text & Yellow Pixel Goalpost at 105 yds
-    const ezX = Math.round(W * 0.24 + (104 - cameraYard) * pxPerYard);
-    if (ezX < W + 40) {
+    // 5. ENDZONE PAINTED BLOCK TEXT, ORANGE PYLONS & YELLOW GOALPOSTS
+    const goalLineX = Math.round(W * 0.24 + (100 - cameraYard) * L.pxPerYard);
+    const backEndlineX = Math.round(W * 0.24 + (110 - cameraYard) * L.pxPerYard);
+
+    if (goalLineX < W + 60) {
+        // Vertical painted endzone lettering
+        const ezCenterX = Math.round((goalLineX + backEndlineX) / 2);
         ctx.save();
-        ctx.translate(ezX, topY + fieldH / 2);
+        ctx.translate(ezCenterX, L.fieldTopY + L.fieldH / 2);
         ctx.rotate(-Math.PI / 2);
-        ctx.fillStyle = 'rgba(250, 204, 21, 0.55)';
-        ctx.font = `900 ${Math.max(14, Math.round(H * 0.09))}px monospace`;
+        ctx.fillStyle = 'rgba(250, 204, 21, 0.72)';
+        ctx.font = `900 ${Math.max(14, Math.round(L.fieldH * 0.19))}px monospace`;
         ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         ctx.fillText('GROOVE', 0, 0);
         ctx.restore();
 
-        // Retro Yellow Goalpost
-        const gpX = Math.round(W * 0.24 + (108 - cameraYard) * pxPerYard);
-        const gpMidY = Math.round(topY + fieldH * 0.5);
+        // Back Endline White Border
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(backEndlineX, L.fieldTopY, 3, L.fieldH);
+
+        // 4 Orange Endzone Corner Pylons
+        ctx.fillStyle = '#f97316';
+        ctx.fillRect(goalLineX - 2, L.fieldTopY - 3, 4, 5);
+        ctx.fillRect(goalLineX - 2, L.fieldBottomY - 1, 4, 5);
+        ctx.fillRect(backEndlineX - 1, L.fieldTopY - 3, 4, 5);
+        ctx.fillRect(backEndlineX - 1, L.fieldBottomY - 1, 4, 5);
+
+        // Classic Retro Bowl Yellow H-Goalpost on Back Endline
+        const gpMidY = Math.round(L.fieldTopY + L.fieldH * 0.5);
+        const postHalfSpan = Math.round(L.fieldH * 0.18);
         ctx.fillStyle = '#facc15';
-        ctx.fillRect(gpX, gpMidY - 26, 4, 52); // Crossbar
-        ctx.fillRect(gpX - 14, gpMidY - 26, 16, 3); // Left Upright
-        ctx.fillRect(gpX - 14, gpMidY + 23, 16, 3); // Right Upright
-        ctx.fillRect(gpX + 4, gpMidY - 2, 10, 4); // Base post
+        ctx.fillRect(backEndlineX, gpMidY - postHalfSpan, 3, postHalfSpan * 2); // Crossbar
+        ctx.fillRect(backEndlineX - 12, gpMidY - postHalfSpan, 14, 3); // Top Upright
+        ctx.fillRect(backEndlineX - 12, gpMidY + postHalfSpan - 3, 14, 3); // Bottom Upright
+        ctx.fillRect(backEndlineX + 3, gpMidY - 2, 8, 4); // Stanchion
     }
 
-    // 3. White Sidelines & Dark Border Track
+    // 6. CRISP WHITE TOP & BOTTOM SIDELINE BORDERS
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, topY, W, 3);
-    ctx.fillRect(0, bottomY, W, 3);
+    ctx.fillRect(0, L.fieldTopY, W, 3);
+    ctx.fillRect(0, L.fieldBottomY - 2, W, 3);
 
+    // 7. BLUE LINE OF SCRIMMAGE & YELLOW FIRST-DOWN MARKER + SIDELINE DOWN BOX
+    const losX = Math.round(W * 0.24 + (lineOfScrimmage - cameraYard) * L.pxPerYard);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(losX - 1, L.fieldTopY + 3, 3, L.fieldH - 5);
+
+    if (firstDownLine <= 100) {
+        const fdX = Math.round(W * 0.24 + (firstDownLine - cameraYard) * L.pxPerYard);
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(fdX - 1, L.fieldTopY + 3, 3, L.fieldH - 5);
+
+        // Orange/Black Sideline Down Marker Box on Top Apron
+        ctx.fillStyle = '#f97316';
+        ctx.fillRect(fdX - 5, L.fieldTopY - 9, 10, 8);
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 7px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(down), fdX, L.fieldTopY - 3);
+    }
+
+    // 8. BOTTOM CONTROL BAR STRIP
     ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, bottomY + 3, W, H - bottomY);
-
-    // Bottom Lane Control Legend
+    ctx.fillRect(0, H - L.footerH, W, L.footerH);
     ctx.font = 'bold 10px monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#93c5fd';
-    ctx.fillText('OCT 1 = TOP LANE   •   OCT 2 = MID LANE   •   OCT 3 = BOT LANE   •   BLACK KEY = JUKE', W / 2, H - 5);
-
-    // 4. Blue Line of Scrimmage & Yellow First Down Line
-    const losX = Math.round(W * 0.24 + (lineOfScrimmage - cameraYard) * pxPerYard);
-    ctx.fillStyle = '#38bdf8';
-    ctx.fillRect(losX - 1, topY + 3, 3, fieldH - 3);
-
-    if (firstDownLine <= 100) {
-        const fdX = Math.round(W * 0.24 + (firstDownLine - cameraYard) * pxPerYard);
-        ctx.fillStyle = '#facc15';
-        ctx.fillRect(fdX - 1, topY + 3, 3, fieldH - 3);
-    }
+    ctx.fillText('OCT 1 = TOP LANE  •  OCT 2 = MID LANE  •  OCT 3 = BOT LANE  •  BLACK KEY = JUKE', W / 2, H - 3);
 }
 
-function drawPassTrajectories(ctx, W, H) {
+function drawRetroPassTrajectories(ctx, W, H) {
     if (gamePhase !== 'presnap' && gamePhase !== 'passing') return;
 
     const qbPos = yardToScreen(qb.yard, qb.laneY, W, H);
@@ -947,78 +1044,100 @@ function drawPassTrajectories(ctx, W, H) {
         const leadLaneY = Math.max(0.08, Math.min(0.92, r.laneY + (r.targetY - r.laneY) * 0.35));
         const targetPos = yardToScreen(leadYard, leadLaneY, W, H);
 
-        // Dotted Retro Bowl trajectory dots
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-        const steps = 8;
-        for (let s = 1; s <= steps; s++) {
+        // Dotted Retro Bowl white pixel arc
+        ctx.fillStyle = '#ffffff';
+        const steps = 9;
+        for (let s = 1; s < steps; s++) {
             const t = s / steps;
             const dx = qbPos.x + (targetPos.x - qbPos.x) * t;
             const dy = qbPos.y + (targetPos.y - qbPos.y) * t - Math.sin(t * Math.PI) * 14;
-            ctx.fillRect(Math.round(dx), Math.round(dy), 3, 3);
+            ctx.fillRect(Math.round(dx) - 1, Math.round(dy) - 1, 3, 3);
         }
 
-        // Target reticle box at catch point
+        // Classic Retro Bowl pixel ground target ring at lead catch spot
+        const tx = Math.round(targetPos.x);
+        const ty = Math.round(targetPos.y);
         ctx.strokeStyle = '#facc15';
         ctx.lineWidth = 2;
-        ctx.strokeRect(Math.round(targetPos.x - 6), Math.round(targetPos.y - 6), 12, 12);
+        ctx.strokeRect(tx - 6, ty - 4, 12, 8);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(tx - 1, ty - 1, 2, 2);
     });
 }
 
-function drawRetroPlayer(ctx, W, H, yard, laneY, jerseyColor, helmetColor, animPhase, noteBadge, hasBall, isJuking = false) {
+function drawRetroBowlSprite(ctx, W, H, yard, laneY, jerseyColor, helmetColor, pantsColor, animPhase, noteBadge, hasBall, isJuking = false) {
     const pos = yardToScreen(yard, laneY, W, H);
     const x = Math.round(pos.x);
     const y = Math.round(pos.y);
-    const s = Math.max(2, Math.round(H / 95)); // Pixel block unit
+    const s = Math.max(2, Math.round(H / 98)); // Crisp 16-bit pixel block unit
 
-    // 1. Dark Oval Ground Shadow (Classic Retro Bowl look)
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+    // 1. Dark Oval Ground Shadow (signature Retro Bowl look)
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
     ctx.fillRect(x - 4 * s, y - s, 8 * s, 2 * s);
+    ctx.fillRect(x - 3 * s, y - s - 1, 6 * s, 2 * s + 2);
 
     const bob = Math.abs(Math.sin(animPhase)) * s;
-    const legStride = Math.round(Math.sin(animPhase) * 2 * s);
+    const stride = Math.round(Math.sin(animPhase) * 2 * s);
 
     if (isJuking) {
-        ctx.fillStyle = '#ec4899';
-        ctx.fillRect(x - 6 * s, y - 9 * s, 12 * s, 9 * s);
+        ctx.fillStyle = 'rgba(236, 72, 153, 0.55)';
+        ctx.fillRect(x - 6 * s, y - 11 * s, 12 * s, 11 * s);
     }
 
-    // 2. Pumping Pixel Legs & Cleats
-    ctx.fillStyle = '#ffffff'; // Football pants
-    ctx.fillRect(x - 3 * s + legStride, y - 4 * s, 2 * s, 3 * s);
-    ctx.fillRect(x + 1 * s - legStride, y - 4 * s, 2 * s, 3 * s);
-    ctx.fillStyle = '#0f172a'; // Cleats
-    ctx.fillRect(x - 3 * s + legStride, y - 1 * s, 2 * s, 1 * s);
-    ctx.fillRect(x + 1 * s - legStride, y - 1 * s, 2 * s, 1 * s);
+    // 2. Pumping Legs, Socks & Cleats
+    ctx.fillStyle = pantsColor;
+    ctx.fillRect(x - 3 * s + stride, y - 5 * s, 2 * s, 3 * s);
+    ctx.fillRect(x + 1 * s - stride, y - 5 * s, 2 * s, 3 * s);
 
-    // 3. Blocky Shoulder Pads & Jersey
+    ctx.fillStyle = jerseyColor; // Team socks
+    ctx.fillRect(x - 3 * s + stride, y - 2 * s, 2 * s, s);
+    ctx.fillRect(x + 1 * s - stride, y - 2 * s, 2 * s, s);
+
+    ctx.fillStyle = '#0f172a'; // Black cleats
+    ctx.fillRect(x - 3 * s + stride, y - s, 3 * s, s);
+    ctx.fillRect(x + 1 * s - stride, y - s, 3 * s, s);
+
+    // 3. Broad Shoulder Pads, Jersey & Contrasting Sleeve Stripes
     ctx.fillStyle = jerseyColor;
-    ctx.fillRect(x - 4 * s, y - 8 * s - bob, 8 * s, 4 * s);
-    // White Jersey Number Stripe
+    ctx.fillRect(x - 4 * s, y - 9 * s - bob, 8 * s, 4 * s);
+    // Shoulder pad stripes
+    ctx.fillStyle = helmetColor;
+    ctx.fillRect(x - 4 * s, y - 9 * s - bob, 2 * s, 2 * s);
+    ctx.fillRect(x + 2 * s, y - 9 * s - bob, 2 * s, 2 * s);
+    // Jersey number highlight
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(x - 1 * s, y - 7 * s - bob, 2 * s, 2 * s);
+    ctx.fillRect(x - s, y - 8 * s - bob, 2 * s, 2 * s);
 
-    // Football tucked under arm if ball carrier
+    // Tucked leather football with white lace pixel
     if (hasBall) {
-        ctx.fillStyle = '#92400e';
-        ctx.fillRect(x + 2 * s, y - 7 * s - bob, 3 * s, 2 * s);
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(x + 2 * s, y - 8 * s - bob, 4 * s, 2 * s);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x + 3 * s, y - 8 * s - bob, 2 * s, s);
     }
 
-    // 4. Retro Blocky Helmet & Facemask
+    // 4. Rounded Retro Bowl Helmet, Center Stripe & Facemask
     ctx.fillStyle = helmetColor;
-    ctx.fillRect(x - 3 * s, y - 12 * s - bob, 6 * s, 4 * s);
-    // Grey Facemask
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillRect(x + 2 * s, y - 11 * s - bob, 2 * s, 2 * s);
+    ctx.fillRect(x - 3 * s, y - 13 * s - bob, 6 * s, 4 * s);
+    ctx.fillRect(x - 2 * s, y - 14 * s - bob, 4 * s, s);
+    // Helmet center stripe
+    ctx.fillStyle = jerseyColor;
+    ctx.fillRect(x - 2 * s, y - 14 * s - bob, 3 * s, s);
+    // Visor & grey facemask
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(x + s, y - 12 * s - bob, 2 * s, 2 * s);
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(x + 2 * s, y - 12 * s - bob, 2 * s, 2 * s);
 
-    // 5. High-Contrast Note Badge above Receiver
+    // 5. High-Contrast Note Letter Badge Above Receiver
     if (noteBadge) {
         const bw = 22;
         const bh = 18;
         const bx = x - Math.round(bw / 2);
-        const by = y - 12 * s - bob - bh - 4;
+        const by = y - 14 * s - bob - bh - 4;
 
         ctx.fillStyle = '#0f172a';
-        ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+        ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 4);
         ctx.fillStyle = '#facc15';
         ctx.fillRect(bx, by, bw, bh);
 
@@ -1036,11 +1155,9 @@ function drawRetroFootball(ctx, W, H, yard, laneY, height) {
     const groundY = Math.round(pos.y);
     const ballY = Math.round(groundY - height);
 
-    // Ground shadow
     ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
     ctx.fillRect(x - 4, groundY - 2, 8, 3);
 
-    // Pixel Leather Football + White Laces
     ctx.fillStyle = '#78350f';
     ctx.fillRect(x - 5, ballY - 3, 10, 6);
     ctx.fillStyle = '#ffffff';
@@ -1049,11 +1166,11 @@ function drawRetroFootball(ctx, W, H, yard, laneY, height) {
 
 function drawPatKickScene(ctx, W, H) {
     const boxW = Math.min(340, W * 0.68);
-    const boxH = Math.min(115, H * 0.56);
+    const boxH = Math.min(110, H * 0.52);
     const bx = Math.round((W - boxW) / 2);
-    const by = Math.round(H * 0.25);
+    const by = Math.round(H * 0.27);
 
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
     ctx.fillRect(bx, by, boxW, boxH);
     ctx.strokeStyle = '#facc15';
     ctx.lineWidth = 3;
@@ -1064,7 +1181,6 @@ function drawPatKickScene(ctx, W, H) {
     ctx.textAlign = 'center';
     ctx.fillText(`EXTRA POINT KICK! PLAY "${patState.kickNote}" IN THE GREEN ZONE!`, W / 2, by + 18);
 
-    // Kick Accuracy Meter Bar
     const barW = boxW - 40;
     const barH = 22;
     const barX = bx + 20;
@@ -1073,24 +1189,21 @@ function drawPatKickScene(ctx, W, H) {
     ctx.fillStyle = '#dc2626';
     ctx.fillRect(barX, barY, barW, barH);
 
-    // Green Upright Sweet Spot
     const greenW = Math.round(barW * 0.34);
     ctx.fillStyle = '#22c55e';
     ctx.fillRect(Math.round(barX + (barW - greenW) / 2), barY, greenW, barH);
 
-    // Sweeping White Cursor
     const cursorX = Math.round(barX + patState.cursor * barW);
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(cursorX - 3, barY - 4, 6, barH + 8);
 
     ctx.fillStyle = '#93c5fd';
     ctx.font = 'bold 11px monospace';
-    ctx.fillText(`TARGET KICK NOTE: [ ${patState.kickNote} ] (ANY OCTAVE)`, W / 2, barY + barH + 20);
+    ctx.fillText(`TARGET KICK NOTE: [ ${patState.kickNote} ] (ANY OCTAVE)`, W / 2, barY + barH + 19);
 }
 
 function drawRetroScoreboardHUD(ctx, W, H) {
-    // Classic Retro Bowl Top Scoreboard Bar
-    const hudH = 28;
+    const hudH = 22;
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(0, 0, W, hudH);
     ctx.fillStyle = '#facc15';
@@ -1099,14 +1212,12 @@ function drawRetroScoreboardHUD(ctx, W, H) {
     ctx.font = '900 12px monospace';
     ctx.textBaseline = 'middle';
 
-    // Left: Down & Distance + Yard Line
     ctx.textAlign = 'left';
     ctx.fillStyle = '#38bdf8';
     const toGo = Math.max(1, firstDownLine - lineOfScrimmage);
     const downStr = `${down}${getOrdinal(down)} & ${firstDownLine >= 100 ? 'GOAL' : toGo}`;
     ctx.fillText(`🏈 ${downStr}  |  BALL ON ${Math.round(lineOfScrimmage)}`, 10, hudH / 2);
 
-    // Center: Action Prompt
     ctx.textAlign = 'center';
     if (gamePhase === 'presnap') {
         ctx.fillStyle = '#facc15';
@@ -1120,20 +1231,18 @@ function drawRetroScoreboardHUD(ctx, W, H) {
         ctx.fillText(`RUN! TURBO NOTE: "${carrier.boostNote}"`, W / 2, hudH / 2);
     }
 
-    // Right: Score & Multiplier
     ctx.textAlign = 'right';
     ctx.fillStyle = '#ffffff';
     ctx.fillText(`PTS: ${String(Math.floor(score)).padStart(5, '0')}  x${multiplier}  TD:${touchdowns}`, W - 10, hudH / 2);
 
-    // Big Retro Play Callout Banner
     if (playBannerTimer > 0 && playBannerText) {
         ctx.save();
         ctx.textAlign = 'center';
         ctx.font = '900 20px monospace';
         ctx.fillStyle = '#0f172a';
-        ctx.fillText(playBannerText, W / 2 + 2, H * 0.52 + 2);
+        ctx.fillText(playBannerText, W / 2 + 2, H * 0.54 + 2);
         ctx.fillStyle = playBannerColor;
-        ctx.fillText(playBannerText, W / 2, H * 0.52);
+        ctx.fillText(playBannerText, W / 2, H * 0.54);
         ctx.restore();
     }
 }
