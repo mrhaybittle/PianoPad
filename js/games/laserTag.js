@@ -13,6 +13,8 @@ const localPlayer = {
     angle: 0,
     turnDir: 0, // -1 left, 1 right
     isAlive: true,
+    isPaused: false,
+    pauseUntil: 0,
     score: 0,
     noteTag: 'D',
     bobPhase: 0,
@@ -20,6 +22,10 @@ const localPlayer = {
     muzzleFlash: 0,
     hitFlash: 0
 };
+
+// Chord Detection Buffer (detects C + E + G played together in any octave)
+let recentChordNotes = []; // [{ pitchClass: 'C'|'E'|'G', time: ms }]
+let pendingShotTimer = null;
 
 // Remote Players, Beams & Explosions
 let remotePlayers = {};
@@ -80,7 +86,6 @@ function normalizePitchClass(noteStr) {
 function isPlayerActiveInRoom(p) {
     if (!p || p.isAlive === false) return false;
     if (typeof p.x !== 'number' || typeof p.y !== 'number') return false;
-    // Ignore stale ghost entries older than 12 seconds
     if (p.updatedAt && (Date.now() - p.updatedAt) > 12000) return false;
     return true;
 }
@@ -100,6 +105,24 @@ function playLaserPew() {
         gain.connect(audioCtx.destination);
         osc.start(now);
         osc.stop(now + 0.18);
+    } catch (e) {}
+}
+
+function playBrakeEngageSound() {
+    try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(260, now + 0.14);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.16);
     } catch (e) {}
 }
 
@@ -164,7 +187,6 @@ function ensureCanvasSized(canvas) {
 }
 
 function getSafeSpawnPoint() {
-    // Prefer central & mid-ring walkable tiles so players encounter each other quickly while still having full 32x32 corridors
     for (let attempt = 0; attempt < 600; attempt++) {
         const c = 6 + Math.floor(Math.random() * 20);
         const r = 6 + Math.floor(Math.random() * 20);
@@ -188,12 +210,15 @@ function getSafeSpawnPoint() {
 export function stopLaserTag() {
     if (animFrameId !== null) cancelAnimationFrame(animFrameId);
     if (syncIntervalId !== null) clearInterval(syncIntervalId);
+    if (pendingShotTimer !== null) clearTimeout(pendingShotTimer);
     if (roomUnsubscribe) {
         roomUnsubscribe();
         roomUnsubscribe = null;
     }
     animFrameId = null;
     syncIntervalId = null;
+    pendingShotTimer = null;
+    recentChordNotes = [];
     gamePhase = 'lobby';
 }
 
@@ -227,10 +252,11 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
     const spawn = getSafeSpawnPoint();
     localPlayer.x = spawn.x;
     localPlayer.y = spawn.y;
-    // Face toward the center of the arena on spawn so players spot each other faster
     localPlayer.angle = Math.atan2((MAP_ROWS * TILE_SIZE) / 2 - spawn.y, (MAP_COLS * TILE_SIZE) / 2 - spawn.x);
     localPlayer.turnDir = 0;
     localPlayer.isAlive = true;
+    localPlayer.isPaused = false;
+    localPlayer.pauseUntil = 0;
     localPlayer.score = 0;
     localPlayer.noteTag = ASSIGNABLE_PITCHES[Math.floor(Math.random() * ASSIGNABLE_PITCHES.length)];
     localPlayer.bobPhase = 0;
@@ -241,12 +267,13 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
     activeBeams = [];
     worldExplosions = [];
     remotePlayers = {};
+    recentChordNotes = [];
     gamePhase = 'playing';
     lastFrameTime = performance.now();
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = `🛸 3D LASER TAG! Your Shield Pitch: [${localPlayer.noteTag}] | Low C = Turn Left • High C = Turn Right • Play enemy's pitch to BLAST!`;
+        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${localPlayer.noteTag}] | Low C: Left • High C: Right • Hold C Major (C+E+G): Pause Movement • Enemy Pitch: Blast!`;
     }
 
     animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
@@ -255,13 +282,13 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
         const { onValue, set, update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
         const myPlayerRef = window.firebaseRef(window.firebaseDb, `pianopad_lasertag/${activeRoomCode}/${localId}`);
 
-        // Write fresh initial state immediately BEFORE listening so old 'isAlive: false' records are overwritten
         await set(myPlayerRef, {
             id: localId,
             x: Number(localPlayer.x.toFixed(1)),
             y: Number(localPlayer.y.toFixed(1)),
             angle: Number(localPlayer.angle.toFixed(3)),
             isAlive: true,
+            isPaused: false,
             noteTag: localPlayer.noteTag,
             score: 0,
             name: state.sessionStudentName || 'Player',
@@ -277,9 +304,9 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
             const data = snapshot.val() || {};
             remotePlayers = data;
 
-            // Only trigger elimination if our own record in Firebase explicitly flipped to isAlive === false
             if (remotePlayers[localId] && remotePlayers[localId].isAlive === false && localPlayer.isAlive) {
                 localPlayer.isAlive = false;
+                localPlayer.isPaused = false;
                 localPlayer.hitFlash = 1.0;
                 gamePhase = 'spectating';
                 playExplosionSound();
@@ -297,6 +324,7 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
                 y: Number(localPlayer.y.toFixed(1)),
                 angle: Number(localPlayer.angle.toFixed(3)),
                 isAlive: localPlayer.isAlive,
+                isPaused: localPlayer.isPaused,
                 noteTag: localPlayer.noteTag,
                 score: localPlayer.score,
                 name: state.sessionStudentName || 'Player',
@@ -309,37 +337,13 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
     }
 }
 
-export async function handleLaserTagInput(noteStr, bridge) {
-    if (gamePhase === 'spectating') {
-        spawn3DExplosion(localPlayer.x, localPlayer.y, '#facc15', 14);
-        return;
-    }
-
+async function executeLaserShot(pitchClass) {
     if (gamePhase !== 'playing' || !localPlayer.isAlive) return;
 
-    const raw = (noteStr || '').toUpperCase().trim();
-    const match = raw.match(/^([A-G]#?)([0-9]+)$/);
-    const pitchClass = normalizePitchClass(raw);
-    const octave = match ? parseInt(match[2], 10) : 2;
-
-    // Any Low C (C1, C2) turns Left; any High C (C3, C4, C5...) turns Right
-    if (pitchClass === 'C') {
-        if (octave <= 2) {
-            localPlayer.turnDir = -1;
-            setTimeout(() => { if (localPlayer.turnDir === -1) localPlayer.turnDir = 0; }, 220);
-        } else {
-            localPlayer.turnDir = 1;
-            setTimeout(() => { if (localPlayer.turnDir === 1) localPlayer.turnDir = 0; }, 220);
-        }
-        return;
-    }
-
-    // Any of the other 11 pitches fires the Space Laser!
     playLaserPew();
     localPlayer.recoil = 1.0;
     localPlayer.muzzleFlash = 1.0;
 
-    // Check forward field-of-view for visible opponents matching `pitchClass`
     const FOV = Math.PI / 3;
     let bestTarget = null;
     let bestDist = 1100;
@@ -407,6 +411,74 @@ export async function handleLaserTagInput(noteStr, bridge) {
     }
 }
 
+export async function handleLaserTagInput(noteStr, bridge) {
+    if (gamePhase === 'spectating') {
+        spawn3DExplosion(localPlayer.x, localPlayer.y, '#facc15', 14);
+        return;
+    }
+
+    if (gamePhase !== 'playing' || !localPlayer.isAlive) return;
+
+    const now = performance.now();
+    const raw = (noteStr || '').toUpperCase().trim();
+    const match = raw.match(/^([A-G]#?)([0-9]+)$/);
+    const pitchClass = normalizePitchClass(raw);
+    const octave = match ? parseInt(match[2], 10) : 2;
+
+    // Track C, E, G notes within a 220ms window to detect a C Major Triad (any octave)
+    if (pitchClass === 'C' || pitchClass === 'E' || pitchClass === 'G') {
+        recentChordNotes.push({ pitchClass, time: now });
+        recentChordNotes = recentChordNotes.filter(item => (now - item.time) <= 220);
+
+        const heldClasses = new Set(recentChordNotes.map(item => item.pitchClass));
+        if (heldClasses.has('C') && heldClasses.has('E') && heldClasses.has('G')) {
+            // Cancel any pending single-note laser shot from E or G
+            if (pendingShotTimer !== null) {
+                clearTimeout(pendingShotTimer);
+                pendingShotTimer = null;
+            }
+            const wasPaused = localPlayer.isPaused;
+            localPlayer.isPaused = true;
+            localPlayer.pauseUntil = now + 1200; // Holds brake for 1.2s; re-tapping/holding refreshes it
+            localPlayer.turnDir = 0;
+
+            if (!wasPaused) {
+                playBrakeEngageSound();
+                const statusEl = document.getElementById('status');
+                if (statusEl) {
+                    statusEl.textContent = `⏸️ C MAJOR BRAKE ENGAGED! Movement paused — hold/pulse C+E+G to stay stopped, or play an enemy pitch to snipe!`;
+                }
+            }
+            return;
+        }
+    }
+
+    // Any Low C (C1, C2) turns Left; any High C (C3, C4, C5...) turns Right
+    if (pitchClass === 'C') {
+        if (octave <= 2) {
+            localPlayer.turnDir = -1;
+            setTimeout(() => { if (localPlayer.turnDir === -1) localPlayer.turnDir = 0; }, 220);
+        } else {
+            localPlayer.turnDir = 1;
+            setTimeout(() => { if (localPlayer.turnDir === 1) localPlayer.turnDir = 0; }, 220);
+        }
+        return;
+    }
+
+    // If E or G is pressed, wait 55ms so if it's part of a C Major chord (C+E+G), we pause instead of firing
+    if (pitchClass === 'E' || pitchClass === 'G') {
+        if (pendingShotTimer !== null) clearTimeout(pendingShotTimer);
+        pendingShotTimer = setTimeout(() => {
+            pendingShotTimer = null;
+            executeLaserShot(pitchClass);
+        }, 55);
+        return;
+    }
+
+    // All other pitches fire immediately
+    executeLaserShot(pitchClass);
+}
+
 function castRay(rayAngle) {
     const sin = Math.sin(rayAngle);
     const cos = Math.cos(rayAngle);
@@ -463,7 +535,7 @@ function castRay(rayAngle) {
 
 function renderFirstPerson3D(ctx, W, H, dt) {
     const FOV = Math.PI / 3;
-    const bobOffset = localPlayer.isAlive ? Math.sin(localPlayer.bobPhase) * 4 : 0;
+    const bobOffset = (localPlayer.isAlive && !localPlayer.isPaused) ? Math.sin(localPlayer.bobPhase) * 4 : 0;
     const horizon = H * 0.52 + bobOffset;
 
     // 1. Sci-Fi Ceiling & Floor
@@ -562,7 +634,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
 
         const screenX = (0.5 + relAngle / FOV) * W;
 
-        // Multi-ray occlusion check: visible if line-of-sight is clear OR any ray across body width is unoccluded
         if (sp.type === 'player') {
             const visibleByLOS = hasLineOfSight(localPlayer.x, localPlayer.y, sp.opp.x, sp.opp.y);
             if (!visibleByLOS) {
@@ -597,15 +668,14 @@ function renderFirstPerson3D(ctx, W, H, dt) {
             continue;
         }
 
-        // Render Opponent Sci-Fi Visor Suit + Large High-Contrast Target Pitch Sign
         const spriteH = Math.min(H * 1.05, Math.max(46, (TILE_SIZE * 0.88 * H) / sp.dist));
         const spriteW = spriteH * 0.65;
         const topY = horizon - spriteH * 0.42;
 
         ctx.save();
-        // Glowing Body Armor
-        ctx.fillStyle = '#1e293b';
-        ctx.strokeStyle = '#38bdf8';
+        // Glowing Body Armor (dims slightly if opponent is holding C Major brake)
+        ctx.fillStyle = sp.opp.isPaused ? '#0f172a' : '#1e293b';
+        ctx.strokeStyle = sp.opp.isPaused ? '#facc15' : '#38bdf8';
         ctx.lineWidth = Math.max(2, spriteW * 0.06);
         ctx.beginPath();
         ctx.roundRect(screenX - spriteW / 2, topY + spriteH * 0.24, spriteW, spriteH * 0.72, 10);
@@ -625,7 +695,7 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.textBaseline = 'middle';
         ctx.fillText(sp.opp.avatar || '🤖', screenX, topY + spriteH * 0.12);
 
-        // LARGE HIGH-CONTRAST TARGET NOTE SIGN ABOVE HEAD (e.g. "🎯 C#")
+        // Large High-Contrast Target Note Sign Above Opponent
         const pitchLabel = normalizePitchClass(sp.opp.noteTag || 'G');
         const badgeW = Math.max(66, spriteW * 1.15);
         const badgeH = Math.max(28, spriteH * 0.28);
@@ -642,7 +712,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.stroke();
         ctx.shadowBlur = 0;
 
-        // Pointer triangle under the sign
         ctx.fillStyle = '#facc15';
         ctx.beginPath();
         ctx.moveTo(screenX - 6, badgeY + badgeH);
@@ -651,12 +720,10 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.closePath();
         ctx.fill();
 
-        // Crisp black pitch text inside yellow sign
         ctx.fillStyle = '#000000';
         ctx.font = `900 ${Math.max(16, Math.floor(badgeH * 0.68))}px sans-serif`;
         ctx.fillText(`🎯 ${pitchLabel}`, screenX, badgeY + badgeH * 0.54);
 
-        // Student Nameplate below suit
         ctx.fillStyle = '#ffffff';
         ctx.font = `800 ${Math.max(11, Math.floor(spriteH * 0.13))}px sans-serif`;
         ctx.fillText(sp.opp.name || 'Player', screenX, topY + spriteH + 12);
@@ -697,14 +764,14 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         localPlayer.recoil = Math.max(0, localPlayer.recoil - dt * 5);
         localPlayer.muzzleFlash = Math.max(0, localPlayer.muzzleFlash - dt * 8);
 
-        const gunBobX = Math.cos(localPlayer.bobPhase * 0.5) * 6;
-        const gunBobY = Math.abs(Math.sin(localPlayer.bobPhase * 0.5)) * 6 + localPlayer.recoil * 18;
+        const gunBobX = localPlayer.isPaused ? 0 : Math.cos(localPlayer.bobPhase * 0.5) * 6;
+        const gunBobY = (localPlayer.isPaused ? 0 : Math.abs(Math.sin(localPlayer.bobPhase * 0.5)) * 6) + localPlayer.recoil * 18;
         const gx = W * 0.72 + gunBobX;
         const gy = H * 0.78 + gunBobY;
 
         ctx.save();
         ctx.fillStyle = '#1e293b';
-        ctx.strokeStyle = '#38bdf8';
+        ctx.strokeStyle = localPlayer.isPaused ? '#facc15' : '#38bdf8';
         ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.moveTo(gx - 22, gy + 70);
@@ -715,7 +782,7 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.fill();
         ctx.stroke();
 
-        ctx.fillStyle = '#22c55e';
+        ctx.fillStyle = localPlayer.isPaused ? '#facc15' : '#22c55e';
         ctx.fillRect(gx - 4, gy + 4, 12, 8);
         ctx.fillRect(gx - 6, gy + 20, 16, 8);
 
@@ -729,13 +796,31 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.restore();
 
         // Center Crosshair
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
+        ctx.strokeStyle = localPlayer.isPaused ? 'rgba(250, 204, 21, 0.9)' : 'rgba(56, 189, 248, 0.75)';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(W / 2, H / 2, 14, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.fillStyle = '#22c55e';
+        ctx.fillStyle = localPlayer.isPaused ? '#facc15' : '#22c55e';
         ctx.fillRect(W / 2 - 2, H / 2 - 2, 4, 4);
+
+        // Tactical Brake Indicator Banner when holding C Major
+        if (localPlayer.isPaused) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(W / 2 - 145, H - 56, 290, 34, 8);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#facc15';
+            ctx.font = '900 13px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('⏸️ C MAJOR BRAKE ACTIVE — STOPPED', W / 2, H - 35);
+            ctx.restore();
+        }
     }
 
     if (localPlayer.hitFlash > 0) {
@@ -831,27 +916,36 @@ function gameLoop(now, bridge) {
     const W = canvas.width;
     const H = canvas.height;
 
+    // Expire C Major brake automatically once timer elapses
+    if (localPlayer.isPaused && now >= localPlayer.pauseUntil) {
+        localPlayer.isPaused = false;
+    }
+
     if (localPlayer.isAlive) {
         localPlayer.angle += localPlayer.turnDir * 3.1 * dt;
-        localPlayer.bobPhase += dt * 9.5;
 
-        const speed = 150;
-        const pad = 16;
-        const dx = Math.cos(localPlayer.angle) * speed * dt;
-        const dy = Math.sin(localPlayer.angle) * speed * dt;
+        // Only advance forward if C Major brake is NOT engaged
+        if (!localPlayer.isPaused) {
+            localPlayer.bobPhase += dt * 9.5;
 
-        const checkX = localPlayer.x + dx + (dx > 0 ? pad : -pad);
-        const colX = Math.floor(checkX / TILE_SIZE);
-        const curRow = Math.floor(localPlayer.y / TILE_SIZE);
-        if (ARENA_MAP[curRow] && ARENA_MAP[curRow][colX] === 0) {
-            localPlayer.x += dx;
-        }
+            const speed = 150;
+            const pad = 16;
+            const dx = Math.cos(localPlayer.angle) * speed * dt;
+            const dy = Math.sin(localPlayer.angle) * speed * dt;
 
-        const checkY = localPlayer.y + dy + (dy > 0 ? pad : -pad);
-        const curCol = Math.floor(localPlayer.x / TILE_SIZE);
-        const rowY = Math.floor(checkY / TILE_SIZE);
-        if (ARENA_MAP[rowY] && ARENA_MAP[rowY][curCol] === 0) {
-            localPlayer.y += dy;
+            const checkX = localPlayer.x + dx + (dx > 0 ? pad : -pad);
+            const colX = Math.floor(checkX / TILE_SIZE);
+            const curRow = Math.floor(localPlayer.y / TILE_SIZE);
+            if (ARENA_MAP[curRow] && ARENA_MAP[curRow][colX] === 0) {
+                localPlayer.x += dx;
+            }
+
+            const checkY = localPlayer.y + dy + (dy > 0 ? pad : -pad);
+            const curCol = Math.floor(localPlayer.x / TILE_SIZE);
+            const rowY = Math.floor(checkY / TILE_SIZE);
+            if (ARENA_MAP[rowY] && ARENA_MAP[rowY][curCol] === 0) {
+                localPlayer.y += dy;
+            }
         }
     }
 
@@ -884,7 +978,6 @@ function gameLoop(now, bridge) {
             }
         }
 
-        // Draw every active opponent on the minimap with a bright red beacon + their avatar + pitch label
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         for (const [id, opp] of Object.entries(remotePlayers)) {
@@ -905,17 +998,16 @@ function gameLoop(now, bridge) {
             ctx.fillText(normalizePitchClass(opp.noteTag || ''), ox, oy - 8);
         }
 
-        // Draw local player green dot + sightline
         const lx = mmX + localPlayer.x * scaleX;
         const ly = mmY + localPlayer.y * scaleY;
-        ctx.strokeStyle = '#22c55e';
+        ctx.strokeStyle = localPlayer.isPaused ? '#facc15' : '#22c55e';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(lx, ly);
         ctx.lineTo(lx + Math.cos(localPlayer.angle) * 14, ly + Math.sin(localPlayer.angle) * 14);
         ctx.stroke();
 
-        ctx.fillStyle = '#22c55e';
+        ctx.fillStyle = localPlayer.isPaused ? '#facc15' : '#22c55e';
         ctx.beginPath();
         ctx.arc(lx, ly, 4.5, 0, Math.PI * 2);
         ctx.fill();
@@ -926,18 +1018,18 @@ function gameLoop(now, bridge) {
     const aliveCount = Math.max(1, activePlayers.length);
 
     ctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
-    ctx.fillRect(W - 280, 10, 270, 54);
-    ctx.strokeStyle = '#22c55e';
-    ctx.strokeRect(W - 280, 10, 270, 54);
+    ctx.fillRect(W - 295, 10, 285, 54);
+    ctx.strokeStyle = localPlayer.isPaused ? '#facc15' : '#22c55e';
+    ctx.strokeRect(W - 295, 10, 285, 54);
 
-    ctx.fillStyle = '#22c55e';
+    ctx.fillStyle = localPlayer.isPaused ? '#facc15' : '#22c55e';
     ctx.font = '900 13px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText(`SCORE: ${localPlayer.score} | ALIVE: ${aliveCount} | YOUR TAG: ${localPlayer.noteTag}`, W - 18, 30);
+    ctx.fillText(`SCORE: ${localPlayer.score} | ALIVE: ${aliveCount} | TAG: ${localPlayer.noteTag}`, W - 18, 30);
 
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(`Low C: Left • High C: Right • Enemy Pitch: Fire`, W - 18, 49);
+    ctx.fillText(`Low/High C: Turn • C+E+G: Pause • Enemy Pitch: Fire`, W - 18, 49);
 
     animFrameId = requestAnimationFrame((t) => gameLoop(t, bridge));
 }
