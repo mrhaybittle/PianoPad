@@ -1386,18 +1386,39 @@ function gameLoop(now, bridge) {
 
         const lx = mmX + localPlayer.x * scaleX;
         const ly = mmY + localPlayer.y * scaleY;
-        const myColor = (now < localPlayer.invulnerableUntil) ? '#ffffff' : localPlayer.suitColor;
-        ctx.strokeStyle = localPlayer.currentGear.color;
+        const pulseWave = (Math.sin(now * 0.008) + 1) * 0.5; // 0 to 1 smooth pulse
+
+        // Expanding bright yellow outer pulse ring
+        ctx.save();
+        ctx.strokeStyle = `rgba(250, 204, 21, ${0.95 - pulseWave * 0.65})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(lx, ly, 5 + pulseWave * 8, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Soft yellow radar glow
+        ctx.fillStyle = `rgba(250, 204, 21, ${0.35 - pulseWave * 0.2})`;
+        ctx.beginPath();
+        ctx.arc(lx, ly, 6 + pulseWave * 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // View direction pointer
+        ctx.strokeStyle = '#facc15';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(lx, ly);
-        ctx.lineTo(lx + Math.cos(localPlayer.angle) * 14, ly + Math.sin(localPlayer.angle) * 14);
+        ctx.lineTo(lx + Math.cos(localPlayer.angle) * 15, ly + Math.sin(localPlayer.angle) * 15);
         ctx.stroke();
 
-        ctx.fillStyle = myColor;
+        // Solid bright yellow center dot with dark outline
+        ctx.fillStyle = '#facc15';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(lx, ly, 4, 0, Math.PI * 2);
+        ctx.arc(lx, ly, 4.5, 0, Math.PI * 2);
         ctx.fill();
+        ctx.stroke();
+        ctx.restore();
     }
 
     // Top-Right HUD
