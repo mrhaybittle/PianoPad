@@ -111,26 +111,28 @@ function buildFastPacedArenaMap() {
         grid[i][MAP_COLS - 1] = 1;
     }
 
-    // 2. GOLD NW SECTOR (rows 2..18, cols 2..18): Curved Rotundas & Sweeping Arches (type 2)
+    // 2. GOLD NW SECTOR (rows 2..18, cols 2..18): Double Concentric Curved Rotundas (type 2)
     const nwCenterR = 10, nwCenterC = 10;
-    for (let r = 4; r <= 16; r++) {
-        for (let c = 4; c <= 16; c++) {
+    for (let r = 2; r <= 18; r++) {
+        for (let c = 2; c <= 18; c++) {
             const dist = Math.hypot(r - nwCenterR, c - nwCenterC);
             const isCardinalGap = Math.abs(r - nwCenterR) <= 1 || Math.abs(c - nwCenterC) <= 1;
-            if (dist >= 4.2 && dist <= 5.6 && !isCardinalGap) {
+            const isDiagGap = Math.abs(Math.abs(r - nwCenterR) - Math.abs(c - nwCenterC)) <= 1;
+
+            // Outer ring (2-tile wide lanes inside and out)
+            if (dist >= 6.8 && dist <= 8.1 && !isDiagGap) {
+                grid[r][c] = 2;
+            }
+            // Inner ring with 4 cardinal entrances
+            if (dist >= 3.2 && dist <= 4.3 && !isCardinalGap) {
                 grid[r][c] = 2;
             }
         }
     }
-    grid[10][10] = 2;
-    const nwArcs = [
-        [3, 4], [4, 3], [3, 16], [4, 17],
-        [16, 3], [17, 4], [16, 17], [17, 16]
-    ];
-    for (const [r, c] of nwArcs) grid[r][c] = 2;
+    grid[10][10] = 2; // Central golden column
 
-    // 3. MAGENTA NE SECTOR (rows 2..18, cols 27..43): Triangular Prism Monoliths (type 3)
-    const placeTriangleCluster = (topR, topC, flipDown = false) => {
+    // 3. MAGENTA NE SECTOR (rows 2..18, cols 27..43): Staggered Triangular Prism Field (type 3)
+    const placeTriangle = (topR, topC, flipDown = false) => {
         if (!flipDown) {
             grid[topR][topC] = 3;
             grid[topR + 1][topC - 1] = 3;
@@ -147,23 +149,33 @@ function buildFastPacedArenaMap() {
             grid[topR + 2][topC] = 3;
         }
     };
-    placeTriangleCluster(4, 32, false);
-    placeTriangleCluster(4, 39, false);
-    placeTriangleCluster(10, 35, true);
-    placeTriangleCluster(14, 31, false);
-    placeTriangleCluster(14, 40, false);
+    placeTriangle(3, 30, false);
+    placeTriangle(3, 36, true);
+    placeTriangle(3, 41, false);
+    placeTriangle(8, 32, true);
+    placeTriangle(8, 39, false);
+    placeTriangle(13, 30, false);
+    placeTriangle(13, 36, true);
+    placeTriangle(13, 41, false);
 
-    // 4. CORAL SW SECTOR (rows 27..43, cols 2..18): Wide Tactical Chicane Walls (type 4)
-    const swBlocks = [
-        [29, 4], [29, 5], [29, 6], [30, 4], [31, 4],
-        [29, 14], [29, 15], [29, 16], [30, 16], [31, 16],
-        [34, 9], [34, 10], [34, 11], [36, 9], [36, 10], [36, 11],
-        [39, 4], [40, 4], [41, 4], [41, 5], [41, 6],
-        [39, 16], [40, 16], [41, 16], [41, 14], [41, 15]
+    // 4. CORAL SW SECTOR (rows 27..43, cols 2..18): Structured 2-Tile Wide Chicane Lanes (type 4)
+    const swWalls = [
+        // Upper barrier tier
+        [29, 3], [29, 4], [29, 5], [29, 6], [30, 6], [31, 6],
+        [29, 10], [30, 10], [31, 10], [31, 11], [31, 12],
+        [29, 15], [29, 16], [29, 17], [30, 15], [31, 15],
+        // Mid barrier tier
+        [34, 3], [34, 4], [35, 4], [36, 4], [36, 5],
+        [34, 8], [34, 9], [35, 8], [36, 8],
+        [34, 13], [35, 13], [35, 14], [35, 15], [34, 17], [35, 17],
+        // Lower barrier tier
+        [39, 3], [40, 3], [41, 3], [41, 4], [41, 5],
+        [39, 8], [39, 9], [39, 10], [40, 10], [41, 10],
+        [39, 13], [40, 13], [41, 13], [41, 14], [41, 15], [39, 17], [40, 17]
     ];
-    for (const [r, c] of swBlocks) grid[r][c] = 4;
+    for (const [r, c] of swWalls) grid[r][c] = 4;
 
-    // 5. COBALT SE SECTOR (rows 27..43, cols 27..43): Diamond Pylon Matrix (type 5)
+    // 5. COBALT SE SECTOR (rows 27..43, cols 27..43): Dense Diamond & Cross Pillar Grid (type 5)
     const placeDiamond = (cr, cc) => {
         grid[cr - 1][cc] = 5;
         grid[cr][cc - 1] = 5;
@@ -171,23 +183,40 @@ function buildFastPacedArenaMap() {
         grid[cr][cc + 1] = 5;
         grid[cr + 1][cc] = 5;
     };
-    placeDiamond(30, 31);
-    placeDiamond(30, 39);
-    placeDiamond(35, 35);
-    placeDiamond(40, 31);
-    placeDiamond(40, 39);
+    placeDiamond(29, 30);
+    placeDiamond(29, 35);
+    placeDiamond(29, 41);
+    placeDiamond(34, 32);
+    placeDiamond(34, 38);
+    placeDiamond(38, 29);
+    placeDiamond(39, 35);
+    placeDiamond(39, 41);
 
-    // 6. EMERALD CENTRAL HUB (rows 19..26, cols 19..26): 4 Curved Emerald Columns (type 6)
-    grid[20][20] = 6;
-    grid[20][25] = 6;
-    grid[25][20] = 6;
-    grid[25][25] = 6;
+    // 6. MAIN BOULEVARD COVER & EMERALD CENTRAL HUB (rows 18..27, cols 18..27)
+    // Colonnade pillars along the 4 main cross-avenues so long sightlines have tactical cover
+    const avenuePillars = [
+        // North Avenue
+        [4, 21], [4, 24], [9, 20], [9, 25], [14, 21], [14, 24],
+        // South Avenue
+        [31, 21], [31, 24], [36, 20], [36, 25], [41, 21], [41, 24],
+        // West Avenue
+        [21, 4], [24, 4], [20, 9], [25, 9], [21, 14], [24, 14],
+        // East Avenue
+        [21, 31], [24, 31], [20, 36], [25, 36], [21, 41], [24, 41]
+    ];
+    for (const [r, c] of avenuePillars) grid[r][c] = 1;
 
-    // 7. Highway Gateways (4 spacious arch pillars framing the central cross-boulevards)
-    grid[18][19] = 1; grid[18][26] = 1;
-    grid[27][19] = 1; grid[27][26] = 1;
-    grid[19][18] = 1; grid[26][18] = 1;
-    grid[19][27] = 1; grid[26][27] = 1;
+    // Emerald Hub Perimeter Gates & Inner Curved Columns (type 6)
+    grid[18][19] = 6; grid[18][20] = 6; grid[18][25] = 6; grid[18][26] = 6;
+    grid[27][19] = 6; grid[27][20] = 6; grid[27][25] = 6; grid[27][26] = 6;
+    grid[19][18] = 6; grid[20][18] = 6; grid[25][18] = 6; grid[26][18] = 6;
+    grid[19][27] = 6; grid[20][27] = 6; grid[25][27] = 6; grid[26][27] = 6;
+
+    // 4 Inner Emerald Hub Pillars
+    grid[21][21] = 6;
+    grid[21][24] = 6;
+    grid[24][21] = 6;
+    grid[24][24] = 6;
 
     return grid;
 }
