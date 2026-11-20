@@ -204,13 +204,18 @@ function syncStudentToFirebase(statusOverride = null) {
     });
     window.firebaseOnDisconnect(myRef).remove();
 }
-
+function isAuthorizedTeacher() {
+    const activeName = (sessionStudentName || localStorage.getItem('pianopad_name') || '').trim();
+    return /^mr\.?\s*[hbt]$/i.test(activeName);
+}
 document.getElementById('btn-join-room').addEventListener('click', () => {
     const name = document.getElementById('student-join-name').value.trim();
     const avatar = document.getElementById('student-join-avatar').value;
     const chosenClass = document.getElementById('student-join-class').value;
     const roomSelect = document.getElementById('student-join-room');
     const room = (roomSelect && roomSelect.style.display === 'none') ? "Outside" : (roomSelect ? roomSelect.value : "Outside");
+    // Initialize Eyes Front listener (enables host pill automatically for Mr H, Mr B, or Mr T)
+    initEyesFront(currentRoom, { isHost: isAuthorizedTeacher() });
     
     if (!name || !chosenClass || (roomSelect && roomSelect.style.display !== 'none' && !room)) {
         alert('Please enter your Name and select your Class.');
@@ -1294,6 +1299,14 @@ window.addEventListener('keydown', (e) => {
         }
         document.getElementById('room-join-modal').classList.add('open');
         document.getElementById('status').textContent = ' Room Login modal opened via "(" hotkey.';
+        return;
+    }
+
+    if (e.key === ')') {
+        if (!isAuthorizedTeacher()) return;
+        e.preventDefault();
+        const targetRoom = currentRoom || localStorage.getItem('pianopad_room') || 'Outside';
+        openEyesFrontPrompt(targetRoom);
         return;
     }
 
