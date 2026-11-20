@@ -8,7 +8,6 @@ import { renderFirstPersonHud } from './hud.js';
 
 export function renderFirstPerson3D(ctx, W, H, dt, now) {
     const lp = gameState.localPlayer;
-    const FOV = Math.PI / 3;
     const isSniper = now < (lp.sniperUntil || 0);
     const FOV = isSniper ? (Math.PI / 6) : (Math.PI / 3);
     const isBoosted = now < lp.boostUntil;
