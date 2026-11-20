@@ -6,6 +6,7 @@ import { startNoteSniper, handleNoteSniperInput } from './games/noteSniper.js';
 import { startFlappyPitch, handleFlappyPitchInput, stopFlappyPitch } from './games/flappyPitch.js';
 import { startStaffSurfers, handleStaffSurfersInput, stopStaffSurfers } from './games/staffSurfers.js';
 import { startLaserTag, handleLaserTagInput, stopLaserTag } from './games/laserTag.js';
+import { startGridironGroove, handleGridironGrooveInput, stopGridironGroove } from './games/gridironGroove.js';
 
 export const arcadeState = {
     activeMiniGame: null,
@@ -92,6 +93,15 @@ function injectNewArcadeButtons() {
         surfersBtn.onclick = () => launchScaleSurfers();
         surfersBtn.innerHTML = `<span style="font-size:1.5rem;">🚇</span><strong>Scale Surfers</strong><small>Dodge trains & hit notes</small>`;
         btnContainer.appendChild(surfersBtn);
+    }
+    if (!document.getElementById('btn-arcade-gridiron-groove')) {
+        const gridironBtn = document.createElement('button');
+        gridironBtn.type = 'button';
+        gridironBtn.id = 'btn-arcade-gridiron-groove';
+        gridironBtn.className = 'arcade-card-btn';
+        gridironBtn.onclick = () => launchGridironGroove();
+        gridironBtn.innerHTML = `<span style="font-size:1.5rem;">🏈</span><strong>Gridiron Groove</strong><small>Retro Bowl note passing</small>`;
+        btnContainer.appendChild(gridironBtn);
     }
 }
 
@@ -211,6 +221,9 @@ export function exitActiveMiniGame() {
     stopFlappyPitch();
     stopStaffSurfers();
     stopLaserTag();
+    stopGridironGroove();
+    const gridironPopup = document.getElementById('gridiron-groove-popup');
+    if (gridironPopup) gridironPopup.style.display = 'none';
     const surfersPopup = document.getElementById('scale-surfers-popup');
     if (surfersPopup) surfersPopup.style.display = 'none';
 
@@ -237,6 +250,10 @@ export function handleMiniGameNoteInput(noteStr) {
 
     if (mode === 'laserTag') {
         handleLaserTagInput(noteStr, gameBridgeHelper);
+        return true;
+    }
+    if (mode === 'gridironGroove') {
+        handleGridironGrooveInput(noteStr, gameBridgeHelper);
         return true;
     }
     if (mode === 'staffSurfers' || mode === 'scaleSurfers') {
@@ -1182,6 +1199,11 @@ export function launchLaserTag(roomCode, isHost = false) {
     startLaserTag(gameBridgeHelper, roomCode, isHost);
 }
 
+export function launchGridironGroove() {
+    document.getElementById('game-results-modal')?.classList.remove('open');
+    startGridironGroove(gameBridgeHelper);
+}
+
 Object.assign(window, {
     startSimonTaps,
     startMysteryNote,
@@ -1215,4 +1237,9 @@ Object.assign(window, {
         }
     },
     launchLaserTag
+    launchGridironGroove,
+    startGridironGroove: (b) => {
+        document.getElementById('game-results-modal')?.classList.remove('open');
+        startGridironGroove(b || gameBridgeHelper);
+    },
 });
