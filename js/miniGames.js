@@ -6,7 +6,7 @@ import { startNoteSniper, handleNoteSniperInput } from './games/noteSniper.js';
 import { startFlappyPitch, handleFlappyPitchInput, stopFlappyPitch } from './games/flappyPitch.js';
 import { startStaffSurfers, handleStaffSurfersInput, stopStaffSurfers } from './games/staffSurfers.js';
 import { startLaserTag, handleLaserTagInput, stopLaserTag } from './games/laserTag.js';
-import { startGridironGroove, handleGridironGrooveInput, stopGridironGroove } from './games/gridironGroove.js';
+import { startGridironGroove, handleGridironGrooveInput, stopGridironGroove } from './games/GridironGroove.js';
 
 export const arcadeState = {
     activeMiniGame: null,
@@ -94,6 +94,7 @@ function injectNewArcadeButtons() {
         surfersBtn.innerHTML = `<span style="font-size:1.5rem;">🚇</span><strong>Scale Surfers</strong><small>Dodge trains & hit notes</small>`;
         btnContainer.appendChild(surfersBtn);
     }
+
     if (!document.getElementById('btn-arcade-gridiron-groove')) {
         const gridironBtn = document.createElement('button');
         gridironBtn.type = 'button';
@@ -109,6 +110,9 @@ function resolveReplayHandler(title, explicitReplayFn) {
     if (typeof explicitReplayFn === 'function') return explicitReplayFn;
 
     const normalized = (title || '').trim().toLowerCase();
+    if (normalized === 'gridiron groove') {
+        return () => launchGridironGroove();
+    }
     if (normalized === 'scale surfers' || normalized === 'staff surfers') {
         return () => launchScaleSurfers();
     }
@@ -1236,10 +1240,10 @@ Object.assign(window, {
             lastCustomMiniGameReplay();
         }
     },
-    launchLaserTag
+    launchLaserTag,
     launchGridironGroove,
     startGridironGroove: (b) => {
         document.getElementById('game-results-modal')?.classList.remove('open');
         startGridironGroove(b || gameBridgeHelper);
-    },
+    }
 });
