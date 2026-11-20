@@ -1074,10 +1074,10 @@ export function launchNoteSniper() { startNoteSniper(gameBridgeHelper); }
 export function launchFlappyPitch() { startFlappyPitch(gameBridgeHelper); }
 export function launchStaffSurfers() { startStaffSurfers(gameBridgeHelper); }
 
-export function launchLaserTag(roomCode) {
+export function launchLaserTag(roomCode, isHost = false) {
     openArcadeHub();
     document.getElementById('arcade-hub')?.classList.remove('open');
-    startLaserTag(gameBridgeHelper, roomCode);
+    startLaserTag(gameBridgeHelper, roomCode, isHost);
 }
 
 Object.assign(window, {
