@@ -14,6 +14,8 @@ export const gameState = {
         y: 0,
         angle: 0,
         turnDir: 0,
+        turnUntil: 0,
+        turnHoldStart: 0,
         moveUntil: 0,
         isMovingForward: false,
         lives: 3,
@@ -27,6 +29,9 @@ export const gameState = {
         overchargeReadyAt: 0,
         empReadyAt: 0,
         decoyReadyAt: 0,
+        sniperUntil: 0,
+        sniperReadyAt: 0,
+        sniperActivatedAt: 0,
         empScrambledUntil: 0,
         hubScoreTimer: 0,
         stormTickTimer: 0,
@@ -71,6 +76,8 @@ export const gameState = {
     processedHitIds: new Set(),
     processedEmpIds: new Set(),
     recentNoteBuffer: [],
+    heldMoveKeys: new Set(),
+    releaseHookActive: false,
     pendingActionTimer: null,
     lastChordTriggerTime: 0,
     lastTriggeredChordId: '',
@@ -85,5 +92,6 @@ export const gameState = {
     localId: null,
     zBuffer: [],
     simulatedBots: {},
-    globalKeyListenerAttached: false
+    globalKeyListenerAttached: false,
+    blurListenerAttached: false
 };
