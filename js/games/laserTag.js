@@ -1,3 +1,4 @@
+// js/games/laserTag.js
 import { initAudio, audioCtx } from '../audio.js';
 import {
     CHORD_GEARS,
@@ -5,318 +6,51 @@ import {
     EMP_CHORD_NOTES,
     DECOY_CHORDS,
     DEFAULT_GEAR,
-    WALL_THEMES,
     TILE_SIZE,
     MAP_COLS,
     MAP_ROWS,
     ARENA_CENTER_X,
     ARENA_CENTER_Y,
     ASSIGNABLE_PITCHES,
-    SUIT_PALETTE,
     AUSSIE_2026_TEEN_BOYS,
     BOT_AVATARS
 } from './laserTag/constants.js';
-let animFrameId = null;
-let syncIntervalId = null;
-let roomUnsubscribe = null;
-let lastFrameTime = 0;
-let matchStartTime = 0;
-let gamePhase = 'lobby'; // 'lobby' | 'playing' | 'spectating'
-
-
-// Local First-Person Player State
-const localPlayer = {
-    x: 0,
-    y: 0,
-    angle: 0,
-    turnDir: 0,
-    moveUntil: 0,
-    isMovingForward: false,
-    lives: 3,
-    hitsTaken: 0,
-    eliminations: 0,
-    isAlive: true,
-    currentGear: DEFAULT_GEAR,
-    invulnerableUntil: 0,
-    portalCooldownUntil: 0,
-    boostUntil: 0,
-    overchargeReadyAt: 0,
-    empReadyAt: 0,
-    decoyReadyAt: 0,
-    empScrambledUntil: 0,
-    hubScoreTimer: 0,
-    stormTickTimer: 0,
-    comboCount: 0,
-    comboExpiresAt: 0,
-    lastComboTargetId: null,
-    revengeTargetId: null,
-    hitMarkerUntil: 0,
-    hitMarkerElim: false,
-    suitColor: '#38bdf8',
-    score: 0,
-    noteTag: 'F#',
-    bobPhase: 0,
-    recoil: 0,
-    muzzleFlash: 0,
-    damageFlash: 0,
-    damageFlashColor: '#f97316',
-    portalFlash: 0,
-    jamFlash: 0,
-    gearBannerFlash: 0
-};
-
-// Arena Interactive Entities
-let arenaPortals = [];    // 2 Random Quantum Portals
-let speedBoostPads = [];  // 4 Avenue Speed Boost Pads
-let medKitNodes = [];     // 3 Outer Courtyard Heart Pickups
-let activeDecoys = [];    // Feature #3: Running Holo-Decoys
-let empWaveRings = [];    // Feature #2: Expanding EMP Visual Rings
-
-// Kill Feed & Podium Tracking
-let killFeedEntries = [];
-let seenFeedIds = new Set();
-let maxPeakPlayers = 1;
-
-// Spectator Drone Interactive Alert State
-let spectatorSelectedTarget = null;
-let incomingAlertBanner = null;
-let processedAlertIds = new Set();
-let spectatorClickListenerAttached = false;
-
-// Hit/EMP Deduplication, Chord/Anti-Spam Buffer & "TEST" Typing Buffer
-let processedHitIds = new Set();
-let processedEmpIds = new Set();
-let recentNoteBuffer = []; // [{ pitchClass, octave, time }]
-let pendingActionTimer = null;
-let lastChordTriggerTime = 0;
-let lastTriggeredChordId = '';
-let lastOctaveFlipTime = 0;
-let typedCheatBuffer = '';
-
-// Remote Players, Beams, Explosions & Combat Bots
-let remotePlayers = {};
-let activeBeams = [];
-let worldExplosions = [];
-let activeRoomCode = null;
-let localId = null;
-let zBuffer = [];
-
-let simulatedBots = {};
-let globalKeyListenerAttached = false;
-
-function buildFastPacedArenaMap() {
-    const grid = Array.from({ length: MAP_ROWS }, () => Array(MAP_COLS).fill(0));
-
-    // 1. Outer Cyan Perimeter Wall (type 1)
-    for (let i = 0; i < MAP_COLS; i++) {
-        grid[0][i] = 1;
-        grid[MAP_ROWS - 1][i] = 1;
-        grid[i][0] = 1;
-        grid[i][MAP_COLS - 1] = 1;
-    }
-
-    // 2. GOLD NW SECTOR: Double Concentric Curved Rotundas (type 2)
-    const nwCenterR = 10, nwCenterC = 10;
-    for (let r = 2; r <= 18; r++) {
-        for (let c = 2; c <= 18; c++) {
-            const dist = Math.hypot(r - nwCenterR, c - nwCenterC);
-            const isCardinalGap = Math.abs(r - nwCenterR) <= 1 || Math.abs(c - nwCenterC) <= 1;
-            const isDiagGap = Math.abs(Math.abs(r - nwCenterR) - Math.abs(c - nwCenterC)) <= 1;
-
-            if (dist >= 6.8 && dist <= 8.1 && !isDiagGap) grid[r][c] = 2;
-            if (dist >= 3.2 && dist <= 4.3 && !isCardinalGap) grid[r][c] = 2;
-        }
-    }
-    grid[10][10] = 2;
-
-    // 3. MAGENTA NE SECTOR: Staggered Triangular Prism Field (type 3)
-    const placeTriangle = (topR, topC, flipDown = false) => {
-        if (!flipDown) {
-            grid[topR][topC] = 3;
-            grid[topR + 1][topC - 1] = 3;
-            grid[topR + 1][topC] = 3;
-            grid[topR + 1][topC + 1] = 3;
-            grid[topR + 2][topC - 2] = 3;
-            grid[topR + 2][topC + 2] = 3;
-        } else {
-            grid[topR][topC - 2] = 3;
-            grid[topR][topC + 2] = 3;
-            grid[topR + 1][topC - 1] = 3;
-            grid[topR + 1][topC] = 3;
-            grid[topR + 1][topC + 1] = 3;
-            grid[topR + 2][topC] = 3;
-        }
-    };
-    placeTriangle(3, 30, false);
-    placeTriangle(3, 36, true);
-    placeTriangle(3, 41, false);
-    placeTriangle(8, 32, true);
-    placeTriangle(8, 39, false);
-    placeTriangle(13, 30, false);
-    placeTriangle(13, 36, true);
-    placeTriangle(13, 41, false);
-
-    // 4. CORAL SW SECTOR: Structured 2-Tile Wide Chicane Lanes (type 4)
-    const swWalls = [
-        [29, 3], [29, 4], [29, 5], [29, 6], [30, 6], [31, 6],
-        [29, 10], [30, 10], [31, 10], [31, 11], [31, 12],
-        [29, 15], [29, 16], [29, 17], [30, 15], [31, 15],
-        [34, 3], [34, 4], [35, 4], [36, 4], [36, 5],
-        [34, 8], [34, 9], [35, 8], [36, 8],
-        [34, 13], [35, 13], [35, 14], [35, 15], [34, 17], [35, 17],
-        [39, 3], [40, 3], [41, 3], [41, 4], [41, 5],
-        [39, 8], [39, 9], [39, 10], [40, 10], [41, 10],
-        [39, 13], [40, 13], [41, 13], [41, 14], [41, 15], [39, 17], [40, 17]
-    ];
-    for (const [r, c] of swWalls) grid[r][c] = 4;
-
-    // 5. COBALT SE SECTOR: Mirror-Faceted Diamond Pillar Grid (type 5)
-    const placeDiamond = (cr, cc) => {
-        grid[cr - 1][cc] = 5;
-        grid[cr][cc - 1] = 5;
-        grid[cr][cc] = 5;
-        grid[cr][cc + 1] = 5;
-        grid[cr + 1][cc] = 5;
-    };
-    placeDiamond(29, 30);
-    placeDiamond(29, 35);
-    placeDiamond(29, 41);
-    placeDiamond(34, 32);
-    placeDiamond(34, 38);
-    placeDiamond(38, 29);
-    placeDiamond(39, 35);
-    placeDiamond(39, 41);
-
-    // 6. MAIN BOULEVARD COVER & EMERALD CENTRAL HUB (type 6)
-    const avenuePillars = [
-        [4, 21], [4, 24], [9, 20], [9, 25], [14, 21], [14, 24],
-        [31, 21], [31, 24], [36, 20], [36, 25], [41, 21], [41, 24],
-        [21, 4], [24, 4], [20, 9], [25, 9], [21, 14], [24, 14],
-        [21, 31], [24, 31], [20, 36], [25, 36], [21, 41], [24, 41]
-    ];
-    for (const [r, c] of avenuePillars) grid[r][c] = 1;
-
-    grid[18][19] = 6; grid[18][20] = 6; grid[18][25] = 6; grid[18][26] = 6;
-    grid[27][19] = 6; grid[27][20] = 6; grid[27][25] = 6; grid[27][26] = 6;
-    grid[19][18] = 6; grid[20][18] = 6; grid[25][18] = 6; grid[26][18] = 6;
-    grid[19][27] = 6; grid[20][27] = 6; grid[25][27] = 6; grid[26][27] = 6;
-
-    grid[21][21] = 6;
-    grid[21][24] = 6;
-    grid[24][21] = 6;
-    grid[24][24] = 6;
-
-    return grid;
-}
-
-let ARENA_MAP = buildFastPacedArenaMap();
-
-function setupArenaFeatures() {
-    const p1 = getSafeSpawnPoint();
-    const p2 = getSafeSpawnPoint(p1.x, p1.y);
-    arenaPortals = [
-        { id: 'portal_alpha', name: 'ALPHA PORTAL', x: p1.x, y: p1.y, color: '#06b6d4', secondaryColor: '#a5f3fc' },
-        { id: 'portal_omega', name: 'OMEGA PORTAL', x: p2.x, y: p2.y, color: '#d946ef', secondaryColor: '#f5d0fe' }
-    ];
-
-    speedBoostPads = [
-        { id: 'boost_n', x: 22.5 * TILE_SIZE, y: 11.5 * TILE_SIZE, angle: Math.PI * 0.5 },
-        { id: 'boost_s', x: 22.5 * TILE_SIZE, y: 33.5 * TILE_SIZE, angle: -Math.PI * 0.5 },
-        { id: 'boost_w', x: 11.5 * TILE_SIZE, y: 22.5 * TILE_SIZE, angle: 0 },
-        { id: 'boost_e', x: 33.5 * TILE_SIZE, y: 22.5 * TILE_SIZE, angle: Math.PI }
-    ];
-
-    const medCoords = [
-        { r: 6, c: 10 },
-        { r: 10, c: 35 },
-        { r: 35, c: 10 }
-    ];
-    medKitNodes = medCoords.map((pt, idx) => ({
-        id: `med_${idx}`,
-        x: (pt.c + 0.5) * TILE_SIZE,
-        y: (pt.r + 0.5) * TILE_SIZE,
-        respawnAt: 0
-    }));
-}
-
-function generateSeededArena(roomCode) {
-    ARENA_MAP = buildFastPacedArenaMap();
-    setupArenaFeatures();
-}
-
-function isInsideEmeraldHub(wx, wy) {
-    const col = Math.floor(wx / TILE_SIZE);
-    const row = Math.floor(wy / TILE_SIZE);
-    return row >= 18 && row <= 27 && col >= 18 && col <= 27;
-}
-
-function getZoneInfoForCoords(wx, wy) {
-    if (isInsideEmeraldHub(wx, wy)) {
-        return { label: 'EMERALD HUB (+5/s)', color: '#34d399' };
-    }
-    const midR = Math.floor(MAP_ROWS / 2);
-    const midC = Math.floor(MAP_COLS / 2);
-    const col = Math.floor(wx / TILE_SIZE);
-    const row = Math.floor(wy / TILE_SIZE);
-    if (row < midR && col < midC) return { label: 'GOLD CURVED NW', color: '#facc15' };
-    if (row < midR && col >= midC) return { label: 'MAGENTA TRIANGLE NE', color: '#e879f9' };
-    if (row >= midR && col < midC) return { label: 'CORAL CHICANE SW', color: '#fb923c' };
-    return { label: 'COBALT MIRROR SE', color: '#60a5fa' };
-}
-
-// Feature #6: Dynamic Battle Royale Storm Safe Radius (shrinks after 90s)
-function getCurrentStormRadius(now) {
-    const elapsedSec = (now - matchStartTime) / 1000;
-    const maxRadius = Math.hypot(ARENA_CENTER_X, ARENA_CENTER_Y);
-    if (elapsedSec <= 90) return maxRadius;
-    const shrinkProgress = Math.min(1, (elapsedSec - 90) / 120); // Shrinks over 2 mins down to Emerald Hub
-    const minRadius = TILE_SIZE * 5.2;
-    return maxRadius - shrinkProgress * (maxRadius - minRadius);
-}
+import { gameState } from './laserTag/state.js';
+import {
+    getSuitColorForAvatar,
+    parseNoteDetails,
+    normalizePitchClass,
+    isPlayerActiveInRoom
+} from './laserTag/utils.js';
+import {
+    ARENA_MAP,
+    generateSeededArena,
+    getSafeSpawnPoint,
+    isInsideEmeraldHub,
+    getCurrentStormRadius,
+    hasLineOfSight,
+    castRay,
+    castRayFromPoint
+} from './laserTag/arena.js';
+import { renderFirstPerson3D } from './laserTag/render3d.js';
+import { renderSpectatorOverheadView, renderMinimapAndTopHud } from './laserTag/hud.js';
 
 function addKillFeedEntry(id, text, color = '#facc15') {
-    if (!id || seenFeedIds.has(id)) return;
-    seenFeedIds.add(id);
-    killFeedEntries.unshift({
+    if (!id || gameState.seenFeedIds.has(id)) return;
+    gameState.seenFeedIds.add(id);
+    gameState.killFeedEntries.unshift({
         id,
         text,
         color,
         expiresAt: performance.now() + 6500
     });
-    if (killFeedEntries.length > 4) killFeedEntries.pop();
-}
-
-function getSuitColorForAvatar(avatarStr, idStr) {
-    const src = `${avatarStr || ''}_${idStr || ''}`;
-    let hash = 0;
-    for (let i = 0; i < src.length; i++) {
-        hash = (hash * 33 + src.charCodeAt(i)) >>> 0;
-    }
-    return SUIT_PALETTE[hash % SUIT_PALETTE.length];
-}
-
-function parseNoteDetails(noteStr) {
-    const clean = (noteStr || '').toUpperCase().trim();
-    const match = clean.match(/^([A-G][#B]?)([0-9]*)$/);
-    const rawPitch = match ? match[1] : clean.replace(/[0-9]/g, '');
-    const octave = (match && match[2]) ? parseInt(match[2], 10) : 4;
-    const flatMap = { 'DB': 'C#', 'EB': 'D#', 'GB': 'F#', 'AB': 'G#', 'BB': 'A#' };
-    return {
-        pitchClass: flatMap[rawPitch] || rawPitch,
-        octave
-    };
-}
-
-function normalizePitchClass(noteStr) {
-    return parseNoteDetails(noteStr).pitchClass;
+    if (gameState.killFeedEntries.length > 4) gameState.killFeedEntries.pop();
 }
 
 function matchDiatonicTriad(pitchSet) {
     if (pitchSet.size !== 3) return null;
     for (const gear of CHORD_GEARS) {
-        if (gear.notes.every(n => pitchSet.has(n))) {
-            return gear;
-        }
+        if (gear.notes.every(n => pitchSet.has(n))) return gear;
     }
     return null;
 }
@@ -324,9 +58,7 @@ function matchDiatonicTriad(pitchSet) {
 function matchOverchargeChord(pitchSet) {
     if (pitchSet.size !== 4) return null;
     for (const oc of OVERCHARGE_CHORDS) {
-        if (oc.notes.every(n => pitchSet.has(n))) {
-            return oc;
-        }
+        if (oc.notes.every(n => pitchSet.has(n))) return oc;
     }
     return null;
 }
@@ -339,16 +71,9 @@ function matchEmpChord(pitchSet) {
 function matchDecoyChord(pitchSet) {
     if (pitchSet.size !== 4) return null;
     for (const dc of DECOY_CHORDS) {
-        if (dc.notes.every(n => pitchSet.has(n))) {
-            return dc;
-        }
+        if (dc.notes.every(n => pitchSet.has(n))) return dc;
     }
     return null;
-}
-
-function isPlayerActiveInRoom(p) {
-    if (!p || p.isAlive === false) return false;
-    return typeof p.x === 'number' && typeof p.y === 'number' && !isNaN(p.x) && !isNaN(p.y);
 }
 
 // ==========================================
@@ -614,7 +339,7 @@ function spawn3DExplosion(wx, wy, color, count = 28) {
     for (let i = 0; i < count; i++) {
         const ang = Math.random() * Math.PI * 2;
         const spd = 40 + Math.random() * 190;
-        worldExplosions.push({
+        gameState.worldExplosions.push({
             x: wx,
             y: wy,
             z: (Math.random() - 0.5) * 24,
@@ -628,19 +353,6 @@ function spawn3DExplosion(wx, wy, color, count = 28) {
     }
 }
 
-function hasLineOfSight(x1, y1, x2, y2) {
-    const dist = Math.hypot(x2 - x1, y2 - y1);
-    const steps = Math.max(8, Math.ceil(dist / 14));
-    for (let i = 1; i < steps; i++) {
-        const tx = x1 + (x2 - x1) * (i / steps);
-        const ty = y1 + (y2 - y1) * (i / steps);
-        const col = Math.floor(tx / TILE_SIZE);
-        const row = Math.floor(ty / TILE_SIZE);
-        if (ARENA_MAP[row] && ARENA_MAP[row][col] > 0) return false;
-    }
-    return true;
-}
-
 function ensureCanvasSized(canvas) {
     if (!canvas) return;
     const parent = canvas.parentElement;
@@ -652,35 +364,11 @@ function ensureCanvasSized(canvas) {
     }
 }
 
-function getSafeSpawnPoint(avoidX = null, avoidY = null) {
-    let best = { x: TILE_SIZE * 22.5, y: TILE_SIZE * 22.5 };
-    let bestDist = -1;
-
-    for (let attempt = 0; attempt < 180; attempt++) {
-        const c = 2 + Math.floor(Math.random() * (MAP_COLS - 4));
-        const r = 2 + Math.floor(Math.random() * (MAP_ROWS - 4));
-        if (ARENA_MAP[r] && ARENA_MAP[r][c] === 0) {
-            const candX = c * TILE_SIZE + TILE_SIZE / 2;
-            const candY = r * TILE_SIZE + TILE_SIZE / 2;
-            if (avoidX === null || avoidY === null) {
-                return { x: candX, y: candY };
-            }
-            const d = Math.hypot(candX - avoidX, candY - avoidY);
-            if (d > bestDist) {
-                bestDist = d;
-                best = { x: candX, y: candY };
-            }
-            if (d > TILE_SIZE * 16) return best;
-        }
-    }
-    return best;
-}
-
 async function spawn50CombatBots() {
-    if (!activeRoomCode || !window.firebaseDb) return;
+    if (!gameState.activeRoomCode || !window.firebaseDb) return;
 
     const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-    const basePath = `pianopad_tournaments/${activeRoomCode}/lasertag`;
+    const basePath = `pianopad_tournaments/${gameState.activeRoomCode}/lasertag`;
     const updates = {};
 
     const batchStamp = Date.now() % 10000;
@@ -715,7 +403,7 @@ async function spawn50CombatBots() {
             fireCooldown: 1.5 + Math.random() * 3.0
         };
 
-        simulatedBots[botId] = botData;
+        gameState.simulatedBots[botId] = botData;
         updates[botId] = botData;
     }
 
@@ -728,7 +416,7 @@ async function spawn50CombatBots() {
 }
 
 function updateSimulatedBots(dt) {
-    const botList = Object.values(simulatedBots);
+    const botList = Object.values(gameState.simulatedBots);
     if (botList.length === 0) return;
 
     const speed = 160;
@@ -736,7 +424,7 @@ function updateSimulatedBots(dt) {
     const now = performance.now();
 
     for (const bot of botList) {
-        const serverBot = remotePlayers[bot.id];
+        const serverBot = gameState.remotePlayers[bot.id];
         if (serverBot && serverBot.lastHitEvent && serverBot.lastHitEvent.id !== bot.lastProcessedHit) {
             bot.lastProcessedHit = serverBot.lastHitEvent.id;
             bot.hitsTaken += 1;
@@ -755,11 +443,11 @@ function updateSimulatedBots(dt) {
         if (!bot.isAlive) continue;
         bot.isInvulnerable = now < (bot.invulnerableUntil || 0);
 
-        if (arenaPortals.length === 2 && now >= (bot.portalCooldown || 0)) {
+        if (gameState.arenaPortals.length === 2 && now >= (bot.portalCooldown || 0)) {
             for (let pIdx = 0; pIdx < 2; pIdx++) {
-                const p = arenaPortals[pIdx];
+                const p = gameState.arenaPortals[pIdx];
                 if (Math.hypot(bot.x - p.x, bot.y - p.y) < 34) {
-                    const dest = arenaPortals[pIdx === 0 ? 1 : 0];
+                    const dest = gameState.arenaPortals[pIdx === 0 ? 1 : 0];
                     bot.x = dest.x;
                     bot.y = dest.y;
                     bot.portalCooldown = now + 3000;
@@ -828,7 +516,7 @@ function updateSimulatedBots(dt) {
 }
 
 async function sendSpectatorDroneAlert(targetPlayerId, targetName, messageText) {
-    if (!activeRoomCode || !window.firebaseDb || !targetPlayerId) return;
+    if (!gameState.activeRoomCode || !window.firebaseDb || !targetPlayerId) return;
 
     playRadioAlertChime();
     const state = window._laserTagBridge && window._laserTagBridge.getState ? window._laserTagBridge.getState() : {};
@@ -836,10 +524,10 @@ async function sendSpectatorDroneAlert(targetPlayerId, targetName, messageText) 
 
     try {
         const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-        const basePath = `pianopad_tournaments/${activeRoomCode}/lasertag`;
+        const basePath = `pianopad_tournaments/${gameState.activeRoomCode}/lasertag`;
         await update(window.firebaseRef(window.firebaseDb, `${basePath}/${targetPlayerId}`), {
             spectatorAlert: {
-                id: `${localId}_${Date.now()}_${Math.floor(Math.random() * 999)}`,
+                id: `${gameState.localId}_${Date.now()}_${Math.floor(Math.random() * 999)}`,
                 text: messageText,
                 fromName: senderName,
                 timestamp: Date.now()
@@ -851,11 +539,11 @@ async function sendSpectatorDroneAlert(targetPlayerId, targetName, messageText) 
     if (statusEl) {
         statusEl.textContent = `📡 SENT ALERT TO ${targetName.toUpperCase()}: "${messageText}"`;
     }
-    spectatorSelectedTarget = null;
+    gameState.spectatorSelectedTarget = null;
 }
 
 function handleSpectatorCanvasClick(e) {
-    if (gamePhase !== 'spectating' || localPlayer.isAlive) return;
+    if (gameState.gamePhase !== 'spectating' || gameState.localPlayer.isAlive) return;
 
     const canvas = document.getElementById('waterfall-canvas');
     if (!canvas) return;
@@ -866,10 +554,11 @@ function handleSpectatorCanvasClick(e) {
     const clickX = (e.clientX - rect.left) * scaleCanvasX;
     const clickY = (e.clientY - rect.top) * scaleCanvasY;
 
-    if (spectatorSelectedTarget && spectatorSelectedTarget.buttons) {
-        for (const btn of spectatorSelectedTarget.buttons) {
+    const sel = gameState.spectatorSelectedTarget;
+    if (sel && sel.buttons) {
+        for (const btn of sel.buttons) {
             if (clickX >= btn.x && clickX <= btn.x + btn.w && clickY >= btn.y && clickY <= btn.y + btn.h) {
-                sendSpectatorDroneAlert(spectatorSelectedTarget.id, spectatorSelectedTarget.name, btn.msg);
+                sendSpectatorDroneAlert(sel.id, sel.name, btn.msg);
                 return;
             }
         }
@@ -884,7 +573,7 @@ function handleSpectatorCanvasClick(e) {
     let closestPlayer = null;
     let closestDist = 36;
 
-    for (const [id, opp] of Object.entries(remotePlayers)) {
+    for (const [id, opp] of Object.entries(gameState.remotePlayers)) {
         if (!isPlayerActiveInRoom(opp)) continue;
         const px = offsetX + opp.x * mapScale;
         const py = offsetY + opp.y * mapScale;
@@ -895,35 +584,35 @@ function handleSpectatorCanvasClick(e) {
         }
     }
 
-    spectatorSelectedTarget = closestPlayer;
+    gameState.spectatorSelectedTarget = closestPlayer;
     if (closestPlayer) playRadioAlertChime();
 }
 
 export function stopLaserTag() {
-    if (animFrameId !== null) cancelAnimationFrame(animFrameId);
-    if (syncIntervalId !== null) clearInterval(syncIntervalId);
-    if (pendingActionTimer !== null) clearTimeout(pendingActionTimer);
-    if (roomUnsubscribe) {
-        roomUnsubscribe();
-        roomUnsubscribe = null;
+    if (gameState.animFrameId !== null) cancelAnimationFrame(gameState.animFrameId);
+    if (gameState.syncIntervalId !== null) clearInterval(gameState.syncIntervalId);
+    if (gameState.pendingActionTimer !== null) clearTimeout(gameState.pendingActionTimer);
+    if (gameState.roomUnsubscribe) {
+        gameState.roomUnsubscribe();
+        gameState.roomUnsubscribe = null;
     }
-    animFrameId = null;
-    syncIntervalId = null;
-    pendingActionTimer = null;
-    recentNoteBuffer = [];
-    typedCheatBuffer = '';
-    processedHitIds.clear();
-    processedEmpIds.clear();
-    processedAlertIds.clear();
-    seenFeedIds.clear();
-    killFeedEntries = [];
-    activeDecoys = [];
-    empWaveRings = [];
-    simulatedBots = {};
-    spectatorSelectedTarget = null;
-    incomingAlertBanner = null;
-    maxPeakPlayers = 1;
-    gamePhase = 'lobby';
+    gameState.animFrameId = null;
+    gameState.syncIntervalId = null;
+    gameState.pendingActionTimer = null;
+    gameState.recentNoteBuffer = [];
+    gameState.typedCheatBuffer = '';
+    gameState.processedHitIds.clear();
+    gameState.processedEmpIds.clear();
+    gameState.processedAlertIds.clear();
+    gameState.seenFeedIds.clear();
+    gameState.killFeedEntries = [];
+    gameState.activeDecoys = [];
+    gameState.empWaveRings = [];
+    gameState.simulatedBots = {};
+    gameState.spectatorSelectedTarget = null;
+    gameState.incomingAlertBanner = null;
+    gameState.maxPeakPlayers = 1;
+    gameState.gamePhase = 'lobby';
 }
 
 export async function startLaserTag(bridge, autoRoomCode = null, isHost = false) {
@@ -932,24 +621,24 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
 
     window._laserTagBridge = bridge;
 
-    if (!globalKeyListenerAttached) {
-        globalKeyListenerAttached = true;
+    if (!gameState.globalKeyListenerAttached) {
+        gameState.globalKeyListenerAttached = true;
         window.addEventListener('keydown', (e) => {
-            if (gamePhase !== 'playing' && gamePhase !== 'spectating') return;
+            if (gameState.gamePhase !== 'playing' && gameState.gamePhase !== 'spectating') return;
             if (e.key && e.key.length === 1) {
-                typedCheatBuffer = (typedCheatBuffer + e.key).slice(-8);
-                if (typedCheatBuffer.toLowerCase().endsWith('test')) {
-                    typedCheatBuffer = '';
+                gameState.typedCheatBuffer = (gameState.typedCheatBuffer + e.key).slice(-8);
+                if (gameState.typedCheatBuffer.toLowerCase().endsWith('test')) {
+                    gameState.typedCheatBuffer = '';
                     spawn50CombatBots();
                 }
             }
         });
     }
 
-    if (!spectatorClickListenerAttached) {
+    if (!gameState.spectatorClickListenerAttached) {
         const canvasEl = document.getElementById('waterfall-canvas');
         if (canvasEl) {
-            spectatorClickListenerAttached = true;
+            gameState.spectatorClickListenerAttached = true;
             canvasEl.addEventListener('click', handleSpectatorCanvasClick);
         }
     }
@@ -968,99 +657,100 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     }
 
     const state = bridge.getState ? bridge.getState() : {};
-    localId = state.localStudentId || ('stu_' + Math.random().toString(36).slice(2, 9));
-    activeRoomCode = String(autoRoomCode || prompt("Enter a 3-Digit Room Code for 3D Laser Tag:", "123") || '').trim();
+    gameState.localId = state.localStudentId || ('stu_' + Math.random().toString(36).slice(2, 9));
+    gameState.activeRoomCode = String(autoRoomCode || prompt("Enter a 3-Digit Room Code for 3D Laser Tag:", "123") || '').trim();
 
-    if (!activeRoomCode || !window.firebaseDb) {
+    if (!gameState.activeRoomCode || !window.firebaseDb) {
         alert("Firebase required for Laser Tag. Returning to menu.");
         bridge.exitActiveMiniGame();
         return;
     }
 
-    generateSeededArena(activeRoomCode);
+    generateSeededArena(gameState.activeRoomCode);
 
+    const lp = gameState.localPlayer;
     const avatar = state.sessionStudentAvatar || '🏃';
     const spawn = getSafeSpawnPoint();
-    localPlayer.x = spawn.x;
-    localPlayer.y = spawn.y;
-    localPlayer.angle = Math.random() * Math.PI * 2;
-    localPlayer.turnDir = 0;
-    localPlayer.moveUntil = 0;
-    localPlayer.isMovingForward = false;
-    localPlayer.lives = 3;
-    localPlayer.hitsTaken = 0;
-    localPlayer.eliminations = 0;
-    localPlayer.isAlive = true;
-    localPlayer.currentGear = DEFAULT_GEAR;
-    localPlayer.invulnerableUntil = 0;
-    localPlayer.portalCooldownUntil = 0;
-    localPlayer.boostUntil = 0;
-    localPlayer.overchargeReadyAt = 0;
-    localPlayer.empReadyAt = 0;
-    localPlayer.decoyReadyAt = 0;
-    localPlayer.empScrambledUntil = 0;
-    localPlayer.hubScoreTimer = 0;
-    localPlayer.stormTickTimer = 0;
-    localPlayer.comboCount = 0;
-    localPlayer.comboExpiresAt = 0;
-    localPlayer.lastComboTargetId = null;
-    localPlayer.revengeTargetId = null;
-    localPlayer.hitMarkerUntil = 0;
-    localPlayer.hitMarkerElim = false;
-    localPlayer.suitColor = getSuitColorForAvatar(avatar, localId);
-    localPlayer.score = 0;
-    localPlayer.noteTag = ASSIGNABLE_PITCHES[Math.floor(Math.random() * ASSIGNABLE_PITCHES.length)];
-    localPlayer.bobPhase = 0;
-    localPlayer.recoil = 0;
-    localPlayer.muzzleFlash = 0;
-    localPlayer.damageFlash = 0;
-    localPlayer.damageFlashColor = '#f97316';
-    localPlayer.portalFlash = 0;
-    localPlayer.jamFlash = 0;
-    localPlayer.gearBannerFlash = 1.0;
+    lp.x = spawn.x;
+    lp.y = spawn.y;
+    lp.angle = Math.random() * Math.PI * 2;
+    lp.turnDir = 0;
+    lp.moveUntil = 0;
+    lp.isMovingForward = false;
+    lp.lives = 3;
+    lp.hitsTaken = 0;
+    lp.eliminations = 0;
+    lp.isAlive = true;
+    lp.currentGear = DEFAULT_GEAR;
+    lp.invulnerableUntil = 0;
+    lp.portalCooldownUntil = 0;
+    lp.boostUntil = 0;
+    lp.overchargeReadyAt = 0;
+    lp.empReadyAt = 0;
+    lp.decoyReadyAt = 0;
+    lp.empScrambledUntil = 0;
+    lp.hubScoreTimer = 0;
+    lp.stormTickTimer = 0;
+    lp.comboCount = 0;
+    lp.comboExpiresAt = 0;
+    lp.lastComboTargetId = null;
+    lp.revengeTargetId = null;
+    lp.hitMarkerUntil = 0;
+    lp.hitMarkerElim = false;
+    lp.suitColor = getSuitColorForAvatar(avatar, gameState.localId);
+    lp.score = 0;
+    lp.noteTag = ASSIGNABLE_PITCHES[Math.floor(Math.random() * ASSIGNABLE_PITCHES.length)];
+    lp.bobPhase = 0;
+    lp.recoil = 0;
+    lp.muzzleFlash = 0;
+    lp.damageFlash = 0;
+    lp.damageFlashColor = '#f97316';
+    lp.portalFlash = 0;
+    lp.jamFlash = 0;
+    lp.gearBannerFlash = 1.0;
 
-    activeBeams = [];
-    worldExplosions = [];
-    activeDecoys = [];
-    empWaveRings = [];
-    remotePlayers = {};
-    recentNoteBuffer = [];
-    processedHitIds.clear();
-    processedEmpIds.clear();
-    processedAlertIds.clear();
-    seenFeedIds.clear();
-    killFeedEntries = [];
-    maxPeakPlayers = 1;
-    gamePhase = 'playing';
-    lastFrameTime = performance.now();
-    matchStartTime = lastFrameTime;
+    gameState.activeBeams = [];
+    gameState.worldExplosions = [];
+    gameState.activeDecoys = [];
+    gameState.empWaveRings = [];
+    gameState.remotePlayers = {};
+    gameState.recentNoteBuffer = [];
+    gameState.processedHitIds.clear();
+    gameState.processedEmpIds.clear();
+    gameState.processedAlertIds.clear();
+    gameState.seenFeedIds.clear();
+    gameState.killFeedEntries = [];
+    gameState.maxPeakPlayers = 1;
+    gameState.gamePhase = 'playing';
+    gameState.lastFrameTime = performance.now();
+    gameState.matchStartTime = gameState.lastFrameTime;
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${localPlayer.noteTag}] | C#: Move • C/D: Turn • C2+C4: 180° Flip • Bdim7: EMP • Dm7/Em7: Decoy!`;
+        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${lp.noteTag}] | C#: Move • C/D: Turn • C2+C4: 180° Flip • Bdim7: EMP • Dm7/Em7: Decoy!`;
     }
 
-    animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
+    gameState.animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
 
     try {
         const { onValue, set, update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-        const basePath = `pianopad_tournaments/${activeRoomCode}/lasertag`;
-        const myPlayerRef = window.firebaseRef(window.firebaseDb, `${basePath}/${localId}`);
+        const basePath = `pianopad_tournaments/${gameState.activeRoomCode}/lasertag`;
+        const myPlayerRef = window.firebaseRef(window.firebaseDb, `${basePath}/${gameState.localId}`);
 
         await set(myPlayerRef, {
-            id: localId,
-            x: Number(localPlayer.x.toFixed(1)),
-            y: Number(localPlayer.y.toFixed(1)),
-            angle: Number(localPlayer.angle.toFixed(3)),
+            id: gameState.localId,
+            x: Number(lp.x.toFixed(1)),
+            y: Number(lp.y.toFixed(1)),
+            angle: Number(lp.angle.toFixed(3)),
             lives: 3,
             hitsTaken: 0,
             eliminations: 0,
             isAlive: true,
-            gearId: localPlayer.currentGear.id,
-            isStealth: localPlayer.currentGear.stealth,
+            gearId: lp.currentGear.id,
+            isStealth: lp.currentGear.stealth,
             isInvulnerable: false,
-            suitColor: localPlayer.suitColor,
-            noteTag: localPlayer.noteTag,
+            suitColor: lp.suitColor,
+            noteTag: lp.noteTag,
             score: 0,
             name: state.sessionStudentName || 'Player',
             avatar: avatar,
@@ -1073,11 +763,11 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
         }
 
         const roomRef = window.firebaseRef(window.firebaseDb, basePath);
-        roomUnsubscribe = onValue(roomRef, (snapshot) => {
+        gameState.roomUnsubscribe = onValue(roomRef, (snapshot) => {
             const data = snapshot.val() || {};
-            remotePlayers = data;
+            gameState.remotePlayers = data;
 
-            for (const [pid, pObj] of Object.entries(remotePlayers)) {
+            for (const [pid, pObj] of Object.entries(gameState.remotePlayers)) {
                 if (pObj && pObj.lastHitEvent && pObj.lastHitEvent.id) {
                     const ev = pObj.lastHitEvent;
                     const verb = ev.eliminated ? '💥 eliminated' : '🔥 tagged';
@@ -1089,15 +779,15 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
                 }
             }
 
-            const myServerRecord = remotePlayers[localId];
-            if (!myServerRecord || !localPlayer.isAlive) return;
+            const myServerRecord = gameState.remotePlayers[gameState.localId];
+            if (!myServerRecord || !lp.isAlive) return;
 
             // Feature #2: Check for incoming Bdim7 EMP Pulse
             const empEvt = myServerRecord.lastEmpEvent;
-            if (empEvt && empEvt.id && !processedEmpIds.has(empEvt.id)) {
-                processedEmpIds.add(empEvt.id);
-                localPlayer.empScrambledUntil = performance.now() + 3500;
-                localPlayer.currentGear = CHORD_GEARS[1]; // Forced into 0.35x Sneaky slow gear
+            if (empEvt && empEvt.id && !gameState.processedEmpIds.has(empEvt.id)) {
+                gameState.processedEmpIds.add(empEvt.id);
+                lp.empScrambledUntil = performance.now() + 3500;
+                lp.currentGear = CHORD_GEARS[1];
                 playEmpPulseSound();
                 if (statusEl) {
                     statusEl.textContent = `⚡ EMP SCRAMBLED by ${empEvt.byName || 'Opponent'}! Slowed to 0.35x for 3.5s!`;
@@ -1106,9 +796,9 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
 
             // Spectator Callout Alert
             const alertEvt = myServerRecord.spectatorAlert;
-            if (alertEvt && alertEvt.id && !processedAlertIds.has(alertEvt.id)) {
-                processedAlertIds.add(alertEvt.id);
-                incomingAlertBanner = {
+            if (alertEvt && alertEvt.id && !gameState.processedAlertIds.has(alertEvt.id)) {
+                gameState.processedAlertIds.add(alertEvt.id);
+                gameState.incomingAlertBanner = {
                     text: alertEvt.text,
                     fromName: alertEvt.fromName || 'Teammate',
                     until: performance.now() + 3400
@@ -1118,32 +808,31 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
 
             // Incoming Laser Hit Event
             const hitEvt = myServerRecord.lastHitEvent;
-            if (hitEvt && hitEvt.id && !processedHitIds.has(hitEvt.id)) {
-                processedHitIds.add(hitEvt.id);
+            if (hitEvt && hitEvt.id && !gameState.processedHitIds.has(hitEvt.id)) {
+                gameState.processedHitIds.add(hitEvt.id);
 
-                if (performance.now() < localPlayer.invulnerableUntil) return;
+                if (performance.now() < lp.invulnerableUntil) return;
 
-                // Feature #5: Mark attacker as Revenge Bounty Target
                 if (hitEvt.byId) {
-                    localPlayer.revengeTargetId = hitEvt.byId;
+                    lp.revengeTargetId = hitEvt.byId;
                 }
 
-                localPlayer.hitsTaken += 1;
-                localPlayer.lives = Math.max(0, 3 - localPlayer.hitsTaken);
+                lp.hitsTaken += 1;
+                lp.lives = Math.max(0, 3 - lp.hitsTaken);
 
-                if (localPlayer.lives <= 0) {
-                    localPlayer.lives = 0;
-                    localPlayer.isAlive = false;
-                    localPlayer.moveUntil = 0;
-                    localPlayer.damageFlash = 1.0;
-                    localPlayer.damageFlashColor = '#ef4444';
+                if (lp.lives <= 0) {
+                    lp.lives = 0;
+                    lp.isAlive = false;
+                    lp.moveUntil = 0;
+                    lp.damageFlash = 1.0;
+                    lp.damageFlashColor = '#ef4444';
                     playExplosionSound();
-                    spawn3DExplosion(localPlayer.x, localPlayer.y, '#ef4444', 42);
-                    gamePhase = 'spectating';
+                    spawn3DExplosion(lp.x, lp.y, '#ef4444', 42);
+                    gameState.gamePhase = 'spectating';
 
                     update(myPlayerRef, {
                         lives: 0,
-                        hitsTaken: localPlayer.hitsTaken,
+                        hitsTaken: lp.hitsTaken,
                         isAlive: false,
                         isInvulnerable: false
                     }).catch(() => {});
@@ -1152,64 +841,64 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
                         statusEl.textContent = `💥 ELIMINATED! Click any player on the Spectator Map to send "Watch Out", "Turn Left", or "Turn Right"!`;
                     }
                 } else {
-                    const oldX = localPlayer.x;
-                    const oldY = localPlayer.y;
+                    const oldX = lp.x;
+                    const oldY = lp.y;
                     spawn3DExplosion(oldX, oldY, '#f97316', 24);
 
                     const newSpawn = getSafeSpawnPoint(oldX, oldY);
-                    localPlayer.x = newSpawn.x;
-                    localPlayer.y = newSpawn.y;
-                    localPlayer.angle = Math.random() * Math.PI * 2;
-                    localPlayer.moveUntil = 0;
-                    localPlayer.invulnerableUntil = performance.now() + 3500;
-                    localPlayer.damageFlash = 1.0;
-                    localPlayer.damageFlashColor = '#f97316';
+                    lp.x = newSpawn.x;
+                    lp.y = newSpawn.y;
+                    lp.angle = Math.random() * Math.PI * 2;
+                    lp.moveUntil = 0;
+                    lp.invulnerableUntil = performance.now() + 3500;
+                    lp.damageFlash = 1.0;
+                    lp.damageFlashColor = '#f97316';
                     playShieldHitSound();
 
                     update(myPlayerRef, {
-                        x: Number(localPlayer.x.toFixed(1)),
-                        y: Number(localPlayer.y.toFixed(1)),
-                        angle: Number(localPlayer.angle.toFixed(3)),
-                        lives: localPlayer.lives,
-                        hitsTaken: localPlayer.hitsTaken,
+                        x: Number(lp.x.toFixed(1)),
+                        y: Number(lp.y.toFixed(1)),
+                        angle: Number(lp.angle.toFixed(3)),
+                        lives: lp.lives,
+                        hitsTaken: lp.hitsTaken,
                         isAlive: true,
                         isInvulnerable: true
                     }).catch(() => {});
 
                     if (statusEl) {
-                        statusEl.textContent = `⚠️ HIT BY ${hitEvt.byName || 'Opponent'}! Respawned (${localPlayer.lives} ${localPlayer.lives === 1 ? 'LIFE' : 'LIVES'} LEFT) — Revenge Target marked!`;
+                        statusEl.textContent = `⚠️ HIT BY ${hitEvt.byName || 'Opponent'}! Respawned (${lp.lives} ${lp.lives === 1 ? 'LIFE' : 'LIVES'} LEFT) — Revenge Target marked!`;
                     }
                 }
             }
         });
 
-        syncIntervalId = setInterval(() => {
+        gameState.syncIntervalId = setInterval(() => {
             if (bridge.getActiveMiniGame() !== 'laserTag') return;
 
-            if (localPlayer.isAlive) {
-                const isInvuln = performance.now() < localPlayer.invulnerableUntil;
+            if (lp.isAlive) {
+                const isInvuln = performance.now() < lp.invulnerableUntil;
                 update(myPlayerRef, {
-                    x: Number(localPlayer.x.toFixed(1)),
-                    y: Number(localPlayer.y.toFixed(1)),
-                    angle: Number(localPlayer.angle.toFixed(3)),
-                    lives: localPlayer.lives,
-                    hitsTaken: localPlayer.hitsTaken,
-                    eliminations: localPlayer.eliminations,
-                    isAlive: localPlayer.isAlive,
-                    gearId: localPlayer.currentGear.id,
-                    isStealth: localPlayer.currentGear.stealth,
+                    x: Number(lp.x.toFixed(1)),
+                    y: Number(lp.y.toFixed(1)),
+                    angle: Number(lp.angle.toFixed(3)),
+                    lives: lp.lives,
+                    hitsTaken: lp.hitsTaken,
+                    eliminations: lp.eliminations,
+                    isAlive: lp.isAlive,
+                    gearId: lp.currentGear.id,
+                    isStealth: lp.currentGear.stealth,
                     isInvulnerable: isInvuln,
-                    suitColor: localPlayer.suitColor,
-                    noteTag: localPlayer.noteTag,
-                    score: localPlayer.score,
+                    suitColor: lp.suitColor,
+                    noteTag: lp.noteTag,
+                    score: lp.score,
                     name: state.sessionStudentName || 'Player',
                     avatar: avatar
                 }).catch(() => {});
             }
 
-            if (Object.keys(simulatedBots).length > 0) {
+            if (Object.keys(gameState.simulatedBots).length > 0) {
                 const botBatch = {};
-                for (const bot of Object.values(simulatedBots)) {
+                for (const bot of Object.values(gameState.simulatedBots)) {
                     botBatch[`${bot.id}/x`] = Number(bot.x.toFixed(1));
                     botBatch[`${bot.id}/y`] = Number(bot.y.toFixed(1));
                     botBatch[`${bot.id}/angle`] = Number(bot.angle.toFixed(3));
@@ -1230,27 +919,28 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
 
 // Feature #2: Diminished 7th EMP Shockwave (B + D + F + G#)
 async function triggerEmpShockwave(bridge) {
+    const lp = gameState.localPlayer;
     const now = performance.now();
     playEmpPulseSound();
-    localPlayer.empReadyAt = now + 18000;
-    empWaveRings.push({ x: localPlayer.x, y: localPlayer.y, radius: 10, maxRadius: 260, life: 1.0 });
+    lp.empReadyAt = now + 18000;
+    gameState.empWaveRings.push({ x: lp.x, y: lp.y, radius: 10, maxRadius: 260, life: 1.0 });
 
     const state = bridge && bridge.getState ? bridge.getState() : {};
-    const empId = `emp_${localId}_${Date.now()}`;
+    const empId = `emp_${gameState.localId}_${Date.now()}`;
     let hitCount = 0;
 
     try {
         const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-        const basePath = `pianopad_tournaments/${activeRoomCode}/lasertag`;
+        const basePath = `pianopad_tournaments/${gameState.activeRoomCode}/lasertag`;
         const updates = {};
 
-        for (const [id, opp] of Object.entries(remotePlayers)) {
-            if (id === localId || !isPlayerActiveInRoom(opp)) continue;
-            if (Math.hypot(opp.x - localPlayer.x, opp.y - localPlayer.y) <= 260) {
+        for (const [id, opp] of Object.entries(gameState.remotePlayers)) {
+            if (id === gameState.localId || !isPlayerActiveInRoom(opp)) continue;
+            if (Math.hypot(opp.x - lp.x, opp.y - lp.y) <= 260) {
                 hitCount++;
                 updates[`${id}/lastEmpEvent`] = {
                     id: empId,
-                    byId: localId,
+                    byId: gameState.localId,
                     byName: state.sessionStudentName || 'Opponent',
                     timestamp: Date.now()
                 };
@@ -1269,20 +959,21 @@ async function triggerEmpShockwave(bridge) {
 
 // Feature #3: Musical Echo Holo-Decoy (Dm7 or Em7)
 function spawnHoloDecoy(chordLabel, bridge) {
+    const lp = gameState.localPlayer;
     const now = performance.now();
     playDecoySpawnSound();
-    localPlayer.decoyReadyAt = now + 14000;
+    lp.decoyReadyAt = now + 14000;
 
     const state = bridge && bridge.getState ? bridge.getState() : {};
-    activeDecoys.push({
+    gameState.activeDecoys.push({
         id: `decoy_${Date.now()}`,
-        x: localPlayer.x + Math.cos(localPlayer.angle) * 28,
-        y: localPlayer.y + Math.sin(localPlayer.angle) * 28,
-        angle: localPlayer.angle,
+        x: lp.x + Math.cos(lp.angle) * 28,
+        y: lp.y + Math.sin(lp.angle) * 28,
+        angle: lp.angle,
         avatar: state.sessionStudentAvatar || '🏃',
         name: state.sessionStudentName || 'Player',
-        noteTag: localPlayer.noteTag,
-        suitColor: localPlayer.suitColor,
+        noteTag: lp.noteTag,
+        suitColor: lp.suitColor,
         expiresAt: now + 5500
     });
 
@@ -1293,7 +984,8 @@ function spawnHoloDecoy(chordLabel, bridge) {
 }
 
 async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
-    if (gamePhase !== 'playing' || !localPlayer.isAlive) return;
+    const lp = gameState.localPlayer;
+    if (gameState.gamePhase !== 'playing' || !lp.isAlive) return;
 
     const now = performance.now();
     if (isOvercharge) {
@@ -1301,28 +993,28 @@ async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
     } else {
         playLaserPew();
     }
-    localPlayer.recoil = isOvercharge ? 1.6 : 1.0;
-    localPlayer.muzzleFlash = 1.0;
+    lp.recoil = isOvercharge ? 1.6 : 1.0;
+    lp.muzzleFlash = 1.0;
 
     const FOV = Math.PI / 3;
     const maxCone = isOvercharge ? FOV * 0.85 : FOV * 0.62;
     let bestTarget = null;
     let bestDist = 1400;
 
-    for (const [id, opp] of Object.entries(remotePlayers)) {
-        if (id === localId || !isPlayerActiveInRoom(opp) || opp.isInvulnerable) continue;
+    for (const [id, opp] of Object.entries(gameState.remotePlayers)) {
+        if (id === gameState.localId || !isPlayerActiveInRoom(opp) || opp.isInvulnerable) continue;
         if (!isOvercharge && normalizePitchClass(opp.noteTag) !== pitchClass) continue;
 
-        const dx = opp.x - localPlayer.x;
-        const dy = opp.y - localPlayer.y;
+        const dx = opp.x - lp.x;
+        const dy = opp.y - lp.y;
         const dist = Math.hypot(dx, dy);
         if (dist > bestDist) continue;
 
-        let relAngle = Math.atan2(dy, dx) - localPlayer.angle;
+        let relAngle = Math.atan2(dy, dx) - lp.angle;
         while (relAngle > Math.PI) relAngle -= Math.PI * 2;
         while (relAngle < -Math.PI) relAngle += Math.PI * 2;
 
-        if (Math.abs(relAngle) <= maxCone && hasLineOfSight(localPlayer.x, localPlayer.y, opp.x, opp.y)) {
+        if (Math.abs(relAngle) <= maxCone && hasLineOfSight(lp.x, lp.y, opp.x, opp.y)) {
             bestDist = dist;
             bestTarget = { id, opp, relAngle, dist };
         }
@@ -1340,27 +1032,25 @@ async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
         const predictedRemaining = Math.max(0, currentLives - 1);
         const eliminated = predictedRemaining <= 0;
 
-        // Feature #4: Combo Note-Chain Multiplier (hitting 2 different opponents within 8s triggers 2x Rainbow Plasma)
-        if (now < localPlayer.comboExpiresAt && localPlayer.lastComboTargetId !== bestTarget.id) {
-            localPlayer.comboCount = 2;
+        if (now < lp.comboExpiresAt && lp.lastComboTargetId !== bestTarget.id) {
+            lp.comboCount = 2;
         } else {
-            localPlayer.comboCount = 1;
+            lp.comboCount = 1;
         }
-        localPlayer.lastComboTargetId = bestTarget.id;
-        localPlayer.comboExpiresAt = now + 8000;
-        const isCombo2x = localPlayer.comboCount >= 2;
+        lp.lastComboTargetId = bestTarget.id;
+        lp.comboExpiresAt = now + 8000;
+        const isCombo2x = lp.comboCount >= 2;
 
-        // Feature #5: Revenge Bounty Bonus (+100 pts if tagging your Revenge Target)
-        const isRevenge = localPlayer.revengeTargetId === bestTarget.id;
+        const isRevenge = lp.revengeTargetId === bestTarget.id;
         if (isRevenge) {
-            localPlayer.revengeTargetId = null;
+            lp.revengeTargetId = null;
         }
 
-        localPlayer.hitMarkerUntil = now + 260;
-        localPlayer.hitMarkerElim = eliminated;
+        lp.hitMarkerUntil = now + 260;
+        lp.hitMarkerElim = eliminated;
         playHitMarkerTick();
 
-        activeBeams.push({
+        gameState.activeBeams.push({
             endX: targetScreenX,
             endY: targetScreenY,
             color: isCombo2x ? 'rainbow' : (isOvercharge ? '#facc15' : (eliminated ? '#ef4444' : '#f97316')),
@@ -1372,19 +1062,19 @@ async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
         let basePts = eliminated ? 150 : 50;
         if (isCombo2x) basePts *= 2;
         if (isRevenge) basePts += 100;
-        localPlayer.score += basePts;
+        lp.score += basePts;
 
         if (eliminated) {
             playExplosionSound();
             spawn3DExplosion(bestTarget.opp.x, bestTarget.opp.y, '#ef4444', 36);
-            localPlayer.eliminations += 1;
+            lp.eliminations += 1;
         } else {
             playShieldHitSound();
             spawn3DExplosion(bestTarget.opp.x, bestTarget.opp.y, '#f97316', 20);
         }
 
         const state = bridge && bridge.getState ? bridge.getState() : {};
-        const hitEventId = `${localId}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        const hitEventId = `${gameState.localId}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
         const tagLabel = isOvercharge ? 'MAJ7⚡' : pitchClass;
 
         addKillFeedEntry(
@@ -1395,11 +1085,11 @@ async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
 
         try {
             const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-            const basePath = `pianopad_tournaments/${activeRoomCode}/lasertag`;
+            const basePath = `pianopad_tournaments/${gameState.activeRoomCode}/lasertag`;
             await update(window.firebaseRef(window.firebaseDb, `${basePath}/${bestTarget.id}`), {
                 lastHitEvent: {
                     id: hitEventId,
-                    byId: localId,
+                    byId: gameState.localId,
                     byName: state.sessionStudentName || 'Opponent',
                     pitch: tagLabel,
                     eliminated: eliminated,
@@ -1419,28 +1109,25 @@ async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
                 : `🔥 HIT ${bestTarget.opp.name || 'Opponent'} (${predictedRemaining} lives left)! (+${basePts} pts ${tags})`;
         }
     } else {
-        // Missing a shot resets the 2x Note-Chain Combo
-        localPlayer.comboCount = 0;
+        lp.comboCount = 0;
 
-        // Feature #8: Ricochet Mirror Walls in the Cobalt SE Zone (wallType === 5 reflects once at 90°)
-        const wallHit = castRay(localPlayer.angle);
+        // Ricochet Mirror Walls in the Cobalt SE Zone (wallType === 5 reflects once at 90°)
+        const wallHit = castRay(lp.angle);
         const impactDist = Math.max(16, wallHit.dist - 8);
-        const impactX = localPlayer.x + Math.cos(localPlayer.angle) * impactDist;
-        const impactY = localPlayer.y + Math.sin(localPlayer.angle) * impactDist;
-        const sparkColor = isOvercharge ? '#facc15' : (localPlayer.suitColor || '#38bdf8');
+        const impactX = lp.x + Math.cos(lp.angle) * impactDist;
+        const impactY = lp.y + Math.sin(lp.angle) * impactDist;
+        const sparkColor = isOvercharge ? '#facc15' : (lp.suitColor || '#38bdf8');
         spawn3DExplosion(impactX, impactY, sparkColor, isOvercharge ? 16 : 8);
 
         if (wallHit.wallType === 5) {
-            // Bank-shot 90° mirror reflection inside the Cobalt SE Diamond Sector!
-            const reflectAngle = localPlayer.angle + Math.PI / 2;
+            const reflectAngle = lp.angle + Math.PI / 2;
             const bankRay = castRayFromPoint(impactX, impactY, reflectAngle);
             const bankEndX = impactX + Math.cos(reflectAngle) * Math.max(12, bankRay.dist - 8);
             const bankEndY = impactY + Math.sin(reflectAngle) * Math.max(12, bankRay.dist - 8);
             spawn3DExplosion(bankEndX, bankEndY, '#60a5fa', 12);
 
-            // Check if any opponent stands along the reflected bank-shot ray
-            for (const [id, opp] of Object.entries(remotePlayers)) {
-                if (id === localId || !isPlayerActiveInRoom(opp) || opp.isInvulnerable) continue;
+            for (const [id, opp] of Object.entries(gameState.remotePlayers)) {
+                if (id === gameState.localId || !isPlayerActiveInRoom(opp) || opp.isInvulnerable) continue;
                 if (!isOvercharge && normalizePitchClass(opp.noteTag) !== pitchClass) continue;
                 const dToOpp = Math.hypot(opp.x - impactX, opp.y - impactY);
                 if (dToOpp < bankRay.dist && hasLineOfSight(impactX, impactY, opp.x, opp.y)) {
@@ -1448,8 +1135,8 @@ async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
                     while (angDiff > Math.PI) angDiff -= Math.PI * 2;
                     while (angDiff < -Math.PI) angDiff += Math.PI * 2;
                     if (Math.abs(angDiff) < 0.35) {
-                        localPlayer.score += 125;
-                        localPlayer.hitMarkerUntil = now + 260;
+                        lp.score += 125;
+                        lp.hitMarkerUntil = now + 260;
                         playHitMarkerTick();
                         spawn3DExplosion(opp.x, opp.y, '#60a5fa', 28);
                         const statusEl = document.getElementById('status');
@@ -1460,7 +1147,7 @@ async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
             }
         }
 
-        activeBeams.push({
+        gameState.activeBeams.push({
             endX: W * 0.5,
             endY: H * 0.5,
             color: sparkColor,
@@ -1472,22 +1159,23 @@ async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
 }
 
 async function executeSingleNoteAction(pitchClass, bridge) {
-    if (gamePhase !== 'playing' || !localPlayer.isAlive) return;
+    const lp = gameState.localPlayer;
+    if (gameState.gamePhase !== 'playing' || !lp.isAlive) return;
 
     if (pitchClass === 'C') {
-        localPlayer.turnDir = -1;
-        setTimeout(() => { if (localPlayer.turnDir === -1) localPlayer.turnDir = 0; }, 220);
+        lp.turnDir = -1;
+        setTimeout(() => { if (lp.turnDir === -1) lp.turnDir = 0; }, 220);
         return;
     }
 
     if (pitchClass === 'D') {
-        localPlayer.turnDir = 1;
-        setTimeout(() => { if (localPlayer.turnDir === 1) localPlayer.turnDir = 0; }, 220);
+        lp.turnDir = 1;
+        setTimeout(() => { if (lp.turnDir === 1) lp.turnDir = 0; }, 220);
         return;
     }
 
     if (pitchClass === 'C#') {
-        localPlayer.moveUntil = performance.now() + 220;
+        lp.moveUntil = performance.now() + 220;
         return;
     }
 
@@ -1495,40 +1183,41 @@ async function executeSingleNoteAction(pitchClass, bridge) {
 }
 
 export async function handleLaserTagInput(noteStr, bridge) {
-    if (gamePhase === 'spectating') {
-        spawn3DExplosion(localPlayer.x, localPlayer.y, '#facc15', 14);
+    const lp = gameState.localPlayer;
+    if (gameState.gamePhase === 'spectating') {
+        spawn3DExplosion(lp.x, lp.y, '#facc15', 14);
         return;
     }
 
-    if (gamePhase !== 'playing' || !localPlayer.isAlive) return;
+    if (gameState.gamePhase !== 'playing' || !lp.isAlive) return;
 
     const now = performance.now();
     const { pitchClass, octave } = parseNoteDetails(noteStr);
     if (!pitchClass) return;
 
-    if (pitchClass === 'C#' && recentNoteBuffer.length === 0) {
-        localPlayer.moveUntil = now + 220;
+    if (pitchClass === 'C#' && gameState.recentNoteBuffer.length === 0) {
+        lp.moveUntil = now + 220;
         return;
     }
 
-    recentNoteBuffer.push({ pitchClass, octave, time: now });
-    recentNoteBuffer = recentNoteBuffer.filter(item => (now - item.time) <= 125);
+    gameState.recentNoteBuffer.push({ pitchClass, octave, time: now });
+    gameState.recentNoteBuffer = gameState.recentNoteBuffer.filter(item => (now - item.time) <= 125);
 
-    const distinctPitches = new Set(recentNoteBuffer.map(item => item.pitchClass));
+    const distinctPitches = new Set(gameState.recentNoteBuffer.map(item => item.pitchClass));
 
-    // Feature #7: Quick-Turn 180° Snap (Octave C Jump: e.g. C2 + C4 played together)
-    if (distinctPitches.size === 1 && distinctPitches.has('C') && recentNoteBuffer.length >= 2) {
-        const distinctOctaves = new Set(recentNoteBuffer.map(item => item.octave));
+    // Quick-Turn 180° Snap (Octave C Jump: e.g. C2 + C4 played together)
+    if (distinctPitches.size === 1 && distinctPitches.has('C') && gameState.recentNoteBuffer.length >= 2) {
+        const distinctOctaves = new Set(gameState.recentNoteBuffer.map(item => item.octave));
         if (distinctOctaves.size >= 2) {
-            if (pendingActionTimer !== null) {
-                clearTimeout(pendingActionTimer);
-                pendingActionTimer = null;
+            if (gameState.pendingActionTimer !== null) {
+                clearTimeout(gameState.pendingActionTimer);
+                gameState.pendingActionTimer = null;
             }
-            recentNoteBuffer = [];
-            if ((now - lastOctaveFlipTime) > 400) {
-                lastOctaveFlipTime = now;
-                localPlayer.angle += Math.PI;
-                localPlayer.turnDir = 0;
+            gameState.recentNoteBuffer = [];
+            if ((now - gameState.lastOctaveFlipTime) > 400) {
+                gameState.lastOctaveFlipTime = now;
+                lp.angle += Math.PI;
+                lp.turnDir = 0;
                 playOctaveSnapSound();
                 const statusEl = document.getElementById('status');
                 if (statusEl) {
@@ -1539,17 +1228,17 @@ export async function handleLaserTagInput(noteStr, bridge) {
         }
     }
 
-    // Feature #2: Diminished 7th EMP Pulse (B + D + F + G#)
+    // Diminished 7th EMP Pulse (B + D + F + G#)
     if (matchEmpChord(distinctPitches)) {
-        if (pendingActionTimer !== null) {
-            clearTimeout(pendingActionTimer);
-            pendingActionTimer = null;
+        if (gameState.pendingActionTimer !== null) {
+            clearTimeout(gameState.pendingActionTimer);
+            gameState.pendingActionTimer = null;
         }
-        recentNoteBuffer = [];
-        if (now >= localPlayer.empReadyAt) {
+        gameState.recentNoteBuffer = [];
+        if (now >= lp.empReadyAt) {
             await triggerEmpShockwave(bridge);
         } else {
-            const secsLeft = Math.ceil((localPlayer.empReadyAt - now) / 1000);
+            const secsLeft = Math.ceil((lp.empReadyAt - now) / 1000);
             playJamBuzzSound();
             const statusEl = document.getElementById('status');
             if (statusEl) statusEl.textContent = `⏳ Bdim7 EMP RECHARGING (${secsLeft}s)...`;
@@ -1557,18 +1246,18 @@ export async function handleLaserTagInput(noteStr, bridge) {
         return;
     }
 
-    // Feature #3: Musical Echo Holo-Decoys (Dm7 or Em7)
+    // Musical Echo Holo-Decoys (Dm7 or Em7)
     const matchedDecoy = matchDecoyChord(distinctPitches);
     if (matchedDecoy) {
-        if (pendingActionTimer !== null) {
-            clearTimeout(pendingActionTimer);
-            pendingActionTimer = null;
+        if (gameState.pendingActionTimer !== null) {
+            clearTimeout(gameState.pendingActionTimer);
+            gameState.pendingActionTimer = null;
         }
-        recentNoteBuffer = [];
-        if (now >= localPlayer.decoyReadyAt) {
+        gameState.recentNoteBuffer = [];
+        if (now >= lp.decoyReadyAt) {
             spawnHoloDecoy(matchedDecoy.label, bridge);
         } else {
-            const secsLeft = Math.ceil((localPlayer.decoyReadyAt - now) / 1000);
+            const secsLeft = Math.ceil((lp.decoyReadyAt - now) / 1000);
             playJamBuzzSound();
             const statusEl = document.getElementById('status');
             if (statusEl) statusEl.textContent = `⏳ HOLO-DECOY RECHARGING (${secsLeft}s)...`;
@@ -1579,21 +1268,21 @@ export async function handleLaserTagInput(noteStr, bridge) {
     // 4-Note Overcharge Shockwave (Cmaj7 or Fmaj7)
     const matchedOvercharge = matchOverchargeChord(distinctPitches);
     if (matchedOvercharge) {
-        if (pendingActionTimer !== null) {
-            clearTimeout(pendingActionTimer);
-            pendingActionTimer = null;
+        if (gameState.pendingActionTimer !== null) {
+            clearTimeout(gameState.pendingActionTimer);
+            gameState.pendingActionTimer = null;
         }
-        recentNoteBuffer = [];
+        gameState.recentNoteBuffer = [];
 
-        if (now >= localPlayer.overchargeReadyAt) {
-            localPlayer.overchargeReadyAt = now + 15000;
+        if (now >= lp.overchargeReadyAt) {
+            lp.overchargeReadyAt = now + 15000;
             const statusEl = document.getElementById('status');
             if (statusEl) {
                 statusEl.textContent = `⚡ ${matchedOvercharge.label} FIRED! Wide-cone shockwave hits ANY target pitch! (15s recharge)`;
             }
             await fireLaserAttack('OVERCHARGE', bridge, true);
         } else {
-            const secsLeft = Math.ceil((localPlayer.overchargeReadyAt - now) / 1000);
+            const secsLeft = Math.ceil((lp.overchargeReadyAt - now) / 1000);
             playJamBuzzSound();
             const statusEl = document.getElementById('status');
             if (statusEl) {
@@ -1606,17 +1295,17 @@ export async function handleLaserTagInput(noteStr, bridge) {
     // Check 3-note White-Key Diatonic Triads for Speed Gears
     const matchedGear = matchDiatonicTriad(distinctPitches);
     if (matchedGear) {
-        if (pendingActionTimer !== null) clearTimeout(pendingActionTimer);
-        pendingActionTimer = setTimeout(() => {
-            pendingActionTimer = null;
-            recentNoteBuffer = [];
-            if ((performance.now() - lastChordTriggerTime) > 350 || lastTriggeredChordId !== matchedGear.id) {
-                lastChordTriggerTime = performance.now();
-                lastTriggeredChordId = matchedGear.id;
+        if (gameState.pendingActionTimer !== null) clearTimeout(gameState.pendingActionTimer);
+        gameState.pendingActionTimer = setTimeout(() => {
+            gameState.pendingActionTimer = null;
+            gameState.recentNoteBuffer = [];
+            if ((performance.now() - gameState.lastChordTriggerTime) > 350 || gameState.lastTriggeredChordId !== matchedGear.id) {
+                gameState.lastChordTriggerTime = performance.now();
+                gameState.lastTriggeredChordId = matchedGear.id;
 
-                localPlayer.currentGear = matchedGear;
-                localPlayer.turnDir = 0;
-                localPlayer.gearBannerFlash = 1.0;
+                lp.currentGear = matchedGear;
+                lp.turnDir = 0;
+                lp.gearBannerFlash = 1.0;
                 playGearShiftSound(matchedGear.mult);
 
                 const statusEl = document.getElementById('status');
@@ -1628,27 +1317,27 @@ export async function handleLaserTagInput(noteStr, bridge) {
         return;
     }
 
-    // Anti-Spam Protection (allows 2–3 valid chord tones briefly while building a triad or 7th chord)
+    // Anti-Spam Protection
     if (distinctPitches.size >= 2) {
         const CHORD_CANDIDATE_KEYS = new Set(['C', 'D', 'E', 'F', 'G', 'G#', 'A', 'B']);
         const allValid = Array.from(distinctPitches).every(n => CHORD_CANDIDATE_KEYS.has(n));
 
         if (allValid && (distinctPitches.size === 2 || distinctPitches.size === 3)) {
-            if (pendingActionTimer !== null) clearTimeout(pendingActionTimer);
-            pendingActionTimer = setTimeout(() => {
-                pendingActionTimer = null;
-                localPlayer.jamFlash = 1.0;
+            if (gameState.pendingActionTimer !== null) clearTimeout(gameState.pendingActionTimer);
+            gameState.pendingActionTimer = setTimeout(() => {
+                gameState.pendingActionTimer = null;
+                lp.jamFlash = 1.0;
                 playJamBuzzSound();
-                recentNoteBuffer = [];
+                gameState.recentNoteBuffer = [];
             }, 105);
             return;
         }
 
-        if (pendingActionTimer !== null) {
-            clearTimeout(pendingActionTimer);
-            pendingActionTimer = null;
+        if (gameState.pendingActionTimer !== null) {
+            clearTimeout(gameState.pendingActionTimer);
+            gameState.pendingActionTimer = null;
         }
-        localPlayer.jamFlash = 1.0;
+        lp.jamFlash = 1.0;
         playJamBuzzSound();
         const statusEl = document.getElementById('status');
         if (statusEl) {
@@ -1657,1161 +1346,20 @@ export async function handleLaserTagInput(noteStr, bridge) {
         return;
     }
 
-    if (pendingActionTimer !== null) {
-        clearTimeout(pendingActionTimer);
+    if (gameState.pendingActionTimer !== null) {
+        clearTimeout(gameState.pendingActionTimer);
     }
-    pendingActionTimer = setTimeout(() => {
-        pendingActionTimer = null;
+    gameState.pendingActionTimer = setTimeout(() => {
+        gameState.pendingActionTimer = null;
         const checkNow = performance.now();
-        const activeNotes = recentNoteBuffer.filter(item => (checkNow - item.time) <= 130);
+        const activeNotes = gameState.recentNoteBuffer.filter(item => (checkNow - item.time) <= 130);
         const uniqueNow = new Set(activeNotes.map(item => item.pitchClass));
         if (uniqueNow.size === 1) {
             const singlePitch = Array.from(uniqueNow)[0];
-            recentNoteBuffer = [];
+            gameState.recentNoteBuffer = [];
             executeSingleNoteAction(singlePitch, bridge);
         }
     }, 85);
-}
-
-function castRayFromPoint(startX, startY, rayAngle) {
-    const sin = Math.sin(rayAngle);
-    const cos = Math.cos(rayAngle);
-
-    let mapX = Math.floor(startX / TILE_SIZE);
-    let mapY = Math.floor(startY / TILE_SIZE);
-
-    const deltaDistX = Math.abs(1 / (cos || 1e-6));
-    const deltaDistY = Math.abs(1 / (sin || 1e-6));
-
-    let stepX, sideDistX;
-    if (cos < 0) {
-        stepX = -1;
-        sideDistX = (startX / TILE_SIZE - mapX) * deltaDistX;
-    } else {
-        stepX = 1;
-        sideDistX = (mapX + 1.0 - startX / TILE_SIZE) * deltaDistX;
-    }
-
-    let stepY, sideDistY;
-    if (sin < 0) {
-        stepY = -1;
-        sideDistY = (startY / TILE_SIZE - mapY) * deltaDistY;
-    } else {
-        stepY = 1;
-        sideDistY = (mapY + 1.0 - startY / TILE_SIZE) * deltaDistY;
-    }
-
-    let hit = 0;
-    let side = 0;
-    let safety = 0;
-
-    while (hit === 0 && safety < 72) {
-        safety++;
-        if (sideDistX < sideDistY) {
-            sideDistX += deltaDistX;
-            mapX += stepX;
-            side = 0;
-        } else {
-            sideDistY += deltaDistY;
-            mapY += stepY;
-            side = 1;
-        }
-
-        if (mapY < 0 || mapY >= MAP_ROWS || mapX < 0 || mapX >= MAP_COLS) {
-            hit = 1;
-            break;
-        }
-
-        const cellType = ARENA_MAP[mapY][mapX];
-        if (cellType > 0) {
-            const theme = WALL_THEMES[cellType] || WALL_THEMES[1];
-
-            if (theme.shape === 'curved') {
-                const cx = (mapX + 0.5) * TILE_SIZE;
-                const cy = (mapY + 0.5) * TILE_SIZE;
-                const radius = TILE_SIZE * 0.48;
-                const ocX = startX - cx;
-                const ocY = startY - cy;
-                const b = ocX * cos + ocY * sin;
-                const c = ocX * ocX + ocY * ocY - radius * radius;
-                const disc = b * b - c;
-                if (disc >= 0) {
-                    const t = -b - Math.sqrt(disc);
-                    if (t > 1) {
-                        const hitX = startX + cos * t;
-                        const hitY = startY + sin * t;
-                        const normAngle = Math.atan2(hitY - cy, hitX - cx);
-                        const curveShade = 0.65 + 0.35 * Math.cos(normAngle - 0.8);
-                        return { dist: t, side: 0, wallType: cellType, customShade: curveShade, stripeCoord: (normAngle + Math.PI) / (Math.PI * 2) };
-                    }
-                }
-                continue;
-            }
-
-            if (theme.shape === 'triangle') {
-                const boxDist = (side === 0 ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY)) * TILE_SIZE;
-                const hitX = startX + cos * boxDist;
-                const hitY = startY + sin * boxDist;
-                const localU = (hitX - mapX * TILE_SIZE) / TILE_SIZE;
-                const localV = (hitY - mapY * TILE_SIZE) / TILE_SIZE;
-                const diagDist = boxDist + Math.abs(localU - localV) * TILE_SIZE * 0.35;
-                return { dist: Math.max(1, diagDist), side, wallType: cellType, customShade: side === 0 ? 1.0 : 0.72, stripeCoord: (localU + localV) * 0.5 };
-            }
-
-            if (theme.shape === 'diamond') {
-                const boxDist = (side === 0 ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY)) * TILE_SIZE;
-                const hitX = startX + cos * boxDist;
-                const hitY = startY + sin * boxDist;
-                const localU = Math.abs((hitX - mapX * TILE_SIZE) / TILE_SIZE - 0.5);
-                const localV = Math.abs((hitY - mapY * TILE_SIZE) / TILE_SIZE - 0.5);
-                const diamondDist = boxDist + (localU + localV) * TILE_SIZE * 0.28;
-                return { dist: Math.max(1, diamondDist), side, wallType: cellType, customShade: 0.92 - (localU + localV) * 0.3, stripeCoord: localU + localV };
-            }
-
-            hit = cellType;
-        }
-    }
-
-    const perpWallDist = (side === 0 ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY)) * TILE_SIZE;
-    const hitX = startX + cos * perpWallDist;
-    const hitY = startY + sin * perpWallDist;
-    const wallU = side === 0 ? ((hitY % TILE_SIZE) / TILE_SIZE) : ((hitX % TILE_SIZE) / TILE_SIZE);
-
-    return {
-        dist: Math.max(1, perpWallDist),
-        side,
-        wallType: hit,
-        customShade: side === 1 ? 0.78 : 1.0,
-        stripeCoord: wallU
-    };
-}
-
-function castRay(rayAngle) {
-    return castRayFromPoint(localPlayer.x, localPlayer.y, rayAngle);
-}
-
-function renderCompassRibbon(ctx, W) {
-    const compW = 240;
-    const compH = 24;
-    const cx = W / 2;
-    const topY = 8;
-
-    ctx.save();
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.82)';
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.roundRect(cx - compW / 2, topY, compW, compH, 6);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.rect(cx - compW / 2 + 4, topY, compW - 8, compH);
-    ctx.clip();
-
-    const bearings = [
-        { deg: 0,   label: 'E',  major: true },
-        { deg: 45,  label: 'SE', major: false },
-        { deg: 90,  label: 'S',  major: true },
-        { deg: 135, label: 'SW', major: false },
-        { deg: 180, label: 'W',  major: true },
-        { deg: 225, label: 'NW', major: false },
-        { deg: 270, label: 'N',  major: true },
-        { deg: 315, label: 'NE', major: false }
-    ];
-
-    let curDeg = ((localPlayer.angle * 180) / Math.PI) % 360;
-    if (curDeg < 0) curDeg += 360;
-
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    for (const b of bearings) {
-        let diff = b.deg - curDeg;
-        while (diff > 180) diff -= 360;
-        while (diff < -180) diff += 360;
-
-        if (Math.abs(diff) <= 75) {
-            const px = cx + (diff / 75) * (compW * 0.46);
-            ctx.fillStyle = b.label === 'N' ? '#ef4444' : (b.major ? '#38bdf8' : '#94a3b8');
-            ctx.font = b.major ? '900 11px sans-serif' : 'bold 9.5px sans-serif';
-            ctx.fillText(b.label, px, topY + compH / 2 + 1);
-        }
-    }
-
-    ctx.fillStyle = '#facc15';
-    ctx.fillRect(cx - 1, topY, 2, 5);
-    ctx.restore();
-}
-
-function renderProximityThreatRadar(ctx, W, H, now) {
-    let leftThreat = 0;
-    let rightThreat = 0;
-    let rearThreat = 0;
-    const maxRange = 270;
-
-    for (const [id, opp] of Object.entries(remotePlayers)) {
-        if (id === localId || !isPlayerActiveInRoom(opp) || opp.isInvulnerable) continue;
-        const dx = opp.x - localPlayer.x;
-        const dy = opp.y - localPlayer.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist > maxRange) continue;
-
-        const intensity = 1 - dist / maxRange;
-        let rel = Math.atan2(dy, dx) - localPlayer.angle;
-        while (rel > Math.PI) rel -= Math.PI * 2;
-        while (rel < -Math.PI) rel += Math.PI * 2;
-
-        if (Math.abs(rel) > Math.PI * 0.28) {
-            if (Math.abs(rel) > Math.PI * 0.72) {
-                rearThreat = Math.max(rearThreat, intensity);
-            } else if (rel < 0) {
-                leftThreat = Math.max(leftThreat, intensity);
-            } else {
-                rightThreat = Math.max(rightThreat, intensity);
-            }
-        }
-    }
-
-    const pulse = 0.65 + 0.35 * Math.sin(now * 0.015);
-    ctx.save();
-    if (leftThreat > 0.05) {
-        const gradL = ctx.createLinearGradient(0, 0, 48, 0);
-        gradL.addColorStop(0, `rgba(239, 68, 68, ${leftThreat * 0.65 * pulse})`);
-        gradL.addColorStop(1, 'rgba(239, 68, 68, 0)');
-        ctx.fillStyle = gradL;
-        ctx.fillRect(0, 0, 48, H);
-    }
-    if (rightThreat > 0.05) {
-        const gradR = ctx.createLinearGradient(W, 0, W - 48, 0);
-        gradR.addColorStop(0, `rgba(239, 68, 68, ${rightThreat * 0.65 * pulse})`);
-        gradR.addColorStop(1, 'rgba(239, 68, 68, 0)');
-        ctx.fillStyle = gradR;
-        ctx.fillRect(W - 48, 0, 48, H);
-    }
-    if (rearThreat > 0.05) {
-        const gradB = ctx.createLinearGradient(0, H, 0, H - 44);
-        gradB.addColorStop(0, `rgba(249, 115, 22, ${rearThreat * 0.75 * pulse})`);
-        gradB.addColorStop(1, 'rgba(249, 115, 22, 0)');
-        ctx.fillStyle = gradB;
-        ctx.fillRect(0, H - 44, W, 44);
-    }
-    ctx.restore();
-}
-
-function renderFirstPerson3D(ctx, W, H, dt, now) {
-    const FOV = Math.PI / 3;
-    const isBoosted = now < localPlayer.boostUntil;
-    const gearMult = localPlayer.currentGear.mult * (isBoosted ? 1.5 : 1.0);
-    const activelyMoving = localPlayer.isMovingForward && gearMult > 0;
-    const bobAmp = activelyMoving ? Math.min(8, 2.5 + gearMult * 2.0) : 0;
-    const bobOffset = localPlayer.isAlive ? Math.sin(localPlayer.bobPhase) * bobAmp : 0;
-    const horizon = H * 0.52 + bobOffset;
-
-    // 1. Sci-Fi Ceiling & Floor
-    const ceilGrad = ctx.createLinearGradient(0, 0, 0, horizon);
-    ceilGrad.addColorStop(0, '#020617');
-    ceilGrad.addColorStop(1, '#0f172a');
-    ctx.fillStyle = ceilGrad;
-    ctx.fillRect(0, 0, W, horizon);
-
-    const floorGrad = ctx.createLinearGradient(0, horizon, 0, H);
-    floorGrad.addColorStop(0, '#090d16');
-    floorGrad.addColorStop(1, '#1e1b4b');
-    ctx.fillStyle = floorGrad;
-    ctx.fillRect(0, horizon, W, H - horizon);
-
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.14)';
-    ctx.lineWidth = 1;
-    for (let i = 1; i <= 6; i++) {
-        const yLine = horizon + Math.pow(i / 6, 1.8) * (H - horizon);
-        ctx.beginPath();
-        ctx.moveTo(0, yLine);
-        ctx.lineTo(W, yLine);
-        ctx.stroke();
-    }
-
-    // 2. Raycast 3D Color-Coded & Geometrically Distinct Sector Walls
-    const numRays = Math.min(340, Math.floor(W / 2.8));
-    const stripW = W / numRays;
-    zBuffer = new Array(numRays);
-
-    for (let i = 0; i < numRays; i++) {
-        const rayAngle = (localPlayer.angle - FOV / 2) + (i / numRays) * FOV;
-        const hit = castRay(rayAngle);
-        const correctedDist = hit.dist * Math.cos(rayAngle - localPlayer.angle);
-        zBuffer[i] = correctedDist;
-
-        const wallHeight = Math.min(H * 1.6, (TILE_SIZE * H) / Math.max(1, correctedDist));
-        const wallTop = horizon - wallHeight / 2;
-
-        const distShade = Math.max(0.18, 1 - correctedDist / 1450);
-        const shade = distShade * (hit.customShade || 1.0);
-        const theme = WALL_THEMES[hit.wallType] || WALL_THEMES[1];
-
-        ctx.fillStyle = `rgb(${Math.floor(theme.r * shade)}, ${Math.floor(theme.g * shade)}, ${Math.floor(theme.b * shade)})`;
-        ctx.fillRect(i * stripW, wallTop, stripW + 1, wallHeight);
-
-        const [tr, tg, tb] = theme.trim;
-        const trimAlpha = Math.min(1, distShade * 1.15);
-        ctx.fillStyle = `rgba(${tr}, ${tg}, ${tb}, ${trimAlpha})`;
-
-        const trimH = Math.max(3, wallHeight * 0.055);
-        ctx.fillRect(i * stripW, wallTop, stripW + 1, trimH);
-        ctx.fillRect(i * stripW, wallTop + wallHeight - trimH, stripW + 1, trimH);
-
-        if (theme.shape === 'triangle') {
-            const diagY = wallTop + wallHeight * (0.25 + 0.5 * Math.abs((hit.stripeCoord % 1) - 0.5));
-            ctx.fillRect(i * stripW, diagY, stripW + 1, Math.max(2, trimH * 0.75));
-        } else if (theme.shape === 'diamond') {
-            const midBandY = wallTop + wallHeight * 0.48;
-            ctx.fillRect(i * stripW, midBandY, stripW + 1, Math.max(2, trimH * 0.85));
-        }
-    }
-
-    // 3. Depth-Sorted 3D Sprites (Opponents, Decoys, Portals, Boost Pads, Med-Kits, Hub Beacon, Sparks)
-    const sprites = [];
-
-    // Feature #1: King of the Emerald Hub Central Sky Beacon
-    const hubDx = ARENA_CENTER_X - localPlayer.x;
-    const hubDy = ARENA_CENTER_Y - localPlayer.y;
-    sprites.push({ type: 'hub_beacon', dx: hubDx, dy: hubDy, dist: Math.hypot(hubDx, hubDy) });
-
-    for (const portal of arenaPortals) {
-        const dx = portal.x - localPlayer.x;
-        const dy = portal.y - localPlayer.y;
-        sprites.push({ type: 'portal', portal, dx, dy, dist: Math.hypot(dx, dy) });
-    }
-
-    for (const pad of speedBoostPads) {
-        const dx = pad.x - localPlayer.x;
-        const dy = pad.y - localPlayer.y;
-        sprites.push({ type: 'boostpad', pad, dx, dy, dist: Math.hypot(dx, dy) });
-    }
-
-    for (const med of medKitNodes) {
-        if (now < med.respawnAt) continue;
-        const dx = med.x - localPlayer.x;
-        const dy = med.y - localPlayer.y;
-        sprites.push({ type: 'medkit', med, dx, dy, dist: Math.hypot(dx, dy) });
-    }
-
-    // Feature #3: Active Holographic Decoys
-    for (const decoy of activeDecoys) {
-        const dx = decoy.x - localPlayer.x;
-        const dy = decoy.y - localPlayer.y;
-        sprites.push({ type: 'player', id: decoy.id, opp: decoy, isDecoy: true, dx, dy, dist: Math.hypot(dx, dy) });
-    }
-
-    for (const [id, opp] of Object.entries(remotePlayers)) {
-        if (id === localId || !isPlayerActiveInRoom(opp)) continue;
-        const dx = opp.x - localPlayer.x;
-        const dy = opp.y - localPlayer.y;
-        sprites.push({ type: 'player', id, opp, isDecoy: false, dx, dy, dist: Math.hypot(dx, dy) });
-    }
-
-    for (let i = worldExplosions.length - 1; i >= 0; i--) {
-        const p = worldExplosions[i];
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-        p.z += p.vz * dt;
-        p.life -= dt * 1.4;
-        if (p.life <= 0) {
-            worldExplosions.splice(i, 1);
-            continue;
-        }
-        const dx = p.x - localPlayer.x;
-        const dy = p.y - localPlayer.y;
-        sprites.push({ type: 'particle', p, dx, dy, dist: Math.hypot(dx, dy) });
-    }
-
-    sprites.sort((a, b) => b.dist - a.dist);
-
-    for (const sp of sprites) {
-        let relAngle = Math.atan2(sp.dy, sp.dx) - localPlayer.angle;
-        while (relAngle > Math.PI) relAngle -= Math.PI * 2;
-        while (relAngle < -Math.PI) relAngle += Math.PI * 2;
-
-        if (Math.abs(relAngle) > FOV * 0.68 || sp.dist < 10) continue;
-
-        const screenX = (0.5 + relAngle / FOV) * W;
-
-        // Emerald Hub Vertical Beacon
-        if (sp.type === 'hub_beacon') {
-            const beamW = Math.max(8, (TILE_SIZE * 0.45 * H) / Math.max(60, sp.dist));
-            ctx.save();
-            const grad = ctx.createLinearGradient(0, 0, 0, horizon);
-            grad.addColorStop(0, 'rgba(52, 211, 153, 0)');
-            grad.addColorStop(1, 'rgba(52, 211, 153, 0.28)');
-            ctx.fillStyle = grad;
-            ctx.fillRect(screenX - beamW / 2, 0, beamW, horizon);
-            ctx.restore();
-            continue;
-        }
-
-        if (sp.type === 'player' || sp.type === 'portal' || sp.type === 'medkit' || sp.type === 'boostpad') {
-            const tx = sp.type === 'player' ? sp.opp.x : (sp.type === 'portal' ? sp.portal.x : (sp.type === 'medkit' ? sp.med.x : sp.pad.x));
-            const ty = sp.type === 'player' ? sp.opp.y : (sp.type === 'portal' ? sp.portal.y : (sp.type === 'medkit' ? sp.med.y : sp.pad.y));
-            const visibleByLOS = hasLineOfSight(localPlayer.x, localPlayer.y, tx, ty);
-            if (!visibleByLOS) {
-                const centerRay = Math.floor(screenX / stripW);
-                const leftRay = Math.max(0, centerRay - 5);
-                const rightRay = Math.min(numRays - 1, centerRay + 5);
-                let anyRayOpen = false;
-                for (let rIdx = leftRay; rIdx <= rightRay; rIdx++) {
-                    if (zBuffer[rIdx] >= sp.dist - 14) {
-                        anyRayOpen = true;
-                        break;
-                    }
-                }
-                if (!anyRayOpen) continue;
-            }
-        } else {
-            const rayIdx = Math.floor(screenX / stripW);
-            if (rayIdx >= 0 && rayIdx < numRays && zBuffer[rayIdx] < sp.dist) continue;
-        }
-
-        if (sp.type === 'boostpad') {
-            const padScale = (TILE_SIZE * H) / sp.dist;
-            const floorY = horizon + padScale * 0.44;
-            const padW = Math.max(24, padScale * 0.72);
-            const padH = Math.max(8, padScale * 0.16);
-            const pulse = 0.6 + 0.4 * Math.sin(now * 0.012);
-
-            ctx.save();
-            ctx.globalAlpha = pulse;
-            ctx.fillStyle = '#22c55e';
-            ctx.strokeStyle = '#bbf7d0';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.ellipse(screenX, floorY, padW * 0.5, padH * 0.5, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = `900 ${Math.max(10, Math.floor(padScale * 0.14))}px sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.fillText('⚡ BOOST', screenX, floorY - padH * 0.8);
-            ctx.restore();
-            continue;
-        }
-
-        if (sp.type === 'medkit') {
-            const medScale = (TILE_SIZE * H) / sp.dist;
-            const floatY = horizon + Math.sin(now * 0.005) * (medScale * 0.08);
-            const heartSize = Math.max(18, Math.min(72, Math.floor(medScale * 0.36)));
-
-            ctx.save();
-            ctx.shadowColor = '#f43f5e';
-            ctx.shadowBlur = 16;
-            ctx.font = `${heartSize}px sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('💖', screenX, floatY);
-
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = '#fda4af';
-            ctx.font = `900 ${Math.max(9, Math.floor(heartSize * 0.30))}px sans-serif`;
-            ctx.fillText('+1 LIFE', screenX, floatY - heartSize * 0.68);
-            ctx.restore();
-            continue;
-        }
-
-        if (sp.type === 'portal') {
-            const portalH = Math.min(H * 1.15, Math.max(48, (TILE_SIZE * 0.95 * H) / sp.dist));
-            const portalW = portalH * 0.62;
-            const spin = now * 0.004;
-
-            ctx.save();
-            ctx.translate(screenX, horizon);
-
-            ctx.shadowColor = sp.portal.color;
-            ctx.shadowBlur = 22;
-            ctx.strokeStyle = sp.portal.color;
-            ctx.lineWidth = Math.max(3, portalW * 0.09);
-            ctx.beginPath();
-            ctx.ellipse(0, 0, portalW * 0.5, portalH * 0.48, 0, 0, Math.PI * 2);
-            ctx.stroke();
-
-            ctx.strokeStyle = sp.portal.secondaryColor;
-            ctx.lineWidth = Math.max(2, portalW * 0.05);
-            ctx.beginPath();
-            ctx.ellipse(0, 0, portalW * 0.34, portalH * 0.34, spin, 0, Math.PI * 1.5);
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.ellipse(0, 0, portalW * 0.20, portalH * 0.20, -spin * 1.4, 0, Math.PI * 1.5);
-            ctx.stroke();
-
-            ctx.fillStyle = sp.portal.color;
-            ctx.globalAlpha = 0.28 + 0.12 * Math.sin(now * 0.008);
-            ctx.beginPath();
-            ctx.ellipse(0, 0, portalW * 0.44, portalH * 0.44, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalAlpha = 1.0;
-
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = sp.portal.secondaryColor;
-            ctx.font = `900 ${Math.max(11, Math.floor(portalH * 0.14))}px sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.fillText(`🌀 ${sp.portal.name}`, 0, -portalH * 0.54);
-            ctx.restore();
-            continue;
-        }
-
-        if (sp.type === 'particle') {
-            const pScale = (TILE_SIZE * H) / sp.dist;
-            const py = horizon + (sp.p.z / TILE_SIZE) * pScale;
-            const radius = Math.max(2, (sp.p.size / TILE_SIZE) * pScale);
-            ctx.save();
-            ctx.globalAlpha = Math.max(0, sp.p.life);
-            ctx.fillStyle = sp.p.color;
-            ctx.beginPath();
-            ctx.arc(screenX, py, radius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-            continue;
-        }
-
-        const spriteH = Math.min(H * 1.05, Math.max(46, (TILE_SIZE * 0.88 * H) / sp.dist));
-        const spriteW = spriteH * 0.65;
-        const topY = horizon - spriteH * 0.42;
-
-        const isGhostRespawning = Boolean(sp.opp.isInvulnerable);
-        const isSneaky = Boolean(sp.opp.isStealth);
-        const isLeader = !sp.isDecoy && Number(sp.opp.score || 0) >= 300;
-        const isRevengeBounty = !sp.isDecoy && localPlayer.revengeTargetId === sp.id;
-        const oppSuitColor = sp.opp.suitColor || getSuitColorForAvatar(sp.opp.avatar, sp.id);
-
-        ctx.save();
-        if (isGhostRespawning) {
-            ctx.globalAlpha = 0.35 + 0.15 * Math.sin(now * 0.015);
-        } else if (sp.isDecoy) {
-            ctx.globalAlpha = 0.68 + 0.15 * Math.sin(now * 0.025);
-        } else if (isSneaky) {
-            ctx.globalAlpha = 0.48;
-        }
-
-        ctx.fillStyle = isGhostRespawning ? '#f8fafc' : '#0f172a';
-        ctx.strokeStyle = isGhostRespawning ? '#ffffff' : (isRevengeBounty ? '#ef4444' : (isLeader ? '#facc15' : oppSuitColor));
-        ctx.lineWidth = Math.max(2.5, spriteW * (isLeader || isRevengeBounty ? 0.095 : 0.07));
-        ctx.beginPath();
-        ctx.roundRect(screenX - spriteW / 2, topY + spriteH * 0.24, spriteW, spriteH * 0.72, 10);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = isGhostRespawning ? '#e2e8f0' : oppSuitColor;
-        ctx.beginPath();
-        ctx.arc(screenX, topY + spriteH * 0.54, spriteW * 0.20, 0, Math.PI * 2);
-        ctx.fill();
-
-        const avatarSize = Math.max(18, Math.floor(spriteH * 0.30));
-        ctx.font = `${avatarSize}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(sp.opp.avatar || '🤖', screenX, topY + spriteH * 0.12);
-
-        const pitchLabel = normalizePitchClass(sp.opp.noteTag || 'F#');
-        const badgeW = Math.max(68, spriteW * 1.15);
-        const badgeH = Math.max(28, spriteH * 0.28);
-        const badgeY = Math.max(12, topY - badgeH - 12);
-
-        if (isRevengeBounty) {
-            ctx.fillStyle = '#ef4444';
-            ctx.font = `900 ${Math.max(10, Math.floor(badgeH * 0.45))}px sans-serif`;
-            ctx.fillText('🎯 REVENGE (+100)', screenX, badgeY - badgeH * 0.48);
-        } else if (isLeader && !isGhostRespawning) {
-            ctx.font = `${Math.max(16, Math.floor(badgeH * 0.85))}px sans-serif`;
-            ctx.fillText('👑', screenX, badgeY - badgeH * 0.55);
-        }
-
-        ctx.shadowColor = isGhostRespawning ? '#ffffff' : (isRevengeBounty ? '#ef4444' : '#facc15');
-        ctx.shadowBlur = 12;
-        ctx.fillStyle = isGhostRespawning ? '#f1f5f9' : (isRevengeBounty ? '#ef4444' : '#facc15');
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.roundRect(screenX - badgeW / 2, badgeY, badgeW, badgeH, 8);
-        ctx.fill();
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-
-        ctx.fillStyle = isGhostRespawning ? '#f1f5f9' : (isRevengeBounty ? '#ef4444' : '#facc15');
-        ctx.beginPath();
-        ctx.moveTo(screenX - 6, badgeY + badgeH);
-        ctx.lineTo(screenX + 6, badgeY + badgeH);
-        ctx.lineTo(screenX, badgeY + badgeH + 7);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle = isRevengeBounty ? '#ffffff' : '#000000';
-        ctx.font = `900 ${Math.max(16, Math.floor(badgeH * 0.68))}px sans-serif`;
-        ctx.fillText(isGhostRespawning ? `👻 ${pitchLabel}` : `🎯 ${pitchLabel}`, screenX, badgeY + badgeH * 0.54);
-
-        const oppLives = sp.opp.lives !== undefined ? Number(sp.opp.lives) : 3;
-        const oppHearts = sp.isDecoy ? '👥 DECOY' : '❤️'.repeat(Math.max(0, oppLives));
-        ctx.fillStyle = isGhostRespawning ? '#e2e8f0' : '#ffffff';
-        ctx.font = `800 ${Math.max(11, Math.floor(spriteH * 0.13))}px sans-serif`;
-        ctx.fillText(`${sp.opp.name || 'Player'} ${oppHearts}`, screenX, topY + spriteH + 12);
-        ctx.restore();
-    }
-
-    // 4. First-Person Laser Beams (supports Rainbow Plasma during 2x Note-Chain Combo)
-    for (let i = activeBeams.length - 1; i >= 0; i--) {
-        const b = activeBeams[i];
-        b.life -= dt * 4.5;
-        if (b.life <= 0) {
-            activeBeams.splice(i, 1);
-            continue;
-        }
-        const gunTipX = W * 0.72;
-        const gunTipY = H * 0.76 + localPlayer.recoil * 14;
-        const wm = b.widthMult || 1.0;
-
-        let beamGlow = b.glow;
-        if (b.color === 'rainbow') {
-            const hue = Math.floor((now * 0.6) % 360);
-            beamGlow = `hsl(${hue}, 100%, 55%)`;
-        }
-
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, b.life);
-        ctx.strokeStyle = beamGlow;
-        ctx.lineWidth = 12 * wm * b.life;
-        ctx.beginPath();
-        ctx.moveTo(gunTipX, gunTipY);
-        ctx.lineTo(b.endX, b.endY);
-        ctx.stroke();
-
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 4 * wm * b.life;
-        ctx.beginPath();
-        ctx.moveTo(gunTipX, gunTipY);
-        ctx.lineTo(b.endX, b.endY);
-        ctx.stroke();
-        ctx.restore();
-    }
-
-    // 5. First-Person Space Blaster Viewmodel & HUD Overlays
-    if (localPlayer.isAlive) {
-        localPlayer.recoil = Math.max(0, localPlayer.recoil - dt * 5);
-        localPlayer.muzzleFlash = Math.max(0, localPlayer.muzzleFlash - dt * 8);
-        localPlayer.jamFlash = Math.max(0, localPlayer.jamFlash - dt * 2.5);
-        localPlayer.gearBannerFlash = Math.max(0, localPlayer.gearBannerFlash - dt * 0.6);
-
-        const localRespawning = now < localPlayer.invulnerableUntil;
-        const isEmpScrambled = now < localPlayer.empScrambledUntil;
-        const gunBobX = !activelyMoving ? 0 : Math.cos(localPlayer.bobPhase * 0.5) * (4 + gearMult * 2);
-        const gunBobY = (!activelyMoving ? 0 : Math.abs(Math.sin(localPlayer.bobPhase * 0.5)) * (4 + gearMult * 2)) + localPlayer.recoil * 18;
-        const gx = W * 0.72 + gunBobX;
-        const gy = H * 0.78 + gunBobY;
-
-        ctx.save();
-        if (localRespawning) ctx.globalAlpha = 0.45;
-        else if (localPlayer.currentGear.stealth) ctx.globalAlpha = 0.55;
-
-        ctx.fillStyle = localRespawning ? '#e2e8f0' : '#1e293b';
-        ctx.strokeStyle = localRespawning ? '#ffffff' : (localPlayer.jamFlash > 0 ? '#ef4444' : localPlayer.suitColor);
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(gx - 22, gy + 70);
-        ctx.lineTo(gx - 10, gy - 14);
-        ctx.lineTo(gx + 14, gy - 14);
-        ctx.lineTo(gx + 34, gy + 70);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = localRespawning ? '#ffffff' : (localPlayer.jamFlash > 0 ? '#ef4444' : localPlayer.currentGear.color);
-        ctx.fillRect(gx - 4, gy + 4, 12, 8);
-        ctx.fillRect(gx - 6, gy + 20, 16, 8);
-
-        if (localPlayer.muzzleFlash > 0) {
-            ctx.globalAlpha = localPlayer.muzzleFlash;
-            ctx.fillStyle = localPlayer.suitColor;
-            ctx.beginPath();
-            ctx.arc(gx + 2, gy - 18, 22 * localPlayer.muzzleFlash, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        ctx.restore();
-
-        // Center Reticle + Hit-Marker Crosshair Snap
-        ctx.strokeStyle = localPlayer.currentGear.color;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(W / 2, H / 2, 14, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.fillStyle = localPlayer.suitColor;
-        ctx.fillRect(W / 2 - 2, H / 2 - 2, 4, 4);
-
-        if (now < localPlayer.hitMarkerUntil) {
-            ctx.save();
-            ctx.strokeStyle = localPlayer.hitMarkerElim ? '#ef4444' : '#ffffff';
-            ctx.lineWidth = 3;
-            const rIn = 6, rOut = 18;
-            ctx.beginPath();
-            ctx.moveTo(W / 2 - rOut, H / 2 - rOut); ctx.lineTo(W / 2 - rIn, H / 2 - rIn);
-            ctx.moveTo(W / 2 + rOut, H / 2 - rOut); ctx.lineTo(W / 2 + rIn, H / 2 - rIn);
-            ctx.moveTo(W / 2 - rOut, H / 2 + rOut); ctx.lineTo(W / 2 - rIn, H / 2 + rIn);
-            ctx.moveTo(W / 2 + rOut, H / 2 + rOut); ctx.lineTo(W / 2 + rIn, H / 2 + rIn);
-            ctx.stroke();
-            ctx.restore();
-        }
-
-        renderCompassRibbon(ctx, W);
-        renderProximityThreatRadar(ctx, W, H, now);
-
-        // Top-Left Current Sector Badge (highlights King of the Emerald Hub)
-        const inHub = isInsideEmeraldHub(localPlayer.x, localPlayer.y);
-        const myZone = getZoneInfoForCoords(localPlayer.x, localPlayer.y);
-        ctx.save();
-        ctx.fillStyle = inHub ? 'rgba(6, 78, 59, 0.90)' : 'rgba(2, 6, 23, 0.86)';
-        ctx.strokeStyle = myZone.color;
-        ctx.lineWidth = inHub ? 2.5 : 1.8;
-        ctx.beginPath();
-        ctx.roundRect(12, 10, 205, 32, 8);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = myZone.color;
-        ctx.font = '900 11px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(inHub ? `👑 KING OF HUB (+5/s)` : `📍 ${myZone.label}`, 114, 30);
-        ctx.restore();
-
-        // Kill Feed Ticker
-        killFeedEntries = killFeedEntries.filter(k => now < k.expiresAt);
-        if (killFeedEntries.length > 0) {
-            ctx.save();
-            ctx.font = 'bold 10.5px sans-serif';
-            ctx.textAlign = 'left';
-            killFeedEntries.forEach((entry, idx) => {
-                const ky = 50 + idx * 20;
-                ctx.fillStyle = 'rgba(2, 6, 23, 0.78)';
-                ctx.fillRect(12, ky, 255, 17);
-                ctx.fillStyle = entry.color;
-                ctx.fillText(entry.text, 18, ky + 12);
-            });
-            ctx.restore();
-        }
-
-        // Feature #6: Storm Warning Banner if outside shrinking perimeter
-        const stormRadius = getCurrentStormRadius(now);
-        const distFromCenter = Math.hypot(localPlayer.x - ARENA_CENTER_X, localPlayer.y - ARENA_CENTER_Y);
-        if (distFromCenter > stormRadius) {
-            ctx.save();
-            ctx.fillStyle = 'rgba(185, 28, 28, 0.35)';
-            ctx.fillRect(0, 0, W, H);
-            ctx.fillStyle = 'rgba(127, 29, 29, 0.94)';
-            ctx.strokeStyle = '#ef4444';
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            ctx.roundRect(W / 2 - 190, 42, 380, 34, 8);
-            ctx.fill();
-            ctx.stroke();
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '900 12px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('🌪️ OUTSIDE SAFE ZONE — RUN TO EMERALD HUB!', W / 2, 63);
-            ctx.restore();
-        }
-
-        // Feature #2: EMP Scramble Glitch Overlay
-        if (isEmpScrambled) {
-            ctx.save();
-            ctx.fillStyle = 'rgba(168, 85, 247, 0.22)';
-            ctx.fillRect(0, 0, W, H);
-            ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
-            ctx.strokeStyle = '#a855f7';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.roundRect(W / 2 - 165, 82, 330, 30, 8);
-            ctx.fill();
-            ctx.stroke();
-            ctx.fillStyle = '#e9d5ff';
-            ctx.font = '900 11.5px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('⚡ EMP SCRAMBLED — SPEED LOCKED AT 0.35x', W / 2, 101);
-            ctx.restore();
-        }
-
-        // Incoming Spectator Alert Banner
-        if (incomingAlertBanner && now < incomingAlertBanner.until) {
-            const pulse = 0.75 + 0.25 * Math.sin(now * 0.02);
-            ctx.save();
-            ctx.globalAlpha = pulse;
-            ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
-            ctx.strokeStyle = '#facc15';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.roundRect(W / 2 - 195, 42, 390, 44, 10);
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.fillStyle = '#facc15';
-            ctx.font = '900 16px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(`📡 ${incomingAlertBanner.text.toUpperCase()}!`, W / 2, 63);
-
-            ctx.fillStyle = '#e2e8f0';
-            ctx.font = 'bold 10px sans-serif';
-            ctx.fillText(`Drone Callout from ${incomingAlertBanner.fromName}`, W / 2, 79);
-            ctx.restore();
-        }
-
-        if (localRespawning) {
-            ctx.save();
-            ctx.fillStyle = 'rgba(248, 250, 252, 0.14)';
-            ctx.fillRect(0, 0, W, H);
-            ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.roundRect(W / 2 - 165, 40, 330, 30, 8);
-            ctx.fill();
-            ctx.stroke();
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '900 11.5px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('👻 GHOST RESPAWN SHIELD ACTIVE', W / 2, 59);
-            ctx.restore();
-        }
-
-        // Bottom-Center Chord Speed Gear & Ability Cooldowns HUD Pill
-        const g = localPlayer.currentGear;
-        const boostTag = isBoosted ? ' • ⚡ 2.5x BOOST!' : '';
-        const comboTag = (localPlayer.comboCount >= 2 && now < localPlayer.comboExpiresAt) ? ' • 🌈 2x COMBO!' : '';
-        const throttleText = activelyMoving ? ` • 🟢 C# THRUST${boostTag}${comboTag}` : ` • ⚪ HOLD C#${boostTag}${comboTag}`;
-
-        const ocStr = now >= localPlayer.overchargeReadyAt ? 'Cmaj7/Fmaj7:⚡' : `Maj7:${Math.ceil((localPlayer.overchargeReadyAt - now) / 1000)}s`;
-        const empStr = now >= localPlayer.empReadyAt ? 'Bdim7:🌀' : `EMP:${Math.ceil((localPlayer.empReadyAt - now) / 1000)}s`;
-        const decStr = now >= localPlayer.decoyReadyAt ? 'Dm7/Em7:👥' : `Decoy:${Math.ceil((localPlayer.decoyReadyAt - now) / 1000)}s`;
-
-        ctx.save();
-        ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
-        ctx.strokeStyle = isBoosted ? '#22c55e' : g.color;
-        ctx.lineWidth = (localPlayer.gearBannerFlash > 0 || isBoosted) ? 3 : 1.8;
-        ctx.beginPath();
-        ctx.roundRect(W / 2 - 230, H - 56, 460, 38, 8);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = isBoosted ? '#22c55e' : g.color;
-        ctx.font = '900 11.5px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`GEAR: ${g.label}${throttleText}`, W / 2, H - 40);
-
-        ctx.fillStyle = '#cbd5e1';
-        ctx.font = 'bold 9.5px sans-serif';
-        ctx.fillText(`C2+C4:180° • ${ocStr} • ${empStr} • ${decStr}`, W / 2, H - 25);
-        ctx.restore();
-
-        if (localPlayer.jamFlash > 0) {
-            ctx.save();
-            ctx.globalAlpha = Math.min(1, localPlayer.jamFlash * 1.4);
-            ctx.fillStyle = 'rgba(127, 29, 29, 0.92)';
-            ctx.strokeStyle = '#ef4444';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.roundRect(W / 2 - 155, H - 96, 310, 30, 8);
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '900 11.5px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('⚠️ BLASTER JAMMED! Play 1 Note or Valid Chord', W / 2, H - 77);
-            ctx.restore();
-        }
-    }
-
-    if (localPlayer.portalFlash > 0) {
-        localPlayer.portalFlash = Math.max(0, localPlayer.portalFlash - dt * 1.8);
-        ctx.save();
-        ctx.globalAlpha = localPlayer.portalFlash * 0.55;
-        ctx.fillStyle = '#22d3ee';
-        ctx.fillRect(0, 0, W, H);
-        ctx.restore();
-    }
-
-    if (localPlayer.damageFlash > 0) {
-        localPlayer.damageFlash = Math.max(0, localPlayer.damageFlash - dt * 1.15);
-        ctx.save();
-        ctx.globalAlpha = localPlayer.damageFlash * 0.72;
-        ctx.fillStyle = localPlayer.damageFlashColor;
-        ctx.fillRect(0, 0, W, H);
-        ctx.restore();
-    }
-}
-
-function drawShapedMapTile(ctx, x, y, w, h, tileType) {
-    const theme = WALL_THEMES[tileType] || WALL_THEMES[1];
-    ctx.fillStyle = theme.mapHex;
-
-    if (theme.shape === 'curved') {
-        ctx.beginPath();
-        ctx.arc(x + w / 2, y + h / 2, Math.max(1.5, w * 0.48), 0, Math.PI * 2);
-        ctx.fill();
-    } else if (theme.shape === 'triangle') {
-        ctx.beginPath();
-        ctx.moveTo(x + w / 2, y);
-        ctx.lineTo(x + w, y + h);
-        ctx.lineTo(x, y + h);
-        ctx.closePath();
-        ctx.fill();
-    } else if (theme.shape === 'diamond') {
-        ctx.beginPath();
-        ctx.moveTo(x + w / 2, y);
-        ctx.lineTo(x + w, y + h / 2);
-        ctx.lineTo(x + w / 2, y + h);
-        ctx.lineTo(x, y + h / 2);
-        ctx.closePath();
-        ctx.fill();
-    } else {
-        ctx.fillRect(x, y, w, h);
-    }
-}
-
-function renderSpectatorOverheadView(ctx, W, H, dt, now) {
-    const scale = Math.min(W / (MAP_COLS * TILE_SIZE), H / (MAP_ROWS * TILE_SIZE)) * 0.92;
-    const offsetX = (W - MAP_COLS * TILE_SIZE * scale) / 2;
-    const offsetY = (H - MAP_ROWS * TILE_SIZE * scale) / 2;
-
-    ctx.fillStyle = '#050811';
-    ctx.fillRect(0, 0, W, H);
-
-    ctx.save();
-    ctx.translate(offsetX, offsetY);
-    ctx.scale(scale, scale);
-
-    for (let r = 0; r < MAP_ROWS; r++) {
-        for (let c = 0; c < MAP_COLS; c++) {
-            const tile = ARENA_MAP[r][c];
-            if (tile === 0) {
-                ctx.fillStyle = '#0f172a';
-                ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                ctx.strokeStyle = '#1e293b';
-                ctx.strokeRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-            } else {
-                drawShapedMapTile(ctx, c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE, tile);
-            }
-        }
-    }
-
-    // Dynamic Storm Boundary Ring on Spectator Map
-    const stormRadius = getCurrentStormRadius(now);
-    ctx.strokeStyle = 'rgba(239, 68, 68, 0.75)';
-    ctx.lineWidth = 10;
-    ctx.beginPath();
-    ctx.arc(ARENA_CENTER_X, ARENA_CENTER_Y, stormRadius, 0, Math.PI * 2);
-    ctx.stroke();
-
-    for (const pad of speedBoostPads) {
-        ctx.fillStyle = '#22c55e';
-        ctx.beginPath();
-        ctx.arc(pad.x, pad.y, 18, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    for (const med of medKitNodes) {
-        if (now < med.respawnAt) continue;
-        ctx.font = '26px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('💖', med.x, med.y);
-    }
-
-    for (const portal of arenaPortals) {
-        const pulse = (Math.sin(now * 0.008) + 1) * 0.5;
-        ctx.save();
-        ctx.strokeStyle = portal.color;
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.arc(portal.x, portal.y, 26 + pulse * 14, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.fillStyle = portal.secondaryColor;
-        ctx.beginPath();
-        ctx.arc(portal.x, portal.y, 16, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    }
-
-    for (const [id, opp] of Object.entries(remotePlayers)) {
-        if (!isPlayerActiveInRoom(opp)) continue;
-        const oppColor = opp.isInvulnerable ? '#ffffff' : (opp.suitColor || getSuitColorForAvatar(opp.avatar, id));
-        const isLeader = Number(opp.score || 0) >= 300;
-        ctx.save();
-        if (opp.isInvulnerable) ctx.globalAlpha = 0.45;
-        ctx.fillStyle = oppColor;
-        ctx.beginPath();
-        ctx.arc(opp.x, opp.y, 24, 0, Math.PI * 2);
-        ctx.fill();
-
-        if (isLeader) {
-            ctx.strokeStyle = '#facc15';
-            ctx.lineWidth = 5;
-            ctx.stroke();
-        }
-
-        const oppLives = opp.lives !== undefined ? Number(opp.lives) : 3;
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 22px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${isLeader ? '👑 ' : ''}${opp.name} [${opp.noteTag}] ${'❤️'.repeat(oppLives)}`, opp.x, opp.y - 32);
-        ctx.restore();
-    }
-
-    for (let i = worldExplosions.length - 1; i >= 0; i--) {
-        const p = worldExplosions[i];
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-        p.life -= dt * 1.4;
-        if (p.life <= 0) {
-            worldExplosions.splice(i, 1);
-            continue;
-        }
-        ctx.globalAlpha = Math.max(0, p.life);
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1.0;
-    }
-
-    ctx.restore();
-
-    if (spectatorSelectedTarget) {
-        const targetObj = remotePlayers[spectatorSelectedTarget.id];
-        if (!targetObj || !isPlayerActiveInRoom(targetObj)) {
-            spectatorSelectedTarget = null;
-        } else {
-            const px = offsetX + targetObj.x * scale;
-            const py = offsetY + targetObj.y * scale;
-            spectatorSelectedTarget.screenX = px;
-            spectatorSelectedTarget.screenY = py;
-
-            const options = [
-                { msg: 'Watch Out', color: '#ef4444' },
-                { msg: 'Turn Left', color: '#38bdf8' },
-                { msg: 'Turn Right', color: '#22c55e' }
-            ];
-            const btnW = 94;
-            const btnH = 26;
-            const gap = 6;
-            const totalW = options.length * btnW + (options.length - 1) * gap;
-            const startX = Math.max(10, Math.min(W - totalW - 10, px - totalW / 2));
-            const startY = Math.max(54, py - 48);
-
-            ctx.save();
-            ctx.strokeStyle = '#facc15';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.arc(px, py, 16, 0, Math.PI * 2);
-            ctx.stroke();
-
-            spectatorSelectedTarget.buttons = [];
-            options.forEach((opt, idx) => {
-                const bx = startX + idx * (btnW + gap);
-                const by = startY;
-                spectatorSelectedTarget.buttons.push({ x: bx, y: by, w: btnW, h: btnH, msg: opt.msg });
-
-                ctx.fillStyle = '#0f172a';
-                ctx.strokeStyle = opt.color;
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.roundRect(bx, by, btnW, btnH, 6);
-                ctx.fill();
-                ctx.stroke();
-
-                ctx.fillStyle = opt.color;
-                ctx.font = '900 11px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(opt.msg, bx + btnW / 2, by + btnH / 2);
-            });
-            ctx.restore();
-        }
-    }
-
-    if (localPlayer.damageFlash > 0) {
-        localPlayer.damageFlash = Math.max(0, localPlayer.damageFlash - dt * 0.85);
-        ctx.save();
-        ctx.globalAlpha = localPlayer.damageFlash * 0.78;
-        ctx.fillStyle = '#ef4444';
-        ctx.fillRect(0, 0, W, H);
-        ctx.restore();
-    }
-
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.90)';
-    ctx.fillRect(W / 2 - 270, 10, 540, 36);
-    ctx.strokeStyle = '#facc15';
-    ctx.strokeRect(W / 2 - 270, 10, 540, 36);
-    ctx.fillStyle = '#facc15';
-    ctx.font = '900 12.5px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('🛰️ SPECTATOR DRONE — CLICK ANY PLAYER TO SEND "WATCH OUT", "TURN LEFT", OR "TURN RIGHT"', W / 2, 32);
-}
-
-function renderMvpPodiumOverlay(ctx, W, H) {
-    const allPlayers = Object.values(remotePlayers);
-    if (allPlayers.length === 0) return;
-
-    const survivor = allPlayers.find(p => isPlayerActiveInRoom(p)) || allPlayers[0];
-    const sortedByScore = [...allPlayers].sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
-    const topScorer = sortedByScore[0] || survivor;
-    const sortedByElims = [...allPlayers].sort((a, b) => Number(b.eliminations || 0) - Number(a.eliminations || 0));
-    const topSlayer = sortedByElims[0] || survivor;
-
-    ctx.save();
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.86)';
-    ctx.fillRect(0, 0, W, H);
-
-    const cardW = Math.min(540, W * 0.90);
-    const cardH = 260;
-    const cx = W / 2;
-    const cy = H / 2;
-
-    ctx.fillStyle = '#0f172a';
-    ctx.strokeStyle = '#facc15';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.roundRect(cx - cardW / 2, cy - cardH / 2, cardW, cardH, 16);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#facc15';
-    ctx.font = '900 22px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('🏆 LASER TAG ARENA CHAMPIONS 🏆', cx, cy - 88);
-
-    const cols = [
-        { title: '👑 LAST SURVIVOR', p: survivor, stat: `${survivor.lives || 1} Lives Left`, color: '#22c55e', x: cx - cardW * 0.30 },
-        { title: '⭐ TOP SCORER',    p: topScorer, stat: `${topScorer.score || 0} pts`,      color: '#38bdf8', x: cx },
-        { title: '💥 MOST TAGS',     p: topSlayer, stat: `${topSlayer.eliminations || 0} Eliminations`, color: '#f97316', x: cx + cardW * 0.30 }
-    ];
-
-    for (const c of cols) {
-        ctx.fillStyle = c.color;
-        ctx.font = '900 11px sans-serif';
-        ctx.fillText(c.title, c.x, cy - 42);
-
-        ctx.font = '38px sans-serif';
-        ctx.fillText(c.p.avatar || '🤖', c.x, cy + 4);
-
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 14px sans-serif';
-        ctx.fillText(c.p.name || 'Player', c.x, cy + 42);
-
-        ctx.fillStyle = c.color;
-        ctx.font = 'bold 12px sans-serif';
-        ctx.fillText(c.stat, c.x, cy + 62);
-    }
-
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.fillText('Press "test" to spawn another 50-bot wave or Exit to return to menu', cx, cy + 104);
-    ctx.restore();
 }
 
 function gameLoop(now, bridge) {
@@ -2820,8 +1368,8 @@ function gameLoop(now, bridge) {
         return;
     }
 
-    const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
-    lastFrameTime = now;
+    const dt = Math.min(0.05, (now - gameState.lastFrameTime) / 1000);
+    gameState.lastFrameTime = now;
 
     const canvas = document.getElementById('waterfall-canvas');
     if (!canvas) return;
@@ -2831,15 +1379,15 @@ function gameLoop(now, bridge) {
     const W = canvas.width;
     const H = canvas.height;
 
-    if (Object.keys(simulatedBots).length > 0) {
+    if (Object.keys(gameState.simulatedBots).length > 0) {
         updateSimulatedBots(dt);
     }
 
-    // Update running Holo-Decoys (Feature #3)
-    for (let i = activeDecoys.length - 1; i >= 0; i--) {
-        const dec = activeDecoys[i];
+    // Update running Holo-Decoys
+    for (let i = gameState.activeDecoys.length - 1; i >= 0; i--) {
+        const dec = gameState.activeDecoys[i];
         if (now >= dec.expiresAt) {
-            activeDecoys.splice(i, 1);
+            gameState.activeDecoys.splice(i, 1);
             continue;
         }
         const dSpeed = 195;
@@ -2855,77 +1403,78 @@ function gameLoop(now, bridge) {
         }
     }
 
-    const activePlayers = Object.values(remotePlayers).filter(isPlayerActiveInRoom);
-    const totalCount = Object.keys(remotePlayers).length;
-    if (totalCount > maxPeakPlayers) maxPeakPlayers = totalCount;
+    const activePlayers = Object.values(gameState.remotePlayers).filter(isPlayerActiveInRoom);
+    const totalCount = Object.keys(gameState.remotePlayers).length;
+    if (totalCount > gameState.maxPeakPlayers) gameState.maxPeakPlayers = totalCount;
 
-    if (localPlayer.isAlive) {
-        localPlayer.angle += localPlayer.turnDir * 1.55 * dt;
+    const lp = gameState.localPlayer;
+    if (lp.isAlive) {
+        lp.angle += lp.turnDir * 1.55 * dt;
 
-        // Feature #1: King of the Emerald Hub (+5 points per second inside central hub)
-        if (isInsideEmeraldHub(localPlayer.x, localPlayer.y)) {
-            localPlayer.hubScoreTimer += dt;
-            if (localPlayer.hubScoreTimer >= 1.0) {
-                localPlayer.hubScoreTimer -= 1.0;
-                localPlayer.score += 5;
+        // King of the Emerald Hub (+5 points per second inside central hub)
+        if (isInsideEmeraldHub(lp.x, lp.y)) {
+            lp.hubScoreTimer += dt;
+            if (lp.hubScoreTimer >= 1.0) {
+                lp.hubScoreTimer -= 1.0;
+                lp.score += 5;
             }
         } else {
-            localPlayer.hubScoreTimer = 0;
+            lp.hubScoreTimer = 0;
         }
 
-        // Feature #6: Battle Royale Storm Damage if outside safe radius after 90s
+        // Battle Royale Storm Damage if outside safe radius after 90s
         const stormRadius = getCurrentStormRadius(now);
-        const distFromCenter = Math.hypot(localPlayer.x - ARENA_CENTER_X, localPlayer.y - ARENA_CENTER_Y);
+        const distFromCenter = Math.hypot(lp.x - ARENA_CENTER_X, lp.y - ARENA_CENTER_Y);
         if (distFromCenter > stormRadius) {
-            localPlayer.stormTickTimer += dt;
-            if (localPlayer.stormTickTimer >= 2.5) {
-                localPlayer.stormTickTimer = 0;
-                localPlayer.hitsTaken += 1;
-                localPlayer.lives = Math.max(0, 3 - localPlayer.hitsTaken);
-                localPlayer.damageFlash = 1.0;
-                localPlayer.damageFlashColor = '#ef4444';
+            lp.stormTickTimer += dt;
+            if (lp.stormTickTimer >= 2.5) {
+                lp.stormTickTimer = 0;
+                lp.hitsTaken += 1;
+                lp.lives = Math.max(0, 3 - lp.hitsTaken);
+                lp.damageFlash = 1.0;
+                lp.damageFlashColor = '#ef4444';
                 playShieldHitSound();
-                if (localPlayer.lives <= 0) {
-                    localPlayer.isAlive = false;
-                    gamePhase = 'spectating';
+                if (lp.lives <= 0) {
+                    lp.isAlive = false;
+                    gameState.gamePhase = 'spectating';
                 }
             }
         } else {
-            localPlayer.stormTickTimer = 0;
+            lp.stormTickTimer = 0;
         }
 
-        localPlayer.isMovingForward = now < localPlayer.moveUntil;
-        const isBoosted = now < localPlayer.boostUntil;
-        const speedMult = localPlayer.currentGear.mult * (isBoosted ? 1.5 : 1.0);
+        lp.isMovingForward = now < lp.moveUntil;
+        const isBoosted = now < lp.boostUntil;
+        const speedMult = lp.currentGear.mult * (isBoosted ? 1.5 : 1.0);
 
-        if (localPlayer.isMovingForward && speedMult > 0) {
-            localPlayer.bobPhase += dt * (6.5 + speedMult * 5.0);
+        if (lp.isMovingForward && speedMult > 0) {
+            lp.bobPhase += dt * (6.5 + speedMult * 5.0);
 
             const baseSpeed = 180;
             const speed = baseSpeed * speedMult;
             const pad = 12;
-            const dx = Math.cos(localPlayer.angle) * speed * dt;
-            const dy = Math.sin(localPlayer.angle) * speed * dt;
+            const dx = Math.cos(lp.angle) * speed * dt;
+            const dy = Math.sin(lp.angle) * speed * dt;
 
-            const checkX = localPlayer.x + dx + (dx > 0 ? pad : -pad);
+            const checkX = lp.x + dx + (dx > 0 ? pad : -pad);
             const colX = Math.floor(checkX / TILE_SIZE);
-            const curRow = Math.floor(localPlayer.y / TILE_SIZE);
+            const curRow = Math.floor(lp.y / TILE_SIZE);
             if (ARENA_MAP[curRow] && ARENA_MAP[curRow][colX] === 0) {
-                localPlayer.x += dx;
+                lp.x += dx;
             }
 
-            const checkY = localPlayer.y + dy + (dy > 0 ? pad : -pad);
-            const curCol = Math.floor(localPlayer.x / TILE_SIZE);
+            const checkY = lp.y + dy + (dy > 0 ? pad : -pad);
+            const curCol = Math.floor(lp.x / TILE_SIZE);
             const rowY = Math.floor(checkY / TILE_SIZE);
             if (ARENA_MAP[rowY] && ARENA_MAP[rowY][curCol] === 0) {
-                localPlayer.y += dy;
+                lp.y += dy;
             }
         }
 
         // Speed Boost Pads Pickup
-        for (const pad of speedBoostPads) {
-            if (Math.hypot(localPlayer.x - pad.x, localPlayer.y - pad.y) < 34 && now >= localPlayer.boostUntil - 1200) {
-                localPlayer.boostUntil = now + 2200;
+        for (const pad of gameState.speedBoostPads) {
+            if (Math.hypot(lp.x - pad.x, lp.y - pad.y) < 34 && now >= lp.boostUntil - 1200) {
+                lp.boostUntil = now + 2200;
                 playSpeedBoostSweep();
                 const statusEl = document.getElementById('status');
                 if (statusEl) statusEl.textContent = `⚡ SPEED BOOST PAD ACTIVATED! (2.2s Turbo Surge)`;
@@ -2933,29 +1482,29 @@ function gameLoop(now, bridge) {
         }
 
         // Floating Med-Kit Pickup
-        for (const med of medKitNodes) {
-            if (now >= med.respawnAt && localPlayer.lives < 3 && Math.hypot(localPlayer.x - med.x, localPlayer.y - med.y) < 34) {
+        for (const med of gameState.medKitNodes) {
+            if (now >= med.respawnAt && lp.lives < 3 && Math.hypot(lp.x - med.x, lp.y - med.y) < 34) {
                 med.respawnAt = now + 18000;
-                localPlayer.lives = Math.min(3, localPlayer.lives + 1);
-                localPlayer.hitsTaken = Math.max(0, 3 - localPlayer.lives);
+                lp.lives = Math.min(3, lp.lives + 1);
+                lp.hitsTaken = Math.max(0, 3 - lp.lives);
                 playMedKitHealChime();
                 spawn3DExplosion(med.x, med.y, '#f43f5e', 16);
                 const statusEl = document.getElementById('status');
-                if (statusEl) statusEl.textContent = `💖 MED-KIT COLLECTED! Shield restored to ${localPlayer.lives} Lives!`;
+                if (statusEl) statusEl.textContent = `💖 MED-KIT COLLECTED! Shield restored to ${lp.lives} Lives!`;
             }
         }
 
         // Quantum Portal Teleportation
-        if (arenaPortals.length === 2 && now >= localPlayer.portalCooldownUntil) {
+        if (gameState.arenaPortals.length === 2 && now >= lp.portalCooldownUntil) {
             for (let pIdx = 0; pIdx < 2; pIdx++) {
-                const p = arenaPortals[pIdx];
-                if (Math.hypot(localPlayer.x - p.x, localPlayer.y - p.y) < 36) {
-                    const dest = arenaPortals[pIdx === 0 ? 1 : 0];
-                    spawn3DExplosion(localPlayer.x, localPlayer.y, p.color, 20);
-                    localPlayer.x = dest.x;
-                    localPlayer.y = dest.y;
-                    localPlayer.portalCooldownUntil = now + 2600;
-                    localPlayer.portalFlash = 1.0;
+                const p = gameState.arenaPortals[pIdx];
+                if (Math.hypot(lp.x - p.x, lp.y - p.y) < 36) {
+                    const dest = gameState.arenaPortals[pIdx === 0 ? 1 : 0];
+                    spawn3DExplosion(lp.x, lp.y, p.color, 20);
+                    lp.x = dest.x;
+                    lp.y = dest.y;
+                    lp.portalCooldownUntil = now + 2600;
+                    lp.portalFlash = 1.0;
                     playPortalWarpSound();
                     spawn3DExplosion(dest.x, dest.y, dest.color, 24);
 
@@ -2969,181 +1518,13 @@ function gameLoop(now, bridge) {
         }
     }
 
-    if (localPlayer.isAlive) {
+    if (lp.isAlive) {
         renderFirstPerson3D(ctx, W, H, dt, now);
     } else {
         renderSpectatorOverheadView(ctx, W, H, dt, now);
     }
 
-    // Bottom-Left Color & Shape Coded Minimap Overlay
-    if (localPlayer.isAlive) {
-        const mmSize = 162;
-        const mmX = 12;
-        const mmY = H - mmSize - 12;
-        ctx.fillStyle = 'rgba(2, 6, 23, 0.90)';
-        ctx.fillRect(mmX, mmY, mmSize, mmSize);
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(mmX, mmY, mmSize, mmSize);
+    renderMinimapAndTopHud(ctx, W, H, now, activePlayers);
 
-        const scaleX = mmSize / (MAP_COLS * TILE_SIZE);
-        const scaleY = mmSize / (MAP_ROWS * TILE_SIZE);
-
-        for (let r = 0; r < MAP_ROWS; r++) {
-            for (let c = 0; c < MAP_COLS; c++) {
-                const tile = ARENA_MAP[r][c];
-                if (tile > 0) {
-                    drawShapedMapTile(
-                        ctx,
-                        mmX + c * TILE_SIZE * scaleX,
-                        mmY + r * TILE_SIZE * scaleY,
-                        TILE_SIZE * scaleX,
-                        TILE_SIZE * scaleY,
-                        tile
-                    );
-                }
-            }
-        }
-
-        // Dynamic Storm Circle on Minimap
-        const stormRadius = getCurrentStormRadius(now);
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(mmX, mmY, mmSize, mmSize);
-        ctx.clip();
-        ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(mmX + ARENA_CENTER_X * scaleX, mmY + ARENA_CENTER_Y * scaleY, stormRadius * scaleX, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-
-        // Boost Pads & Med-Kits on Minimap
-        ctx.fillStyle = '#22c55e';
-        for (const pad of speedBoostPads) {
-            ctx.fillRect(mmX + pad.x * scaleX - 2, mmY + pad.y * scaleY - 2, 4, 4);
-        }
-        ctx.fillStyle = '#f43f5e';
-        for (const med of medKitNodes) {
-            if (now >= med.respawnAt) {
-                ctx.beginPath();
-                ctx.arc(mmX + med.x * scaleX, mmY + med.y * scaleY, 2.5, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-
-        // Pulsing Portals on Minimap
-        const pPulse = (Math.sin(now * 0.01) + 1) * 0.5;
-        for (const portal of arenaPortals) {
-            const px = mmX + portal.x * scaleX;
-            const py = mmY + portal.y * scaleY;
-            ctx.strokeStyle = portal.color;
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.arc(px, py, 3 + pPulse * 3, 0, Math.PI * 2);
-            ctx.stroke();
-
-            ctx.fillStyle = portal.secondaryColor;
-            ctx.beginPath();
-            ctx.arc(px, py, 2.2, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        for (const [id, opp] of Object.entries(remotePlayers)) {
-            if (id === localId || !isPlayerActiveInRoom(opp)) continue;
-            const ox = mmX + opp.x * scaleX;
-            const oy = mmY + opp.y * scaleY;
-            const oppColor = opp.isInvulnerable ? '#ffffff' : (opp.suitColor || getSuitColorForAvatar(opp.avatar, id));
-            const isLeader = Number(opp.score || 0) >= 300;
-            const isRevenge = localPlayer.revengeTargetId === id;
-
-            ctx.save();
-            if (opp.isInvulnerable) ctx.globalAlpha = 0.45;
-            else if (opp.isStealth) ctx.globalAlpha = 0.55;
-            ctx.fillStyle = oppColor;
-            ctx.beginPath();
-            ctx.arc(ox, oy, 4.5, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Feature #5: Pulsing Red Crosshair Ring around Revenge Bounty Target on Minimap
-            if (isRevenge) {
-                ctx.strokeStyle = '#ef4444';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(ox, oy, 7 + pPulse * 4, 0, Math.PI * 2);
-                ctx.stroke();
-            } else if (isLeader) {
-                ctx.strokeStyle = '#facc15';
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
-            }
-
-            ctx.font = '10px sans-serif';
-            ctx.fillText(opp.avatar || '🔴', ox, oy);
-
-            ctx.fillStyle = isRevenge ? '#ef4444' : '#facc15';
-            ctx.font = 'bold 7.5px sans-serif';
-            ctx.fillText(normalizePitchClass(opp.noteTag || ''), ox, oy - 7);
-            ctx.restore();
-        }
-
-        // Pulsing Bright Yellow Radar Beacon for Local Player
-        const lx = mmX + localPlayer.x * scaleX;
-        const ly = mmY + localPlayer.y * scaleY;
-        const pulseWave = (Math.sin(now * 0.008) + 1) * 0.5;
-
-        ctx.save();
-        ctx.strokeStyle = `rgba(250, 204, 21, ${0.95 - pulseWave * 0.65})`;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(lx, ly, 5 + pulseWave * 8, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.fillStyle = `rgba(250, 204, 21, ${0.35 - pulseWave * 0.2})`;
-        ctx.beginPath();
-        ctx.arc(lx, ly, 6 + pulseWave * 5, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.strokeStyle = '#facc15';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(lx, ly);
-        ctx.lineTo(lx + Math.cos(localPlayer.angle) * 15, ly + Math.sin(localPlayer.angle) * 15);
-        ctx.stroke();
-
-        ctx.fillStyle = '#facc15';
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(lx, ly, 4.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-    }
-
-    // Top-Right HUD
-    const aliveCount = Math.max(1, activePlayers.length);
-    const heartsDisplay = '❤️'.repeat(localPlayer.lives) + '🖤'.repeat(Math.max(0, 3 - localPlayer.lives));
-
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
-    ctx.fillRect(W - 355, 10, 345, 56);
-    ctx.strokeStyle = localPlayer.currentGear.color;
-    ctx.strokeRect(W - 355, 10, 345, 56);
-
-    ctx.fillStyle = localPlayer.currentGear.color;
-    ctx.font = '900 13px sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(`${heartsDisplay} | SCORE: ${localPlayer.score} | ALIVE: ${aliveCount} | TAG: ${localPlayer.noteTag}`, W - 18, 30);
-
-    ctx.fillStyle = '#cbd5e1';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(`C: Left • D: Right • Hold C#: Forward • Chords: Speed`, W - 18, 50);
-
-    if (maxPeakPlayers >= 2 && activePlayers.length === 1) {
-        renderMvpPodiumOverlay(ctx, W, H);
-    }
-
-    animFrameId = requestAnimationFrame((t) => gameLoop(t, bridge));
+    gameState.animFrameId = requestAnimationFrame((t) => gameLoop(t, bridge));
 }
