@@ -5,6 +5,7 @@ import {
     OVERCHARGE_CHORDS,
     EMP_CHORD_NOTES,
     DECOY_CHORDS,
+    SUS4_CHORDS,
     DEFAULT_GEAR,
     TILE_SIZE,
     MAP_COLS,
@@ -76,6 +77,14 @@ function matchDecoyChord(pitchSet) {
     return null;
 }
 
+function matchSus4Chord(pitchSet) {
+    if (pitchSet.size !== 3) return null;
+    for (const sc of SUS4_CHORDS) {
+        if (sc.notes.every(n => pitchSet.has(n))) return sc;
+    }
+    return null;
+}
+
 // ==========================================
 // WEB AUDIO SYNTH EFFECTS
 // ==========================================
@@ -131,6 +140,24 @@ function playDecoySpawnSound() {
         gain.connect(audioCtx.destination);
         osc.start(now);
         osc.stop(now + 0.29);
+    } catch (e) {}
+}
+
+function playSniperZoomSound(zoomingIn = true) {
+    try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(zoomingIn ? 480 : 880, now);
+        osc.frequency.exponentialRampToValueAtTime(zoomingIn ? 960 : 420, now + 0.14);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.16);
     } catch (e) {}
 }
 
@@ -688,6 +715,9 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     lp.overchargeReadyAt = 0;
     lp.empReadyAt = 0;
     lp.decoyReadyAt = 0;
+    lp.sniperUntil = 0;
+    lp.sniperReadyAt = 0;
+    lp.sniperActivatedAt = 0;
     lp.empScrambledUntil = 0;
     lp.hubScoreTimer = 0;
     lp.stormTickTimer = 0;
@@ -727,7 +757,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${lp.noteTag}] | C#: Move • C/D: Turn • C2+C4: 180° Flip • Bdim7: EMP • Dm7/Em7: Decoy!`;
+        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${lp.noteTag}] | C#: Move • C/D: Turn • sus4: Sniper 2x • Bdim7: EMP • Dm7/Em7: Decoy!`;
     }
 
     gameState.animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
@@ -996,10 +1026,11 @@ async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
     lp.recoil = isOvercharge ? 1.6 : 1.0;
     lp.muzzleFlash = 1.0;
 
-    const FOV = Math.PI / 3;
+    const isSniper = now < (lp.sniperUntil || 0);
+    const FOV = isSniper ? (Math.PI / 6) : (Math.PI / 3);
     const maxCone = isOvercharge ? FOV * 0.85 : FOV * 0.62;
     let bestTarget = null;
-    let bestDist = 1400;
+    let bestDist = isSniper ? 2600 : 1400;
 
     for (const [id, opp] of Object.entries(gameState.remotePlayers)) {
         if (id === gameState.localId || !isPlayerActiveInRoom(opp) || opp.isInvulnerable) continue;
@@ -1289,6 +1320,45 @@ export async function handleLaserTagInput(noteStr, bridge) {
                 statusEl.textContent = `⏳ OVERCHARGE RECHARGING (${secsLeft}s remaining)...`;
             }
         }
+        return;
+    }
+
+    // Suspended 4th Chords -> Temporary 2x Sniper Scope (8s active, 14s cooldown)
+    const matchedSus4 = matchSus4Chord(distinctPitches);
+    if (matchedSus4) {
+        if (gameState.pendingActionTimer !== null) clearTimeout(gameState.pendingActionTimer);
+        gameState.pendingActionTimer = setTimeout(() => {
+            gameState.pendingActionTimer = null;
+            gameState.recentNoteBuffer = [];
+            const tNow = performance.now();
+
+            // Toggle off early if already zoomed in
+            if (tNow < (lp.sniperUntil || 0)) {
+                if ((tNow - (lp.sniperActivatedAt || 0)) > 550) {
+                    lp.sniperUntil = 0;
+                    playSniperZoomSound(false);
+                    const statusEl = document.getElementById('status');
+                    if (statusEl) statusEl.textContent = `🔭 SNIPER OPTIC DISENGAGED.`;
+                }
+                return;
+            }
+
+            if (tNow >= (lp.sniperReadyAt || 0)) {
+                lp.sniperUntil = tNow + 8000;
+                lp.sniperReadyAt = tNow + 14000;
+                lp.sniperActivatedAt = tNow;
+                playSniperZoomSound(true);
+                const statusEl = document.getElementById('status');
+                if (statusEl) {
+                    statusEl.textContent = `🔭 ${matchedSus4.label} ACTIVE! 2x Zoom & 2600px Range for 8s!`;
+                }
+            } else {
+                const secsLeft = Math.ceil((lp.sniperReadyAt - tNow) / 1000);
+                playJamBuzzSound();
+                const statusEl = document.getElementById('status');
+                if (statusEl) statusEl.textContent = `⏳ SNIPER OPTIC RECHARGING (${secsLeft}s)...`;
+            }
+        }, 55);
         return;
     }
 
