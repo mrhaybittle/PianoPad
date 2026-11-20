@@ -19,14 +19,14 @@ const CHORD_GEARS = [
 
 const DEFAULT_GEAR = CHORD_GEARS[3]; // F Major (1.0x Normal Speed)
 
-// Distinct Color Themes for each Arena Sector (Walls + Minimap + Overhead View)
+// Distinct Color & Shape Themes for each Arena Sector
 const WALL_THEMES = {
-    1: { name: 'CYAN PERIMETER',  r: 14,  g: 116, b: 144, trim: [56, 189, 248],  mapHex: '#38bdf8' },
-    2: { name: 'GOLD NW MAZE',    r: 146, g: 108, b: 14,  trim: [250, 204, 21],  mapHex: '#facc15' },
-    3: { name: 'MAGENTA NE MAZE', r: 112, g: 26,  b: 117, trim: [232, 121, 249], mapHex: '#e879f9' },
-    4: { name: 'CORAL SW MAZE',   r: 154, g: 52,  b: 18,  trim: [251, 146, 60],  mapHex: '#fb923c' },
-    5: { name: 'COBALT SE MAZE',  r: 30,  g: 64,  b: 175, trim: [96, 165, 250],  mapHex: '#60a5fa' },
-    6: { name: 'EMERALD ARENA',   r: 6,   g: 95,  b: 70,  trim: [52, 211, 153],  mapHex: '#34d399' }
+    1: { name: 'CYAN PERIMETER',   shape: 'box',      r: 14,  g: 116, b: 144, trim: [56, 189, 248],  mapHex: '#38bdf8' },
+    2: { name: 'GOLD CURVED NW',   shape: 'curved',   r: 161, g: 118, b: 16,  trim: [250, 204, 21],  mapHex: '#facc15' },
+    3: { name: 'MAGENTA TRI NE',   shape: 'triangle', r: 134, g: 25,  b: 143, trim: [232, 121, 249], mapHex: '#e879f9' },
+    4: { name: 'CORAL BLOCKS SW',  shape: 'box',      r: 175, g: 56,  b: 20,  trim: [251, 146, 60],  mapHex: '#fb923c' },
+    5: { name: 'COBALT DIAMOND SE',shape: 'diamond',  r: 30,  g: 64,  b: 175, trim: [96, 165, 250],  mapHex: '#60a5fa' },
+    6: { name: 'EMERALD HUB',      shape: 'curved',   r: 6,   g: 110, b: 82,  trim: [52, 211, 153],  mapHex: '#34d399' }
 };
 
 // Local First-Person Player State
@@ -83,101 +83,131 @@ const AUSSIE_TEEN_BOYS = [
 
 const BOT_AVATARS = ['🏃', '🏄', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄', '🎹', '🎧', '👨‍🎤', '😎', '🐱', '🐲', '🚀', '🥷'];
 
-// ~100% Larger 46x46 Procedural Sci-Fi Maze + 5 Open Courtyards
+// Fast-Paced 46x46 Open Arena with Distinct Geometric Sectors
 const TILE_SIZE = 64;
 const MAP_COLS = 46;
 const MAP_ROWS = 46;
 
-function buildLargeArenaMap() {
-    const grid = Array.from({ length: MAP_ROWS }, () => Array(MAP_COLS).fill(1));
+function buildFastPacedArenaMap() {
+    const grid = Array.from({ length: MAP_ROWS }, () => Array(MAP_COLS).fill(0));
 
-    function carve(r, c) {
-        grid[r][c] = 0;
-        const dirs = [[0, 2], [0, -2], [2, 0], [-2, 0]].sort(() => Math.random() - 0.5);
-        for (const [dr, dc] of dirs) {
-            const nr = r + dr;
-            const nc = c + dc;
-            if (nr > 0 && nr < MAP_ROWS - 1 && nc > 0 && nc < MAP_COLS - 1 && grid[nr][nc] === 1) {
-                grid[r + dr / 2][c + dc / 2] = 0;
-                carve(nr, nc);
+    // 1. Outer Cyan Perimeter Wall (type 1)
+    for (let i = 0; i < MAP_COLS; i++) {
+        grid[0][i] = 1;
+        grid[MAP_ROWS - 1][i] = 1;
+        grid[i][0] = 1;
+        grid[i][MAP_COLS - 1] = 1;
+    }
+
+    // 2. GOLD NW SECTOR (rows 2..18, cols 2..18): Curved Rotundas & Sweeping Arches (type 2)
+    // Large central rotunda ring with 4 wide entryways
+    const nwCenterR = 10, nwCenterC = 10;
+    for (let r = 4; r <= 16; r++) {
+        for (let c = 4; c <= 16; c++) {
+            const dist = Math.hypot(r - nwCenterR, c - nwCenterC);
+            const isCardinalGap = Math.abs(r - nwCenterR) <= 1 || Math.abs(c - nwCenterC) <= 1;
+            if (dist >= 4.2 && dist <= 5.6 && !isCardinalGap) {
+                grid[r][c] = 2;
             }
         }
     }
-    carve(1, 1);
-
-    const midR = Math.floor(MAP_ROWS / 2);
-    const midC = Math.floor(MAP_COLS / 2);
-
-    for (let r = 2; r < MAP_ROWS - 2; r++) {
-        for (let c = 2; c < MAP_COLS - 2; c++) {
-            if (grid[r][c] === 1) {
-                if (Math.random() < 0.22) {
-                    grid[r][c] = 0;
-                } else if (r < midR && c < midC) {
-                    grid[r][c] = 2;
-                } else if (r < midR && c >= midC) {
-                    grid[r][c] = 3;
-                } else if (r >= midR && c < midC) {
-                    grid[r][c] = 4;
-                } else {
-                    grid[r][c] = 5;
-                }
-            }
-        }
-    }
-
-    const rooms = [
-        { r0: 7, r1: 14, c0: 7, c1: 14 },
-        { r0: 7, r1: 14, c0: 31, c1: 38 },
-        { r0: 31, r1: 38, c0: 7, c1: 14 },
-        { r0: 31, r1: 38, c0: 31, c1: 38 },
-        { r0: 19, r1: 26, c0: 19, c1: 26 }
+    // Inner curved sanctuary pillar
+    grid[10][10] = 2;
+    // Outer curved corner arcs
+    const nwArcs = [
+        [3, 4], [4, 3], [3, 16], [4, 17],
+        [16, 3], [17, 4], [16, 17], [17, 16]
     ];
+    for (const [r, c] of nwArcs) grid[r][c] = 2;
 
-    for (const rm of rooms) {
-        for (let r = rm.r0; r <= rm.r1; r++) {
-            for (let c = rm.c0; c <= rm.c1; c++) {
-                grid[r][c] = 0;
-            }
+    // 3. MAGENTA NE SECTOR (rows 2..18, cols 27..43): Triangular Prism Monoliths (type 3)
+    const placeTriangleCluster = (topR, topC, flipDown = false) => {
+        if (!flipDown) {
+            grid[topR][topC] = 3;
+            grid[topR + 1][topC - 1] = 3;
+            grid[topR + 1][topC] = 3;
+            grid[topR + 1][topC + 1] = 3;
+            grid[topR + 2][topC - 2] = 3;
+            grid[topR + 2][topC + 2] = 3;
+        } else {
+            grid[topR][topC - 2] = 3;
+            grid[topR][topC + 2] = 3;
+            grid[topR + 1][topC - 1] = 3;
+            grid[topR + 1][topC] = 3;
+            grid[topR + 1][topC + 1] = 3;
+            grid[topR + 2][topC] = 3;
         }
-        grid[rm.r0 + 2][rm.c0 + 2] = 6;
-        grid[rm.r0 + 2][rm.c1 - 2] = 6;
-        grid[rm.r1 - 2][rm.c0 + 2] = 6;
-        grid[rm.r1 - 2][rm.c1 - 2] = 6;
-    }
+    };
+    placeTriangleCluster(4, 32, false);
+    placeTriangleCluster(4, 39, false);
+    placeTriangleCluster(10, 35, true);
+    placeTriangleCluster(14, 31, false);
+    placeTriangleCluster(14, 40, false);
+
+    // 4. CORAL SW SECTOR (rows 27..43, cols 2..18): Wide Tactical Chicane Walls (type 4)
+    // Spacious 3-4 tile lanes with sleek L-shaped cover barriers
+    const swBlocks = [
+        // Top-left L
+        [29, 4], [29, 5], [29, 6], [30, 4], [31, 4],
+        // Top-right L
+        [29, 14], [29, 15], [29, 16], [30, 16], [31, 16],
+        // Center tactical island
+        [34, 9], [34, 10], [34, 11], [36, 9], [36, 10], [36, 11],
+        // Bottom-left L
+        [39, 4], [40, 4], [41, 4], [41, 5], [41, 6],
+        // Bottom-right L
+        [39, 16], [40, 16], [41, 16], [41, 14], [41, 15]
+    ];
+    for (const [r, c] of swBlocks) grid[r][c] = 4;
+
+    // 5. COBALT SE SECTOR (rows 27..43, cols 27..43): Diamond Pylon Matrix (type 5)
+    const placeDiamond = (cr, cc) => {
+        grid[cr - 1][cc] = 5;
+        grid[cr][cc - 1] = 5;
+        grid[cr][cc] = 5;
+        grid[cr][cc + 1] = 5;
+        grid[cr + 1][cc] = 5;
+    };
+    placeDiamond(30, 31);
+    placeDiamond(30, 39);
+    placeDiamond(35, 35);
+    placeDiamond(40, 31);
+    placeDiamond(40, 39);
+
+    // 6. EMERALD CENTRAL HUB (rows 19..26, cols 19..26): 4 Curved Emerald Columns (type 6)
+    grid[20][20] = 6;
+    grid[20][25] = 6;
+    grid[25][20] = 6;
+    grid[25][25] = 6;
+
+    // 7. Highway Gateways (4 spacious arch pillars framing the central cross-boulevards)
+    grid[18][19] = 1; grid[18][26] = 1;
+    grid[27][19] = 1; grid[27][26] = 1;
+    grid[19][18] = 1; grid[26][18] = 1;
+    grid[19][27] = 1; grid[26][27] = 1;
 
     return grid;
 }
 
-let ARENA_MAP = buildLargeArenaMap();
+let ARENA_MAP = buildFastPacedArenaMap();
 
 function generateSeededArena(roomCode) {
-    let seed = 0;
-    const str = String(roomCode || '123');
-    for (let i = 0; i < str.length; i++) {
-        seed = (seed * 31 + str.charCodeAt(i)) % 2147483647;
-    }
-    const origRandom = Math.random;
-    Math.random = () => {
-        seed = (seed * 16807) % 2147483647;
-        return (seed - 1) / 2147483646;
-    };
-    ARENA_MAP = buildLargeArenaMap();
-    Math.random = origRandom;
+    // Keep layout consistent and fast-paced across all clients in the room
+    ARENA_MAP = buildFastPacedArenaMap();
 }
 
 function getZoneInfoForCoords(wx, wy) {
     const col = Math.floor(wx / TILE_SIZE);
     const row = Math.floor(wy / TILE_SIZE);
-    if (row >= 19 && row <= 26 && col >= 19 && col <= 26) {
+    if (row >= 18 && row <= 27 && col >= 18 && col <= 27) {
         return { label: 'EMERALD HUB', color: '#34d399' };
     }
     const midR = Math.floor(MAP_ROWS / 2);
     const midC = Math.floor(MAP_COLS / 2);
-    if (row < midR && col < midC) return { label: 'GOLD NW ZONE', color: '#facc15' };
-    if (row < midR && col >= midC) return { label: 'MAGENTA NE ZONE', color: '#e879f9' };
-    if (row >= midR && col < midC) return { label: 'CORAL SW ZONE', color: '#fb923c' };
-    return { label: 'COBALT SE ZONE', color: '#60a5fa' };
+    if (row < midR && col < midC) return { label: 'GOLD CURVED NW', color: '#facc15' };
+    if (row < midR && col >= midC) return { label: 'MAGENTA TRIANGLE NE', color: '#e879f9' };
+    if (row >= midR && col < midC) return { label: 'CORAL CHICANE SW', color: '#fb923c' };
+    return { label: 'COBALT DIAMOND SE', color: '#60a5fa' };
 }
 
 // 9 assignable target pitches (C = Left, C# = Forward, D = Right)
@@ -352,7 +382,7 @@ function ensureCanvasSized(canvas) {
 }
 
 function getSafeSpawnPoint(avoidX = null, avoidY = null) {
-    let best = { x: TILE_SIZE * 1.5, y: TILE_SIZE * 1.5 };
+    let best = { x: TILE_SIZE * 22.5, y: TILE_SIZE * 22.5 };
     let bestDist = -1;
 
     for (let attempt = 0; attempt < 150; attempt++) {
@@ -420,7 +450,7 @@ async function spawn50AussieBots() {
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = `🤖 HOST STRESS TEST: Spawned 50 Aussie Teenage Bots into the 46×46 Arena!`;
+        statusEl.textContent = `🤖 HOST STRESS TEST: Spawned 50 Aussie Teenage Bots into the Fast-Paced Arena!`;
     }
 }
 
@@ -428,8 +458,8 @@ function updateSimulatedBots(dt) {
     const botList = Object.values(simulatedBots);
     if (botList.length === 0) return;
 
-    const speed = 135;
-    const pad = 16;
+    const speed = 155;
+    const pad = 12;
 
     for (const bot of botList) {
         const serverBot = remotePlayers[bot.id];
@@ -452,8 +482,8 @@ function updateSimulatedBots(dt) {
 
         bot.turnTimer -= dt;
         if (bot.turnTimer <= 0) {
-            bot.angle += (Math.random() - 0.5) * Math.PI;
-            bot.turnTimer = 1.2 + Math.random() * 2.5;
+            bot.angle += (Math.random() - 0.5) * Math.PI * 0.85;
+            bot.turnTimer = 1.6 + Math.random() * 2.8;
         }
 
         const dx = Math.cos(bot.angle) * speed * dt;
@@ -922,6 +952,7 @@ export async function handleLaserTagInput(noteStr, bridge) {
     }, 75);
 }
 
+// Geometric Raycaster: Supports Curved Cylindrical Walls, Triangular Prisms, Diamonds & Boxes
 function castRay(rayAngle) {
     const sin = Math.sin(rayAngle);
     const cos = Math.cos(rayAngle);
@@ -965,15 +996,78 @@ function castRay(rayAngle) {
             mapY += stepY;
             side = 1;
         }
+
         if (mapY < 0 || mapY >= MAP_ROWS || mapX < 0 || mapX >= MAP_COLS) {
             hit = 1;
-        } else if (ARENA_MAP[mapY][mapX] > 0) {
-            hit = ARENA_MAP[mapY][mapX];
+            break;
+        }
+
+        const cellType = ARENA_MAP[mapY][mapX];
+        if (cellType > 0) {
+            const theme = WALL_THEMES[cellType] || WALL_THEMES[1];
+
+            // True analytical ray-circle intersection for Curved Walls & Rotundas
+            if (theme.shape === 'curved') {
+                const cx = (mapX + 0.5) * TILE_SIZE;
+                const cy = (mapY + 0.5) * TILE_SIZE;
+                const radius = TILE_SIZE * 0.48;
+                const ocX = localPlayer.x - cx;
+                const ocY = localPlayer.y - cy;
+                const b = ocX * cos + ocY * sin;
+                const c = ocX * ocX + ocY * ocY - radius * radius;
+                const disc = b * b - c;
+                if (disc >= 0) {
+                    const t = -b - Math.sqrt(disc);
+                    if (t > 1) {
+                        const hitX = localPlayer.x + cos * t;
+                        const hitY = localPlayer.y + sin * t;
+                        const normAngle = Math.atan2(hitY - cy, hitX - cx);
+                        const curveShade = 0.65 + 0.35 * Math.cos(normAngle - 0.8);
+                        return { dist: t, side: 0, wallType: cellType, customShade: curveShade, stripeCoord: (normAngle + Math.PI) / (Math.PI * 2) };
+                    }
+                }
+                // Ray grazed past the curved cylinder inside this tile -> continue tracing!
+                continue;
+            }
+
+            // Triangular / Diagonal Prism Walls (Magenta NE Zone)
+            if (theme.shape === 'triangle') {
+                const boxDist = (side === 0 ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY)) * TILE_SIZE;
+                const hitX = localPlayer.x + cos * boxDist;
+                const hitY = localPlayer.y + sin * boxDist;
+                const localU = (hitX - mapX * TILE_SIZE) / TILE_SIZE;
+                const localV = (hitY - mapY * TILE_SIZE) / TILE_SIZE;
+                const diagDist = boxDist + Math.abs(localU - localV) * TILE_SIZE * 0.35;
+                return { dist: Math.max(1, diagDist), side, wallType: cellType, customShade: side === 0 ? 1.0 : 0.72, stripeCoord: (localU + localV) * 0.5 };
+            }
+
+            // Diamond Faceted Pylons (Cobalt SE Zone)
+            if (theme.shape === 'diamond') {
+                const boxDist = (side === 0 ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY)) * TILE_SIZE;
+                const hitX = localPlayer.x + cos * boxDist;
+                const hitY = localPlayer.y + sin * boxDist;
+                const localU = Math.abs((hitX - mapX * TILE_SIZE) / TILE_SIZE - 0.5);
+                const localV = Math.abs((hitY - mapY * TILE_SIZE) / TILE_SIZE - 0.5);
+                const diamondDist = boxDist + (localU + localV) * TILE_SIZE * 0.28;
+                return { dist: Math.max(1, diamondDist), side, wallType: cellType, customShade: 0.92 - (localU + localV) * 0.3, stripeCoord: localU + localV };
+            }
+
+            hit = cellType;
         }
     }
 
     const perpWallDist = (side === 0 ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY)) * TILE_SIZE;
-    return { dist: Math.max(1, perpWallDist), side, wallType: hit };
+    const hitX = localPlayer.x + cos * perpWallDist;
+    const hitY = localPlayer.y + sin * perpWallDist;
+    const wallU = side === 0 ? ((hitY % TILE_SIZE) / TILE_SIZE) : ((hitX % TILE_SIZE) / TILE_SIZE);
+
+    return {
+        dist: Math.max(1, perpWallDist),
+        side,
+        wallType: hit,
+        customShade: side === 1 ? 0.78 : 1.0,
+        stripeCoord: wallU
+    };
 }
 
 function renderFirstPerson3D(ctx, W, H, dt) {
@@ -984,6 +1078,7 @@ function renderFirstPerson3D(ctx, W, H, dt) {
     const bobOffset = localPlayer.isAlive ? Math.sin(localPlayer.bobPhase) * bobAmp : 0;
     const horizon = H * 0.52 + bobOffset;
 
+    // 1. Sci-Fi Ceiling & Floor
     const ceilGrad = ctx.createLinearGradient(0, 0, 0, horizon);
     ceilGrad.addColorStop(0, '#020617');
     ceilGrad.addColorStop(1, '#0f172a');
@@ -1006,7 +1101,8 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.stroke();
     }
 
-    const numRays = Math.min(320, Math.floor(W / 3));
+    // 2. Raycast 3D Color-Coded & Geometrically Distinct Sector Walls
+    const numRays = Math.min(340, Math.floor(W / 2.8));
     const stripW = W / numRays;
     zBuffer = new Array(numRays);
 
@@ -1019,19 +1115,33 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         const wallHeight = Math.min(H * 1.6, (TILE_SIZE * H) / Math.max(1, correctedDist));
         const wallTop = horizon - wallHeight / 2;
 
-        const shade = Math.max(0.18, 1 - correctedDist / 1450) * (hit.side === 1 ? 0.78 : 1.0);
+        const distShade = Math.max(0.18, 1 - correctedDist / 1450);
+        const shade = distShade * (hit.customShade || 1.0);
         const theme = WALL_THEMES[hit.wallType] || WALL_THEMES[1];
 
         ctx.fillStyle = `rgb(${Math.floor(theme.r * shade)}, ${Math.floor(theme.g * shade)}, ${Math.floor(theme.b * shade)})`;
         ctx.fillRect(i * stripW, wallTop, stripW + 1, wallHeight);
 
+        // Architectural Pattern Accent per Shape Type
         const [tr, tg, tb] = theme.trim;
-        ctx.fillStyle = `rgba(${tr}, ${tg}, ${tb}, ${Math.min(1, shade * 1.15)})`;
+        const trimAlpha = Math.min(1, distShade * 1.15);
+        ctx.fillStyle = `rgba(${tr}, ${tg}, ${tb}, ${trimAlpha})`;
+
         const trimH = Math.max(3, wallHeight * 0.055);
         ctx.fillRect(i * stripW, wallTop, stripW + 1, trimH);
         ctx.fillRect(i * stripW, wallTop + wallHeight - trimH, stripW + 1, trimH);
+
+        // Triangular chevron stripe in Magenta NE Zone & Diamond vertical ribs in Cobalt SE Zone
+        if (theme.shape === 'triangle') {
+            const diagY = wallTop + wallHeight * (0.25 + 0.5 * Math.abs((hit.stripeCoord % 1) - 0.5));
+            ctx.fillRect(i * stripW, diagY, stripW + 1, Math.max(2, trimH * 0.75));
+        } else if (theme.shape === 'diamond') {
+            const midBandY = wallTop + wallHeight * 0.48;
+            ctx.fillRect(i * stripW, midBandY, stripW + 1, Math.max(2, trimH * 0.85));
+        }
     }
 
+    // 3. Depth-Sorted 3D Opponents & Explosion Particles
     const sprites = [];
 
     for (const [id, opp] of Object.entries(remotePlayers)) {
@@ -1173,6 +1283,7 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.restore();
     }
 
+    // 4. First-Person Laser Beams
     for (let i = activeBeams.length - 1; i >= 0; i--) {
         const b = activeBeams[i];
         b.life -= dt * 4.5;
@@ -1201,6 +1312,7 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.restore();
     }
 
+    // 5. First-Person Space Blaster Viewmodel
     if (localPlayer.isAlive) {
         localPlayer.recoil = Math.max(0, localPlayer.recoil - dt * 5);
         localPlayer.muzzleFlash = Math.max(0, localPlayer.muzzleFlash - dt * 8);
@@ -1256,14 +1368,14 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.strokeStyle = myZone.color;
         ctx.lineWidth = 1.8;
         ctx.beginPath();
-        ctx.roundRect(12, 10, 175, 32, 8);
+        ctx.roundRect(12, 10, 195, 32, 8);
         ctx.fill();
         ctx.stroke();
 
         ctx.fillStyle = myZone.color;
-        ctx.font = '900 11.5px sans-serif';
+        ctx.font = '900 11px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`📍 ${myZone.label}`, 99, 30);
+        ctx.fillText(`📍 ${myZone.label}`, 109, 30);
         ctx.restore();
 
         if (localRespawning) {
@@ -1334,6 +1446,34 @@ function renderFirstPerson3D(ctx, W, H, dt) {
     }
 }
 
+function drawShapedMapTile(ctx, x, y, w, h, tileType) {
+    const theme = WALL_THEMES[tileType] || WALL_THEMES[1];
+    ctx.fillStyle = theme.mapHex;
+
+    if (theme.shape === 'curved') {
+        ctx.beginPath();
+        ctx.arc(x + w / 2, y + h / 2, Math.max(1.5, w * 0.48), 0, Math.PI * 2);
+        ctx.fill();
+    } else if (theme.shape === 'triangle') {
+        ctx.beginPath();
+        ctx.moveTo(x + w / 2, y);
+        ctx.lineTo(x + w, y + h);
+        ctx.lineTo(x, y + h);
+        ctx.closePath();
+        ctx.fill();
+    } else if (theme.shape === 'diamond') {
+        ctx.beginPath();
+        ctx.moveTo(x + w / 2, y);
+        ctx.lineTo(x + w, y + h / 2);
+        ctx.lineTo(x + w / 2, y + h);
+        ctx.lineTo(x, y + h / 2);
+        ctx.closePath();
+        ctx.fill();
+    } else {
+        ctx.fillRect(x, y, w, h);
+    }
+}
+
 function renderSpectatorOverheadView(ctx, W, H, dt) {
     const scale = Math.min(W / (MAP_COLS * TILE_SIZE), H / (MAP_ROWS * TILE_SIZE)) * 0.92;
     const offsetX = (W - MAP_COLS * TILE_SIZE * scale) / 2;
@@ -1355,9 +1495,7 @@ function renderSpectatorOverheadView(ctx, W, H, dt) {
                 ctx.strokeStyle = '#1e293b';
                 ctx.strokeRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             } else {
-                const theme = WALL_THEMES[tile] || WALL_THEMES[1];
-                ctx.fillStyle = theme.mapHex;
-                ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                drawShapedMapTile(ctx, c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE, tile);
             }
         }
     }
@@ -1448,9 +1586,9 @@ function gameLoop(now, bridge) {
         if (localPlayer.isMovingForward && speedMult > 0) {
             localPlayer.bobPhase += dt * (6.5 + speedMult * 5.0);
 
-            const baseSpeed = 165;
+            const baseSpeed = 180;
             const speed = baseSpeed * speedMult;
-            const pad = 16;
+            const pad = 12; // Sleek collision radius so players glide smoothly past corners
             const dx = Math.cos(localPlayer.angle) * speed * dt;
             const dy = Math.sin(localPlayer.angle) * speed * dt;
 
@@ -1476,9 +1614,9 @@ function gameLoop(now, bridge) {
         renderSpectatorOverheadView(ctx, W, H, dt);
     }
 
-    // Bottom-Left Color-Coded Minimap Overlay (46x46 Arena)
+    // Bottom-Left Color & Shape Coded Minimap Overlay (46x46 Arena)
     if (localPlayer.isAlive) {
-        const mmSize = 156;
+        const mmSize = 162;
         const mmX = 12;
         const mmY = H - mmSize - 12;
         ctx.fillStyle = 'rgba(2, 6, 23, 0.90)';
@@ -1494,9 +1632,14 @@ function gameLoop(now, bridge) {
             for (let c = 0; c < MAP_COLS; c++) {
                 const tile = ARENA_MAP[r][c];
                 if (tile > 0) {
-                    const theme = WALL_THEMES[tile] || WALL_THEMES[1];
-                    ctx.fillStyle = theme.mapHex;
-                    ctx.fillRect(mmX + c * TILE_SIZE * scaleX, mmY + r * TILE_SIZE * scaleY, TILE_SIZE * scaleX, TILE_SIZE * scaleY);
+                    drawShapedMapTile(
+                        ctx,
+                        mmX + c * TILE_SIZE * scaleX,
+                        mmY + r * TILE_SIZE * scaleY,
+                        TILE_SIZE * scaleX,
+                        TILE_SIZE * scaleY,
+                        tile
+                    );
                 }
             }
         }
