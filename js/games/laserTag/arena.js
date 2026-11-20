@@ -3,10 +3,9 @@ import {
     TILE_SIZE,
     MAP_COLS,
     MAP_ROWS,
-    ARENA_CENTER_X,
-    ARENA_CENTER_Y,
     WALL_THEMES
 } from './constants.js';
+
 import { gameState } from './state.js';
 
 export function buildFastPacedArenaMap() {
@@ -191,15 +190,6 @@ export function getZoneInfoForCoords(wx, wy) {
     if (row < midR && col >= midC) return { label: 'MAGENTA TRIANGLE NE', color: '#e879f9' };
     if (row >= midR && col < midC) return { label: 'CORAL CHICANE SW', color: '#fb923c' };
     return { label: 'COBALT MIRROR SE', color: '#60a5fa' };
-}
-
-export function getCurrentStormRadius(now) {
-    const elapsedSec = (now - gameState.matchStartTime) / 1000;
-    const maxRadius = Math.hypot(ARENA_CENTER_X, ARENA_CENTER_Y);
-    if (elapsedSec <= 90) return maxRadius;
-    const shrinkProgress = Math.min(1, (elapsedSec - 90) / 120);
-    const minRadius = TILE_SIZE * 5.2;
-    return maxRadius - shrinkProgress * (maxRadius - minRadius);
 }
 
 export function hasLineOfSight(x1, y1, x2, y2) {
