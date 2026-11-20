@@ -14,9 +14,7 @@ export const gameState = {
         y: 0,
         angle: 0,
         turnDir: 0,
-        turnUntil: 0,
         turnHoldStart: 0,
-        moveUntil: 0,
         isMovingForward: false,
         lives: 3,
         hitsTaken: 0,
@@ -76,8 +74,8 @@ export const gameState = {
     processedHitIds: new Set(),
     processedEmpIds: new Set(),
     recentNoteBuffer: [],
-    heldMoveKeys: new Set(),
-    releaseHookActive: false,
+    physicallyHeldNotes: new Set(), // Tracks keys currently pressed down (cleared immediately on release)
+    heldMoveKeys: new Set(),        // Active steering/thrust pitch classes ('C', 'C#', 'D')
     pendingActionTimer: null,
     lastChordTriggerTime: 0,
     lastTriggeredChordId: '',
@@ -93,5 +91,5 @@ export const gameState = {
     zBuffer: [],
     simulatedBots: {},
     globalKeyListenerAttached: false,
-    blurListenerAttached: false
+    autoReleaseListenersAttached: false
 };
