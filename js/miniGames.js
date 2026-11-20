@@ -1074,7 +1074,8 @@ export function launchFlappyPitch() { startFlappyPitch(gameBridgeHelper); }
 export function launchStaffSurfers() { startStaffSurfers(gameBridgeHelper); }
 
 export function launchLaserTag(roomCode) {
-    openArcadeHub(); // Hides the main Piano UI
+    openArcadeHub();
+    document.getElementById('arcade-hub')?.classList.remove('open');
     startLaserTag(gameBridgeHelper, roomCode);
 }
 
