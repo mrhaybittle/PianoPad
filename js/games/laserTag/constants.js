@@ -28,6 +28,16 @@ export const DECOY_CHORDS = [
     { id: 'Em7', notes: ['E', 'G', 'B', 'D'], label: 'Em7 HOLO-DECOY' }
 ];
 
+// Suspended 4th Chords (Temporary 2x Sniper Zoom Optic, 8s duration / 14s cooldown)
+export const SUS4_CHORDS = [
+    { id: 'Csus4', notes: ['C', 'F', 'G'],  label: 'Csus4 SNIPER 2x' },
+    { id: 'Dsus4', notes: ['D', 'G', 'A'],  label: 'Dsus4 SNIPER 2x' },
+    { id: 'Esus4', notes: ['E', 'A', 'B'],  label: 'Esus4 SNIPER 2x' },
+    { id: 'Fsus4', notes: ['F', 'A#', 'C'], label: 'Fsus4 SNIPER 2x' },
+    { id: 'Gsus4', notes: ['G', 'C', 'D'],  label: 'Gsus4 SNIPER 2x' },
+    { id: 'Asus4', notes: ['A', 'D', 'E'],  label: 'Asus4 SNIPER 2x' }
+];
+
 // Distinct Color & Shape Themes for each Arena Sector
 export const WALL_THEMES = {
     1: { name: 'CYAN PERIMETER',   shape: 'box',      r: 14,  g: 116, b: 144, trim: [56, 189, 248],  mapHex: '#38bdf8' },
