@@ -1,3 +1,4 @@
+// js/main.js
 import { SPREADSHEET_CSV_URL, LEADERBOARD_CSV_URL, APPS_SCRIPT_URL, GAMEMODE_RANKS_CSV_URL } from './config.js';
 import { noteNames, midiNoteToName, noteToPitch, pitchToNote, autoTransposeSong, getNoteFrequency, parsePianoPad, getDiatonicStepAndShift } from './musicTheory.js';
 import { drawSheetMusicStaff, drawStemlessNote, drawLedgerLines } from './sheetMusic.js';
@@ -5,6 +6,7 @@ import { audioCtx, initAudio, playErrorClackSound, playTone, bufferToWavBlob } f
 import { arcadeState, initMiniGamesBridge, stopBattlePolling, openArcadeHub, returnToPlayerHome, exitActiveMiniGame, handleMiniGameNoteInput, drawSimonStaircase, openSongBattleSelector, closeSprintOptionModal, syncSongBattlePlayerStats, markSongBattleLocalFinished } from './miniGames.js';
 import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDeck, sendKnockoutQuickEmote, selectKnockoutTeam, triggerStreakSabotage, resetKnockoutRoundEffects, joinClassKnockoutStudent, syncKnockoutLiveScore, submitKnockoutRoundFinish, leaveClassKnockout } from './knockout.js';
 import { initFinaleBridge, showGrandFinale, closeGrandFinale, toggleFanfareMute } from './finale.js';
+import { initEyesFront, stopEyesFront, isEyesFrontFrozen } from './eyesFront.js';
 
 let songList = [];
 let currentSong = [];
@@ -225,6 +227,9 @@ document.getElementById('btn-join-room').addEventListener('click', () => {
     localStorage.setItem('pianopad_class', currentStudentClass);
     localStorage.setItem('pianopad_room', currentRoom);
 
+    // Initialize Eyes Front listener now that we have the room code
+    initEyesFront(currentRoom, { isHost: false });
+
     document.getElementById('room-join-modal').classList.remove('open');
     
     syncStudentToFirebase("active");
@@ -301,7 +306,10 @@ function updateRosterSong() {
 }
 
 document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
-document.getElementById('btn-home-screen').addEventListener('click', returnToPlayerHome);
+document.getElementById('btn-home-screen').addEventListener('click', () => {
+    stopEyesFront();
+    returnToPlayerHome();
+});
 document.getElementById('btn-stop-arcade').addEventListener('click', exitActiveMiniGame);
 document.getElementById('btn-song-battle').addEventListener('click', openSongBattleSelector);
 document.getElementById('btn-mic-toggle').addEventListener('click', toggleMicrophoneListening);
@@ -337,9 +345,8 @@ document.getElementById('btn-game-try-again').addEventListener('click', () => {
     else if (currentSongTitle === "Finger Sprint" && window.openSprintModeSelector) window.openSprintModeSelector();
     else if (currentSongTitle === "Rhythm Echo" && window.launchRhythmEcho) window.launchRhythmEcho();
     else if (currentSongTitle === "Note Name Sniper" && window.launchNoteSniper) window.launchNoteSniper();
-        else if (currentSongTitle === "Flappy Pitch" && window.launchFlappyPitch) window.launchFlappyPitch();
-            else if (currentSongTitle === "Staff Surfers" && window.launchStaffSurfers) window.launchStaffSurfers();
-            
+    else if (currentSongTitle === "Flappy Pitch" && window.launchFlappyPitch) window.launchFlappyPitch();
+    else if (currentSongTitle === "Staff Surfers" && window.launchStaffSurfers) window.launchStaffSurfers();
     else playSong();
 });
 
@@ -1496,13 +1503,16 @@ function highlightKey(noteStr, duration = 200, color = null) {
 }
 
 function playManualNote(noteStr) {
+    // 1. Immediately block all sound, keyboard UI, and game interaction if the teacher has frozen the class
+    if (isEyesFrontFrozen()) return;
+
     initAudio();
     const freq = getNoteFrequency(noteStr);
     if (freq) {
         playTone(freq, 0.4, 1.0);
     }
 
-    // Route note input to any active Arcade mini-game (Rhythm Echo, Note Sniper, Drop Dodge, Simon, Mystery, Sprint)
+    // Route note input to any active Arcade mini-game (Rhythm Echo, Note Sniper, Drop Dodge, Simon, Mystery, Sprint, Laser Tag)
     if (handleMiniGameNoteInput(noteStr)) {
         return;
     }
