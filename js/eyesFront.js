@@ -11,7 +11,7 @@ function playAttentionChime() {
     try {
         initAudio();
         const now = audioCtx.currentTime;
-        const notes = [587.33, 880]; // D5 -> A5 clean classroom chime
+        const notes = [587.33, 880]; // D5 -> A5
 
         notes.forEach((freq, idx) => {
             const osc = audioCtx.createOscillator();
@@ -70,7 +70,7 @@ function ensureOverlayElements() {
                     letter-spacing: 0.04em;
                     color: #facc15;
                     margin-bottom: 12px;
-                ">EYES ON THE TEACHER</div>
+                ">Eyes on Teacher</div>
                 <div id="eyes-front-subtext" style="
                     font-size: clamp(15px, 2vw, 20px);
                     font-weight: 600;
@@ -79,7 +79,6 @@ function ensureOverlayElements() {
             </div>
         `;
 
-        // Swallow clicks/touches while frozen
         ['pointerdown', 'mousedown', 'touchstart', 'click'].forEach((evt) => {
             studentOverlay.addEventListener(evt, (e) => {
                 e.stopPropagation();
@@ -90,7 +89,7 @@ function ensureOverlayElements() {
         document.body.appendChild(studentOverlay);
     }
 
-    // 2. Floating Teacher Host Control Pill (Only visible to the Host)
+    // 2. Floating Teacher Host Control Pill
     let teacherPill = document.getElementById('eyes-front-teacher-pill');
     if (!teacherPill && isHostUser) {
         teacherPill = document.createElement('button');
@@ -114,33 +113,36 @@ function ensureOverlayElements() {
             transition: 'all 0.15s ease'
         });
         teacherPill.textContent = '👀 Freeze Class';
-        teacherPill.addEventListener('click', () => toggleEyesFront());
+        teacherPill.addEventListener('click', () => {
+            if (currentlyFrozen) {
+                setEyesFront(false);
+            } else {
+                openEyesFrontPrompt(activeRoomCode);
+            }
+        });
         document.body.appendChild(teacherPill);
     }
 
     return { studentOverlay, teacherPill };
 }
 
-function applyFreezeState(frozen, message = 'EYES ON THE TEACHER') {
+function applyFreezeState(frozen, message = 'Eyes on Teacher') {
     const wasFrozen = currentlyFrozen;
     currentlyFrozen = Boolean(frozen);
 
     const { studentOverlay, teacherPill } = ensureOverlayElements();
     const headlineEl = document.getElementById('eyes-front-headline');
-    if (headlineEl) headlineEl.textContent = message || 'EYES ON THE TEACHER';
+    if (headlineEl) headlineEl.textContent = message || 'Eyes on Teacher';
 
-    // Play chime when transitioning into frozen state
     if (currentlyFrozen && !wasFrozen) {
         playAttentionChime();
     }
 
-    // Broadcast event so active mini-games (like Laser Tag) can immediately halt held movement
     window.dispatchEvent(new CustomEvent('pianopad:eyesfront', {
         detail: { frozen: currentlyFrozen, message }
     }));
 
     if (isHostUser) {
-        // Teacher keeps full screen access and gets a clear active-freeze status button
         if (studentOverlay) studentOverlay.style.display = 'none';
         if (teacherPill) {
             teacherPill.style.display = 'block';
@@ -157,7 +159,6 @@ function applyFreezeState(frozen, message = 'EYES ON THE TEACHER') {
             }
         }
     } else {
-        // Students get the full-screen freeze banner
         if (teacherPill) teacherPill.style.display = 'none';
         if (studentOverlay) {
             studentOverlay.style.display = currentlyFrozen ? 'flex' : 'none';
@@ -165,11 +166,138 @@ function applyFreezeState(frozen, message = 'EYES ON THE TEACHER') {
     }
 }
 
+export async function openEyesFrontPrompt(roomCodeOverride = null) {
+    const targetRoom = String(roomCodeOverride || activeRoomCode || 'Outside').trim();
+    if (!activeRoomCode || activeRoomCode !== targetRoom || !isHostUser) {
+        await initEyesFront(targetRoom, { isHost: true });
+    }
+
+    // Prevent duplicate modals if ")" is pressed while already open
+    if (document.getElementById('eyes-front-prompt-modal')) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'eyes-front-prompt-modal';
+    Object.assign(modal.style, {
+        position: 'fixed',
+        inset: '0',
+        zIndex: '100001',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(2, 6, 23, 0.78)',
+        backdropFilter: 'blur(4px)',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+    });
+
+    modal.innerHTML = `
+        <div style="
+            background: #0f172a;
+            border: 2px solid #facc15;
+            border-radius: 16px;
+            padding: 24px 28px;
+            width: min(440px, 92vw);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+            color: #ffffff;
+        ">
+            <div style="font-size: 18px; font-weight: 900; color: #facc15; margin-bottom: 6px;">
+                👀 Broadcast to Room: ${targetRoom}
+            </div>
+            <div style="font-size: 13px; color: #94a3b8; margin-bottom: 14px;">
+                Press Enter to send default, or start typing to replace it:
+            </div>
+            <input id="eyes-front-msg-input" type="text" value="Eyes on Teacher" style="
+                width: 100%;
+                box-sizing: border-box;
+                padding: 12px 14px;
+                border-radius: 10px;
+                border: 2px solid #38bdf8;
+                background: #1e293b;
+                color: #ffffff;
+                font-size: 16px;
+                font-weight: 700;
+                outline: none;
+                margin-bottom: 16px;
+            " />
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button id="eyes-front-cancel-btn" type="button" style="
+                    padding: 9px 16px;
+                    border-radius: 8px;
+                    border: 1px solid #475569;
+                    background: #1e293b;
+                    color: #cbd5e1;
+                    font-weight: 700;
+                    cursor: pointer;
+                ">Cancel</button>
+                <button id="eyes-front-send-btn" type="button" style="
+                    padding: 9px 18px;
+                    border-radius: 8px;
+                    border: none;
+                    background: #facc15;
+                    color: #0f172a;
+                    font-weight: 900;
+                    cursor: pointer;
+                ">Freeze & Send</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const input = document.getElementById('eyes-front-msg-input');
+    const cancelBtn = document.getElementById('eyes-front-cancel-btn');
+    const sendBtn = document.getElementById('eyes-front-send-btn');
+
+    let isDefaultText = true;
+
+    const closeModal = () => {
+        if (document.body.contains(modal)) document.body.removeChild(modal);
+    };
+
+    const submitMessage = async () => {
+        const finalMsg = input.value.trim() || 'Eyes on Teacher';
+        closeModal();
+        await setEyesFront(true, finalMsg);
+    };
+
+    // Clear "Eyes on Teacher" immediately as soon as any typing occurs
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            submitMessage();
+            return;
+        }
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closeModal();
+            return;
+        }
+        if (isDefaultText) {
+            if (e.key === 'Backspace' || e.key === 'Delete') {
+                e.preventDefault();
+                input.value = '';
+                isDefaultText = false;
+            } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                input.value = '';
+                isDefaultText = false;
+            }
+        }
+    });
+
+    cancelBtn.addEventListener('click', closeModal);
+    sendBtn.addEventListener('click', submitMessage);
+
+    // Defer focus by 1 frame so the ")" shortcut keystroke doesn't trigger clearing
+    requestAnimationFrame(() => {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+    });
+}
+
 export function isEyesFrontFrozen() {
     return currentlyFrozen && !isHostUser;
 }
 
-export async function setEyesFront(shouldFreeze, customMessage = 'EYES ON THE TEACHER') {
+export async function setEyesFront(shouldFreeze, customMessage = 'Eyes on Teacher') {
     if (!activeRoomCode || !window.firebaseDb) return;
 
     try {
@@ -185,7 +313,6 @@ export async function setEyesFront(shouldFreeze, customMessage = 'EYES ON THE TE
             updatedAt: Date.now()
         });
 
-        // Safety net: automatically unfreeze students if the teacher closes/refreshes their tab
         if (window.firebaseOnDisconnect) {
             if (shouldFreeze) {
                 disconnectHook = window.firebaseOnDisconnect(freezeRef);
@@ -200,7 +327,7 @@ export async function setEyesFront(shouldFreeze, customMessage = 'EYES ON THE TE
     }
 }
 
-export async function toggleEyesFront(customMessage = 'EYES ON THE TEACHER') {
+export async function toggleEyesFront(customMessage = 'Eyes on Teacher') {
     await setEyesFront(!currentlyFrozen, customMessage);
 }
 
@@ -222,7 +349,7 @@ export async function initEyesFront(roomCode, { isHost = false } = {}) {
 
         unsubscribeFreeze = onValue(freezeRef, (snapshot) => {
             const val = snapshot.val() || {};
-            applyFreezeState(Boolean(val.frozen), val.message || 'EYES ON THE TEACHER');
+            applyFreezeState(Boolean(val.frozen), val.message || 'Eyes on Teacher');
         });
     } catch (err) {
         console.error('Eyes Front listener error:', err);
