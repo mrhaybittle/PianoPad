@@ -6,8 +6,7 @@ import { audioCtx, initAudio, playErrorClackSound, playTone, bufferToWavBlob } f
 import { arcadeState, initMiniGamesBridge, stopBattlePolling, openArcadeHub, returnToPlayerHome, exitActiveMiniGame, handleMiniGameNoteInput, drawSimonStaircase, openSongBattleSelector, closeSprintOptionModal, syncSongBattlePlayerStats, markSongBattleLocalFinished } from './miniGames.js';
 import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDeck, sendKnockoutQuickEmote, selectKnockoutTeam, triggerStreakSabotage, resetKnockoutRoundEffects, joinClassKnockoutStudent, syncKnockoutLiveScore, submitKnockoutRoundFinish, leaveClassKnockout } from './knockout.js';
 import { initFinaleBridge, showGrandFinale, closeGrandFinale, toggleFanfareMute } from './finale.js';
-import { initEyesFront, stopEyesFront, isEyesFrontFrozen } from './eyesFront.js';
-
+import { initEyesFront, stopEyesFront, isEyesFrontFrozen, openEyesFrontPrompt } from './eyesFront.js';
 let songList = [];
 let currentSong = [];
 let currentSongTitle = "Wipeout";
