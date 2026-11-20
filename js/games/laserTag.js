@@ -24,7 +24,7 @@ const localPlayer = {
 };
 
 // Chord Detection Buffer (detects C + E + G played together in any octave)
-let recentChordNotes = []; // [{ pitchClass: 'C'|'E'|'G', time: ms }]
+let recentChordNotes = [];
 let pendingShotTimer = null;
 
 // Remote Players, Beams & Explosions
@@ -85,9 +85,7 @@ function normalizePitchClass(noteStr) {
 
 function isPlayerActiveInRoom(p) {
     if (!p || p.isAlive === false) return false;
-    if (typeof p.x !== 'number' || typeof p.y !== 'number') return false;
-    if (p.updatedAt && (Date.now() - p.updatedAt) > 12000) return false;
-    return true;
+    return typeof p.x === 'number' && typeof p.y === 'number' && !isNaN(p.x) && !isNaN(p.y);
 }
 
 function playLaserPew() {
@@ -187,21 +185,15 @@ function ensureCanvasSized(canvas) {
 }
 
 function getSafeSpawnPoint() {
+    // Spawn around the central open arena (tiles 11..20) so players spot each other quickly
     for (let attempt = 0; attempt < 600; attempt++) {
-        const c = 6 + Math.floor(Math.random() * 20);
-        const r = 6 + Math.floor(Math.random() * 20);
+        const c = 11 + Math.floor(Math.random() * 10);
+        const r = 11 + Math.floor(Math.random() * 10);
         if (ARENA_MAP[r] && ARENA_MAP[r][c] === 0) {
             return {
                 x: c * TILE_SIZE + TILE_SIZE / 2,
                 y: r * TILE_SIZE + TILE_SIZE / 2
             };
-        }
-    }
-    for (let r = 1; r < MAP_ROWS - 1; r++) {
-        for (let c = 1; c < MAP_COLS - 1; c++) {
-            if (ARENA_MAP[r][c] === 0) {
-                return { x: c * TILE_SIZE + TILE_SIZE / 2, y: r * TILE_SIZE + TILE_SIZE / 2 };
-            }
         }
     }
     return { x: TILE_SIZE * 15.5, y: TILE_SIZE * 15.5 };
@@ -273,14 +265,15 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${localPlayer.noteTag}] | Low C: Left • High C: Right • Hold C Major (C+E+G): Pause Movement • Enemy Pitch: Blast!`;
+        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${localPlayer.noteTag}] | Low C: Left • High C: Right • C+E+G: Pause • Enemy Pitch: Blast!`;
     }
 
     animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
 
     try {
         const { onValue, set, update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-        const myPlayerRef = window.firebaseRef(window.firebaseDb, `pianopad_lasertag/${activeRoomCode}/${localId}`);
+        const basePath = `pianopad_tournaments/${activeRoomCode}/lasertag`;
+        const myPlayerRef = window.firebaseRef(window.firebaseDb, `${basePath}/${localId}`);
 
         await set(myPlayerRef, {
             id: localId,
@@ -292,14 +285,13 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
             noteTag: localPlayer.noteTag,
             score: 0,
             name: state.sessionStudentName || 'Player',
-            avatar: state.sessionStudentAvatar || '🏃',
-            updatedAt: Date.now()
+            avatar: state.sessionStudentAvatar || '🏃'
         });
         if (window.firebaseOnDisconnect) {
             window.firebaseOnDisconnect(myPlayerRef).remove();
         }
 
-        const roomRef = window.firebaseRef(window.firebaseDb, `pianopad_lasertag/${activeRoomCode}`);
+        const roomRef = window.firebaseRef(window.firebaseDb, basePath);
         roomUnsubscribe = onValue(roomRef, (snapshot) => {
             const data = snapshot.val() || {};
             remotePlayers = data;
@@ -328,8 +320,7 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
                 noteTag: localPlayer.noteTag,
                 score: localPlayer.score,
                 name: state.sessionStudentName || 'Player',
-                avatar: state.sessionStudentAvatar || '🏃',
-                updatedAt: Date.now()
+                avatar: state.sessionStudentAvatar || '🏃'
             }).catch(() => {});
         }, 100);
     } catch (err) {
@@ -346,7 +337,7 @@ async function executeLaserShot(pitchClass) {
 
     const FOV = Math.PI / 3;
     let bestTarget = null;
-    let bestDist = 1100;
+    let bestDist = 1300;
 
     for (const [id, opp] of Object.entries(remotePlayers)) {
         if (id === localId || !isPlayerActiveInRoom(opp)) continue;
@@ -361,7 +352,7 @@ async function executeLaserShot(pitchClass) {
         while (relAngle > Math.PI) relAngle -= Math.PI * 2;
         while (relAngle < -Math.PI) relAngle += Math.PI * 2;
 
-        if (Math.abs(relAngle) <= FOV * 0.58 && hasLineOfSight(localPlayer.x, localPlayer.y, opp.x, opp.y)) {
+        if (Math.abs(relAngle) <= FOV * 0.62 && hasLineOfSight(localPlayer.x, localPlayer.y, opp.x, opp.y)) {
             bestDist = dist;
             bestTarget = { id, opp, relAngle, dist };
         }
@@ -389,10 +380,10 @@ async function executeLaserShot(pitchClass) {
 
         try {
             const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-            await update(window.firebaseRef(window.firebaseDb, `pianopad_lasertag/${activeRoomCode}/${bestTarget.id}`), {
+            const basePath = `pianopad_tournaments/${activeRoomCode}/lasertag`;
+            await update(window.firebaseRef(window.firebaseDb, `${basePath}/${bestTarget.id}`), {
                 isAlive: false,
-                killedBy: localId,
-                updatedAt: Date.now()
+                killedBy: localId
             });
         } catch (e) {}
 
@@ -425,21 +416,20 @@ export async function handleLaserTagInput(noteStr, bridge) {
     const pitchClass = normalizePitchClass(raw);
     const octave = match ? parseInt(match[2], 10) : 2;
 
-    // Track C, E, G notes within a 220ms window to detect a C Major Triad (any octave)
+    // Detect C Major Triad (C + E + G within 220ms) to engage movement brake
     if (pitchClass === 'C' || pitchClass === 'E' || pitchClass === 'G') {
         recentChordNotes.push({ pitchClass, time: now });
         recentChordNotes = recentChordNotes.filter(item => (now - item.time) <= 220);
 
         const heldClasses = new Set(recentChordNotes.map(item => item.pitchClass));
         if (heldClasses.has('C') && heldClasses.has('E') && heldClasses.has('G')) {
-            // Cancel any pending single-note laser shot from E or G
             if (pendingShotTimer !== null) {
                 clearTimeout(pendingShotTimer);
                 pendingShotTimer = null;
             }
             const wasPaused = localPlayer.isPaused;
             localPlayer.isPaused = true;
-            localPlayer.pauseUntil = now + 1200; // Holds brake for 1.2s; re-tapping/holding refreshes it
+            localPlayer.pauseUntil = now + 1200;
             localPlayer.turnDir = 0;
 
             if (!wasPaused) {
@@ -465,7 +455,6 @@ export async function handleLaserTagInput(noteStr, bridge) {
         return;
     }
 
-    // If E or G is pressed, wait 55ms so if it's part of a C Major chord (C+E+G), we pause instead of firing
     if (pitchClass === 'E' || pitchClass === 'G') {
         if (pendingShotTimer !== null) clearTimeout(pendingShotTimer);
         pendingShotTimer = setTimeout(() => {
@@ -475,7 +464,6 @@ export async function handleLaserTagInput(noteStr, bridge) {
         return;
     }
 
-    // All other pitches fire immediately
     executeLaserShot(pitchClass);
 }
 
@@ -575,7 +563,7 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         const wallHeight = Math.min(H * 1.6, (TILE_SIZE * H) / Math.max(1, correctedDist));
         const wallTop = horizon - wallHeight / 2;
 
-        const shade = Math.max(0.15, 1 - correctedDist / 1200) * (hit.side === 1 ? 0.78 : 1.0);
+        const shade = Math.max(0.15, 1 - correctedDist / 1300) * (hit.side === 1 ? 0.78 : 1.0);
 
         let r = 14, g = 116, b = 144;
         let edgeColor = `rgba(56, 189, 248, ${shade})`;
@@ -638,11 +626,11 @@ function renderFirstPerson3D(ctx, W, H, dt) {
             const visibleByLOS = hasLineOfSight(localPlayer.x, localPlayer.y, sp.opp.x, sp.opp.y);
             if (!visibleByLOS) {
                 const centerRay = Math.floor(screenX / stripW);
-                const leftRay = Math.max(0, centerRay - 4);
-                const rightRay = Math.min(numRays - 1, centerRay + 4);
+                const leftRay = Math.max(0, centerRay - 5);
+                const rightRay = Math.min(numRays - 1, centerRay + 5);
                 let anyRayOpen = false;
                 for (let rIdx = leftRay; rIdx <= rightRay; rIdx++) {
-                    if (zBuffer[rIdx] >= sp.dist - 12) {
+                    if (zBuffer[rIdx] >= sp.dist - 14) {
                         anyRayOpen = true;
                         break;
                     }
@@ -673,7 +661,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         const topY = horizon - spriteH * 0.42;
 
         ctx.save();
-        // Glowing Body Armor (dims slightly if opponent is holding C Major brake)
         ctx.fillStyle = sp.opp.isPaused ? '#0f172a' : '#1e293b';
         ctx.strokeStyle = sp.opp.isPaused ? '#facc15' : '#38bdf8';
         ctx.lineWidth = Math.max(2, spriteW * 0.06);
@@ -682,22 +669,20 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.fill();
         ctx.stroke();
 
-        // Neon Chest Core
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
         ctx.arc(screenX, topY + spriteH * 0.54, spriteW * 0.18, 0, Math.PI * 2);
         ctx.fill();
 
-        // Student Avatar Head
         const avatarSize = Math.max(18, Math.floor(spriteH * 0.30));
         ctx.font = `${avatarSize}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(sp.opp.avatar || '🤖', screenX, topY + spriteH * 0.12);
 
-        // Large High-Contrast Target Note Sign Above Opponent
+        // High-Contrast Target Pitch Sign Above Opponent
         const pitchLabel = normalizePitchClass(sp.opp.noteTag || 'G');
-        const badgeW = Math.max(66, spriteW * 1.15);
+        const badgeW = Math.max(68, spriteW * 1.15);
         const badgeH = Math.max(28, spriteH * 0.28);
         const badgeY = Math.max(12, topY - badgeH - 12);
 
@@ -795,7 +780,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         }
         ctx.restore();
 
-        // Center Crosshair
         ctx.strokeStyle = localPlayer.isPaused ? 'rgba(250, 204, 21, 0.9)' : 'rgba(56, 189, 248, 0.75)';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -804,7 +788,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.fillStyle = localPlayer.isPaused ? '#facc15' : '#22c55e';
         ctx.fillRect(W / 2 - 2, H / 2 - 2, 4, 4);
 
-        // Tactical Brake Indicator Banner when holding C Major
         if (localPlayer.isPaused) {
             ctx.save();
             ctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
@@ -916,7 +899,6 @@ function gameLoop(now, bridge) {
     const W = canvas.width;
     const H = canvas.height;
 
-    // Expire C Major brake automatically once timer elapses
     if (localPlayer.isPaused && now >= localPlayer.pauseUntil) {
         localPlayer.isPaused = false;
     }
@@ -924,7 +906,6 @@ function gameLoop(now, bridge) {
     if (localPlayer.isAlive) {
         localPlayer.angle += localPlayer.turnDir * 3.1 * dt;
 
-        // Only advance forward if C Major brake is NOT engaged
         if (!localPlayer.isPaused) {
             localPlayer.bobPhase += dt * 9.5;
 
@@ -1018,14 +999,14 @@ function gameLoop(now, bridge) {
     const aliveCount = Math.max(1, activePlayers.length);
 
     ctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
-    ctx.fillRect(W - 295, 10, 285, 54);
+    ctx.fillRect(W - 305, 10, 295, 54);
     ctx.strokeStyle = localPlayer.isPaused ? '#facc15' : '#22c55e';
-    ctx.strokeRect(W - 295, 10, 285, 54);
+    ctx.strokeRect(W - 305, 10, 295, 54);
 
     ctx.fillStyle = localPlayer.isPaused ? '#facc15' : '#22c55e';
     ctx.font = '900 13px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText(`SCORE: ${localPlayer.score} | ALIVE: ${aliveCount} | TAG: ${localPlayer.noteTag}`, W - 18, 30);
+    ctx.fillText(`ROOM ${activeRoomCode} • ALIVE: ${aliveCount} • YOUR TAG: ${localPlayer.noteTag}`, W - 18, 30);
 
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 11px sans-serif';
