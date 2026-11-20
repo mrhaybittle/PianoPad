@@ -21,12 +21,12 @@ const DEFAULT_GEAR = CHORD_GEARS[3]; // F Major (1.0x Normal Speed)
 
 // Distinct Color Themes for each Arena Sector (Walls + Minimap + Overhead View)
 const WALL_THEMES = {
-    1: { name: 'CYAN PERIMETER',  r: 14,  g: 116, b: 144, trim: [56, 189, 248],  mapHex: '#38bdf8' }, // Outer Fortress
-    2: { name: 'GOLD NW MAZE',    r: 146, g: 108, b: 14,  trim: [250, 204, 21],  mapHex: '#facc15' }, // North-West Sector
-    3: { name: 'MAGENTA NE MAZE', r: 112, g: 26,  b: 117, trim: [232, 121, 249], mapHex: '#e879f9' }, // North-East Sector
-    4: { name: 'CORAL SW MAZE',   r: 154, g: 52,  b: 18,  trim: [251, 146, 60],  mapHex: '#fb923c' }, // South-West Sector
-    5: { name: 'COBALT SE MAZE',  r: 30,  g: 64,  b: 175, trim: [96, 165, 250],  mapHex: '#60a5fa' }, // South-East Sector
-    6: { name: 'EMERALD ARENA',   r: 6,   g: 95,  b: 70,  trim: [52, 211, 153],  mapHex: '#34d399' }  // Open Courtyard Pillars
+    1: { name: 'CYAN PERIMETER',  r: 14,  g: 116, b: 144, trim: [56, 189, 248],  mapHex: '#38bdf8' },
+    2: { name: 'GOLD NW MAZE',    r: 146, g: 108, b: 14,  trim: [250, 204, 21],  mapHex: '#facc15' },
+    3: { name: 'MAGENTA NE MAZE', r: 112, g: 26,  b: 117, trim: [232, 121, 249], mapHex: '#e879f9' },
+    4: { name: 'CORAL SW MAZE',   r: 154, g: 52,  b: 18,  trim: [251, 146, 60],  mapHex: '#fb923c' },
+    5: { name: 'COBALT SE MAZE',  r: 30,  g: 64,  b: 175, trim: [96, 165, 250],  mapHex: '#60a5fa' },
+    6: { name: 'EMERALD ARENA',   r: 6,   g: 95,  b: 70,  trim: [52, 211, 153],  mapHex: '#34d399' }
 };
 
 // Local First-Person Player State
@@ -34,8 +34,8 @@ const localPlayer = {
     x: 0,
     y: 0,
     angle: 0,
-    turnDir: 0, // -1 left, 1 right
-    moveUntil: 0, // Timestamp while C# throttle is held
+    turnDir: 0,
+    moveUntil: 0,
     isMovingForward: false,
     lives: 3,
     hitsTaken: 0,
@@ -61,13 +61,27 @@ let pendingActionTimer = null;
 let lastChordTriggerTime = 0;
 let lastTriggeredChordId = '';
 
-// Remote Players, Beams & Explosions
+// Remote Players, Beams, Explosions & Host Stress-Test Bots
 let remotePlayers = {};
 let activeBeams = [];
 let worldExplosions = [];
 let activeRoomCode = null;
 let localId = null;
 let zBuffer = [];
+
+let isHostSession = false;
+let simulatedBots = {};
+let botKeyListenerAttached = false;
+
+const AUSSIE_TEEN_BOYS = [
+    "Lachlan", "Jack", "Oliver", "Noah", "William", "Leo", "Lucas", "Henry", "Charlie", "Liam",
+    "Thomas", "Ethan", "Cooper", "Harrison", "Archer", "Oscar", "Hudson", "Harvey", "Darcy", "Riley",
+    "Hunter", "Levi", "Flynn", "Jaxon", "Sebastian", "Isaac", "Xavier", "Beau", "Max", "Mason",
+    "Toby", "Zac", "Angus", "Hamish", "Callum", "Declan", "Brodie", "Koby", "Jett", "Ryder",
+    "Tyler", "Jake", "Nate", "Eli", "Kai", "Fletcher", "Caleb", "Baxter", "Ashton", "Mitchell"
+];
+
+const BOT_AVATARS = ['🏃', '🏄', '🚴', '🦊', '🐯', '🤖', '🛸', '🦄', '🎹', '🎧', '👨‍🎤', '😎', '🐱', '🐲', '🚀', '🥷'];
 
 // ~100% Larger 46x46 Procedural Sci-Fi Maze + 5 Open Courtyards
 const TILE_SIZE = 64;
@@ -91,7 +105,6 @@ function buildLargeArenaMap() {
     }
     carve(1, 1);
 
-    // Assign quadrant-specific color wall types (2 = Gold NW, 3 = Magenta NE, 4 = Coral SW, 5 = Cobalt SE)
     const midR = Math.floor(MAP_ROWS / 2);
     const midC = Math.floor(MAP_COLS / 2);
 
@@ -101,19 +114,18 @@ function buildLargeArenaMap() {
                 if (Math.random() < 0.22) {
                     grid[r][c] = 0;
                 } else if (r < midR && c < midC) {
-                    grid[r][c] = 2; // NW Gold
+                    grid[r][c] = 2;
                 } else if (r < midR && c >= midC) {
-                    grid[r][c] = 3; // NE Magenta
+                    grid[r][c] = 3;
                 } else if (r >= midR && c < midC) {
-                    grid[r][c] = 4; // SW Coral
+                    grid[r][c] = 4;
                 } else {
-                    grid[r][c] = 5; // SE Cobalt
+                    grid[r][c] = 5;
                 }
             }
         }
     }
 
-    // Carve 5 Open Courtyards with Emerald Pillars (type 6)
     const rooms = [
         { r0: 7, r1: 14, c0: 7, c1: 14 },
         { r0: 7, r1: 14, c0: 31, c1: 38 },
@@ -363,6 +375,109 @@ function getSafeSpawnPoint(avoidX = null, avoidY = null) {
     return best;
 }
 
+async function spawn50AussieBots() {
+    if (!isHostSession || !activeRoomCode || !window.firebaseDb) return;
+
+    const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+    const basePath = `pianopad_tournaments/${activeRoomCode}/lasertag`;
+    const updates = {};
+
+    simulatedBots = {};
+    const shuffledNames = [...AUSSIE_TEEN_BOYS].sort(() => Math.random() - 0.5);
+
+    for (let i = 0; i < 50; i++) {
+        const botId = `bot_au_${i + 1}`;
+        const name = shuffledNames[i % shuffledNames.length];
+        const avatar = BOT_AVATARS[i % BOT_AVATARS.length];
+        const pos = getSafeSpawnPoint();
+        const pitch = ASSIGNABLE_PITCHES[i % ASSIGNABLE_PITCHES.length];
+        const suitColor = getSuitColorForAvatar(avatar, botId);
+
+        const botData = {
+            id: botId,
+            name: name,
+            avatar: avatar,
+            x: Number(pos.x.toFixed(1)),
+            y: Number(pos.y.toFixed(1)),
+            angle: Math.random() * Math.PI * 2,
+            lives: 3,
+            hitsTaken: 0,
+            isAlive: true,
+            isStealth: false,
+            isInvulnerable: false,
+            suitColor: suitColor,
+            noteTag: pitch,
+            score: 0,
+            isBot: true,
+            turnTimer: Math.random() * 2.5
+        };
+
+        simulatedBots[botId] = botData;
+        updates[botId] = botData;
+    }
+
+    await update(window.firebaseRef(window.firebaseDb, basePath), updates);
+
+    const statusEl = document.getElementById('status');
+    if (statusEl) {
+        statusEl.textContent = `🤖 HOST STRESS TEST: Spawned 50 Aussie Teenage Bots into the 46×46 Arena!`;
+    }
+}
+
+function updateSimulatedBots(dt) {
+    const botList = Object.values(simulatedBots);
+    if (botList.length === 0) return;
+
+    const speed = 135;
+    const pad = 16;
+
+    for (const bot of botList) {
+        const serverBot = remotePlayers[bot.id];
+        if (serverBot && serverBot.lastHitEvent && serverBot.lastHitEvent.id !== bot.lastProcessedHit) {
+            bot.lastProcessedHit = serverBot.lastHitEvent.id;
+            bot.hitsTaken += 1;
+            bot.lives = Math.max(0, 3 - bot.hitsTaken);
+            if (bot.lives <= 0) {
+                bot.isAlive = false;
+            } else {
+                const respawn = getSafeSpawnPoint(bot.x, bot.y);
+                bot.x = respawn.x;
+                bot.y = respawn.y;
+                bot.invulnerableUntil = performance.now() + 3500;
+            }
+        }
+
+        if (!bot.isAlive) continue;
+        bot.isInvulnerable = performance.now() < (bot.invulnerableUntil || 0);
+
+        bot.turnTimer -= dt;
+        if (bot.turnTimer <= 0) {
+            bot.angle += (Math.random() - 0.5) * Math.PI;
+            bot.turnTimer = 1.2 + Math.random() * 2.5;
+        }
+
+        const dx = Math.cos(bot.angle) * speed * dt;
+        const dy = Math.sin(bot.angle) * speed * dt;
+        const colX = Math.floor((bot.x + dx + (dx > 0 ? pad : -pad)) / TILE_SIZE);
+        const curRow = Math.floor(bot.y / TILE_SIZE);
+        const rowY = Math.floor((bot.y + dy + (dy > 0 ? pad : -pad)) / TILE_SIZE);
+        const curCol = Math.floor(bot.x / TILE_SIZE);
+
+        let blocked = true;
+        if (ARENA_MAP[curRow] && ARENA_MAP[curRow][colX] === 0) {
+            bot.x += dx;
+            blocked = false;
+        }
+        if (ARENA_MAP[rowY] && ARENA_MAP[rowY][curCol] === 0) {
+            bot.y += dy;
+            blocked = false;
+        }
+        if (blocked) {
+            bot.angle += (Math.random() > 0.5 ? 1 : -1) * (Math.PI / 2);
+        }
+    }
+}
+
 export function stopLaserTag() {
     if (animFrameId !== null) cancelAnimationFrame(animFrameId);
     if (syncIntervalId !== null) clearInterval(syncIntervalId);
@@ -376,12 +491,26 @@ export function stopLaserTag() {
     pendingActionTimer = null;
     recentNoteBuffer = [];
     processedHitIds.clear();
+    simulatedBots = {};
+    isHostSession = false;
     gamePhase = 'lobby';
 }
 
-export async function startLaserTag(bridge, autoRoomCode = null) {
+export async function startLaserTag(bridge, autoRoomCode = null, isHost = false) {
     initAudio();
     stopLaserTag();
+
+    isHostSession = Boolean(isHost || !autoRoomCode);
+
+    if (!botKeyListenerAttached) {
+        botKeyListenerAttached = true;
+        window.addEventListener('keydown', (e) => {
+            if (e.key === '@' && isHostSession && gamePhase === 'playing') {
+                e.preventDefault();
+                spawn50AussieBots();
+            }
+        });
+    }
 
     document.getElementById('arcade-hub')?.classList.remove('open');
     document.getElementById('knockout-modal')?.classList.remove('open');
@@ -442,7 +571,9 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${localPlayer.noteTag}] | Hold C#: Forward • C: Left • D: Right • Chords: Lock Speed • Other Notes: Fire!`;
+        statusEl.textContent = isHostSession
+            ? `🛸 3D LASER TAG (HOST)! Shield: [${localPlayer.noteTag}] | Press @ to spawn 50 test bots | Hold C#: Forward • C/D: Turn`
+            : `🛸 3D LASER TAG! Shield: [${localPlayer.noteTag}] | Hold C#: Forward • C: Left • D: Right • Chords: Speed • Notes: Fire!`;
     }
 
     animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
@@ -544,25 +675,42 @@ export async function startLaserTag(bridge, autoRoomCode = null) {
         });
 
         syncIntervalId = setInterval(() => {
-            if (bridge.getActiveMiniGame() !== 'laserTag' || !localPlayer.isAlive) return;
-            const isInvuln = performance.now() < localPlayer.invulnerableUntil;
-            update(myPlayerRef, {
-                x: Number(localPlayer.x.toFixed(1)),
-                y: Number(localPlayer.y.toFixed(1)),
-                angle: Number(localPlayer.angle.toFixed(3)),
-                lives: localPlayer.lives,
-                hitsTaken: localPlayer.hitsTaken,
-                isAlive: localPlayer.isAlive,
-                gearId: localPlayer.currentGear.id,
-                isStealth: localPlayer.currentGear.stealth,
-                isInvulnerable: isInvuln,
-                suitColor: localPlayer.suitColor,
-                noteTag: localPlayer.noteTag,
-                score: localPlayer.score,
-                name: state.sessionStudentName || 'Player',
-                avatar: avatar
-            }).catch(() => {});
-        }, 100);
+            if (bridge.getActiveMiniGame() !== 'laserTag') return;
+
+            if (localPlayer.isAlive) {
+                const isInvuln = performance.now() < localPlayer.invulnerableUntil;
+                update(myPlayerRef, {
+                    x: Number(localPlayer.x.toFixed(1)),
+                    y: Number(localPlayer.y.toFixed(1)),
+                    angle: Number(localPlayer.angle.toFixed(3)),
+                    lives: localPlayer.lives,
+                    hitsTaken: localPlayer.hitsTaken,
+                    isAlive: localPlayer.isAlive,
+                    gearId: localPlayer.currentGear.id,
+                    isStealth: localPlayer.currentGear.stealth,
+                    isInvulnerable: isInvuln,
+                    suitColor: localPlayer.suitColor,
+                    noteTag: localPlayer.noteTag,
+                    score: localPlayer.score,
+                    name: state.sessionStudentName || 'Player',
+                    avatar: avatar
+                }).catch(() => {});
+            }
+
+            if (isHostSession && Object.keys(simulatedBots).length > 0) {
+                const botBatch = {};
+                for (const bot of Object.values(simulatedBots)) {
+                    botBatch[`${bot.id}/x`] = Number(bot.x.toFixed(1));
+                    botBatch[`${bot.id}/y`] = Number(bot.y.toFixed(1));
+                    botBatch[`${bot.id}/angle`] = Number(bot.angle.toFixed(3));
+                    botBatch[`${bot.id}/lives`] = bot.lives;
+                    botBatch[`${bot.id}/hitsTaken`] = bot.hitsTaken;
+                    botBatch[`${bot.id}/isAlive`] = bot.isAlive;
+                    botBatch[`${bot.id}/isInvulnerable`] = Boolean(bot.isInvulnerable);
+                }
+                update(window.firebaseRef(window.firebaseDb, basePath), botBatch).catch(() => {});
+            }
+        }, 120);
     } catch (err) {
         console.error("Laser Tag Firebase sync error:", err);
     }
@@ -836,7 +984,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
     const bobOffset = localPlayer.isAlive ? Math.sin(localPlayer.bobPhase) * bobAmp : 0;
     const horizon = H * 0.52 + bobOffset;
 
-    // 1. Sci-Fi Ceiling & Floor
     const ceilGrad = ctx.createLinearGradient(0, 0, 0, horizon);
     ceilGrad.addColorStop(0, '#020617');
     ceilGrad.addColorStop(1, '#0f172a');
@@ -859,7 +1006,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.stroke();
     }
 
-    // 2. Raycast 3D Color-Coded Sector Walls
     const numRays = Math.min(320, Math.floor(W / 3));
     const stripW = W / numRays;
     zBuffer = new Array(numRays);
@@ -886,7 +1032,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.fillRect(i * stripW, wallTop + wallHeight - trimH, stripW + 1, trimH);
     }
 
-    // 3. Depth-Sorted 3D Opponents & Explosion Particles
     const sprites = [];
 
     for (const [id, opp] of Object.entries(remotePlayers)) {
@@ -1028,7 +1173,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.restore();
     }
 
-    // 4. First-Person Laser Beams
     for (let i = activeBeams.length - 1; i >= 0; i--) {
         const b = activeBeams[i];
         b.life -= dt * 4.5;
@@ -1057,7 +1201,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.restore();
     }
 
-    // 5. First-Person Space Blaster Viewmodel
     if (localPlayer.isAlive) {
         localPlayer.recoil = Math.max(0, localPlayer.recoil - dt * 5);
         localPlayer.muzzleFlash = Math.max(0, localPlayer.muzzleFlash - dt * 8);
@@ -1099,7 +1242,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         }
         ctx.restore();
 
-        // Center Crosshair
         ctx.strokeStyle = localPlayer.currentGear.color;
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -1108,7 +1250,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         ctx.fillStyle = localPlayer.suitColor;
         ctx.fillRect(W / 2 - 2, H / 2 - 2, 4, 4);
 
-        // Top-Left Current Sector Badge
         const myZone = getZoneInfoForCoords(localPlayer.x, localPlayer.y);
         ctx.save();
         ctx.fillStyle = 'rgba(2, 6, 23, 0.86)';
@@ -1143,7 +1284,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
             ctx.restore();
         }
 
-        // Bottom-Center Chord Speed Gear & Throttle HUD Pill
         const g = localPlayer.currentGear;
         const throttleText = activelyMoving ? ' • 🟢 C# THRUSTING' : ' • ⚪ HOLD C# TO MOVE';
         ctx.save();
@@ -1184,7 +1324,6 @@ function renderFirstPerson3D(ctx, W, H, dt) {
         }
     }
 
-    // Orange Shield Flash (Hits 1 & 2) or Red Elimination Flash (3rd Hit)
     if (localPlayer.damageFlash > 0) {
         localPlayer.damageFlash = Math.max(0, localPlayer.damageFlash - dt * 1.15);
         ctx.save();
@@ -1296,8 +1435,12 @@ function gameLoop(now, bridge) {
     const W = canvas.width;
     const H = canvas.height;
 
+    if (isHostSession && Object.keys(simulatedBots).length > 0) {
+        updateSimulatedBots(dt);
+    }
+
     if (localPlayer.isAlive) {
-       localPlayer.angle += localPlayer.turnDir * 1.55 * dt;
+        localPlayer.angle += localPlayer.turnDir * 1.55 * dt;
 
         localPlayer.isMovingForward = now < localPlayer.moveUntil;
         const speedMult = localPlayer.currentGear.mult;
@@ -1347,7 +1490,6 @@ function gameLoop(now, bridge) {
         const scaleX = mmSize / (MAP_COLS * TILE_SIZE);
         const scaleY = mmSize / (MAP_ROWS * TILE_SIZE);
 
-        // Render each sector's walls in its matching 3D wall color
         for (let r = 0; r < MAP_ROWS; r++) {
             for (let c = 0; c < MAP_COLS; c++) {
                 const tile = ARENA_MAP[r][c];
@@ -1384,11 +1526,11 @@ function gameLoop(now, bridge) {
             ctx.restore();
         }
 
+        // Pulsing Bright Yellow Radar Beacon for Local Player
         const lx = mmX + localPlayer.x * scaleX;
         const ly = mmY + localPlayer.y * scaleY;
-        const pulseWave = (Math.sin(now * 0.008) + 1) * 0.5; // 0 to 1 smooth pulse
+        const pulseWave = (Math.sin(now * 0.008) + 1) * 0.5;
 
-        // Expanding bright yellow outer pulse ring
         ctx.save();
         ctx.strokeStyle = `rgba(250, 204, 21, ${0.95 - pulseWave * 0.65})`;
         ctx.lineWidth = 2;
@@ -1396,13 +1538,11 @@ function gameLoop(now, bridge) {
         ctx.arc(lx, ly, 5 + pulseWave * 8, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Soft yellow radar glow
         ctx.fillStyle = `rgba(250, 204, 21, ${0.35 - pulseWave * 0.2})`;
         ctx.beginPath();
         ctx.arc(lx, ly, 6 + pulseWave * 5, 0, Math.PI * 2);
         ctx.fill();
 
-        // View direction pointer
         ctx.strokeStyle = '#facc15';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -1410,7 +1550,6 @@ function gameLoop(now, bridge) {
         ctx.lineTo(lx + Math.cos(localPlayer.angle) * 15, ly + Math.sin(localPlayer.angle) * 15);
         ctx.stroke();
 
-        // Solid bright yellow center dot with dark outline
         ctx.fillStyle = '#facc15';
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 1.5;
