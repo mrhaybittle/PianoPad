@@ -412,6 +412,17 @@ function updateNameThatTuneProgressText(answeredCount, totalCount) {
 // ==========================================
 // TOURNAMENT & AUTO-NEXT ENGINE
 // ==========================================
+
+export async function kickKnockoutPlayer(playerId, playerName) {
+    if (!koState.isKnockoutHost || !koState.knockoutRoomCode || !window.firebaseDb) return;
+    if (!confirm(`Are you sure you want to remove ${playerName} from the tournament?`)) return;
+
+    const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+    const updates = {};
+    updates[`players/${playerId}`] = null;
+    await update(window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${koState.knockoutRoomCode}`), updates);
+}
+
 function clearKnockoutAutoNextTimer() {
     if (koAutoNextInterval) {
         clearInterval(koAutoNextInterval);
@@ -1309,6 +1320,7 @@ function buildStandingsHTML(rankedPlayers, mode = 'solo', playersObj = {}, nttGr
     const { localStudentId } = bridge.getState();
     const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms' || (mode === 'namethattune' && nttGroupHouses));
     const teamTable = isTeamMode ? buildTeamStandingsHTML(playersObj, mode) : '';
+    const isHost = koState.isKnockoutHost;
 
     let rows = rankedPlayers.map((p, idx) => {
         const rankBadge = idx === 0 ? '🥇 1st' : idx === 1 ? '🥈 2nd' : idx === 2 ? '🥉 3rd' : `#${idx + 1}`;
@@ -1322,10 +1334,14 @@ function buildStandingsHTML(rankedPlayers, mode = 'solo', playersObj = {}, nttGr
             ? ` <span style="background:#f97316; color:#000; font-size:0.65rem; padding:1px 5px; border-radius:4px; font-weight:900; margin-left:4px;">🔥 ${streak}</span>`
             : '';
 
+        const kickBtn = isHost && p.id !== localStudentId
+            ? `<button type="button" onclick="kickKnockoutPlayer('${p.id}', '${p.name.replace(/'/g, "\\'")}')" style="margin-left:8px; background:#ef4444; color:#fff; border:none; border-radius:4px; padding:2px 6px; font-size:0.65rem; cursor:pointer;" title="Remove Student">❌ Kick</button>`
+            : '';
+
         return `
             <tr style="${p.id === localStudentId ? 'background:rgba(56,189,248,0.15);' : ''}">
                 <td style="font-weight:800; color:#facc15;">${rankBadge}</td>
-                <td style="font-weight:700;">${p.avatar || '🏃'} ${p.name}${teamBadge}${bountyTag}${streakTag}</td>
+                <td style="font-weight:700;">${p.avatar || '🏃'} ${p.name}${teamBadge}${bountyTag}${streakTag}${kickBtn}</td>
                 <td style="color:#22c55e; font-weight:800;">${p.wins || 0}W - ${p.losses || 0}L</td>
                 <td style="color:#38bdf8; font-weight:700;">${avgAcc}% avg</td>
             </tr>
@@ -1345,7 +1361,7 @@ function buildStandingsHTML(rankedPlayers, mode = 'solo', playersObj = {}, nttGr
 }
 
 function generateSwissPairings(playersObj, roundNum, mode = 'solo') {
-    if (mode === 'namethattune' || mode === 'lasertag') return {}; // No 1v1 pairings
+    if (mode === 'namethattune' || mode === 'lasertag') return {}; 
 
     const players = Object.values(playersObj || {});
     const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms');
@@ -1515,10 +1531,12 @@ function handleKnockoutHostUpdate(data) {
         } else {
             statusBanner.textContent = `Lobby Open (${ranked.length} students connected). Select Round 1 song & click Start!`;
         }
+        
         bracketDiv.innerHTML = ranked.map(p => `
-            <div class="lobby-player-card">
+            <div class="lobby-player-card" style="position:relative;">
                 <span>${p.avatar || '🏃'}</span>
                 <span>${p.name} (${p.studentClass || 'Class'})${isTeamMode ? getTeamBadgeHTML(p, mode, nttGroupHouses) : ''}</span>
+                <button type="button" onclick="kickKnockoutPlayer('${p.id}', '${p.name.replace(/'/g, "\\'")}')" style="position:absolute; top:4px; right:4px; background:#ef4444; color:#fff; border:none; border-radius:4px; width:20px; height:20px; font-size:0.7rem; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Remove Student">✖</button>
             </div>
         `).join('');
         return;
@@ -1529,7 +1547,6 @@ function handleKnockoutHostUpdate(data) {
         btnForce.style.display = 'inline-flex';
         btnFinish.style.display = (data.round || 0) >= 1 ? 'inline-flex' : 'none';
 
-        // NAME THAT TUNE LIVE ANSWER MONITOR
         if (mode === 'namethattune') {
             const allPlayers = Object.values(playersObj);
             let allDone = allPlayers.length > 0;
@@ -1568,13 +1585,11 @@ function handleKnockoutHostUpdate(data) {
             return;
         }
         
-        // LASER TAG TEACHER VIEW
         if (mode === 'lasertag') {
             bracketDiv.innerHTML = `<div style="padding:20px; font-size:1.1rem; color:#38bdf8; font-weight:900; text-align:center;">🛸 Laser Tag Arena is Live! (Monitoring matches...)</div>`;
             return;
         }
 
-        // STANDARD 1V1 SWISS BRACKET MONITOR
         const pairings = Object.values(data.pairings || {});
         let allDone = true;
 
@@ -1676,6 +1691,12 @@ function handleKnockoutHostUpdate(data) {
             document.getElementById('knockout-modal')?.classList.remove('open');
 
             let standings = data.finalStandings || [];
+            if (standings.length === 0) {
+                const ranked = getRankedKnockoutPlayers(data.players || {});
+                standings = ranked.map(p => ({
+                    name: p.name, score: p.roundsPlayed > 0 ? (p.totalAcc / p.roundsPlayed).toFixed(1) : '0.0', avatar: p.avatar, id: p.id
+                }));
+            }
             const finaleTitle = mode === 'namethattune'
                 ? `🎵 Name That Tune Championship Complete!`
                 : (mode === 'rooms'
@@ -1726,7 +1747,6 @@ function buildRoundScoreUpdates(data) {
     }
     
     if (mode === 'lasertag') {
-        // Laser tag has its own scoring/ending logic, skip pairings
         return updates;
     }
 
@@ -1939,6 +1959,14 @@ async function finalizeClassKnockout() {
 function handleKnockoutStudentUpdate(data) {
     const { localStudentId, sessionStudentName, sessionStudentAvatar } = bridge.getState();
     const playersObj = data.players || {};
+    
+    // NEW: Kick Handler for Students
+    if (!playersObj[localStudentId]) {
+        alert("You have been removed from the tournament by the teacher.");
+        leaveClassKnockout();
+        return;
+    }
+
     const mode = data.tournamentMode || 'solo';
     const nttGroupHouses = data.nttGroupHouses !== false;
     const me = playersObj[localStudentId];
@@ -1988,11 +2016,9 @@ function handleKnockoutStudentUpdate(data) {
         updateTugOfWarHUD(myLiveAcc, oppLiveAcc);
     }
 
-    // ROUND START HANDLER
     if (data.status === 'playing' && knockoutLastRoundStarted !== data.round) {
         knockoutLastRoundStarted = data.round;
 
-        // LASER TAG ARENA LAUNCH
         if (mode === 'lasertag') {
             document.getElementById('knockout-modal').classList.remove('open');
             document.getElementById('game-results-modal').classList.remove('open');
@@ -2004,7 +2030,6 @@ function handleKnockoutStudentUpdate(data) {
             return;
         }
 
-        // NAME THAT TUNE STUDENT ROUND START
         if (mode === 'namethattune') {
             document.getElementById('knockout-modal').classList.remove('open');
             document.getElementById('game-results-modal').classList.remove('open');
@@ -2026,7 +2051,6 @@ function handleKnockoutStudentUpdate(data) {
             return;
         }
 
-        // STANDARD PIANO BATTLE ROUND START
         if (data.songCode) {
             bridge.setCurrentSongTitle(data.songTitle);
             const songSelect = document.getElementById('song-select');
@@ -2341,6 +2365,7 @@ export function leaveClassKnockout() {
     bridge.stopSong();
 }
 
+window.kickKnockoutPlayer = kickKnockoutPlayer;
 window.selectKnockoutTeam = selectKnockoutTeam;
 window.dealKnockoutEmoteDeck = dealKnockoutEmoteDeck;
 window.sendKnockoutQuickEmote = sendKnockoutQuickEmote;
