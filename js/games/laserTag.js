@@ -4,7 +4,7 @@ let animFrameId = null;
 let syncIntervalId = null;
 let roomUnsubscribe = null;
 let lastFrameTime = 0;
-let gamePhase = 'lobby'; // 'lobby' | 'playing' | 'spectating'
+let gamePhase = 'lobby'; // 'lobby' | 'playing' | 'spectating' | 'podium'
 
 // 7 Diatonic White-Key Triad Speed Gears (locked in until another chord is played)
 const CHORD_GEARS = [
@@ -15,6 +15,12 @@ const CHORD_GEARS = [
     { id: 'G',    notes: ['G', 'B', 'D'], label: 'G MAJOR • BRISK (1.35x)',    short: '⚡ BRISK',       mult: 1.35, color: '#38bdf8', stealth: false },
     { id: 'Am',   notes: ['A', 'C', 'E'], label: 'A MINOR • DASH (1.68x)',     short: '🔥 DASH',        mult: 1.68, color: '#fb923c', stealth: false },
     { id: 'Bdim', notes: ['B', 'D', 'F'], label: 'B DIM • SPRINT X2 (2.0x)',   short: '🚀 SPRINT X2',   mult: 2.00, color: '#ef4444', stealth: false }
+];
+
+// 4-Note Major 7th Overcharge Chords (Wide-cone shockwave ignoring target pitch, 15s cooldown)
+const OVERCHARGE_CHORDS = [
+    { id: 'Cmaj7', notes: ['C', 'E', 'G', 'B'], label: 'C MAJ7 OVERCHARGE' },
+    { id: 'Fmaj7', notes: ['F', 'A', 'C', 'E'], label: 'F MAJ7 OVERCHARGE' }
 ];
 
 const DEFAULT_GEAR = CHORD_GEARS[3]; // F Major (1.0x Normal Speed)
@@ -39,10 +45,15 @@ const localPlayer = {
     isMovingForward: false,
     lives: 3,
     hitsTaken: 0,
+    eliminations: 0,
     isAlive: true,
     currentGear: DEFAULT_GEAR,
     invulnerableUntil: 0,
     portalCooldownUntil: 0,
+    boostUntil: 0,
+    overchargeReadyAt: 0,
+    hitMarkerUntil: 0,
+    hitMarkerElim: false,
     suitColor: '#38bdf8',
     score: 0,
     noteTag: 'F#',
@@ -56,12 +67,19 @@ const localPlayer = {
     gearBannerFlash: 0
 };
 
-// Two Randomly Generated Linked Quantum Portals
-let arenaPortals = []; // [{ id, name, x, y, color, secondaryColor }]
+// Arena Interactive Entities
+let arenaPortals = [];    // 2 Random Quantum Portals
+let speedBoostPads = [];  // 4 Avenue Speed Boost Pads
+let medKitNodes = [];     // 3 Outer Courtyard Heart Pickups
+
+// Kill Feed & Podium Tracking
+let killFeedEntries = []; // [{ id, text, color, expiresAt }]
+let seenFeedIds = new Set();
+let maxPeakPlayers = 1;
 
 // Spectator Drone Interactive Alert State
-let spectatorSelectedTarget = null; // { id, name, screenX, screenY }
-let incomingAlertBanner = null;     // { text, fromName, until }
+let spectatorSelectedTarget = null;
+let incomingAlertBanner = null;
 let processedAlertIds = new Set();
 let spectatorClickListenerAttached = false;
 
@@ -84,7 +102,7 @@ let zBuffer = [];
 let simulatedBots = {};
 let globalKeyListenerAttached = false;
 
-// 50 Contemporary 2026 Australian Teenage Male Names (born ~2009–2013)
+// 50 Contemporary 2026 Australian Teenage Male Names
 const AUSSIE_2026_TEEN_BOYS = [
     "Lachlan", "Jack", "Oliver", "Noah", "William", "Leo", "Lucas", "Henry", "Charlie", "Liam",
     "Thomas", "Ethan", "Cooper", "Harrison", "Archer", "Oscar", "Hudson", "Harvey", "Darcy", "Riley",
@@ -111,7 +129,7 @@ function buildFastPacedArenaMap() {
         grid[i][MAP_COLS - 1] = 1;
     }
 
-    // 2. GOLD NW SECTOR (rows 2..18, cols 2..18): Double Concentric Curved Rotundas (type 2)
+    // 2. GOLD NW SECTOR: Double Concentric Curved Rotundas (type 2)
     const nwCenterR = 10, nwCenterC = 10;
     for (let r = 2; r <= 18; r++) {
         for (let c = 2; c <= 18; c++) {
@@ -119,19 +137,13 @@ function buildFastPacedArenaMap() {
             const isCardinalGap = Math.abs(r - nwCenterR) <= 1 || Math.abs(c - nwCenterC) <= 1;
             const isDiagGap = Math.abs(Math.abs(r - nwCenterR) - Math.abs(c - nwCenterC)) <= 1;
 
-            // Outer ring (2-tile wide lanes inside and out)
-            if (dist >= 6.8 && dist <= 8.1 && !isDiagGap) {
-                grid[r][c] = 2;
-            }
-            // Inner ring with 4 cardinal entrances
-            if (dist >= 3.2 && dist <= 4.3 && !isCardinalGap) {
-                grid[r][c] = 2;
-            }
+            if (dist >= 6.8 && dist <= 8.1 && !isDiagGap) grid[r][c] = 2;
+            if (dist >= 3.2 && dist <= 4.3 && !isCardinalGap) grid[r][c] = 2;
         }
     }
-    grid[10][10] = 2; // Central golden column
+    grid[10][10] = 2;
 
-    // 3. MAGENTA NE SECTOR (rows 2..18, cols 27..43): Staggered Triangular Prism Field (type 3)
+    // 3. MAGENTA NE SECTOR: Staggered Triangular Prism Field (type 3)
     const placeTriangle = (topR, topC, flipDown = false) => {
         if (!flipDown) {
             grid[topR][topC] = 3;
@@ -158,24 +170,21 @@ function buildFastPacedArenaMap() {
     placeTriangle(13, 36, true);
     placeTriangle(13, 41, false);
 
-    // 4. CORAL SW SECTOR (rows 27..43, cols 2..18): Structured 2-Tile Wide Chicane Lanes (type 4)
+    // 4. CORAL SW SECTOR: Structured 2-Tile Wide Chicane Lanes (type 4)
     const swWalls = [
-        // Upper barrier tier
         [29, 3], [29, 4], [29, 5], [29, 6], [30, 6], [31, 6],
         [29, 10], [30, 10], [31, 10], [31, 11], [31, 12],
         [29, 15], [29, 16], [29, 17], [30, 15], [31, 15],
-        // Mid barrier tier
         [34, 3], [34, 4], [35, 4], [36, 4], [36, 5],
         [34, 8], [34, 9], [35, 8], [36, 8],
         [34, 13], [35, 13], [35, 14], [35, 15], [34, 17], [35, 17],
-        // Lower barrier tier
         [39, 3], [40, 3], [41, 3], [41, 4], [41, 5],
         [39, 8], [39, 9], [39, 10], [40, 10], [41, 10],
         [39, 13], [40, 13], [41, 13], [41, 14], [41, 15], [39, 17], [40, 17]
     ];
     for (const [r, c] of swWalls) grid[r][c] = 4;
 
-    // 5. COBALT SE SECTOR (rows 27..43, cols 27..43): Dense Diamond & Cross Pillar Grid (type 5)
+    // 5. COBALT SE SECTOR: Diamond & Cross Pillar Grid (type 5)
     const placeDiamond = (cr, cc) => {
         grid[cr - 1][cc] = 5;
         grid[cr][cc - 1] = 5;
@@ -192,27 +201,20 @@ function buildFastPacedArenaMap() {
     placeDiamond(39, 35);
     placeDiamond(39, 41);
 
-    // 6. MAIN BOULEVARD COVER & EMERALD CENTRAL HUB (rows 18..27, cols 18..27)
-    // Colonnade pillars along the 4 main cross-avenues so long sightlines have tactical cover
+    // 6. MAIN BOULEVARD COVER & EMERALD CENTRAL HUB (type 6)
     const avenuePillars = [
-        // North Avenue
         [4, 21], [4, 24], [9, 20], [9, 25], [14, 21], [14, 24],
-        // South Avenue
         [31, 21], [31, 24], [36, 20], [36, 25], [41, 21], [41, 24],
-        // West Avenue
         [21, 4], [24, 4], [20, 9], [25, 9], [21, 14], [24, 14],
-        // East Avenue
         [21, 31], [24, 31], [20, 36], [25, 36], [21, 41], [24, 41]
     ];
     for (const [r, c] of avenuePillars) grid[r][c] = 1;
 
-    // Emerald Hub Perimeter Gates & Inner Curved Columns (type 6)
     grid[18][19] = 6; grid[18][20] = 6; grid[18][25] = 6; grid[18][26] = 6;
     grid[27][19] = 6; grid[27][20] = 6; grid[27][25] = 6; grid[27][26] = 6;
     grid[19][18] = 6; grid[20][18] = 6; grid[25][18] = 6; grid[26][18] = 6;
     grid[19][27] = 6; grid[20][27] = 6; grid[25][27] = 6; grid[26][27] = 6;
 
-    // 4 Inner Emerald Hub Pillars
     grid[21][21] = 6;
     grid[21][24] = 6;
     grid[24][21] = 6;
@@ -223,32 +225,40 @@ function buildFastPacedArenaMap() {
 
 let ARENA_MAP = buildFastPacedArenaMap();
 
-function generateRandomPortals() {
+function setupArenaFeatures() {
+    // 1. Two Randomly Generated Linked Quantum Portals
     const p1 = getSafeSpawnPoint();
     const p2 = getSafeSpawnPoint(p1.x, p1.y);
     arenaPortals = [
-        {
-            id: 'portal_alpha',
-            name: 'ALPHA PORTAL',
-            x: p1.x,
-            y: p1.y,
-            color: '#06b6d4',
-            secondaryColor: '#a5f3fc'
-        },
-        {
-            id: 'portal_omega',
-            name: 'OMEGA PORTAL',
-            x: p2.x,
-            y: p2.y,
-            color: '#d946ef',
-            secondaryColor: '#f5d0fe'
-        }
+        { id: 'portal_alpha', name: 'ALPHA PORTAL', x: p1.x, y: p1.y, color: '#06b6d4', secondaryColor: '#a5f3fc' },
+        { id: 'portal_omega', name: 'OMEGA PORTAL', x: p2.x, y: p2.y, color: '#d946ef', secondaryColor: '#f5d0fe' }
     ];
+
+    // 2. Four Avenue Speed Boost Pads (North, South, West, East highways)
+    speedBoostPads = [
+        { id: 'boost_n', x: 22.5 * TILE_SIZE, y: 11.5 * TILE_SIZE, angle: Math.PI * 0.5 },
+        { id: 'boost_s', x: 22.5 * TILE_SIZE, y: 33.5 * TILE_SIZE, angle: -Math.PI * 0.5 },
+        { id: 'boost_w', x: 11.5 * TILE_SIZE, y: 22.5 * TILE_SIZE, angle: 0 },
+        { id: 'boost_e', x: 33.5 * TILE_SIZE, y: 22.5 * TILE_SIZE, angle: Math.PI }
+    ];
+
+    // 3. Three Floating Med-Kit / Shield Recharge Nodes in Outer Zones
+    const medCoords = [
+        { r: 6, c: 10 },  // Gold NW outer ring
+        { r: 10, c: 35 }, // Magenta NE center
+        { r: 35, c: 10 }  // Coral SW center
+    ];
+    medKitNodes = medCoords.map((pt, idx) => ({
+        id: `med_${idx}`,
+        x: (pt.c + 0.5) * TILE_SIZE,
+        y: (pt.r + 0.5) * TILE_SIZE,
+        respawnAt: 0
+    }));
 }
 
 function generateSeededArena(roomCode) {
     ARENA_MAP = buildFastPacedArenaMap();
-    generateRandomPortals();
+    setupArenaFeatures();
 }
 
 function getZoneInfoForCoords(wx, wy) {
@@ -263,6 +273,18 @@ function getZoneInfoForCoords(wx, wy) {
     if (row < midR && col >= midC) return { label: 'MAGENTA TRIANGLE NE', color: '#e879f9' };
     if (row >= midR && col < midC) return { label: 'CORAL CHICANE SW', color: '#fb923c' };
     return { label: 'COBALT DIAMOND SE', color: '#60a5fa' };
+}
+
+function addKillFeedEntry(id, text, color = '#facc15') {
+    if (!id || seenFeedIds.has(id)) return;
+    seenFeedIds.add(id);
+    killFeedEntries.unshift({
+        id,
+        text,
+        color,
+        expiresAt: performance.now() + 6500
+    });
+    if (killFeedEntries.length > 4) killFeedEntries.pop();
 }
 
 // 9 assignable target pitches (C = Left, C# = Forward, D = Right)
@@ -298,11 +320,24 @@ function matchDiatonicTriad(pitchSet) {
     return null;
 }
 
+function matchOverchargeChord(pitchSet) {
+    if (pitchSet.size !== 4) return null;
+    for (const oc of OVERCHARGE_CHORDS) {
+        if (oc.notes.every(n => pitchSet.has(n))) {
+            return oc;
+        }
+    }
+    return null;
+}
+
 function isPlayerActiveInRoom(p) {
     if (!p || p.isAlive === false) return false;
     return typeof p.x === 'number' && typeof p.y === 'number' && !isNaN(p.x) && !isNaN(p.y);
 }
 
+// ==========================================
+// WEB AUDIO SYNTH EFFECTS
+// ==========================================
 function playLaserPew() {
     try {
         initAudio();
@@ -318,6 +353,79 @@ function playLaserPew() {
         gain.connect(audioCtx.destination);
         osc.start(now);
         osc.stop(now + 0.18);
+    } catch (e) {}
+}
+
+function playOverchargeBlastSound() {
+    try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(1600, now + 0.12);
+        osc.frequency.exponentialRampToValueAtTime(65, now + 0.42);
+        gain.gain.setValueAtTime(0.24, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.44);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.45);
+    } catch (e) {}
+}
+
+function playHitMarkerTick() {
+    try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1950, now);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.06);
+    } catch (e) {}
+}
+
+function playSpeedBoostSweep() {
+    try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(1180, now + 0.25);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.27);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.28);
+    } catch (e) {}
+}
+
+function playMedKitHealChime() {
+    try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.07);
+        osc.frequency.setValueAtTime(1046.50, now + 0.14);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.30);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.31);
     } catch (e) {}
 }
 
@@ -524,6 +632,7 @@ async function spawn50CombatBots() {
             angle: Math.random() * Math.PI * 2,
             lives: 3,
             hitsTaken: 0,
+            eliminations: 0,
             isAlive: true,
             isStealth: false,
             isInvulnerable: false,
@@ -556,7 +665,6 @@ function updateSimulatedBots(dt) {
     const now = performance.now();
 
     for (const bot of botList) {
-        // Check if this bot was hit by a real player or another bot
         const serverBot = remotePlayers[bot.id];
         if (serverBot && serverBot.lastHitEvent && serverBot.lastHitEvent.id !== bot.lastProcessedHit) {
             bot.lastProcessedHit = serverBot.lastHitEvent.id;
@@ -576,7 +684,6 @@ function updateSimulatedBots(dt) {
         if (!bot.isAlive) continue;
         bot.isInvulnerable = now < (bot.invulnerableUntil || 0);
 
-        // Portal check for bots
         if (arenaPortals.length === 2 && now >= (bot.portalCooldown || 0)) {
             for (let pIdx = 0; pIdx < 2; pIdx++) {
                 const p = arenaPortals[pIdx];
@@ -616,7 +723,6 @@ function updateSimulatedBots(dt) {
             bot.angle += (Math.random() > 0.5 ? 1 : -1) * (Math.PI / 2);
         }
 
-        // Bot Combat AI: Fight other bots (and occasionally shoot at players in line of sight)
         bot.fireCooldown = (bot.fireCooldown || 2.0) - dt;
         if (bot.fireCooldown <= 0) {
             bot.fireCooldown = 2.2 + Math.random() * 3.5;
@@ -628,16 +734,20 @@ function updateSimulatedBots(dt) {
                     otherBot.hitsTaken += 1;
                     otherBot.lives = Math.max(0, 3 - otherBot.hitsTaken);
                     bot.score += 50;
+                    const feedId = `bot_hit_${bot.id}_${otherBot.id}_${Math.floor(now / 500)}`;
                     if (otherBot.lives <= 0) {
                         otherBot.isAlive = false;
                         bot.score += 100;
+                        bot.eliminations = (bot.eliminations || 0) + 1;
                         spawn3DExplosion(otherBot.x, otherBot.y, '#ef4444', 20);
+                        addKillFeedEntry(feedId, `💥 ${bot.name} [${otherBot.noteTag}] eliminated ${otherBot.name}`, '#ef4444');
                     } else {
                         const rp = getSafeSpawnPoint(otherBot.x, otherBot.y);
                         otherBot.x = rp.x;
                         otherBot.y = rp.y;
                         otherBot.invulnerableUntil = now + 3500;
                         spawn3DExplosion(otherBot.x, otherBot.y, '#f97316', 12);
+                        addKillFeedEntry(feedId, `🔥 ${bot.name} [${otherBot.noteTag}] tagged ${otherBot.name}`, '#fb923c');
                     }
                     break;
                 }
@@ -685,7 +795,6 @@ function handleSpectatorCanvasClick(e) {
     const clickX = (e.clientX - rect.left) * scaleCanvasX;
     const clickY = (e.clientY - rect.top) * scaleCanvasY;
 
-    // 1. Check if clicking one of the 3 popup alert buttons when a target is already selected
     if (spectatorSelectedTarget && spectatorSelectedTarget.buttons) {
         for (const btn of spectatorSelectedTarget.buttons) {
             if (clickX >= btn.x && clickX <= btn.x + btn.w && clickY >= btn.y && clickY <= btn.y + btn.h) {
@@ -695,7 +804,6 @@ function handleSpectatorCanvasClick(e) {
         }
     }
 
-    // 2. Check if clicking near any active player on the overhead map
     const W = canvas.width;
     const H = canvas.height;
     const mapScale = Math.min(W / (MAP_COLS * TILE_SIZE), H / (MAP_ROWS * TILE_SIZE)) * 0.92;
@@ -717,9 +825,7 @@ function handleSpectatorCanvasClick(e) {
     }
 
     spectatorSelectedTarget = closestPlayer;
-    if (closestPlayer) {
-        playRadioAlertChime();
-    }
+    if (closestPlayer) playRadioAlertChime();
 }
 
 export function stopLaserTag() {
@@ -737,9 +843,12 @@ export function stopLaserTag() {
     typedCheatBuffer = '';
     processedHitIds.clear();
     processedAlertIds.clear();
+    seenFeedIds.clear();
+    killFeedEntries = [];
     simulatedBots = {};
     spectatorSelectedTarget = null;
     incomingAlertBanner = null;
+    maxPeakPlayers = 1;
     gamePhase = 'lobby';
 }
 
@@ -749,7 +858,6 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
 
     window._laserTagBridge = bridge;
 
-    // Global keyboard listener for typing "test" or "TEST" during gameplay to spawn 50 bots
     if (!globalKeyListenerAttached) {
         globalKeyListenerAttached = true;
         window.addEventListener('keydown', (e) => {
@@ -764,7 +872,6 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
         });
     }
 
-    // Spectator map click listener for sending callouts
     if (!spectatorClickListenerAttached) {
         const canvasEl = document.getElementById('waterfall-canvas');
         if (canvasEl) {
@@ -808,10 +915,15 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     localPlayer.isMovingForward = false;
     localPlayer.lives = 3;
     localPlayer.hitsTaken = 0;
+    localPlayer.eliminations = 0;
     localPlayer.isAlive = true;
     localPlayer.currentGear = DEFAULT_GEAR;
     localPlayer.invulnerableUntil = 0;
     localPlayer.portalCooldownUntil = 0;
+    localPlayer.boostUntil = 0;
+    localPlayer.overchargeReadyAt = 0;
+    localPlayer.hitMarkerUntil = 0;
+    localPlayer.hitMarkerElim = false;
     localPlayer.suitColor = getSuitColorForAvatar(avatar, localId);
     localPlayer.score = 0;
     localPlayer.noteTag = ASSIGNABLE_PITCHES[Math.floor(Math.random() * ASSIGNABLE_PITCHES.length)];
@@ -830,12 +942,15 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     recentNoteBuffer = [];
     processedHitIds.clear();
     processedAlertIds.clear();
+    seenFeedIds.clear();
+    killFeedEntries = [];
+    maxPeakPlayers = 1;
     gamePhase = 'playing';
     lastFrameTime = performance.now();
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${localPlayer.noteTag}] | Hold C#: Forward • C: Left • D: Right • Portals Teleport • Notes: Fire!`;
+        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${localPlayer.noteTag}] | Hold C#: Forward • C/D: Turn • Triads: Speed • Cmaj7/Fmaj7: Shockwave!`;
     }
 
     animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
@@ -852,6 +967,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
             angle: Number(localPlayer.angle.toFixed(3)),
             lives: 3,
             hitsTaken: 0,
+            eliminations: 0,
             isAlive: true,
             gearId: localPlayer.currentGear.id,
             isStealth: localPlayer.currentGear.stealth,
@@ -873,10 +989,22 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
             const data = snapshot.val() || {};
             remotePlayers = data;
 
+            // Populate Kill Feed from all players' latest hit events
+            for (const [pid, pObj] of Object.entries(remotePlayers)) {
+                if (pObj && pObj.lastHitEvent && pObj.lastHitEvent.id) {
+                    const ev = pObj.lastHitEvent;
+                    const verb = ev.eliminated ? '💥 eliminated' : '🔥 tagged';
+                    addKillFeedEntry(
+                        ev.id,
+                        `${ev.byName || 'Player'} [${ev.pitch || '?'}] ${verb} ${pObj.name || 'Opponent'}`,
+                        ev.eliminated ? '#ef4444' : '#fb923c'
+                    );
+                }
+            }
+
             const myServerRecord = remotePlayers[localId];
             if (!myServerRecord || !localPlayer.isAlive) return;
 
-            // Check for incoming Spectator Radio Alert ("Watch Out", "Turn Left", "Turn Right")
             const alertEvt = myServerRecord.spectatorAlert;
             if (alertEvt && alertEvt.id && !processedAlertIds.has(alertEvt.id)) {
                 processedAlertIds.add(alertEvt.id);
@@ -888,7 +1016,6 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
                 playRadioAlertChime();
             }
 
-            // Check for incoming Laser Hit Event
             const hitEvt = myServerRecord.lastHitEvent;
             if (hitEvt && hitEvt.id && !processedHitIds.has(hitEvt.id)) {
                 processedHitIds.add(hitEvt.id);
@@ -961,6 +1088,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
                     angle: Number(localPlayer.angle.toFixed(3)),
                     lives: localPlayer.lives,
                     hitsTaken: localPlayer.hitsTaken,
+                    eliminations: localPlayer.eliminations,
                     isAlive: localPlayer.isAlive,
                     gearId: localPlayer.currentGear.id,
                     isStealth: localPlayer.currentGear.stealth,
@@ -981,6 +1109,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
                     botBatch[`${bot.id}/angle`] = Number(bot.angle.toFixed(3));
                     botBatch[`${bot.id}/lives`] = bot.lives;
                     botBatch[`${bot.id}/hitsTaken`] = bot.hitsTaken;
+                    botBatch[`${bot.id}/eliminations`] = bot.eliminations || 0;
                     botBatch[`${bot.id}/isAlive`] = bot.isAlive;
                     botBatch[`${bot.id}/isInvulnerable`] = Boolean(bot.isInvulnerable);
                     botBatch[`${bot.id}/score`] = bot.score;
@@ -990,6 +1119,129 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
         }, 120);
     } catch (err) {
         console.error("Laser Tag Firebase sync error:", err);
+    }
+}
+
+async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
+    if (gamePhase !== 'playing' || !localPlayer.isAlive) return;
+
+    if (isOvercharge) {
+        playOverchargeBlastSound();
+    } else {
+        playLaserPew();
+    }
+    localPlayer.recoil = isOvercharge ? 1.6 : 1.0;
+    localPlayer.muzzleFlash = 1.0;
+
+    const FOV = Math.PI / 3;
+    const maxCone = isOvercharge ? FOV * 0.85 : FOV * 0.62;
+    let bestTarget = null;
+    let bestDist = 1400;
+
+    for (const [id, opp] of Object.entries(remotePlayers)) {
+        if (id === localId || !isPlayerActiveInRoom(opp) || opp.isInvulnerable) continue;
+        if (!isOvercharge && normalizePitchClass(opp.noteTag) !== pitchClass) continue;
+
+        const dx = opp.x - localPlayer.x;
+        const dy = opp.y - localPlayer.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > bestDist) continue;
+
+        let relAngle = Math.atan2(dy, dx) - localPlayer.angle;
+        while (relAngle > Math.PI) relAngle -= Math.PI * 2;
+        while (relAngle < -Math.PI) relAngle += Math.PI * 2;
+
+        if (Math.abs(relAngle) <= maxCone && hasLineOfSight(localPlayer.x, localPlayer.y, opp.x, opp.y)) {
+            bestDist = dist;
+            bestTarget = { id, opp, relAngle, dist };
+        }
+    }
+
+    const canvas = document.getElementById('waterfall-canvas');
+    const W = canvas ? canvas.width : 800;
+    const H = canvas ? canvas.height : 380;
+
+    if (bestTarget) {
+        const targetScreenX = (0.5 + (bestTarget.relAngle / FOV)) * W;
+        const targetScreenY = H * 0.5;
+
+        const currentLives = bestTarget.opp.lives !== undefined ? Number(bestTarget.opp.lives) : 3;
+        const predictedRemaining = Math.max(0, currentLives - 1);
+        const eliminated = predictedRemaining <= 0;
+
+        // Feature #4: Crisp Hit-Marker Crosshair Snap & High Tick
+        localPlayer.hitMarkerUntil = performance.now() + 260;
+        localPlayer.hitMarkerElim = eliminated;
+        playHitMarkerTick();
+
+        activeBeams.push({
+            endX: targetScreenX,
+            endY: targetScreenY,
+            color: isOvercharge ? '#facc15' : (eliminated ? '#ef4444' : '#f97316'),
+            glow: isOvercharge ? '#fef08a' : (eliminated ? '#dc2626' : '#fb923c'),
+            widthMult: isOvercharge ? 2.2 : 1.0,
+            life: 1.0
+        });
+
+        if (eliminated) {
+            playExplosionSound();
+            spawn3DExplosion(bestTarget.opp.x, bestTarget.opp.y, '#ef4444', 36);
+            localPlayer.score += 150;
+            localPlayer.eliminations += 1;
+        } else {
+            playShieldHitSound();
+            spawn3DExplosion(bestTarget.opp.x, bestTarget.opp.y, '#f97316', 20);
+            localPlayer.score += 50;
+        }
+
+        const state = bridge && bridge.getState ? bridge.getState() : {};
+        const hitEventId = `${localId}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        const tagLabel = isOvercharge ? 'MAJ7⚡' : pitchClass;
+
+        addKillFeedEntry(
+            hitEventId,
+            `${state.sessionStudentName || 'You'} [${tagLabel}] ${eliminated ? '💥 eliminated' : '🔥 tagged'} ${bestTarget.opp.name || 'Opponent'}`,
+            eliminated ? '#ef4444' : '#fb923c'
+        );
+
+        try {
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            const basePath = `pianopad_tournaments/${activeRoomCode}/lasertag`;
+            await update(window.firebaseRef(window.firebaseDb, `${basePath}/${bestTarget.id}`), {
+                lastHitEvent: {
+                    id: hitEventId,
+                    byId: localId,
+                    byName: state.sessionStudentName || 'Opponent',
+                    pitch: tagLabel,
+                    eliminated: eliminated,
+                    timestamp: Date.now()
+                }
+            });
+        } catch (e) {}
+
+        const statusEl = document.getElementById('status');
+        if (statusEl) {
+            statusEl.textContent = eliminated
+                ? `💥 ELIMINATED ${bestTarget.opp.name || 'Opponent'} with [${tagLabel}]! (+150 pts • Score: ${localPlayer.score})`
+                : `🔥 HIT ${bestTarget.opp.name || 'Opponent'} (${predictedRemaining} ${predictedRemaining === 1 ? 'life' : 'lives'} left) — they respawned! (+50 pts)`;
+        }
+    } else {
+        // Feature #9: 3D Laser Wall Ricochet Sparks at exact wall impact point
+        const wallHit = castRay(localPlayer.angle);
+        const impactDist = Math.max(16, wallHit.dist - 8);
+        const impactX = localPlayer.x + Math.cos(localPlayer.angle) * impactDist;
+        const impactY = localPlayer.y + Math.sin(localPlayer.angle) * impactDist;
+        const sparkColor = isOvercharge ? '#facc15' : (localPlayer.suitColor || '#38bdf8');
+        spawn3DExplosion(impactX, impactY, sparkColor, isOvercharge ? 16 : 7);
+
+        activeBeams.push({
+            endX: W * 0.5,
+            endY: H * 0.5,
+            color: sparkColor,
+            glow: isOvercharge ? '#f59e0b' : '#0284c7',
+            widthMult: isOvercharge ? 2.2 : 1.0,
+            life: 1.0
+        });
     }
 }
 
@@ -1013,95 +1265,7 @@ async function executeSingleNoteAction(pitchClass, bridge) {
         return;
     }
 
-    playLaserPew();
-    localPlayer.recoil = 1.0;
-    localPlayer.muzzleFlash = 1.0;
-
-    const FOV = Math.PI / 3;
-    let bestTarget = null;
-    let bestDist = 1400;
-
-    for (const [id, opp] of Object.entries(remotePlayers)) {
-        if (id === localId || !isPlayerActiveInRoom(opp) || opp.isInvulnerable) continue;
-        if (normalizePitchClass(opp.noteTag) !== pitchClass) continue;
-
-        const dx = opp.x - localPlayer.x;
-        const dy = opp.y - localPlayer.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist > bestDist) continue;
-
-        let relAngle = Math.atan2(dy, dx) - localPlayer.angle;
-        while (relAngle > Math.PI) relAngle -= Math.PI * 2;
-        while (relAngle < -Math.PI) relAngle += Math.PI * 2;
-
-        if (Math.abs(relAngle) <= FOV * 0.62 && hasLineOfSight(localPlayer.x, localPlayer.y, opp.x, opp.y)) {
-            bestDist = dist;
-            bestTarget = { id, opp, relAngle, dist };
-        }
-    }
-
-    const canvas = document.getElementById('waterfall-canvas');
-    const W = canvas ? canvas.width : 800;
-    const H = canvas ? canvas.height : 380;
-
-    if (bestTarget) {
-        const targetScreenX = (0.5 + (bestTarget.relAngle / FOV)) * W;
-        const targetScreenY = H * 0.5;
-
-        const currentLives = bestTarget.opp.lives !== undefined ? Number(bestTarget.opp.lives) : 3;
-        const predictedRemaining = Math.max(0, currentLives - 1);
-        const eliminated = predictedRemaining <= 0;
-
-        activeBeams.push({
-            endX: targetScreenX,
-            endY: targetScreenY,
-            color: eliminated ? '#ef4444' : '#f97316',
-            glow: eliminated ? '#dc2626' : '#fb923c',
-            life: 1.0
-        });
-
-        if (eliminated) {
-            playExplosionSound();
-            spawn3DExplosion(bestTarget.opp.x, bestTarget.opp.y, '#ef4444', 36);
-            localPlayer.score += 150;
-        } else {
-            playShieldHitSound();
-            spawn3DExplosion(bestTarget.opp.x, bestTarget.opp.y, '#f97316', 20);
-            localPlayer.score += 50;
-        }
-
-        const state = bridge && bridge.getState ? bridge.getState() : {};
-        const hitEventId = `${localId}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-
-        try {
-            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-            const basePath = `pianopad_tournaments/${activeRoomCode}/lasertag`;
-            await update(window.firebaseRef(window.firebaseDb, `${basePath}/${bestTarget.id}`), {
-                lastHitEvent: {
-                    id: hitEventId,
-                    byId: localId,
-                    byName: state.sessionStudentName || 'Opponent',
-                    pitch: pitchClass,
-                    timestamp: Date.now()
-                }
-            });
-        } catch (e) {}
-
-        const statusEl = document.getElementById('status');
-        if (statusEl) {
-            statusEl.textContent = eliminated
-                ? `💥 ELIMINATED ${bestTarget.opp.name || 'Opponent'} with [${pitchClass}]! (+150 pts • Score: ${localPlayer.score})`
-                : `🔥 HIT ${bestTarget.opp.name || 'Opponent'} (${predictedRemaining} ${predictedRemaining === 1 ? 'life' : 'lives'} left) — they respawned! (+50 pts)`;
-        }
-    } else {
-        activeBeams.push({
-            endX: W * 0.5,
-            endY: H * 0.5,
-            color: localPlayer.suitColor || '#38bdf8',
-            glow: '#0284c7',
-            life: 1.0
-        });
-    }
+    await fireLaserAttack(pitchClass, bridge, false);
 }
 
 export async function handleLaserTagInput(noteStr, bridge) {
@@ -1122,47 +1286,80 @@ export async function handleLaserTagInput(noteStr, bridge) {
     }
 
     recentNoteBuffer.push({ pitchClass, time: now });
-    recentNoteBuffer = recentNoteBuffer.filter(item => (now - item.time) <= 95);
+    recentNoteBuffer = recentNoteBuffer.filter(item => (now - item.time) <= 115);
 
     const distinctPitches = new Set(recentNoteBuffer.map(item => item.pitchClass));
 
-    const matchedGear = matchDiatonicTriad(distinctPitches);
-    if (matchedGear) {
+    // Feature #6: 4-Note Overcharge Shockwave (Cmaj7 or Fmaj7)
+    const matchedOvercharge = matchOverchargeChord(distinctPitches);
+    if (matchedOvercharge) {
         if (pendingActionTimer !== null) {
             clearTimeout(pendingActionTimer);
             pendingActionTimer = null;
         }
         recentNoteBuffer = [];
 
-        if ((now - lastChordTriggerTime) > 350 || lastTriggeredChordId !== matchedGear.id) {
-            lastChordTriggerTime = now;
-            lastTriggeredChordId = matchedGear.id;
-
-            localPlayer.currentGear = matchedGear;
-            localPlayer.turnDir = 0;
-            localPlayer.gearBannerFlash = 1.0;
-            playGearShiftSound(matchedGear.mult);
-
+        if (now >= localPlayer.overchargeReadyAt) {
+            localPlayer.overchargeReadyAt = now + 15000; // 15s cooldown
             const statusEl = document.getElementById('status');
             if (statusEl) {
-                statusEl.textContent = `🎛️ SPEED LOCKED: ${matchedGear.label} — Hold C# to move forward!`;
+                statusEl.textContent = `⚡ ${matchedOvercharge.label} FIRED! Wide-cone shockwave hits ANY target pitch! (15s recharge)`;
+            }
+            await fireLaserAttack('OVERCHARGE', bridge, true);
+        } else {
+            const secsLeft = Math.ceil((localPlayer.overchargeReadyAt - now) / 1000);
+            playJamBuzzSound();
+            const statusEl = document.getElementById('status');
+            if (statusEl) {
+                statusEl.textContent = `⏳ OVERCHARGE RECHARGING (${secsLeft}s remaining)...`;
             }
         }
         return;
     }
 
+    // Check 3-note White-Key Diatonic Triads for Speed Gears
+    const matchedGear = matchDiatonicTriad(distinctPitches);
+    if (matchedGear) {
+        if (pendingActionTimer !== null) {
+            clearTimeout(pendingActionTimer);
+            pendingActionTimer = null;
+        }
+        // Keep buffer alive briefly in case a 4th note (B or E) arrives within 45ms to complete Cmaj7/Fmaj7
+        if (pendingActionTimer !== null) clearTimeout(pendingActionTimer);
+        pendingActionTimer = setTimeout(() => {
+            pendingActionTimer = null;
+            recentNoteBuffer = [];
+            if ((performance.now() - lastChordTriggerTime) > 350 || lastTriggeredChordId !== matchedGear.id) {
+                lastChordTriggerTime = performance.now();
+                lastTriggeredChordId = matchedGear.id;
+
+                localPlayer.currentGear = matchedGear;
+                localPlayer.turnDir = 0;
+                localPlayer.gearBannerFlash = 1.0;
+                playGearShiftSound(matchedGear.mult);
+
+                const statusEl = document.getElementById('status');
+                if (statusEl) {
+                    statusEl.textContent = `🎛️ SPEED LOCKED: ${matchedGear.label} — Hold C# to move forward!`;
+                }
+            }
+        }, 50);
+        return;
+    }
+
+    // Anti-Spam Protection (allows 2-3 white keys briefly while building a triad or Major 7th chord)
     if (distinctPitches.size >= 2) {
         const WHITE_KEYS = new Set(['C', 'D', 'E', 'F', 'G', 'A', 'B']);
         const allWhite = Array.from(distinctPitches).every(n => WHITE_KEYS.has(n));
 
-        if (allWhite && distinctPitches.size === 2) {
+        if (allWhite && (distinctPitches.size === 2 || distinctPitches.size === 3)) {
             if (pendingActionTimer !== null) clearTimeout(pendingActionTimer);
             pendingActionTimer = setTimeout(() => {
                 pendingActionTimer = null;
                 localPlayer.jamFlash = 1.0;
                 playJamBuzzSound();
                 recentNoteBuffer = [];
-            }, 85);
+            }, 95);
             return;
         }
 
@@ -1185,14 +1382,14 @@ export async function handleLaserTagInput(noteStr, bridge) {
     pendingActionTimer = setTimeout(() => {
         pendingActionTimer = null;
         const checkNow = performance.now();
-        const activeNotes = recentNoteBuffer.filter(item => (checkNow - item.time) <= 105);
+        const activeNotes = recentNoteBuffer.filter(item => (checkNow - item.time) <= 120);
         const uniqueNow = new Set(activeNotes.map(item => item.pitchClass));
         if (uniqueNow.size === 1) {
             const singlePitch = Array.from(uniqueNow)[0];
             recentNoteBuffer = [];
             executeSingleNoteAction(singlePitch, bridge);
         }
-    }, 75);
+    }, 80);
 }
 
 function castRay(rayAngle) {
@@ -1308,11 +1505,125 @@ function castRay(rayAngle) {
     };
 }
 
+// Feature #7: Top-Center Compass Ribbon
+function renderCompassRibbon(ctx, W) {
+    const compW = 240;
+    const compH = 24;
+    const cx = W / 2;
+    const topY = 8;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.82)';
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(cx - compW / 2, topY, compW, compH, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.rect(cx - compW / 2 + 4, topY, compW - 8, compH);
+    ctx.clip();
+
+    const bearings = [
+        { deg: 0,   label: 'E',  major: true },
+        { deg: 45,  label: 'SE', major: false },
+        { deg: 90,  label: 'S',  major: true },
+        { deg: 135, label: 'SW', major: false },
+        { deg: 180, label: 'W',  major: true },
+        { deg: 225, label: 'NW', major: false },
+        { deg: 270, label: 'N',  major: true },
+        { deg: 315, label: 'NE', major: false }
+    ];
+
+    let curDeg = ((localPlayer.angle * 180) / Math.PI) % 360;
+    if (curDeg < 0) curDeg += 360;
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    for (const b of bearings) {
+        let diff = b.deg - curDeg;
+        while (diff > 180) diff -= 360;
+        while (diff < -180) diff += 360;
+
+        if (Math.abs(diff) <= 75) {
+            const px = cx + (diff / 75) * (compW * 0.46);
+            ctx.fillStyle = b.label === 'N' ? '#ef4444' : (b.major ? '#38bdf8' : '#94a3b8');
+            ctx.font = b.major ? '900 11px sans-serif' : 'bold 9.5px sans-serif';
+            ctx.fillText(b.label, px, topY + compH / 2 + 1);
+        }
+    }
+
+    // Center pointer tick
+    ctx.fillStyle = '#facc15';
+    ctx.fillRect(cx - 1, topY, 2, 5);
+    ctx.restore();
+}
+
+// Feature #1: Proximity Threat Radar (Rear/Flank Edge Glow)
+function renderProximityThreatRadar(ctx, W, H, now) {
+    let leftThreat = 0;
+    let rightThreat = 0;
+    let rearThreat = 0;
+    const maxRange = 270;
+
+    for (const [id, opp] of Object.entries(remotePlayers)) {
+        if (id === localId || !isPlayerActiveInRoom(opp) || opp.isInvulnerable) continue;
+        const dx = opp.x - localPlayer.x;
+        const dy = opp.y - localPlayer.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > maxRange) continue;
+
+        const intensity = 1 - dist / maxRange;
+        let rel = Math.atan2(dy, dx) - localPlayer.angle;
+        while (rel > Math.PI) rel -= Math.PI * 2;
+        while (rel < -Math.PI) rel += Math.PI * 2;
+
+        // Only warn about enemies outside our front center vision (flanks & rear)
+        if (Math.abs(rel) > Math.PI * 0.28) {
+            if (Math.abs(rel) > Math.PI * 0.72) {
+                rearThreat = Math.max(rearThreat, intensity);
+            } else if (rel < 0) {
+                leftThreat = Math.max(leftThreat, intensity);
+            } else {
+                rightThreat = Math.max(rightThreat, intensity);
+            }
+        }
+    }
+
+    const pulse = 0.65 + 0.35 * Math.sin(now * 0.015);
+    ctx.save();
+    if (leftThreat > 0.05) {
+        const gradL = ctx.createLinearGradient(0, 0, 48, 0);
+        gradL.addColorStop(0, `rgba(239, 68, 68, ${leftThreat * 0.65 * pulse})`);
+        gradL.addColorStop(1, 'rgba(239, 68, 68, 0)');
+        ctx.fillStyle = gradL;
+        ctx.fillRect(0, 0, 48, H);
+    }
+    if (rightThreat > 0.05) {
+        const gradR = ctx.createLinearGradient(W, 0, W - 48, 0);
+        gradR.addColorStop(0, `rgba(239, 68, 68, ${rightThreat * 0.65 * pulse})`);
+        gradR.addColorStop(1, 'rgba(239, 68, 68, 0)');
+        ctx.fillStyle = gradR;
+        ctx.fillRect(W - 48, 0, 48, H);
+    }
+    if (rearThreat > 0.05) {
+        const gradB = ctx.createLinearGradient(0, H, 0, H - 44);
+        gradB.addColorStop(0, `rgba(249, 115, 22, ${rearThreat * 0.75 * pulse})`);
+        gradB.addColorStop(1, 'rgba(249, 115, 22, 0)');
+        ctx.fillStyle = gradB;
+        ctx.fillRect(0, H - 44, W, 44);
+    }
+    ctx.restore();
+}
+
 function renderFirstPerson3D(ctx, W, H, dt, now) {
     const FOV = Math.PI / 3;
-    const gearMult = localPlayer.currentGear.mult;
+    const isBoosted = now < localPlayer.boostUntil;
+    const gearMult = localPlayer.currentGear.mult * (isBoosted ? 1.5 : 1.0);
     const activelyMoving = localPlayer.isMovingForward && gearMult > 0;
-    const bobAmp = activelyMoving ? Math.min(7, 2.5 + gearMult * 2.2) : 0;
+    const bobAmp = activelyMoving ? Math.min(8, 2.5 + gearMult * 2.0) : 0;
     const bobOffset = localPlayer.isAlive ? Math.sin(localPlayer.bobPhase) * bobAmp : 0;
     const horizon = H * 0.52 + bobOffset;
 
@@ -1377,22 +1688,33 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         }
     }
 
-    // 3. Depth-Sorted 3D Sprites (Opponents + Glowing Quantum Portals + Explosion Particles)
+    // 3. Depth-Sorted 3D Sprites (Opponents, Portals, Boost Pads, Med-Kits, Explosion Sparks)
     const sprites = [];
 
     for (const portal of arenaPortals) {
         const dx = portal.x - localPlayer.x;
         const dy = portal.y - localPlayer.y;
-        const dist = Math.hypot(dx, dy);
-        sprites.push({ type: 'portal', portal, dx, dy, dist });
+        sprites.push({ type: 'portal', portal, dx, dy, dist: Math.hypot(dx, dy) });
+    }
+
+    for (const pad of speedBoostPads) {
+        const dx = pad.x - localPlayer.x;
+        const dy = pad.y - localPlayer.y;
+        sprites.push({ type: 'boostpad', pad, dx, dy, dist: Math.hypot(dx, dy) });
+    }
+
+    for (const med of medKitNodes) {
+        if (now < med.respawnAt) continue;
+        const dx = med.x - localPlayer.x;
+        const dy = med.y - localPlayer.y;
+        sprites.push({ type: 'medkit', med, dx, dy, dist: Math.hypot(dx, dy) });
     }
 
     for (const [id, opp] of Object.entries(remotePlayers)) {
         if (id === localId || !isPlayerActiveInRoom(opp)) continue;
         const dx = opp.x - localPlayer.x;
         const dy = opp.y - localPlayer.y;
-        const dist = Math.hypot(dx, dy);
-        sprites.push({ type: 'player', id, opp, dx, dy, dist });
+        sprites.push({ type: 'player', id, opp, dx, dy, dist: Math.hypot(dx, dy) });
     }
 
     for (let i = worldExplosions.length - 1; i >= 0; i--) {
@@ -1407,8 +1729,7 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         }
         const dx = p.x - localPlayer.x;
         const dy = p.y - localPlayer.y;
-        const dist = Math.hypot(dx, dy);
-        sprites.push({ type: 'particle', p, dx, dy, dist });
+        sprites.push({ type: 'particle', p, dx, dy, dist: Math.hypot(dx, dy) });
     }
 
     sprites.sort((a, b) => b.dist - a.dist);
@@ -1422,10 +1743,10 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
 
         const screenX = (0.5 + relAngle / FOV) * W;
 
-        if (sp.type === 'player' || sp.type === 'portal') {
-            const targetX = sp.type === 'player' ? sp.opp.x : sp.portal.x;
-            const targetY = sp.type === 'player' ? sp.opp.y : sp.portal.y;
-            const visibleByLOS = hasLineOfSight(localPlayer.x, localPlayer.y, targetX, targetY);
+        if (sp.type === 'player' || sp.type === 'portal' || sp.type === 'medkit' || sp.type === 'boostpad') {
+            const tx = sp.type === 'player' ? sp.opp.x : (sp.type === 'portal' ? sp.portal.x : (sp.type === 'medkit' ? sp.med.x : sp.pad.x));
+            const ty = sp.type === 'player' ? sp.opp.y : (sp.type === 'portal' ? sp.portal.y : (sp.type === 'medkit' ? sp.med.y : sp.pad.y));
+            const visibleByLOS = hasLineOfSight(localPlayer.x, localPlayer.y, tx, ty);
             if (!visibleByLOS) {
                 const centerRay = Math.floor(screenX / stripW);
                 const leftRay = Math.max(0, centerRay - 5);
@@ -1444,6 +1765,54 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
             if (rayIdx >= 0 && rayIdx < numRays && zBuffer[rayIdx] < sp.dist) continue;
         }
 
+        // Feature #2: 3D Floor Speed Boost Chevron Pad
+        if (sp.type === 'boostpad') {
+            const padScale = (TILE_SIZE * H) / sp.dist;
+            const floorY = horizon + padScale * 0.44;
+            const padW = Math.max(24, padScale * 0.72);
+            const padH = Math.max(8, padScale * 0.16);
+            const pulse = 0.6 + 0.4 * Math.sin(now * 0.012);
+
+            ctx.save();
+            ctx.globalAlpha = pulse;
+            ctx.fillStyle = '#22c55e';
+            ctx.strokeStyle = '#bbf7d0';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(screenX, floorY, padW * 0.5, padH * 0.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `900 ${Math.max(10, Math.floor(padScale * 0.14))}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillText('⚡ BOOST', screenX, floorY - padH * 0.8);
+            ctx.restore();
+            continue;
+        }
+
+        // Feature #8: Floating Med-Kit / Shield Recharge Heart Crystal
+        if (sp.type === 'medkit') {
+            const medScale = (TILE_SIZE * H) / sp.dist;
+            const floatY = horizon + Math.sin(now * 0.005) * (medScale * 0.08);
+            const heartSize = Math.max(18, Math.min(72, Math.floor(medScale * 0.36)));
+
+            ctx.save();
+            ctx.shadowColor = '#f43f5e';
+            ctx.shadowBlur = 16;
+            ctx.font = `${heartSize}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('💖', screenX, floatY);
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#fda4af';
+            ctx.font = `900 ${Math.max(9, Math.floor(heartSize * 0.30))}px sans-serif`;
+            ctx.fillText('+1 LIFE', screenX, floatY - heartSize * 0.68);
+            ctx.restore();
+            continue;
+        }
+
         if (sp.type === 'portal') {
             const portalH = Math.min(H * 1.15, Math.max(48, (TILE_SIZE * 0.95 * H) / sp.dist));
             const portalW = portalH * 0.62;
@@ -1452,7 +1821,6 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
             ctx.save();
             ctx.translate(screenX, horizon);
 
-            // Outer glowing energy vortex
             ctx.shadowColor = sp.portal.color;
             ctx.shadowBlur = 22;
             ctx.strokeStyle = sp.portal.color;
@@ -1461,7 +1829,6 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
             ctx.ellipse(0, 0, portalW * 0.5, portalH * 0.48, 0, 0, Math.PI * 2);
             ctx.stroke();
 
-            // Rotating inner swirl rings
             ctx.strokeStyle = sp.portal.secondaryColor;
             ctx.lineWidth = Math.max(2, portalW * 0.05);
             ctx.beginPath();
@@ -1472,7 +1839,6 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
             ctx.ellipse(0, 0, portalW * 0.20, portalH * 0.20, -spin * 1.4, 0, Math.PI * 1.5);
             ctx.stroke();
 
-            // Core glow
             ctx.fillStyle = sp.portal.color;
             ctx.globalAlpha = 0.28 + 0.12 * Math.sin(now * 0.008);
             ctx.beginPath();
@@ -1480,7 +1846,6 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
             ctx.fill();
             ctx.globalAlpha = 1.0;
 
-            // Floating Portal Sign
             ctx.shadowBlur = 0;
             ctx.fillStyle = sp.portal.secondaryColor;
             ctx.font = `900 ${Math.max(11, Math.floor(portalH * 0.14))}px sans-serif`;
@@ -1510,6 +1875,7 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
 
         const isGhostRespawning = Boolean(sp.opp.isInvulnerable);
         const isSneaky = Boolean(sp.opp.isStealth);
+        const isLeader = Number(sp.opp.score || 0) >= 300;
         const oppSuitColor = sp.opp.suitColor || getSuitColorForAvatar(sp.opp.avatar, sp.id);
 
         ctx.save();
@@ -1520,8 +1886,8 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         }
 
         ctx.fillStyle = isGhostRespawning ? '#f8fafc' : '#0f172a';
-        ctx.strokeStyle = isGhostRespawning ? '#ffffff' : oppSuitColor;
-        ctx.lineWidth = Math.max(2.5, spriteW * 0.07);
+        ctx.strokeStyle = isGhostRespawning ? '#ffffff' : (isLeader ? '#facc15' : oppSuitColor);
+        ctx.lineWidth = Math.max(2.5, spriteW * (isLeader ? 0.09 : 0.07));
         ctx.beginPath();
         ctx.roundRect(screenX - spriteW / 2, topY + spriteH * 0.24, spriteW, spriteH * 0.72, 10);
         ctx.fill();
@@ -1542,6 +1908,12 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         const badgeW = Math.max(68, spriteW * 1.15);
         const badgeH = Math.max(28, spriteH * 0.28);
         const badgeY = Math.max(12, topY - badgeH - 12);
+
+        // Feature #5: Floating Gold Crown above 300+ pt Kill-Streak Leaders
+        if (isLeader && !isGhostRespawning) {
+            ctx.font = `${Math.max(16, Math.floor(badgeH * 0.85))}px sans-serif`;
+            ctx.fillText('👑', screenX, badgeY - badgeH * 0.55);
+        }
 
         ctx.shadowColor = isGhostRespawning ? '#ffffff' : '#facc15';
         ctx.shadowBlur = 12;
@@ -1584,18 +1956,19 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         }
         const gunTipX = W * 0.72;
         const gunTipY = H * 0.76 + localPlayer.recoil * 14;
+        const wm = b.widthMult || 1.0;
 
         ctx.save();
         ctx.globalAlpha = Math.max(0, b.life);
         ctx.strokeStyle = b.glow;
-        ctx.lineWidth = 12 * b.life;
+        ctx.lineWidth = 12 * wm * b.life;
         ctx.beginPath();
         ctx.moveTo(gunTipX, gunTipY);
         ctx.lineTo(b.endX, b.endY);
         ctx.stroke();
 
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 4 * b.life;
+        ctx.lineWidth = 4 * wm * b.life;
         ctx.beginPath();
         ctx.moveTo(gunTipX, gunTipY);
         ctx.lineTo(b.endX, b.endY);
@@ -1603,7 +1976,7 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         ctx.restore();
     }
 
-    // 5. First-Person Space Blaster Viewmodel
+    // 5. First-Person Space Blaster Viewmodel & HUD Overlays
     if (localPlayer.isAlive) {
         localPlayer.recoil = Math.max(0, localPlayer.recoil - dt * 5);
         localPlayer.muzzleFlash = Math.max(0, localPlayer.muzzleFlash - dt * 8);
@@ -1645,6 +2018,7 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         }
         ctx.restore();
 
+        // Center Reticle + Feature #4: Hit-Marker Crosshair Snap
         ctx.strokeStyle = localPlayer.currentGear.color;
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -1653,6 +2027,27 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         ctx.fillStyle = localPlayer.suitColor;
         ctx.fillRect(W / 2 - 2, H / 2 - 2, 4, 4);
 
+        if (now < localPlayer.hitMarkerUntil) {
+            ctx.save();
+            ctx.strokeStyle = localPlayer.hitMarkerElim ? '#ef4444' : '#ffffff';
+            ctx.lineWidth = 3;
+            const rIn = 6, rOut = 18;
+            ctx.beginPath();
+            ctx.moveTo(W / 2 - rOut, H / 2 - rOut); ctx.lineTo(W / 2 - rIn, H / 2 - rIn);
+            ctx.moveTo(W / 2 + rOut, H / 2 - rOut); ctx.lineTo(W / 2 + rIn, H / 2 - rIn);
+            ctx.moveTo(W / 2 - rOut, H / 2 + rOut); ctx.lineTo(W / 2 - rIn, H / 2 + rIn);
+            ctx.moveTo(W / 2 + rOut, H / 2 + rOut); ctx.lineTo(W / 2 + rIn, H / 2 + rIn);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // Feature #7: Top-Center Compass Ribbon
+        renderCompassRibbon(ctx, W);
+
+        // Feature #1: Proximity Threat Radar Edge Glows
+        renderProximityThreatRadar(ctx, W, H, now);
+
+        // Top-Left Current Sector Badge
         const myZone = getZoneInfoForCoords(localPlayer.x, localPlayer.y);
         ctx.save();
         ctx.fillStyle = 'rgba(2, 6, 23, 0.86)';
@@ -1669,6 +2064,22 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
         ctx.fillText(`📍 ${myZone.label}`, 109, 30);
         ctx.restore();
 
+        // Feature #3: Kill Feed Ticker (Top-Left below Zone Pill)
+        killFeedEntries = killFeedEntries.filter(k => now < k.expiresAt);
+        if (killFeedEntries.length > 0) {
+            ctx.save();
+            ctx.font = 'bold 10.5px sans-serif';
+            ctx.textAlign = 'left';
+            killFeedEntries.forEach((entry, idx) => {
+                const ky = 50 + idx * 20;
+                ctx.fillStyle = 'rgba(2, 6, 23, 0.78)';
+                ctx.fillRect(12, ky, 245, 17);
+                ctx.fillStyle = entry.color;
+                ctx.fillText(entry.text, 18, ky + 12);
+            });
+            ctx.restore();
+        }
+
         // Incoming Spectator Alert Banner ("Watch Out", "Turn Left", "Turn Right")
         if (incomingAlertBanner && now < incomingAlertBanner.until) {
             const pulse = 0.75 + 0.25 * Math.sin(now * 0.02);
@@ -1678,18 +2089,18 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
             ctx.strokeStyle = '#facc15';
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.roundRect(W / 2 - 195, 52, 390, 44, 10);
+            ctx.roundRect(W / 2 - 195, 42, 390, 44, 10);
             ctx.fill();
             ctx.stroke();
 
             ctx.fillStyle = '#facc15';
             ctx.font = '900 16px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(`📡 ${incomingAlertBanner.text.toUpperCase()}!`, W / 2, 73);
+            ctx.fillText(`📡 ${incomingAlertBanner.text.toUpperCase()}!`, W / 2, 63);
 
             ctx.fillStyle = '#e2e8f0';
             ctx.font = 'bold 10px sans-serif';
-            ctx.fillText(`Drone Callout from ${incomingAlertBanner.fromName}`, W / 2, 89);
+            ctx.fillText(`Drone Callout from ${incomingAlertBanner.fromName}`, W / 2, 79);
             ctx.restore();
         }
 
@@ -1701,35 +2112,40 @@ function renderFirstPerson3D(ctx, W, H, dt, now) {
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.roundRect(W / 2 - 165, 14, 330, 32, 8);
+            ctx.roundRect(W / 2 - 165, 40, 330, 30, 8);
             ctx.fill();
             ctx.stroke();
             ctx.fillStyle = '#ffffff';
-            ctx.font = '900 12px sans-serif';
+            ctx.font = '900 11.5px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('👻 GHOST RESPAWN SHIELD ACTIVE', W / 2, 34);
+            ctx.fillText('👻 GHOST RESPAWN SHIELD ACTIVE', W / 2, 59);
             ctx.restore();
         }
 
+        // Bottom-Center Chord Speed Gear, Boost & Overcharge HUD Pill
         const g = localPlayer.currentGear;
-        const throttleText = activelyMoving ? ' • 🟢 C# THRUSTING' : ' • ⚪ HOLD C# TO MOVE';
+        const boostTag = isBoosted ? ' • ⚡ 2.5x PAD BOOST!' : '';
+        const throttleText = activelyMoving ? ` • 🟢 C# THRUSTING${boostTag}` : ` • ⚪ HOLD C# TO MOVE${boostTag}`;
+        const ocReady = now >= localPlayer.overchargeReadyAt;
+        const ocText = ocReady ? '⚡ Cmaj7/Fmaj7: OVERCHARGE READY' : `⏳ OVERCHARGE: ${Math.ceil((localPlayer.overchargeReadyAt - now) / 1000)}s`;
+
         ctx.save();
         ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
-        ctx.strokeStyle = g.color;
-        ctx.lineWidth = localPlayer.gearBannerFlash > 0 ? 3 : 1.8;
+        ctx.strokeStyle = isBoosted ? '#22c55e' : g.color;
+        ctx.lineWidth = (localPlayer.gearBannerFlash > 0 || isBoosted) ? 3 : 1.8;
         ctx.beginPath();
-        ctx.roundRect(W / 2 - 210, H - 56, 420, 36, 8);
+        ctx.roundRect(W / 2 - 220, H - 56, 440, 38, 8);
         ctx.fill();
         ctx.stroke();
 
-        ctx.fillStyle = g.color;
+        ctx.fillStyle = isBoosted ? '#22c55e' : g.color;
         ctx.font = '900 11.5px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`GEAR: ${g.label}${throttleText}`, W / 2, H - 39);
+        ctx.fillText(`GEAR: ${g.label}${throttleText}`, W / 2, H - 40);
 
-        ctx.fillStyle = '#94a3b8';
+        ctx.fillStyle = ocReady ? '#facc15' : '#94a3b8';
         ctx.font = 'bold 9.5px sans-serif';
-        ctx.fillText('C:0x • Dm:0.35x • Em:0.65x • F:1x • G:1.35x • Am:1.68x • Bdim:2x', W / 2, H - 26);
+        ctx.fillText(`C:0x • Dm:0.35x • Em:0.65x • F:1x • G:1.35x • Am:1.68x • Bdim:2x | ${ocText}`, W / 2, H - 25);
         ctx.restore();
 
         if (localPlayer.jamFlash > 0) {
@@ -1824,7 +2240,24 @@ function renderSpectatorOverheadView(ctx, W, H, dt, now) {
         }
     }
 
-    // Render Animated Portals on Spectator Overhead Map
+    // Speed Boost Pads on Spectator Map
+    for (const pad of speedBoostPads) {
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.arc(pad.x, pad.y, 18, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Med-Kits on Spectator Map
+    for (const med of medKitNodes) {
+        if (now < med.respawnAt) continue;
+        ctx.font = '26px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('💖', med.x, med.y);
+    }
+
+    // Portals on Spectator Map
     for (const portal of arenaPortals) {
         const pulse = (Math.sin(now * 0.008) + 1) * 0.5;
         ctx.save();
@@ -1841,10 +2274,11 @@ function renderSpectatorOverheadView(ctx, W, H, dt, now) {
         ctx.restore();
     }
 
-    // Render Active Players on Spectator Map
+    // Active Players on Spectator Map
     for (const [id, opp] of Object.entries(remotePlayers)) {
         if (!isPlayerActiveInRoom(opp)) continue;
         const oppColor = opp.isInvulnerable ? '#ffffff' : (opp.suitColor || getSuitColorForAvatar(opp.avatar, id));
+        const isLeader = Number(opp.score || 0) >= 300;
         ctx.save();
         if (opp.isInvulnerable) ctx.globalAlpha = 0.45;
         ctx.fillStyle = oppColor;
@@ -1852,11 +2286,17 @@ function renderSpectatorOverheadView(ctx, W, H, dt, now) {
         ctx.arc(opp.x, opp.y, 24, 0, Math.PI * 2);
         ctx.fill();
 
+        if (isLeader) {
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 5;
+            ctx.stroke();
+        }
+
         const oppLives = opp.lives !== undefined ? Number(opp.lives) : 3;
         ctx.fillStyle = '#ffffff';
         ctx.font = '900 22px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`${opp.name} [${opp.noteTag}] ${'❤️'.repeat(oppLives)}`, opp.x, opp.y - 32);
+        ctx.fillText(`${isLeader ? '👑 ' : ''}${opp.name} [${opp.noteTag}] ${'❤️'.repeat(oppLives)}`, opp.x, opp.y - 32);
         ctx.restore();
     }
 
@@ -1879,7 +2319,6 @@ function renderSpectatorOverheadView(ctx, W, H, dt, now) {
 
     ctx.restore();
 
-    // If Spectator clicked a player, draw interactive callout buttons ("Watch Out", "Turn Left", "Turn Right")
     if (spectatorSelectedTarget) {
         const targetObj = remotePlayers[spectatorSelectedTarget.id];
         if (!targetObj || !isPlayerActiveInRoom(targetObj)) {
@@ -1902,7 +2341,6 @@ function renderSpectatorOverheadView(ctx, W, H, dt, now) {
             const startX = Math.max(10, Math.min(W - totalW - 10, px - totalW / 2));
             const startY = Math.max(54, py - 48);
 
-            // Highlight ring around selected player
             ctx.save();
             ctx.strokeStyle = '#facc15';
             ctx.lineWidth = 3;
@@ -1953,6 +2391,68 @@ function renderSpectatorOverheadView(ctx, W, H, dt, now) {
     ctx.fillText('🛰️ SPECTATOR DRONE — CLICK ANY PLAYER TO SEND "WATCH OUT", "TURN LEFT", OR "TURN RIGHT"', W / 2, 32);
 }
 
+// Feature #10: End-of-Round MVP Podium Overlay
+function renderMvpPodiumOverlay(ctx, W, H) {
+    const allPlayers = Object.values(remotePlayers);
+    if (allPlayers.length === 0) return;
+
+    const survivor = allPlayers.find(p => isPlayerActiveInRoom(p)) || allPlayers[0];
+    const sortedByScore = [...allPlayers].sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
+    const topScorer = sortedByScore[0] || survivor;
+    const sortedByElims = [...allPlayers].sort((a, b) => Number(b.eliminations || 0) - Number(a.eliminations || 0));
+    const topSlayer = sortedByElims[0] || survivor;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.86)';
+    ctx.fillRect(0, 0, W, H);
+
+    const cardW = Math.min(540, W * 0.90);
+    const cardH = 260;
+    const cx = W / 2;
+    const cy = H / 2;
+
+    ctx.fillStyle = '#0f172a';
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(cx - cardW / 2, cy - cardH / 2, cardW, cardH, 16);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#facc15';
+    ctx.font = '900 22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🏆 LASER TAG ARENA CHAMPIONS 🏆', cx, cy - 88);
+
+    const cols = [
+        { title: '👑 LAST SURVIVOR', p: survivor, stat: `${survivor.lives || 1} Lives Left`, color: '#22c55e', x: cx - cardW * 0.30 },
+        { title: '⭐ TOP SCORER',    p: topScorer, stat: `${topScorer.score || 0} pts`,      color: '#38bdf8', x: cx },
+        { title: '💥 MOST TAGS',     p: topSlayer, stat: `${topSlayer.eliminations || 0} Eliminations`, color: '#f97316', x: cx + cardW * 0.30 }
+    ];
+
+    for (const c of cols) {
+        ctx.fillStyle = c.color;
+        ctx.font = '900 11px sans-serif';
+        ctx.fillText(c.title, c.x, cy - 42);
+
+        ctx.font = '38px sans-serif';
+        ctx.fillText(c.p.avatar || '🤖', c.x, cy + 4);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 14px sans-serif';
+        ctx.fillText(c.p.name || 'Player', c.x, cy + 42);
+
+        ctx.fillStyle = c.color;
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText(c.stat, c.x, cy + 62);
+    }
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText('Press "test" to spawn another 50-bot wave or Exit to return to menu', cx, cy + 104);
+    ctx.restore();
+}
+
 function gameLoop(now, bridge) {
     if (bridge.getActiveMiniGame() !== 'laserTag') {
         stopLaserTag();
@@ -1974,11 +2474,16 @@ function gameLoop(now, bridge) {
         updateSimulatedBots(dt);
     }
 
+    const activePlayers = Object.values(remotePlayers).filter(isPlayerActiveInRoom);
+    const totalCount = Object.keys(remotePlayers).length;
+    if (totalCount > maxPeakPlayers) maxPeakPlayers = totalCount;
+
     if (localPlayer.isAlive) {
         localPlayer.angle += localPlayer.turnDir * 1.55 * dt;
 
         localPlayer.isMovingForward = now < localPlayer.moveUntil;
-        const speedMult = localPlayer.currentGear.mult;
+        const isBoosted = now < localPlayer.boostUntil;
+        const speedMult = localPlayer.currentGear.mult * (isBoosted ? 1.5 : 1.0);
 
         if (localPlayer.isMovingForward && speedMult > 0) {
             localPlayer.bobPhase += dt * (6.5 + speedMult * 5.0);
@@ -2004,7 +2509,30 @@ function gameLoop(now, bridge) {
             }
         }
 
-        // Check Quantum Portal Teleportation
+        // Feature #2: Speed Boost Pads Pickup Check
+        for (const pad of speedBoostPads) {
+            if (Math.hypot(localPlayer.x - pad.x, localPlayer.y - pad.y) < 34 && now >= localPlayer.boostUntil - 1200) {
+                localPlayer.boostUntil = now + 2200;
+                playSpeedBoostSweep();
+                const statusEl = document.getElementById('status');
+                if (statusEl) statusEl.textContent = `⚡ SPEED BOOST PAD ACTIVATED! (2.2s Turbo Surge)`;
+            }
+        }
+
+        // Feature #8: Floating Med-Kit Pickup Check
+        for (const med of medKitNodes) {
+            if (now >= med.respawnAt && localPlayer.lives < 3 && Math.hypot(localPlayer.x - med.x, localPlayer.y - med.y) < 34) {
+                med.respawnAt = now + 18000;
+                localPlayer.lives = Math.min(3, localPlayer.lives + 1);
+                localPlayer.hitsTaken = Math.max(0, 3 - localPlayer.lives);
+                playMedKitHealChime();
+                spawn3DExplosion(med.x, med.y, '#f43f5e', 16);
+                const statusEl = document.getElementById('status');
+                if (statusEl) statusEl.textContent = `💖 MED-KIT COLLECTED! Shield restored to ${localPlayer.lives} Lives!`;
+            }
+        }
+
+        // Quantum Portal Teleportation Check
         if (arenaPortals.length === 2 && now >= localPlayer.portalCooldownUntil) {
             for (let pIdx = 0; pIdx < 2; pIdx++) {
                 const p = arenaPortals[pIdx];
@@ -2034,7 +2562,7 @@ function gameLoop(now, bridge) {
         renderSpectatorOverheadView(ctx, W, H, dt, now);
     }
 
-    // Bottom-Left Color & Shape Coded Minimap Overlay (46x46 Arena + Portals)
+    // Bottom-Left Color & Shape Coded Minimap Overlay
     if (localPlayer.isAlive) {
         const mmSize = 162;
         const mmX = 12;
@@ -2064,7 +2592,21 @@ function gameLoop(now, bridge) {
             }
         }
 
-        // Draw Pulsing Portals on Minimap
+        // Boost Pads & Med-Kits on Minimap
+        ctx.fillStyle = '#22c55e';
+        for (const pad of speedBoostPads) {
+            ctx.fillRect(mmX + pad.x * scaleX - 2, mmY + pad.y * scaleY - 2, 4, 4);
+        }
+        ctx.fillStyle = '#f43f5e';
+        for (const med of medKitNodes) {
+            if (now >= med.respawnAt) {
+                ctx.beginPath();
+                ctx.arc(mmX + med.x * scaleX, mmY + med.y * scaleY, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Pulsing Portals on Minimap
         const pPulse = (Math.sin(now * 0.01) + 1) * 0.5;
         for (const portal of arenaPortals) {
             const px = mmX + portal.x * scaleX;
@@ -2088,6 +2630,7 @@ function gameLoop(now, bridge) {
             const ox = mmX + opp.x * scaleX;
             const oy = mmY + opp.y * scaleY;
             const oppColor = opp.isInvulnerable ? '#ffffff' : (opp.suitColor || getSuitColorForAvatar(opp.avatar, id));
+            const isLeader = Number(opp.score || 0) >= 300;
 
             ctx.save();
             if (opp.isInvulnerable) ctx.globalAlpha = 0.45;
@@ -2096,6 +2639,12 @@ function gameLoop(now, bridge) {
             ctx.beginPath();
             ctx.arc(ox, oy, 4.5, 0, Math.PI * 2);
             ctx.fill();
+
+            if (isLeader) {
+                ctx.strokeStyle = '#facc15';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
 
             ctx.font = '10px sans-serif';
             ctx.fillText(opp.avatar || '🔴', ox, oy);
@@ -2141,7 +2690,6 @@ function gameLoop(now, bridge) {
     }
 
     // Top-Right HUD
-    const activePlayers = Object.values(remotePlayers).filter(isPlayerActiveInRoom);
     const aliveCount = Math.max(1, activePlayers.length);
     const heartsDisplay = '❤️'.repeat(localPlayer.lives) + '🖤'.repeat(Math.max(0, 3 - localPlayer.lives));
 
@@ -2158,6 +2706,11 @@ function gameLoop(now, bridge) {
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 11px sans-serif';
     ctx.fillText(`C: Left • D: Right • Hold C#: Forward • Chords: Speed`, W - 18, 50);
+
+    // Feature #10: End-of-Round MVP Podium when only 1 survivor remains after a multi-player match
+    if (maxPeakPlayers >= 2 && activePlayers.length === 1) {
+        renderMvpPodiumOverlay(ctx, W, H);
+    }
 
     animFrameId = requestAnimationFrame((t) => gameLoop(t, bridge));
 }
