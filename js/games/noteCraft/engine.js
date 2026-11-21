@@ -52,7 +52,7 @@ export function setBlockAt(x, y, z, blockId) {
     const by = Math.floor(y);
     const bz = Math.floor(z);
     if (bx < -WORLD_HALF_X || bx >= WORLD_HALF_X || bz < -WORLD_HALF_Z || bz >= WORLD_HALF_Z) return null;
-    if (by < 1 || by >= 23) return null;
+    if (by < 2 || by >= 23) return null; // Protects the y=1 grass floor from being broken or replaced
 
     const key = `${bx}_${by}_${bz}`;
     ncState.world.deltas[key] = blockId;
