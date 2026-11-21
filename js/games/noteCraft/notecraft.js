@@ -47,6 +47,80 @@ let pointerLockHandler = null;
 let contextMenuHandler = null;
 let resizeHandler = null;
 
+function showNoteCraftSplash(container) {
+    const existing = document.getElementById('notecraft-splash');
+    if (existing) existing.remove();
+
+    const splash = document.createElement('div');
+    splash.id = 'notecraft-splash';
+    splash.style.cssText = `
+        position: absolute;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle, #2d3748 0%, #1a202c 100%);
+        pointer-events: none;
+        transition: opacity 0.8s ease-in-out;
+    `;
+
+    const style = document.createElement('style');
+    style.innerHTML = `
+        @keyframes ncPopIn { 
+            0% { transform: scale(0.6) translateY(-20px); opacity: 0; } 
+            60% { transform: scale(1.05) translateY(0px); opacity: 1; }
+            100% { transform: scale(1) translateY(0px); opacity: 1; }
+        }
+        @keyframes ncFadeIn { to { opacity: 1; transform: translateY(0); } }
+    `;
+    
+    // Minecraft-style logo text
+    const logo = document.createElement('div');
+    logo.style.cssText = `
+        font-family: "Impact", "Arial Black", sans-serif;
+        font-size: clamp(48px, 8vw, 92px);
+        color: #d1d5db;
+        letter-spacing: 5px;
+        text-transform: uppercase;
+        animation: ncPopIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        text-shadow:
+          -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, /* 2D Outline */
+          0px 4px 0 #78716c, 
+          0px 8px 0 #57534e, 
+          0px 12px 0 #292524, 
+          0px 16px 0 #000; /* 3D Extrusion */
+    `;
+    logo.innerText = 'NOTECRAFT';
+
+    const subtitle = document.createElement('div');
+    subtitle.style.cssText = `
+        margin-top: 35px;
+        font-family: sans-serif;
+        font-weight: 900;
+        font-size: clamp(14px, 2vw, 20px);
+        color: #facc15;
+        text-shadow: 2px 2px 0 #000;
+        opacity: 0;
+        transform: translateY(10px);
+        animation: ncFadeIn 0.6s ease-out forwards 0.4s;
+    `;
+    subtitle.innerText = 'EDMUND RICE COLLEGE CAMPUS BUILDER';
+
+    splash.appendChild(style);
+    splash.appendChild(logo);
+    splash.appendChild(subtitle);
+    container.appendChild(splash);
+
+    setTimeout(() => {
+        splash.style.opacity = '0';
+        setTimeout(() => {
+            if (splash.parentNode) splash.parentNode.removeChild(splash);
+        }, 800);
+    }, 2800);
+}
+
 function handlePlaceBlockAction() {
     const res = placeSelectedBlock();
     if (!res) return;
@@ -89,6 +163,19 @@ function attachInputListeners(containerEl) {
 
     keyDownHandler = (e) => {
         if (!ncState.active) return;
+
+        // --- STAFF OVERRIDE SHORTCUT (Ctrl + Shift + U) ---
+        if (e.code === 'KeyU' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+            e.preventDefault();
+            localStorage.setItem('pianopad_is_teacher', 'true');
+            ncState.isTeacher = true; // Instantly flags as host
+            ncState.localPlayer.noteCoins = 999999;
+            ncState.localPlayer.isFlying = true;
+            ncState.localPlayer.flightTimer = 3600;
+            updateInventory(); // Unlocks textures based on the new flag
+            showNoteCraftToast('👑 Staff Override: All blocks & flight unlocked!', '#4ade80', 4000);
+            return;
+        }
 
         // Number keys 1-8 select block slot
         if (e.code >= 'Digit1' && e.code <= 'Digit8') {
@@ -342,6 +429,9 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
     initHud(wrapper);
     initAvatarSprites(getThreeScene());
     attachInputListeners(wrapper);
+
+    // Show the new Minecraft-style Splash Screen!
+    showNoteCraftSplash(wrapper);
 
     await connectNoteCraftNetwork(worldId, {
         id: playerId,
