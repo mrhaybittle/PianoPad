@@ -262,9 +262,7 @@ export function handleSharpShooterInput(noteStr, bridge) {
             if (target) {
                 activeTargetNote = letter;
                 bridge.highlightKey(noteStr, 500, '#facc15');
-                // The actual kick happens on keyup, which we simulate in the loop for PianoPad constraints
-                // For immediate response, we trigger kick immediately with random power if they just tap,
-                // but let's lock it in.
+                
                 powerMeter = Math.random(); // Simulate meter catch for immediate taps
                 executePlayerKick(target);
             }
@@ -338,7 +336,7 @@ function triggerBanner(text, color, duration) {
     bannerTimer = duration;
 }
 
-function resolveShot() {
+function resolveShot(bridge) {
     gamePhase = 'round_end';
     const isGoal = Math.abs(ball.x) < 1.0 && ball.y > 0 && ball.y < 1.0;
     const isSaved = isGoal && Math.hypot(ball.x - goalie.x, ball.y - goalie.y) < 0.35;
@@ -369,7 +367,7 @@ function resolveShot() {
         }
         
         if (currentRound > MAX_ROUNDS) {
-            endMatch();
+            endMatch(bridge);
         } else {
             isPlayerTurn = !isPlayerTurn;
             setupRound();
@@ -377,7 +375,7 @@ function resolveShot() {
     }, 2000);
 }
 
-function endMatch() {
+function endMatch(bridge) {
     gamePhase = 'gameover';
     const won = playerScore >= (aiScore * 500);
     const headline = won ? 'YOU WIN THE SHOOTOUT!' : 'AI WINS THE SHOOTOUT!';
@@ -443,11 +441,11 @@ function gameLoop(now, bridge) {
         if (isPlayerTurn && ball.z >= 1.0) {
             ball.z = 1.0;
             ball.active = false;
-            resolveShot();
+            resolveShot(bridge);
         } else if (!isPlayerTurn && ball.z <= 0) {
             ball.z = 0;
             ball.active = false;
-            resolveShot();
+            resolveShot(bridge);
         }
     }
 
@@ -497,7 +495,7 @@ function gameLoop(now, bridge) {
     };
 
     if (isPlayerTurn) {
-        // STRIKER PERSPECTIVE[cite: 7]
+        // STRIKER PERSPECTIVE
         drawGoal(ctx, W, H, project, 1.0); // Goal is at z=1
         
         // Draw Target Stars
@@ -534,7 +532,7 @@ function gameLoop(now, bridge) {
         }
 
     } else {
-        // GOALIE PERSPECTIVE[cite: 8]
+        // GOALIE PERSPECTIVE
         // Goal is at z=0 (framing the screen)
         drawGoal(ctx, W, H, project, 0.0);
 
@@ -620,7 +618,7 @@ function drawKeeperSprite(ctx, p) {
     // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath(); ctx.ellipse(0, 0, s*0.8, s*0.2, 0, 0, Math.PI*2); ctx.fill();
-    // Body (Yellow jersey[cite: 7])
+    // Body (Yellow jersey)
     ctx.fillStyle = '#facc15';
     ctx.fillRect(-s*0.4, -s*1.2, s*0.8, s*0.8);
     // Legs
@@ -638,7 +636,7 @@ function drawGloves(ctx, W, H, gx, gy) {
     const baseY = H * 0.8 - Math.max(0, gy) * H * 0.3;
     
     ctx.save();
-    ctx.fillStyle = '#9ca3af'; // Grey/Black gloves[cite: 8]
+    ctx.fillStyle = '#9ca3af'; // Grey/Black gloves
     ctx.strokeStyle = '#111827';
     ctx.lineWidth = 3;
     
