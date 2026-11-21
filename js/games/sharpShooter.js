@@ -12,13 +12,13 @@ const MAX_ROUNDS = 5;
 let isPlayerTurn = true; 
 
 // Physics & Rendering
-let cameraShake = 0; // The correct variable name!
+let cameraShake = 0;
 let flashAlpha = 0;
 let bannerText = '';
 let bannerColor = '#ffffff';
 let bannerTimer = 0;
 
-// Ball State
+// High-Fidelity Ball State
 const ball = {
     active: false,
     x: 0, 
@@ -39,11 +39,11 @@ let powerMeter = 0;
 let powerDir = 1;
 let hasCurved = false;
 const TARGETS = [
-    { note: 'C', x: -0.85, y: 0.85 }, 
-    { note: 'D', x: -0.85, y: 0.15 }, 
-    { note: 'E', x: 0, y: 0.85 },     
-    { note: 'G', x: 0.85, y: 0.15 },  
-    { note: 'A', x: 0.85, y: 0.85 }   
+    { note: 'C', x: -140, y: 85 }, // Top Left
+    { note: 'D', x: -140, y: 15 }, // Bottom Left
+    { note: 'E', x: 0, y: 85 },    // Top Center
+    { note: 'G', x: 140, y: 15 },  // Bottom Right
+    { note: 'A', x: 140, y: 85 }   // Top Right
 ];
 
 // Goalie State
@@ -55,6 +55,12 @@ const goalie = {
     diveTargetY: 0,
     timer: 0
 };
+
+// Perspective Constants
+const Z_NEAR = 10;
+const Z_GOAL = 500;
+const CAM_HEIGHT = 60;
+const FOV = 400;
 
 function playSoccerSfx(type) {
     try {
@@ -69,58 +75,48 @@ function playSoccerSfx(type) {
             osc.frequency.setValueAtTime(2400, now + 0.2);
             gain.gain.setValueAtTime(0.08, now);
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(now);
-            osc.stop(now + 0.4);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(now); osc.stop(now + 0.4);
         } else if (type === 'kick') {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'triangle';
-            osc.frequency.setValueAtTime(120, now);
-            osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(now);
-            osc.stop(now + 0.2);
+            osc.frequency.setValueAtTime(140, now);
+            osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+            gain.gain.setValueAtTime(0.25, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(now); osc.stop(now + 0.25);
         } else if (type === 'curve') {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(400, now);
-            osc.frequency.exponentialRampToValueAtTime(800, now + 0.2);
-            gain.gain.setValueAtTime(0.05, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(now);
-            osc.stop(now + 0.3);
+            osc.frequency.setValueAtTime(300, now);
+            osc.frequency.exponentialRampToValueAtTime(700, now + 0.25);
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(now); osc.stop(now + 0.3);
         } else if (type === 'net' || type === 'save') {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(type === 'net' ? 180 : 300, now);
-            osc.frequency.exponentialRampToValueAtTime(80, now + 0.2);
-            gain.gain.setValueAtTime(0.1, now);
+            osc.frequency.setValueAtTime(type === 'net' ? 150 : 280, now);
+            osc.frequency.exponentialRampToValueAtTime(60, now + 0.2);
+            gain.gain.setValueAtTime(0.12, now);
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(now);
-            osc.stop(now + 0.3);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(now); osc.stop(now + 0.3);
         } else if (type === 'goal') {
             [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.type = 'square';
                 osc.frequency.setValueAtTime(f, now + i * 0.1);
-                gain.gain.setValueAtTime(0.08, now + i * 0.1);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.3);
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start(now + i * 0.1);
-                osc.stop(now + i * 0.1 + 0.35);
+                gain.gain.setValueAtTime(0.1, now + i * 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.35);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now + i * 0.1); osc.stop(now + i * 0.1 + 0.4);
             });
         }
     } catch (e) {}
@@ -152,20 +148,16 @@ export function startSharpShooter(bridge) {
         aiScore = 0;
         currentRound = 1;
         isPlayerTurn = true;
-        cameraShake = 0; // FIXED HERE
+        cameraShake = 0; 
         flashAlpha = 0;
 
         gamePhase = 'instructions';
         showInstructionsPopup(bridge);
         
-        // Immediately overwrite the "stopped" text so you know it loaded
         const statusEl = document.getElementById('status');
-        if (statusEl) {
-            statusEl.textContent = '⚽ Sharp Shooter: Read the instructions and click Blow The Whistle!';
-        }
+        if (statusEl) statusEl.textContent = '⚽ Sharp Shooter: Read the instructions and click Blow The Whistle!';
     } catch (error) {
         console.error("Sharp Shooter Startup Error:", error);
-        alert("Startup Error: " + error.message);
     }
 }
 
@@ -190,7 +182,7 @@ function showInstructionsPopup(bridge) {
             <h2 style="margin:0; font-size:32px; font-weight:900; color:#ffffff; font-style:italic;">
                 SHARP <span style="color:#facc15; font-size:38px;">♯</span> SHOOTER
             </h2>
-            <div style="color:#38bdf8; font-weight:800; letter-spacing:2px; font-size:12px; margin-top:4px;">PENALTY KICK SHOWDOWN</div>
+            <div style="color:#38bdf8; font-weight:800; letter-spacing:2px; font-size:12px; margin-top:4px;">PRO PENALTY SHOWDOWN</div>
         </div>
         <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:8px; text-align:left; font-size:14px; line-height:1.6; margin-bottom:15px; border: 1px solid rgba(255,255,255,0.1);">
             <div style="color:#facc15; font-weight:bold; margin-bottom:5px;">⚽ STRIKER MODE:</div>
@@ -219,7 +211,8 @@ function setupRound() {
     powerDir = 1;
     hasCurved = false;
     ball.active = false;
-    ball.x = 0; ball.y = 0; ball.z = isPlayerTurn ? 0 : 1;
+    ball.x = 0; ball.y = 0; 
+    ball.z = isPlayerTurn ? Z_NEAR : Z_GOAL;
     ball.result = null;
     
     goalie.x = 0; goalie.y = 0; goalie.isDiving = false; goalie.timer = 0;
@@ -238,15 +231,15 @@ function setupRound() {
 function executeAIKick() {
     gamePhase = 'goalie_defend';
     ball.active = true;
-    ball.x = 0; ball.y = 0; ball.z = 1;
+    ball.x = 0; ball.y = 0; ball.z = Z_GOAL;
     
     const target = TARGETS[Math.floor(Math.random() * TARGETS.length)];
-    ball.vx = target.x * (0.8 + Math.random() * 0.4);
+    ball.vx = target.x * (0.9 + Math.random() * 0.2);
     ball.vy = target.y * (0.8 + Math.random() * 0.4);
-    ball.vz = -1.8; 
+    ball.vz = -550; // High speed coming towards camera
     
     if (Math.random() > 0.5) {
-        ball.curve = (Math.random() > 0.5 ? 1 : -1) * 0.8;
+        ball.curve = (Math.random() > 0.5 ? 1 : -1) * 350;
     } else {
         ball.curve = 0;
     }
@@ -270,13 +263,12 @@ export function handleSharpShooterInput(noteStr, bridge) {
             if (target) {
                 activeTargetNote = letter;
                 bridge.highlightKey(noteStr, 500, '#facc15');
-                
                 powerMeter = Math.random(); 
                 executePlayerKick(target);
             }
         } else if (gamePhase === 'striker_kick' && isSharp && !hasCurved) {
             hasCurved = true;
-            ball.curve = ball.x > 0 ? -1.2 : 1.2; 
+            ball.curve = ball.x > 0 ? -450 : 450; // Severe Magnus curve inward
             playSoccerSfx('curve');
             bridge.highlightKey(noteStr, 300, '#ec4899');
             triggerBanner('CURVE SPIN!', '#ec4899', 0.8);
@@ -286,16 +278,16 @@ export function handleSharpShooterInput(noteStr, bridge) {
             goalie.isDiving = true;
             goalie.timer = 0;
             if (octave <= 1) {
-                goalie.diveTargetX = -1; 
-                goalie.diveTargetY = 0.5;
+                goalie.diveTargetX = -120; 
+                goalie.diveTargetY = 40;
                 bridge.highlightKey(noteStr, 400, '#38bdf8');
             } else if (octave === 2) {
                 goalie.diveTargetX = 0; 
-                goalie.diveTargetY = 0.8;
+                goalie.diveTargetY = 80;
                 bridge.highlightKey(noteStr, 400, '#22c55e');
             } else {
-                goalie.diveTargetX = 1; 
-                goalie.diveTargetY = 0.5;
+                goalie.diveTargetX = 120; 
+                goalie.diveTargetY = 40;
                 bridge.highlightKey(noteStr, 400, '#f97316');
             }
         }
@@ -305,15 +297,15 @@ export function handleSharpShooterInput(noteStr, bridge) {
 function executePlayerKick(target) {
     gamePhase = 'striker_kick';
     ball.active = true;
-    ball.z = 0;
+    ball.z = Z_NEAR;
     
     const accuracy = 1 - Math.abs(powerMeter - 0.8); 
-    const errorX = (Math.random() - 0.5) * (1 - accuracy) * 1.5;
-    const errorY = (Math.random() - 0.5) * (1 - accuracy) * 1.5;
+    const errorX = (Math.random() - 0.5) * (1 - accuracy) * 80;
+    const errorY = (Math.random() - 0.5) * (1 - accuracy) * 80;
     
     ball.vx = target.x + errorX;
     ball.vy = target.y + errorY;
-    ball.vz = 1.8 + (powerMeter * 0.5); 
+    ball.vz = 450 + (powerMeter * 200); 
     ball.curve = 0;
     
     playSoccerSfx('kick');
@@ -323,11 +315,11 @@ function executePlayerKick(target) {
             goalie.isDiving = true;
             goalie.timer = 0;
             if (Math.random() < 0.6) {
-                goalie.diveTargetX = Math.sign(ball.vx); 
-                goalie.diveTargetY = ball.vy > 0.5 ? 0.8 : 0.2;
+                goalie.diveTargetX = Math.sign(ball.vx) * 120; 
+                goalie.diveTargetY = ball.vy > 50 ? 80 : 20;
             } else {
-                goalie.diveTargetX = Math.random() > 0.5 ? 1 : -1;
-                goalie.diveTargetY = Math.random();
+                goalie.diveTargetX = (Math.random() > 0.5 ? 1 : -1) * 120;
+                goalie.diveTargetY = Math.random() * 80;
             }
         }
     }, 200 + Math.random() * 200);
@@ -341,8 +333,11 @@ function triggerBanner(text, color, duration) {
 
 function resolveShot(bridge) {
     gamePhase = 'round_end';
-    const isGoal = Math.abs(ball.x) < 1.0 && ball.y > 0 && ball.y < 1.0;
-    const isSaved = isGoal && Math.hypot(ball.x - goalie.x, ball.y - goalie.y) < 0.35;
+    
+    // Check intersection at the goal line plane
+    const isGoal = Math.abs(ball.x) < 180 && ball.y > 0 && ball.y < 100;
+    const distToGoalie = Math.hypot(ball.x - goalie.x, ball.y - goalie.y);
+    const isSaved = isGoal && distToGoalie < 50;
 
     if (!isGoal) {
         ball.result = 'miss';
@@ -356,7 +351,7 @@ function resolveShot(bridge) {
         ball.result = 'goal';
         playSoccerSfx('goal');
         triggerBanner('GOAL!!!', '#22c55e', 1.5);
-        cameraShake = 0.4;
+        cameraShake = 0.5;
         flashAlpha = 0.8;
         if (isPlayerTurn) playerScore += 500;
         else aiScore += 1;
@@ -364,10 +359,7 @@ function resolveShot(bridge) {
 
     setTimeout(() => {
         if (gamePhase !== 'round_end') return;
-        
-        if (!isPlayerTurn) {
-            currentRound++;
-        }
+        if (!isPlayerTurn) currentRound++;
         
         if (currentRound > MAX_ROUNDS) {
             endMatch(bridge);
@@ -375,14 +367,14 @@ function resolveShot(bridge) {
             isPlayerTurn = !isPlayerTurn;
             setupRound();
         }
-    }, 2000);
+    }, 2500);
 }
 
 function endMatch(bridge) {
     gamePhase = 'gameover';
     const won = playerScore >= (aiScore * 500);
     const headline = won ? 'YOU WIN THE SHOOTOUT!' : 'AI WINS THE SHOOTOUT!';
-    triggerBanner(headline, won ? '#22c55e' : '#ef4444', 2.0);
+    triggerBanner(headline, won ? '#22c55e' : '#ef4444', 3.0);
     
     setTimeout(() => {
         if (bridge) {
@@ -394,7 +386,7 @@ function endMatch(bridge) {
                 () => startSharpShooter(bridge)
             );
         }
-    }, 2000);
+    }, 2500);
 }
 
 function gameLoop(now, bridge) {
@@ -411,131 +403,245 @@ function gameLoop(now, bridge) {
         if (bannerTimer > 0) bannerTimer = Math.max(0, bannerTimer - dt);
 
         if (gamePhase === 'striker_aim') {
-            powerMeter += powerDir * dt * 1.5;
+            powerMeter += powerDir * dt * 1.8;
             if (powerMeter >= 1 || powerMeter <= 0) powerDir *= -1;
         }
 
         if (ball.active) {
+            // High-fidelity sub-step physics integration
             ball.x += ball.vx * dt;
             ball.y += ball.vy * dt;
             ball.z += ball.vz * dt;
-            ball.vx += ball.curve * dt * 2.5; 
+            ball.vx += ball.curve * dt; // Magnus effect
             
-            ball.vy -= 0.8 * dt;
-            if (ball.y < 0) {
+            ball.vy -= 180 * dt; // Gravity
+            
+            if (ball.y <= 0) {
                 ball.y = 0;
-                ball.vy *= -0.6; 
+                ball.vy = Math.abs(ball.vy) * 0.6; // Bounce up
             }
 
-            ball.spin += Math.hypot(ball.vx, ball.vz) * dt * 10;
+            ball.spin += Math.hypot(ball.vx, ball.vz) * dt * 0.1;
 
             if (goalie.isDiving) {
-                goalie.timer += dt * 2;
+                goalie.timer += dt * 1.8;
                 const t = Math.min(1, goalie.timer);
                 const ease = 1 - Math.pow(1 - t, 3); 
                 goalie.x = goalie.diveTargetX * ease;
-                goalie.y = goalie.diveTargetY * Math.sin(t * Math.PI); 
+                goalie.y = Math.max(0, goalie.diveTargetY * Math.sin(t * Math.PI) * 1.2); 
             }
 
-            if (isPlayerTurn && ball.z >= 1.0) {
-                ball.z = 1.0;
+            // Goal Line Intersection
+            if (isPlayerTurn && ball.z >= Z_GOAL) {
+                ball.z = Z_GOAL;
                 ball.active = false;
                 resolveShot(bridge);
-            } else if (!isPlayerTurn && ball.z <= 0) {
-                ball.z = 0;
+            } else if (!isPlayerTurn && ball.z <= Z_NEAR) {
+                ball.z = Z_NEAR;
                 ball.active = false;
                 resolveShot(bridge);
             }
         }
 
         const canvas = document.getElementById('waterfall-canvas');
-        if (!canvas) return; // Failsafe
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
         const W = canvas.width;
         const H = canvas.height;
 
+        // Clear canvas explicitly
+        ctx.clearRect(0, 0, W, H);
+
         ctx.save();
         if (cameraShake > 0) {
-            const mag = cameraShake * 15;
+            const mag = cameraShake * 18;
             ctx.translate((Math.random() - 0.5) * mag, (Math.random() - 0.5) * mag);
         }
 
-        const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.4);
-        skyGrad.addColorStop(0, '#1e3a8a');
-        skyGrad.addColorStop(1, '#60a5fa');
-        ctx.fillStyle = skyGrad;
-        ctx.fillRect(0, 0, W, H * 0.4);
-
-        ctx.fillStyle = '#111827';
-        ctx.fillRect(0, H * 0.2, W, H * 0.2);
-        for(let i=0; i<400; i++) {
-            ctx.fillStyle = ['#ef4444', '#3b82f6', '#facc15', '#ffffff'][Math.floor(Math.random()*4)];
-            ctx.fillRect(Math.random()*W, H * 0.2 + Math.random()*H*0.2, 4, 4);
-        }
-
-        const pitchGrad = ctx.createLinearGradient(0, H * 0.4, 0, H);
-        pitchGrad.addColorStop(0, '#15803d');
-        pitchGrad.addColorStop(1, '#22c55e');
-        ctx.fillStyle = pitchGrad;
-        ctx.fillRect(0, H * 0.4, W, H * 0.6);
-
+        // Full Screen 3D Projection Function
         const project = (x, y, z) => {
-            const effectiveZ = isPlayerTurn ? z : 1 - z; 
-            const scale = 1 / (1 + effectiveZ * 2.5); 
-            const screenX = W / 2 + (x * W * 0.4) * scale;
-            const screenY = H * 0.85 - (y * H * 0.3) * scale - (effectiveZ * H * 0.15);
+            // Protect against divide by zero or negative Z
+            const safeZ = Math.max(1, z);
+            const scale = FOV / safeZ;
+            const screenX = (W / 2) + (x * scale);
+            const screenY = (H * 0.75) - ((y - CAM_HEIGHT) * scale);
             return { x: screenX, y: screenY, scale };
         };
 
         if (isPlayerTurn) {
-            drawGoal(ctx, W, H, project, 1.0); 
+            // ==========================================
+            // STRIKER PERSPECTIVE[cite: 8]
+            // ==========================================
             
+            // Sky & Stadium Backing
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.4);
+            skyGrad.addColorStop(0, '#1e3a8a');
+            skyGrad.addColorStop(1, '#60a5fa');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, W, H * 0.4);
+
+            // Crowd & Stands
+            ctx.fillStyle = '#111827';
+            ctx.fillRect(0, H * 0.25, W, H * 0.15);
+            for(let i=0; i<600; i++) {
+                ctx.fillStyle = ['#ef4444', '#3b82f6', '#facc15', '#ffffff'][Math.floor(Math.random()*4)];
+                ctx.fillRect(Math.random()*W, H * 0.25 + Math.random()*H*0.15, 3, 3);
+            }
+
+            // Alternating 3D Grass Stripes
+            for (let z = Z_GOAL + 100; z > Z_NEAR; z -= 40) {
+                const pTopLeft = project(-800, 0, z);
+                const pTopRight = project(800, 0, z);
+                const pBotLeft = project(-800, 0, Math.max(1, z - 40));
+                const pBotRight = project(800, 0, Math.max(1, z - 40));
+                
+                ctx.fillStyle = (Math.floor(z / 40) % 2 === 0) ? '#15803d' : '#166534';
+                ctx.beginPath();
+                ctx.moveTo(pTopLeft.x, pTopLeft.y);
+                ctx.lineTo(pTopRight.x, pTopRight.y);
+                ctx.lineTo(pBotRight.x, pBotRight.y);
+                ctx.lineTo(pBotLeft.x, pBotLeft.y);
+                ctx.fill();
+            }
+
+            // White Penalty Box Lines
+            ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+            const lineZ = Z_GOAL;
+            const pbL = project(-280, 0, lineZ);
+            const pbR = project(280, 0, lineZ);
+            const pbLF = project(-280, 0, lineZ - 200);
+            const pbRF = project(280, 0, lineZ - 200);
+            
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(pbL.x, pbL.y); ctx.lineTo(pbLF.x, pbLF.y);
+            ctx.lineTo(pbRF.x, pbRF.y); ctx.lineTo(pbR.x, pbR.y);
+            ctx.stroke();
+
+            // Goal Line
+            const glL = project(-800, 0, Z_GOAL);
+            const glR = project(800, 0, Z_GOAL);
+            ctx.beginPath(); ctx.moveTo(glL.x, glL.y); ctx.lineTo(glR.x, glR.y); ctx.stroke();
+
+            // Goal Net at Z_GOAL
+            drawGoal(ctx, project, Z_GOAL);
+            
+            // Note Targets
             if (gamePhase === 'striker_aim') {
                 TARGETS.forEach(t => {
-                    const p = project(t.x, t.y, 1.0);
+                    const p = project(t.x, t.y, Z_GOAL - 10);
                     ctx.fillStyle = activeTargetNote === t.note ? '#22c55e' : 'rgba(255,255,255,0.5)';
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, 15 * p.scale, 0, Math.PI*2);
+                    ctx.arc(p.x, p.y, 22 * p.scale, 0, Math.PI*2);
                     ctx.fill();
                     ctx.fillStyle = '#000';
-                    ctx.font = `900 ${18 * p.scale}px sans-serif`;
+                    ctx.font = `900 ${28 * p.scale}px sans-serif`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(t.note, p.x, p.y);
                 });
             }
 
-            drawKeeperSprite(ctx, project(goalie.x, goalie.y, 1.0));
+            // Goalie at Z_GOAL
+            drawKeeperSprite(ctx, project(goalie.x, goalie.y, Z_GOAL - 20));
+            
+            // Ball
             drawBallSprite(ctx, project(ball.x, ball.y, ball.z), ball.spin);
 
-            if (gamePhase === 'striker_aim') {
-                ctx.fillStyle = 'rgba(0,0,0,0.5)';
-                ctx.fillRect(W/2 - 100, H - 40, 200, 20);
-                const meterColor = powerMeter > 0.7 && powerMeter < 0.9 ? '#22c55e' : '#facc15';
-                ctx.fillStyle = meterColor;
-                ctx.fillRect(W/2 - 100, H - 40, 200 * powerMeter, 20);
-                ctx.strokeStyle = '#fff';
-                ctx.strokeRect(W/2 - 100, H - 40, 200, 20);
+            // Striker Character in Foreground[cite: 8]
+            if (gamePhase === 'striker_aim' || gamePhase === 'striker_kick') {
+                drawStrikerSprite(ctx, project(-40, 0, Z_NEAR + 20));
             }
+
+            // Power Meter
+            if (gamePhase === 'striker_aim') {
+                const mw = W * 0.4;
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(W/2 - mw/2, H - 60, mw, 24);
+                const meterColor = powerMeter > 0.75 && powerMeter < 0.9 ? '#22c55e' : '#facc15';
+                ctx.fillStyle = meterColor;
+                ctx.fillRect(W/2 - mw/2, H - 60, mw * powerMeter, 24);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(W/2 - mw/2, H - 60, mw, 24);
+            }
+
         } else {
-            drawGoal(ctx, W, H, project, 0.0);
+            // ==========================================
+            // GOALIE PERSPECTIVE (Inside the Net)[cite: 9]
+            // ==========================================
+            
+            // Sky
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.3);
+            skyGrad.addColorStop(0, '#1e3a8a');
+            skyGrad.addColorStop(1, '#60a5fa');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, W, H * 0.3);
 
-            const kickerP = project(0, 0, 1.0);
-            ctx.fillStyle = '#dc2626'; 
-            ctx.fillRect(kickerP.x - 10*kickerP.scale, kickerP.y - 40*kickerP.scale, 20*kickerP.scale, 40*kickerP.scale);
+            // Huge Stadium background
+            ctx.fillStyle = '#991b1b'; // Red seating[cite: 9]
+            ctx.beginPath();
+            ctx.moveTo(0, H*0.4); ctx.lineTo(W, H*0.4);
+            ctx.lineTo(W, H*0.15); ctx.lineTo(0, H*0.15);
+            ctx.fill();
+            
+            // Pitch Lines from goalie perspective
+            ctx.fillStyle = '#15803d';
+            ctx.fillRect(0, H*0.4, W, H*0.6);
+            
+            // Grass stripes receding into distance
+            for (let z = Z_NEAR; z < Z_GOAL + 200; z += 40) {
+                const pTopLeft = project(-800, 0, z + 40);
+                const pTopRight = project(800, 0, z + 40);
+                const pBotLeft = project(-800, 0, z);
+                const pBotRight = project(800, 0, z);
+                
+                ctx.fillStyle = (Math.floor(z / 40) % 2 === 0) ? '#15803d' : '#166534';
+                ctx.beginPath();
+                ctx.moveTo(pTopLeft.x, pTopLeft.y);
+                ctx.lineTo(pTopRight.x, pTopRight.y);
+                ctx.lineTo(pBotRight.x, pBotRight.y);
+                ctx.lineTo(pBotLeft.x, pBotLeft.y);
+                ctx.fill();
+            }
 
+            // Striker in the distance at Z_GOAL
+            drawStrikerSprite(ctx, project(0, 0, Z_GOAL));
+
+            // Ball flying towards camera
             drawBallSprite(ctx, project(ball.x, ball.y, ball.z), ball.spin);
-            drawGloves(ctx, W, H, goalie.x, goalie.y);
+
+            // Goalposts framing the absolute edges of the screen
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 35;
+            ctx.beginPath();
+            ctx.moveTo(15, H); ctx.lineTo(15, 15); // Left post
+            ctx.lineTo(W-15, 15);                  // Crossbar
+            ctx.lineTo(W-15, H);                   // Right post
+            ctx.stroke();
+
+            // Net Pattern over the top
+            ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for(let i=0; i<30; i++) {
+                ctx.moveTo(0, i*15); ctx.lineTo(W, i*15);
+                ctx.moveTo(i*(W/30), 0); ctx.lineTo(i*(W/30), 100);
+            }
+            ctx.stroke();
+
+            // High-Res Player Gloves in Foreground[cite: 9]
+            drawDetailedGloves(ctx, W, H, goalie.x, goalie.y);
         }
 
         drawHUD(ctx, W);
 
         if (bannerTimer > 0 && bannerText) {
-            ctx.fillStyle = 'rgba(0,0,0,0.6)';
-            ctx.fillRect(0, H/2 - 30, W, 60);
+            ctx.fillStyle = 'rgba(0,0,0,0.75)';
+            ctx.fillRect(0, H/2 - 40, W, 80);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.font = '900 32px sans-serif';
+            ctx.font = '900 42px -apple-system, sans-serif';
             ctx.fillStyle = bannerColor;
             ctx.fillText(bannerText, W/2, H/2);
         }
@@ -554,33 +660,39 @@ function gameLoop(now, bridge) {
     }
 }
 
-function drawGoal(ctx, W, H, project, z) {
-    const tl = project(-1.2, 1.2, z);
-    const tr = project(1.2, 1.2, z);
-    const bl = project(-1.2, 0, z);
-    const br = project(1.2, 0, z);
+function drawGoal(ctx, project, z) {
+    const tl = project(-180, 100, z);
+    const tr = project(180, 100, z);
+    const bl = project(-180, 0, z);
+    const br = project(180, 0, z);
+    
+    // Back of net
+    const btl = project(-160, 80, z + 80);
+    const btr = project(160, 80, z + 80);
+    const bbl = project(-160, 0, z + 80);
+    const bbr = project(160, 0, z + 80);
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    // Net Pattern (Criss-Cross)
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    for(let i=0; i<=10; i++) {
-        const xl = tl.x + (bl.x - tl.x) * (i/10);
-        const yl = tl.y + (bl.y - tl.y) * (i/10);
-        const xr = tr.x + (br.x - tr.x) * (i/10);
-        const yr = tr.y + (br.y - tr.y) * (i/10);
-        ctx.moveTo(xl, yl); ctx.lineTo(xr, yr);
-    }
+    // Vertical lines
     for(let i=0; i<=20; i++) {
-        const xt = tl.x + (tr.x - tl.x) * (i/20);
-        const yt = tl.y + (tr.y - tl.y) * (i/20);
-        const xb = bl.x + (br.x - bl.x) * (i/20);
-        const yb = bl.y + (br.y - bl.y) * (i/20);
-        ctx.moveTo(xt, yt); ctx.lineTo(xb, yb);
+        const topX = tl.x + (tr.x - tl.x) * (i/20);
+        const botX = bl.x + (br.x - bl.x) * (i/20);
+        ctx.moveTo(topX, tl.y); ctx.lineTo(botX, bl.y);
+    }
+    // Horizontal lines
+    for(let i=0; i<=10; i++) {
+        const leftY = tl.y + (bl.y - tl.y) * (i/10);
+        const rightY = tr.y + (br.y - tr.y) * (i/10);
+        ctx.moveTo(tl.x, leftY); ctx.lineTo(tr.x, rightY);
     }
     ctx.stroke();
 
+    // Front Posts & Crossbar
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 8 * tl.scale;
+    ctx.lineWidth = 14 * tl.scale;
     ctx.lineJoin = 'round';
     ctx.beginPath();
     ctx.moveTo(bl.x, bl.y);
@@ -591,58 +703,148 @@ function drawGoal(ctx, W, H, project, z) {
 }
 
 function drawKeeperSprite(ctx, p) {
-    const s = Math.max(1, 40 * p.scale);
+    const s = Math.max(1, 45 * p.scale);
     ctx.save();
     ctx.translate(p.x, p.y);
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.beginPath(); ctx.ellipse(0, 0, s*0.8, s*0.2, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#facc15';
-    ctx.fillRect(-s*0.4, -s*1.2, s*0.8, s*0.8);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(-s*0.3, -s*0.4, s*0.2, s*0.4);
-    ctx.fillRect(s*0.1, -s*0.4, s*0.2, s*0.4);
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath(); ctx.ellipse(0, 0, s*0.9, s*0.25, 0, 0, Math.PI*2); ctx.fill();
+    // Body (Yellow/Orange jersey)
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(-s*0.4, -s*1.3, s*0.8, s*0.9);
+    // Gloves
+    ctx.fillStyle = '#9ca3af';
+    ctx.beginPath(); ctx.arc(-s*0.6, -s*1.4, s*0.25, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(s*0.6, -s*1.4, s*0.25, 0, Math.PI*2); ctx.fill();
+    // Legs (Blue shorts)
+    ctx.fillStyle = '#1e3a8a';
+    ctx.fillRect(-s*0.35, -s*0.4, s*0.25, s*0.4);
+    ctx.fillRect(s*0.1, -s*0.4, s*0.25, s*0.4);
+    // Head
     ctx.fillStyle = '#fed7aa';
-    ctx.beginPath(); ctx.arc(0, -s*1.4, s*0.25, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -s*1.6, s*0.3, 0, Math.PI*2); ctx.fill();
     ctx.restore();
 }
 
-function drawGloves(ctx, W, H, gx, gy) {
-    const baseX = W/2 + gx * W * 0.4;
-    const baseY = H * 0.8 - Math.max(0, gy) * H * 0.3;
+function drawStrikerSprite(ctx, p) {
+    const s = Math.max(1, 50 * p.scale);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath(); ctx.ellipse(0, 0, s*0.8, s*0.2, 0, 0, Math.PI*2); ctx.fill();
+    
+    // Red/Black Striped Jersey[cite: 8]
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(-s*0.35, -s*1.4, s*0.7, s);
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(-s*0.15, -s*1.4, s*0.15, s);
+    ctx.fillRect(s*0.15, -s*1.4, s*0.15, s);
+    
+    // White Shorts[cite: 8]
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-s*0.35, -s*0.4, s*0.7, s*0.25);
+    
+    // Legs & Red Socks
+    ctx.fillStyle = '#fed7aa';
+    ctx.fillRect(-s*0.25, -s*0.15, s*0.15, s*0.15);
+    ctx.fillRect(s*0.1, -s*0.15, s*0.15, s*0.15);
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(-s*0.25, -0, s*0.15, s*0.25);
+    ctx.fillRect(s*0.1, -0, s*0.15, s*0.25);
+    
+    // Head (Blonde hair[cite: 8])
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath(); ctx.arc(0, -s*1.65, s*0.28, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+}
+
+function drawDetailedGloves(ctx, W, H, gx, gy) {
+    // Maps goalie position (x: -120 to 120, y: 0 to 80) to screen coordinates
+    const baseX = W/2 + (gx / 120) * (W * 0.4);
+    const baseY = H * 0.85 - (gy / 80) * (H * 0.35);
     
     ctx.save();
-    ctx.fillStyle = '#9ca3af'; 
-    ctx.strokeStyle = '#111827';
-    ctx.lineWidth = 3;
+    ctx.translate(baseX, baseY);
     
-    ctx.fillRect(baseX - 60, baseY - 30, 40, 60);
-    ctx.strokeRect(baseX - 60, baseY - 30, 40, 60);
-    
-    ctx.fillRect(baseX + 20, baseY - 30, 40, 60);
-    ctx.strokeRect(baseX + 20, baseY - 30, 40, 60);
+    const drawGlove = (offsetX, angle) => {
+        ctx.save();
+        ctx.translate(offsetX, 0);
+        ctx.rotate(angle);
+        
+        // Glove Base (Grey)[cite: 9]
+        ctx.fillStyle = '#9ca3af'; 
+        ctx.strokeStyle = '#374151';
+        ctx.lineWidth = 4;
+        
+        ctx.beginPath();
+        ctx.roundRect(-40, -50, 80, 100, 15);
+        ctx.fill(); ctx.stroke();
+        
+        // Black Palm Padding
+        ctx.fillStyle = '#111827';
+        ctx.beginPath();
+        ctx.roundRect(-25, -30, 50, 60, 8);
+        ctx.fill();
+        
+        // Fingers
+        ctx.fillStyle = '#9ca3af';
+        for(let i=0; i<4; i++) {
+            const fx = -30 + i*20;
+            ctx.beginPath();
+            ctx.roundRect(fx, -90, 16, 45, 8);
+            ctx.fill(); ctx.stroke();
+        }
+        // Thumb
+        ctx.beginPath();
+        ctx.roundRect(40, -20, 30, 18, 8);
+        ctx.fill(); ctx.stroke();
+        
+        ctx.restore();
+    };
+
+    drawGlove(-70, -0.15); // Left glove tilted
+    drawGlove(70, 0.15);   // Right glove tilted
     
     ctx.restore();
 }
 
 function drawBallSprite(ctx, p, spin) {
-    const r = Math.max(2, 25 * p.scale);
+    const r = Math.max(8, 45 * p.scale); // Larger ball size
     ctx.save();
     ctx.translate(p.x, p.y - r);
     
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.beginPath(); ctx.ellipse(0, r+2, r*0.8, r*0.2, 0, 0, Math.PI*2); ctx.fill();
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.beginPath(); ctx.ellipse(0, r + 4*p.scale, r*0.8, r*0.2, 0, 0, Math.PI*2); ctx.fill();
+
+    // Clip to circle for seamless rotation
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); 
+    ctx.clip();
 
     ctx.rotate(spin);
     
+    // Base white
     ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.fill();
+    ctx.fillRect(-r, -r, r*2, r*2);
     
+    // Classic Hexagon Soccer Ball Pattern
     ctx.fillStyle = '#111827';
-    for(let i=0; i<3; i++) {
-        const ang = (i * Math.PI * 2 / 3);
+    ctx.beginPath(); ctx.arc(0, 0, r*0.4, 0, Math.PI*2); ctx.fill(); // Center pentagon
+    
+    for(let i=0; i<5; i++) {
+        const ang = (i * Math.PI * 2 / 5);
         ctx.beginPath();
-        ctx.arc(Math.cos(ang)*r*0.5, Math.sin(ang)*r*0.5, r*0.3, 0, Math.PI*2);
+        ctx.arc(Math.cos(ang)*r*0.9, Math.sin(ang)*r*0.9, r*0.35, 0, Math.PI*2);
         ctx.fill();
+        
+        // Connecting lines
+        ctx.strokeStyle = '#111827';
+        ctx.lineWidth = 3 * p.scale;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(ang)*r*0.4, Math.sin(ang)*r*0.4);
+        ctx.lineTo(Math.cos(ang)*r*0.9, Math.sin(ang)*r*0.9);
+        ctx.stroke();
     }
     
     ctx.restore();
@@ -650,14 +852,14 @@ function drawBallSprite(ctx, p, spin) {
 
 function drawHUD(ctx, W) {
     ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 0, W, 40);
+    ctx.fillRect(0, 0, W, 48);
     ctx.fillStyle = '#ffffff';
-    ctx.font = '900 16px sans-serif';
+    ctx.font = '900 20px -apple-system, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText(`ROUND: ${currentRound}/${MAX_ROUNDS}`, 16, 12);
+    ctx.fillText(`ROUND: ${currentRound}/${MAX_ROUNDS}`, 20, 14);
     
     ctx.textAlign = 'right';
     ctx.fillStyle = '#38bdf8';
-    ctx.fillText(`YOU: ${playerScore}   AI: ${aiScore}`, W - 16, 12);
+    ctx.fillText(`YOU: ${playerScore}    AI: ${aiScore}`, W - 20, 14);
 }
