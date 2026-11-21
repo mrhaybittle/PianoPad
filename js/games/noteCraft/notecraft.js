@@ -206,7 +206,8 @@ function detachInputListeners() {
     ncState.keysHeld.clear();
 }
 
-export function onNoteCraftPianoInput(event) {
+export function handleNoteCraftInput(event) {
+    
     if (!ncState.active || !event) return;
 
     if (event.type === 'chord' && event.chordQuality) {
