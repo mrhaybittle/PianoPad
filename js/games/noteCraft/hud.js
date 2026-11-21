@@ -1,7 +1,7 @@
 // js/games/noteCraft/hud.js
 import { BLOCKS, BLOCK_COSTS } from './constants.js';
 import { ncState } from './state.js';
-import { WORLD_RADIUS, getCurrentCampusZone } from './engine.js';
+import { WORLD_HALF_X, WORLD_HALF_Z, getCurrentCampusZone } from './engine.js';
 
 let hudCanvas = null;
 let hudCtx = null;
