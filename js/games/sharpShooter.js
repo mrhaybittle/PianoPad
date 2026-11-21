@@ -245,7 +245,7 @@ function executeAIKick() {
     playSoccerSfx('kick');
 }
 
-export function handleGridironGrooveInput(noteStr, bridge) {
+export function handleSharpShooterInput(noteStr, bridge) {
     if (gamePhase === 'instructions' || gamePhase === 'gameover' || gamePhase === 'round_end') return;
 
     const match = (noteStr || '').trim().toLowerCase().match(/^([a-g])(#?)([0-9]+)$/);
