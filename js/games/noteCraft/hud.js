@@ -33,7 +33,7 @@ export function initHud(containerEl) {
     if (!mapImg) {
         mapImg = new Image();
         mapImg.onload = () => { mapImgLoaded = true; };
-        mapImg.src = './erc_map.jpg'; // Matches the root folder upload
+        mapImg.src = './assets/erc_map.jpg';
     }
 }
 
