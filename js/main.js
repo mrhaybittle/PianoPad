@@ -7,6 +7,7 @@ import { arcadeState, initMiniGamesBridge, stopBattlePolling, openArcadeHub, ret
 import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDeck, sendKnockoutQuickEmote, selectKnockoutTeam, triggerStreakSabotage, resetKnockoutRoundEffects, joinClassKnockoutStudent, syncKnockoutLiveScore, submitKnockoutRoundFinish, leaveClassKnockout } from './knockout.js';
 import { initFinaleBridge, showGrandFinale, closeGrandFinale, toggleFanfareMute } from './finale.js';
 import { initEyesFront, stopEyesFront, isEyesFrontFrozen, openEyesFrontPrompt } from './eyesFront.js';
+import { awardNoteCraftSongReward } from './games/noteCraft/notecraft.js';
 
 let songList = [];
 let currentSong = [];
@@ -1148,6 +1149,14 @@ function showGameResultsPopUp() {
 
     const accuracy = totalHits > 0 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
     const accuracyNum = parseFloat(accuracy);
+    const songObj = songList.find(s => s.title.toLowerCase() === currentSongTitle.toLowerCase());
+awardNoteCraftSongReward(
+    currentSongTitle,
+    songObj ? songObj.difficulty : 'medium',
+    accuracyNum,
+    parseInt(speedSlider.value, 10) || 100,
+    sessionStudentName
+);
 
     document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
 
