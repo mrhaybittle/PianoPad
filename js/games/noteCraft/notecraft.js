@@ -370,3 +370,16 @@ export function stopNoteCraft() {
         ncState.bridge.setActiveMiniGame(null);
     }
 }
+export function awardNoteCraftSongReward(songTitle, difficulty, accuracy, tempoPercent, isFirstTime) {
+    if (!ncState.active) return;
+    const earned = calculateRoundReward(songTitle, difficulty, accuracy, tempoPercent, isFirstTime);
+    if (earned > 0) {
+        ncState.localPlayer.noteCoins += earned;
+        if (songTitle && !ncState.localPlayer.masteredSongs.includes(songTitle)) {
+            ncState.localPlayer.masteredSongs.push(songTitle);
+        }
+        updateInventory();
+        saveStudentWallet(ncState.localPlayer.name);
+        showNoteCraftToast(`🏆 +${earned} NoteCoins earned for ${songTitle}!`, '#facc15', 3400);
+    }
+}
