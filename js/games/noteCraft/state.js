@@ -1,42 +1,48 @@
 // js/games/noteCraft/state.js
 import { CHUNK_HEIGHT } from './constants.js';
 
-
 export const ncState = {
+    active: false,
+    worldId: 'school_campus_main',
     animFrameId: null,
     syncIntervalId: null,
-    roomUnsubscribe: null,
     lastFrameTime: 0,
-    targetBlock: null,
-    toastMessage: null,
+    isPointerLocked: false,
+    isTeacher: false,
 
     localPlayer: {
-        x: 0,
-        y: CHUNK_HEIGHT,
-        z: 0,
-        pitch: 0,
+        id: 'local',
+        name: 'Builder',
+        avatar: '🏃',
+        x: 12,
+        y: 3,
+        z: 2,
+        vx: 0,
+        vy: 0,
+        vz: 0,
         yaw: 0,
+        pitch: -0.15,
         velocity: { x: 0, y: 0, z: 0 },
         isGrounded: false,
-        noteCoins: 0,
-        masteredSongs: [],
-        inventory: [],     // Array of unlocked block IDs
-        selectedSlot: 0,   // Hotbar index (0-8)
         isFlying: false,
-        flightTimer: 0
-    },
-
-    world: {
-        chunks: {}, // Keyed by "chunkX_chunkZ"
-        deltas: {}, // Player modifications, keyed by "x_y_z"
-        dirty: true
+        flightTimer: 0,
+        noteCoins: 150,
+        masteredSongs: [],
+        selectedSlot: 0,
+        inventory: [1, 2, 3, null, null, null, null, null]
     },
 
     remotePlayers: {},
 
-    // Engine & Input
+    world: {
+        deltas: {},
+        undoStack: [],
+        dirty: true,
+        height: CHUNK_HEIGHT
+    },
+
+    targetBlock: { hit: false },
     keysHeld: new Set(),
-    activeChords: new Set(),
-    pendingNoteTimer: null,
-    recentNotes: []
+    toastMessage: null,
+    bridge: null
 };

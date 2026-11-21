@@ -2,6 +2,7 @@
 import { BLOCKS, BLOCK_COSTS } from './constants.js';
 import { ncState } from './state.js';
 import { WORLD_HALF_X, WORLD_HALF_Z, getCurrentCampusZone } from './engine.js';
+import { isTeacherBuilder } from './economy.js';
 
 let hudCanvas = null;
 let hudCtx = null;
@@ -52,7 +53,7 @@ export function showNoteCraftToast(text, color = '#facc15', durationMs = 2600) {
 
 function drawSatelliteMinimap(ctx, H) {
     const mapW = 136;
-    const mapH = 102; // 4:3 ratio matching erc_map.jpg
+    const mapH = 102;
     const mx = 12;
     const my = H - mapH - 12;
     const lp = ncState.localPlayer;
@@ -128,6 +129,7 @@ export function renderHudFrame(now) {
     const H = hudCanvas.height;
     const ctx = hudCtx;
     const lp = ncState.localPlayer;
+    const teacher = isTeacherBuilder();
 
     ctx.clearRect(0, 0, W, H);
 
@@ -147,17 +149,21 @@ export function renderHudFrame(now) {
     const zone = getCurrentCampusZone(lp.x, lp.z);
 
     ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-    ctx.strokeStyle = '#facc15';
+    ctx.strokeStyle = teacher ? '#4ade80' : '#facc15';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.roundRect(12, 10, 315, 66, 8);
+    ctx.roundRect(12, 10, 325, 66, 8);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#facc15';
+    ctx.fillStyle = teacher ? '#4ade80' : '#facc15';
     ctx.font = '900 13px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`🎵 ${lp.noteCoins} NoteCoins  |  🎼 ${lp.masteredSongs.length} Songs`, 22, 29);
+    if (teacher) {
+        ctx.fillText(`👑 TEACHER CREATIVE • ∞ NoteCoins • All Blocks`, 22, 29);
+    } else {
+        ctx.fillText(`🎵 ${lp.noteCoins} NoteCoins  |  🎼 ${lp.masteredSongs.length} Songs`, 22, 29);
+    }
 
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 11px sans-serif';
@@ -168,23 +174,28 @@ export function renderHudFrame(now) {
     ctx.font = '900 11px sans-serif';
     ctx.fillText(`📍 ${zone.name}`, 22, 65);
 
-    // 3. Top-Right Controls & Architect Chords Guide
+    // 3. Top-Right Controls & Prominent [Z] UNDO Indicator
     ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
     ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect(W - 352, 10, 340, 52, 8);
+    ctx.roundRect(W - 392, 10, 380, 62, 8);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = '#38bdf8';
     ctx.font = '900 11px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('WASD: Move • Space: Jump • L-Click: Break • R-Click/E: Place', W - 22, 29);
+    ctx.fillText('WASD: Move • Space: Jump • L-Click: Break • R-Click/E: Place', W - 22, 28);
+
+    const undoCount = Array.isArray(ncState.world.undoStack) ? ncState.world.undoStack.length : 0;
+    ctx.fillStyle = undoCount > 0 ? '#facc15' : '#94a3b8';
+    ctx.font = '900 11.5px sans-serif';
+    ctx.fillText(`↩️ Press [Z] to Undo Last Block (${undoCount} saved)`, W - 22, 46);
 
     ctx.fillStyle = '#e2e8f0';
-    ctx.font = 'bold 10.5px sans-serif';
-    ctx.fillText('🎹 Chords: Major=3x Beam • Minor=3x Pillar • Sus4/Maj7=Fly', W - 22, 48);
+    ctx.font = 'bold 10px sans-serif';
+    ctx.fillText('🎹 Chords: Major=3x Beam • Minor=3x Pillar • Sus4/Maj7=Fly', W - 22, 62);
 
     // 4. Toast Notification Banner
     if (ncState.toastMessage && now < ncState.toastMessage.expiresAt) {
@@ -193,20 +204,20 @@ export function renderHudFrame(now) {
         ctx.strokeStyle = msg.color;
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.roundRect(W / 2 - 210, 72, 420, 32, 8);
+        ctx.roundRect(W / 2 - 210, 78, 420, 32, 8);
         ctx.fill();
         ctx.stroke();
 
         ctx.fillStyle = msg.color;
         ctx.font = '900 12px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(msg.text, W / 2, 92);
+        ctx.fillText(msg.text, W / 2, 98);
     }
 
     // 5. Bottom-Left Live Satellite GPS Minimap
     drawSatelliteMinimap(ctx, H);
 
-    // 6. Bottom-Center 8-Slot Block Hotbar
+    // 6. Bottom-Center 8-Slot Block Hotbar + [Z] Undo Quick-Badge
     const slots = 8;
     const slotW = 54;
     const slotH = 54;
@@ -235,7 +246,7 @@ export function renderHudFrame(now) {
 
         if (blockId && BLOCK_META[blockId]) {
             const meta = BLOCK_META[blockId];
-            const cost = BLOCK_COSTS[blockId] || 0;
+            const cost = teacher ? 0 : (BLOCK_COSTS[blockId] || 0);
 
             ctx.fillStyle = meta.swatch;
             ctx.strokeStyle = meta.accent;
@@ -258,6 +269,26 @@ export function renderHudFrame(now) {
             ctx.fillText('🔒', sx + slotW / 2, startY + 34);
         }
     }
+
+    // Prominent [Z] UNDO pill right next to slot 8
+    const undoX = startX + totalW + 10;
+    ctx.fillStyle = undoCount > 0 ? 'rgba(15, 23, 42, 0.94)' : 'rgba(15, 23, 42, 0.65)';
+    ctx.strokeStyle = undoCount > 0 ? '#facc15' : '#475569';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(undoX, startY, 64, slotH, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = undoCount > 0 ? '#facc15' : '#64748b';
+    ctx.font = '900 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('[Z]', undoX + 32, startY + 23);
+    ctx.font = '900 9.5px sans-serif';
+    ctx.fillText('UNDO', undoX + 32, startY + 38);
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = 'bold 8.5px sans-serif';
+    ctx.fillText(`(${undoCount})`, undoX + 32, startY + 49);
 }
 
 export function disposeHud() {

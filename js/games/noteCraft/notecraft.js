@@ -1,376 +1,342 @@
 // js/games/noteCraft/notecraft.js
-import { initAudio, playTone } from '../../audio.js';
-import { getNoteFrequency } from '../../musicTheory.js';
 import { BLOCKS, BLOCK_COSTS } from './constants.js';
 import { ncState } from './state.js';
-import { calculateRoundReward, updateInventory } from './economy.js';
-import { updatePlayerPhysics, breakTargetBlock, placeSelectedBlock, setBlockAt } from './engine.js';
-import { initRender3D, render3DFrame, resizeRender3D, disposeRender3D } from './render3d.js';
-import { connectNoteCraftNetwork, syncBlockChange, saveStudentWallet, disconnectNoteCraftNetwork } from './network.js';
-import { updateRemotePlayerSprites, disposeSprites } from './sprites.js';
-import { initHud, renderHudFrame, resizeHud, showNoteCraftToast, disposeHud } from './hud.js';
+import {
+    breakTargetBlock,
+    placeSelectedBlock,
+    setBlockAt,
+    undoLastAction,
+    updatePlayerPhysics
+} from './engine.js';
+import {
+    initRender3D,
+    render3DFrame,
+    resizeRender3D,
+    getThreeScene,
+    disposeRender3D
+} from './render3d.js';
+import {
+    initHud,
+    renderHudFrame,
+    resizeHud,
+    showNoteCraftToast,
+    disposeHud
+} from './hud.js';
+import {
+    initAvatarSprites,
+    updateAvatarSprites,
+    disposeAvatarSprites
+} from './sprites.js';
+import {
+    calculateRoundReward,
+    updateInventory,
+    isTeacherBuilder
+} from './economy.js';
+import {
+    connectNoteCraftNetwork,
+    syncBlockChange,
+    saveStudentWallet,
+    disconnectNoteCraftNetwork
+} from './network.js';
 
-let listenersBound = false;
-let isDraggingLook = false;
-let lastMouseX = 0;
-let lastMouseY = 0;
-let activeBridge = null;
-let noteBlockPitchIdx = 0;
+let keyDownHandler = null;
+let keyUpHandler = null;
+let mouseDownHandler = null;
+let mouseMoveHandler = null;
+let pointerLockHandler = null;
+let contextMenuHandler = null;
+let resizeHandler = null;
 
-const NOTE_BLOCK_SCALE = ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'];
-
-const ARCHITECT_CHORDS = [
-    { type: 'fly',    label: 'Sus4 / Maj7 Scaffolding Flight (12s)', notes: ['C', 'F', 'G'] },
-    { type: 'fly',    label: 'Maj7 Scaffolding Flight (12s)',        notes: ['C', 'E', 'G', 'B'] },
-    { type: 'beam',   label: 'Major Triad 3-Block Beam',             notes: ['C', 'E', 'G'] },
-    { type: 'beam',   label: 'Major Triad 3-Block Beam',             notes: ['F', 'A', 'C'] },
-    { type: 'beam',   label: 'Major Triad 3-Block Beam',             notes: ['G', 'B', 'D'] },
-    { type: 'pillar', label: 'Minor Triad 3-Block Pillar',           notes: ['A', 'C', 'E'] },
-    { type: 'pillar', label: 'Minor Triad 3-Block Pillar',           notes: ['D', 'F', 'A'] },
-    { type: 'pillar', label: 'Minor Triad 3-Block Pillar',           notes: ['E', 'G', 'B'] }
-];
-
-function extractPitchClass(noteStr) {
-    const m = String(noteStr || '').trim().toUpperCase().match(/^([A-G]#?)/);
-    return m ? m[1] : null;
-}
-
-function playFeedbackChime(freq = 659.25) {
-    try {
-        initAudio();
-        playTone(freq, 0.18, 0.5);
-    } catch (e) {}
-}
-
-async function handleBreakAction() {
-    const target = ncState.targetBlock;
-    if (target && target.hit && target.blockId === BLOCKS.NOTE_BLOCK) {
-        const pitch = NOTE_BLOCK_SCALE[noteBlockPitchIdx % NOTE_BLOCK_SCALE.length];
-        noteBlockPitchIdx++;
-        playFeedbackChime(getNoteFrequency(pitch) || 523.25);
-        showNoteCraftToast(`🎵 Note Block tuned & played: ${pitch}`, '#c084fc', 1600);
-        return;
-    }
-
-    const change = breakTargetBlock();
-    if (change) {
-        playFeedbackChime(220);
-        await syncBlockChange(change);
-    }
-}
-
-async function handlePlaceAction() {
-    const target = ncState.targetBlock;
-    if (target && target.hit && target.blockId === BLOCKS.NOTE_BLOCK) {
-        const pitch = NOTE_BLOCK_SCALE[noteBlockPitchIdx % NOTE_BLOCK_SCALE.length];
-        noteBlockPitchIdx++;
-        playFeedbackChime(getNoteFrequency(pitch) || 523.25);
-        showNoteCraftToast(`🎵 Note Block played: ${pitch}`, '#c084fc', 1600);
-        return;
-    }
-
+function handlePlaceBlockAction() {
     const res = placeSelectedBlock();
     if (!res) return;
-
     if (res.error === 'INSUFFICIENT_COINS') {
-        showNoteCraftToast(`Need ${res.cost} NoteCoins! Play songs in Game Mode to earn more.`, '#ef4444');
+        showNoteCraftToast(`Need ${res.cost} NoteCoins! Play a song or chord to earn more.`, '#f87171');
         return;
     }
-
     if (res.change) {
-        playFeedbackChime(523.25);
-        await syncBlockChange(res.change);
-        if (res.cost > 0) {
-            const state = activeBridge && activeBridge.getState ? activeBridge.getState() : {};
-            await saveStudentWallet(state.sessionStudentName || 'Student');
+        syncBlockChange(res.change);
+        if (!isTeacherBuilder()) {
+            saveStudentWallet(ncState.localPlayer.name);
         }
     }
 }
 
-async function executeArchitectPower(chordPower) {
-    const lp = ncState.localPlayer;
+function handleBreakBlockAction() {
+    const change = breakTargetBlock();
+    if (change) {
+        syncBlockChange(change);
+    }
+}
 
-    if (chordPower.type === 'fly') {
-        lp.isFlying = true;
-        lp.flightTimer = 12.0;
-        playFeedbackChime(880);
-        showNoteCraftToast(`🪽 ${chordPower.label}! Space=Up, Shift=Down`, '#38bdf8', 3000);
+function handleUndoAction() {
+    const undone = undoLastAction();
+    if (!undone || !undone.change) {
+        showNoteCraftToast('Nothing left to undo!', '#94a3b8', 1600);
         return;
     }
-
-    const target = ncState.targetBlock;
-    const blockId = lp.inventory[lp.selectedSlot];
-    if (!target || !target.hit || !blockId) return;
-
-    const unitCost = BLOCK_COSTS[blockId] || 0;
-    const startX = target.x + target.normal.x;
-    const startY = target.y + target.normal.y;
-    const startZ = target.z + target.normal.z;
-
-    let dx = 0, dy = 0, dz = 0;
-    if (chordPower.type === 'pillar') {
-        dy = 1;
+    syncBlockChange(undone.change);
+    if (undone.refundedCost > 0 && !isTeacherBuilder()) {
+        saveStudentWallet(ncState.localPlayer.name);
+        showNoteCraftToast(`↩️ Undid block (+${undone.refundedCost} NoteCoins refunded)`, '#facc15', 1800);
     } else {
-        if (Math.abs(Math.sin(lp.yaw)) > Math.abs(Math.cos(lp.yaw))) {
-            dx = -Math.sign(Math.sin(lp.yaw));
-        } else {
-            dz = -Math.sign(Math.cos(lp.yaw));
-        }
-    }
-
-    let placedCount = 0;
-    for (let step = 0; step < 3; step++) {
-        if (lp.noteCoins < unitCost) break;
-        const change = setBlockAt(startX + dx * step, startY + dy * step, startZ + dz * step, blockId);
-        if (change) {
-            lp.noteCoins -= unitCost;
-            placedCount++;
-            await syncBlockChange(change);
-        }
-    }
-
-    if (placedCount > 0) {
-        playFeedbackChime(783.99);
-        showNoteCraftToast(`🎼 ${chordPower.label}: Placed ${placedCount} blocks!`, '#22c55e', 2400);
-        if (unitCost > 0) {
-            const state = activeBridge && activeBridge.getState ? activeBridge.getState() : {};
-            await saveStudentWallet(state.sessionStudentName || 'Student');
-        }
-    } else {
-        showNoteCraftToast(`Not enough NoteCoins for ${chordPower.label}!`, '#ef4444');
+        showNoteCraftToast(`↩️ Undid last block (${undone.remaining} left in undo history)`, '#facc15', 1800);
     }
 }
 
-export function handleNoteCraftInput(noteStr) {
-    if (!ncState.animFrameId) return false;
-    const pitch = extractPitchClass(noteStr);
-    if (!pitch) return true;
+function attachInputListeners(containerEl) {
+    detachInputListeners();
 
-    const now = performance.now();
-    ncState.recentNotes.push({ pitch, time: now });
-    ncState.recentNotes = ncState.recentNotes.filter(n => (now - n.time) <= 140);
+    keyDownHandler = (e) => {
+        if (!ncState.active) return;
 
-    const distinct = new Set(ncState.recentNotes.map(n => n.pitch));
-
-    if (distinct.size >= 3) {
-        for (const chord of ARCHITECT_CHORDS) {
-            if (chord.notes.length === distinct.size && chord.notes.every(n => distinct.has(n))) {
-                if (ncState.pendingNoteTimer) {
-                    clearTimeout(ncState.pendingNoteTimer);
-                    ncState.pendingNoteTimer = null;
-                }
-                ncState.recentNotes = [];
-                executeArchitectPower(chord);
-                return true;
-            }
-        }
-    }
-
-    if (ncState.pendingNoteTimer) clearTimeout(ncState.pendingNoteTimer);
-    ncState.pendingNoteTimer = setTimeout(() => {
-        ncState.pendingNoteTimer = null;
-        if (ncState.recentNotes.length === 1) {
-            const singlePitch = ncState.recentNotes[0].pitch;
-            const slotOrder = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-            const idx = slotOrder.indexOf(singlePitch);
-            if (idx >= 0) {
-                ncState.localPlayer.selectedSlot = idx;
-            }
-        }
-        ncState.recentNotes = [];
-    }, 95);
-
-    return true;
-}
-
-function bindControls(wrapperEl) {
-    if (listenersBound) return;
-    listenersBound = true;
-
-    window.addEventListener('keydown', (e) => {
-        if (!ncState.animFrameId) return;
-        ncState.keysHeld.add(e.code);
-
+        // Number keys 1-8 select block slot
         if (e.code >= 'Digit1' && e.code <= 'Digit8') {
-            ncState.localPlayer.selectedSlot = Number(e.code.replace('Digit', '')) - 1;
-        } else if (e.code === 'KeyE' || e.code === 'Enter') {
-            handlePlaceAction();
-        } else if (e.code === 'KeyQ') {
-            handleBreakAction();
+            const slotIdx = Number(e.code.replace('Digit', '')) - 1;
+            ncState.localPlayer.selectedSlot = slotIdx;
+            return;
         }
-    });
 
-    window.addEventListener('keyup', (e) => {
+        // Z key (or Cmd+Z / Ctrl+Z) undoes last placed/broken block
+        if (e.code === 'KeyZ') {
+            e.preventDefault();
+            handleUndoAction();
+            return;
+        }
+
+        // E key places selected block
+        if (e.code === 'KeyE') {
+            e.preventDefault();
+            handlePlaceBlockAction();
+            return;
+        }
+
+        // Q key breaks targeted block
+        if (e.code === 'KeyQ') {
+            e.preventDefault();
+            handleBreakBlockAction();
+            return;
+        }
+
+        // F key toggles Creative Flight for Teacher mode anytime
+        if (e.code === 'KeyF' && isTeacherBuilder()) {
+            e.preventDefault();
+            ncState.localPlayer.isFlying = !ncState.localPlayer.isFlying;
+            ncState.localPlayer.flightTimer = ncState.localPlayer.isFlying ? 3600 : 0;
+            showNoteCraftToast(
+                ncState.localPlayer.isFlying ? '🪽 Creative Flight ON (Space: Up, Shift: Down)' : '🚶 Walking Mode ON',
+                '#4ade80',
+                1800
+            );
+            return;
+        }
+
+        ncState.keysHeld.add(e.code);
+    };
+
+    keyUpHandler = (e) => {
         ncState.keysHeld.delete(e.code);
-    });
+    };
 
-    window.addEventListener('blur', () => {
-        ncState.keysHeld.clear();
-        isDraggingLook = false;
-    });
+    mouseDownHandler = (e) => {
+        if (!ncState.active) return;
+        const canvas = document.getElementById('notecraft-canvas');
+        if (!canvas || e.target !== canvas) return;
 
-    window.addEventListener('mousemove', (e) => {
-        if (!ncState.animFrameId) return;
-        const lp = ncState.localPlayer;
-        const locked = document.pointerLockElement && document.pointerLockElement.id === 'notecraft-canvas';
-
-        if (locked) {
-            lp.yaw -= e.movementX * 0.0024;
-            lp.pitch = Math.max(-1.45, Math.min(1.45, lp.pitch - e.movementY * 0.0024));
-        } else if (isDraggingLook) {
-            const dx = e.clientX - lastMouseX;
-            const dy = e.clientY - lastMouseY;
-            lastMouseX = e.clientX;
-            lastMouseY = e.clientY;
-            lp.yaw -= dx * 0.005;
-            lp.pitch = Math.max(-1.45, Math.min(1.45, lp.pitch - dy * 0.005));
+        if (document.pointerLockElement !== canvas) {
+            canvas.requestPointerLock?.();
+            return;
         }
-    });
-
-    wrapperEl.addEventListener('mousedown', (e) => {
-        if (!ncState.animFrameId) return;
-        if (e.target && e.target.id === 'btn-nc-host-panel') return;
-
-        const ncCanvas = document.getElementById('notecraft-canvas');
-        const locked = document.pointerLockElement === ncCanvas;
-
-        if (!locked && ncCanvas && ncCanvas.requestPointerLock) {
-            try { ncCanvas.requestPointerLock(); } catch (err) {}
-        }
-
-        isDraggingLook = true;
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
 
         if (e.button === 0) {
-            handleBreakAction();
+            handleBreakBlockAction();
         } else if (e.button === 2) {
-            e.preventDefault();
-            handlePlaceAction();
+            handlePlaceBlockAction();
         }
-    });
+    };
 
-    window.addEventListener('mouseup', () => {
-        isDraggingLook = false;
-    });
+    mouseMoveHandler = (e) => {
+        if (!ncState.active) return;
+        const canvas = document.getElementById('notecraft-canvas');
+        if (document.pointerLockElement !== canvas) return;
 
-    wrapperEl.addEventListener('contextmenu', (e) => {
-        if (ncState.animFrameId) e.preventDefault();
-    });
+        const sensitivity = 0.0024;
+        ncState.localPlayer.yaw -= e.movementX * sensitivity;
+        ncState.localPlayer.pitch = Math.max(
+            -Math.PI / 2 + 0.05,
+            Math.min(Math.PI / 2 - 0.05, ncState.localPlayer.pitch - e.movementY * sensitivity)
+        );
+    };
 
-    window.addEventListener('wheel', (e) => {
-        if (!ncState.animFrameId) return;
-        const dir = e.deltaY > 0 ? 1 : -1;
-        ncState.localPlayer.selectedSlot = (ncState.localPlayer.selectedSlot + dir + 8) % 8;
-    }, { passive: true });
+    pointerLockHandler = () => {
+        const canvas = document.getElementById('notecraft-canvas');
+        ncState.isPointerLocked = Boolean(canvas && document.pointerLockElement === canvas);
+    };
 
-    window.addEventListener('resize', () => {
-        if (!ncState.animFrameId) return;
-        resizeRender3D(wrapperEl);
-        resizeHud(wrapperEl);
-    });
+    contextMenuHandler = (e) => {
+        const canvas = document.getElementById('notecraft-canvas');
+        if (ncState.active && e.target === canvas) {
+            e.preventDefault();
+        }
+    };
+
+    resizeHandler = () => {
+        if (!ncState.active) return;
+        resizeRender3D(containerEl);
+        resizeHud(containerEl);
+    };
+
+    window.addEventListener('keydown', keyDownHandler);
+    window.addEventListener('keyup', keyUpHandler);
+    window.addEventListener('mousedown', mouseDownHandler);
+    window.addEventListener('mousemove', mouseMoveHandler);
+    document.addEventListener('pointerlockchange', pointerLockHandler);
+    window.addEventListener('contextmenu', contextMenuHandler);
+    window.addEventListener('resize', resizeHandler);
+}
+
+function detachInputListeners() {
+    if (keyDownHandler) window.removeEventListener('keydown', keyDownHandler);
+    if (keyUpHandler) window.removeEventListener('keyup', keyUpHandler);
+    if (mouseDownHandler) window.removeEventListener('mousedown', mouseDownHandler);
+    if (mouseMoveHandler) window.removeEventListener('mousemove', mouseMoveHandler);
+    if (pointerLockHandler) document.removeEventListener('pointerlockchange', pointerLockHandler);
+    if (contextMenuHandler) window.removeEventListener('contextmenu', contextMenuHandler);
+    if (resizeHandler) window.removeEventListener('resize', resizeHandler);
+    ncState.keysHeld.clear();
+}
+
+export function onNoteCraftPianoInput(event) {
+    if (!ncState.active || !event) return;
+
+    if (event.type === 'chord' && event.chordQuality) {
+        const quality = String(event.chordQuality).toLowerCase();
+        const lp = ncState.localPlayer;
+        const blockId = lp.inventory[lp.selectedSlot] || BLOCKS.STONE;
+        const target = ncState.targetBlock;
+
+        if (quality.includes('sus') || quality.includes('maj7')) {
+            lp.isFlying = true;
+            lp.flightTimer = isTeacherBuilder() ? 3600 : 12;
+            showNoteCraftToast('🪽 Sus4/Maj7 Chord! Creative Flight unlocked!', '#38bdf8');
+            return;
+        }
+
+        if (!target || !target.hit) return;
+
+        const baseX = target.x + target.normal.x;
+        const baseY = target.y + target.normal.y;
+        const baseZ = target.z + target.normal.z;
+
+        if (quality.includes('major')) {
+            const perpX = Math.round(Math.cos(lp.yaw));
+            const perpZ = Math.round(-Math.sin(lp.yaw));
+            for (let i = -1; i <= 1; i++) {
+                const c = setBlockAt(baseX + perpX * i, baseY, baseZ + perpZ * i, blockId);
+                if (c) syncBlockChange(c);
+            }
+            showNoteCraftToast('🎶 Major Triad! Built 3-block horizontal beam!', '#4ade80');
+        } else if (quality.includes('minor')) {
+            for (let i = 0; i < 3; i++) {
+                const c = setBlockAt(baseX, baseY + i, baseZ, blockId);
+                if (c) syncBlockChange(c);
+            }
+            showNoteCraftToast('🎶 Minor Triad! Built 3-block vertical pillar!', '#c084fc');
+        }
+    }
+
+    if (event.type === 'songComplete') {
+        const earned = calculateRoundReward(
+            event.songTitle,
+            event.difficulty,
+            event.accuracy,
+            event.tempoPercent,
+            event.isFirstTime
+        );
+        if (earned > 0) {
+            ncState.localPlayer.noteCoins += earned;
+            if (event.songTitle && !ncState.localPlayer.masteredSongs.includes(event.songTitle)) {
+                ncState.localPlayer.masteredSongs.push(event.songTitle);
+            }
+            updateInventory();
+            saveStudentWallet(ncState.localPlayer.name);
+            showNoteCraftToast(`🏆 +${earned} NoteCoins earned for ${event.songTitle}!`, '#facc15', 3400);
+        }
+    }
 }
 
 function gameLoop(now) {
-    if (!ncState.animFrameId) return;
+    if (!ncState.active) return;
 
-    const dt = Math.min(0.05, (now - ncState.lastFrameTime) / 1000);
+    const dt = Math.min(0.05, Math.max(0.001, (now - (ncState.lastFrameTime || now)) / 1000));
     ncState.lastFrameTime = now;
 
     updatePlayerPhysics(dt);
-    updateRemotePlayerSprites();
+    updateAvatarSprites(getThreeScene(), dt);
     render3DFrame();
     renderHudFrame(now);
 
     ncState.animFrameId = requestAnimationFrame(gameLoop);
 }
 
-export async function awardNoteCraftSongReward(songTitle, difficulty = 'medium', accuracy = 0, tempoPercent = 100, studentName = 'Student') {
-    const cleanTitle = String(songTitle || '').trim();
-    if (!cleanTitle || accuracy < 75) return 0;
-
-    const isFirstTime = !ncState.localPlayer.masteredSongs.includes(cleanTitle);
-    const earned = calculateRoundReward(cleanTitle, difficulty, accuracy, tempoPercent, isFirstTime);
-
-    if (earned > 0) {
-        ncState.localPlayer.noteCoins += earned;
-        if (isFirstTime) {
-            ncState.localPlayer.masteredSongs.push(cleanTitle);
-        }
-        updateInventory();
-        await saveStudentWallet(studentName);
-        showNoteCraftToast(
-            isFirstTime
-                ? `🎉 NEW SONG BONUS! +${earned} NoteCoins & New Blocks Unlocked!`
-                : `🎵 Song Complete! +${earned} NoteCoins earned!`,
-            '#22c55e',
-            3600
-        );
-    }
-    return earned;
-}
-
 export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
     stopNoteCraft();
-    activeBridge = bridge;
+
+    ncState.active = true;
+    ncState.bridge = bridge || null;
+    ncState.worldId = worldId;
+    ncState.world.undoStack = [];
+    ncState.isTeacher = Boolean(
+        (bridge && bridge.isTeacher) || localStorage.getItem('pianopad_is_teacher') === 'true'
+    );
+
+    if (bridge && typeof bridge.setActiveMiniGame === 'function') {
+        bridge.setActiveMiniGame('noteCraft');
+    }
 
     const wrapper = document.getElementById('visualizer-wrapper');
     const waterfallCanvas = document.getElementById('waterfall-canvas');
     if (!wrapper) return;
 
-    document.getElementById('arcade-hub')?.classList.remove('open');
-    document.getElementById('knockout-modal')?.classList.remove('open');
-    document.getElementById('sprint-option-modal')?.classList.remove('open');
-    document.getElementById('game-results-modal')?.classList.remove('open');
-
     if (waterfallCanvas) waterfallCanvas.style.visibility = 'hidden';
-wrapper.style.position = 'relative';
-wrapper.style.minHeight = '380px';
-    if (bridge && bridge.setActiveMiniGame) {
-        bridge.setActiveMiniGame('noteCraft');
-    }
+    wrapper.style.position = 'relative';
+    wrapper.style.minHeight = '380px';
+
+    const playerName = (bridge && bridge.playerName) || localStorage.getItem('pianopad_player_name') || 'Builder';
+    const playerAvatar = (bridge && bridge.playerAvatar) || localStorage.getItem('pianopad_player_avatar') || '🏃';
+    const playerId = (bridge && bridge.playerId) || `stu_${Math.random().toString(36).slice(2, 10)}`;
 
     const lp = ncState.localPlayer;
-    lp.x = 0;
+    lp.id = playerId;
+    lp.name = playerName;
+    lp.avatar = playerAvatar;
+    lp.x = 12;
     lp.y = 3;
-    lp.z = 6;
+    lp.z = 2;
     lp.yaw = 0;
-    lp.pitch = -0.08;
+    lp.pitch = -0.15;
     lp.velocity = { x: 0, y: 0, z: 0 };
-    lp.isFlying = false;
-    lp.flightTimer = 0;
 
     initRender3D(wrapper);
     initHud(wrapper);
+    initAvatarSprites(getThreeScene());
+    attachInputListeners(wrapper);
 
-    // Floating button so the Teacher can reopen the Tournament Modal while inside the 3D Campus
-    if (document.getElementById('ko-teacher-panel')?.style.display === 'flex') {
-        const reopenBtn = document.createElement('button');
-        reopenBtn.id = 'btn-nc-host-panel';
-        reopenBtn.type = 'button';
-        reopenBtn.textContent = '🏆 Teacher Controls';
-        reopenBtn.style.cssText = 'position:absolute; top:70px; left:12px; z-index:20; background:#ef4444; color:#fff; border:2px solid #fff; border-radius:8px; padding:6px 12px; font-weight:900; font-size:0.8rem; cursor:pointer;';
-        reopenBtn.onclick = () => {
-            if (document.pointerLockElement) document.exitPointerLock();
-            document.getElementById('knockout-modal')?.classList.add('open');
-        };
-        wrapper.appendChild(reopenBtn);
-    }
+    await connectNoteCraftNetwork(worldId, {
+        id: playerId,
+        name: playerName,
+        avatar: playerAvatar
+    });
 
-    bindControls(wrapper);
-
-    const state = bridge && bridge.getState ? bridge.getState() : {};
-    const playerMeta = {
-        id: state.localStudentId || ('stu_' + Math.random().toString(36).slice(2, 9)),
-        name: state.sessionStudentName || localStorage.getItem('pianopad_name') || 'Builder',
-        avatar: state.sessionStudentAvatar || localStorage.getItem('pianopad_avatar') || '🏃'
-    };
-
-    await connectNoteCraftNetwork(worldId, playerMeta);
-
-    const statusEl = document.getElementById('status');
-    if (statusEl) {
-        statusEl.textContent = `🏫 NOTECRAFT CAMPUS BUILDER! Earn NoteCoins by mastering songs in Game Mode, then build the school together!`;
+    // Teacher Creative Mode: infinite coins, all 8 textures unlocked, and creative flight enabled
+    if (isTeacherBuilder()) {
+        lp.noteCoins = 999999;
+        lp.isFlying = true;
+        lp.flightTimer = 3600;
+        updateInventory();
+        showNoteCraftToast('👑 Teacher Creative Mode: Infinite NoteCoins, All Blocks & Flight ([F] toggle, [Z] Undo)', '#4ade80', 4000);
+    } else {
+        showNoteCraftToast('Click 3D viewport to look around • Press [Z] anytime to Undo', '#38bdf8', 3200);
     }
 
     ncState.lastFrameTime = performance.now();
@@ -378,32 +344,28 @@ wrapper.style.minHeight = '380px';
 }
 
 export function stopNoteCraft() {
+    ncState.active = false;
     if (ncState.animFrameId !== null) {
         cancelAnimationFrame(ncState.animFrameId);
         ncState.animFrameId = null;
     }
-    if (ncState.pendingNoteTimer) {
-        clearTimeout(ncState.pendingNoteTimer);
-        ncState.pendingNoteTimer = null;
-    }
-    if (document.pointerLockElement && document.pointerLockElement.id === 'notecraft-canvas') {
-        try { document.exitPointerLock(); } catch (e) {}
+
+    if (document.pointerLockElement) {
+        document.exitPointerLock?.();
     }
 
-    ncState.keysHeld.clear();
-    ncState.recentNotes = [];
-
-    document.getElementById('btn-nc-host-panel')?.remove();
+    detachInputListeners();
     disconnectNoteCraftNetwork();
-    disposeSprites();
+    disposeAvatarSprites();
     disposeHud();
     disposeRender3D();
 
     const wrapper = document.getElementById('visualizer-wrapper');
-if (wrapper) wrapper.style.minHeight = '';
-const waterfallCanvas = document.getElementById('waterfall-canvas');
-if (waterfallCanvas) waterfallCanvas.style.visibility = 'visible';
-}
+    if (wrapper) wrapper.style.minHeight = '';
+    const waterfallCanvas = document.getElementById('waterfall-canvas');
+    if (waterfallCanvas) waterfallCanvas.style.visibility = 'visible';
 
-window.launchNoteCraft = (worldId) => startNoteCraft(activeBridge, worldId);
-window.stopNoteCraft = stopNoteCraft;
+    if (ncState.bridge && typeof ncState.bridge.setActiveMiniGame === 'function') {
+        ncState.bridge.setActiveMiniGame(null);
+    }
+}

@@ -1,6 +1,7 @@
 // js/games/noteCraft/engine.js
 import { BLOCKS, BLOCK_COSTS, GRAVITY, PLAYER_EYE_HEIGHT, PLAYER_RADIUS } from './constants.js';
 import { ncState } from './state.js';
+import { isTeacherBuilder } from './economy.js';
 
 export const WORLD_HALF_X = 64; // 128 blocks wide (matches 4:3 erc_map.jpg)
 export const WORLD_HALF_Z = 48; // 96 blocks deep
@@ -132,10 +133,25 @@ export function raycastVoxel(maxDist = 6.5) {
     return { hit: false };
 }
 
+export function pushUndoEntry(x, y, z, prevBlockId, refundedCost = 0) {
+    if (!Array.isArray(ncState.world.undoStack)) {
+        ncState.world.undoStack = [];
+    }
+    ncState.world.undoStack.push({ x, y, z, prevBlockId, refundedCost });
+    if (ncState.world.undoStack.length > 100) {
+        ncState.world.undoStack.shift();
+    }
+}
+
 export function breakTargetBlock() {
     const target = ncState.targetBlock;
     if (!target || !target.hit || target.y <= 0) return null;
-    return setBlockAt(target.x, target.y, target.z, BLOCKS.AIR);
+    const prevBlockId = getBlockAt(target.x, target.y, target.z);
+    const change = setBlockAt(target.x, target.y, target.z, BLOCKS.AIR);
+    if (change) {
+        pushUndoEntry(target.x, target.y, target.z, prevBlockId, 0);
+    }
+    return change;
 }
 
 export function placeSelectedBlock() {
@@ -146,8 +162,9 @@ export function placeSelectedBlock() {
     const blockId = lp.inventory[lp.selectedSlot];
     if (!blockId) return null;
 
-    const cost = BLOCK_COSTS[blockId] || 0;
-    if (lp.noteCoins < cost) {
+    const teacher = isTeacherBuilder();
+    const cost = teacher ? 0 : (BLOCK_COSTS[blockId] || 0);
+    if (!teacher && lp.noteCoins < cost) {
         return { error: 'INSUFFICIENT_COINS', cost };
     }
 
@@ -161,12 +178,26 @@ export function placeSelectedBlock() {
         return null;
     }
 
+    const prevBlockId = getBlockAt(px, py, pz);
     const change = setBlockAt(px, py, pz, blockId);
     if (change) {
-        lp.noteCoins -= cost;
+        if (!teacher) lp.noteCoins -= cost;
+        pushUndoEntry(px, py, pz, prevBlockId, cost);
         return { change, cost };
     }
     return null;
+}
+
+export function undoLastAction() {
+    const stack = ncState.world.undoStack;
+    if (!Array.isArray(stack) || stack.length === 0) return null;
+
+    const last = stack.pop();
+    const change = setBlockAt(last.x, last.y, last.z, last.prevBlockId);
+    if (change && last.refundedCost > 0 && !isTeacherBuilder()) {
+        ncState.localPlayer.noteCoins += last.refundedCost;
+    }
+    return { change, refundedCost: last.refundedCost, remaining: stack.length };
 }
 
 export function updatePlayerPhysics(dt) {
@@ -191,7 +222,7 @@ export function updatePlayerPhysics(dt) {
         strafe /= len;
     }
 
-    const speed = lp.isFlying ? 9.0 : 6.0;
+    const speed = lp.isFlying ? 9.5 : 6.0;
     const sinY = Math.sin(lp.yaw);
     const cosY = Math.cos(lp.yaw);
 
