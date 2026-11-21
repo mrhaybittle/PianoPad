@@ -12,7 +12,7 @@ const MAX_ROUNDS = 5;
 let isPlayerTurn = true; 
 
 // Physics & Rendering
-let cameraShake = 0;
+let cameraShake = 0; // The correct variable name!
 let flashAlpha = 0;
 let bannerText = '';
 let bannerColor = '#ffffff';
@@ -152,7 +152,7 @@ export function startSharpShooter(bridge) {
         aiScore = 0;
         currentRound = 1;
         isPlayerTurn = true;
-        shakeTimer = 0;
+        cameraShake = 0; // FIXED HERE
         flashAlpha = 0;
 
         gamePhase = 'instructions';
@@ -615,7 +615,6 @@ function drawGloves(ctx, W, H, gx, gy) {
     ctx.strokeStyle = '#111827';
     ctx.lineWidth = 3;
     
-    // Safely using standard fillRect instead of newer roundRect API just in case
     ctx.fillRect(baseX - 60, baseY - 30, 40, 60);
     ctx.strokeRect(baseX - 60, baseY - 30, 40, 60);
     
