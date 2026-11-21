@@ -323,7 +323,9 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
     document.getElementById('sprint-option-modal')?.classList.remove('open');
     document.getElementById('game-results-modal')?.classList.remove('open');
 
-    if (waterfallCanvas) waterfallCanvas.style.display = 'none';
+    if (waterfallCanvas) waterfallCanvas.style.visibility = 'hidden';
+wrapper.style.position = 'relative';
+wrapper.style.minHeight = '380px';
     if (bridge && bridge.setActiveMiniGame) {
         bridge.setActiveMiniGame('noteCraft');
     }
@@ -397,8 +399,10 @@ export function stopNoteCraft() {
     disposeHud();
     disposeRender3D();
 
-    const waterfallCanvas = document.getElementById('waterfall-canvas');
-    if (waterfallCanvas) waterfallCanvas.style.display = 'block';
+    const wrapper = document.getElementById('visualizer-wrapper');
+if (wrapper) wrapper.style.minHeight = '';
+const waterfallCanvas = document.getElementById('waterfall-canvas');
+if (waterfallCanvas) waterfallCanvas.style.visibility = 'visible';
 }
 
 window.launchNoteCraft = (worldId) => startNoteCraft(activeBridge, worldId);
