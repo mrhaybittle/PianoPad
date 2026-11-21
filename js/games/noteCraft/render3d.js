@@ -120,15 +120,15 @@ function getBlockMaterial(blockId) {
 }
 
 function buildCampusGroundBlueprint() {
-    const worldSize = WORLD_RADIUS * 2; // 96 blocks
+    const worldW = WORLD_HALF_X * 2; // 128 blocks
+    const worldD = WORLD_HALF_Z * 2; // 96 blocks
     const loader = new THREE.TextureLoader();
 
-    // Load the cropped Edmund Rice College satellite screenshot from ./assets/erc_map.jpg
     loader.load(
         './assets/erc_map.jpg',
         (tex) => {
             tex.colorSpace = THREE.SRGBColorSpace;
-            const planeGeo = new THREE.PlaneGeometry(worldSize, worldSize);
+            const planeGeo = new THREE.PlaneGeometry(worldW, worldD);
             planeGeo.rotateX(-Math.PI / 2);
             const planeMat = new THREE.MeshLambertMaterial({
                 map: tex,
@@ -139,20 +139,14 @@ function buildCampusGroundBlueprint() {
             campusBlueprintMesh = new THREE.Mesh(planeGeo, planeMat);
             campusBlueprintMesh.position.set(0, 1.005, 0);
             if (scene) scene.add(campusBlueprintMesh);
-        },
-        undefined,
-        () => {
-            console.info("NoteCraft: ./assets/erc_map.jpg not found yet; using standard grass ground.");
         }
     );
 
-    // Subtle glowing gold perimeter outline marking the "Centenary Innovation Centre" build zone
-    const cicWidth = 22;  // x: -8 to 14
-    const cicDepth = 16;  // z: 8 to 24
-    const cicGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(cicWidth, 0.25, cicDepth));
+    // Gold perimeter outline for the "Centenary Innovation Centre" (x: 2..22, z: 6..20)
+    const cicGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(20, 0.25, 14));
     const cicMat = new THREE.LineBasicMaterial({ color: 0xfacc15 });
     cicOutlineMesh = new THREE.LineSegments(cicGeo, cicMat);
-    cicOutlineMesh.position.set(3, 1.15, 16);
+    cicOutlineMesh.position.set(12, 1.15, 13);
     scene.add(cicOutlineMesh);
 }
 
@@ -205,8 +199,8 @@ export function rebuildWorldMeshes() {
     const buckets = new Map();
 
     // Base terrain floor (y = 1)
-    for (let x = -WORLD_RADIUS; x < WORLD_RADIUS; x++) {
-        for (let z = -WORLD_RADIUS; z < WORLD_RADIUS; z++) {
+    for (let x = -WORLD_HALF_X; x < WORLD_HALF_X; x++) {
+    for (let z = -WORLD_HALF_Z; z < WORLD_HALF_Z; z++) {
             const key = `${x}_1_${z}`;
             const blockId = Object.prototype.hasOwnProperty.call(ncState.world.deltas, key)
                 ? ncState.world.deltas[key]
