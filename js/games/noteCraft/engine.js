@@ -3,17 +3,18 @@ import { BLOCKS, BLOCK_COSTS, GRAVITY, PLAYER_EYE_HEIGHT, PLAYER_RADIUS } from '
 import { ncState } from './state.js';
 import { isTeacherBuilder } from './economy.js';
 
-export const WORLD_HALF_X = 64; // 128 blocks wide (matches 4:3 erc_map.jpg)
-export const WORLD_HALF_Z = 48; // 96 blocks deep
+// DOUBLED MAP SCALE (256x192) for precision
+export const WORLD_HALF_X = 128; 
+export const WORLD_HALF_Z = 96;  
 
 export const CAMPUS_ZONES = [
-    { name: 'Centenary Innovation Centre', minX: 2,   maxX: 22,  minZ: 6,   maxZ: 20,  color: '#facc15' },
-    { name: 'Indoor Sports Centre',        minX: -24, maxX: -4,  minZ: -8,  maxZ: 14,  color: '#ef4444' },
-    { name: 'Basketball Courts',           minX: -20, maxX: 0,   minZ: 12,  maxZ: 28,  color: '#f97316' },
-    { name: 'Western Sports Field',        minX: -54, maxX: -22, minZ: -26, maxZ: 4,   color: '#4ade80' },
-    { name: 'Main Quad & Solar Roofs',     minX: 4,   maxX: 30,  minZ: -26, maxZ: -4,  color: '#38bdf8' },
-    { name: 'E4 & Music Wing (G1–G3)',     minX: 30,  maxX: 48,  minZ: -28, maxZ: -10, color: '#c084fc' },
-    { name: 'Southern Oval',               minX: 0,   maxX: 34,  minZ: 20,  maxZ: 44,  color: '#22c55e' }
+    { name: 'Centenary Innovation Centre', minX: 4,   maxX: 44,  minZ: 12,  maxZ: 40,  color: '#facc15' },
+    { name: 'Indoor Sports Centre',        minX: -48, maxX: -8,  minZ: -16, maxZ: 28,  color: '#ef4444' },
+    { name: 'Basketball Courts',           minX: -40, maxX: 0,   minZ: 24,  maxZ: 56,  color: '#f97316' },
+    { name: 'Western Sports Field',        minX: -108,maxX: -44, minZ: -52, maxZ: 8,   color: '#4ade80' },
+    { name: 'Main Quad & Solar Roofs',     minX: 8,   maxX: 60,  minZ: -52, maxZ: -8,  color: '#38bdf8' },
+    { name: 'E4 & Music Wing (G1–G3)',     minX: 60,  maxX: 96,  minZ: -56, maxZ: -20, color: '#c084fc' },
+    { name: 'Southern Oval',               minX: 0,   maxX: 68,  minZ: 40,  maxZ: 88,  color: '#22c55e' }
 ];
 
 export function getCurrentCampusZone(x, z) {
@@ -52,7 +53,7 @@ export function setBlockAt(x, y, z, blockId) {
     const by = Math.floor(y);
     const bz = Math.floor(z);
     if (bx < -WORLD_HALF_X || bx >= WORLD_HALF_X || bz < -WORLD_HALF_Z || bz >= WORLD_HALF_Z) return null;
-    if (by < 2 || by >= 23) return null; // Protects the y=1 grass floor from being broken or replaced
+    if (by < 1 || by >= 23) return null;
 
     const key = `${bx}_${by}_${bz}`;
     ncState.world.deltas[key] = blockId;
@@ -111,47 +112,31 @@ export function raycastVoxel(maxDist = 6.5) {
 
         const blockId = getBlockAt(bx, by, bz);
         if (isBlockSolid(blockId)) {
-            return {
-                hit: true,
-                x: bx,
-                y: by,
-                z: bz,
-                blockId,
-                normal: {
-                    x: prevBx - bx,
-                    y: prevBy - by,
-                    z: prevBz - bz
-                }
-            };
+            return { hit: true, x: bx, y: by, z: bz, blockId, normal: { x: prevBx - bx, y: prevBy - by, z: prevBz - bz } };
         }
 
         prevBx = bx;
         prevBy = by;
         prevBz = bz;
     }
-
     return { hit: false };
 }
 
-export function pushUndoEntry(x, y, z, prevBlockId, refundedCost = 0) {
-    if (!Array.isArray(ncState.world.undoStack)) {
-        ncState.world.undoStack = [];
-    }
-    ncState.world.undoStack.push({ x, y, z, prevBlockId, refundedCost });
-    if (ncState.world.undoStack.length > 100) {
-        ncState.world.undoStack.shift();
-    }
+export function pushUndoEntry(changesArray) {
+    if (!Array.isArray(ncState.world.undoStack)) ncState.world.undoStack = [];
+    ncState.world.undoStack.push(changesArray);
+    if (ncState.world.undoStack.length > 50) ncState.world.undoStack.shift();
 }
 
 export function breakTargetBlock() {
     const target = ncState.targetBlock;
-    if (!target || !target.hit || target.y <= 0) return null;
+    if (!target || !target.hit || target.y <= 1) return null; // Protect y=1 floor
     const prevBlockId = getBlockAt(target.x, target.y, target.z);
     const change = setBlockAt(target.x, target.y, target.z, BLOCKS.AIR);
     if (change) {
-        pushUndoEntry(target.x, target.y, target.z, prevBlockId, 0);
+        pushUndoEntry([{ x: target.x, y: target.y, z: target.z, prevBlockId, refundedCost: 0, change }]);
     }
-    return change;
+    return { changes: [change], cost: 0 };
 }
 
 export function placeSelectedBlock() {
@@ -164,26 +149,90 @@ export function placeSelectedBlock() {
 
     const teacher = isTeacherBuilder();
     const cost = teacher ? 0 : (BLOCK_COSTS[blockId] || 0);
-    if (!teacher && lp.noteCoins < cost) {
-        return { error: 'INSUFFICIENT_COINS', cost };
+    if (!teacher && lp.noteCoins < cost) return { error: 'INSUFFICIENT_COINS', cost };
+
+    let px = target.x + target.normal.x;
+    let py = target.y + target.normal.y;
+    let pz = target.z + target.normal.z;
+    
+    let generatedChanges = [];
+    let recordedUndo = [];
+
+    const addBlock = (bx, by, bz, id) => {
+        const prev = getBlockAt(bx, by, bz);
+        const c = setBlockAt(bx, by, bz, id);
+        if (c) {
+            generatedChanges.push(c);
+            recordedUndo.push({ x: bx, y: by, z: bz, prevBlockId: prev, refundedCost: 0, change: c });
+        }
+    };
+
+    // 1. FLOOR EDITS (PATH and WATER)
+    if (blockId === BLOCKS.PATH || blockId === BLOCKS.WATER) {
+        // If we clicked on the ground, overwrite the grass layer instead of stacking
+        if (target.y <= 2) {
+            const textureId = blockId === BLOCKS.PATH ? BLOCKS.DIRT : BLOCKS.GLASS;
+            addBlock(target.x, 1, target.z, textureId);
+        } else {
+            return null; // Can only paint floor on ground level
+        }
+    } 
+    // 2. VOXEL PREFABS
+    else if (blockId === BLOCKS.TREE || blockId === BLOCKS.ROCK || blockId === BLOCKS.DRAGON) {
+        if (py < 2) py = 2; // Snap to ground
+        
+        if (blockId === BLOCKS.TREE) {
+            for(let i=0; i<4; i++) addBlock(px, py+i, pz, BLOCKS.WOOD);
+            for(let x=-2; x<=2; x++) {
+                for(let z=-2; z<=2; z++) {
+                    if (Math.abs(x)===2 && Math.abs(z)===2) continue;
+                    addBlock(px+x, py+3, pz+z, BLOCKS.LEAVES);
+                    addBlock(px+x, py+4, pz+z, BLOCKS.LEAVES);
+                }
+            }
+            for(let x=-1; x<=1; x++)
+                for(let z=-1; z<=1; z++)
+                    if (Math.abs(x)!==1 || Math.abs(z)!==1) addBlock(px+x, py+5, pz+z, BLOCKS.LEAVES);
+            addBlock(px, py+6, pz, BLOCKS.LEAVES);
+        } 
+        else if (blockId === BLOCKS.ROCK) {
+            addBlock(px, py, pz, BLOCKS.STONE);
+            addBlock(px+1, py, pz, BLOCKS.STONE);
+            addBlock(px, py, pz+1, BLOCKS.STONE);
+            addBlock(px, py+1, pz, BLOCKS.STONE);
+        } 
+        else if (blockId === BLOCKS.DRAGON) {
+            // Voxel Lizard Blueprint
+            addBlock(px, py, pz, BLOCKS.WOOD);   // Body Core
+            addBlock(px+1, py, pz, BLOCKS.WOOD); // Body Front
+            addBlock(px-1, py, pz, BLOCKS.WOOD); // Body Back
+            addBlock(px-2, py, pz, BLOCKS.DIRT); // Tail base
+            addBlock(px-3, py, pz, BLOCKS.DIRT); // Tail tip
+            addBlock(px+2, py, pz, BLOCKS.DIRT); // Head base
+            addBlock(px+2, py+1, pz, BLOCKS.LEAVES); // Head top (scales)
+            // Legs
+            addBlock(px+1, py, pz+1, BLOCKS.DIRT); 
+            addBlock(px+1, py, pz-1, BLOCKS.DIRT);
+            addBlock(px-1, py, pz+1, BLOCKS.DIRT);
+            addBlock(px-1, py, pz-1, BLOCKS.DIRT);
+        }
+    } 
+    // 3. STANDARD SINGLE BLOCKS
+    else {
+        const playerMinY = Math.floor(lp.y);
+        const playerMaxY = Math.floor(lp.y + PLAYER_EYE_HEIGHT);
+        if (px === Math.floor(lp.x) && pz === Math.floor(lp.z) && py >= playerMinY && py <= playerMaxY) return null;
+        
+        addBlock(px, py, pz, blockId);
     }
 
-    const px = target.x + target.normal.x;
-    const py = target.y + target.normal.y;
-    const pz = target.z + target.normal.z;
-
-    const playerMinY = Math.floor(lp.y);
-    const playerMaxY = Math.floor(lp.y + PLAYER_EYE_HEIGHT);
-    if (px === Math.floor(lp.x) && pz === Math.floor(lp.z) && py >= playerMinY && py <= playerMaxY) {
-        return null;
-    }
-
-    const prevBlockId = getBlockAt(px, py, pz);
-    const change = setBlockAt(px, py, pz, blockId);
-    if (change) {
+    if (generatedChanges.length > 0) {
         if (!teacher) lp.noteCoins -= cost;
-        pushUndoEntry(px, py, pz, prevBlockId, cost);
-        return { change, cost };
+        if (recordedUndo.length > 0) {
+            recordedUndo[0].refundedCost = cost; // Attach full refund to the first block in the set
+            pushUndoEntry(recordedUndo);
+        }
+        return { changes: generatedChanges, cost };
     }
     return null;
 }
@@ -192,12 +241,20 @@ export function undoLastAction() {
     const stack = ncState.world.undoStack;
     if (!Array.isArray(stack) || stack.length === 0) return null;
 
-    const last = stack.pop();
-    const change = setBlockAt(last.x, last.y, last.z, last.prevBlockId);
-    if (change && last.refundedCost > 0 && !isTeacherBuilder()) {
-        ncState.localPlayer.noteCoins += last.refundedCost;
+    const actionSet = stack.pop();
+    let syncedChanges = [];
+    let totalRefund = 0;
+
+    for (const action of actionSet) {
+        const c = setBlockAt(action.x, action.y, action.z, action.prevBlockId);
+        if (c) syncedChanges.push(c);
+        if (action.refundedCost > 0) totalRefund += action.refundedCost;
     }
-    return { change, refundedCost: last.refundedCost, remaining: stack.length };
+
+    if (totalRefund > 0 && !isTeacherBuilder()) {
+        ncState.localPlayer.noteCoins += totalRefund;
+    }
+    return { changes: syncedChanges, refundedCost: totalRefund, remaining: stack.length };
 }
 
 export function updatePlayerPhysics(dt) {
@@ -217,10 +274,7 @@ export function updatePlayerPhysics(dt) {
     if (keys.has('KeyA') || keys.has('ArrowLeft')) strafe -= 1;
 
     const len = Math.hypot(forward, strafe);
-    if (len > 0) {
-        forward /= len;
-        strafe /= len;
-    }
+    if (len > 0) { forward /= len; strafe /= len; }
 
     const speed = lp.isFlying ? 9.5 : 6.0;
     const sinY = Math.sin(lp.yaw);
@@ -261,12 +315,7 @@ export function updatePlayerPhysics(dt) {
         lp.isGrounded = false;
     }
 
-    if (lp.y < -5) {
-        lp.x = 12;
-        lp.y = 3;
-        lp.z = 2;
-        lp.velocity.y = 0;
-    }
+    if (lp.y < -5) { lp.x = 12; lp.y = 3; lp.z = 2; lp.velocity.y = 0; }
 
-    ncState.targetBlock = raycastVoxel(6.5);
+    ncState.targetBlock = raycastVoxel(8.0);
 }

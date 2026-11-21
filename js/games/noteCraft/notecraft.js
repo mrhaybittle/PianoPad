@@ -54,70 +54,38 @@ function showNoteCraftSplash(container) {
     const splash = document.createElement('div');
     splash.id = 'notecraft-splash';
     splash.style.cssText = `
-        position: absolute;
-        inset: 0;
-        z-index: 100;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
+        position: absolute; inset: 0; z-index: 100;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
         background: radial-gradient(circle, #2d3748 0%, #1a202c 100%);
-        pointer-events: none;
-        transition: opacity 0.8s ease-in-out;
+        pointer-events: none; transition: opacity 0.8s ease-in-out;
     `;
 
     const style = document.createElement('style');
     style.innerHTML = `
-        @keyframes ncPopIn { 
-            0% { transform: scale(0.6) translateY(-20px); opacity: 0; } 
-            60% { transform: scale(1.05) translateY(0px); opacity: 1; }
-            100% { transform: scale(1) translateY(0px); opacity: 1; }
-        }
+        @keyframes ncPopIn { 0% { transform: scale(0.6) translateY(-20px); opacity: 0; } 60% { transform: scale(1.05) translateY(0px); opacity: 1; } 100% { transform: scale(1) translateY(0px); opacity: 1; } }
         @keyframes ncFadeIn { to { opacity: 1; transform: translateY(0); } }
     `;
-    
-    // Minecraft-style logo text
     const logo = document.createElement('div');
     logo.style.cssText = `
-        font-family: "Impact", "Arial Black", sans-serif;
-        font-size: clamp(48px, 8vw, 92px);
-        color: #d1d5db;
-        letter-spacing: 5px;
-        text-transform: uppercase;
+        font-family: "Impact", "Arial Black", sans-serif; font-size: clamp(48px, 8vw, 92px); color: #d1d5db; letter-spacing: 5px; text-transform: uppercase;
         animation: ncPopIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        text-shadow:
-          -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, /* 2D Outline */
-          0px 4px 0 #78716c, 
-          0px 8px 0 #57534e, 
-          0px 12px 0 #292524, 
-          0px 16px 0 #000; /* 3D Extrusion */
+        text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 0px 4px 0 #78716c, 0px 8px 0 #57534e, 0px 12px 0 #292524, 0px 16px 0 #000;
     `;
     logo.innerText = 'NOTECRAFT';
 
     const subtitle = document.createElement('div');
     subtitle.style.cssText = `
-        margin-top: 35px;
-        font-family: sans-serif;
-        font-weight: 900;
-        font-size: clamp(14px, 2vw, 20px);
-        color: #facc15;
-        text-shadow: 2px 2px 0 #000;
-        opacity: 0;
-        transform: translateY(10px);
-        animation: ncFadeIn 0.6s ease-out forwards 0.4s;
+        margin-top: 35px; font-family: sans-serif; font-weight: 900; font-size: clamp(14px, 2vw, 20px); color: #facc15;
+        text-shadow: 2px 2px 0 #000; opacity: 0; transform: translateY(10px); animation: ncFadeIn 0.6s ease-out forwards 0.4s;
     `;
     subtitle.innerText = 'EDMUND RICE COLLEGE CAMPUS BUILDER';
 
-    splash.appendChild(style);
-    splash.appendChild(logo);
-    splash.appendChild(subtitle);
+    splash.appendChild(style); splash.appendChild(logo); splash.appendChild(subtitle);
     container.appendChild(splash);
 
     setTimeout(() => {
         splash.style.opacity = '0';
-        setTimeout(() => {
-            if (splash.parentNode) splash.parentNode.removeChild(splash);
-        }, 800);
+        setTimeout(() => { if (splash.parentNode) splash.parentNode.removeChild(splash); }, 800);
     }, 2800);
 }
 
@@ -128,33 +96,32 @@ function handlePlaceBlockAction() {
         showNoteCraftToast(`Need ${res.cost} NoteCoins! Play a song or chord to earn more.`, '#f87171');
         return;
     }
-    if (res.change) {
-        syncBlockChange(res.change);
-        if (!isTeacherBuilder()) {
-            saveStudentWallet(ncState.localPlayer.name);
-        }
+    if (res.changes && res.changes.length > 0) {
+        res.changes.forEach(c => { if(c) syncBlockChange(c); });
+        if (!isTeacherBuilder()) saveStudentWallet(ncState.localPlayer.name);
     }
 }
 
 function handleBreakBlockAction() {
-    const change = breakTargetBlock();
-    if (change) {
-        syncBlockChange(change);
+    const res = breakTargetBlock();
+    if (res && res.changes) {
+        res.changes.forEach(c => { if(c) syncBlockChange(c); });
     }
 }
 
 function handleUndoAction() {
     const undone = undoLastAction();
-    if (!undone || !undone.change) {
+    if (!undone || !undone.changes || undone.changes.length === 0) {
         showNoteCraftToast('Nothing left to undo!', '#94a3b8', 1600);
         return;
     }
-    syncBlockChange(undone.change);
+    undone.changes.forEach(c => { if(c) syncBlockChange(c); });
+    
     if (undone.refundedCost > 0 && !isTeacherBuilder()) {
         saveStudentWallet(ncState.localPlayer.name);
-        showNoteCraftToast(`↩️ Undid block (+${undone.refundedCost} NoteCoins refunded)`, '#facc15', 1800);
+        showNoteCraftToast(`↩️ Undid prefab (+${undone.refundedCost} NoteCoins refunded)`, '#facc15', 1800);
     } else {
-        showNoteCraftToast(`↩️ Undid last block (${undone.remaining} left in undo history)`, '#facc15', 1800);
+        showNoteCraftToast(`↩️ Undid last build (${undone.remaining} left in undo history)`, '#facc15', 1800);
     }
 }
 
@@ -164,48 +131,32 @@ function attachInputListeners(containerEl) {
     keyDownHandler = (e) => {
         if (!ncState.active) return;
 
-        // --- STAFF OVERRIDE SHORTCUT (Ctrl + Shift + U) ---
         if (e.code === 'KeyU' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
             e.preventDefault();
             localStorage.setItem('pianopad_is_teacher', 'true');
-            ncState.isTeacher = true; // Instantly flags as host
+            ncState.isTeacher = true;
             ncState.localPlayer.noteCoins = 999999;
             ncState.localPlayer.isFlying = true;
             ncState.localPlayer.flightTimer = 3600;
-            updateInventory(); // Unlocks textures based on the new flag
+            updateInventory();
             showNoteCraftToast('👑 Staff Override: All blocks & flight unlocked!', '#4ade80', 4000);
             return;
         }
 
-        // Number keys 1-8 select block slot
-        if (e.code >= 'Digit1' && e.code <= 'Digit8') {
-            const slotIdx = Number(e.code.replace('Digit', '')) - 1;
-            ncState.localPlayer.selectedSlot = slotIdx;
-            return;
-        }
+        // Keyboard Numbers + Shift overrides for special prefabs
+        if (e.code === 'Digit1') { e.preventDefault(); ncState.localPlayer.selectedSlot = e.shiftKey ? 8 : 0; return; }
+        if (e.code === 'Digit2') { e.preventDefault(); ncState.localPlayer.selectedSlot = e.shiftKey ? 9 : 1; return; }
+        if (e.code === 'Digit3') { e.preventDefault(); ncState.localPlayer.selectedSlot = 2; return; }
+        if (e.code === 'Digit4') { e.preventDefault(); ncState.localPlayer.selectedSlot = e.shiftKey ? 10 : 3; return; }
+        if (e.code === 'Digit5') { e.preventDefault(); ncState.localPlayer.selectedSlot = e.shiftKey ? 11 : 4; return; }
+        if (e.code === 'Digit6') { e.preventDefault(); ncState.localPlayer.selectedSlot = e.shiftKey ? 12 : 5; return; }
+        if (e.code === 'Digit7') { e.preventDefault(); ncState.localPlayer.selectedSlot = 6; return; }
+        if (e.code === 'Digit8') { e.preventDefault(); ncState.localPlayer.selectedSlot = 7; return; }
 
-        // Z key (or Cmd+Z / Ctrl+Z) undoes last placed/broken block
-        if (e.code === 'KeyZ') {
-            e.preventDefault();
-            handleUndoAction();
-            return;
-        }
+        if (e.code === 'KeyZ') { e.preventDefault(); handleUndoAction(); return; }
+        if (e.code === 'KeyE') { e.preventDefault(); handlePlaceBlockAction(); return; }
+        if (e.code === 'KeyQ') { e.preventDefault(); handleBreakBlockAction(); return; }
 
-        // E key places selected block
-        if (e.code === 'KeyE') {
-            e.preventDefault();
-            handlePlaceBlockAction();
-            return;
-        }
-
-        // Q key breaks targeted block
-        if (e.code === 'KeyQ') {
-            e.preventDefault();
-            handleBreakBlockAction();
-            return;
-        }
-
-        // Map Zoom (Minus / Equal)
         if (e.code === 'Equal' || e.code === 'NumpadAdd') {
             ncState.mapZoom = Math.min(8.0, (ncState.mapZoom || 1.0) + 0.5);
             showNoteCraftToast(`🔍 Map Zoom: ${ncState.mapZoom.toFixed(1)}x`, '#38bdf8', 1200);
@@ -217,54 +168,37 @@ function attachInputListeners(containerEl) {
             return;
         }
 
-        // F key toggles Creative Flight for Teacher mode anytime
         if (e.code === 'KeyF' && isTeacherBuilder()) {
             e.preventDefault();
             ncState.localPlayer.isFlying = !ncState.localPlayer.isFlying;
             ncState.localPlayer.flightTimer = ncState.localPlayer.isFlying ? 3600 : 0;
             showNoteCraftToast(
                 ncState.localPlayer.isFlying ? '🪽 Creative Flight ON (Space: Up, Shift: Down)' : '🚶 Walking Mode ON',
-                '#4ade80',
-                1800
+                '#4ade80', 1800
             );
             return;
         }
-
         ncState.keysHeld.add(e.code);
     };
 
-    keyUpHandler = (e) => {
-        ncState.keysHeld.delete(e.code);
-    };
+    keyUpHandler = (e) => { ncState.keysHeld.delete(e.code); };
 
     mouseDownHandler = (e) => {
         if (!ncState.active) return;
         const canvas = document.getElementById('notecraft-canvas');
         if (!canvas || e.target !== canvas) return;
-
-        if (document.pointerLockElement !== canvas) {
-            canvas.requestPointerLock?.();
-            return;
-        }
-
-        if (e.button === 0) {
-            handleBreakBlockAction();
-        } else if (e.button === 2) {
-            handlePlaceBlockAction();
-        }
+        if (document.pointerLockElement !== canvas) { canvas.requestPointerLock?.(); return; }
+        if (e.button === 0) handleBreakBlockAction();
+        else if (e.button === 2) handlePlaceBlockAction();
     };
 
     mouseMoveHandler = (e) => {
         if (!ncState.active) return;
         const canvas = document.getElementById('notecraft-canvas');
         if (document.pointerLockElement !== canvas) return;
-
         const sensitivity = 0.0024;
         ncState.localPlayer.yaw -= e.movementX * sensitivity;
-        ncState.localPlayer.pitch = Math.max(
-            -Math.PI / 2 + 0.05,
-            Math.min(Math.PI / 2 - 0.05, ncState.localPlayer.pitch - e.movementY * sensitivity)
-        );
+        ncState.localPlayer.pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, ncState.localPlayer.pitch - e.movementY * sensitivity));
     };
 
     pointerLockHandler = () => {
@@ -274,9 +208,7 @@ function attachInputListeners(containerEl) {
 
     contextMenuHandler = (e) => {
         const canvas = document.getElementById('notecraft-canvas');
-        if (ncState.active && e.target === canvas) {
-            e.preventDefault();
-        }
+        if (ncState.active && e.target === canvas) e.preventDefault();
     };
 
     resizeHandler = () => {
@@ -311,22 +243,33 @@ export function handleNoteCraftInput(event) {
     if (event.type === 'note' || event.type === 'noteOn') {
         const noteName = String(event.noteName || event.note || '').toUpperCase();
         
-        const exactMap = { 'C4': 0, 'D4': 1, 'E4': 2, 'F4': 3, 'G4': 4, 'A4': 5, 'B4': 6, 'C5': 7 };
+        // Exact Piano Mapping: White keys -> Slots 1-8, Black keys -> Slots 9-13
+        const exactMap = { 
+            'C4':0, 'C#4':8, 'DB4':8,
+            'D4':1, 'D#4':9, 'EB4':9,
+            'E4':2, 
+            'F4':3, 'F#4':10, 'GB4':10,
+            'G4':4, 'G#4':11, 'AB4':11,
+            'A4':5, 'A#4':12, 'BB4':12,
+            'B4':6, 'C5':7 
+        };
+        
         let slotIdx = exactMap[noteName];
         
         if (slotIdx === undefined) {
-            const letter = noteName.replace(/[^A-G]/g, '');
+            const letter = noteName.replace(/[^A-G#]/g, '');
             const octave = noteName.match(/\d+/) ? parseInt(noteName.match(/\d+/)[0]) : 4;
             
-            if (letter === 'C') {
-                slotIdx = (octave > 4) ? 7 : 0;
-            } else {
-                const baseMap = { 'D': 1, 'E': 2, 'F': 3, 'G': 4, 'A': 5, 'B': 6 };
-                slotIdx = baseMap[letter];
-            }
+            const baseMap = { 
+                'C':0, 'C#':8, 'D':1, 'D#':9, 'E':2, 
+                'F':3, 'F#':10, 'G':4, 'G#':11, 'A':5, 'A#':12, 'B':6 
+            };
+            
+            if (letter === 'C' && octave > 4) slotIdx = 7;
+            else slotIdx = baseMap[letter];
         }
         
-        if (slotIdx !== undefined) {
+        if (slotIdx !== undefined && ncState.localPlayer.inventory[slotIdx] !== undefined) {
             ncState.localPlayer.selectedSlot = slotIdx;
             return;
         }
@@ -371,41 +314,33 @@ export function handleNoteCraftInput(event) {
 
 function gameLoop(now) {
     if (!ncState.active) return;
-
     const dt = Math.min(0.05, Math.max(0.001, (now - (ncState.lastFrameTime || now)) / 1000));
     ncState.lastFrameTime = now;
-
     updatePlayerPhysics(dt);
     updateAvatarSprites(getThreeScene(), dt);
     render3DFrame();
     renderHudFrame(now);
-
     ncState.animFrameId = requestAnimationFrame(gameLoop);
 }
 
 export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
     stopNoteCraft();
-
     ncState.active = true;
     ncState.bridge = bridge || null;
     ncState.worldId = worldId;
     ncState.world.undoStack = [];
     
-    // Aggressive Host Detection
     ncState.isTeacher = Boolean(
         (bridge && (bridge.isTeacher || bridge.isHost || bridge.mode === 'host')) || 
         localStorage.getItem('pianopad_is_teacher') === 'true' ||
         localStorage.getItem('isHost') === 'true'
     );
 
-    if (bridge && typeof bridge.setActiveMiniGame === 'function') {
-        bridge.setActiveMiniGame('noteCraft');
-    }
+    if (bridge && typeof bridge.setActiveMiniGame === 'function') bridge.setActiveMiniGame('noteCraft');
 
     const wrapper = document.getElementById('visualizer-wrapper');
     const waterfallCanvas = document.getElementById('waterfall-canvas');
     if (!wrapper) return;
-
     if (waterfallCanvas) waterfallCanvas.style.visibility = 'hidden';
     wrapper.style.position = 'relative';
     wrapper.style.minHeight = '380px';
@@ -418,11 +353,8 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
     lp.id = playerId;
     lp.name = playerName;
     lp.avatar = playerAvatar;
-    lp.x = 12;
-    lp.y = 3;
-    lp.z = 2;
-    lp.yaw = 0;
-    lp.pitch = -0.15;
+    lp.x = 12; lp.y = 3; lp.z = 2;
+    lp.yaw = 0; lp.pitch = -0.15;
     lp.velocity = { x: 0, y: 0, z: 0 };
 
     initRender3D(wrapper);
@@ -430,21 +362,16 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
     initAvatarSprites(getThreeScene());
     attachInputListeners(wrapper);
 
-    // Show the new Minecraft-style Splash Screen!
     showNoteCraftSplash(wrapper);
 
-    await connectNoteCraftNetwork(worldId, {
-        id: playerId,
-        name: playerName,
-        avatar: playerAvatar
-    });
+    await connectNoteCraftNetwork(worldId, { id: playerId, name: playerName, avatar: playerAvatar });
 
     if (isTeacherBuilder()) {
         lp.noteCoins = 999999;
         lp.isFlying = true;
         lp.flightTimer = 3600;
         updateInventory();
-        showNoteCraftToast('👑 Teacher Creative Mode: Infinite NoteCoins, All Blocks & Flight ([F] toggle, [Z] Undo)', '#4ade80', 4000);
+        showNoteCraftToast('👑 Teacher Creative Mode: Infinite NoteCoins, All Blocks & Flight', '#4ade80', 4000);
     } else {
         showNoteCraftToast('Click 3D viewport to look around • Press [Z] anytime to Undo', '#38bdf8', 3200);
     }
@@ -455,15 +382,8 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
 
 export function stopNoteCraft() {
     ncState.active = false;
-    if (ncState.animFrameId !== null) {
-        cancelAnimationFrame(ncState.animFrameId);
-        ncState.animFrameId = null;
-    }
-
-    if (document.pointerLockElement) {
-        document.exitPointerLock?.();
-    }
-
+    if (ncState.animFrameId !== null) { cancelAnimationFrame(ncState.animFrameId); ncState.animFrameId = null; }
+    if (document.pointerLockElement) document.exitPointerLock?.();
     detachInputListeners();
     disconnectNoteCraftNetwork();
     disposeAvatarSprites();
@@ -474,10 +394,7 @@ export function stopNoteCraft() {
     if (wrapper) wrapper.style.minHeight = '';
     const waterfallCanvas = document.getElementById('waterfall-canvas');
     if (waterfallCanvas) waterfallCanvas.style.visibility = 'visible';
-
-    if (ncState.bridge && typeof ncState.bridge.setActiveMiniGame === 'function') {
-        ncState.bridge.setActiveMiniGame(null);
-    }
+    if (ncState.bridge && typeof ncState.bridge.setActiveMiniGame === 'function') ncState.bridge.setActiveMiniGame(null);
 }
 
 export function awardNoteCraftSongReward(songTitle, difficulty, accuracy, tempoPercent, isFirstTime) {
@@ -485,9 +402,7 @@ export function awardNoteCraftSongReward(songTitle, difficulty, accuracy, tempoP
     const earned = calculateRoundReward(songTitle, difficulty, accuracy, tempoPercent, isFirstTime);
     if (earned > 0) {
         ncState.localPlayer.noteCoins += earned;
-        if (songTitle && !ncState.localPlayer.masteredSongs.includes(songTitle)) {
-            ncState.localPlayer.masteredSongs.push(songTitle);
-        }
+        if (songTitle && !ncState.localPlayer.masteredSongs.includes(songTitle)) ncState.localPlayer.masteredSongs.push(songTitle);
         updateInventory();
         saveStudentWallet(ncState.localPlayer.name);
         showNoteCraftToast(`🏆 +${earned} NoteCoins earned for ${songTitle}!`, '#facc15', 3400);

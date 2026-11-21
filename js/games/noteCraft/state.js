@@ -9,7 +9,7 @@ export const ncState = {
     lastFrameTime: 0,
     isPointerLocked: false,
     isTeacher: false,
-    mapZoom: 1.0, // GPS minimap zoom level
+    mapZoom: 1.0,
 
     localPlayer: {
         id: 'local',
@@ -30,7 +30,8 @@ export const ncState = {
         noteCoins: 150,
         masteredSongs: [],
         selectedSlot: 0,
-        inventory: [1, 2, 3, null, null, null, null, null]
+        // 13 slots array
+        inventory: [1, 2, 3, null, null, null, null, null, null, null, null, null, null]
     },
 
     remotePlayers: {},

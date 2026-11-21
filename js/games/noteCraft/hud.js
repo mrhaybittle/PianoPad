@@ -10,14 +10,19 @@ let mapImg = null;
 let mapImgLoaded = false;
 
 const BLOCK_META = {
-    [BLOCKS.DIRT]:       { label: 'Dirt',   swatch: '#7c4d2b', accent: '#5e381d' },
-    [BLOCKS.GRASS]:      { label: 'Grass',  swatch: '#22c55e', accent: '#7c4d2b' },
-    [BLOCKS.STONE]:      { label: 'Stone',  swatch: '#94a3b8', accent: '#475569' },
-    [BLOCKS.BRICK]:      { label: 'Brick',  swatch: '#b91c1c', accent: '#e2e8f0' },
-    [BLOCKS.WOOD]:       { label: 'Timber', swatch: '#d97706', accent: '#92400e' },
-    [BLOCKS.LEAVES]:     { label: 'Hedge',  swatch: '#15803d', accent: '#22c55e' },
-    [BLOCKS.GLASS]:      { label: 'Glass',  swatch: '#bae6fd', accent: '#ffffff' },
-    [BLOCKS.NOTE_BLOCK]: { label: 'Note♪',  swatch: '#581c87', accent: '#facc15' }
+    [BLOCKS.DIRT]:       { label: 'Dirt',   swatch: '#7c4d2b', accent: '#5e381d', hotkey: '1' },
+    [BLOCKS.GRASS]:      { label: 'Grass',  swatch: '#22c55e', accent: '#7c4d2b', hotkey: '2' },
+    [BLOCKS.STONE]:      { label: 'Stone',  swatch: '#94a3b8', accent: '#475569', hotkey: '3' },
+    [BLOCKS.BRICK]:      { label: 'Brick',  swatch: '#b91c1c', accent: '#e2e8f0', hotkey: '4' },
+    [BLOCKS.WOOD]:       { label: 'Timber', swatch: '#d97706', accent: '#92400e', hotkey: '5' },
+    [BLOCKS.LEAVES]:     { label: 'Hedge',  swatch: '#15803d', accent: '#22c55e', hotkey: '6' },
+    [BLOCKS.GLASS]:      { label: 'Glass',  swatch: '#bae6fd', accent: '#ffffff', hotkey: '7' },
+    [BLOCKS.NOTE_BLOCK]: { label: 'Note♪',  swatch: '#581c87', accent: '#facc15', hotkey: '8' },
+    [BLOCKS.PATH]:       { label: 'Path',   swatch: '#5e381d', accent: '#451a03', hotkey: '!' },
+    [BLOCKS.WATER]:      { label: 'Water',  swatch: '#3b82f6', accent: '#2563eb', hotkey: '@' },
+    [BLOCKS.TREE]:       { label: 'Tree',   swatch: '#22c55e', accent: '#14532d', hotkey: '$' },
+    [BLOCKS.ROCK]:       { label: 'Rock',   swatch: '#64748b', accent: '#334155', hotkey: '%' },
+    [BLOCKS.DRAGON]:     { label: 'Dragon', swatch: '#d97706', accent: '#92400e', hotkey: '^' }
 };
 
 export function initHud(containerEl) {
@@ -44,11 +49,7 @@ export function resizeHud(containerEl) {
 }
 
 export function showNoteCraftToast(text, color = '#facc15', durationMs = 2600) {
-    ncState.toastMessage = {
-        text,
-        color,
-        expiresAt: performance.now() + durationMs
-    };
+    ncState.toastMessage = { text, color, expiresAt: performance.now() + durationMs };
 }
 
 function drawSatelliteMinimap(ctx, H) {
@@ -65,37 +66,28 @@ function drawSatelliteMinimap(ctx, H) {
     ctx.beginPath();
     ctx.roundRect(mx, my, mapW, mapH, 10);
     ctx.clip();
-
-    ctx.fillStyle = '#14532d'; // Base ground color
+    ctx.fillStyle = '#14532d';
     ctx.fillRect(mx, my, mapW, mapH);
 
     const px = ((lp.x + WORLD_HALF_X) / spanX) * mapW;
     const pz = ((lp.z + WORLD_HALF_Z) / spanZ) * mapH;
 
-    // Apply Camera Transform for Zooming
     ctx.translate(mx + mapW / 2, my + mapH / 2);
     ctx.scale(zoom, zoom);
     
-    if (zoom === 1.0) {
-        ctx.translate(-mapW / 2, -mapH / 2); // Default static view
-    } else {
-        ctx.translate(-px, -pz); // Centered on player for precision
-    }
+    if (zoom === 1.0) ctx.translate(-mapW / 2, -mapH / 2);
+    else ctx.translate(-px, -pz);
 
-    if (mapImgLoaded && mapImg) {
-        ctx.drawImage(mapImg, 0, 0, mapW, mapH);
-    }
+    if (mapImgLoaded && mapImg) ctx.drawImage(mapImg, 0, 0, mapW, mapH);
 
-    // Centenary Innovation Centre highlight box
-    const cicX = ((2 + WORLD_HALF_X) / spanX) * mapW;
-    const cicY = ((6 + WORLD_HALF_Z) / spanZ) * mapH;
-    const cicW = (20 / spanX) * mapW;
-    const cicH = (14 / spanZ) * mapH;
+    const cicX = ((4 + WORLD_HALF_X) / spanX) * mapW;
+    const cicY = ((12 + WORLD_HALF_Z) / spanZ) * mapH;
+    const cicW = (40 / spanX) * mapW;
+    const cicH = (28 / spanZ) * mapH;
     ctx.strokeStyle = 'rgba(250, 204, 21, 0.9)';
-    ctx.lineWidth = 1.5 / zoom; // Keeps border consistent regardless of zoom
+    ctx.lineWidth = 1.5 / zoom;
     ctx.strokeRect(cicX, cicY, cicW, cicH);
 
-    // Remote classmates dots
     for (const opp of Object.values(ncState.remotePlayers)) {
         const ox = (((opp.x || 0) + WORLD_HALF_X) / spanX) * mapW;
         const oz = (((opp.z || 0) + WORLD_HALF_Z) / spanZ) * mapH;
@@ -105,14 +97,13 @@ function drawSatelliteMinimap(ctx, H) {
         ctx.fill();
     }
 
-    // Local player directional arrow
     ctx.translate(px, pz);
     ctx.rotate(-lp.yaw);
     ctx.fillStyle = '#facc15';
     ctx.strokeStyle = '#0f172a';
     ctx.lineWidth = 1.5 / zoom;
     ctx.beginPath();
-    const s = 1 / Math.max(1, zoom * 0.6); // Scale down arrow slightly when zoomed in
+    const s = 1 / Math.max(1, zoom * 0.6);
     ctx.moveTo(0, -6 * s);
     ctx.lineTo(4.5 * s, 5 * s);
     ctx.lineTo(0, 2.5 * s);
@@ -147,9 +138,7 @@ export function renderHudFrame(now) {
 
     ctx.clearRect(0, 0, W, H);
 
-    // 1. Center Crosshair
-    const cx = W / 2;
-    const cy = H / 2;
+    const cx = W / 2; const cy = H / 2;
     const hasTarget = Boolean(ncState.targetBlock && ncState.targetBlock.hit);
     ctx.strokeStyle = hasTarget ? '#facc15' : 'rgba(255, 255, 255, 0.85)';
     ctx.lineWidth = 2;
@@ -158,7 +147,6 @@ export function renderHudFrame(now) {
     ctx.moveTo(cx, cy - 9); ctx.lineTo(cx, cy + 9);
     ctx.stroke();
 
-    // 2. Top-Left Wallet & Builders
     const builderCount = Object.keys(ncState.remotePlayers).length + 1;
     const zone = getCurrentCampusZone(lp.x, lp.z);
 
@@ -173,11 +161,8 @@ export function renderHudFrame(now) {
     ctx.fillStyle = teacher ? '#4ade80' : '#facc15';
     ctx.font = '900 13px sans-serif';
     ctx.textAlign = 'left';
-    if (teacher) {
-        ctx.fillText(`👑 TEACHER CREATIVE • ∞ NoteCoins • All Blocks`, 22, 29);
-    } else {
-        ctx.fillText(`🎵 ${lp.noteCoins} NoteCoins  |  🎼 ${lp.masteredSongs.length} Songs`, 22, 29);
-    }
+    if (teacher) ctx.fillText(`👑 TEACHER CREATIVE • ∞ NoteCoins • All Blocks`, 22, 29);
+    else ctx.fillText(`🎵 ${lp.noteCoins} NoteCoins  |  🎼 ${lp.masteredSongs.length} Songs`, 22, 29);
 
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 11px sans-serif';
@@ -188,7 +173,6 @@ export function renderHudFrame(now) {
     ctx.font = '900 11px sans-serif';
     ctx.fillText(`📍 ${zone.name}`, 22, 65);
 
-    // 3. Top-Right Controls
     ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
     ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 1.5;
@@ -209,9 +193,8 @@ export function renderHudFrame(now) {
 
     ctx.fillStyle = '#e2e8f0';
     ctx.font = 'bold 10px sans-serif';
-    ctx.fillText('🎹 Chords: Maj=Beam • Min=Pillar • Sus/Maj7=Fly • 🔍 [-/+] Zoom Map', W - 22, 62);
+    ctx.fillText('🎹 Black Keys: Prefabs • 🔍 [-/+] Zoom Map', W - 22, 62);
 
-    // 4. Toast Notification
     if (ncState.toastMessage && now < ncState.toastMessage.expiresAt) {
         const msg = ncState.toastMessage;
         ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
@@ -221,21 +204,19 @@ export function renderHudFrame(now) {
         ctx.roundRect(W / 2 - 210, 78, 420, 32, 8);
         ctx.fill();
         ctx.stroke();
-
         ctx.fillStyle = msg.color;
         ctx.font = '900 12px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(msg.text, W / 2, 98);
     }
 
-    // 5. GPS Minimap
     drawSatelliteMinimap(ctx, H);
 
-    // 6. Block Hotbar
-    const slots = 8;
-    const slotW = 54;
-    const slotH = 54;
-    const gap = 6;
+    // 13 Slots Hotbar
+    const slots = 13;
+    const slotW = 46;
+    const slotH = 50;
+    const gap = 4;
     const totalW = slots * slotW + (slots - 1) * gap;
     const startX = (W - totalW) / 2;
     const startY = H - slotH - 12;
@@ -247,67 +228,65 @@ export function renderHudFrame(now) {
 
         ctx.fillStyle = isSelected ? 'rgba(30, 41, 59, 0.96)' : 'rgba(15, 23, 42, 0.84)';
         ctx.strokeStyle = isSelected ? '#facc15' : '#475569';
-        ctx.lineWidth = isSelected ? 3 : 1.5;
+        ctx.lineWidth = isSelected ? 2.5 : 1.2;
         ctx.beginPath();
-        ctx.roundRect(sx, startY, slotW, slotH, 8);
+        ctx.roundRect(sx, startY, slotW, slotH, 6);
         ctx.fill();
         ctx.stroke();
-
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = 'bold 9.5px sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(`${i + 1}`, sx + 5, startY + 11);
 
         if (blockId && BLOCK_META[blockId]) {
             const meta = BLOCK_META[blockId];
             const cost = teacher ? 0 : (BLOCK_COSTS[blockId] || 0);
 
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(meta.hotkey, sx + 4, startY + 11);
+
             ctx.fillStyle = meta.swatch;
             ctx.strokeStyle = meta.accent;
-            ctx.lineWidth = 1.5;
-            ctx.fillRect(sx + 16, startY + 12, 22, 20);
-            ctx.strokeRect(sx + 16, startY + 12, 22, 20);
+            ctx.lineWidth = 1.2;
+            ctx.fillRect(sx + 14, startY + 12, 18, 16);
+            ctx.strokeRect(sx + 14, startY + 12, 18, 16);
 
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 9.5px sans-serif';
+            ctx.font = 'bold 8.5px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(meta.label, sx + slotW / 2, startY + 41);
+            ctx.fillText(meta.label, sx + slotW / 2, startY + 37);
 
             ctx.fillStyle = cost === 0 ? '#4ade80' : '#facc15';
-            ctx.font = '900 8.5px sans-serif';
-            ctx.fillText(cost === 0 ? 'FREE' : `${cost}🎵`, sx + slotW / 2, startY + 50);
+            ctx.font = '900 7.5px sans-serif';
+            ctx.fillText(cost === 0 ? 'FREE' : `${cost}🎵`, sx + slotW / 2, startY + 46);
         } else {
             ctx.fillStyle = '#64748b';
-            ctx.font = 'bold 13px sans-serif';
+            ctx.font = 'bold 11px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('🔒', sx + slotW / 2, startY + 34);
+            ctx.fillText('🔒', sx + slotW / 2, startY + 30);
         }
     }
 
-    const undoX = startX + totalW + 10;
+    const undoX = startX + totalW + 8;
     ctx.fillStyle = undoCount > 0 ? 'rgba(15, 23, 42, 0.94)' : 'rgba(15, 23, 42, 0.65)';
     ctx.strokeStyle = undoCount > 0 ? '#facc15' : '#475569';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect(undoX, startY, 64, slotH, 8);
+    ctx.roundRect(undoX, startY, 46, slotH, 6);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = undoCount > 0 ? '#facc15' : '#64748b';
-    ctx.font = '900 13px sans-serif';
+    ctx.font = '900 11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('[Z]', undoX + 32, startY + 23);
-    ctx.font = '900 9.5px sans-serif';
-    ctx.fillText('UNDO', undoX + 32, startY + 38);
+    ctx.fillText('[Z]', undoX + 23, startY + 22);
+    ctx.font = '900 8.5px sans-serif';
+    ctx.fillText('UNDO', undoX + 23, startY + 36);
     ctx.fillStyle = '#cbd5e1';
-    ctx.font = 'bold 8.5px sans-serif';
-    ctx.fillText(`(${undoCount})`, undoX + 32, startY + 49);
+    ctx.font = 'bold 7.5px sans-serif';
+    ctx.fillText(`(${undoCount})`, undoX + 23, startY + 45);
 }
 
 export function disposeHud() {
-    if (hudCanvas && hudCanvas.parentNode) {
-        hudCanvas.parentNode.removeChild(hudCanvas);
-    }
+    if (hudCanvas && hudCanvas.parentNode) hudCanvas.parentNode.removeChild(hudCanvas);
     hudCanvas = null;
     hudCtx = null;
 }

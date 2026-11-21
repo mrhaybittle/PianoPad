@@ -15,7 +15,12 @@ export const BLOCKS = {
     WOOD: 5,
     LEAVES: 6,
     GLASS: 7,
-    NOTE_BLOCK: 8
+    NOTE_BLOCK: 8,
+    PATH: 9,      // Edits Floor
+    WATER: 10,    // Edits Floor
+    TREE: 11,     // Voxel Prefab
+    ROCK: 12,     // Voxel Prefab
+    DRAGON: 13    // Voxel Prefab
 };
 
 export const BLOCK_COSTS = {
@@ -26,7 +31,12 @@ export const BLOCK_COSTS = {
     [BLOCKS.WOOD]: 10,
     [BLOCKS.LEAVES]: 5,
     [BLOCKS.GLASS]: 15,
-    [BLOCKS.NOTE_BLOCK]: 25
+    [BLOCKS.NOTE_BLOCK]: 25,
+    [BLOCKS.PATH]: 5,
+    [BLOCKS.WATER]: 5,
+    [BLOCKS.TREE]: 25,
+    [BLOCKS.ROCK]: 20,
+    [BLOCKS.DRAGON]: 50
 };
 
 export const COIN_REWARDS = {
@@ -44,5 +54,10 @@ export const UNLOCK_THRESHOLDS = {
     [BLOCKS.WOOD]: 2,
     [BLOCKS.BRICK]: 3,
     [BLOCKS.GLASS]: 5,
-    [BLOCKS.NOTE_BLOCK]: 8
+    [BLOCKS.NOTE_BLOCK]: 8,
+    [BLOCKS.PATH]: 9,
+    [BLOCKS.WATER]: 10,
+    [BLOCKS.TREE]: 11,
+    [BLOCKS.ROCK]: 12,
+    [BLOCKS.DRAGON]: 13
 };

@@ -37,14 +37,9 @@ export function updateInventory() {
         : 0;
 
     const allBlocks = [
-        BLOCKS.DIRT,
-        BLOCKS.GRASS,
-        BLOCKS.STONE,
-        BLOCKS.LEAVES,
-        BLOCKS.WOOD,
-        BLOCKS.BRICK,
-        BLOCKS.GLASS,
-        BLOCKS.NOTE_BLOCK
+        BLOCKS.DIRT, BLOCKS.GRASS, BLOCKS.STONE, BLOCKS.LEAVES,
+        BLOCKS.WOOD, BLOCKS.BRICK, BLOCKS.GLASS, BLOCKS.NOTE_BLOCK,
+        BLOCKS.PATH, BLOCKS.WATER, BLOCKS.TREE, BLOCKS.ROCK, BLOCKS.DRAGON
     ];
 
     ncState.localPlayer.inventory = allBlocks.map(blockId => {
