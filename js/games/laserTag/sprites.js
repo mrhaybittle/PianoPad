@@ -134,24 +134,21 @@ function drawPlayerSprite(ctx, sp, screenX, horizon, W, H, now) {
         ctx.globalAlpha = 0.48;
     }
 
-    ctx.fillStyle = isGhostRespawning ? '#f8fafc' : '#0f172a';
-    ctx.strokeStyle = isGhostRespawning ? '#ffffff' : (isRevengeBounty ? '#ef4444' : (isLeader ? '#facc15' : oppSuitColor));
-    ctx.lineWidth = Math.max(2.5, spriteW * (isLeader || isRevengeBounty ? 0.095 : 0.07));
-    ctx.beginPath();
-    ctx.roundRect(screenX - spriteW / 2, topY + spriteH * 0.24, spriteW, spriteH * 0.72, 10);
-    ctx.fill();
-    ctx.stroke();
+    // Large full-body emoji character with suit/status glow aura
+    const bodyCenterY = topY + spriteH * 0.56;
+    const auraColor = isGhostRespawning
+        ? '#ffffff'
+        : (isRevengeBounty ? '#ef4444' : (isLeader ? '#facc15' : oppSuitColor));
 
-    ctx.fillStyle = isGhostRespawning ? '#e2e8f0' : oppSuitColor;
-    ctx.beginPath();
-    ctx.arc(screenX, topY + spriteH * 0.54, spriteW * 0.20, 0, Math.PI * 2);
-    ctx.fill();
-
-    const avatarSize = Math.max(18, Math.floor(spriteH * 0.30));
-    ctx.font = `${avatarSize}px sans-serif`;
+    ctx.save();
+    ctx.shadowColor = auraColor;
+    ctx.shadowBlur = Math.max(14, spriteH * 0.22);
+    const largeAvatarSize = Math.max(38, Math.floor(spriteH * 0.86));
+    ctx.font = `${largeAvatarSize}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(sp.opp.avatar || '🤖', screenX, topY + spriteH * 0.12);
+    ctx.fillText(sp.opp.avatar || '🤖', screenX, bodyCenterY);
+    ctx.restore();
 
     const pitchLabel = normalizePitchClass(sp.opp.noteTag || 'F#');
     const badgeW = Math.max(68, spriteW * 1.15);
@@ -161,9 +158,11 @@ function drawPlayerSprite(ctx, sp, screenX, horizon, W, H, now) {
     if (isRevengeBounty) {
         ctx.fillStyle = '#ef4444';
         ctx.font = `900 ${Math.max(10, Math.floor(badgeH * 0.45))}px sans-serif`;
+        ctx.textAlign = 'center';
         ctx.fillText('🎯 REVENGE (+100)', screenX, badgeY - badgeH * 0.48);
     } else if (isLeader && !isGhostRespawning) {
         ctx.font = `${Math.max(16, Math.floor(badgeH * 0.85))}px sans-serif`;
+        ctx.textAlign = 'center';
         ctx.fillText('👑', screenX, badgeY - badgeH * 0.55);
     }
 
@@ -188,12 +187,15 @@ function drawPlayerSprite(ctx, sp, screenX, horizon, W, H, now) {
 
     ctx.fillStyle = isRevengeBounty ? '#ffffff' : '#000000';
     ctx.font = `900 ${Math.max(16, Math.floor(badgeH * 0.68))}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.fillText(isGhostRespawning ? `👻 ${pitchLabel}` : `🎯 ${pitchLabel}`, screenX, badgeY + badgeH * 0.54);
 
     const oppLives = sp.opp.lives !== undefined ? Number(sp.opp.lives) : 3;
     const oppHearts = sp.isDecoy ? '👥 DECOY' : '❤️'.repeat(Math.max(0, oppLives));
     ctx.fillStyle = isGhostRespawning ? '#e2e8f0' : '#ffffff';
     ctx.font = `800 ${Math.max(11, Math.floor(spriteH * 0.13))}px sans-serif`;
+    ctx.textAlign = 'center';
     ctx.fillText(`${sp.opp.name || 'Player'} ${oppHearts}`, screenX, topY + spriteH + 12);
     ctx.restore();
 }
