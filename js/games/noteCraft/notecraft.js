@@ -18,7 +18,6 @@ let activeBridge = null;
 let noteBlockPitchIdx = 0;
 
 const NOTE_BLOCK_SCALE = ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'];
-const PITCH_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const ARCHITECT_CHORDS = [
     { type: 'fly',    label: 'Sus4 / Maj7 Scaffolding Flight (12s)', notes: ['C', 'F', 'G'] },
@@ -112,7 +111,6 @@ async function executeArchitectPower(chordPower) {
     if (chordPower.type === 'pillar') {
         dy = 1;
     } else {
-        // Horizontal beam extending away from player
         if (Math.abs(Math.sin(lp.yaw)) > Math.abs(Math.cos(lp.yaw))) {
             dx = -Math.sign(Math.sin(lp.yaw));
         } else {
@@ -154,7 +152,6 @@ export function handleNoteCraftInput(noteStr) {
 
     const distinct = new Set(ncState.recentNotes.map(n => n.pitch));
 
-    // Check 3- or 4-note Architect Chords
     if (distinct.size >= 3) {
         for (const chord of ARCHITECT_CHORDS) {
             if (chord.notes.length === distinct.size && chord.notes.every(n => distinct.has(n))) {
@@ -169,7 +166,6 @@ export function handleNoteCraftInput(noteStr) {
         }
     }
 
-    // Single piano key selects hotbar slot 1..8 (C -> slot 1, D -> slot 2, etc.)
     if (ncState.pendingNoteTimer) clearTimeout(ncState.pendingNoteTimer);
     ncState.pendingNoteTimer = setTimeout(() => {
         ncState.pendingNoteTimer = null;
@@ -233,6 +229,8 @@ function bindControls(wrapperEl) {
 
     wrapperEl.addEventListener('mousedown', (e) => {
         if (!ncState.animFrameId) return;
+        if (e.target && e.target.id === 'btn-nc-host-panel') return;
+
         const ncCanvas = document.getElementById('notecraft-canvas');
         const locked = document.pointerLockElement === ncCanvas;
 
@@ -287,7 +285,6 @@ function gameLoop(now) {
     ncState.animFrameId = requestAnimationFrame(gameLoop);
 }
 
-// Called by main.js when a student completes a song in Game Mode
 export async function awardNoteCraftSongReward(songTitle, difficulty = 'medium', accuracy = 0, tempoPercent = 100, studentName = 'Student') {
     const cleanTitle = String(songTitle || '').trim();
     if (!cleanTitle || accuracy < 75) return 0;
@@ -331,7 +328,6 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
         bridge.setActiveMiniGame('noteCraft');
     }
 
-    // Spawn player on the central quad walkway facing the school perimeter
     const lp = ncState.localPlayer;
     lp.x = 0;
     lp.y = 3;
@@ -344,6 +340,21 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
 
     initRender3D(wrapper);
     initHud(wrapper);
+
+    // Floating button so the Teacher can reopen the Tournament Modal while inside the 3D Campus
+    if (document.getElementById('ko-teacher-panel')?.style.display === 'flex') {
+        const reopenBtn = document.createElement('button');
+        reopenBtn.id = 'btn-nc-host-panel';
+        reopenBtn.type = 'button';
+        reopenBtn.textContent = '🏆 Teacher Controls';
+        reopenBtn.style.cssText = 'position:absolute; top:70px; left:12px; z-index:20; background:#ef4444; color:#fff; border:2px solid #fff; border-radius:8px; padding:6px 12px; font-weight:900; font-size:0.8rem; cursor:pointer;';
+        reopenBtn.onclick = () => {
+            if (document.pointerLockElement) document.exitPointerLock();
+            document.getElementById('knockout-modal')?.classList.add('open');
+        };
+        wrapper.appendChild(reopenBtn);
+    }
+
     bindControls(wrapper);
 
     const state = bridge && bridge.getState ? bridge.getState() : {};
@@ -380,6 +391,7 @@ export function stopNoteCraft() {
     ncState.keysHeld.clear();
     ncState.recentNotes = [];
 
+    document.getElementById('btn-nc-host-panel')?.remove();
     disconnectNoteCraftNetwork();
     disposeSprites();
     disposeHud();
