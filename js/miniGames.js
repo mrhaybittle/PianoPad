@@ -8,6 +8,7 @@ import { startStaffSurfers, handleStaffSurfersInput, stopStaffSurfers } from './
 import { startLaserTag, handleLaserTagInput, stopLaserTag } from './games/laserTag.js';
 import { startGridironGroove, handleGridironGrooveInput, stopGridironGroove } from './games/GridironGroove.js';
 import { startClefHook, handleClefHookInput, stopClefHook } from './games/clefHook.js';
+import { startSharpShooter, handleGridironGrooveInput as handleSharpShooterInput, stopSharpShooter } from './games/sharpShooter.js';
 
 export const arcadeState = {
     activeMiniGame: null,
@@ -115,6 +116,15 @@ function injectNewArcadeButtons() {
         clefHookBtn.innerHTML = `<span style="font-size:1.5rem;">🕷️</span><strong>Clef Hook</strong><small>Swing & flip across grapple nodes</small>`;
         btnContainer.appendChild(clefHookBtn);
     }
+    if (!document.getElementById('btn-arcade-sharp-shooter')) {
+        const sharpBtn = document.createElement('button');
+        sharpBtn.type = 'button';
+        sharpBtn.id = 'btn-arcade-sharp-shooter';
+        sharpBtn.className = 'arcade-card-btn';
+        sharpBtn.onclick = () => launchSharpShooter();
+        sharpBtn.innerHTML = `<span style="font-size:1.5rem;">⚽</span><strong>Sharp <span style="color:#facc15;">♯</span> Shooter</strong><small>Penalty kick shootout</small>`;
+        btnContainer.appendChild(sharpBtn);
+    }
 }
 
 function resolveReplayHandler(title, explicitReplayFn) {
@@ -150,6 +160,9 @@ function resolveReplayHandler(title, explicitReplayFn) {
     }
     if (normalized === 'clef hook') {
         return () => launchClefHook();
+    }
+    if (normalized === 'sharp shooter') {
+        return () => launchSharpShooter();
     }
     return null;
 }
@@ -248,6 +261,9 @@ export function exitActiveMiniGame() {
     if (surfersPopup) surfersPopup.style.display = 'none';
     const clefHookPopup = document.getElementById('clef-hook-popup');
     if (clefHookPopup) clefHookPopup.style.display = 'none';
+    stopSharpShooter();
+    const sharpPopup = document.getElementById('sharp-shooter-popup');
+    if (sharpPopup) sharpPopup.style.display = 'none';
 
     arcadeState.activeMiniGame = null;
     bridge.setIsPlaying(false);
@@ -297,6 +313,12 @@ export function handleMiniGameNoteInput(noteStr) {
     }
     if (mode === 'noteSniper') {
         handleNoteSniperInput(noteStr, gameBridgeHelper);
+        return true;
+    }
+
+    if (mode === 'sharpShooter') {
+        // Use the alias we created in the import
+        handleSharpShooterInput(noteStr, gameBridgeHelper);
         return true;
     }
     if (mode === 'drop') {
@@ -1235,6 +1257,10 @@ export function launchClefHook() {
     document.getElementById('game-results-modal')?.classList.remove('open');
     startClefHook(gameBridgeHelper);
 }
+export function launchSharpShooter() {
+    document.getElementById('game-results-modal')?.classList.remove('open');
+    startSharpShooter(gameBridgeHelper);
+}
 
 Object.assign(window, {
     startSimonTaps,
@@ -1279,4 +1305,9 @@ Object.assign(window, {
         document.getElementById('game-results-modal')?.classList.remove('open');
         startClefHook(b || gameBridgeHelper);
     }
+    launchSharpShooter,
+    startSharpShooter: (b) => {
+        document.getElementById('game-results-modal')?.classList.remove('open');
+        startSharpShooter(b || gameBridgeHelper);
+    },
 });
