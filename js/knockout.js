@@ -1,5 +1,7 @@
 import { initAudio, audioCtx, playTone, playErrorClackSound } from './audio.js';
 import { autoTransposeSong, parsePianoPad, getNoteFrequency } from './musicTheory.js';
+import { arcadeState } from './miniGames.js';
+import { startNoteCraft } from './games/noteCraft/notecraft.js';
 
 export const ER_HOUSES = {
     Crown:     { name: 'Crown',     icon: '👑', color: '#facc15', textColor: '#000000' },
@@ -522,6 +524,7 @@ export function initSwissTournamentUI() {
                                 <option value="rooms">🏫 Room Battle (G1 vs. G2 vs. G3)</option>
                                 <option value="namethattune">🎵 Name That Tune (8-Choice Quiz)</option>
                                 <option value="lasertag">🛸 Neon Laser Tag (Free-For-All Arena)</option>
+                                <option value="notecraft">🏫 NoteCraft (3D School Builder)</option>
                             </select>
                         </div>
                         <div style="flex:1; min-width:200px;">
@@ -954,10 +957,11 @@ export function updateTugOfWarHUD(myAcc, oppAcc) {
     if (!hud) return;
 
     const mode = knockoutDataCache ? knockoutDataCache.tournamentMode : 'solo';
-    if (!koState.isClassKnockout || mode === 'namethattune' || mode === 'lasertag') {
-        hud.style.display = 'none';
-        return;
-    }
+    if (!koState.isClassKnockout || mode === 'namethattune' || mode === 'lasertag' || mode === 'notecraft') {
+    hud.style.display = 'none';
+    return;
+}
+    
 
     const { sessionStudentName, sessionStudentAvatar } = bridge.getState();
     const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms');
@@ -1361,7 +1365,8 @@ function buildStandingsHTML(rankedPlayers, mode = 'solo', playersObj = {}, nttGr
 }
 
 function generateSwissPairings(playersObj, roundNum, mode = 'solo') {
-    if (mode === 'namethattune' || mode === 'lasertag') return {}; 
+  
+    if (mode === 'namethattune' || mode === 'lasertag' || mode === 'notecraft') return {};
 
     const players = Object.values(playersObj || {});
     const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms');
@@ -1440,7 +1445,7 @@ async function startNextKnockoutRound() {
     const modeSel = document.getElementById('ko-mode-select');
     const modeVal = modeSel ? modeSel.value : 'solo';
 
-    const minPlayers = (modeVal === 'namethattune' || modeVal === 'lasertag') ? 1 : 2;
+    const minPlayers = (modeVal === 'namethattune' || modeVal === 'lasertag' || modeVal === 'notecraft') ? 1 : 2;
     if (playerIds.length < minPlayers) {
         alert(`At least ${minPlayers} student(s) must join the room before starting Round 1!`);
         return;
@@ -1589,6 +1594,11 @@ function handleKnockoutHostUpdate(data) {
             bracketDiv.innerHTML = `<div style="padding:20px; font-size:1.1rem; color:#38bdf8; font-weight:900; text-align:center;">🛸 Laser Tag Arena is Live! (Monitoring matches...)</div>`;
             return;
         }
+        if (mode === 'notecraft') {
+    statusBanner.textContent = `🏫 NoteCraft Campus Builder is Live! (${ranked.length} builders in world)`;
+    bracketDiv.innerHTML = `<div style="padding:20px; font-size:1.1rem; color:#22c55e; font-weight:900; text-align:center;">🏫 NoteCraft 3D School World is Live! Students are building the campus together.</div>`;
+    return;
+}
 
         const pairings = Object.values(data.pairings || {});
         let allDone = true;
@@ -1746,9 +1756,9 @@ function buildRoundScoreUpdates(data) {
         return updates;
     }
     
-    if (mode === 'lasertag') {
-        return updates;
-    }
+    if (mode === 'lasertag' || mode === 'notecraft') {
+    return updates;
+}
 
     const pairings = Object.values(data.pairings || {});
     const rankedBefore = getRankedKnockoutPlayers(playersObj);
@@ -2007,7 +2017,7 @@ function handleKnockoutStudentUpdate(data) {
         applyIncomingSabotage(me.incomingSabotage);
     }
 
-    if (data.status === 'playing' && mode !== 'namethattune' && mode !== 'lasertag' && me) {
+    if (data.status === 'playing' && mode !== 'namethattune' && mode !== 'lasertag' && mode !== 'notecraft' && me) {
         const myLiveAcc = Number(me.currentScore !== undefined ? me.currentScore : 100);
         let oppLiveAcc = 80.0;
         if (koOpponentId && koOpponentId !== 'BENCHMARK_80' && playersObj[koOpponentId]) {
@@ -2029,6 +2039,17 @@ function handleKnockoutStudentUpdate(data) {
             if (window.launchLaserTag) window.launchLaserTag(koState.knockoutRoomCode, false);
             return;
         }
+        if (mode === 'notecraft') {
+    document.getElementById('knockout-modal').classList.remove('open');
+    document.getElementById('game-results-modal').classList.remove('open');
+    document.getElementById('arcade-hub').classList.remove('open');
+    const tugHud = document.getElementById('tug-of-war-hud');
+    if (tugHud) tugHud.style.display = 'none';
+
+    arcadeState.activeMiniGame = 'noteCraft';
+    startNoteCraft(bridge, 'school_campus_main');
+    return;
+}
 
         if (mode === 'namethattune') {
             document.getElementById('knockout-modal').classList.remove('open');
