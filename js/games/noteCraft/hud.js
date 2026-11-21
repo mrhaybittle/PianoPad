@@ -1,9 +1,12 @@
 // js/games/noteCraft/hud.js
 import { BLOCKS, BLOCK_COSTS } from './constants.js';
 import { ncState } from './state.js';
+import { WORLD_RADIUS, getCurrentCampusZone } from './engine.js';
 
 let hudCanvas = null;
 let hudCtx = null;
+let mapImg = null;
+let mapImgLoaded = false;
 
 const BLOCK_META = {
     [BLOCKS.DIRT]:       { label: 'Dirt',   swatch: '#7c4d2b', accent: '#5e381d' },
@@ -25,6 +28,12 @@ export function initHud(containerEl) {
     hudCanvas.height = containerEl.clientHeight || 380;
     containerEl.appendChild(hudCanvas);
     hudCtx = hudCanvas.getContext('2d');
+
+    if (!mapImg) {
+        mapImg = new Image();
+        mapImg.onload = () => { mapImgLoaded = true; };
+        mapImg.src = './assets/erc_map.jpg';
+    }
 }
 
 export function resizeHud(containerEl) {
@@ -39,6 +48,77 @@ export function showNoteCraftToast(text, color = '#facc15', durationMs = 2600) {
         color,
         expiresAt: performance.now() + durationMs
     };
+}
+
+function drawSatelliteMinimap(ctx, H) {
+    const mapSize = 114;
+    const mx = 12;
+    const my = H - mapSize - 12;
+    const lp = ncState.localPlayer;
+    const worldSpan = WORLD_RADIUS * 2;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(mx, my, mapSize, mapSize, 10);
+    ctx.clip();
+
+    if (mapImgLoaded && mapImg) {
+        ctx.drawImage(mapImg, mx, my, mapSize, mapSize);
+    } else {
+        ctx.fillStyle = '#14532d';
+        ctx.fillRect(mx, my, mapSize, mapSize);
+    }
+
+    // Subtle Centenary Innovation Centre highlight box on minimap (x: -8..14, z: 8..24)
+    const cicX = mx + ((-8 + WORLD_RADIUS) / worldSpan) * mapSize;
+    const cicY = my + ((8 + WORLD_RADIUS) / worldSpan) * mapSize;
+    const cicW = (22 / worldSpan) * mapSize;
+    const cicH = (16 / worldSpan) * mapSize;
+    ctx.strokeStyle = 'rgba(250, 204, 21, 0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(cicX, cicY, cicW, cicH);
+
+    // Remote classmates dots
+    for (const opp of Object.values(ncState.remotePlayers)) {
+        const ox = mx + (((opp.x || 0) + WORLD_RADIUS) / worldSpan) * mapSize;
+        const oz = my + (((opp.z || 0) + WORLD_RADIUS) / worldSpan) * mapSize;
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(ox, oz, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Local player directional arrow
+    const px = mx + ((lp.x + WORLD_RADIUS) / worldSpan) * mapSize;
+    const pz = my + ((lp.z + WORLD_RADIUS) / worldSpan) * mapSize;
+    ctx.translate(px, pz);
+    ctx.rotate(-lp.yaw);
+    ctx.fillStyle = '#facc15';
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, -6);
+    ctx.lineTo(4.5, 5);
+    ctx.lineTo(0, 2.5);
+    ctx.lineTo(-4.5, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // Minimap border & label
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(mx, my, mapSize, mapSize, 10);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.fillRect(mx + 14, my + mapSize - 15, mapSize - 28, 13);
+    ctx.fillStyle = '#facc15';
+    ctx.font = '900 8.5px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('ERC CAMPUS GPS', mx + mapSize / 2, my + mapSize - 5.5);
 }
 
 export function renderHudFrame(now) {
@@ -61,28 +141,34 @@ export function renderHudFrame(now) {
     ctx.moveTo(cx, cy - 9); ctx.lineTo(cx, cy + 9);
     ctx.stroke();
 
-    // 2. Top-Left Wallet & Progression Pill
+    // 2. Top-Left Wallet, Builders & Current Campus Landmark Pill
     const builderCount = Object.keys(ncState.remotePlayers).length + 1;
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.86)';
+    const zone = getCurrentCampusZone(lp.x, lp.z);
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
     ctx.strokeStyle = '#facc15';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.roundRect(12, 10, 290, 52, 8);
+    ctx.roundRect(12, 10, 315, 66, 8);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = '#facc15';
     ctx.font = '900 13px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`🎵 ${lp.noteCoins} NoteCoins  |  🎼 ${lp.masteredSongs.length} Songs`, 22, 30);
+    ctx.fillText(`🎵 ${lp.noteCoins} NoteCoins  |  🎼 ${lp.masteredSongs.length} Songs`, 22, 29);
 
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 11px sans-serif';
     const flyText = lp.isFlying ? ` • 🪽 FLYING (${Math.ceil(lp.flightTimer)}s)` : '';
-    ctx.fillText(`🏫 Builders Online: ${builderCount}${flyText}`, 22, 49);
+    ctx.fillText(`🏫 Builders Online: ${builderCount}${flyText}`, 22, 47);
+
+    ctx.fillStyle = zone.color;
+    ctx.font = '900 11px sans-serif';
+    ctx.fillText(`📍 ${zone.name}`, 22, 65);
 
     // 3. Top-Right Controls & Architect Chords Guide
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.86)';
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
     ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -116,7 +202,10 @@ export function renderHudFrame(now) {
         ctx.fillText(msg.text, W / 2, 92);
     }
 
-    // 5. Bottom-Center 8-Slot Block Hotbar
+    // 5. Bottom-Left Live Satellite GPS Minimap
+    drawSatelliteMinimap(ctx, H);
+
+    // 6. Bottom-Center 8-Slot Block Hotbar
     const slots = 8;
     const slotW = 54;
     const slotH = 54;
@@ -138,7 +227,6 @@ export function renderHudFrame(now) {
         ctx.fill();
         ctx.stroke();
 
-        // Slot number badge
         ctx.fillStyle = '#94a3b8';
         ctx.font = 'bold 9.5px sans-serif';
         ctx.textAlign = 'left';
@@ -148,14 +236,12 @@ export function renderHudFrame(now) {
             const meta = BLOCK_META[blockId];
             const cost = BLOCK_COSTS[blockId] || 0;
 
-            // Block preview swatch
             ctx.fillStyle = meta.swatch;
             ctx.strokeStyle = meta.accent;
             ctx.lineWidth = 1.5;
             ctx.fillRect(sx + 16, startY + 12, 22, 20);
             ctx.strokeRect(sx + 16, startY + 12, 22, 20);
 
-            // Label & Cost
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 9.5px sans-serif';
             ctx.textAlign = 'center';
