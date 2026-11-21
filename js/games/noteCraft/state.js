@@ -1,10 +1,14 @@
 // js/games/noteCraft/state.js
+import { CHUNK_HEIGHT } from './constants.js';
+
 export const ncState = {
     animFrameId: null,
     syncIntervalId: null,
     roomUnsubscribe: null,
     lastFrameTime: 0,
-    
+    targetBlock: null,
+    toastMessage: null,
+
     localPlayer: {
         x: 0,
         y: CHUNK_HEIGHT,
@@ -23,11 +27,12 @@ export const ncState = {
 
     world: {
         chunks: {}, // Keyed by "chunkX_chunkZ"
-        deltas: {}  // Player modifications, keyed by "x_y_z"
+        deltas: {}, // Player modifications, keyed by "x_y_z"
+        dirty: true
     },
 
     remotePlayers: {},
-    
+
     // Engine & Input
     keysHeld: new Set(),
     activeChords: new Set(),
