@@ -2,7 +2,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
 import { BLOCKS, PLAYER_EYE_HEIGHT } from './constants.js';
 import { ncState } from './state.js';
-import { WORLD_RADIUS, getBaseTerrainBlock, isBlockSolid } from './engine.js';
+import { WORLD_HALF_X, WORLD_HALF_Z, getBaseTerrainBlock, isBlockSolid } from './engine.js';
 
 let renderer = null;
 let scene = null;
