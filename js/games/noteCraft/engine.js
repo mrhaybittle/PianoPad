@@ -2,15 +2,17 @@
 import { BLOCKS, BLOCK_COSTS, GRAVITY, PLAYER_EYE_HEIGHT, PLAYER_RADIUS } from './constants.js';
 import { ncState } from './state.js';
 
-export const WORLD_RADIUS = 48; // 96x96 block campus matching the Edmund Rice College aerial map
+export const WORLD_HALF_X = 64; // 128 blocks wide (matches 4:3 erc_map.jpg)
+export const WORLD_HALF_Z = 48; // 96 blocks deep
 
 export const CAMPUS_ZONES = [
-    { name: 'Centenary Innovation Centre', minX: -8,  maxX: 14,  minZ: 8,   maxZ: 24,  color: '#facc15' },
-    { name: 'Indoor Sports Centre',        minX: -44, maxX: -20, minZ: -12, maxZ: 14,  color: '#ef4444' },
-    { name: 'Basketball Courts',           minX: -38, maxX: -16, minZ: 14,  maxZ: 32,  color: '#f97316' },
-    { name: 'Main Quad & Solar Roofs',     minX: -10, maxX: 22,  minZ: -24, maxZ: -2,  color: '#38bdf8' },
-    { name: 'E4 & Music Wing (G1–G3)',     minX: 22,  maxX: 44,  minZ: -30, maxZ: -10, color: '#c084fc' },
-    { name: 'Southern Oval',               minX: -24, maxX: 18,  minZ: 24,  maxZ: 46,  color: '#22c55e' }
+    { name: 'Centenary Innovation Centre', minX: 2,   maxX: 22,  minZ: 6,   maxZ: 20,  color: '#facc15' },
+    { name: 'Indoor Sports Centre',        minX: -24, maxX: -4,  minZ: -8,  maxZ: 14,  color: '#ef4444' },
+    { name: 'Basketball Courts',           minX: -20, maxX: 0,   minZ: 12,  maxZ: 28,  color: '#f97316' },
+    { name: 'Western Sports Field',        minX: -54, maxX: -22, minZ: -26, maxZ: 4,   color: '#4ade80' },
+    { name: 'Main Quad & Solar Roofs',     minX: 4,   maxX: 30,  minZ: -26, maxZ: -4,  color: '#38bdf8' },
+    { name: 'E4 & Music Wing (G1–G3)',     minX: 30,  maxX: 48,  minZ: -28, maxZ: -10, color: '#c084fc' },
+    { name: 'Southern Oval',               minX: 0,   maxX: 34,  minZ: 20,  maxZ: 44,  color: '#22c55e' }
 ];
 
 export function getCurrentCampusZone(x, z) {
@@ -23,7 +25,7 @@ export function getCurrentCampusZone(x, z) {
 }
 
 export function getBaseTerrainBlock(x, y, z) {
-    if (x < -WORLD_RADIUS || x >= WORLD_RADIUS || z < -WORLD_RADIUS || z >= WORLD_RADIUS) {
+    if (x < -WORLD_HALF_X || x >= WORLD_HALF_X || z < -WORLD_HALF_Z || z >= WORLD_HALF_Z) {
         return BLOCKS.AIR;
     }
     if (y === 0) return BLOCKS.DIRT;
@@ -48,8 +50,8 @@ export function setBlockAt(x, y, z, blockId) {
     const bx = Math.floor(x);
     const by = Math.floor(y);
     const bz = Math.floor(z);
-    if (bx < -WORLD_RADIUS || bx >= WORLD_RADIUS || bz < -WORLD_RADIUS || bz >= WORLD_RADIUS) return null;
-    if (by < 1 || by >= 23) return null; // Protect bedrock layer y=0
+    if (bx < -WORLD_HALF_X || bx >= WORLD_HALF_X || bz < -WORLD_HALF_Z || bz >= WORLD_HALF_Z) return null;
+    if (by < 1 || by >= 23) return null;
 
     const key = `${bx}_${by}_${bz}`;
     ncState.world.deltas[key] = blockId;
@@ -153,7 +155,6 @@ export function placeSelectedBlock() {
     const py = target.y + target.normal.y;
     const pz = target.z + target.normal.z;
 
-    // Prevent trapping self inside placed block
     const playerMinY = Math.floor(lp.y);
     const playerMaxY = Math.floor(lp.y + PLAYER_EYE_HEIGHT);
     if (px === Math.floor(lp.x) && pz === Math.floor(lp.z) && py >= playerMinY && py <= playerMaxY) {
@@ -190,7 +191,7 @@ export function updatePlayerPhysics(dt) {
         strafe /= len;
     }
 
-    const speed = lp.isFlying ? 8.5 : 5.8;
+    const speed = lp.isFlying ? 9.0 : 6.0;
     const sinY = Math.sin(lp.yaw);
     const cosY = Math.cos(lp.yaw);
 
@@ -210,19 +211,16 @@ export function updatePlayerPhysics(dt) {
         }
     }
 
-    // Horizontal X collision
     const nextX = lp.x + moveX * dt;
     if (!collidesAt(nextX, lp.y + 0.05, lp.z)) {
-        lp.x = Math.max(-WORLD_RADIUS + 1, Math.min(WORLD_RADIUS - 1, nextX));
+        lp.x = Math.max(-WORLD_HALF_X + 1, Math.min(WORLD_HALF_X - 1, nextX));
     }
 
-    // Horizontal Z collision
     const nextZ = lp.z + moveZ * dt;
     if (!collidesAt(lp.x, lp.y + 0.05, nextZ)) {
-        lp.z = Math.max(-WORLD_RADIUS + 1, Math.min(WORLD_RADIUS - 1, nextZ));
+        lp.z = Math.max(-WORLD_HALF_Z + 1, Math.min(WORLD_HALF_Z - 1, nextZ));
     }
 
-    // Vertical Y collision
     const nextY = lp.y + lp.velocity.y * dt;
     if (collidesAt(lp.x, nextY, lp.z)) {
         if (lp.velocity.y < 0) lp.isGrounded = true;
@@ -232,11 +230,10 @@ export function updatePlayerPhysics(dt) {
         lp.isGrounded = false;
     }
 
-    // Respawn safety net on the quad walkway
     if (lp.y < -5) {
-        lp.x = 0;
+        lp.x = 12;
         lp.y = 3;
-        lp.z = 4;
+        lp.z = 2;
         lp.velocity.y = 0;
     }
 
