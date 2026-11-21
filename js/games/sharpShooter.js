@@ -2,14 +2,14 @@ import { initAudio, audioCtx } from '../audio.js';
 
 let animFrameId = null;
 let lastFrameTime = 0;
-let gamePhase = 'instructions'; // 'instructions' | 'striker_aim' | 'striker_kick' | 'goalie_wait' | 'goalie_defend' | 'round_end' | 'gameover'
+let gamePhase = 'instructions'; 
 
 // Match State
 let playerScore = 0;
 let aiScore = 0;
 let currentRound = 1;
 const MAX_ROUNDS = 5;
-let isPlayerTurn = true; // true = Player is Striker, false = Player is Goalie
+let isPlayerTurn = true; 
 
 // Physics & Rendering
 let cameraShake = 0;
@@ -21,16 +21,16 @@ let bannerTimer = 0;
 // Ball State
 const ball = {
     active: false,
-    x: 0, // -1 (left post) to 1 (right post)
-    y: 0, // 0 (ground) to 1 (crossbar)
-    z: 0, // 0 (kicker) to 1 (goal line)
+    x: 0, 
+    y: 0, 
+    z: 0, 
     vx: 0,
     vy: 0,
     vz: 0,
     curve: 0,
     spin: 0,
     scale: 1,
-    result: null // 'goal', 'save', 'miss'
+    result: null 
 };
 
 // Striker State
@@ -39,16 +39,16 @@ let powerMeter = 0;
 let powerDir = 1;
 let hasCurved = false;
 const TARGETS = [
-    { note: 'C', x: -0.85, y: 0.85 }, // Top Left
-    { note: 'D', x: -0.85, y: 0.15 }, // Bottom Left
-    { note: 'E', x: 0, y: 0.85 },     // Top Center
-    { note: 'G', x: 0.85, y: 0.15 },  // Bottom Right
-    { note: 'A', x: 0.85, y: 0.85 }   // Top Right
+    { note: 'C', x: -0.85, y: 0.85 }, 
+    { note: 'D', x: -0.85, y: 0.15 }, 
+    { note: 'E', x: 0, y: 0.85 },     
+    { note: 'G', x: 0.85, y: 0.15 },  
+    { note: 'A', x: 0.85, y: 0.85 }   
 ];
 
-// Goalie State (AI or Player)
+// Goalie State
 const goalie = {
-    x: 0, // -1 to 1
+    x: 0, 
     y: 0, 
     isDiving: false,
     diveTargetX: 0,
@@ -56,7 +56,6 @@ const goalie = {
     timer: 0
 };
 
-// Audio
 function playSoccerSfx(type) {
     try {
         initAudio();
@@ -138,23 +137,36 @@ export function stopSharpShooter() {
 }
 
 export function startSharpShooter(bridge) {
-    initAudio();
-    stopSharpShooter();
-    bridge.exitActiveMiniGame();
-    document.getElementById('game-results-modal')?.classList.remove('open');
-    document.getElementById('arcade-hub')?.classList.remove('open');
-    bridge.setActiveMiniGame('sharpShooter');
-    bridge.resetGameStats();
+    try {
+        initAudio();
+        stopSharpShooter();
+        bridge.exitActiveMiniGame();
+        
+        document.getElementById('game-results-modal')?.classList.remove('open');
+        document.getElementById('arcade-hub')?.classList.remove('open');
+        
+        bridge.setActiveMiniGame('sharpShooter');
+        bridge.resetGameStats();
 
-    playerScore = 0;
-    aiScore = 0;
-    currentRound = 1;
-    isPlayerTurn = true;
-    shakeTimer = 0;
-    flashAlpha = 0;
+        playerScore = 0;
+        aiScore = 0;
+        currentRound = 1;
+        isPlayerTurn = true;
+        shakeTimer = 0;
+        flashAlpha = 0;
 
-    gamePhase = 'instructions';
-    showInstructionsPopup(bridge);
+        gamePhase = 'instructions';
+        showInstructionsPopup(bridge);
+        
+        // Immediately overwrite the "stopped" text so you know it loaded
+        const statusEl = document.getElementById('status');
+        if (statusEl) {
+            statusEl.textContent = '⚽ Sharp Shooter: Read the instructions and click Blow The Whistle!';
+        }
+    } catch (error) {
+        console.error("Sharp Shooter Startup Error:", error);
+        alert("Startup Error: " + error.message);
+    }
 }
 
 function showInstructionsPopup(bridge) {
@@ -217,7 +229,6 @@ function setupRound() {
     triggerBanner(isPlayerTurn ? 'YOUR KICK!' : 'DEFEND THE NET!', isPlayerTurn ? '#38bdf8' : '#f97316', 1.5);
     
     if (!isPlayerTurn) {
-        // AI kicks after a random delay
         setTimeout(() => {
             if (gamePhase === 'goalie_wait') executeAIKick();
         }, 1200 + Math.random() * 1000);
@@ -229,13 +240,11 @@ function executeAIKick() {
     ball.active = true;
     ball.x = 0; ball.y = 0; ball.z = 1;
     
-    // AI picks a random target
     const target = TARGETS[Math.floor(Math.random() * TARGETS.length)];
     ball.vx = target.x * (0.8 + Math.random() * 0.4);
     ball.vy = target.y * (0.8 + Math.random() * 0.4);
-    ball.vz = -1.8; // Moving towards camera
+    ball.vz = -1.8; 
     
-    // AI randomly adds curve
     if (Math.random() > 0.5) {
         ball.curve = (Math.random() > 0.5 ? 1 : -1) * 0.8;
     } else {
@@ -256,39 +265,36 @@ export function handleSharpShooterInput(noteStr, bridge) {
     const octave = parseInt(match[3], 10);
 
     if (isPlayerTurn) {
-        // --- STRIKER MODE ---
         if (gamePhase === 'striker_aim' && !isSharp) {
             const target = TARGETS.find(t => t.note === letter);
             if (target) {
                 activeTargetNote = letter;
                 bridge.highlightKey(noteStr, 500, '#facc15');
                 
-                powerMeter = Math.random(); // Simulate meter catch for immediate taps
+                powerMeter = Math.random(); 
                 executePlayerKick(target);
             }
         } else if (gamePhase === 'striker_kick' && isSharp && !hasCurved) {
-            // Apply Banana Curve Spin mid-air
             hasCurved = true;
-            ball.curve = ball.x > 0 ? -1.2 : 1.2; // Curve inwards
+            ball.curve = ball.x > 0 ? -1.2 : 1.2; 
             playSoccerSfx('curve');
             bridge.highlightKey(noteStr, 300, '#ec4899');
             triggerBanner('CURVE SPIN!', '#ec4899', 0.8);
         }
     } else {
-        // --- GOALIE MODE ---
         if (gamePhase === 'goalie_defend' && !goalie.isDiving) {
             goalie.isDiving = true;
             goalie.timer = 0;
             if (octave <= 1) {
-                goalie.diveTargetX = -1; // Dive Left
+                goalie.diveTargetX = -1; 
                 goalie.diveTargetY = 0.5;
                 bridge.highlightKey(noteStr, 400, '#38bdf8');
             } else if (octave === 2) {
-                goalie.diveTargetX = 0; // Stay Center
+                goalie.diveTargetX = 0; 
                 goalie.diveTargetY = 0.8;
                 bridge.highlightKey(noteStr, 400, '#22c55e');
             } else {
-                goalie.diveTargetX = 1; // Dive Right
+                goalie.diveTargetX = 1; 
                 goalie.diveTargetY = 0.5;
                 bridge.highlightKey(noteStr, 400, '#f97316');
             }
@@ -301,26 +307,23 @@ function executePlayerKick(target) {
     ball.active = true;
     ball.z = 0;
     
-    // Apply power meter accuracy
-    const accuracy = 1 - Math.abs(powerMeter - 0.8); // 0.8 is sweet spot
+    const accuracy = 1 - Math.abs(powerMeter - 0.8); 
     const errorX = (Math.random() - 0.5) * (1 - accuracy) * 1.5;
     const errorY = (Math.random() - 0.5) * (1 - accuracy) * 1.5;
     
     ball.vx = target.x + errorX;
     ball.vy = target.y + errorY;
-    ball.vz = 1.8 + (powerMeter * 0.5); // Speed based on power
+    ball.vz = 1.8 + (powerMeter * 0.5); 
     ball.curve = 0;
     
     playSoccerSfx('kick');
 
-    // AI Goalie Reaction
     setTimeout(() => {
         if (gamePhase === 'striker_kick') {
             goalie.isDiving = true;
             goalie.timer = 0;
-            // AI tries to predict
             if (Math.random() < 0.6) {
-                goalie.diveTargetX = Math.sign(ball.vx); // Dives correct way 60% of time
+                goalie.diveTargetX = Math.sign(ball.vx); 
                 goalie.diveTargetY = ball.vy > 0.5 ? 0.8 : 0.2;
             } else {
                 goalie.diveTargetX = Math.random() > 0.5 ? 1 : -1;
@@ -348,7 +351,7 @@ function resolveShot(bridge) {
         ball.result = 'save';
         playSoccerSfx('save');
         triggerBanner('SAVED!', '#f97316', 1.5);
-        if (!isPlayerTurn) playerScore += 100; // Player saved AI's shot
+        if (!isPlayerTurn) playerScore += 100; 
     } else {
         ball.result = 'goal';
         playSoccerSfx('goal');
@@ -395,181 +398,159 @@ function endMatch(bridge) {
 }
 
 function gameLoop(now, bridge) {
-    if (bridge.getActiveMiniGame() !== 'sharpShooter') {
-        stopSharpShooter();
-        return;
-    }
-    const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
-    lastFrameTime = now;
-
-    if (cameraShake > 0) cameraShake = Math.max(0, cameraShake - dt);
-    if (flashAlpha > 0) flashAlpha = Math.max(0, flashAlpha - dt * 2);
-    if (bannerTimer > 0) bannerTimer = Math.max(0, bannerTimer - dt);
-
-    if (gamePhase === 'striker_aim') {
-        powerMeter += powerDir * dt * 1.5;
-        if (powerMeter >= 1 || powerMeter <= 0) powerDir *= -1;
-    }
-
-    if (ball.active) {
-        // Physics integration
-        ball.x += ball.vx * dt;
-        ball.y += ball.vy * dt;
-        ball.z += ball.vz * dt;
-        ball.vx += ball.curve * dt * 2.5; // Apply curve acceleration
-        
-        // Gravity
-        ball.vy -= 0.8 * dt;
-        if (ball.y < 0) {
-            ball.y = 0;
-            ball.vy *= -0.6; // Bounce
+    try {
+        if (bridge.getActiveMiniGame() !== 'sharpShooter') {
+            stopSharpShooter();
+            return;
         }
+        const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
+        lastFrameTime = now;
 
-        // Spin visual
-        ball.spin += Math.hypot(ball.vx, ball.vz) * dt * 10;
+        if (cameraShake > 0) cameraShake = Math.max(0, cameraShake - dt);
+        if (flashAlpha > 0) flashAlpha = Math.max(0, flashAlpha - dt * 2);
+        if (bannerTimer > 0) bannerTimer = Math.max(0, bannerTimer - dt);
 
-        // Goalie Dive Animation
-        if (goalie.isDiving) {
-            goalie.timer += dt * 2;
-            const t = Math.min(1, goalie.timer);
-            const ease = 1 - Math.pow(1 - t, 3); // easeOutCubic
-            goalie.x = goalie.diveTargetX * ease;
-            goalie.y = goalie.diveTargetY * Math.sin(t * Math.PI); // Arc jump
-        }
-
-        // Check Goal Plane Intersection
-        if (isPlayerTurn && ball.z >= 1.0) {
-            ball.z = 1.0;
-            ball.active = false;
-            resolveShot(bridge);
-        } else if (!isPlayerTurn && ball.z <= 0) {
-            ball.z = 0;
-            ball.active = false;
-            resolveShot(bridge);
-        }
-    }
-
-    // --- RENDER 2.5D PERSPECTIVE ---
-    const canvas = document.getElementById('waterfall-canvas');
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width;
-    const H = canvas.height;
-
-    ctx.save();
-    if (cameraShake > 0) {
-        const mag = cameraShake * 15;
-        ctx.translate((Math.random() - 0.5) * mag, (Math.random() - 0.5) * mag);
-    }
-
-    // Draw Sky & Pitch Background
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.4);
-    skyGrad.addColorStop(0, '#1e3a8a');
-    skyGrad.addColorStop(1, '#60a5fa');
-    ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, W, H * 0.4);
-
-    // Stadium Crowd (Pixelated)
-    ctx.fillStyle = '#111827';
-    ctx.fillRect(0, H * 0.2, W, H * 0.2);
-    for(let i=0; i<400; i++) {
-        ctx.fillStyle = ['#ef4444', '#3b82f6', '#facc15', '#ffffff'][Math.floor(Math.random()*4)];
-        ctx.fillRect(Math.random()*W, H * 0.2 + Math.random()*H*0.2, 4, 4);
-    }
-
-    // Pitch (Grass)
-    const pitchGrad = ctx.createLinearGradient(0, H * 0.4, 0, H);
-    pitchGrad.addColorStop(0, '#15803d');
-    pitchGrad.addColorStop(1, '#22c55e');
-    ctx.fillStyle = pitchGrad;
-    ctx.fillRect(0, H * 0.4, W, H * 0.6);
-
-    // Coordinate Mapping Helper
-    // Maps (x, y, z) where x is -1 to 1, y is 0 (ground) to 1 (top of goal), z is 0 (near) to 1 (far)
-    const project = (x, y, z) => {
-        // If player turn, z=0 is near. If goalie turn, z=1 is near.
-        const effectiveZ = isPlayerTurn ? z : 1 - z; 
-        const scale = 1 / (1 + effectiveZ * 2.5); // Perspective division
-        const screenX = W / 2 + (x * W * 0.4) * scale;
-        const screenY = H * 0.85 - (y * H * 0.3) * scale - (effectiveZ * H * 0.15);
-        return { x: screenX, y: screenY, scale };
-    };
-
-    if (isPlayerTurn) {
-        // STRIKER PERSPECTIVE
-        drawGoal(ctx, W, H, project, 1.0); // Goal is at z=1
-        
-        // Draw Target Stars
         if (gamePhase === 'striker_aim') {
-            TARGETS.forEach(t => {
-                const p = project(t.x, t.y, 1.0);
-                ctx.fillStyle = activeTargetNote === t.note ? '#22c55e' : 'rgba(255,255,255,0.5)';
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 15 * p.scale, 0, Math.PI*2);
-                ctx.fill();
-                ctx.fillStyle = '#000';
-                ctx.font = `900 ${18 * p.scale}px sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(t.note, p.x, p.y);
-            });
+            powerMeter += powerDir * dt * 1.5;
+            if (powerMeter >= 1 || powerMeter <= 0) powerDir *= -1;
         }
 
-        // Draw Goalie Sprite at z=1
-        drawKeeperSprite(ctx, project(goalie.x, goalie.y, 1.0));
-        
-        // Draw Ball
-        drawBallSprite(ctx, project(ball.x, ball.y, ball.z), ball.spin);
+        if (ball.active) {
+            ball.x += ball.vx * dt;
+            ball.y += ball.vy * dt;
+            ball.z += ball.vz * dt;
+            ball.vx += ball.curve * dt * 2.5; 
+            
+            ball.vy -= 0.8 * dt;
+            if (ball.y < 0) {
+                ball.y = 0;
+                ball.vy *= -0.6; 
+            }
 
-        // Power Meter Overlay
-        if (gamePhase === 'striker_aim') {
-            ctx.fillStyle = 'rgba(0,0,0,0.5)';
-            ctx.fillRect(W/2 - 100, H - 40, 200, 20);
-            const meterColor = powerMeter > 0.7 && powerMeter < 0.9 ? '#22c55e' : '#facc15';
-            ctx.fillStyle = meterColor;
-            ctx.fillRect(W/2 - 100, H - 40, 200 * powerMeter, 20);
-            ctx.strokeStyle = '#fff';
-            ctx.strokeRect(W/2 - 100, H - 40, 200, 20);
+            ball.spin += Math.hypot(ball.vx, ball.vz) * dt * 10;
+
+            if (goalie.isDiving) {
+                goalie.timer += dt * 2;
+                const t = Math.min(1, goalie.timer);
+                const ease = 1 - Math.pow(1 - t, 3); 
+                goalie.x = goalie.diveTargetX * ease;
+                goalie.y = goalie.diveTargetY * Math.sin(t * Math.PI); 
+            }
+
+            if (isPlayerTurn && ball.z >= 1.0) {
+                ball.z = 1.0;
+                ball.active = false;
+                resolveShot(bridge);
+            } else if (!isPlayerTurn && ball.z <= 0) {
+                ball.z = 0;
+                ball.active = false;
+                resolveShot(bridge);
+            }
         }
 
-    } else {
-        // GOALIE PERSPECTIVE
-        // Goal is at z=0 (framing the screen)
-        drawGoal(ctx, W, H, project, 0.0);
+        const canvas = document.getElementById('waterfall-canvas');
+        if (!canvas) return; // Failsafe
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width;
+        const H = canvas.height;
 
-        // Opponent Kicker in distance at z=1
-        const kickerP = project(0, 0, 1.0);
-        ctx.fillStyle = '#dc2626'; // Red jersey
-        ctx.fillRect(kickerP.x - 10*kickerP.scale, kickerP.y - 40*kickerP.scale, 20*kickerP.scale, 40*kickerP.scale);
+        ctx.save();
+        if (cameraShake > 0) {
+            const mag = cameraShake * 15;
+            ctx.translate((Math.random() - 0.5) * mag, (Math.random() - 0.5) * mag);
+        }
 
-        // Draw Ball
-        drawBallSprite(ctx, project(ball.x, ball.y, ball.z), ball.spin);
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.4);
+        skyGrad.addColorStop(0, '#1e3a8a');
+        skyGrad.addColorStop(1, '#60a5fa');
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, W, H * 0.4);
 
-        // Draw Player Gloves in Foreground
-        drawGloves(ctx, W, H, goalie.x, goalie.y);
-    }
+        ctx.fillStyle = '#111827';
+        ctx.fillRect(0, H * 0.2, W, H * 0.2);
+        for(let i=0; i<400; i++) {
+            ctx.fillStyle = ['#ef4444', '#3b82f6', '#facc15', '#ffffff'][Math.floor(Math.random()*4)];
+            ctx.fillRect(Math.random()*W, H * 0.2 + Math.random()*H*0.2, 4, 4);
+        }
 
-    // Top HUD
-    drawHUD(ctx, W);
+        const pitchGrad = ctx.createLinearGradient(0, H * 0.4, 0, H);
+        pitchGrad.addColorStop(0, '#15803d');
+        pitchGrad.addColorStop(1, '#22c55e');
+        ctx.fillStyle = pitchGrad;
+        ctx.fillRect(0, H * 0.4, W, H * 0.6);
 
-    // Banner Text
-    if (bannerTimer > 0 && bannerText) {
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(0, H/2 - 30, W, 60);
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.font = '900 32px sans-serif';
-        ctx.fillStyle = bannerColor;
-        ctx.fillText(bannerText, W/2, H/2);
-    }
+        const project = (x, y, z) => {
+            const effectiveZ = isPlayerTurn ? z : 1 - z; 
+            const scale = 1 / (1 + effectiveZ * 2.5); 
+            const screenX = W / 2 + (x * W * 0.4) * scale;
+            const screenY = H * 0.85 - (y * H * 0.3) * scale - (effectiveZ * H * 0.15);
+            return { x: screenX, y: screenY, scale };
+        };
 
-    if (flashAlpha > 0) {
-        ctx.fillStyle = `rgba(255,255,255,${flashAlpha})`;
-        ctx.fillRect(0, 0, W, H);
-    }
+        if (isPlayerTurn) {
+            drawGoal(ctx, W, H, project, 1.0); 
+            
+            if (gamePhase === 'striker_aim') {
+                TARGETS.forEach(t => {
+                    const p = project(t.x, t.y, 1.0);
+                    ctx.fillStyle = activeTargetNote === t.note ? '#22c55e' : 'rgba(255,255,255,0.5)';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 15 * p.scale, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.fillStyle = '#000';
+                    ctx.font = `900 ${18 * p.scale}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(t.note, p.x, p.y);
+                });
+            }
 
-    ctx.restore();
-    if (gamePhase !== 'gameover') {
-        animFrameId = requestAnimationFrame((t) => gameLoop(t, bridge));
+            drawKeeperSprite(ctx, project(goalie.x, goalie.y, 1.0));
+            drawBallSprite(ctx, project(ball.x, ball.y, ball.z), ball.spin);
+
+            if (gamePhase === 'striker_aim') {
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(W/2 - 100, H - 40, 200, 20);
+                const meterColor = powerMeter > 0.7 && powerMeter < 0.9 ? '#22c55e' : '#facc15';
+                ctx.fillStyle = meterColor;
+                ctx.fillRect(W/2 - 100, H - 40, 200 * powerMeter, 20);
+                ctx.strokeStyle = '#fff';
+                ctx.strokeRect(W/2 - 100, H - 40, 200, 20);
+            }
+        } else {
+            drawGoal(ctx, W, H, project, 0.0);
+
+            const kickerP = project(0, 0, 1.0);
+            ctx.fillStyle = '#dc2626'; 
+            ctx.fillRect(kickerP.x - 10*kickerP.scale, kickerP.y - 40*kickerP.scale, 20*kickerP.scale, 40*kickerP.scale);
+
+            drawBallSprite(ctx, project(ball.x, ball.y, ball.z), ball.spin);
+            drawGloves(ctx, W, H, goalie.x, goalie.y);
+        }
+
+        drawHUD(ctx, W);
+
+        if (bannerTimer > 0 && bannerText) {
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.fillRect(0, H/2 - 30, W, 60);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '900 32px sans-serif';
+            ctx.fillStyle = bannerColor;
+            ctx.fillText(bannerText, W/2, H/2);
+        }
+
+        if (flashAlpha > 0) {
+            ctx.fillStyle = `rgba(255,255,255,${flashAlpha})`;
+            ctx.fillRect(0, 0, W, H);
+        }
+
+        ctx.restore();
+        if (gamePhase !== 'gameover') {
+            animFrameId = requestAnimationFrame((t) => gameLoop(t, bridge));
+        }
+    } catch (err) {
+        console.error("GameLoop Crash:", err);
     }
 }
 
@@ -579,7 +560,6 @@ function drawGoal(ctx, W, H, project, z) {
     const bl = project(-1.2, 0, z);
     const br = project(1.2, 0, z);
 
-    // Net Pattern
     ctx.strokeStyle = 'rgba(255,255,255,0.4)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -599,7 +579,6 @@ function drawGoal(ctx, W, H, project, z) {
     }
     ctx.stroke();
 
-    // Posts & Crossbar
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 8 * tl.scale;
     ctx.lineJoin = 'round';
@@ -615,17 +594,13 @@ function drawKeeperSprite(ctx, p) {
     const s = Math.max(1, 40 * p.scale);
     ctx.save();
     ctx.translate(p.x, p.y);
-    // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath(); ctx.ellipse(0, 0, s*0.8, s*0.2, 0, 0, Math.PI*2); ctx.fill();
-    // Body (Yellow jersey)
     ctx.fillStyle = '#facc15';
     ctx.fillRect(-s*0.4, -s*1.2, s*0.8, s*0.8);
-    // Legs
     ctx.fillStyle = '#000';
     ctx.fillRect(-s*0.3, -s*0.4, s*0.2, s*0.4);
     ctx.fillRect(s*0.1, -s*0.4, s*0.2, s*0.4);
-    // Head
     ctx.fillStyle = '#fed7aa';
     ctx.beginPath(); ctx.arc(0, -s*1.4, s*0.25, 0, Math.PI*2); ctx.fill();
     ctx.restore();
@@ -636,19 +611,16 @@ function drawGloves(ctx, W, H, gx, gy) {
     const baseY = H * 0.8 - Math.max(0, gy) * H * 0.3;
     
     ctx.save();
-    ctx.fillStyle = '#9ca3af'; // Grey/Black gloves
+    ctx.fillStyle = '#9ca3af'; 
     ctx.strokeStyle = '#111827';
     ctx.lineWidth = 3;
     
-    // Left Glove
-    ctx.beginPath();
-    ctx.roundRect(baseX - 60, baseY - 30, 40, 60, 10);
-    ctx.fill(); ctx.stroke();
+    // Safely using standard fillRect instead of newer roundRect API just in case
+    ctx.fillRect(baseX - 60, baseY - 30, 40, 60);
+    ctx.strokeRect(baseX - 60, baseY - 30, 40, 60);
     
-    // Right Glove
-    ctx.beginPath();
-    ctx.roundRect(baseX + 20, baseY - 30, 40, 60, 10);
-    ctx.fill(); ctx.stroke();
+    ctx.fillRect(baseX + 20, baseY - 30, 40, 60);
+    ctx.strokeRect(baseX + 20, baseY - 30, 40, 60);
     
     ctx.restore();
 }
@@ -658,18 +630,14 @@ function drawBallSprite(ctx, p, spin) {
     ctx.save();
     ctx.translate(p.x, p.y - r);
     
-    // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.beginPath(); ctx.ellipse(0, r+2, r*0.8, r*0.2, 0, 0, Math.PI*2); ctx.fill();
 
-    // Ball rotation
     ctx.rotate(spin);
     
-    // Base white
     ctx.fillStyle = '#ffffff';
     ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.fill();
     
-    // Simple hex patches for soccer ball look
     ctx.fillStyle = '#111827';
     for(let i=0; i<3; i++) {
         const ang = (i * Math.PI * 2 / 3);
