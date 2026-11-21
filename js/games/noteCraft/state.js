@@ -9,6 +9,7 @@ export const ncState = {
     lastFrameTime: 0,
     isPointerLocked: false,
     isTeacher: false,
+    mapZoom: 1.0, // GPS minimap zoom level
 
     localPlayer: {
         id: 'local',

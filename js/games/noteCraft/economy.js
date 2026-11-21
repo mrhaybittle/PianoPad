@@ -3,7 +3,11 @@ import { BLOCKS, COIN_REWARDS, UNLOCK_THRESHOLDS } from './constants.js';
 import { ncState } from './state.js';
 
 export function isTeacherBuilder() {
-    return Boolean(ncState.isTeacher || localStorage.getItem('pianopad_is_teacher') === 'true');
+    return Boolean(
+        ncState.isTeacher || 
+        localStorage.getItem('pianopad_is_teacher') === 'true' ||
+        localStorage.getItem('isHost') === 'true'
+    );
 }
 
 export function calculateRoundReward(songTitle, difficulty = 'medium', accuracy = 0, tempoPercent = 100, isFirstTime = false) {

@@ -118,6 +118,18 @@ function attachInputListeners(containerEl) {
             return;
         }
 
+        // Map Zoom (Minus / Equal)
+        if (e.code === 'Equal' || e.code === 'NumpadAdd') {
+            ncState.mapZoom = Math.min(8.0, (ncState.mapZoom || 1.0) + 0.5);
+            showNoteCraftToast(`🔍 Map Zoom: ${ncState.mapZoom.toFixed(1)}x`, '#38bdf8', 1200);
+            return;
+        }
+        if (e.code === 'Minus' || e.code === 'NumpadSubtract') {
+            ncState.mapZoom = Math.max(1.0, (ncState.mapZoom || 1.0) - 0.5);
+            showNoteCraftToast(`🔍 Map Zoom: ${ncState.mapZoom.toFixed(1)}x`, '#38bdf8', 1200);
+            return;
+        }
+
         // F key toggles Creative Flight for Teacher mode anytime
         if (e.code === 'KeyF' && isTeacherBuilder()) {
             e.preventDefault();
@@ -291,8 +303,12 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
     ncState.bridge = bridge || null;
     ncState.worldId = worldId;
     ncState.world.undoStack = [];
+    
+    // Aggressive Host Detection
     ncState.isTeacher = Boolean(
-        (bridge && bridge.isTeacher) || localStorage.getItem('pianopad_is_teacher') === 'true'
+        (bridge && (bridge.isTeacher || bridge.isHost || bridge.mode === 'host')) || 
+        localStorage.getItem('pianopad_is_teacher') === 'true' ||
+        localStorage.getItem('isHost') === 'true'
     );
 
     if (bridge && typeof bridge.setActiveMiniGame === 'function') {
