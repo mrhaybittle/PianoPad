@@ -1,134 +1,132 @@
 // js/games/noteCraft/engine.js
-import { BLOCKS, BLOCK_COSTS, CHUNK_HEIGHT } from './constants.js';
+import { BLOCKS, BLOCK_COSTS, GRAVITY, PLAYER_EYE_HEIGHT, PLAYER_RADIUS } from './constants.js';
 import { ncState } from './state.js';
 
-export const WORLD_RADIUS = 32; // 64x64 campus build area
-const PLAYER_HALF_W = 0.3;
-const PLAYER_HEIGHT = 1.75;
-export const EYE_HEIGHT = 1.6;
-const GRAVITY = 22.0;
-const JUMP_VELOCITY = 8.2;
-const WALK_SPEED = 5.5;
-const FLY_SPEED = 8.5;
+export const WORLD_RADIUS = 48; // 96x96 block campus matching the Edmund Rice College aerial map
 
-// Deterministic base school grounds & starter campus foundation
+export const CAMPUS_ZONES = [
+    { name: 'Centenary Innovation Centre', minX: -8,  maxX: 14,  minZ: 8,   maxZ: 24,  color: '#facc15' },
+    { name: 'Indoor Sports Centre',        minX: -44, maxX: -20, minZ: -12, maxZ: 14,  color: '#ef4444' },
+    { name: 'Basketball Courts',           minX: -38, maxX: -16, minZ: 14,  maxZ: 32,  color: '#f97316' },
+    { name: 'Main Quad & Solar Roofs',     minX: -10, maxX: 22,  minZ: -24, maxZ: -2,  color: '#38bdf8' },
+    { name: 'E4 & Music Wing (G1–G3)',     minX: 22,  maxX: 44,  minZ: -30, maxZ: -10, color: '#c084fc' },
+    { name: 'Southern Oval',               minX: -24, maxX: 18,  minZ: 24,  maxZ: 46,  color: '#22c55e' }
+];
+
+export function getCurrentCampusZone(x, z) {
+    for (const zone of CAMPUS_ZONES) {
+        if (x >= zone.minX && x <= zone.maxX && z >= zone.minZ && z <= zone.maxZ) {
+            return zone;
+        }
+    }
+    return { name: 'Edmund Rice College Grounds', color: '#94a3b8' };
+}
+
 export function getBaseTerrainBlock(x, y, z) {
-    if (Math.abs(x) > WORLD_RADIUS || Math.abs(z) > WORLD_RADIUS || y < 0 || y >= CHUNK_HEIGHT) {
+    if (x < -WORLD_RADIUS || x >= WORLD_RADIUS || z < -WORLD_RADIUS || z >= WORLD_RADIUS) {
         return BLOCKS.AIR;
     }
-    if (y === 0) return BLOCKS.STONE; // Bedrock floor
-    if (y === 1) {
-        // Cross pathways leading to central quad
-        if (Math.abs(x) <= 1 || Math.abs(z) <= 1) return BLOCKS.STONE;
-        return BLOCKS.GRASS;
-    }
-    // Starter school perimeter footprint at y=2 with entrance gaps
-    if (y === 2) {
-        const onXWall = Math.abs(x) === 12 && Math.abs(z) <= 10 && Math.abs(z) > 2;
-        const onZWall = Math.abs(z) === 10 && Math.abs(x) <= 12 && Math.abs(x) > 2;
-        if (onXWall || onZWall) return BLOCKS.BRICK;
-    }
+    if (y === 0) return BLOCKS.DIRT;
+    if (y === 1) return BLOCKS.GRASS;
     return BLOCKS.AIR;
 }
 
 export function getBlockAt(x, y, z) {
-    const ix = Math.floor(x);
-    const iy = Math.floor(y);
-    const iz = Math.floor(z);
-    const key = `${ix}_${iy}_${iz}`;
+    const bx = Math.floor(x);
+    const by = Math.floor(y);
+    const bz = Math.floor(z);
+    if (by < 0 || by >= 24) return BLOCKS.AIR;
+
+    const key = `${bx}_${by}_${bz}`;
     if (Object.prototype.hasOwnProperty.call(ncState.world.deltas, key)) {
         return ncState.world.deltas[key];
     }
-    return getBaseTerrainBlock(ix, iy, iz);
+    return getBaseTerrainBlock(bx, by, bz);
 }
 
 export function setBlockAt(x, y, z, blockId) {
-    const ix = Math.floor(x);
-    const iy = Math.floor(y);
-    const iz = Math.floor(z);
-    if (Math.abs(ix) > WORLD_RADIUS || Math.abs(iz) > WORLD_RADIUS || iy < 1 || iy >= CHUNK_HEIGHT) {
-        return null;
-    }
-    const key = `${ix}_${iy}_${iz}`;
+    const bx = Math.floor(x);
+    const by = Math.floor(y);
+    const bz = Math.floor(z);
+    if (bx < -WORLD_RADIUS || bx >= WORLD_RADIUS || bz < -WORLD_RADIUS || bz >= WORLD_RADIUS) return null;
+    if (by < 1 || by >= 23) return null; // Protect bedrock layer y=0
+
+    const key = `${bx}_${by}_${bz}`;
     ncState.world.deltas[key] = blockId;
     ncState.world.dirty = true;
-    return { key, x: ix, y: iy, z: iz, blockId };
+    return { key, x: bx, y: by, z: bz, blockId };
 }
 
-function isSolidBlock(x, y, z) {
-    return getBlockAt(x, y, z) !== BLOCKS.AIR;
+export function isBlockSolid(blockId) {
+    return blockId !== BLOCKS.AIR && blockId !== undefined && blockId !== null;
 }
 
-function collidesAABB(px, py, pz) {
-    const minX = Math.floor(px - PLAYER_HALF_W);
-    const maxX = Math.floor(px + PLAYER_HALF_W);
+function collidesAt(px, py, pz) {
+    const minX = Math.floor(px - PLAYER_RADIUS);
+    const maxX = Math.floor(px + PLAYER_RADIUS);
     const minY = Math.floor(py);
-    const maxY = Math.floor(py + PLAYER_HEIGHT);
-    const minZ = Math.floor(pz - PLAYER_HALF_W);
-    const maxZ = Math.floor(pz + PLAYER_HALF_W);
+    const maxY = Math.floor(py + PLAYER_EYE_HEIGHT + 0.15);
+    const minZ = Math.floor(pz - PLAYER_RADIUS);
+    const maxZ = Math.floor(pz + PLAYER_RADIUS);
 
     for (let x = minX; x <= maxX; x++) {
         for (let y = minY; y <= maxY; y++) {
             for (let z = minZ; z <= maxZ; z++) {
-                if (isSolidBlock(x, y, z)) return true;
+                if (isBlockSolid(getBlockAt(x, y, z))) return true;
             }
         }
     }
     return false;
 }
 
-export function getLookDirection(yaw, pitch) {
-    const cosPitch = Math.cos(pitch);
-    return {
-        x: -Math.sin(yaw) * cosPitch,
-        y: Math.sin(pitch),
-        z: -Math.cos(yaw) * cosPitch
-    };
-}
+export function raycastVoxel(maxDist = 6.5) {
+    const lp = ncState.localPlayer;
+    const ox = lp.x;
+    const oy = lp.y + PLAYER_EYE_HEIGHT;
+    const oz = lp.z;
 
-// Fast 3D DDA voxel traversal for block targeting
-export function raycastVoxel(origin, dir, maxDist = 7) {
-    let x = Math.floor(origin.x);
-    let y = Math.floor(origin.y);
-    let z = Math.floor(origin.z);
+    const cosPitch = Math.cos(lp.pitch);
+    const dx = -Math.sin(lp.yaw) * cosPitch;
+    const dy = Math.sin(lp.pitch);
+    const dz = -Math.cos(lp.yaw) * cosPitch;
 
-    const stepX = dir.x > 0 ? 1 : (dir.x < 0 ? -1 : 0);
-    const stepY = dir.y > 0 ? 1 : (dir.y < 0 ? -1 : 0);
-    const stepZ = dir.z > 0 ? 1 : (dir.z < 0 ? -1 : 0);
+    let prevBx = Math.floor(ox);
+    let prevBy = Math.floor(oy);
+    let prevBz = Math.floor(oz);
 
-    const tDeltaX = stepX !== 0 ? Math.abs(1 / dir.x) : Infinity;
-    const tDeltaY = stepY !== 0 ? Math.abs(1 / dir.y) : Infinity;
-    const tDeltaZ = stepZ !== 0 ? Math.abs(1 / dir.z) : Infinity;
+    const step = 0.06;
+    for (let d = 0.25; d <= maxDist; d += step) {
+        const rx = ox + dx * d;
+        const ry = oy + dy * d;
+        const rz = oz + dz * d;
 
-    let tMaxX = stepX > 0 ? (x + 1 - origin.x) * tDeltaX : (origin.x - x) * tDeltaX;
-    let tMaxY = stepY > 0 ? (y + 1 - origin.y) * tDeltaY : (origin.y - y) * tDeltaY;
-    let tMaxZ = stepZ > 0 ? (z + 1 - origin.z) * tDeltaZ : (origin.z - z) * tDeltaZ;
+        const bx = Math.floor(rx);
+        const by = Math.floor(ry);
+        const bz = Math.floor(rz);
 
-    const normal = { x: 0, y: 0, z: 0 };
-    let dist = 0;
+        if (bx === prevBx && by === prevBy && bz === prevBz) continue;
 
-    while (dist <= maxDist) {
-        const blockId = getBlockAt(x, y, z);
-        if (blockId !== BLOCKS.AIR) {
-            return { hit: true, x, y, z, normal, blockId };
+        const blockId = getBlockAt(bx, by, bz);
+        if (isBlockSolid(blockId)) {
+            return {
+                hit: true,
+                x: bx,
+                y: by,
+                z: bz,
+                blockId,
+                normal: {
+                    x: prevBx - bx,
+                    y: prevBy - by,
+                    z: prevBz - bz
+                }
+            };
         }
-        if (tMaxX < tMaxY && tMaxX < tMaxZ) {
-            dist = tMaxX;
-            tMaxX += tDeltaX;
-            x += stepX;
-            normal.x = -stepX; normal.y = 0; normal.z = 0;
-        } else if (tMaxY < tMaxZ) {
-            dist = tMaxY;
-            tMaxY += tDeltaY;
-            y += stepY;
-            normal.x = 0; normal.y = -stepY; normal.z = 0;
-        } else {
-            dist = tMaxZ;
-            tMaxZ += tDeltaZ;
-            z += stepZ;
-            normal.x = 0; normal.y = 0; normal.z = -stepZ;
-        }
+
+        prevBx = bx;
+        prevBy = by;
+        prevBz = bz;
     }
+
     return { hit: false };
 }
 
@@ -141,44 +139,44 @@ export function breakTargetBlock() {
 export function placeSelectedBlock() {
     const target = ncState.targetBlock;
     const lp = ncState.localPlayer;
-    if (!target || !target.hit) return { error: 'NO_TARGET' };
+    if (!target || !target.hit) return null;
 
     const blockId = lp.inventory[lp.selectedSlot];
-    if (!blockId) return { error: 'NO_BLOCK_SELECTED' };
+    if (!blockId) return null;
 
     const cost = BLOCK_COSTS[blockId] || 0;
-    if (lp.noteCoins < cost) return { error: 'INSUFFICIENT_COINS', cost };
+    if (lp.noteCoins < cost) {
+        return { error: 'INSUFFICIENT_COINS', cost };
+    }
 
     const px = target.x + target.normal.x;
     const py = target.y + target.normal.y;
     const pz = target.z + target.normal.z;
 
-    // Prevent trapping player inside newly placed block
-    const overlapsPlayer =
-        px + 1 > lp.x - PLAYER_HALF_W && px < lp.x + PLAYER_HALF_W &&
-        py + 1 > lp.y && py < lp.y + PLAYER_HEIGHT &&
-        pz + 1 > lp.z - PLAYER_HALF_W && pz < lp.z + PLAYER_HALF_W;
-
-    if (overlapsPlayer) return { error: 'BLOCKED_BY_PLAYER' };
+    // Prevent trapping self inside placed block
+    const playerMinY = Math.floor(lp.y);
+    const playerMaxY = Math.floor(lp.y + PLAYER_EYE_HEIGHT);
+    if (px === Math.floor(lp.x) && pz === Math.floor(lp.z) && py >= playerMinY && py <= playerMaxY) {
+        return null;
+    }
 
     const change = setBlockAt(px, py, pz, blockId);
     if (change) {
         lp.noteCoins -= cost;
+        return { change, cost };
     }
-    return { change, cost };
+    return null;
 }
 
 export function updatePlayerPhysics(dt) {
     const lp = ncState.localPlayer;
     const keys = ncState.keysHeld;
 
-    // Handle timed creative flight from Architect Chords
-    if (lp.flightTimer > 0) {
+    if (lp.isFlying) {
         lp.flightTimer = Math.max(0, lp.flightTimer - dt);
-        lp.isFlying = lp.flightTimer > 0;
+        if (lp.flightTimer <= 0) lp.isFlying = false;
     }
 
-    // Horizontal movement input
     let forward = 0;
     let strafe = 0;
     if (keys.has('KeyW') || keys.has('ArrowUp')) forward += 1;
@@ -192,56 +190,55 @@ export function updatePlayerPhysics(dt) {
         strafe /= len;
     }
 
-    const speed = lp.isFlying ? FLY_SPEED : WALK_SPEED;
-    const sinYaw = Math.sin(lp.yaw);
-    const cosYaw = Math.cos(lp.yaw);
+    const speed = lp.isFlying ? 8.5 : 5.8;
+    const sinY = Math.sin(lp.yaw);
+    const cosY = Math.cos(lp.yaw);
 
-    lp.velocity.x = (-sinYaw * forward + cosYaw * strafe) * speed;
-    lp.velocity.z = (-cosYaw * forward - sinYaw * strafe) * speed;
+    const moveX = (-sinY * forward + cosY * strafe) * speed;
+    const moveZ = (-cosY * forward - sinY * strafe) * speed;
 
     if (lp.isFlying) {
-        let vertical = 0;
-        if (keys.has('Space')) vertical += 1;
-        if (keys.has('ShiftLeft') || keys.has('ShiftRight')) vertical -= 1;
-        lp.velocity.y = vertical * FLY_SPEED;
+        let vy = 0;
+        if (keys.has('Space')) vy += 5.5;
+        if (keys.has('ShiftLeft') || keys.has('ShiftRight')) vy -= 5.5;
+        lp.velocity.y = vy;
     } else {
+        lp.velocity.y += GRAVITY * dt;
         if (keys.has('Space') && lp.isGrounded) {
-            lp.velocity.y = JUMP_VELOCITY;
+            lp.velocity.y = 7.4;
             lp.isGrounded = false;
         }
-        lp.velocity.y -= GRAVITY * dt;
     }
 
-    // Resolve X axis
-    const nextX = lp.x + lp.velocity.x * dt;
-    if (!collidesAABB(nextX, lp.y, lp.z)) {
+    // Horizontal X collision
+    const nextX = lp.x + moveX * dt;
+    if (!collidesAt(nextX, lp.y + 0.05, lp.z)) {
         lp.x = Math.max(-WORLD_RADIUS + 1, Math.min(WORLD_RADIUS - 1, nextX));
     }
 
-    // Resolve Z axis
-    const nextZ = lp.z + lp.velocity.z * dt;
-    if (!collidesAABB(lp.x, lp.y, nextZ)) {
+    // Horizontal Z collision
+    const nextZ = lp.z + moveZ * dt;
+    if (!collidesAt(lp.x, lp.y + 0.05, nextZ)) {
         lp.z = Math.max(-WORLD_RADIUS + 1, Math.min(WORLD_RADIUS - 1, nextZ));
     }
 
-    // Resolve Y axis
+    // Vertical Y collision
     const nextY = lp.y + lp.velocity.y * dt;
-    if (!collidesAABB(lp.x, nextY, lp.z)) {
+    if (collidesAt(lp.x, nextY, lp.z)) {
+        if (lp.velocity.y < 0) lp.isGrounded = true;
+        lp.velocity.y = 0;
+    } else {
         lp.y = nextY;
         lp.isGrounded = false;
-    } else {
-        if (lp.velocity.y < 0) lp.isGrounded = true;
+    }
+
+    // Respawn safety net on the quad walkway
+    if (lp.y < -5) {
+        lp.x = 0;
+        lp.y = 3;
+        lp.z = 4;
         lp.velocity.y = 0;
     }
 
-    // Safety floor respawn
-    if (lp.y < -5) {
-        lp.x = 0; lp.y = 4; lp.z = 6;
-        lp.velocity = { x: 0, y: 0, z: 0 };
-    }
-
-    // Update target block highlight
-    const eyeOrigin = { x: lp.x, y: lp.y + EYE_HEIGHT, z: lp.z };
-    const lookDir = getLookDirection(lp.yaw, lp.pitch);
-    ncState.targetBlock = raycastVoxel(eyeOrigin, lookDir, 7);
+    ncState.targetBlock = raycastVoxel(6.5);
 }
