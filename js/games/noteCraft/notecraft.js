@@ -207,8 +207,31 @@ function detachInputListeners() {
 }
 
 export function handleNoteCraftInput(event) {
-    
     if (!ncState.active || !event) return;
+
+    if (event.type === 'note' || event.type === 'noteOn') {
+        const noteName = String(event.noteName || event.note || '').toUpperCase();
+        
+        const exactMap = { 'C4': 0, 'D4': 1, 'E4': 2, 'F4': 3, 'G4': 4, 'A4': 5, 'B4': 6, 'C5': 7 };
+        let slotIdx = exactMap[noteName];
+        
+        if (slotIdx === undefined) {
+            const letter = noteName.replace(/[^A-G]/g, '');
+            const octave = noteName.match(/\d+/) ? parseInt(noteName.match(/\d+/)[0]) : 4;
+            
+            if (letter === 'C') {
+                slotIdx = (octave > 4) ? 7 : 0;
+            } else {
+                const baseMap = { 'D': 1, 'E': 2, 'F': 3, 'G': 4, 'A': 5, 'B': 6 };
+                slotIdx = baseMap[letter];
+            }
+        }
+        
+        if (slotIdx !== undefined) {
+            ncState.localPlayer.selectedSlot = slotIdx;
+            return;
+        }
+    }
 
     if (event.type === 'chord' && event.chordQuality) {
         const quality = String(event.chordQuality).toLowerCase();
@@ -243,25 +266,6 @@ export function handleNoteCraftInput(event) {
                 if (c) syncBlockChange(c);
             }
             showNoteCraftToast('🎶 Minor Triad! Built 3-block vertical pillar!', '#c084fc');
-        }
-    }
-
-    if (event.type === 'songComplete') {
-        const earned = calculateRoundReward(
-            event.songTitle,
-            event.difficulty,
-            event.accuracy,
-            event.tempoPercent,
-            event.isFirstTime
-        );
-        if (earned > 0) {
-            ncState.localPlayer.noteCoins += earned;
-            if (event.songTitle && !ncState.localPlayer.masteredSongs.includes(event.songTitle)) {
-                ncState.localPlayer.masteredSongs.push(event.songTitle);
-            }
-            updateInventory();
-            saveStudentWallet(ncState.localPlayer.name);
-            showNoteCraftToast(`🏆 +${earned} NoteCoins earned for ${event.songTitle}!`, '#facc15', 3400);
         }
     }
 }
@@ -329,7 +333,6 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
         avatar: playerAvatar
     });
 
-    // Teacher Creative Mode: infinite coins, all 8 textures unlocked, and creative flight enabled
     if (isTeacherBuilder()) {
         lp.noteCoins = 999999;
         lp.isFlying = true;
@@ -370,6 +373,7 @@ export function stopNoteCraft() {
         ncState.bridge.setActiveMiniGame(null);
     }
 }
+
 export function awardNoteCraftSongReward(songTitle, difficulty, accuracy, tempoPercent, isFirstTime) {
     if (!ncState.active) return;
     const earned = calculateRoundReward(songTitle, difficulty, accuracy, tempoPercent, isFirstTime);
