@@ -51,37 +51,39 @@ export function showNoteCraftToast(text, color = '#facc15', durationMs = 2600) {
 }
 
 function drawSatelliteMinimap(ctx, H) {
-    const mapSize = 114;
+    const mapW = 136;
+    const mapH = 102; // 4:3 ratio matching erc_map.jpg
     const mx = 12;
-    const my = H - mapSize - 12;
+    const my = H - mapH - 12;
     const lp = ncState.localPlayer;
-    const worldSpan = WORLD_RADIUS * 2;
+    const spanX = WORLD_HALF_X * 2;
+    const spanZ = WORLD_HALF_Z * 2;
 
     ctx.save();
     ctx.beginPath();
-    ctx.roundRect(mx, my, mapSize, mapSize, 10);
+    ctx.roundRect(mx, my, mapW, mapH, 10);
     ctx.clip();
 
     if (mapImgLoaded && mapImg) {
-        ctx.drawImage(mapImg, mx, my, mapSize, mapSize);
+        ctx.drawImage(mapImg, mx, my, mapW, mapH);
     } else {
         ctx.fillStyle = '#14532d';
-        ctx.fillRect(mx, my, mapSize, mapSize);
+        ctx.fillRect(mx, my, mapW, mapH);
     }
 
-    // Subtle Centenary Innovation Centre highlight box on minimap (x: -8..14, z: 8..24)
-    const cicX = mx + ((-8 + WORLD_RADIUS) / worldSpan) * mapSize;
-    const cicY = my + ((8 + WORLD_RADIUS) / worldSpan) * mapSize;
-    const cicW = (22 / worldSpan) * mapSize;
-    const cicH = (16 / worldSpan) * mapSize;
+    // Centenary Innovation Centre highlight box (x: 2..22, z: 6..20)
+    const cicX = mx + ((2 + WORLD_HALF_X) / spanX) * mapW;
+    const cicY = my + ((6 + WORLD_HALF_Z) / spanZ) * mapH;
+    const cicW = (20 / spanX) * mapW;
+    const cicH = (14 / spanZ) * mapH;
     ctx.strokeStyle = 'rgba(250, 204, 21, 0.9)';
     ctx.lineWidth = 1.5;
     ctx.strokeRect(cicX, cicY, cicW, cicH);
 
     // Remote classmates dots
     for (const opp of Object.values(ncState.remotePlayers)) {
-        const ox = mx + (((opp.x || 0) + WORLD_RADIUS) / worldSpan) * mapSize;
-        const oz = my + (((opp.z || 0) + WORLD_RADIUS) / worldSpan) * mapSize;
+        const ox = mx + (((opp.x || 0) + WORLD_HALF_X) / spanX) * mapW;
+        const oz = my + (((opp.z || 0) + WORLD_HALF_Z) / spanZ) * mapH;
         ctx.fillStyle = '#38bdf8';
         ctx.beginPath();
         ctx.arc(ox, oz, 3.2, 0, Math.PI * 2);
@@ -89,8 +91,8 @@ function drawSatelliteMinimap(ctx, H) {
     }
 
     // Local player directional arrow
-    const px = mx + ((lp.x + WORLD_RADIUS) / worldSpan) * mapSize;
-    const pz = my + ((lp.z + WORLD_RADIUS) / worldSpan) * mapSize;
+    const px = mx + ((lp.x + WORLD_HALF_X) / spanX) * mapW;
+    const pz = my + ((lp.z + WORLD_HALF_Z) / spanZ) * mapH;
     ctx.translate(px, pz);
     ctx.rotate(-lp.yaw);
     ctx.fillStyle = '#facc15';
@@ -106,19 +108,18 @@ function drawSatelliteMinimap(ctx, H) {
     ctx.stroke();
     ctx.restore();
 
-    // Minimap border & label
     ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.roundRect(mx, my, mapSize, mapSize, 10);
+    ctx.roundRect(mx, my, mapW, mapH, 10);
     ctx.stroke();
 
     ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-    ctx.fillRect(mx + 14, my + mapSize - 15, mapSize - 28, 13);
+    ctx.fillRect(mx + 22, my + mapH - 14, mapW - 44, 12);
     ctx.fillStyle = '#facc15';
-    ctx.font = '900 8.5px sans-serif';
+    ctx.font = '900 8px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('ERC CAMPUS GPS', mx + mapSize / 2, my + mapSize - 5.5);
+    ctx.fillText('ERC CAMPUS GPS', mx + mapW / 2, my + mapH - 5);
 }
 
 export function renderHudFrame(now) {
