@@ -873,7 +873,7 @@ export function dealKnockoutEmoteDeck() {
     deckEl.style.marginTop = '12px';
 
     deckEl.innerHTML = hand.map(emote => `
-        <button type="button" class="ko-emote-btn" style="font-size:0.74rem; padding:5px 6px;" onclick="sendKnockoutQuickEmote('${emote.replace(/'/g, "\\'")}')">${emote}</button>
+        <button type="button" class="ko-emote-btn" style="font-size:0.74rem; padding:5px 6px;" onclick="sendKnockoutQuickEmote('${emote.replace(/'/g, "\'")}')">${emote}</button>
     `).join('') + `<button type="button" class="ko-shuffle-btn" style="font-size:0.78rem; padding:5px 8px; font-weight:800;" title="Deal 10 new reactions" onclick="dealKnockoutEmoteDeck()">🎲 Shuffle</button>`;
 }
 
@@ -958,10 +958,9 @@ export function updateTugOfWarHUD(myAcc, oppAcc) {
 
     const mode = knockoutDataCache ? knockoutDataCache.tournamentMode : 'solo';
     if (!koState.isClassKnockout || mode === 'namethattune' || mode === 'lasertag' || mode === 'notecraft') {
-    hud.style.display = 'none';
-    return;
-}
-    
+        hud.style.display = 'none';
+        return;
+    }
 
     const { sessionStudentName, sessionStudentAvatar } = bridge.getState();
     const isTeamMode = (mode === 'house' || mode === 'sides' || mode === 'rooms');
@@ -1339,7 +1338,7 @@ function buildStandingsHTML(rankedPlayers, mode = 'solo', playersObj = {}, nttGr
             : '';
 
         const kickBtn = isHost && p.id !== localStudentId
-            ? `<button type="button" onclick="kickKnockoutPlayer('${p.id}', '${p.name.replace(/'/g, "\\'")}')" style="margin-left:8px; background:#ef4444; color:#fff; border:none; border-radius:4px; padding:2px 6px; font-size:0.65rem; cursor:pointer;" title="Remove Student">❌ Kick</button>`
+            ? `<button type="button" onclick="kickKnockoutPlayer('${p.id}', '${p.name.replace(/'/g, "\'")}')" style="margin-left:8px; background:#ef4444; color:#fff; border:none; border-radius:4px; padding:2px 6px; font-size:0.65rem; cursor:pointer;" title="Remove Student">❌ Kick</button>`
             : '';
 
         return `
@@ -1365,7 +1364,6 @@ function buildStandingsHTML(rankedPlayers, mode = 'solo', playersObj = {}, nttGr
 }
 
 function generateSwissPairings(playersObj, roundNum, mode = 'solo') {
-  
     if (mode === 'namethattune' || mode === 'lasertag' || mode === 'notecraft') return {};
 
     const players = Object.values(playersObj || {});
@@ -1541,7 +1539,7 @@ function handleKnockoutHostUpdate(data) {
             <div class="lobby-player-card" style="position:relative;">
                 <span>${p.avatar || '🏃'}</span>
                 <span>${p.name} (${p.studentClass || 'Class'})${isTeamMode ? getTeamBadgeHTML(p, mode, nttGroupHouses) : ''}</span>
-                <button type="button" onclick="kickKnockoutPlayer('${p.id}', '${p.name.replace(/'/g, "\\'")}')" style="position:absolute; top:4px; right:4px; background:#ef4444; color:#fff; border:none; border-radius:4px; width:20px; height:20px; font-size:0.7rem; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Remove Student">✖</button>
+                <button type="button" onclick="kickKnockoutPlayer('${p.id}', '${p.name.replace(/'/g, "\'")}')" style="position:absolute; top:4px; right:4px; background:#ef4444; color:#fff; border:none; border-radius:4px; width:20px; height:20px; font-size:0.7rem; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Remove Student">✖</button>
             </div>
         `).join('');
         return;
@@ -1594,11 +1592,26 @@ function handleKnockoutHostUpdate(data) {
             bracketDiv.innerHTML = `<div style="padding:20px; font-size:1.1rem; color:#38bdf8; font-weight:900; text-align:center;">🛸 Laser Tag Arena is Live! (Monitoring matches...)</div>`;
             return;
         }
+
         if (mode === 'notecraft') {
-    statusBanner.textContent = `🏫 NoteCraft Campus Builder is Live! (${ranked.length} builders in world)`;
-    bracketDiv.innerHTML = `<div style="padding:20px; font-size:1.1rem; color:#22c55e; font-weight:900; text-align:center;">🏫 NoteCraft 3D School World is Live! Students are building the campus together.</div>`;
-    return;
-}
+            statusBanner.textContent = `🏫 NoteCraft Campus Builder is Live! (${ranked.length} builders in world)`;
+            bracketDiv.innerHTML = `
+                <div style="grid-column: 1 / -1; padding: 20px; background: #141824; border: 1px solid #22c55e; border-radius: 10px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+                    <div style="font-size: 1.1rem; color: #22c55e; font-weight: 900;">
+                        🏫 NoteCraft 3D School World is Live! Students are building the campus together.
+                    </div>
+                    <button type="button" id="btn-host-enter-notecraft" class="btn-success" style="padding: 10px 20px; font-size: 0.95rem; font-weight: 800; box-shadow: 0 0 15px rgba(34,197,94,0.4);">
+                        🚶 Enter 3D Campus (Inspect / Build)
+                    </button>
+                </div>
+            `;
+            document.getElementById('btn-host-enter-notecraft').onclick = () => {
+                document.getElementById('knockout-modal').classList.remove('open');
+                arcadeState.activeMiniGame = 'noteCraft';
+                startNoteCraft(bridge, 'school_campus_main');
+            };
+            return;
+        }
 
         const pairings = Object.values(data.pairings || {});
         let allDone = true;
@@ -1757,8 +1770,8 @@ function buildRoundScoreUpdates(data) {
     }
     
     if (mode === 'lasertag' || mode === 'notecraft') {
-    return updates;
-}
+        return updates;
+    }
 
     const pairings = Object.values(data.pairings || {});
     const rankedBefore = getRankedKnockoutPlayers(playersObj);
@@ -2039,17 +2052,18 @@ function handleKnockoutStudentUpdate(data) {
             if (window.launchLaserTag) window.launchLaserTag(koState.knockoutRoomCode, false);
             return;
         }
-        if (mode === 'notecraft') {
-    document.getElementById('knockout-modal').classList.remove('open');
-    document.getElementById('game-results-modal').classList.remove('open');
-    document.getElementById('arcade-hub').classList.remove('open');
-    const tugHud = document.getElementById('tug-of-war-hud');
-    if (tugHud) tugHud.style.display = 'none';
 
-    arcadeState.activeMiniGame = 'noteCraft';
-    startNoteCraft(bridge, 'school_campus_main');
-    return;
-}
+        if (mode === 'notecraft') {
+            document.getElementById('knockout-modal').classList.remove('open');
+            document.getElementById('game-results-modal').classList.remove('open');
+            document.getElementById('arcade-hub').classList.remove('open');
+            const tugHud = document.getElementById('tug-of-war-hud');
+            if (tugHud) tugHud.style.display = 'none';
+
+            arcadeState.activeMiniGame = 'noteCraft';
+            startNoteCraft(bridge, 'school_campus_main');
+            return;
+        }
 
         if (mode === 'namethattune') {
             document.getElementById('knockout-modal').classList.remove('open');
@@ -2338,7 +2352,7 @@ function renderKnockoutPostRoundComparison(me, res, myPlaceText) {
         : '';
 
     const all50Buttons = KO_HYPE_EMOTES.map(emote => `
-        <button type="button" class="ko-emote-btn" style="font-size:0.72rem; padding:4px 6px;" onclick="sendKnockoutQuickEmote('${emote.replace(/'/g, "\\'")}')">${emote}</button>
+        <button type="button" class="ko-emote-btn" style="font-size:0.72rem; padding:4px 6px;" onclick="sendKnockoutQuickEmote('${emote.replace(/'/g, "\'")}')">${emote}</button>
     `).join('');
 
     document.getElementById('game-summary-text').innerHTML = `
