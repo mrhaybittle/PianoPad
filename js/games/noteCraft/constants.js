@@ -28,3 +28,21 @@ export const BLOCK_COSTS = {
     [BLOCKS.GLASS]: 15,
     [BLOCKS.NOTE_BLOCK]: 25
 };
+
+export const COIN_REWARDS = {
+    easy: 25,
+    medium: 50,
+    hard: 100,
+    firstTimeBonus: 50
+};
+
+export const UNLOCK_THRESHOLDS = {
+    [BLOCKS.DIRT]: 0,
+    [BLOCKS.GRASS]: 0,
+    [BLOCKS.STONE]: 0,
+    [BLOCKS.LEAVES]: 1,
+    [BLOCKS.WOOD]: 2,
+    [BLOCKS.BRICK]: 3,
+    [BLOCKS.GLASS]: 5,
+    [BLOCKS.NOTE_BLOCK]: 8
+};
