@@ -1,235 +1,246 @@
 // js/games/noteCraft/render3d.js
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js';
-import { BLOCKS, CHUNK_HEIGHT } from './constants.js';
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+import { BLOCKS, PLAYER_EYE_HEIGHT } from './constants.js';
 import { ncState } from './state.js';
-import { getBlockAt, WORLD_RADIUS, EYE_HEIGHT } from './engine.js';
+import { WORLD_RADIUS, getBaseTerrainBlock, isBlockSolid } from './engine.js';
 
 let renderer = null;
 let scene = null;
 let camera = null;
-let blockMeshes = {};
-let highlightBox = null;
-let materialsCache = null;
+let voxelGroup = null;
+let highlightMesh = null;
+let campusBlueprintMesh = null;
+let cicOutlineMesh = null;
 
-const MAX_INSTANCES_PER_TYPE = 12000;
-const dummyMatrix = new THREE.Matrix4();
+const sharedGeo = new THREE.BoxGeometry(1, 1, 1);
+const materialCache = new Map();
 
-function makePixelTexture(drawFn) {
-    const c = document.createElement('canvas');
-    c.width = 16;
-    c.height = 16;
-    const ctx = c.getContext('2d');
-    drawFn(ctx);
-    const tex = new THREE.CanvasTexture(c);
+function createProceduralBlockTexture(type) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+
+    if (type === 'grass_top') {
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(0, 0, 64, 64);
+        ctx.fillStyle = '#16a34a';
+        for (let i = 0; i < 40; i++) {
+            ctx.fillRect((i * 19) % 60, (i * 29) % 60, 4, 4);
+        }
+    } else if (type === 'dirt') {
+        ctx.fillStyle = '#7c4d2b';
+        ctx.fillRect(0, 0, 64, 64);
+        ctx.fillStyle = '#5e381d';
+        for (let i = 0; i < 36; i++) {
+            ctx.fillRect((i * 23) % 60, (i * 17) % 60, 5, 5);
+        }
+    } else if (type === 'stone') {
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(0, 0, 64, 64);
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(4, 4, 24, 24);
+        ctx.fillRect(34, 34, 24, 24);
+    } else if (type === 'brick') {
+        ctx.fillStyle = '#b91c1c';
+        ctx.fillRect(0, 0, 64, 64);
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(0, 14, 64, 3);
+        ctx.fillRect(0, 30, 64, 3);
+        ctx.fillRect(0, 46, 64, 3);
+        ctx.fillRect(0, 61, 64, 3);
+        ctx.fillRect(30, 0, 3, 14);
+        ctx.fillRect(14, 17, 3, 13);
+        ctx.fillRect(46, 17, 3, 13);
+        ctx.fillRect(30, 33, 3, 13);
+    } else if (type === 'wood') {
+        ctx.fillStyle = '#d97706';
+        ctx.fillRect(0, 0, 64, 64);
+        ctx.fillStyle = '#92400e';
+        ctx.fillRect(0, 12, 64, 3);
+        ctx.fillRect(0, 32, 64, 3);
+        ctx.fillRect(0, 52, 64, 3);
+    } else if (type === 'leaves') {
+        ctx.fillStyle = '#15803d';
+        ctx.fillRect(0, 0, 64, 64);
+        ctx.fillStyle = '#22c55e';
+        for (let i = 0; i < 30; i++) {
+            ctx.fillRect((i * 13) % 58, (i * 31) % 58, 6, 6);
+        }
+    } else if (type === 'note_block') {
+        ctx.fillStyle = '#581c87';
+        ctx.fillRect(0, 0, 64, 64);
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(3, 3, 58, 58);
+        ctx.fillStyle = '#facc15';
+        ctx.font = 'bold 34px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('♪', 32, 34);
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
     tex.magFilter = THREE.NearestFilter;
     tex.minFilter = THREE.NearestFilter;
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
 }
 
-function createBlockMaterials() {
-    if (materialsCache) return materialsCache;
+function getBlockMaterial(blockId) {
+    if (materialCache.has(blockId)) return materialCache.get(blockId);
 
-    const dirtTex = makePixelTexture((ctx) => {
-        ctx.fillStyle = '#7c4d2b';
-        ctx.fillRect(0, 0, 16, 16);
-        ctx.fillStyle = '#5e381d';
-        for (let i = 0; i < 28; i++) ctx.fillRect((i * 7) % 16, (i * 11) % 16, 2, 2);
-    });
+    let mat;
+    if (blockId === BLOCKS.GLASS) {
+        mat = new THREE.MeshLambertMaterial({
+            color: 0xbae6fd,
+            transparent: true,
+            opacity: 0.55
+        });
+    } else if (blockId === BLOCKS.GRASS) {
+        const topMat = new THREE.MeshLambertMaterial({ map: createProceduralBlockTexture('grass_top') });
+        const sideMat = new THREE.MeshLambertMaterial({ map: createProceduralBlockTexture('dirt') });
+        mat = [sideMat, sideMat, topMat, sideMat, sideMat, sideMat];
+    } else {
+        const keyMap = {
+            [BLOCKS.DIRT]: 'dirt',
+            [BLOCKS.STONE]: 'stone',
+            [BLOCKS.BRICK]: 'brick',
+            [BLOCKS.WOOD]: 'wood',
+            [BLOCKS.LEAVES]: 'leaves',
+            [BLOCKS.NOTE_BLOCK]: 'note_block'
+        };
+        mat = new THREE.MeshLambertMaterial({
+            map: createProceduralBlockTexture(keyMap[blockId] || 'stone')
+        });
+    }
 
-    const grassTopTex = makePixelTexture((ctx) => {
-        ctx.fillStyle = '#4ade80';
-        ctx.fillRect(0, 0, 16, 16);
-        ctx.fillStyle = '#22c55e';
-        for (let i = 0; i < 24; i++) ctx.fillRect((i * 5) % 16, (i * 9) % 16, 2, 2);
-    });
-
-    const grassSideTex = makePixelTexture((ctx) => {
-        ctx.fillStyle = '#7c4d2b';
-        ctx.fillRect(0, 0, 16, 16);
-        ctx.fillStyle = '#22c55e';
-        ctx.fillRect(0, 0, 16, 4);
-        ctx.fillRect(2, 4, 3, 2);
-        ctx.fillRect(10, 4, 4, 2);
-    });
-
-    const stoneTex = makePixelTexture((ctx) => {
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillRect(0, 0, 16, 16);
-        ctx.fillStyle = '#64748b';
-        for (let i = 0; i < 30; i++) ctx.fillRect((i * 3) % 15, (i * 7) % 15, 2, 2);
-    });
-
-    const brickTex = makePixelTexture((ctx) => {
-        ctx.fillStyle = '#b91c1c';
-        ctx.fillRect(0, 0, 16, 16);
-        ctx.fillStyle = '#e2e8f0';
-        ctx.fillRect(0, 3, 16, 1);
-        ctx.fillRect(0, 7, 16, 1);
-        ctx.fillRect(0, 11, 16, 1);
-        ctx.fillRect(0, 15, 16, 1);
-        ctx.fillRect(7, 0, 1, 3);
-        ctx.fillRect(3, 4, 1, 3);
-        ctx.fillRect(11, 4, 1, 3);
-        ctx.fillRect(7, 8, 1, 3);
-    });
-
-    const woodTex = makePixelTexture((ctx) => {
-        ctx.fillStyle = '#d97706';
-        ctx.fillRect(0, 0, 16, 16);
-        ctx.fillStyle = '#92400e';
-        ctx.fillRect(0, 4, 16, 1);
-        ctx.fillRect(0, 9, 16, 1);
-        ctx.fillRect(0, 14, 16, 1);
-    });
-
-    const leavesTex = makePixelTexture((ctx) => {
-        ctx.fillStyle = '#15803d';
-        ctx.fillRect(0, 0, 16, 16);
-        ctx.fillStyle = '#166534';
-        for (let i = 0; i < 20; i++) ctx.fillRect((i * 6) % 14, (i * 10) % 14, 3, 3);
-    });
-
-    const glassTex = makePixelTexture((ctx) => {
-        ctx.fillStyle = 'rgba(186, 230, 253, 0.35)';
-        ctx.fillRect(0, 0, 16, 16);
-        ctx.strokeStyle = '#e0f2fe';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(1, 1, 14, 14);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(3, 3, 3, 1);
-        ctx.fillRect(3, 3, 1, 3);
-    });
-
-    const noteTex = makePixelTexture((ctx) => {
-        ctx.fillStyle = '#581c87';
-        ctx.fillRect(0, 0, 16, 16);
-        ctx.strokeStyle = '#facc15';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(1, 1, 14, 14);
-        ctx.fillStyle = '#facc15';
-        ctx.fillRect(8, 3, 2, 8);
-        ctx.fillRect(10, 3, 3, 2);
-        ctx.fillRect(5, 9, 4, 4);
-    });
-
-    const grassSideMat = new THREE.MeshLambertMaterial({ map: grassSideTex });
-    materialsCache = {
-        [BLOCKS.DIRT]: new THREE.MeshLambertMaterial({ map: dirtTex }),
-        [BLOCKS.GRASS]: [
-            grassSideMat, grassSideMat,
-            new THREE.MeshLambertMaterial({ map: grassTopTex }),
-            new THREE.MeshLambertMaterial({ map: dirtTex }),
-            grassSideMat, grassSideMat
-        ],
-        [BLOCKS.STONE]: new THREE.MeshLambertMaterial({ map: stoneTex }),
-        [BLOCKS.BRICK]: new THREE.MeshLambertMaterial({ map: brickTex }),
-        [BLOCKS.WOOD]: new THREE.MeshLambertMaterial({ map: woodTex }),
-        [BLOCKS.LEAVES]: new THREE.MeshLambertMaterial({ map: leavesTex }),
-        [BLOCKS.GLASS]: new THREE.MeshLambertMaterial({ map: glassTex, transparent: true, opacity: 0.65 }),
-        [BLOCKS.NOTE_BLOCK]: new THREE.MeshLambertMaterial({ map: noteTex })
-    };
-    return materialsCache;
+    materialCache.set(blockId, mat);
+    return mat;
 }
 
-function isOpaque(blockId) {
-    return blockId !== BLOCKS.AIR && blockId !== BLOCKS.GLASS && blockId !== BLOCKS.LEAVES;
-}
+function buildCampusGroundBlueprint() {
+    const worldSize = WORLD_RADIUS * 2; // 96 blocks
+    const loader = new THREE.TextureLoader();
 
-function isBlockOccluded(x, y, z) {
-    return (
-        isOpaque(getBlockAt(x + 1, y, z)) &&
-        isOpaque(getBlockAt(x - 1, y, z)) &&
-        isOpaque(getBlockAt(x, y + 1, z)) &&
-        isOpaque(getBlockAt(x, y - 1, z)) &&
-        isOpaque(getBlockAt(x, y, z + 1)) &&
-        isOpaque(getBlockAt(x, y, z - 1))
+    // Load the cropped Edmund Rice College satellite screenshot from ./assets/erc_map.jpg
+    loader.load(
+        './assets/erc_map.jpg',
+        (tex) => {
+            tex.colorSpace = THREE.SRGBColorSpace;
+            const planeGeo = new THREE.PlaneGeometry(worldSize, worldSize);
+            planeGeo.rotateX(-Math.PI / 2);
+            const planeMat = new THREE.MeshLambertMaterial({
+                map: tex,
+                polygonOffset: true,
+                polygonOffsetFactor: -1,
+                polygonOffsetUnits: -1
+            });
+            campusBlueprintMesh = new THREE.Mesh(planeGeo, planeMat);
+            campusBlueprintMesh.position.set(0, 1.005, 0);
+            if (scene) scene.add(campusBlueprintMesh);
+        },
+        undefined,
+        () => {
+            console.info("NoteCraft: ./assets/erc_map.jpg not found yet; using standard grass ground.");
+        }
     );
+
+    // Subtle glowing gold perimeter outline marking the "Centenary Innovation Centre" build zone
+    const cicWidth = 22;  // x: -8 to 14
+    const cicDepth = 16;  // z: 8 to 24
+    const cicGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(cicWidth, 0.25, cicDepth));
+    const cicMat = new THREE.LineBasicMaterial({ color: 0xfacc15 });
+    cicOutlineMesh = new THREE.LineSegments(cicGeo, cicMat);
+    cicOutlineMesh.position.set(3, 1.15, 16);
+    scene.add(cicOutlineMesh);
 }
 
 export function initRender3D(containerEl) {
     disposeRender3D();
 
-    const width = containerEl.clientWidth || 1232;
-    const height = containerEl.clientHeight || 380;
+    const w = containerEl.clientWidth || 1232;
+    const h = containerEl.clientHeight || 380;
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(w, h);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.domElement.id = 'notecraft-canvas';
+    renderer.domElement.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; display:block; z-index:5; cursor:crosshair;';
+    containerEl.appendChild(renderer.domElement);
 
     scene = new THREE.Scene();
-    scene.background = new THREE.Color('#7dd3fc');
-    scene.fog = new THREE.FogExp2('#7dd3fc', 0.014);
+    scene.background = new THREE.Color(0x7dd3fc);
+    scene.fog = new THREE.Fog(0x7dd3fc, 45, 115);
 
-    camera = new THREE.PerspectiveCamera(70, width / height, 0.1, 140);
+    camera = new THREE.PerspectiveCamera(72, w / h, 0.1, 160);
     camera.rotation.order = 'YXZ';
 
-    const canvas = document.createElement('canvas');
-    canvas.id = 'notecraft-canvas';
-    canvas.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; display:block; z-index:5;';
-    containerEl.appendChild(canvas);
-
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-    renderer.setSize(width, height, false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-
-    // Lighting
-    const hemiLight = new THREE.HemisphereLight('#ffffff', '#334155', 0.85);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 1.15);
     scene.add(hemiLight);
 
-    const sunLight = new THREE.DirectionalLight('#fef9c3', 0.9);
-    sunLight.position.set(28, 52, 24);
-    scene.add(sunLight);
+    const dirLight = new THREE.DirectionalLight(0xfffbeb, 0.9);
+    dirLight.position.set(28, 52, 22);
+    scene.add(dirLight);
 
-    // Build InstancedMesh pool (1 draw call per block material)
-    const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-    const mats = createBlockMaterials();
-    blockMeshes = {};
+    voxelGroup = new THREE.Group();
+    scene.add(voxelGroup);
 
-    for (const [idStr, mat] of Object.entries(mats)) {
-        const id = Number(idStr);
-        const im = new THREE.InstancedMesh(boxGeo, mat, MAX_INSTANCES_PER_TYPE);
-        im.count = 0;
-        im.frustumCulled = false;
-        scene.add(im);
-        blockMeshes[id] = im;
-    }
+    const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.02, 1.02, 1.02));
+    highlightMesh = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xfacc15 }));
+    highlightMesh.visible = false;
+    scene.add(highlightMesh);
 
-    // Target block selection wireframe
-    const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.01, 1.01, 1.01));
-    highlightBox = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: '#0f172a' }));
-    highlightBox.visible = false;
-    scene.add(highlightBox);
-
+    buildCampusGroundBlueprint();
     ncState.world.dirty = true;
-    rebuildWorldMeshes();
-    return { scene, camera, renderer };
 }
 
 export function rebuildWorldMeshes() {
-    if (!scene || !blockMeshes) return;
+    if (!voxelGroup) return;
 
-    const counts = {};
-    for (const id of Object.keys(blockMeshes)) counts[id] = 0;
+    while (voxelGroup.children.length > 0) {
+        voxelGroup.remove(voxelGroup.children[0]);
+    }
 
-    for (let x = -WORLD_RADIUS; x <= WORLD_RADIUS; x++) {
-        for (let z = -WORLD_RADIUS; z <= WORLD_RADIUS; z++) {
-            for (let y = 0; y < CHUNK_HEIGHT; y++) {
-                const blockId = getBlockAt(x, y, z);
-                if (blockId === BLOCKS.AIR) continue;
-                if (isOpaque(blockId) && isBlockOccluded(x, y, z)) continue;
+    const buckets = new Map();
 
-                const mesh = blockMeshes[blockId];
-                const idx = counts[blockId];
-                if (mesh && idx < MAX_INSTANCES_PER_TYPE) {
-                    dummyMatrix.setPosition(x + 0.5, y + 0.5, z + 0.5);
-                    mesh.setMatrixAt(idx, dummyMatrix);
-                    counts[blockId] = idx + 1;
-                }
+    // Base terrain floor (y = 1)
+    for (let x = -WORLD_RADIUS; x < WORLD_RADIUS; x++) {
+        for (let z = -WORLD_RADIUS; z < WORLD_RADIUS; z++) {
+            const key = `${x}_1_${z}`;
+            const blockId = Object.prototype.hasOwnProperty.call(ncState.world.deltas, key)
+                ? ncState.world.deltas[key]
+                : getBaseTerrainBlock(x, 1, z);
+
+            if (isBlockSolid(blockId)) {
+                if (!buckets.has(blockId)) buckets.set(blockId, []);
+                buckets.get(blockId).push({ x, y: 1, z });
             }
         }
     }
 
-    for (const [id, mesh] of Object.entries(blockMeshes)) {
-        mesh.count = counts[id];
-        mesh.instanceMatrix.needsUpdate = true;
+    // All student-placed blocks (y >= 2)
+    for (const [key, blockId] of Object.entries(ncState.world.deltas)) {
+        if (!isBlockSolid(blockId)) continue;
+        const [sx, sy, sz] = key.split('_').map(Number);
+        if (sy === 1) continue;
+        if (!buckets.has(blockId)) buckets.set(blockId, []);
+        buckets.get(blockId).push({ x: sx, y: sy, z: sz });
     }
+
+    const dummy = new THREE.Object3D();
+    for (const [blockId, coords] of buckets.entries()) {
+        if (coords.length === 0) continue;
+        const instMesh = new THREE.InstancedMesh(sharedGeo, getBlockMaterial(blockId), coords.length);
+        coords.forEach((c, idx) => {
+            dummy.position.set(c.x + 0.5, c.y + 0.5, c.z + 0.5);
+            dummy.updateMatrix();
+            instMesh.setMatrixAt(idx, dummy.matrix);
+        });
+        instMesh.instanceMatrix.needsUpdate = true;
+        voxelGroup.add(instMesh);
+    }
+
     ncState.world.dirty = false;
 }
 
@@ -241,18 +252,16 @@ export function render3DFrame() {
     }
 
     const lp = ncState.localPlayer;
-    camera.position.set(lp.x, lp.y + EYE_HEIGHT, lp.z);
+    camera.position.set(lp.x, lp.y + PLAYER_EYE_HEIGHT, lp.z);
     camera.rotation.y = lp.yaw;
     camera.rotation.x = lp.pitch;
 
     const target = ncState.targetBlock;
-    if (highlightBox) {
-        if (target && target.hit) {
-            highlightBox.visible = true;
-            highlightBox.position.set(target.x + 0.5, target.y + 0.5, target.z + 0.5);
-        } else {
-            highlightBox.visible = false;
-        }
+    if (target && target.hit && highlightMesh) {
+        highlightMesh.visible = true;
+        highlightMesh.position.set(target.x + 0.5, target.y + 0.5, target.z + 0.5);
+    } else if (highlightMesh) {
+        highlightMesh.visible = false;
     }
 
     renderer.render(scene, camera);
@@ -264,23 +273,34 @@ export function resizeRender3D(containerEl) {
     const h = containerEl.clientHeight || 380;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    renderer.setSize(w, h, false);
-}
-
-export function disposeRender3D() {
-    if (renderer) {
-        renderer.dispose();
-        if (renderer.domElement && renderer.domElement.parentNode) {
-            renderer.domElement.parentNode.removeChild(renderer.domElement);
-        }
-    }
-    renderer = null;
-    scene = null;
-    camera = null;
-    blockMeshes = {};
-    highlightBox = null;
+    renderer.setSize(w, h);
 }
 
 export function getThreeScene() {
     return scene;
+}
+
+export function disposeRender3D() {
+    if (campusBlueprintMesh) {
+        if (campusBlueprintMesh.material?.map) campusBlueprintMesh.material.map.dispose();
+        campusBlueprintMesh.material?.dispose();
+        campusBlueprintMesh.geometry?.dispose();
+        campusBlueprintMesh = null;
+    }
+    if (cicOutlineMesh) {
+        cicOutlineMesh.material?.dispose();
+        cicOutlineMesh.geometry?.dispose();
+        cicOutlineMesh = null;
+    }
+    if (renderer) {
+        if (renderer.domElement && renderer.domElement.parentNode) {
+            renderer.domElement.parentNode.removeChild(renderer.domElement);
+        }
+        renderer.dispose();
+        renderer = null;
+    }
+    scene = null;
+    camera = null;
+    voxelGroup = null;
+    highlightMesh = null;
 }
