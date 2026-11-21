@@ -1,48 +1,48 @@
-// js/games/noteCraft/constants.js
-export const CHUNK_SIZE = 16;
-export const CHUNK_HEIGHT = 24;
+// js/games/noteCraft/economy.js
+import { BLOCKS, COIN_REWARDS, UNLOCK_THRESHOLDS } from './constants.js';
+import { ncState } from './state.js';
 
-export const GRAVITY = -22.0;
-export const PLAYER_EYE_HEIGHT = 1.62;
-export const PLAYER_RADIUS = 0.32;
+export function calculateRoundReward(songTitle, difficulty = 'medium', accuracy = 0, tempoPercent = 100, isFirstTime = false) {
+    if (accuracy < 75) return 0;
 
-export const BLOCKS = {
-    AIR: 0,
-    DIRT: 1,
-    GRASS: 2,
-    STONE: 3,
-    BRICK: 4,
-    WOOD: 5,
-    LEAVES: 6,
-    GLASS: 7,
-    NOTE_BLOCK: 8
-};
+    const base = COIN_REWARDS[difficulty] || COIN_REWARDS.medium || 50;
+    const accMultiplier = Math.max(0.5, accuracy / 100);
+    const tempoMultiplier = tempoPercent >= 100 ? 1.0 : 0.75;
+    let total = Math.round(base * accMultiplier * tempoMultiplier);
 
-export const BLOCK_COSTS = {
-    [BLOCKS.DIRT]: 0,
-    [BLOCKS.GRASS]: 0,
-    [BLOCKS.STONE]: 5,
-    [BLOCKS.BRICK]: 10,
-    [BLOCKS.WOOD]: 10,
-    [BLOCKS.LEAVES]: 5,
-    [BLOCKS.GLASS]: 15,
-    [BLOCKS.NOTE_BLOCK]: 25
-};
+    if (isFirstTime) {
+        total += (COIN_REWARDS.firstTimeBonus || 50);
+    }
 
-export const COIN_REWARDS = {
-    easy: 25,
-    medium: 50,
-    hard: 100,
-    firstTimeBonus: 50
-};
+    return total;
+}
 
-export const UNLOCK_THRESHOLDS = {
-    [BLOCKS.DIRT]: 0,
-    [BLOCKS.GRASS]: 0,
-    [BLOCKS.STONE]: 0,
-    [BLOCKS.LEAVES]: 1,
-    [BLOCKS.WOOD]: 2,
-    [BLOCKS.BRICK]: 3,
-    [BLOCKS.GLASS]: 5,
-    [BLOCKS.NOTE_BLOCK]: 8
-};
+export function updateInventory() {
+    const masteredCount = Array.isArray(ncState.localPlayer.masteredSongs)
+        ? ncState.localPlayer.masteredSongs.length
+        : 0;
+
+    const allBlocks = [
+        BLOCKS.DIRT,
+        BLOCKS.GRASS,
+        BLOCKS.STONE,
+        BLOCKS.LEAVES,
+        BLOCKS.WOOD,
+        BLOCKS.BRICK,
+        BLOCKS.GLASS,
+        BLOCKS.NOTE_BLOCK
+    ];
+
+    ncState.localPlayer.inventory = allBlocks.map(blockId => {
+        const req = UNLOCK_THRESHOLDS[blockId] ?? 0;
+        return masteredCount >= req ? blockId : null;
+    });
+
+    // Ensure selectedSlot points to an unlocked block if possible
+    if (!ncState.localPlayer.inventory[ncState.localPlayer.selectedSlot]) {
+        const firstUnlocked = ncState.localPlayer.inventory.findIndex(b => b !== null);
+        if (firstUnlocked >= 0) {
+            ncState.localPlayer.selectedSlot = firstUnlocked;
+        }
+    }
+}
