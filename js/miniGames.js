@@ -10,7 +10,6 @@ import { startGridironGroove, handleGridironGrooveInput, stopGridironGroove } fr
 import { startClefHook, handleClefHookInput, stopClefHook } from './games/clefHook.js';
 import { startSharpShooter, handleSharpShooterInput, stopSharpShooter } from './games/sharpShooter.js';
 
-
 export const arcadeState = {
     activeMiniGame: null,
     miniGameFallSpeedMs: 3800,
@@ -117,6 +116,7 @@ function injectNewArcadeButtons() {
         clefHookBtn.innerHTML = `<span style="font-size:1.5rem;">🕷️</span><strong>Clef Hook</strong><small>Swing & flip across grapple nodes</small>`;
         btnContainer.appendChild(clefHookBtn);
     }
+
     if (!document.getElementById('btn-arcade-sharp-shooter')) {
         const sharpBtn = document.createElement('button');
         sharpBtn.type = 'button';
@@ -132,39 +132,17 @@ function resolveReplayHandler(title, explicitReplayFn) {
     if (typeof explicitReplayFn === 'function') return explicitReplayFn;
 
     const normalized = (title || '').trim().toLowerCase();
-    if (normalized === 'gridiron groove') {
-        return () => launchGridironGroove();
-    }
-    if (normalized === 'scale surfers' || normalized === 'staff surfers') {
-        return () => launchScaleSurfers();
-    }
-    if (normalized === 'flappy pitch') {
-        return () => launchFlappyPitch();
-    }
-    if (normalized === 'rhythm echo') {
-        return () => launchRhythmEcho();
-    }
-    if (normalized === 'note sniper') {
-        return () => launchNoteSniper();
-    }
-    if (normalized === 'simon taps') {
-        return () => startSimonTaps();
-    }
-    if (normalized === 'mystery note') {
-        return () => startMysteryNote();
-    }
-    if (normalized === 'drop dodge') {
-        return () => startDropDodge();
-    }
-    if (normalized === 'combo strike') {
-        return () => startComboStrike();
-    }
-    if (normalized === 'clef hook') {
-        return () => launchClefHook();
-    }
-    if (normalized === 'sharp shooter') {
-        return () => launchSharpShooter();
-    }
+    if (normalized === 'gridiron groove') return () => launchGridironGroove();
+    if (normalized === 'scale surfers' || normalized === 'staff surfers') return () => launchScaleSurfers();
+    if (normalized === 'flappy pitch') return () => launchFlappyPitch();
+    if (normalized === 'rhythm echo') return () => launchRhythmEcho();
+    if (normalized === 'note sniper') return () => launchNoteSniper();
+    if (normalized === 'simon taps') return () => startSimonTaps();
+    if (normalized === 'mystery note') return () => startMysteryNote();
+    if (normalized === 'drop dodge') return () => startDropDodge();
+    if (normalized === 'combo strike') return () => startComboStrike();
+    if (normalized === 'clef hook') return () => launchClefHook();
+    if (normalized === 'sharp shooter') return () => launchSharpShooter();
     return null;
 }
 
@@ -208,7 +186,6 @@ const gameBridgeHelper = {
         document.getElementById('game-rank-text').textContent = `${displayTitle} Score Logged!`;
         document.getElementById('game-results-modal').classList.add('open');
 
-        // Re-open the Arcade Hub behind the results modal so closing the modal returns to game selection
         const arcadeControls = document.getElementById('arcade-controls-bar');
         if (arcadeControls && arcadeControls.style.display !== 'none') {
             document.getElementById('arcade-hub')?.classList.add('open');
@@ -255,14 +232,17 @@ export function exitActiveMiniGame() {
     stopLaserTag();
     stopGridironGroove();
     stopClefHook();
+    stopSharpShooter();
 
     const gridironPopup = document.getElementById('gridiron-groove-popup');
     if (gridironPopup) gridironPopup.style.display = 'none';
+    
     const surfersPopup = document.getElementById('scale-surfers-popup');
     if (surfersPopup) surfersPopup.style.display = 'none';
+    
     const clefHookPopup = document.getElementById('clef-hook-popup');
     if (clefHookPopup) clefHookPopup.style.display = 'none';
-    stopSharpShooter();
+    
     const sharpPopup = document.getElementById('sharp-shooter-popup');
     if (sharpPopup) sharpPopup.style.display = 'none';
 
@@ -270,16 +250,24 @@ export function exitActiveMiniGame() {
     bridge.setIsPlaying(false);
     arcadeState.raceActive = false;
     stopBattlePolling();
+    
     const runnerTrack = document.getElementById('runner-track');
-    runnerTrack.style.display = 'none';
-    runnerTrack.innerHTML = '';
+    if (runnerTrack) {
+        runnerTrack.style.display = 'none';
+        runnerTrack.innerHTML = '';
+    }
+    
     const canvas = document.getElementById('waterfall-canvas');
-    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    if (canvas) {
+        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    }
+    
     document.querySelectorAll('.key').forEach(k => {
         k.classList.remove('active');
         k.style.backgroundColor = '';
         k.style.boxShadow = '';
     });
+    
     document.getElementById('status').textContent = 'Arcade Mini-Game stopped. Select another game or return Home.';
 }
 
@@ -290,6 +278,10 @@ export function handleMiniGameNoteInput(noteStr) {
     if (mode === 'clefHook') {
         window.__clefHookUsedDomKey = Boolean(document.querySelector('#keyboard .key.active'));
         handleClefHookInput(noteStr, gameBridgeHelper);
+        return true;
+    }
+    if (mode === 'sharpShooter') {
+        handleSharpShooterInput(noteStr, gameBridgeHelper);
         return true;
     }
     if (mode === 'laserTag') {
@@ -316,12 +308,7 @@ export function handleMiniGameNoteInput(noteStr) {
         handleNoteSniperInput(noteStr, gameBridgeHelper);
         return true;
     }
-
-    if (mode === 'sharpShooter') {
-        // Use the alias we created in the import
-        handleSharpShooterInput(noteStr, gameBridgeHelper);
-        return true;
-    }
+    
     if (mode === 'drop') {
         const { noteTimeline, playbackStartTime, accumulatedPauseMs, gameStats, keyPosMap } = bridge.getState();
         const canvas = document.getElementById('waterfall-canvas');
