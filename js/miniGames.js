@@ -105,6 +105,7 @@ function injectNewArcadeButtons() {
         gridironBtn.innerHTML = `<span style="font-size:1.5rem;">🏈</span><strong>Gridiron Groove</strong><small>Retro Bowl note passing</small>`;
         btnContainer.appendChild(gridironBtn);
     }
+
     if (!document.getElementById('btn-arcade-clef-hook')) {
         const clefHookBtn = document.createElement('button');
         clefHookBtn.type = 'button';
@@ -239,21 +240,14 @@ export function exitActiveMiniGame() {
     stopStaffSurfers();
     stopLaserTag();
     stopGridironGroove();
+    stopClefHook();
+
     const gridironPopup = document.getElementById('gridiron-groove-popup');
     if (gridironPopup) gridironPopup.style.display = 'none';
     const surfersPopup = document.getElementById('scale-surfers-popup');
     if (surfersPopup) surfersPopup.style.display = 'none';
-   
-stopClefHook();
-const clefHookPopup = document.getElementById('clef-hook-popup');
-if (clefHookPopup) clefHookPopup.style.display = 'none';
-
-// Inside handleMiniGameNoteInput(noteStr):
-if (mode === 'clefHook') {
-    window.__clefHookUsedDomKey = Boolean(document.querySelector('#keyboard .key.active'));
-    handleClefHookInput(noteStr, gameBridgeHelper);
-    return true;
-}
+    const clefHookPopup = document.getElementById('clef-hook-popup');
+    if (clefHookPopup) clefHookPopup.style.display = 'none';
 
     arcadeState.activeMiniGame = null;
     bridge.setIsPlaying(false);
@@ -276,6 +270,11 @@ export function handleMiniGameNoteInput(noteStr) {
     const mode = arcadeState.activeMiniGame;
     if (!mode) return false;
 
+    if (mode === 'clefHook') {
+        window.__clefHookUsedDomKey = Boolean(document.querySelector('#keyboard .key.active'));
+        handleClefHookInput(noteStr, gameBridgeHelper);
+        return true;
+    }
     if (mode === 'laserTag') {
         handleLaserTagInput(noteStr, gameBridgeHelper);
         return true;
@@ -1231,6 +1230,7 @@ export function launchGridironGroove() {
     document.getElementById('game-results-modal')?.classList.remove('open');
     startGridironGroove(gameBridgeHelper);
 }
+
 export function launchClefHook() {
     document.getElementById('game-results-modal')?.classList.remove('open');
     startClefHook(gameBridgeHelper);
@@ -1273,11 +1273,10 @@ Object.assign(window, {
     startGridironGroove: (b) => {
         document.getElementById('game-results-modal')?.classList.remove('open');
         startGridironGroove(b || gameBridgeHelper);
-    }
+    },
     launchClefHook,
     startClefHook: (b) => {
         document.getElementById('game-results-modal')?.classList.remove('open');
         startClefHook(b || gameBridgeHelper);
     }
-    
 });
