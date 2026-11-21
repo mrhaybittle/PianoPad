@@ -8,8 +8,8 @@ import { startStaffSurfers, handleStaffSurfersInput, stopStaffSurfers } from './
 import { startLaserTag, handleLaserTagInput, stopLaserTag } from './games/laserTag.js';
 import { startGridironGroove, handleGridironGrooveInput, stopGridironGroove } from './games/GridironGroove.js';
 import { startClefHook, handleClefHookInput, stopClefHook } from './games/clefHook.js';
-
 import { startSharpShooter, handleSharpShooterInput, stopSharpShooter } from './games/sharpShooter.js';
+
 
 export const arcadeState = {
     activeMiniGame: null,
