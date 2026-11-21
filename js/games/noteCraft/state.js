@@ -1,6 +1,7 @@
 // js/games/noteCraft/state.js
 import { CHUNK_HEIGHT } from './constants.js';
 
+
 export const ncState = {
     animFrameId: null,
     syncIntervalId: null,
