@@ -9,6 +9,7 @@ import { startLaserTag, handleLaserTagInput, stopLaserTag } from './games/laserT
 import { startGridironGroove, handleGridironGrooveInput, stopGridironGroove } from './games/GridironGroove.js';
 import { startClefHook, handleClefHookInput, stopClefHook } from './games/clefHook.js';
 import { startSharpShooter, handleSharpShooterInput, stopSharpShooter } from './games/sharpShooter.js';
+import { handleNoteCraftInput, stopNoteCraft } from './games/noteCraft/notecraft.js';
 
 export const arcadeState = {
     activeMiniGame: null,
@@ -233,6 +234,7 @@ export function exitActiveMiniGame() {
     stopGridironGroove();
     stopClefHook();
     stopSharpShooter();
+    stopNoteCraft();
 
     const gridironPopup = document.getElementById('gridiron-groove-popup');
     if (gridironPopup) gridironPopup.style.display = 'none';
@@ -283,6 +285,9 @@ export function handleMiniGameNoteInput(noteStr) {
     if (mode === 'sharpShooter') {
         handleSharpShooterInput(noteStr, gameBridgeHelper);
         return true;
+    if (mode === 'noteCraft') {
+    return handleNoteCraftInput(noteStr);
+}
     }
     if (mode === 'laserTag') {
         handleLaserTagInput(noteStr, gameBridgeHelper);
