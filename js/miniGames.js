@@ -1304,10 +1304,10 @@ Object.assign(window, {
     startClefHook: (b) => {
         document.getElementById('game-results-modal')?.classList.remove('open');
         startClefHook(b || gameBridgeHelper);
-    }
+    },
     launchSharpShooter,
     startSharpShooter: (b) => {
         document.getElementById('game-results-modal')?.classList.remove('open');
         startSharpShooter(b || gameBridgeHelper);
-    },
+    }
 });
