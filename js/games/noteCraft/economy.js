@@ -1,6 +1,7 @@
 // js/games/noteCraft/economy.js
 import { BLOCKS, COIN_REWARDS, UNLOCK_THRESHOLDS } from './constants.js';
 import { ncState } from './state.js';
+import campusPreset from './campusPreset.js';
 
 export function isTeacherBuilder() {
     return Boolean(
