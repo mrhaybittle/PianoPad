@@ -6,7 +6,6 @@ let gamePhase = 'playing'; // 'playing' | 'dying' | 'over' | 'instructions'
 let flashAlpha = 0;
 let shakeTimer = 0;
 let activeBridge = null; // Stores bridge for direct keyboard access
-let hasSeenInstructions = false; // Tracks if the splash screen was already shown
 
 let score = 0;
 let coins = 0;
@@ -63,26 +62,26 @@ function handleSurferKeyDown(e) {
     // Ignore modifier keys alone
     if (['Shift', 'Control', 'Alt', 'Meta', 'Tab', 'Escape', 'Enter'].includes(e.key)) return;
 
-    const key = e.key.toUpperCase();
+    const key = e.key.toLowerCase();
 
-    // Map physical computer keys directly to lanes
-    if (key === 'A') {
+    // Map physical computer keys (N, M, ,) to the lane triggers (A, B, C)
+    if (key === 'n') {
         e.preventDefault();
         e.stopPropagation();
         triggerSurferAction('A', false, activeBridge);
-    } else if (key === 'B') {
+    } else if (key === 'm') {
         e.preventDefault();
         e.stopPropagation();
         triggerSurferAction('B', false, activeBridge);
-    } else if (key === 'C') {
+    } else if (key === ',') {
         e.preventDefault();
         e.stopPropagation();
         triggerSurferAction('C', false, activeBridge);
-    } else if (/^[A-Z0-9]$/.test(key)) {
-        // Any other standard alphanumeric key triggers JUMP
+    } else if (key.length === 1) {
+        // Any other standard key triggers JUMP
         e.preventDefault();
         e.stopPropagation();
-        triggerSurferAction('D', false, activeBridge); // 'D' used as a dummy "other" key
+        triggerSurferAction('JUMP', false, activeBridge); 
     }
 }
 
@@ -244,14 +243,15 @@ export function startStaffSurfers(bridge) {
         });
     }
 
-    document.getElementById('status').textContent = '🚇 Scale Surfers: A = Left | B = Center | C = Right | Other Keys = JUMP | Same Lane = ROLL!';
+    document.getElementById('status').textContent = '🚇 Scale Surfers: PC = N / M / , | Piano = A / B / C | Other Keys = JUMP!';
     
-    if (!hasSeenInstructions) {
-        // First time playing in this session: Show the instructions pop-up
+    const hasSeen = sessionStorage.getItem('staffSurfers_instructions_seen');
+    if (!hasSeen) {
+        // First time playing in this tab session: Show the instructions pop-up
         gamePhase = 'instructions'; 
         showInstructionsPopup(bridge);
     } else {
-        // Already played: Skip instructions and dive right in
+        // Already played in this session: Skip instructions and dive right in
         gamePhase = 'playing';
         lastFrameTime = performance.now();
         if (animFrameId === null) {
@@ -280,7 +280,7 @@ function showInstructionsPopup(bridge) {
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             z-index: 9999;
             width: 85%;
-            max-width: 420px;
+            max-width: 440px;
             box-shadow: 0 0 30px rgba(56, 189, 248, 0.5);
             text-align: center;
         `;
@@ -306,12 +306,12 @@ function showInstructionsPopup(bridge) {
             ">Scale Surfers</h2>
         </div>
         <div style="background: rgba(0,0,0,0.3); padding: 16px; border-radius: 8px; text-align: left; font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-            <div style="margin-bottom: 8px;"><b>⬅️ LEFT TRACK:</b> Play <b>A</b></div>
-            <div style="margin-bottom: 8px;"><b>⏺️ CENTER TRACK:</b> Play <b>B</b></div>
-            <div style="margin-bottom: 8px;"><b>➡️ RIGHT TRACK:</b> Play <b>C</b></div>
+            <div style="margin-bottom: 8px;"><b>⬅️ LEFT TRACK:</b> Piano <b>A</b> (or PC <b>N</b>)</div>
+            <div style="margin-bottom: 8px;"><b>⏺️ CENTER TRACK:</b> Piano <b>B</b> (or PC <b>M</b>)</div>
+            <div style="margin-bottom: 8px;"><b>➡️ RIGHT TRACK:</b> Piano <b>C</b> (or PC <b>,</b>)</div>
             <hr style="border-color: #334155; margin: 12px 0;">
             <div style="margin-bottom: 8px;"><b>⬆️ JUMP:</b> Play ANY Other Key</div>
-            <div><b>⬇️ ROLL:</b> Re-play your current lane's key (A, B, or C)</div>
+            <div><b>⬇️ ROLL:</b> Re-play your current lane's key</div>
         </div>
         <div style="color: #22c55e; font-weight: 900; margin-bottom: 20px; font-size: 14px;">
             🎯 Hit the Target Notes to earn Jetpacks & Hoverboards!
@@ -330,9 +330,9 @@ function showInstructionsPopup(bridge) {
     btn.onmouseup = () => btn.style.transform = 'translateY(0)';
     
     btn.onclick = () => {
-        btn.blur(); // Blur so pressing Space/Enter later doesn't click it again
+        btn.blur(); 
         popup.style.display = 'none';
-        hasSeenInstructions = true; // Mark as seen for subsequent plays
+        sessionStorage.setItem('staffSurfers_instructions_seen', 'true');
         gamePhase = 'playing';
         lastFrameTime = performance.now();
         if (animFrameId === null) {
@@ -398,6 +398,7 @@ function triggerSurferAction(letter, isSharp, bridge, noteStr = null) {
     }
 
     // Musical Challenge: Hit the active target note letter for bonus score
+    // (Only checks A-G, so JUMP triggers like 'JUMP' strings bypass this safely)
     if (letter === activeTargetNote) {
         noteStreak++;
         coins += 2;
@@ -421,7 +422,7 @@ function triggerSurferAction(letter, isSharp, bridge, noteStr = null) {
         }
 
         activeTargetNote = WHITE_LETTERS[(WHITE_LETTERS.indexOf(activeTargetNote) + 2 + Math.floor(Math.random() * 4)) % WHITE_LETTERS.length];
-    } else if (noteStr && bridge) {
+    } else if (noteStr && bridge && letter.length === 1) {
         bridge.highlightKey(noteStr, 160, '#38bdf8');
     }
 }
@@ -1032,9 +1033,9 @@ function drawSubwayBackdropAndTracks(ctx, W, H) {
 
     // Bottom Track Control Strip
     const guideItems = [
-        { lane: -1, text: 'KEY A • LEFT TRACK', active: player.lane === -1 },
-        { lane: 0, text: 'KEY B • CENTER TRACK', active: player.lane === 0 },
-        { lane: 1, text: 'KEY C • RIGHT TRACK', active: player.lane === 1 }
+        { lane: -1, text: 'KEY N • LEFT TRACK', active: player.lane === -1 },
+        { lane: 0, text: 'KEY M • CENTER TRACK', active: player.lane === 0 },
+        { lane: 1, text: 'KEY , • RIGHT TRACK', active: player.lane === 1 }
     ];
     guideItems.forEach(g => {
         const gp = projectPoint(g.lane, -0.02, 0, W, H);
