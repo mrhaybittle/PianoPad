@@ -5,6 +5,7 @@ let lastFrameTime = 0;
 let gamePhase = 'playing'; // 'playing' | 'dying' | 'over' | 'instructions'
 let flashAlpha = 0;
 let shakeTimer = 0;
+let activeBridge = null; // Stores bridge for direct keyboard access
 
 let score = 0;
 let coins = 0;
@@ -48,11 +49,39 @@ const TRAIN_THEMES = [
     { body: '#7c3aed', dark: '#5b21b6', stripe: '#38bdf8', roof: '#c4b5fd', tag: 'CHORD RAIL' }
 ];
 
-// --- EVENT INTERCEPTOR FOR SPACE BAR FIX ---
-function preventSpaceBar(e) {
+// --- DIRECT KEYBOARD & SPACE BAR HANDLER ---
+function handleSurferKeyDown(e) {
+    // Always block Space from triggering parent app Step Mode
     if (e.code === 'Space') {
         e.preventDefault();
         e.stopPropagation();
+    }
+
+    if (gamePhase !== 'playing' || e.repeat) return;
+
+    // Ignore modifier keys alone
+    if (['Shift', 'Control', 'Alt', 'Meta', 'Tab', 'Escape', 'Enter'].includes(e.key)) return;
+
+    const key = e.key.toUpperCase();
+
+    // Map physical computer keys directly to lanes
+    if (key === 'A') {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerSurferAction('A', false, activeBridge);
+    } else if (key === 'B') {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerSurferAction('B', false, activeBridge);
+    } else if (key === 'C') {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerSurferAction('C', false, activeBridge);
+    } else if (/^[A-Z0-9]$/.test(key)) {
+        // Any other standard alphanumeric key triggers JUMP
+        e.preventDefault();
+        e.stopPropagation();
+        triggerSurferAction('D', false, activeBridge); // 'D' used as a dummy "other" key
     }
 }
 
@@ -152,9 +181,10 @@ export function stopStaffSurfers() {
         animFrameId = null;
     }
     gamePhase = 'over';
+    activeBridge = null;
     
-    // Remove space bar interceptor
-    window.removeEventListener('keydown', preventSpaceBar, { capture: true });
+    // Remove keyboard interceptor
+    window.removeEventListener('keydown', handleSurferKeyDown, { capture: true });
 
     // Clean up popup if the game is stopped early
     const popup = document.getElementById('scale-surfers-popup');
@@ -164,13 +194,14 @@ export function stopStaffSurfers() {
 export function startStaffSurfers(bridge) {
     initAudio();
     stopStaffSurfers();
+    activeBridge = bridge;
     bridge.exitActiveMiniGame();
     document.getElementById('arcade-hub').classList.remove('open');
-    bridge.setActiveMiniGame('staffSurfers'); // kept same to prevent bridge failure
+    bridge.setActiveMiniGame('staffSurfers'); 
     bridge.resetGameStats();
 
-    // Prevent space bar from leaking into parent app (Step Mode)
-    window.addEventListener('keydown', preventSpaceBar, { capture: true });
+    // Capture keyboard presses directly before parent app intercepts them
+    window.addEventListener('keydown', handleSurferKeyDown, { capture: true });
 
     score = 0;
     coins = 0;
@@ -212,18 +243,17 @@ export function startStaffSurfers(bridge) {
         });
     }
 
-    document.getElementById('status').textContent = '🚇 Scale Surfers: A = Left | B = Center | C = Right | Other Keys = JUMP | Same Lane Key = ROLL!';
+    document.getElementById('status').textContent = '🚇 Scale Surfers: A = Left | B = Center | C = Right | Other Keys = JUMP | Same Lane = ROLL!';
     
     // Set phase to instructions and show the popup instead of starting immediately
     gamePhase = 'instructions'; 
     showInstructionsPopup(bridge);
 }
 
-// --- NEW FUNCTION: Displays the Instructions Pop-up ---
+// --- DISPLAYS THE INSTRUCTIONS POP-UP ---
 function showInstructionsPopup(bridge) {
     let popup = document.getElementById('scale-surfers-popup');
     
-    // Create the pop-up dynamically if it doesn't exist
     if (!popup) {
         popup = document.createElement('div');
         popup.id = 'scale-surfers-popup';
@@ -270,7 +300,7 @@ function showInstructionsPopup(bridge) {
             <div style="margin-bottom: 8px;"><b>⏺️ CENTER TRACK:</b> Play <b>B</b></div>
             <div style="margin-bottom: 8px;"><b>➡️ RIGHT TRACK:</b> Play <b>C</b></div>
             <hr style="border-color: #334155; margin: 12px 0;">
-            <div style="margin-bottom: 8px;"><b>⬆️ JUMP:</b> Play ANY Other Key (D, E, F, G, or Sharps)</div>
+            <div style="margin-bottom: 8px;"><b>⬆️ JUMP:</b> Play ANY Other Key</div>
             <div><b>⬇️ ROLL:</b> Re-play your current lane's key (A, B, or C)</div>
         </div>
         <div style="color: #22c55e; font-weight: 900; margin-bottom: 20px; font-size: 14px;">
@@ -285,12 +315,12 @@ function showInstructionsPopup(bridge) {
     
     popup.style.display = 'block';
 
-    // Add button interaction to start the animation loop
     const btn = document.getElementById('btn-start-surfers');
     btn.onmousedown = () => btn.style.transform = 'translateY(5px)';
     btn.onmouseup = () => btn.style.transform = 'translateY(0)';
     
     btn.onclick = () => {
+        btn.blur(); // Blur so pressing Space/Enter later doesn't click it again
         popup.style.display = 'none';
         gamePhase = 'playing';
         lastFrameTime = performance.now();
@@ -306,14 +336,22 @@ export function handleStaffSurfersInput(noteStr, bridge) {
     const raw = (noteStr || '').trim();
     if (!raw) return;
 
-    // Parse musical note format (e.g., "C4", "A#2") or raw single letter
+    // Parse musical note format (e.g., "C4", "A#2")
     const match = raw.toLowerCase().match(/^([a-g])(#?)([0-9]*)$/);
-    const letter = match ? match[1].toUpperCase() : raw.toUpperCase();
-    const isSharp = match ? match[2] === '#' : false;
-    const octave = match && match[3] ? parseInt(match[3], 10) : '';
+    if (!match) return;
+
+    const letter = match[1].toUpperCase();
+    const isSharp = match[2] === '#';
+    const octave = match[3] || '';
     lastPlayedLabel = `${letter}${isSharp ? '#' : ''}${octave}`;
 
-    // Map A -> Left (-1), B -> Center (0), C -> Right (+1); any other key -> JUMP
+    triggerSurferAction(letter, isSharp, bridge, noteStr);
+}
+
+function triggerSurferAction(letter, isSharp, bridge, noteStr = null) {
+    if (gamePhase !== 'playing') return;
+
+    // A -> Left (-1), B -> Center (0), C -> Right (+1); anything else -> JUMP
     const isTrackKey = !isSharp && (letter === 'A' || letter === 'B' || letter === 'C');
 
     if (isTrackKey) {
@@ -348,14 +386,14 @@ export function handleStaffSurfersInput(noteStr, bridge) {
         }
     }
 
-    // Musical Challenge: Hit the active target note letter for bonus score, Hoverboard & Jetpack!
+    // Musical Challenge: Hit the active target note letter for bonus score
     if (letter === activeTargetNote) {
         noteStreak++;
         coins += 2;
         score += 50 * multiplier;
         multiplier = Math.min(5, 1 + Math.floor(noteStreak / 3));
         playCoinChime(true);
-        bridge.highlightKey(noteStr, 240, '#22c55e');
+        if (noteStr && bridge) bridge.highlightKey(noteStr, 240, '#22c55e');
         spawnBurstParticles(player.lane, player.yHeight + 22, '#22c55e', 10);
 
         if (noteStreak % 12 === 0) {
@@ -372,7 +410,7 @@ export function handleStaffSurfersInput(noteStr, bridge) {
         }
 
         activeTargetNote = WHITE_LETTERS[(WHITE_LETTERS.indexOf(activeTargetNote) + 2 + Math.floor(Math.random() * 4)) % WHITE_LETTERS.length];
-    } else {
+    } else if (noteStr && bridge) {
         bridge.highlightKey(noteStr, 160, '#38bdf8');
     }
 }
