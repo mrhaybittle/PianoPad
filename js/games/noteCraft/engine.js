@@ -30,6 +30,9 @@ export function getBaseTerrainBlock(x, y, z) {
     if (x < -WORLD_HALF_X || x >= WORLD_HALF_X || z < -WORLD_HALF_Z || z >= WORLD_HALF_Z) {
         return BLOCKS.AIR;
     }
+    const presetBlock = campusPreset.getCampusBlockAt(x, y, z);
+    if (presetBlock !== undefined) return presetBlock;
+
     if (y === 0) return BLOCKS.DIRT;
     if (y === 1) return BLOCKS.GRASS;
     return BLOCKS.AIR;

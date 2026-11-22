@@ -53,6 +53,25 @@ export function showNoteCraftToast(text, color = '#facc15', durationMs = 2600) {
     ncState.toastMessage = { text, color, expiresAt: performance.now() + durationMs };
 }
 
+function getCurrentBuildingOrZone(x, z) {
+    for (const b of campusPreset.buildings) {
+        for (const p of b.parts) {
+            if (x >= p.minX - 1 && x <= p.maxX + 1 && z >= p.minZ - 1 && z <= p.maxZ + 1) {
+                return {
+                    name: `${b.label} (${b.storeys === 2 ? '2-Storey' : '1-Storey'})`,
+                    color: '#facc15'
+                };
+            }
+        }
+    }
+    for (const s of campusPreset.structures) {
+        if (s.label && x >= s.minX && x <= s.maxX && z >= s.minZ && z <= s.maxZ) {
+            return { name: `${s.label} (Covered Area)`, color: '#38bdf8' };
+        }
+    }
+    return getCurrentCampusZone(x, z);
+}
+
 function drawSatelliteMinimap(ctx, H) {
     const mapW = 136;
     const mapH = 102;
@@ -80,6 +99,21 @@ function drawSatelliteMinimap(ctx, H) {
     else ctx.translate(-px, -pz);
 
     if (mapImgLoaded && mapImg) ctx.drawImage(mapImg, 0, 0, mapW, mapH);
+
+    // Draw campus preset building footprints on GPS minimap
+    for (const b of campusPreset.buildings) {
+        ctx.fillStyle = b.storeys === 2 ? 'rgba(248, 250, 252, 0.45)' : 'rgba(203, 213, 225, 0.35)';
+        ctx.strokeStyle = b.storeys === 2 ? 'rgba(250, 204, 21, 0.85)' : 'rgba(148, 163, 184, 0.8)';
+        ctx.lineWidth = 1 / zoom;
+        for (const p of b.parts) {
+            const bx = ((p.minX + WORLD_HALF_X) / spanX) * mapW;
+            const bz = ((p.minZ + WORLD_HALF_Z) / spanZ) * mapH;
+            const bw = ((p.maxX - p.minX) / spanX) * mapW;
+            const bh = ((p.maxZ - p.minZ) / spanZ) * mapH;
+            ctx.fillRect(bx, bz, bw, bh);
+            ctx.strokeRect(bx, bz, bw, bh);
+        }
+    }
 
     const cicX = ((4 + WORLD_HALF_X) / spanX) * mapW;
     const cicY = ((12 + WORLD_HALF_Z) / spanZ) * mapH;
@@ -193,7 +227,7 @@ export function renderHudFrame(now) {
     ctx.stroke();
 
     const builderCount = Object.keys(ncState.remotePlayers).length + 1;
-    const zone = getCurrentCampusZone(lp.x, lp.z);
+    const zone = getCurrentBuildingOrZone(lp.x, lp.z);
 
     ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
     ctx.strokeStyle = teacher ? '#4ade80' : '#facc15';

@@ -3,13 +3,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.m
 import { BLOCKS, PLAYER_EYE_HEIGHT } from './constants.js';
 import { ncState } from './state.js';
 import { WORLD_HALF_X, WORLD_HALF_Z, getBaseTerrainBlock, isBlockSolid } from './engine.js';
-import {
-  CAMPUS_META,
-  CAMPUS_BUILDINGS,
-  CAMPUS_STRUCTURES,
-  CAMPUS_ZONES,
-  CAMPUS_ROADS_AND_PARKING,
-} from './campusPreset.js';
+import campusPreset from './campusPreset.js';
 
 let renderer = null;
 let scene = null;
@@ -220,6 +214,17 @@ export function rebuildWorldMeshes() {
         }
     }
 
+    // Base campus preset buildings (y >= 2, unless overridden in deltas)
+    for (const [key, presetBlockId] of campusPreset.getCampusPresetEntries()) {
+        const [px, py, pz] = key.split('_').map(Number);
+        if (py <= 1) continue;
+        if (Object.prototype.hasOwnProperty.call(ncState.world.deltas, key)) continue;
+        if (isBlockSolid(presetBlockId)) {
+            if (!buckets.has(presetBlockId)) buckets.set(presetBlockId, []);
+            buckets.get(presetBlockId).push({ x: px, y: py, z: pz });
+        }
+    }
+
     // All student-placed blocks (y >= 2)
     for (const [key, blockId] of Object.entries(ncState.world.deltas)) {
         if (!isBlockSolid(blockId)) continue;
@@ -240,6 +245,27 @@ export function rebuildWorldMeshes() {
         });
         instMesh.instanceMatrix.needsUpdate = true;
         voxelGroup.add(instMesh);
+    }
+    
+    for (const anchor of campusPreset.getCampusLabelAnchors()) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+        ctx.roundRect(8, 8, 240, 48, 12);
+        ctx.fill();
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 24px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(anchor.label, 128, 33);
+
+        const tex = new THREE.CanvasTexture(canvas);
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+        sprite.position.set(anchor.x, anchor.y, anchor.z);
+        sprite.scale.set(10, 2.5, 1);
+        voxelGroup.add(sprite);
     }
 
     ncState.world.dirty = false;
