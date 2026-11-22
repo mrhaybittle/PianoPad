@@ -1906,8 +1906,9 @@ function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pend
     }
 
     ctx.fillStyle = blockColor;
-    ctx.shadowColor = shadowColor;
-    ctx.shadowBlur = isFrozen ? 14 : 8;
+    // Remove shadowBlur for a massive FPS boost on school Chromebooks/laptops:
+    // ctx.shadowColor = shadowColor;
+    // ctx.shadowBlur = isFrozen ? 14 : 8;
 
     const radius = Math.min(6, width / 2, height / 2);
     ctx.beginPath();
