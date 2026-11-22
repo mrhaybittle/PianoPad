@@ -1853,7 +1853,8 @@ function playSong() {
         document.getElementById('status').textContent = 'Playing...';
     }
 
-    requestAnimationFrame(renderLoop);
+  
+    animationFrameId = requestAnimationFrame(renderLoop);
 }
 
 function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pending') {
