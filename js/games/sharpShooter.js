@@ -43,6 +43,7 @@ const ball = {
 
 // Striker State
 let heldTargetNote = null;
+let heldNoteStr = null;
 let lockedTarget = null;
 let powerMeter = 0;
 let powerDir = 1;
@@ -73,22 +74,6 @@ function preventSpaceBar(e) {
         e.preventDefault();
         e.stopPropagation();
     }
-}
-
-function onGlobalKeyUp() {
-    if (gamePhase !== 'striker_aim' || !heldTargetNote) return;
-    if (!document.querySelector('#keyboard .key.active')) {
-        releaseStrikerShot();
-    }
-}
-
-function onGlobalPointerUp() {
-    if (gamePhase !== 'striker_aim' || !heldTargetNote) return;
-    setTimeout(() => {
-        if (gamePhase === 'striker_aim' && heldTargetNote && !document.querySelector('#keyboard .key.active')) {
-            releaseStrikerShot();
-        }
-    }, 15);
 }
 
 // --- SOUND EFFECTS ---
@@ -171,9 +156,6 @@ export function stopSharpShooter() {
     heldTargetNote = null;
 
     window.removeEventListener('keydown', preventSpaceBar, { capture: true });
-    window.removeEventListener('keyup', onGlobalKeyUp, { capture: true });
-    window.removeEventListener('mouseup', onGlobalPointerUp, { capture: true });
-    window.removeEventListener('touchend', onGlobalPointerUp, { capture: true });
 
     const popup = document.getElementById('sharp-shooter-popup');
     if (popup) popup.style.display = 'none';
@@ -191,9 +173,6 @@ export function startSharpShooter(bridge) {
     bridge.resetGameStats();
 
     window.addEventListener('keydown', preventSpaceBar, { capture: true });
-    window.addEventListener('keyup', onGlobalKeyUp, { capture: true });
-    window.addEventListener('mouseup', onGlobalPointerUp, { capture: true });
-    window.addEventListener('touchend', onGlobalPointerUp, { capture: true });
 
     playerScore = 0;
     aiScore = 0;
@@ -298,6 +277,7 @@ function setupRound() {
 function releaseStrikerShot() {
     if (gamePhase !== 'striker_aim' || !lockedTarget) return;
     heldTargetNote = null;
+    heldNoteStr = null;
     gamePhase = 'striker_runup';
     strikerRunProgress = 0;
 }
@@ -374,8 +354,8 @@ export function handleSharpShooterInput(noteStr, bridge) {
             const target = TARGETS.find(t => t.note === letter);
             if (target) {
                 heldTargetNote = letter;
+                heldNoteStr = noteStr.trim().toLowerCase();
                 lockedTarget = target;
-                window.__sharpShooterUsedDomKey = Boolean(document.querySelector('#keyboard .key.active'));
                 bridge.highlightKey(noteStr, 450, '#facc15');
             } else {
                 bridge.highlightKey(noteStr, 150, '#ef4444');
@@ -406,6 +386,13 @@ export function handleSharpShooterInput(noteStr, bridge) {
                 bridge.highlightKey(noteStr, 400, '#f97316');
             }
         }
+    }
+}
+
+export function handleSharpShooterRelease(noteStr) {
+    if (gamePhase !== 'striker_aim' || !heldTargetNote) return;
+    if ((noteStr || '').trim().toLowerCase() === heldNoteStr) {
+        releaseStrikerShot();
     }
 }
 
@@ -521,16 +508,11 @@ function gameLoop(now, bridge) {
     if (flashAlpha > 0) flashAlpha = Math.max(0, flashAlpha - dt * 2.2);
     if (bannerTimer > 0) bannerTimer = Math.max(0, bannerTimer - dt);
 
-    // Charge power while holding a note key; auto-fire if released on DOM key
+    // Charge power while holding a note key; auto-fire handled by handleSharpShooterRelease
     if (gamePhase === 'striker_aim' && heldTargetNote) {
         powerMeter += powerDir * dt * 1.45;
         if (powerMeter >= 1) { powerMeter = 1; powerDir = -1; }
         if (powerMeter <= 0.1) { powerMeter = 0.1; powerDir = 1; }
-
-        if (window.__sharpShooterUsedDomKey && !document.querySelector('#keyboard .key.active')) {
-            window.__sharpShooterUsedDomKey = false;
-            releaseStrikerShot();
-        }
     }
 
     // Striker short run-up animation
