@@ -11,6 +11,8 @@ let score = 0;
 let coins = 0;
 let multiplier = 1;
 let noteStreak = 0;
+let chordBuffer = { A: 0, B: 0, C: 0 }; // Tracks chord strikes
+
 // Gracefully migrate best score from the old name to the new name if needed
 let bestScore = parseInt(localStorage.getItem('pianopad_scale_surfers_best') || localStorage.getItem('pianopad_staff_surfers_best') || '0', 10);
 
@@ -207,11 +209,12 @@ export function startStaffSurfers(bridge) {
     coins = 0;
     multiplier = 1;
     noteStreak = 0;
+    chordBuffer = { A: 0, B: 0, C: 0 };
     obstacles = [];
     coinItems = [];
     particles = [];
     worldScroll = 0;
-    spawnCooldown = 0.22;
+    spawnCooldown = 0.4;
     waveCounter = 0;
     flashAlpha = 0;
     shakeTimer = 0;
@@ -311,6 +314,7 @@ function showInstructionsPopup(bridge) {
             <div style="margin-bottom: 8px;"><b>➡️ RIGHT TRACK:</b> Piano <b>C</b> (or PC <b>,</b>)</div>
             <hr style="border-color: #334155; margin: 12px 0;">
             <div style="margin-bottom: 8px;"><b>⬆️ JUMP:</b> Play ANY Other Key</div>
+            <div style="margin-bottom: 8px;"><b>🚀 DBL JUMP:</b> Play A + B + C together!</div>
             <div><b>⬇️ ROLL:</b> Re-play your current lane's key</div>
         </div>
         <div style="color: #22c55e; font-weight: 900; margin-bottom: 20px; font-size: 14px;">
@@ -362,6 +366,28 @@ export function handleStaffSurfersInput(noteStr, bridge) {
 function triggerSurferAction(letter, isSharp, bridge, noteStr = null) {
     if (gamePhase !== 'playing') return;
 
+    const now = performance.now();
+    let chordJustTriggered = false;
+
+    // Chord Logic Check
+    if (letter === 'A' || letter === 'B' || letter === 'C') {
+        chordBuffer[letter] = now;
+    }
+
+    const isChord = (now - chordBuffer.A < 150) && (now - chordBuffer.B < 150) && (now - chordBuffer.C < 150);
+
+    if (isChord) {
+        player.isJumping = true;
+        player.rollTimer = 0;
+        player.vy = 210; // MASSIVE Double Jump
+        playWhooshSound(1.6);
+        spawnBurstParticles(player.visualLane, player.yHeight, '#facc15', 18);
+        document.getElementById('status').textContent = '🚀 A+B+C CHORD: DOUBLE JUMP!';
+        // Reset buffer to prevent duplicate triggers
+        chordBuffer.A = 0; chordBuffer.B = 0; chordBuffer.C = 0;
+        chordJustTriggered = true;
+    }
+
     // A -> Left (-1), B -> Center (0), C -> Right (+1); anything else -> JUMP
     const isTrackKey = !isSharp && (letter === 'A' || letter === 'B' || letter === 'C');
 
@@ -378,8 +404,9 @@ function triggerSurferAction(letter, isSharp, bridge, noteStr = null) {
             player.lane = targetLane;
             playWhooshSound(targetLane === 1 ? 1.25 : (targetLane === -1 ? 0.85 : 1.0));
             spawnBurstParticles(player.visualLane, player.yHeight + 12, '#38bdf8', 6);
-        } else if (player.jetpackTimer <= 0) {
+        } else if (player.jetpackTimer <= 0 && !chordJustTriggered) {
             // Re-tapping the SAME lane key triggers ROLL / DUCK (or fast-drop if mid-air)
+            // Blocked if a chord just triggered so the player doesn't instantly drop
             if (player.isJumping && player.yHeight > 6) {
                 player.vy = -195;
             }
@@ -387,8 +414,8 @@ function triggerSurferAction(letter, isSharp, bridge, noteStr = null) {
             playWhooshSound(0.75);
         }
     } else {
-        // Any other key triggers JUMP
-        if (player.jetpackTimer <= 0 && !player.isJumping) {
+        // Any other key triggers normal JUMP
+        if (player.jetpackTimer <= 0 && !player.isJumping && !chordJustTriggered) {
             player.isJumping = true;
             player.rollTimer = 0;
             player.vy = 152;
@@ -398,7 +425,6 @@ function triggerSurferAction(letter, isSharp, bridge, noteStr = null) {
     }
 
     // Musical Challenge: Hit the active target note letter for bonus score
-    // (Only checks A-G, so JUMP triggers like 'JUMP' strings bypass this safely)
     if (letter === activeTargetNote) {
         noteStreak++;
         coins += 2;
@@ -432,7 +458,7 @@ function spawnSkyCoinWave() {
         const lane = Math.floor(i / 6) - 1;
         coinItems.push({
             lane,
-            z: 0.25 + i * 0.045,
+            z: 0.25 + i * 0.09, // Doubled distance to match 2x speed
             yHeight: 68,
             noteLetter: i % 3 === 0 ? activeTargetNote : null,
             spin: i * 0.4,
@@ -627,7 +653,8 @@ function gameLoop(now, bridge) {
     const W = canvas.width;
     const H = canvas.height;
 
-    const speedZ = gamePhase === 'playing' ? (0.48 + Math.min(0.42, score * 0.00008)) : 0;
+    // SCALED UP 2X BASE GAME SPEED
+    const speedZ = gamePhase === 'playing' ? (0.96 + Math.min(0.84, score * 0.00016)) : 0;
 
     if (flashAlpha > 0) flashAlpha = Math.max(0, flashAlpha - dt * 2.5);
     if (shakeTimer > 0) shakeTimer = Math.max(0, shakeTimer - dt);
@@ -678,7 +705,8 @@ function gameLoop(now, bridge) {
         spawnCooldown -= speedZ * dt;
         if (spawnCooldown <= 0) {
             spawnObstacleWave();
-            spawnCooldown = Math.max(0.56, 0.78 - score * 0.00004);
+            // OBSTACLES MASSIVELY SPACED OUT TO COMPENSATE FOR 2X SPEED
+            spawnCooldown = Math.max(1.8, 2.6 - score * 0.00004); 
         }
 
         // Move & collect coins
@@ -847,8 +875,7 @@ function drawSubwayBackdropAndTracks(ctx, W, H) {
         ctx.fill();
     });
 
-    // --- NEW OCEAN SCENERY INSTEAD OF BUILDINGS ---
-    // Deep Blue Ocean along the horizon
+    // Ocean Scenery
     ctx.fillStyle = '#0ea5e9'; // Ocean main
     ctx.fillRect(0, horizonY - H * 0.08, W, H * 0.08);
     ctx.fillStyle = '#0284c7'; // Darker water edge
@@ -856,25 +883,19 @@ function drawSubwayBackdropAndTracks(ctx, W, H) {
 
     // Wooden Harbour Pier
     ctx.fillStyle = '#78350f';
-    ctx.fillRect(W * 0.4, horizonY - H * 0.03, W * 0.3, H * 0.015); // Pier deck
-    ctx.fillRect(W * 0.42, horizonY - H * 0.015, W * 0.01, H * 0.015); // Pilings
+    ctx.fillRect(W * 0.4, horizonY - H * 0.03, W * 0.3, H * 0.015); 
+    ctx.fillRect(W * 0.42, horizonY - H * 0.015, W * 0.01, H * 0.015); 
     ctx.fillRect(W * 0.55, horizonY - H * 0.015, W * 0.01, H * 0.015);
     ctx.fillRect(W * 0.68, horizonY - H * 0.015, W * 0.01, H * 0.015);
 
     // Sailboats in the harbour
-    const boats = [
-        { x: 0.15, scale: 1 },
-        { x: 0.28, scale: 0.7 },
-        { x: 0.65, scale: 0.85 }
-    ];
-    
+    const boats = [{ x: 0.15, scale: 1 }, { x: 0.28, scale: 0.7 }, { x: 0.65, scale: 0.85 }];
     boats.forEach(boat => {
         const bx = W * boat.x;
         const by = horizonY - H * 0.02;
         const bw = W * 0.04 * boat.scale;
         const bh = H * 0.08 * boat.scale;
         
-        // Boat Hull
         ctx.fillStyle = '#f8fafc';
         ctx.beginPath();
         ctx.moveTo(bx - bw, by);
@@ -883,11 +904,9 @@ function drawSubwayBackdropAndTracks(ctx, W, H) {
         ctx.lineTo(bx - bw * 0.7, by + bh * 0.2);
         ctx.fill();
         
-        // Mast
         ctx.fillStyle = '#94a3b8';
         ctx.fillRect(bx, by - bh, Math.max(1, 2 * boat.scale), bh);
         
-        // Sail
         ctx.fillStyle = '#e0f2fe';
         ctx.beginPath();
         ctx.moveTo(bx + 2, by - bh * 0.9);
@@ -902,7 +921,6 @@ function drawSubwayBackdropAndTracks(ctx, W, H) {
     const lhW = W * 0.035;
     const lhH = H * 0.18;
 
-    // Lighthouse Body (Tapered White Cylinder)
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.moveTo(lhX - lhW * 0.5, lhY);
@@ -911,24 +929,20 @@ function drawSubwayBackdropAndTracks(ctx, W, H) {
     ctx.lineTo(lhX - lhW * 0.35, lhY - lhH);
     ctx.fill();
     
-    // Lighthouse Red Lantern Room Top
     ctx.fillStyle = '#ef4444';
     ctx.fillRect(lhX - lhW * 0.4, lhY - lhH, lhW * 0.8, lhH * 0.15);
     
-    // Yellow Light Shining
     ctx.fillStyle = '#facc15';
     ctx.beginPath();
     ctx.arc(lhX, lhY - lhH + lhH * 0.075, lhW * 0.2, 0, Math.PI * 2);
     ctx.fill();
     
-    // Sweeping Light Beam
     ctx.fillStyle = 'rgba(250, 204, 21, 0.25)';
     ctx.beginPath();
     ctx.moveTo(lhX, lhY - lhH + lhH * 0.075);
     ctx.lineTo(lhX - W * 0.25, lhY - lhH - H * 0.05);
     ctx.lineTo(lhX - W * 0.25, lhY - lhH + H * 0.2);
     ctx.fill();
-    // ----------------------------------------------
 
     // 2. Gravel Railway Yard Bed
     const bedGrad = ctx.createLinearGradient(0, horizonY, 0, H);
@@ -938,7 +952,7 @@ function drawSubwayBackdropAndTracks(ctx, W, H) {
     ctx.fillStyle = bedGrad;
     ctx.fillRect(0, horizonY, W, H - horizonY);
 
-    // 3. Perspective Brick Retaining Walls with Graffiti Street Art
+    // 3. Perspective Brick Retaining Walls
     const outerLeftFar = projectPoint(-1.75, 1.4, 0, W, H);
     const outerLeftNear = projectPoint(-1.75, -0.05, 0, W, H);
     const outerRightFar = projectPoint(1.75, 1.4, 0, W, H);
@@ -961,7 +975,6 @@ function drawSubwayBackdropAndTracks(ctx, W, H) {
     ctx.closePath();
     ctx.fill();
 
-    // Wall Top Concrete Trim
     ctx.strokeStyle = '#cbd5e1';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
@@ -971,7 +984,6 @@ function drawSubwayBackdropAndTracks(ctx, W, H) {
     ctx.lineTo(outerRightFar.x, outerRightFar.groundY);
     ctx.stroke();
 
-    // Scrolling Neon Graffiti Murals
     const graffitiColors = ['#ec4899', '#22c55e', '#facc15', '#06b6d4', '#a855f7'];
     for (let step = 0; step < 8; step++) {
         const zA = (step - worldScroll * 0.25) * 0.22;
@@ -1001,7 +1013,7 @@ function drawSubwayBackdropAndTracks(ctx, W, H) {
         ctx.fill();
     }
 
-    // 4. Three Railway Tracks: Wooden Sleepers & Twin Steel Rails
+    // 4. Three Railway Tracks
     const lanes = [-1, 0, 1];
     const tieSteps = 16;
     for (let t = 0; t < tieSteps; t++) {
@@ -1031,19 +1043,40 @@ function drawSubwayBackdropAndTracks(ctx, W, H) {
         });
     });
 
-    // Bottom Track Control Strip
+    // HUGE HUD Overlay for Lanes at the Bottom
     const guideItems = [
-        { lane: -1, text: 'KEY N • LEFT TRACK', active: player.lane === -1 },
-        { lane: 0, text: 'KEY M • CENTER TRACK', active: player.lane === 0 },
-        { lane: 1, text: 'KEY , • RIGHT TRACK', active: player.lane === 1 }
+        { lane: -1, text: 'PC: N', letter: 'A', active: player.lane === -1 },
+        { lane: 0, text: 'PC: M', letter: 'B', active: player.lane === 0 },
+        { lane: 1, text: 'PC: ,', letter: 'C', active: player.lane === 1 }
     ];
     guideItems.forEach(g => {
         const gp = projectPoint(g.lane, -0.02, 0, W, H);
         ctx.save();
-        ctx.font = '900 10px -apple-system, sans-serif';
+        
+        // HUD Box Background
+        ctx.fillStyle = g.active ? 'rgba(0, 0, 0, 0.85)' : 'rgba(15, 23, 42, 0.65)';
+        ctx.beginPath();
+        ctx.roundRect(gp.x - 38, H - 75, 76, 70, 12);
+        ctx.fill();
+
+        if (g.active) {
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+        
         ctx.textAlign = 'center';
-        ctx.fillStyle = g.active ? '#facc15' : 'rgba(241, 245, 249, 0.78)';
-        ctx.fillText(g.text, gp.x, H - 5);
+        
+        // GIANT Piano Note Letter
+        ctx.font = '900 44px -apple-system, sans-serif';
+        ctx.fillStyle = g.active ? '#facc15' : 'rgba(255, 255, 255, 0.5)';
+        ctx.fillText(g.letter, gp.x, H - 28);
+        
+        // PC Keyboard Subtext
+        ctx.font = '800 12px -apple-system, sans-serif';
+        ctx.fillStyle = g.active ? '#facc15' : 'rgba(241, 245, 249, 0.6)';
+        ctx.fillText(g.text, gp.x, H - 10);
+        
         ctx.restore();
     });
 }
