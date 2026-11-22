@@ -314,8 +314,7 @@ function showInstructionsPopup(bridge) {
             <div style="margin-bottom: 8px;"><b>➡️ RIGHT TRACK:</b> Piano <b>C</b> (or PC <b>,</b>)</div>
             <hr style="border-color: #334155; margin: 12px 0;">
             <div style="margin-bottom: 8px;"><b>⬆️ JUMP:</b> Play ANY Other Key</div>
-            <div style="margin-bottom: 8px;"><b>🚀 DBL JUMP:</b> Play A + B + C together!</div>
-            <div><b>⬇️ ROLL:</b> Re-play your current lane's key</div>
+            <div><b>🚀 DBL JUMP:</b> Play A + B + C together!</div>
         </div>
         <div style="color: #22c55e; font-weight: 900; margin-bottom: 20px; font-size: 14px;">
             🎯 Hit the Target Notes to earn Jetpacks & Hoverboards!
