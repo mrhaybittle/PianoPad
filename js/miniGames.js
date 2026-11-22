@@ -1,3 +1,4 @@
+// js/miniGames.js
 import { initAudio, playErrorClackSound, playTone } from './audio.js';
 import { getNoteFrequency, noteToPitch, pitchToNote, parsePianoPad, autoTransposeSong } from './musicTheory.js';
 import { APPS_SCRIPT_URL } from './config.js';
@@ -9,7 +10,6 @@ import { startLaserTag, handleLaserTagInput, stopLaserTag } from './games/laserT
 import { startGridironGroove, handleGridironGrooveInput, stopGridironGroove } from './games/GridironGroove.js';
 import { startClefHook, handleClefHookInput, stopClefHook } from './games/clefHook.js';
 import { startSharpShooter, handleSharpShooterInput, handleSharpShooterRelease, stopSharpShooter } from './games/sharpShooter.js';
-import { handleNoteCraftInput, stopNoteCraft } from './games/noteCraft/notecraft.js';
 
 export const arcadeState = {
     activeMiniGame: null,
@@ -167,15 +167,6 @@ const gameBridgeHelper = {
         document.getElementById('single-bar-graph').style.display = 'flex';
         document.getElementById('multi-bar-graph').style.display = 'none';
 
-        // --- NEW FIX: Clean up redundant Play Again buttons from the parent app ---
-        const modalButtons = document.querySelectorAll('#game-results-modal button');
-        modalButtons.forEach(btn => {
-            if (btn.id !== 'btn-battle-again' && btn.textContent.toLowerCase().includes('play again')) {
-                btn.style.display = 'none';
-            }
-        });
-        // --------------------------------------------------------------------------
-
         const battleAgainBtn = document.getElementById('btn-battle-again');
         if (battleAgainBtn) {
             if (typeof resolvedReplay === 'function') {
@@ -243,7 +234,6 @@ export function exitActiveMiniGame() {
     stopGridironGroove();
     stopClefHook();
     stopSharpShooter();
-    stopNoteCraft();
 
     const gridironPopup = document.getElementById('gridiron-groove-popup');
     if (gridironPopup) gridironPopup.style.display = 'none';
@@ -294,9 +284,6 @@ export function handleMiniGameNoteInput(noteStr) {
     if (mode === 'sharpShooter') {
         handleSharpShooterInput(noteStr, gameBridgeHelper);
         return true;
-    if (mode === 'noteCraft') {
-    return handleNoteCraftInput(noteStr);
-}
     }
     if (mode === 'laserTag') {
         handleLaserTagInput(noteStr, gameBridgeHelper);
@@ -1066,15 +1053,6 @@ function finishSprintRace() {
     document.getElementById('badge-container').innerHTML = '';
     document.getElementById('single-bar-graph').style.display = 'flex';
     document.getElementById('multi-bar-graph').style.display = 'none';
-
-    // --- FIX FOR DUPLICATE "PLAY AGAIN" BUTTONS ---
-    const modalButtons = document.querySelectorAll('#game-results-modal button');
-    modalButtons.forEach(btn => {
-        if (btn.id !== 'btn-battle-again' && btn.textContent.toLowerCase().includes('play again')) {
-            btn.style.display = 'none';
-        }
-    });
-    // ----------------------------------------------
 
     const battleAgainBtn = document.getElementById('btn-battle-again');
     if (battleAgainBtn) {
