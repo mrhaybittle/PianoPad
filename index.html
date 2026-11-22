@@ -202,7 +202,8 @@
         }
 
         function finalizeLogin() {
-            document.getElementById("google-login-overlay").style.display = "none";
+            const overlay = document.getElementById("google-login-overlay");
+            if (overlay) overlay.remove();
             document.getElementById("legacy-name-modal").classList.remove("open");
             document.getElementById("legacy-name-modal").style.display = "none";
 
