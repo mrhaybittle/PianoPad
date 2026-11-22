@@ -8,7 +8,7 @@ import { startStaffSurfers, handleStaffSurfersInput, stopStaffSurfers } from './
 import { startLaserTag, handleLaserTagInput, stopLaserTag } from './games/laserTag.js';
 import { startGridironGroove, handleGridironGrooveInput, stopGridironGroove } from './games/GridironGroove.js';
 import { startClefHook, handleClefHookInput, stopClefHook } from './games/clefHook.js';
-import { startSharpShooter, handleSharpShooterInput, stopSharpShooter } from './games/sharpShooter.js';
+import { startSharpShooter, handleSharpShooterInput, handleSharpShooterRelease, stopSharpShooter } from './games/sharpShooter.js';
 import { handleNoteCraftInput, stopNoteCraft } from './games/noteCraft/notecraft.js';
 
 export const arcadeState = {
@@ -368,6 +368,14 @@ export function handleMiniGameNoteInput(noteStr) {
     }
     if (mode === 'sprint') {
         handleSprintInput(noteStr);
+        return true;
+    }
+    return false;
+}
+
+export function handleMiniGameNoteRelease(noteStr) {
+    if (arcadeState.activeMiniGame === 'sharpShooter') {
+        handleSharpShooterRelease(noteStr);
         return true;
     }
     return false;
