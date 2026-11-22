@@ -3,7 +3,7 @@ import { SPREADSHEET_CSV_URL, LEADERBOARD_CSV_URL, APPS_SCRIPT_URL, GAMEMODE_RAN
 import { noteNames, midiNoteToName, noteToPitch, pitchToNote, autoTransposeSong, getNoteFrequency, parsePianoPad, getDiatonicStepAndShift } from './musicTheory.js';
 import { drawSheetMusicStaff, drawStemlessNote, drawLedgerLines } from './sheetMusic.js';
 import { audioCtx, initAudio, playErrorClackSound, playTone, bufferToWavBlob } from './audio.js';
-import { arcadeState, initMiniGamesBridge, stopBattlePolling, openArcadeHub, returnToPlayerHome, exitActiveMiniGame, handleMiniGameNoteInput, drawSimonStaircase, openSongBattleSelector, closeSprintOptionModal, syncSongBattlePlayerStats, markSongBattleLocalFinished } from './miniGames.js';
+import { arcadeState, initMiniGamesBridge, stopBattlePolling, openArcadeHub, returnToPlayerHome, exitActiveMiniGame, handleMiniGameNoteInput, handleMiniGameNoteRelease, drawSimonStaircase, openSongBattleSelector, closeSprintOptionModal, syncSongBattlePlayerStats, markSongBattleLocalFinished } from './miniGames.js';
 import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDeck, sendKnockoutQuickEmote, selectKnockoutTeam, triggerStreakSabotage, resetKnockoutRoundEffects, joinClassKnockoutStudent, syncKnockoutLiveScore, submitKnockoutRoundFinish, leaveClassKnockout } from './knockout.js';
 import { initFinaleBridge, showGrandFinale, closeGrandFinale, toggleFanfareMute } from './finale.js';
 import { initEyesFront, stopEyesFront, isEyesFrontFrozen, openEyesFrontPrompt } from './eyesFront.js';
@@ -664,6 +664,14 @@ function handleMIDIMessage(event) {
             const noteStr = midiNoteToName(correctedNoteNumber);
             if (noteStr) {
                 playManualNote(noteStr);
+            }
+        }
+    } else if (command === 128 || (command === 144 && velocity === 0)) {
+        if (!isCalibrating) {
+            const correctedNoteNumber = rawNoteNumber + midiOctaveOffset;
+            const noteStr = midiNoteToName(correctedNoteNumber);
+            if (noteStr) {
+                handleMiniGameNoteRelease(noteStr);
             }
         }
     }
