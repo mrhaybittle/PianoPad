@@ -6,6 +6,7 @@ let gamePhase = 'playing'; // 'playing' | 'dying' | 'over' | 'instructions'
 let flashAlpha = 0;
 let shakeTimer = 0;
 let activeBridge = null; // Stores bridge for direct keyboard access
+let hasSeenInstructions = false; // Tracks if the splash screen was already shown
 
 let score = 0;
 let coins = 0;
@@ -245,9 +246,18 @@ export function startStaffSurfers(bridge) {
 
     document.getElementById('status').textContent = '🚇 Scale Surfers: A = Left | B = Center | C = Right | Other Keys = JUMP | Same Lane = ROLL!';
     
-    // Set phase to instructions and show the popup instead of starting immediately
-    gamePhase = 'instructions'; 
-    showInstructionsPopup(bridge);
+    if (!hasSeenInstructions) {
+        // First time playing in this session: Show the instructions pop-up
+        gamePhase = 'instructions'; 
+        showInstructionsPopup(bridge);
+    } else {
+        // Already played: Skip instructions and dive right in
+        gamePhase = 'playing';
+        lastFrameTime = performance.now();
+        if (animFrameId === null) {
+            animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
+        }
+    }
 }
 
 // --- DISPLAYS THE INSTRUCTIONS POP-UP ---
@@ -322,6 +332,7 @@ function showInstructionsPopup(bridge) {
     btn.onclick = () => {
         btn.blur(); // Blur so pressing Space/Enter later doesn't click it again
         popup.style.display = 'none';
+        hasSeenInstructions = true; // Mark as seen for subsequent plays
         gamePhase = 'playing';
         lastFrameTime = performance.now();
         if (animFrameId === null) {
