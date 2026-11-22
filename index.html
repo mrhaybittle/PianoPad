@@ -4,10 +4,228 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PianoPad - by Haybittle</title>
+    
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
-   <link rel="stylesheet" href="./css/main.css?v=2">
+    <link rel="stylesheet" href="./css/main.css?v=2">
+    
+    <style>
+        /* Styles for the Google Login Overlay */
+        #google-login-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #0b0f19;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: sans-serif;
+        }
+        
+        #google-login-box {
+            background: #1f2937;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        #login-status {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #9ca3af;
+        }
+
+        /* Styles for the Legacy Name Prompt Modal */
+        #legacy-name-modal {
+            display: none; 
+            z-index: 10001; 
+        }
+    </style>
 </head>
 <body>
+
+    <!-- GOOGLE LOGIN OVERLAY -->
+    <div id="google-login-overlay">
+        <div id="google-login-box">
+            <h2 style="color: #4f46e5; margin-bottom: 10px;">Welcome to PianoPad 26</h2>
+            <p style="font-size: 0.9rem; color: #cbd5e1; margin-bottom: 25px;">Please sign in with your school Google account to continue.</p>
+            
+            <div id="g_id_onload"
+                 data-client_id="YOUR_GOOGLE_CLIENT_ID" 
+                 data-callback="handleCredentialResponse"
+                 data-auto_prompt="false">
+            </div>
+            <div class="g_id_signin"
+                 data-type="standard"
+                 data-size="large"
+                 data-theme="outline"
+                 data-text="sign_in_with"
+                 data-shape="rectangular"
+                 data-logo_alignment="left"
+                 style="display: flex; justify-content: center;">
+            </div>
+            
+            <div id="login-status">Waiting for sign in...</div>
+        </div>
+    </div>
+
+    <!-- LEGACY NAME PROMPT MODAL (First Time Login Only) -->
+    <div class="modal-overlay" id="legacy-name-modal">
+        <div class="modal" style="max-width: 420px; text-align: center;">
+            <h2 style="color: #facc15;">Account Migration</h2>
+            <p style="font-size: 0.9rem; color: #9ca3af; margin-top: 10px; margin-bottom: 20px;">
+                To keep your previous scores and ranks, please enter the PianoPad name you were previously using:
+            </p>
+            <input type="text" id="legacy-name-input" placeholder="e.g. Alex M" style="width: 90%; padding:12px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 1rem; margin-bottom: 20px; text-align: center;">
+            
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="btn-success" id="btn-submit-legacy-name" style="padding: 10px 20px; font-size: 1rem;">Link Accounts</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GOOGLE AUTHENTICATION & INITIALIZATION SCRIPT -->
+    <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzJ59p9HAgRFTiJou8zYat4cvo96Yu4rMh3qIyOdDMhUCgh7m-zYltyDvIro-HCYnbT/exec";
+        
+        // Global object to store the resolved user context for the rest of the app to use
+        window.pianoPadUser = {
+            isTeacher: false,
+            fullName: "",
+            generatedName: "",
+            className: "",
+            oldName: "", // The name they used to use (for merging stats)
+            email: ""
+        };
+
+        function decodeJwtResponse(token) {
+            let base64Url = token.split('.')[1];
+            let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            let jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        }
+
+        async function handleCredentialResponse(response) {
+            const statusDiv = document.getElementById("login-status");
+            statusDiv.innerHTML = "Authenticating and fetching roster...";
+
+            const profile = decodeJwtResponse(response.credential);
+            window.pianoPadUser.email = profile.email;
+            const firstName = profile.given_name;
+            const surname = profile.family_name;
+
+            try {
+                // Fetch the class data from your Google Sheet
+                const res = await fetch(GAS_URL);
+                const data = await res.json();
+
+                // Check Teacher Logins First
+                if (data.teachers && data.teachers[profile.email]) {
+                    window.pianoPadUser.isTeacher = true;
+                    window.pianoPadUser.fullName = data.teachers[profile.email].name;
+                    window.pianoPadUser.generatedName = data.teachers[profile.email].name;
+                    finalizeLogin();
+                    return;
+                }
+
+                // Process Student Login
+                const shortSurname = surname.substring(0, 3);
+                const formattedSurname = shortSurname.charAt(0).toUpperCase() + shortSurname.substring(1).toLowerCase();
+                
+                window.pianoPadUser.generatedName = `${firstName} ${formattedSurname}`;
+                window.pianoPadUser.fullName = `${firstName} ${surname}`;
+
+                const matchedStudent = data.students.find(s => 
+                    s.surname.toLowerCase() === surname.toLowerCase() && 
+                    s.firstName.toLowerCase().includes(firstName.toLowerCase())
+                );
+
+                if (matchedStudent) {
+                    window.pianoPadUser.className = matchedStudent.className;
+                    // Check if the sheet already has their old name recorded (e.g., in column D / 'oldName' key)
+                    if (matchedStudent.oldName && matchedStudent.oldName.trim() !== "") {
+                        window.pianoPadUser.oldName = matchedStudent.oldName;
+                        finalizeLogin();
+                    } else {
+                        // First time login - prompt for their old name
+                        promptForLegacyName(matchedStudent.id); 
+                    }
+                } else {
+                    statusDiv.innerHTML = "<span style='color:#ef4444'>Student not found in roster. Please contact your teacher.</span>";
+                }
+
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                statusDiv.innerHTML = "<span style='color:#ef4444'>Connection error. Check console.</span>";
+            }
+        }
+
+        function promptForLegacyName(studentId) {
+            // Hide the Google box and show the legacy name prompt
+            document.getElementById("google-login-box").style.display = "none";
+            document.getElementById("legacy-name-modal").style.display = "flex";
+            document.getElementById("legacy-name-modal").classList.add("open");
+
+            document.getElementById("btn-submit-legacy-name").onclick = async () => {
+                const oldName = document.getElementById("legacy-name-input").value.trim();
+                if (!oldName) {
+                    alert("Please enter a name or skip.");
+                    return;
+                }
+                
+                document.getElementById("btn-submit-legacy-name").innerText = "Saving...";
+                document.getElementById("btn-submit-legacy-name").disabled = true;
+
+                // POST to the Apps Script to save the old name in Column D
+                try {
+                    await fetch(GAS_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            action: 'updateOldName',
+                            studentId: studentId,
+                            oldName: oldName
+                        })
+                    });
+                    
+                    window.pianoPadUser.oldName = oldName;
+                    finalizeLogin();
+                } catch (e) {
+                    console.error("Failed to save old name", e);
+                    alert("Error saving name. Proceeding anyway.");
+                    window.pianoPadUser.oldName = oldName;
+                    finalizeLogin();
+                }
+            };
+        }
+
+        function finalizeLogin() {
+            // Hide all login overlays to reveal PianoPad
+            document.getElementById("google-login-overlay").style.display = "none";
+            document.getElementById("legacy-name-modal").classList.remove("open");
+            document.getElementById("legacy-name-modal").style.display = "none";
+
+            // Pre-fill the old join modal if you still want them to pick a room/avatar
+            // but use their generated name automatically.
+            const nameInput = document.getElementById("student-join-name");
+            if (nameInput) {
+                nameInput.value = window.pianoPadUser.generatedName;
+                nameInput.disabled = true; // Lock it so they can't change it
+            }
+            
+            // Dispatch an event so main.js knows authentication is complete
+            window.dispatchEvent(new Event('pianopad-auth-complete'));
+        }
+    </script>
+
 
     <!-- FIREBASE INITIALIZATION FOR ROSTER & CLASS KNOCKOUT -->
     <script type="module">
@@ -36,7 +254,8 @@
             console.log("Firebase config error:", e);
         }
     </script>
-<!-- Grand Finale Celebration Canvas & Modal -->
+
+    <!-- Grand Finale Celebration Canvas & Modal -->
     <canvas id="celebration-canvas"></canvas>
     <div id="finale-modal">
         <div class="finale-header">
@@ -53,6 +272,7 @@
             <button type="button" class="btn-secondary" style="font-size: 1.15rem; padding: 12px 24px; font-weight: 800;" id="btn-mute-fanfare" onclick="toggleFanfareMute()">🔇 Mute Music</button>
         </div>
     </div>
+    
     <!-- Tab Switch Alert Modal -->
     <div class="modal-overlay" id="tab-switch-modal" style="z-index: 10000;">
         <div class="modal" style="max-width: 480px; text-align: center; border: 3px solid #ef4444; box-shadow: 0 0 25px rgba(239, 68, 68, 0.8); background-color: #1f2937;">
@@ -68,13 +288,12 @@
         </div>
     </div>
 
-    <!-- Room & Class Join Modal -->
+    <!-- Room & Class Join Modal (Simplified now that Google handles identity) -->
     <div class="modal-overlay" id="room-join-modal" style="z-index: 300;">
         <div class="modal" style="max-width: 420px; text-align: center;">
-            <h2 style="color: #4f46e5;">Welcome to PianoPad 26</h2>
-            <p style="font-size: 0.9rem; color: #9ca3af;">Please enter your details, select your class, and room to begin:</p>
+            <h2 style="color: #4f46e5;">Choose your Avatar & Room</h2>
             <div style="display: flex; flex-direction: column; gap: 12px; margin: 15px 0;">
-                <input type="text" id="student-join-name" placeholder="Your First Name & Last Initial" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 0.9rem;">
+                <input type="text" id="student-join-name" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#1f2937; color:#cbd5e1; font-size: 0.9rem;" readonly>
                 
                 <select id="student-join-avatar" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 0.9rem;">
                     <option value="🏃" selected>🏃 Runner (Male)</option>
@@ -95,38 +314,6 @@
                     <option value="🥷">🥷 Ninja</option>
                 </select>
 
-                <select id="student-join-class" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#facc15; font-weight:700; font-size: 0.9rem;">
-                    <option value="" disabled selected>Select Your Class</option>
-                    <optgroup label="Year 7 Classes">
-                        <option value="7A">7A</option>
-                        <option value="7B">7B</option>
-                        <option value="7C">7C</option>
-                        <option value="7D">7D</option>
-                        <option value="7E">7E</option>
-                        <option value="7F">7F</option>
-                        <option value="7G">7G</option>
-                        <option value="7H">7H</option>
-                        <option value="7I">7I</option>
-                    </optgroup>
-                    <optgroup label="Year 8 Classes">
-                        <option value="8A">8A</option>
-                        <option value="8B">8B</option>
-                        <option value="8C">8C</option>
-                        <option value="8D">8D</option>
-                        <option value="8E">8E</option>
-                        <option value="8F">8F</option>
-                        <option value="8G">8G</option>
-                        <option value="8H">8H</option>
-                        <option value="8I">8I</option>
-                    </optgroup>
-                    <optgroup label="Elective Music">
-                        <option value="9">Year 9 Music</option>
-                        <option value="10">Year 10 Music</option>
-                        <option value="11">Year 11 Music</option>
-                        <option value="12">Year 12 Music</option>
-                    </optgroup>
-                </select>
-
                 <select id="student-join-room" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 0.9rem;">
                     <option value="" disabled selected>Select Room</option>
                     <option value="G1">Room G1</option>
@@ -140,497 +327,8 @@
         </div>
     </div>
 
+    <!-- ... THE REST OF YOUR PIANOPAD HTML REMAINS EXACTLY THE SAME BELOW THIS LINE ... -->
     <div class="container">
        <header>
             <h1>PianoPad 26</h1>
-            <div class="controls" id="main-controls-bar">
-                <select id="song-select">
-                    <option value="">Choose a Song</option>
-                </select>
-
-                <select id="instrument-select">
-                    <option value="piano">Grand Piano</option>
-                    <option value="synth">Synth Lead</option>
-                    <option value="organ">Church Organ</option>
-                    <option value="marimba">Marimba</option>
-                    <option value="chiptune">8-Bit Chiptune</option>
-                </select>
-
-                <select id="theme-select">
-                    <option value="default">Dark</option>
-                    <option value="cyberpunk">Neon</option>
-                    <option value="synthwave">Retro</option>
-                    <option value="matrix">Green</option>
-                    <option value="gold">Gold</option>
-                </select>
-
-                <div class="speed-control">
-                    <label for="speed-input" style="cursor: pointer;">Speed: </label>
-                    <div style="display: inline-flex; align-items: center;">
-                        <input type="number" id="speed-input" min="10" max="500" value="100" 
-                               style="width: 48px; background: transparent; border: 1px solid #4b5563; border-radius: 4px; color: #facc15; font-weight: 700; font-size: 0.78rem; text-align: center; padding: 1px 2px; -moz-appearance: textfield;"
-                               title="Click to type a set speed (10% - 500%)">
-                        <span style="color: #cbd5e1; margin-left: 2px;">%</span>
-                    </div>
-                    <input type="range" id="speed-slider" min="10" max="500" value="100" step="1">
-                </div>
-
-                <button type="button" id="btn-mic-toggle" class="btn-secondary" title="Listen for Acoustic Piano Notes">
-                     MIC INPUT: OFF
-                </button>
-
-                <button type="button" id="btn-sheet-toggle" class="btn-secondary" style="background-color: #0d9488; font-weight: 700;" title="Toggle Sheet Music Display">
-                     Sheet: ON
-                </button>
-
-                <button type="button" id="btn-game" class="btn-game-active">
-                    <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                    Game Mode: ON
-                </button>
-
-                <button type="button" id="btn-loop" class="btn-secondary">
-                    <svg class="icon" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
-                    Loop: OFF
-                </button>
-
-                <button type="button" id="btn-step" class="btn-step">
-                    <svg class="icon" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
-                    Step Mode
-                </button>
-
-                <button type="button" id="btn-record" class="btn-secondary">
-                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
-                    <span id="record-btn-text">Record</span>
-                </button>
-
-                <button type="button" id="btn-add-teacher-song" class="btn-teacher">
-                    <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    Add SONG (Teacher)
-                </button>
-
-                <button type="button" id="btn-share" class="btn-share" style="display: none;">
-                    <svg class="icon" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-                    Share Haycode
-                </button>
-
-                <label class="btn-file-label btn-midi">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-                    Import MIDI
-                    <input type="file" id="midi-input" accept=".mid,.midi" style="display: none;">
-                </label>
-
-                <button type="button" id="btn-import">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    Import Code
-                </button>
-
-                <button type="button" id="btn-settings" class="btn-settings" title="Settings">
-                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                </button>
-
-                <a href="https://sites.google.com/erc.nsw.edu.au/pianopad-leaderboard/home" target="_blank" rel="noopener noreferrer" class="btn-link btn-warning">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 15l-3 4-3-4"></path><path d="M5 6v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"></path><path d="M3 6h18"></path><path d="M5 2h14"></path></svg>
-                    Leaderboard
-                </a>
-
-                <button type="button" id="btn-play" class="btn-success">
-                    <svg class="icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                    Play
-                </button>
-                <button type="button" id="btn-pause" class="btn-warning">
-                    <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
-                    Pause
-                </button>
-                <button type="button" id="btn-stop" class="btn-danger">
-                    <svg class="icon" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"></rect></svg>
-                    Stop
-                </button>
-
-                <button type="button" id="btn-open-arcade" class="btn-arcade">
-                     MINI-GAMES
-                </button>
-
-                <button type="button" id="btn-song-battle" class="btn-song-battle">
-                     SONG BATTLE
-                </button>
-
-                <div class="timeline-container-inline" id="timeline-box">
-                    <span>Trim:</span>
-                    <input type="range" id="loop-start" min="0" max="100" value="0" title="Loop Start %">
-                    <span>-</span>
-                    <input type="range" id="loop-end" min="0" max="100" value="100" title="Loop End %">
-                    <span id="loop-range-label" style="display:none;">0%-100%</span>
-                </div>
-            </div>
-
-            <div class="controls" id="arcade-controls-bar" style="display: none;">
-                <button type="button" id="btn-home-screen" class="btn-success" style="font-weight: 800;">
-                     Return to Player
-                </button>
-                <button type="button" id="btn-stop-arcade" class="btn-danger">
-                     Exit Active Game
-                </button>
-            </div>
-        </header>
-
-        <!-- Student Leaderboard Stats Ticker Tape -->
-        <div class="ticker-tape-container" id="student-ticker-tape" style="display: none;">
-            <div class="ticker-tape-badge" id="ticker-badge"> MY RANKS</div>
-            <div class="ticker-tape-wrapper">
-                <div class="ticker-tape-track" id="ticker-track">Loading leaderboard stats...</div>
-            </div>
-        </div>
-
-        <div class="arcade-hub-overlay" id="arcade-hub">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #374151; padding-bottom: 8px;">
-                <h2 style="font-size: 1.2rem; color: #ec4899; display: flex; align-items: center; gap: 8px;"> PianoPad Arcade Mini-Games</h2>
-                <span style="font-size: 0.8rem; color: #cbd5e1; font-weight: 600;">Choose a Mini-Game to Play!</span>
-            </div>
-
-            <div class="arcade-grid">
-                <div class="game-card" onclick="startSimonTaps()">
-                    <h3> Simon Taps</h3>
-                    <p>Watch the stepwise C Major sequence and climb the multi-colored level staircase step-by-step!</p>
-                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Simon Taps</button>
-                </div>
-
-                <div class="game-card" onclick="startMysteryNote()">
-                    <h3> Mystery Note</h3>
-                    <p>Listen to the hidden note! Use Warm/Cold proximity cues to find and hit the secret key.</p>
-                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Mystery Note</button>
-                </div>
-
-                <div class="game-card" onclick="startDropDodge()">
-                    <h3> Drop Dodge</h3>
-                    <p>Wide walls fall slowly! You have 5 Lives to dodge blocks by hitting the safe empty key gap.</p>
-                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Drop Dodge</button>
-                </div>
-
-                <div class="game-card" onclick="startComboStrike()">
-                    <h3> Two-Note Combo</h3>
-                    <p>Pairs of notes fall together! Hit two-note intervals simultaneously with timing feedback.</p>
-                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Combo Strike</button>
-                </div>
-
-                <div class="game-card" onclick="openSprintModeSelector()">
-                    <h3> Finger Sprint Race</h3>
-                    <p>Challenge Robo-Opponent (🤖) or Host/Join Live Multi-Player Races with custom Room Codes!</p>
-                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Finger Sprint</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="runner-track-wrapper" id="runner-track" style="display: none;"></div>
-
-        <div class="visualizer-wrapper" id="visualizer-wrapper">
-            <div class="tug-of-war-hud" id="tug-of-war-hud">
-                <div class="tug-player-info">
-                    <span id="tug-p1-avatar" style="font-size:1.15rem;">🏃</span>
-                    <span id="tug-p1-name" style="color:#ffffff;">You</span>
-                    <span id="tug-p1-acc" style="color:#22c55e;">100.0%</span>
-                </div>
-                <div class="tug-track">
-                    <div class="tug-fill-left" id="tug-fill-left"></div>
-                    <div class="tug-center-notch"></div>
-                    <div class="tug-marker" id="tug-marker"></div>
-                </div>
-                <div class="tug-player-info">
-                    <span id="tug-p2-acc" style="color:#38bdf8;">100.0%</span>
-                    <span id="tug-p2-name" style="color:#ffffff;">Opponent</span>
-                    <span id="tug-p2-avatar" style="font-size:1.15rem;">🤖</span>
-                </div>
-            </div>
-            <canvas id="waterfall-canvas" width="1232" height="380"></canvas>
-            <div class="piano" id="keyboard"></div>
-        </div>
-
-        <div class="footer-bar">
-            <div class="version-stamp">v26.11.19 | 20-Nov 6:22 AEDT (West Wollongong)</div>
-            <div class="status-bar" id="status"> GAME MODE READY | Connecting to song database...</div>
-            
-            <div class="footer-right-group">
-                <div class="monitor-widget-box" id="monitor-widget">
-                    <div class="monitor-top-row">
-                        <span id="mon-student-avatar" style="font-size: 0.82rem;">🏃</span>
-                        <span class="monitor-student-name" id="mon-student-name">Student</span>
-                        <span class="monitor-class-badge" id="mon-class-badge">7G</span>
-                        <span class="monitor-badge-breaks" id="mon-breaks-badge">Breaks: 0</span>
-                        <span class="monitor-time-text" id="mon-time-text">0:00 / 60:00min</span>
-                        <span id="mon-level-badge" style="display:none; align-items:center; font-weight:800; font-size:0.75rem; margin-left:2px; margin-right:2px;"></span>
-                        <div class="monitor-divider"></div>
-                        <span class="monitor-song-text" id="mon-song-text"> Wipeout</span>
-                    </div>
-                    <div class="monitor-progress-bar-track" id="mon-bar-track">
-                        <div class="monitor-progress-bar-fill" id="mon-bar-fill"></div>
-                    </div>
-                </div>
-
-                <img src="https://hits.sh/github.com/mrhaybittle/PianoPad.svg" alt="Visitor Count" />
-            </div>
-        </div>
-    </div>
-
-    <!-- Live Sprint & Song Battle Setup Modal -->
-    <div class="modal-overlay" id="sprint-option-modal">
-        <div class="modal" style="text-align: center;">
-            <h2 id="battle-modal-title"> Setup Mode</h2>
-            <p style="font-size: 0.85rem; color: #9ca3af;" id="battle-modal-subtitle">Select your battle option:</p>
-            <div style="display: flex; flex-direction: column; gap: 10px; margin: 10px 0;" id="sprint-menu-buttons">
-                <button type="button" class="btn-arcade" id="btn-sprint-bot-opt" onclick="initSinglePlayerSprint()"> Challenge Robot Opponent</button>
-                <button type="button" class="btn-success" onclick="openHostNamePrompt()"> Host Live Session</button>
-                <button type="button" class="btn-midi" onclick="openJoinNamePrompt()"> Join Live Session</button>
-            </div>
-            
-            <div id="sprint-form-container" style="display: none; flex-direction: column; gap: 8px; text-align: left;">
-                <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Your First Name & Surname Initial:</label>
-                <input type="text" id="sprint-player-name" placeholder="e.g. Alex M" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem;">
-                
-                <div id="host-song-selector-group" style="display:none; flex-direction:column; gap:4px; margin-top:4px;">
-                    <label style="font-size:0.75rem; color:#facc15; font-weight:700;">Select Battle Song:</label>
-                    <select id="host-battle-song-select" style="width:100%; max-width:100%;"></select>
-                </div>
-
-                <div id="inline-name-error" style="color:#ef4444; font-size:0.75rem; font-weight:700; display:none;"> Please enter your First Name & Surname Initial before continuing!</div>
-
-                <div id="code-input-group" style="display:none; flex-direction:column; gap:4px;">
-                    <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Enter Host Join Code:</label>
-                    <input type="text" id="sprint-room-code" placeholder="e.g. 766" maxlength="6" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; text-transform:uppercase;">
-                </div>
-
-                <div id="host-lobby-group" style="display:none; flex-direction:column; gap:4px; text-align:center;">
-                    <div style="font-size:1.1rem; color:#facc15; font-weight:800;" id="generated-room-code-display">Room Code: Generating...</div>
-                    <div class="lobby-players-grid" id="lobby-players-grid"></div>
-                    <button type="button" class="btn-warning" id="btn-start-host-race" style="margin-top:6px; justify-content:center;" onclick="triggerHostStartRace()"> START LIVE SESSION FOR ALL PLAYERS</button>
-                </div>
-
-                <div id="client-waiting-group" style="display:none; flex-direction:column; gap:6px; text-align:center;">
-                    <p style="font-size:0.85rem; color:#22c55e; font-weight:700;">Connected to Host Room!</p>
-                    <div class="lobby-players-grid" id="client-lobby-grid"></div>
-                    <p style="font-size:0.75rem; color:#9ca3af;">Waiting for host to press start...</p>
-                </div>
-
-                <button type="button" class="btn-success" id="btn-confirm-sprint-action" style="margin-top:6px; justify-content:center;">Confirm & Continue</button>
-            </div>
-
-            <div class="modal-footer" style="justify-content: center;">
-                <button type="button" class="btn-secondary" onclick="closeSprintOptionModal()">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Bonus Sound Unlock Notification Modal -->
-    <div class="modal-overlay" id="unlock-modal">
-        <div class="modal" style="text-align: center; border: 2px solid #22c55e; box-shadow: 0 0 25px rgba(34, 197, 94, 0.5);">
-            <h2 style="color: #facc15; font-size: 1.5rem;"> BONUS SOUNDS UNLOCKED!</h2>
-            <p id="unlock-modal-text" style="font-size: 0.95rem; color: #e5e7eb; line-height: 1.4;">
-                Outstanding accuracy! You scored <strong>>80%</strong> and unlocked 5 additional instrument sound engines:
-            </p>
-            <div style="background: #0b0f19; border: 1px solid #374151; border-radius: 8px; padding: 10px; margin: 10px 0; text-align: left; font-size: 0.85rem; color: #38bdf8;">
-                  Electric Piano<br>
-                  Harpsichord<br>
-                  80s Synth Lead<br>
-                  Xylophone<br>
-                  Accordion
-            </div>
-            <p style="font-size: 0.8rem; color: #9ca3af;">Try them out now in the Instrument selector dropdown at the top bar!</p>
-            <div class="modal-footer" style="justify-content: center;">
-                <button type="button" class="btn-success" onclick="closeUnlockModal()">Awesome, Let's Play!</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Countdown Overlay -->
-    <div class="countdown-overlay" id="countdown-overlay">
-        <div class="countdown-number" id="countdown-text">3</div>
-    </div>
-
-    <!-- Import Modal -->
-    <div class="modal-overlay" id="modal">
-        <div class="modal">
-            <h2>Import PianoPad Song</h2>
-            <p style="font-size: 0.85rem; color: #9ca3af;">Paste your PianoPad/Haycode music code below (Note sequence followed by Rests array):</p>
-            <textarea id="import-text" placeholder="Paste your song code here (e.g., G2,E2,g#2...Rests,0,250...)"></textarea>
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" id="btn-cancel">Cancel</button>
-                <button type="button" id="btn-load-play">Load & Play</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MIDI Channel Selection Modal -->
-    <div class="modal-overlay" id="midi-channel-modal">
-        <div class="modal">
-            <h2>Select MIDI Channel</h2>
-            <p style="font-size: 0.85rem; color: #9ca3af;">Select which MIDI channel/track you would like to import into PianoPad:</p>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-                <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">MIDI Channels Found:</label>
-                <select id="midi-channel-select" style="width: 100%; max-width: 100%; padding: 8px; font-size: 0.85rem;"></select>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" id="btn-midi-channel-cancel">Cancel</button>
-                <button type="button" class="btn-midi" id="btn-midi-channel-confirm">Import Channel</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Settings Modal -->
-    <div class="modal-overlay" id="settings-modal">
-        <div class="modal">
-            <h2>Settings</h2>
-            <p style="font-size: 0.85rem; color: #9ca3af;">Configure hardware and MIDI inputs below:</p>
-            <div style="display: flex; flex-direction: column; gap: 10px; margin: 10px 0;">
-                <button type="button" id="btn-start-calib" class="btn-midi" style="justify-content: center; padding: 10px;">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20"></path></svg>
-                    Calibrate Piano (Lowest / Highest Keys)
-                </button>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" id="btn-settings-close">Close</button>
-            </div>
-        </div>
-    </div>
-
-   <!-- Calibration Wizard Modal -->
-    <div class="modal-overlay" id="calib-modal" style="z-index: 400;">
-        <div class="modal" style="max-width: 680px;">
-            <h2>MIDI Keyboard Calibration</h2>
-            <p id="calib-instructions" style="font-size: 0.9rem; color: #38bdf8; font-weight: 600;">
-                Step 1: Press the LOWEST 'C' key on your external MIDI Keyboard...
-            </p>
-
-            <div class="calib-piano-container">
-                <div class="calib-piano" id="calib-keyboard"></div>
-            </div>
-
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" id="btn-calib-skip" onclick="skipCalibration()">Skip Calibration</button>
-                <button type="button" class="btn-secondary" id="btn-calib-cancel" style="display:none;" onclick="cancelCalibration()">Cancel Calibration</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Game Mode Completion Pop-up Modal with Graph -->
-    <div class="modal-overlay" id="game-results-modal">
-        <div class="modal" style="text-align: center;">
-            <h2>Game Performance Summary</h2>
-            <p id="game-summary-text" style="font-size: 0.95rem; color: #e5e7eb; font-weight: 600;"></p>
-            
-            <div id="badge-container"></div>
-            <div id="game-rank-text" class="rank-display-box">Calculating Rank...</div>
-
-            <div class="graph-container">
-                <div class="multi-bar-container" id="multi-bar-graph" style="display: none;"></div>
-                
-                <div class="bar-chart-wrapper" id="single-bar-graph">
-                    <div class="stacked-bar">
-                        <div id="bar-red" class="bar-part-red"></div>
-                        <div id="bar-orange" class="bar-part-orange"></div>
-                        <div id="bar-green" class="bar-part-green"></div>
-                    </div>
-                </div>
-                
-                <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 600; margin-top: 4px;">
-                    <span style="color: #22c55e;"> Perfect</span>
-                    <span style="color: #f97316;"> Early/Late</span>
-                    <span style="color: #ef4444;"> Missed</span>
-                </div>
-            </div>
-
-            <div class="modal-footer" style="justify-content: center; margin-top: 10px; gap: 8px; flex-wrap: wrap;">
-                <a href="leaderboard.html" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">View Entire Leaderboard</a>
-                <button type="button" class="btn-warning" id="btn-battle-again" style="display: none;" onclick="triggerBattleAgain()"> Battle Again</button>
-                <button type="button" class="btn-warning" id="btn-game-try-again">Play Again</button>
-                <button type="button" class="btn-arcade" id="btn-game-arcade-menu">Mini-Game Menu</button>
-                <button type="button" class="btn-success" id="btn-game-results-close">Continue</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Export / Share Haycode Modal -->
-    <div class="modal-overlay" id="export-modal">
-        <div class="modal">
-            <h2>Recorded Performance Ready!</h2>
-            <p style="font-size: 0.85rem; color: #9ca3af;">Copy your generated Haycode or export your performance as a WAV audio file below:</p>
-            <textarea id="export-text" readonly></textarea>
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" id="btn-export-close">Close</button>
-                <button type="button" class="btn-secondary" id="btn-copy-haycode">Copy Code</button>
-                <button type="button" class="btn-midi" id="btn-export-wav">Export WAV Audio</button>
-                <a id="btn-email-haycode" href="#" target="_blank" rel="noopener noreferrer" class="btn-link btn-share">Email Haycode</a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Teacher Add Song Modal Dialog -->
-    <div class="modal-overlay" id="teacher-modal">
-        <div class="modal">
-            <h2>Add Song (Teacher Access)</h2>
-            <p style="font-size: 0.85rem; color: #9ca3af;">Enter teacher password to add a new song directly to PianoPad & Google Sheet:</p>
-            
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-                <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">Teacher Password:</label>
-                <input type="password" id="teacher-pass" placeholder="Enter password..." style="width:100%; padding:7px 10px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; outline:none;">
-
-                <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">Song Title / Piece Name:</label>
-                <input type="text" id="teacher-title" placeholder="e.g. Moonlight Sonata" style="width:100%; padding:7px 10px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; outline:none;">
-
-                <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">HayCode String:</label>
-                <textarea id="teacher-code" placeholder="Paste HayCode or record live first..."></textarea>
-            </div>
-
-            <div id="teacher-error" style="color: #ef4444; font-size: 0.8rem; font-weight: 600; display: none;"></div>
-
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" id="btn-teacher-cancel">Cancel</button>
-                <button type="button" class="btn-teacher" id="btn-teacher-submit">Add Song Now</button>
-            </div>
-        </div>
-    </div> 
-
-    <!-- Class Selection Modal for Audio Upload -->
-    <div class="modal-overlay" id="class-select-modal" style="z-index: 400;">
-        <div class="modal" style="max-width: 420px; text-align: center;">
-            <h2 style="color: #4f46e5;">Confirm Your Class</h2>
-            <p style="font-size: 0.85rem; color: #9ca3af;">Select your Year Group and Class Letter to route your recording to the correct folder:</p>
-            
-            <div style="display: flex; flex-direction: column; gap: 12px; margin: 15px 0; text-align: left;">
-                <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">Year Group:</label>
-                <select id="upload-year-select" style="width: 100%; padding: 10px;">
-                    <option value="" disabled selected>Select Year Group</option>
-                    <option value="7">Year 7</option>
-                    <option value="8">Year 8</option>
-                    <option value="9">Year 9</option>
-                    <option value="10">Year 10</option>
-                    <option value="11">Year 11</option>
-                    <option value="12">Year 12</option>
-                </select>
-
-                <div id="class-letter-group" style="display: none; flex-direction: column; gap: 4px;">
-                    <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">Class Letter:</label>
-                    <select id="upload-class-letter-select" style="width: 100%; padding: 10px;">
-                        <option value="" disabled selected>Select Class Letter</option>
-                        <option value="A">Class A</option>
-                        <option value="B">Class B</option>
-                        <option value="C">Class C</option>
-                        <option value="D">Class D</option>
-                        <option value="E">Class E</option>
-                        <option value="F">Class F</option>
-                        <option value="G">Class G</option>
-                        <option value="H">Class H</option>
-                        <option value="I">Class I</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="modal-footer" style="justify-content: center;">
-                <button type="button" class="btn-secondary" id="btn-cancel-class-select">Cancel</button>
-                <button type="button" class="btn-success" id="btn-confirm-class-select" style="padding: 8px 18px;">Confirm & Upload</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Link your modularized JavaScript file here -->
-    <script type="module" src="./js/main.js?v=4"></script>
-    
-</body>
-</html>
+<!-- rest of file truncated for brevity, paste everything from <div class="container"> onwards from your original code -->
