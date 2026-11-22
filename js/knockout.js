@@ -1443,7 +1443,9 @@ async function startNextKnockoutRound() {
     const modeSel = document.getElementById('ko-mode-select');
     const modeVal = modeSel ? modeSel.value : 'solo';
 
-    const minPlayers = (modeVal === 'namethattune' || modeVal === 'lasertag' || modeVal === 'notecraft') ? 1 : 2;
+    const minPlayers = modeVal === 'notecraft'
+        ? 0
+        : ((modeVal === 'namethattune' || modeVal === 'lasertag') ? 1 : 2);
     if (playerIds.length < minPlayers) {
         alert(`At least ${minPlayers} student(s) must join the room before starting Round 1!`);
         return;
