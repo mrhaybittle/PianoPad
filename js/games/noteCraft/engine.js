@@ -2,6 +2,7 @@
 import { BLOCKS, BLOCK_COSTS, GRAVITY, PLAYER_EYE_HEIGHT, PLAYER_RADIUS } from './constants.js';
 import { ncState } from './state.js';
 import { isTeacherBuilder } from './economy.js';
+import campusPreset from './campusPreset.js';
 
 export const WORLD_HALF_X = 128; 
 export const WORLD_HALF_Z = 96;  
