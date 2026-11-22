@@ -2901,9 +2901,40 @@ Object.assign(window, {
     skipCalibration,
     cancelCalibration
 });
+// --- INSERT NEW CODE HERE ---
+    window.addEventListener('pianopad-auth-complete', () => {
+        const user = window.pianoPadUser;
+        
+        if (user.isTeacher) {
+            sessionStudentName = user.fullName; 
+        } else {
+            sessionStudentName = user.generatedName; 
+            currentStudentClass = user.className;
+            
+            const classSelect = document.getElementById('student-join-class');
+            if (classSelect) {
+                classSelect.value = user.className;
+                classSelect.disabled = true; 
+            }
+        }
+        
+        localStorage.setItem('pianopad_name', sessionStudentName);
+        if (currentStudentClass) {
+            localStorage.setItem('pianopad_class', currentStudentClass);
+        }
+        
+        if (user.oldName && user.oldName !== user.generatedName) {
+            loadStudentTickerStats(user.oldName); 
+        } else {
+            loadStudentTickerStats(sessionStudentName); 
+        }
+        
+        updateMonitorWidget();
+    });
+    // ----------------------------
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initApp);
-} else {
-    initApp();
-}
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initApp);
+    } else {
+        initApp();
+    }
