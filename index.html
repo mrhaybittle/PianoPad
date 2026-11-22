@@ -12,7 +12,6 @@
     <link rel="stylesheet" href="./css/main.css?v=2">
     
     <style>
-        /* Styles for the Google Login Overlay */
         #google-login-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -25,7 +24,6 @@
             color: white;
             font-family: sans-serif;
         }
-        
         #google-login-box {
             background: #1f2937;
             padding: 40px;
@@ -35,14 +33,11 @@
             max-width: 400px;
             width: 90%;
         }
-        
         #login-status {
             margin-top: 20px;
             font-size: 0.9rem;
             color: #9ca3af;
         }
-
-        /* Styles for the Legacy Name Prompt Modal */
         #legacy-name-modal {
             display: none; 
             z-index: 10001; 
@@ -95,13 +90,12 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzJ59p9HAgRFTiJou8zYat4cvo96Yu4rMh3qIyOdDMhUCgh7m-zYltyDvIro-HCYnbT/exec";
         
-        // Global object to store the resolved user context for the rest of the app to use
         window.pianoPadUser = {
             isTeacher: false,
             fullName: "",
             generatedName: "",
             className: "",
-            oldName: "", // The name they used to use (for merging stats)
+            oldName: "",
             email: ""
         };
 
@@ -114,6 +108,16 @@
             return JSON.parse(jsonPayload);
         }
 
+        function mapSheetClassToDropdown(sheetClassStr) {
+            if (!sheetClassStr) return "";
+            const str = sheetClassStr.toUpperCase();
+            const yr78Match = str.match(/0?([78])\s*MUSIC.*CLASS\s*([A-I])/);
+            if (yr78Match) return `${yr78Match[1]}${yr78Match[2]}`;
+            const seniorMatch = str.match(/0?(9|10|11|12)\s*MUSIC/);
+            if (seniorMatch) return seniorMatch[1];
+            return sheetClassStr;
+        }
+
         async function handleCredentialResponse(response) {
             const statusDiv = document.getElementById("login-status");
             statusDiv.innerHTML = "Authenticating and fetching roster...";
@@ -124,11 +128,9 @@
             const surname = profile.family_name;
 
             try {
-                // Fetch the class data from your Google Sheet
                 const res = await fetch(GAS_URL);
                 const data = await res.json();
 
-                // Check Teacher Logins First
                 if (data.teachers && data.teachers[profile.email]) {
                     window.pianoPadUser.isTeacher = true;
                     window.pianoPadUser.fullName = data.teachers[profile.email].name;
@@ -137,7 +139,6 @@
                     return;
                 }
 
-                // Process Student Login
                 const shortSurname = surname.substring(0, 3);
                 const formattedSurname = shortSurname.charAt(0).toUpperCase() + shortSurname.substring(1).toLowerCase();
                 
@@ -150,13 +151,11 @@
                 );
 
                 if (matchedStudent) {
-                    window.pianoPadUser.className = matchedStudent.className;
-                    // Check if the sheet already has their old name recorded (e.g., in column D / 'oldName' key)
+                    window.pianoPadUser.className = mapSheetClassToDropdown(matchedStudent.className);
                     if (matchedStudent.oldName && matchedStudent.oldName.trim() !== "") {
                         window.pianoPadUser.oldName = matchedStudent.oldName;
                         finalizeLogin();
                     } else {
-                        // First time login - prompt for their old name
                         promptForLegacyName(matchedStudent.id); 
                     }
                 } else {
@@ -170,7 +169,6 @@
         }
 
         function promptForLegacyName(studentId) {
-            // Hide the Google box and show the legacy name prompt
             document.getElementById("google-login-box").style.display = "none";
             document.getElementById("legacy-name-modal").style.display = "flex";
             document.getElementById("legacy-name-modal").classList.add("open");
@@ -178,14 +176,13 @@
             document.getElementById("btn-submit-legacy-name").onclick = async () => {
                 const oldName = document.getElementById("legacy-name-input").value.trim();
                 if (!oldName) {
-                    alert("Please enter a name or skip.");
+                    alert("Please enter your previous PianoPad name.");
                     return;
                 }
                 
                 document.getElementById("btn-submit-legacy-name").innerText = "Saving...";
                 document.getElementById("btn-submit-legacy-name").disabled = true;
 
-                // POST to the Apps Script to save the old name in Column D
                 try {
                     await fetch(GAS_URL, {
                         method: 'POST',
@@ -195,37 +192,42 @@
                             oldName: oldName
                         })
                     });
-                    
-                    window.pianoPadUser.oldName = oldName;
-                    finalizeLogin();
                 } catch (e) {
                     console.error("Failed to save old name", e);
-                    alert("Error saving name. Proceeding anyway.");
-                    window.pianoPadUser.oldName = oldName;
-                    finalizeLogin();
                 }
+                
+                window.pianoPadUser.oldName = oldName;
+                finalizeLogin();
             };
         }
 
         function finalizeLogin() {
-            // Hide all login overlays to reveal PianoPad
             document.getElementById("google-login-overlay").style.display = "none";
             document.getElementById("legacy-name-modal").classList.remove("open");
             document.getElementById("legacy-name-modal").style.display = "none";
 
-            // Pre-fill the old join modal if you still want them to pick a room/avatar
-            // but use their generated name automatically.
             const nameInput = document.getElementById("student-join-name");
             if (nameInput) {
                 nameInput.value = window.pianoPadUser.generatedName;
-                nameInput.disabled = true; // Lock it so they can't change it
+                nameInput.disabled = true;
             }
+
+            const classSelect = document.getElementById("student-join-class");
+            if (classSelect && window.pianoPadUser.className) {
+                classSelect.value = window.pianoPadUser.className;
+                if (!window.pianoPadUser.isTeacher) {
+                    classSelect.disabled = true;
+                }
+            }
+
+            // Force canvas and key layout recalculation now that the UI is visible
+            requestAnimationFrame(() => {
+                window.dispatchEvent(new Event('resize'));
+            });
             
-            // Dispatch an event so main.js knows authentication is complete
             window.dispatchEvent(new Event('pianopad-auth-complete'));
         }
     </script>
-
 
     <!-- FIREBASE INITIALIZATION FOR ROSTER & CLASS KNOCKOUT -->
     <script type="module">
@@ -241,14 +243,14 @@
             messagingSenderId: "717730658604",
             appId: "1:717730658604:web:e09a312b2ac7c8426e9489"
         };
-            
+           
         try {
             const app = initializeApp(firebaseConfig);
             window.firebaseDb = getDatabase(app, firebaseConfig.databaseURL);
             window.firebaseSet = set;
             window.firebaseRef = ref;
             window.firebaseOnDisconnect = onDisconnect;
-            
+           
             window.dispatchEvent(new Event('firebase-initialized'));
         } catch(e) {
             console.log("Firebase config error:", e);
@@ -262,17 +264,17 @@
             <div class="finale-title" id="finale-title-text">TOURNAMENT COMPLETE</div>
             <div class="finale-subtitle" id="finale-subtitle-text">Calculating...</div>
         </div>
-        
+       
         <div class="podium-container" id="podium-container"></div>
-        
+       
         <div class="honorable-mentions" id="honorable-mentions"></div>
-        
+       
         <div style="margin-top: 35px; display: flex; gap: 15px; z-index: 520;">
             <button type="button" class="btn-success" style="font-size: 1.15rem; padding: 12px 24px; font-weight: 900; box-shadow: 0 0 15px rgba(34,197,94,0.5);" onclick="closeGrandFinale()">Return to PianoPad</button>
             <button type="button" class="btn-secondary" style="font-size: 1.15rem; padding: 12px 24px; font-weight: 800;" id="btn-mute-fanfare" onclick="toggleFanfareMute()">🔇 Mute Music</button>
         </div>
     </div>
-    
+
     <!-- Tab Switch Alert Modal -->
     <div class="modal-overlay" id="tab-switch-modal" style="z-index: 10000;">
         <div class="modal" style="max-width: 480px; text-align: center; border: 3px solid #ef4444; box-shadow: 0 0 25px rgba(239, 68, 68, 0.8); background-color: #1f2937;">
@@ -288,13 +290,14 @@
         </div>
     </div>
 
-    <!-- Room & Class Join Modal (Simplified now that Google handles identity) -->
+    <!-- Room & Class Join Modal -->
     <div class="modal-overlay" id="room-join-modal" style="z-index: 300;">
         <div class="modal" style="max-width: 420px; text-align: center;">
-            <h2 style="color: #4f46e5;">Choose your Avatar & Room</h2>
+            <h2 style="color: #4f46e5;">Welcome to PianoPad 26</h2>
+            <p style="font-size: 0.9rem; color: #9ca3af;">Confirm your avatar, class, and room to begin:</p>
             <div style="display: flex; flex-direction: column; gap: 12px; margin: 15px 0;">
-                <input type="text" id="student-join-name" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#1f2937; color:#cbd5e1; font-size: 0.9rem;" readonly>
-                
+                <input type="text" id="student-join-name" placeholder="Your First Name & Last Initial" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 0.9rem;">
+               
                 <select id="student-join-avatar" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 0.9rem;">
                     <option value="🏃" selected>🏃 Runner (Male)</option>
                     <option value="🏃‍♀️">🏃‍♀️ Runner (Female)</option>
@@ -314,6 +317,38 @@
                     <option value="🥷">🥷 Ninja</option>
                 </select>
 
+                <select id="student-join-class" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#facc15; font-weight:700; font-size: 0.9rem;">
+                    <option value="" disabled selected>Select Your Class</option>
+                    <optgroup label="Year 7 Classes">
+                        <option value="7A">7A</option>
+                        <option value="7B">7B</option>
+                        <option value="7C">7C</option>
+                        <option value="7D">7D</option>
+                        <option value="7E">7E</option>
+                        <option value="7F">7F</option>
+                        <option value="7G">7G</option>
+                        <option value="7H">7H</option>
+                        <option value="7I">7I</option>
+                    </optgroup>
+                    <optgroup label="Year 8 Classes">
+                        <option value="8A">8A</option>
+                        <option value="8B">8B</option>
+                        <option value="8C">8C</option>
+                        <option value="8D">8D</option>
+                        <option value="8E">8E</option>
+                        <option value="8F">8F</option>
+                        <option value="8G">8G</option>
+                        <option value="8H">8H</option>
+                        <option value="8I">8I</option>
+                    </optgroup>
+                    <optgroup label="Elective Music">
+                        <option value="9">Year 9 Music</option>
+                        <option value="10">Year 10 Music</option>
+                        <option value="11">Year 11 Music</option>
+                        <option value="12">Year 12 Music</option>
+                    </optgroup>
+                </select>
+
                 <select id="student-join-room" style="padding:10px; border-radius:6px; border:1px solid #374151; background:#0b0f19; color:#fff; font-size: 0.9rem;">
                     <option value="" disabled selected>Select Room</option>
                     <option value="G1">Room G1</option>
@@ -327,7 +362,6 @@
         </div>
     </div>
 
-    <!-- MAIN APP CONTAINER -->
     <div class="container">
        <header>
             <h1>PianoPad 26</h1>
@@ -355,7 +389,7 @@
                 <div class="speed-control">
                     <label for="speed-input" style="cursor: pointer;">Speed: </label>
                     <div style="display: inline-flex; align-items: center;">
-                        <input type="number" id="speed-input" min="10" max="500" value="100" 
+                        <input type="number" id="speed-input" min="10" max="500" value="100"
                                style="width: 48px; background: transparent; border: 1px solid #4b5563; border-radius: 4px; color: #facc15; font-weight: 700; font-size: 0.78rem; text-align: center; padding: 1px 2px; -moz-appearance: textfield;"
                                title="Click to type a set speed (10% - 500%)">
                         <span style="color: #cbd5e1; margin-left: 2px;">%</span>
@@ -535,7 +569,7 @@
         <div class="footer-bar">
             <div class="version-stamp">v26.11.19 | 20-Nov 6:22 AEDT (West Wollongong)</div>
             <div class="status-bar" id="status"> GAME MODE READY | Connecting to song database...</div>
-            
+           
             <div class="footer-right-group">
                 <div class="monitor-widget-box" id="monitor-widget">
                     <div class="monitor-top-row">
@@ -568,11 +602,11 @@
                 <button type="button" class="btn-success" onclick="openHostNamePrompt()"> Host Live Session</button>
                 <button type="button" class="btn-midi" onclick="openJoinNamePrompt()"> Join Live Session</button>
             </div>
-            
+           
             <div id="sprint-form-container" style="display: none; flex-direction: column; gap: 8px; text-align: left;">
                 <label style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Your First Name & Surname Initial:</label>
                 <input type="text" id="sprint-player-name" placeholder="e.g. Alex M" style="width:100%; padding:7px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem;">
-                
+               
                 <div id="host-song-selector-group" style="display:none; flex-direction:column; gap:4px; margin-top:4px;">
                     <label style="font-size:0.75rem; color:#facc15; font-weight:700;">Select Battle Song:</label>
                     <select id="host-battle-song-select" style="width:100%; max-width:100%;"></select>
@@ -702,13 +736,13 @@
         <div class="modal" style="text-align: center;">
             <h2>Game Performance Summary</h2>
             <p id="game-summary-text" style="font-size: 0.95rem; color: #e5e7eb; font-weight: 600;"></p>
-            
+           
             <div id="badge-container"></div>
             <div id="game-rank-text" class="rank-display-box">Calculating Rank...</div>
 
             <div class="graph-container">
                 <div class="multi-bar-container" id="multi-bar-graph" style="display: none;"></div>
-                
+               
                 <div class="bar-chart-wrapper" id="single-bar-graph">
                     <div class="stacked-bar">
                         <div id="bar-red" class="bar-part-red"></div>
@@ -716,7 +750,7 @@
                         <div id="bar-green" class="bar-part-green"></div>
                     </div>
                 </div>
-                
+               
                 <div style="display: flex; gap: 14px; font-size: 0.78rem; font-weight: 600; margin-top: 4px;">
                     <span style="color: #22c55e;"> Perfect</span>
                     <span style="color: #f97316;"> Early/Late</span>
@@ -754,7 +788,7 @@
         <div class="modal">
             <h2>Add Song (Teacher Access)</h2>
             <p style="font-size: 0.85rem; color: #9ca3af;">Enter teacher password to add a new song directly to PianoPad & Google Sheet:</p>
-            
+           
             <div style="display: flex; flex-direction: column; gap: 8px;">
                 <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">Teacher Password:</label>
                 <input type="password" id="teacher-pass" placeholder="Enter password..." style="width:100%; padding:7px 10px; background:#0b0f19; border:1px solid #374151; border-radius:6px; color:#fff; font-size:0.8rem; outline:none;">
@@ -773,14 +807,14 @@
                 <button type="button" class="btn-teacher" id="btn-teacher-submit">Add Song Now</button>
             </div>
         </div>
-    </div> 
+    </div>
 
     <!-- Class Selection Modal for Audio Upload -->
     <div class="modal-overlay" id="class-select-modal" style="z-index: 400;">
         <div class="modal" style="max-width: 420px; text-align: center;">
             <h2 style="color: #4f46e5;">Confirm Your Class</h2>
             <p style="font-size: 0.85rem; color: #9ca3af;">Select your Year Group and Class Letter to route your recording to the correct folder:</p>
-            
+           
             <div style="display: flex; flex-direction: column; gap: 12px; margin: 15px 0; text-align: left;">
                 <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600;">Year Group:</label>
                 <select id="upload-year-select" style="width: 100%; padding: 10px;">
@@ -819,6 +853,6 @@
 
     <!-- Link your modularized JavaScript file here -->
     <script type="module" src="./js/main.js?v=4"></script>
-    
+   
 </body>
 </html>
