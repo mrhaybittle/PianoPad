@@ -3,7 +3,6 @@ import { BLOCKS, BLOCK_COSTS, GRAVITY, PLAYER_EYE_HEIGHT, PLAYER_RADIUS } from '
 import { ncState } from './state.js';
 import { isTeacherBuilder } from './economy.js';
 
-// DOUBLED MAP SCALE (256x192) for precision
 export const WORLD_HALF_X = 128; 
 export const WORLD_HALF_Z = 96;  
 
@@ -139,6 +138,13 @@ export function breakTargetBlock() {
     return { changes: [change], cost: 0 };
 }
 
+// Resolve logical block ID to renderable material ID (Path -> Dirt, Water -> Glass)
+function resolveTerrainBlockId(blockId) {
+    if (blockId === BLOCKS.PATH) return BLOCKS.DIRT;
+    if (blockId === BLOCKS.WATER) return BLOCKS.GLASS;
+    return blockId;
+}
+
 export function placeSelectedBlock() {
     const target = ncState.targetBlock;
     const lp = ncState.localPlayer;
@@ -160,6 +166,7 @@ export function placeSelectedBlock() {
 
     const addBlock = (bx, by, bz, id) => {
         const prev = getBlockAt(bx, by, bz);
+        if (prev === id) return; // Skip no-op overwrite
         const c = setBlockAt(bx, by, bz, id);
         if (c) {
             generatedChanges.push(c);
@@ -167,19 +174,11 @@ export function placeSelectedBlock() {
         }
     };
 
-    // 1. FLOOR EDITS (PATH and WATER)
-    if (blockId === BLOCKS.PATH || blockId === BLOCKS.WATER) {
-        // If we clicked on the ground, overwrite the grass layer instead of stacking
-        if (target.y <= 2) {
-            const textureId = blockId === BLOCKS.PATH ? BLOCKS.DIRT : BLOCKS.GLASS;
-            addBlock(target.x, 1, target.z, textureId);
-        } else {
-            return null; // Can only paint floor on ground level
-        }
-    } 
-    // 2. VOXEL PREFABS
-    else if (blockId === BLOCKS.TREE || blockId === BLOCKS.ROCK || blockId === BLOCKS.DRAGON) {
-        if (py < 2) py = 2; // Snap to ground
+    const isPrefab = (blockId === BLOCKS.TREE || blockId === BLOCKS.ROCK || blockId === BLOCKS.DRAGON);
+
+    // 1. VOXEL PREFABS (Tree, Rock, Dragon)
+    if (isPrefab) {
+        if (py < 2) py = 2;
         
         if (blockId === BLOCKS.TREE) {
             for(let i=0; i<4; i++) addBlock(px, py+i, pz, BLOCKS.WOOD);
@@ -202,34 +201,39 @@ export function placeSelectedBlock() {
             addBlock(px, py+1, pz, BLOCKS.STONE);
         } 
         else if (blockId === BLOCKS.DRAGON) {
-            // Voxel Lizard Blueprint
-            addBlock(px, py, pz, BLOCKS.WOOD);   // Body Core
-            addBlock(px+1, py, pz, BLOCKS.WOOD); // Body Front
-            addBlock(px-1, py, pz, BLOCKS.WOOD); // Body Back
-            addBlock(px-2, py, pz, BLOCKS.DIRT); // Tail base
-            addBlock(px-3, py, pz, BLOCKS.DIRT); // Tail tip
-            addBlock(px+2, py, pz, BLOCKS.DIRT); // Head base
-            addBlock(px+2, py+1, pz, BLOCKS.LEAVES); // Head top (scales)
-            // Legs
+            addBlock(px, py, pz, BLOCKS.WOOD);
+            addBlock(px+1, py, pz, BLOCKS.WOOD);
+            addBlock(px-1, py, pz, BLOCKS.WOOD);
+            addBlock(px-2, py, pz, BLOCKS.DIRT);
+            addBlock(px-3, py, pz, BLOCKS.DIRT);
+            addBlock(px+2, py, pz, BLOCKS.DIRT);
+            addBlock(px+2, py+1, pz, BLOCKS.LEAVES);
             addBlock(px+1, py, pz+1, BLOCKS.DIRT); 
             addBlock(px+1, py, pz-1, BLOCKS.DIRT);
             addBlock(px-1, py, pz+1, BLOCKS.DIRT);
             addBlock(px-1, py, pz-1, BLOCKS.DIRT);
         }
     } 
-    // 3. STANDARD SINGLE BLOCKS
+    // 2. FLAT FLOOR MODE (Applies to EVERY terrain type when ncState.flatMode is ON)
+    else if (ncState.flatMode) {
+        const renderId = resolveTerrainBlockId(blockId);
+        // Replace the targeted block in-place (flush with floor if y===1, or replaces existing surface block)
+        addBlock(target.x, target.y, target.z, renderId);
+    }
+    // 3. STANDARD 3D BLOCK MODE (Applies to EVERY terrain type when ncState.flatMode is OFF)
     else {
         const playerMinY = Math.floor(lp.y);
         const playerMaxY = Math.floor(lp.y + PLAYER_EYE_HEIGHT);
         if (px === Math.floor(lp.x) && pz === Math.floor(lp.z) && py >= playerMinY && py <= playerMaxY) return null;
         
-        addBlock(px, py, pz, blockId);
+        const renderId = resolveTerrainBlockId(blockId);
+        addBlock(px, py, pz, renderId);
     }
 
     if (generatedChanges.length > 0) {
         if (!teacher) lp.noteCoins -= cost;
         if (recordedUndo.length > 0) {
-            recordedUndo[0].refundedCost = cost; // Attach full refund to the first block in the set
+            recordedUndo[0].refundedCost = cost;
             pushUndoEntry(recordedUndo);
         }
         return { changes: generatedChanges, cost };

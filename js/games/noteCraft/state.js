@@ -10,6 +10,7 @@ export const ncState = {
     isPointerLocked: false,
     isTeacher: false,
     mapZoom: 1.0,
+    flatMode: false, // Toggle between 3D Block (false) and Flat Floor Paint (true)
 
     localPlayer: {
         id: 'local',
@@ -30,7 +31,6 @@ export const ncState = {
         noteCoins: 150,
         masteredSongs: [],
         selectedSlot: 0,
-        // 13 slots array
         inventory: [1, 2, 3, null, null, null, null, null, null, null, null, null, null]
     },
 

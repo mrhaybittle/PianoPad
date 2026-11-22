@@ -128,6 +128,50 @@ function drawSatelliteMinimap(ctx, H) {
     ctx.fillText(`GPS [${zoom.toFixed(1)}x] Press -/+`, mx + mapW / 2, my + mapH - 5);
 }
 
+function drawBuildModeToggleSwitch(ctx, W, H) {
+    const isFlat = Boolean(ncState.flatMode);
+    const swW = 248;
+    const swH = 34;
+    const sx = (W - swW) / 2;
+    const sy = H - 104;
+
+    // Outer pill container
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+    ctx.strokeStyle = isFlat ? '#38bdf8' : '#facc15';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(sx, sy, swW, swH, 17);
+    ctx.fill();
+    ctx.stroke();
+
+    // Active sliding pill highlight
+    const halfW = (swW - 8) / 2;
+    const pillX = isFlat ? (sx + halfW + 4) : (sx + 4);
+    ctx.fillStyle = isFlat ? '#0284c7' : '#ca8a04';
+    ctx.beginPath();
+    ctx.roundRect(pillX, sy + 4, halfW, swH - 8, 13);
+    ctx.fill();
+
+    // Left Option: 3D BLOCK
+    ctx.fillStyle = !isFlat ? '#ffffff' : '#94a3b8';
+    ctx.font = '900 10.5px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🧱 3D BLOCK', sx + 4 + halfW / 2, sy + 20);
+
+    // Right Option: FLAT FLOOR
+    ctx.fillStyle = isFlat ? '#ffffff' : '#94a3b8';
+    ctx.fillText('🟫 FLAT FLOOR', sx + halfW + 4 + halfW / 2, sy + 20);
+
+    // Shortcut hint badge directly above switch
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.beginPath();
+    ctx.roundRect(W / 2 - 96, sy - 18, 192, 15, 6);
+    ctx.fill();
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillText('Press [T] or [Tab] to Toggle Mode', W / 2, sy - 7);
+}
+
 export function renderHudFrame(now) {
     if (!hudCtx || !hudCanvas) return;
     const W = hudCanvas.width;
@@ -154,7 +198,7 @@ export function renderHudFrame(now) {
     ctx.strokeStyle = teacher ? '#4ade80' : '#facc15';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.roundRect(12, 10, 325, 66, 8);
+    ctx.roundRect(12, 10, 345, 66, 8);
     ctx.fill();
     ctx.stroke();
 
@@ -167,7 +211,8 @@ export function renderHudFrame(now) {
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 11px sans-serif';
     const flyText = lp.isFlying ? ` • 🪽 FLYING (${Math.ceil(lp.flightTimer)}s)` : '';
-    ctx.fillText(`🏫 Builders Online: ${builderCount}${flyText}`, 22, 47);
+    const clearHint = teacher && builderCount > 1 ? ' • [K] Clear Ghosts' : '';
+    ctx.fillText(`🏫 Builders Online: ${builderCount}${flyText}${clearHint}`, 22, 47);
 
     ctx.fillStyle = zone.color;
     ctx.font = '900 11px sans-serif';
@@ -184,16 +229,16 @@ export function renderHudFrame(now) {
     ctx.fillStyle = '#38bdf8';
     ctx.font = '900 11px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('WASD: Move • Space: Jump • L-Click: Break • R-Click/E: Place', W - 22, 28);
+    ctx.fillText('WASD: Move • Space: Jump • L-Click/E: Build • R-Click/Q: Break', W - 22, 28);
 
     const undoCount = Array.isArray(ncState.world.undoStack) ? ncState.world.undoStack.length : 0;
     ctx.fillStyle = undoCount > 0 ? '#facc15' : '#94a3b8';
     ctx.font = '900 11.5px sans-serif';
-    ctx.fillText(`↩️ Press [Z] to Undo Last Block (${undoCount} saved)`, W - 22, 46);
+    ctx.fillText(`↩️ Press [Z] to Undo Last Build (${undoCount} saved)`, W - 22, 46);
 
     ctx.fillStyle = '#e2e8f0';
     ctx.font = 'bold 10px sans-serif';
-    ctx.fillText('🎹 Black Keys: Prefabs • 🔍 [-/+] Zoom Map', W - 22, 62);
+    ctx.fillText('🔄 [T] Flat/Block Mode • 🎹 Black Keys: Prefabs • 🔍 [-/+] Zoom', W - 22, 62);
 
     if (ncState.toastMessage && now < ncState.toastMessage.expiresAt) {
         const msg = ncState.toastMessage;
@@ -201,7 +246,7 @@ export function renderHudFrame(now) {
         ctx.strokeStyle = msg.color;
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.roundRect(W / 2 - 210, 78, 420, 32, 8);
+        ctx.roundRect(W / 2 - 220, 78, 440, 32, 8);
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = msg.color;
@@ -211,6 +256,7 @@ export function renderHudFrame(now) {
     }
 
     drawSatelliteMinimap(ctx, H);
+    drawBuildModeToggleSwitch(ctx, W, H);
 
     // 13 Slots Hotbar
     const slots = 13;

@@ -1,151 +1,140 @@
 // js/games/noteCraft/network.js
 import { ncState } from './state.js';
-import { updateInventory } from './economy.js';
 
-let worldBlocksUnsub = null;
-let worldPlayersUnsub = null;
-let activeWorldPath = null;
-let activeWalletPath = null;
+let roomUnsubscribe = null;
+let lastPosSyncAt = 0;
 
-function sanitizeFirebaseKey(str) {
-    return String(str || 'Student')
-        .trim()
-        .replace(/[.#$\[\]\/]/g, '_')
-        .replace(/\s+/g, '_')
-        .toLowerCase();
+function getWorldBasePath(worldId) {
+    return `pianopad_tournaments/notecraft_worlds_${worldId || 'school_campus_main'}`;
 }
 
-export async function connectNoteCraftNetwork(worldId, playerMeta) {
+export async function connectNoteCraftNetwork(worldId, localPlayerInfo) {
     disconnectNoteCraftNetwork();
+    if (!window.firebaseDb || !window.firebaseRef) return;
 
-    if (!window.firebaseDb || !window.firebaseRef) {
-        if (ncState.localPlayer.noteCoins <= 0) ncState.localPlayer.noteCoins = 150;
-        updateInventory();
-        return;
-    }
-
-    const { onValue, update, get } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-
-    const cleanWorldId = sanitizeFirebaseKey(worldId || 'school_campus_main');
-    const studentKey = sanitizeFirebaseKey(playerMeta.name || playerMeta.id);
-
-    // Stored inside pianopad_tournaments so existing Firebase security rules allow read/write
-    activeWorldPath = `pianopad_tournaments/notecraft_worlds_${cleanWorldId}`;
-    activeWalletPath = `pianopad_tournaments/notecraft_wallets/${studentKey}`;
-
-    // 1. Load persistent student wallet (NoteCoins + Mastered Songs)
     try {
-        const walletRef = window.firebaseRef(window.firebaseDb, activeWalletPath);
-        const snap = await get(walletRef);
-        const walletData = snap.val();
+        const { onValue, set, update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+        const basePath = getWorldBasePath(worldId);
 
-        if (walletData) {
-            ncState.localPlayer.noteCoins = Number(walletData.noteCoins || 0);
-            ncState.localPlayer.masteredSongs = Array.isArray(walletData.masteredSongs)
-                ? walletData.masteredSongs
-                : Object.values(walletData.masteredSongs || {});
-        } else {
-            ncState.localPlayer.noteCoins = 150;
-            ncState.localPlayer.masteredSongs = [];
-            await window.firebaseSet(walletRef, {
-                name: playerMeta.name || 'Student',
-                noteCoins: 150,
-                masteredSongs: [],
-                updatedAt: Date.now()
-            });
-        }
-    } catch (e) {
-        console.warn("Wallet sync fallback:", e);
-        if (ncState.localPlayer.noteCoins <= 0) ncState.localPlayer.noteCoins = 150;
-    }
-    updateInventory();
-
-    // 2. Subscribe to persistent shared school world blocks
-    try {
-        const blocksRef = window.firebaseRef(window.firebaseDb, `${activeWorldPath}/blocks`);
-        worldBlocksUnsub = onValue(blocksRef, (snapshot) => {
-            const serverBlocks = snapshot.val() || {};
-            ncState.world.deltas = serverBlocks;
+        // 1. Load & listen to persistent campus blocks
+        const blocksRef = window.firebaseRef(window.firebaseDb, `${basePath}/blocks`);
+        const unsubBlocks = onValue(blocksRef, (snapshot) => {
+            if (!ncState.active) return;
+            const data = snapshot.val() || {};
+            ncState.world.deltas = data;
             ncState.world.dirty = true;
         });
 
-        // 3. Register local player presence & auto-cleanup on disconnect
-        const myPlayerRef = window.firebaseRef(window.firebaseDb, `${activeWorldPath}/players/${playerMeta.id}`);
-        await window.firebaseSet(myPlayerRef, {
-            id: playerMeta.id,
-            name: playerMeta.name || 'Builder',
-            avatar: playerMeta.avatar || '🏃',
+        // 2. Register local builder presence (auto-removed on tab close)
+        const myPlayerRef = window.firebaseRef(window.firebaseDb, `${basePath}/players/${localPlayerInfo.id}`);
+        await set(myPlayerRef, {
+            id: localPlayerInfo.id,
+            name: localPlayerInfo.name,
+            avatar: localPlayerInfo.avatar,
             x: Number(ncState.localPlayer.x.toFixed(2)),
             y: Number(ncState.localPlayer.y.toFixed(2)),
             z: Number(ncState.localPlayer.z.toFixed(2)),
             yaw: Number(ncState.localPlayer.yaw.toFixed(3)),
-            isFlying: false,
-            lastSeen: Date.now()
+            updatedAt: Date.now()
         });
         if (window.firebaseOnDisconnect) {
             window.firebaseOnDisconnect(myPlayerRef).remove();
         }
 
-        // 4. Listen for classmates moving around the school campus
-        const playersRef = window.firebaseRef(window.firebaseDb, `${activeWorldPath}/players`);
-        worldPlayersUnsub = onValue(playersRef, (snapshot) => {
+        // 3. Listen to classmate avatars (ignore stale/orphaned records older than 25s)
+        const playersRef = window.firebaseRef(window.firebaseDb, `${basePath}/players`);
+        const unsubPlayers = onValue(playersRef, (snapshot) => {
+            if (!ncState.active) return;
             const allPlayers = snapshot.val() || {};
             const now = Date.now();
             const filtered = {};
-            for (const [pid, pData] of Object.entries(allPlayers)) {
-                if (pid === playerMeta.id || !pData) continue;
-                if (pData.lastSeen && (now - pData.lastSeen) > 45000) continue;
-                filtered[pid] = pData;
+            for (const [pid, pObj] of Object.entries(allPlayers)) {
+                if (pid === localPlayerInfo.id || !pObj) continue;
+                if (pObj.updatedAt && (now - pObj.updatedAt) > 25000) continue;
+                filtered[pid] = pObj;
             }
             ncState.remotePlayers = filtered;
         });
 
-        // 5. Periodic position broadcast
+        // 4. Periodic position broadcast (8 Hz)
         ncState.syncIntervalId = setInterval(() => {
-            if (!window.firebaseDb || !activeWorldPath) return;
+            if (!ncState.active || !window.firebaseDb) return;
+            const now = performance.now();
+            if (now - lastPosSyncAt < 110) return;
+            lastPosSyncAt = now;
+
             const lp = ncState.localPlayer;
             update(myPlayerRef, {
                 x: Number(lp.x.toFixed(2)),
                 y: Number(lp.y.toFixed(2)),
                 z: Number(lp.z.toFixed(2)),
                 yaw: Number(lp.yaw.toFixed(3)),
-                isFlying: Boolean(lp.isFlying),
-                lastSeen: Date.now()
+                updatedAt: Date.now()
             }).catch(() => {});
-        }, 150);
-    } catch (e) {
-        console.warn("NoteCraft multiplayer sync notice:", e);
+        }, 125);
+
+        roomUnsubscribe = () => {
+            unsubBlocks();
+            unsubPlayers();
+            if (window.firebaseDb && window.firebaseRef) {
+                set(myPlayerRef, null).catch(() => {});
+            }
+        };
+    } catch (err) {
+        console.warn('NoteCraft Firebase sync unavailable, running in local offline sandbox:', err);
+    }
+}
+
+export async function clearRemoteBuilders() {
+    ncState.remotePlayers = {};
+    if (!window.firebaseDb || !window.firebaseRef) return;
+    try {
+        const { set } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+        const basePath = getWorldBasePath(ncState.worldId);
+        const playersRef = window.firebaseRef(window.firebaseDb, `${basePath}/players`);
+        const lp = ncState.localPlayer;
+        // Overwrite players node so ONLY the active teacher remains
+        await set(playersRef, {
+            [lp.id]: {
+                id: lp.id,
+                name: lp.name,
+                avatar: lp.avatar,
+                x: Number(lp.x.toFixed(2)),
+                y: Number(lp.y.toFixed(2)),
+                z: Number(lp.z.toFixed(2)),
+                yaw: Number(lp.yaw.toFixed(3)),
+                updatedAt: Date.now()
+            }
+        });
+    } catch (err) {
+        console.warn('Could not purge remote builders:', err);
     }
 }
 
 export async function syncBlockChange(change) {
-    if (!change || !window.firebaseDb || !activeWorldPath) return;
+    if (!change || !window.firebaseDb || !window.firebaseRef) return;
     try {
         const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-        const blocksRef = window.firebaseRef(window.firebaseDb, `${activeWorldPath}/blocks`);
-        await update(blocksRef, {
-            [change.key]: change.blockId
-        });
-    } catch (e) {
-        console.warn("Block sync error:", e);
+        const basePath = getWorldBasePath(ncState.worldId);
+        const blocksRef = window.firebaseRef(window.firebaseDb, `${basePath}/blocks`);
+        await update(blocksRef, { [change.key]: change.blockId });
+    } catch (err) {
+        console.warn('Block sync error:', err);
     }
 }
 
 export async function saveStudentWallet(studentName) {
-    if (!window.firebaseDb) return;
-    const path = activeWalletPath || `pianopad_tournaments/notecraft_wallets/${sanitizeFirebaseKey(studentName)}`;
+    if (!studentName || !window.firebaseDb || !window.firebaseRef) return;
     try {
         const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-        const walletRef = window.firebaseRef(window.firebaseDb, path);
+        const safeKey = String(studentName).trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+        const walletRef = window.firebaseRef(window.firebaseDb, `pianopad_notecraft_wallets/${safeKey}`);
         await update(walletRef, {
-            name: studentName || 'Student',
             noteCoins: ncState.localPlayer.noteCoins,
             masteredSongs: ncState.localPlayer.masteredSongs,
             updatedAt: Date.now()
         });
-    } catch (e) {
-        console.warn("Wallet save error:", e);
-    }
+    } catch (err) {}
 }
 
 export function disconnectNoteCraftNetwork() {
@@ -153,14 +142,9 @@ export function disconnectNoteCraftNetwork() {
         clearInterval(ncState.syncIntervalId);
         ncState.syncIntervalId = null;
     }
-    if (worldBlocksUnsub) {
-        worldBlocksUnsub();
-        worldBlocksUnsub = null;
-    }
-    if (worldPlayersUnsub) {
-        worldPlayersUnsub();
-        worldPlayersUnsub = null;
+    if (typeof roomUnsubscribe === 'function') {
+        roomUnsubscribe();
+        roomUnsubscribe = null;
     }
     ncState.remotePlayers = {};
-    activeWorldPath = null;
 }
