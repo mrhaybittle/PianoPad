@@ -38,6 +38,7 @@ export const ncState = {
     remotePlayers: {},
 
     world: {
+        preset: campusPreset,
         deltas: {},
         undoStack: [],
         dirty: true,
