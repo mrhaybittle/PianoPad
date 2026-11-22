@@ -1443,9 +1443,9 @@ async function startNextKnockoutRound() {
     const modeSel = document.getElementById('ko-mode-select');
     const modeVal = modeSel ? modeSel.value : 'solo';
 
-    const minPlayers = modeVal === 'notecraft'
+    const minPlayers = (modeVal === 'notecraft' || modeVal === 'lasertag')
         ? 0
-        : ((modeVal === 'namethattune' || modeVal === 'lasertag') ? 1 : 2);
+        : (modeVal === 'namethattune' ? 1 : 2);
     if (playerIds.length < minPlayers) {
         alert(`At least ${minPlayers} student(s) must join the room before starting Round 1!`);
         return;
@@ -1591,7 +1591,30 @@ function handleKnockoutHostUpdate(data) {
         }
         
         if (mode === 'lasertag') {
-            bracketDiv.innerHTML = `<div style="padding:20px; font-size:1.1rem; color:#38bdf8; font-weight:900; text-align:center;">🛸 Laser Tag Arena is Live! (Monitoring matches...)</div>`;
+            statusBanner.textContent = `🛸 Neon Laser Tag Arena is Live! (${ranked.length} players in lobby)`;
+            bracketDiv.innerHTML = `
+                <div style="grid-column: 1 / -1; padding: 20px; background: #141824; border: 1px solid #38bdf8; border-radius: 10px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+                    <div style="font-size: 1.1rem; color: #38bdf8; font-weight: 900;">
+                        🛸 Laser Tag Arena is Live! (Monitoring matches...)
+                    </div>
+                    <button type="button" id="btn-host-enter-lasertag" class="btn-success" style="padding: 10px 20px; font-size: 0.95rem; font-weight: 800; background: #0284c7; box-shadow: 0 0 15px rgba(56,189,248,0.45);">
+                        🔫 Enter 3D Arena (Join as Host)
+                    </button>
+                </div>
+            `;
+            document.getElementById('btn-host-enter-lasertag').onclick = () => {
+                document.getElementById('knockout-modal').classList.remove('open');
+                const resModal = document.getElementById('game-results-modal');
+                if (resModal) resModal.classList.remove('open');
+                const arcadeHub = document.getElementById('arcade-hub');
+                if (arcadeHub) arcadeHub.classList.remove('open');
+                const tugHud = document.getElementById('tug-of-war-hud');
+                if (tugHud) tugHud.style.display = 'none';
+
+                if (window.launchLaserTag) {
+                    window.launchLaserTag(koState.knockoutRoomCode, true);
+                }
+            };
             return;
         }
 
