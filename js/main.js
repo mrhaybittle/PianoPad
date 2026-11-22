@@ -2705,7 +2705,7 @@ function initApp() {
             playbackStartTime = performance.now();
             lastFrameTime = performance.now();
             document.getElementById('status').textContent = statusMsg;
-            requestAnimationFrame(renderLoop);
+            animationFrameId = requestAnimationFrame(renderLoop);
         }
     });
 
