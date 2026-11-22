@@ -1945,6 +1945,7 @@ function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pend
 function renderLoop(now) {
     if (!isPlaying || isPaused) return;
 
+    const dt = Math.min((now - lastFrameTime) / 1000, 0.1) || 0.016;
     lastFrameTime = now;
 
     let effectiveElapsed = 0;
@@ -2177,13 +2178,14 @@ function renderLoop(now) {
     }
 
     if (confettiParticles.length > 0) {
+        const speedScale = dt * 60;
         for (let i = confettiParticles.length - 1; i >= 0; i--) {
             let p = confettiParticles[i];
-            p.x += p.vx;
-            p.y += p.vy;
-            p.vy += 0.3;
-            p.rot += p.rotSpeed;
-            p.life -= 0.015;
+            p.x += p.vx * speedScale;
+            p.y += p.vy * speedScale;
+            p.vy += 0.3 * speedScale;
+            p.rot += p.rotSpeed * speedScale;
+            p.life -= 0.015 * speedScale;
 
             if (p.life <= 0) {
                 confettiParticles.splice(i, 1);
