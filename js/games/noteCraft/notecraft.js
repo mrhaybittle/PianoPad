@@ -188,8 +188,8 @@ function attachInputListeners(containerEl) {
         const canvas = document.getElementById('notecraft-canvas');
         if (!canvas || e.target !== canvas) return;
         if (document.pointerLockElement !== canvas) { canvas.requestPointerLock?.(); return; }
-        if (e.button === 0) handleBreakBlockAction();
-        else if (e.button === 2) handlePlaceBlockAction();
+        if (e.button === 0) handlePlaceBlockAction();
+        else if (e.button === 2) handleBreakBlockAction();
     };
 
     mouseMoveHandler = (e) => {
