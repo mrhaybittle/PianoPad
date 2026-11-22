@@ -1,4 +1,3 @@
-// js/miniGames.js
 import { initAudio, playErrorClackSound, playTone } from './audio.js';
 import { getNoteFrequency, noteToPitch, pitchToNote, parsePianoPad, autoTransposeSong } from './musicTheory.js';
 import { APPS_SCRIPT_URL } from './config.js';
