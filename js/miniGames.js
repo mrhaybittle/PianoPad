@@ -167,6 +167,15 @@ const gameBridgeHelper = {
         document.getElementById('single-bar-graph').style.display = 'flex';
         document.getElementById('multi-bar-graph').style.display = 'none';
 
+        // --- NEW FIX: Clean up redundant Play Again buttons from the parent app ---
+        const modalButtons = document.querySelectorAll('#game-results-modal button');
+        modalButtons.forEach(btn => {
+            if (btn.id !== 'btn-battle-again' && btn.textContent.toLowerCase().includes('play again')) {
+                btn.style.display = 'none';
+            }
+        });
+        // --------------------------------------------------------------------------
+
         const battleAgainBtn = document.getElementById('btn-battle-again');
         if (battleAgainBtn) {
             if (typeof resolvedReplay === 'function') {
@@ -1049,6 +1058,15 @@ function finishSprintRace() {
     document.getElementById('badge-container').innerHTML = '';
     document.getElementById('single-bar-graph').style.display = 'flex';
     document.getElementById('multi-bar-graph').style.display = 'none';
+
+    // --- FIX FOR DUPLICATE "PLAY AGAIN" BUTTONS ---
+    const modalButtons = document.querySelectorAll('#game-results-modal button');
+    modalButtons.forEach(btn => {
+        if (btn.id !== 'btn-battle-again' && btn.textContent.toLowerCase().includes('play again')) {
+            btn.style.display = 'none';
+        }
+    });
+    // ----------------------------------------------
 
     const battleAgainBtn = document.getElementById('btn-battle-again');
     if (battleAgainBtn) {
