@@ -475,45 +475,24 @@ function spawnObstacleWave() {
     const secondLane = shuffled[1];
     const thirdLane = shuffled[2];
 
-    // Lane 1: Guaranteed Fair Path (Jumpable Hurdle or Duckable High Barrier)
-    if (Math.random() < 0.5) {
-        obstacles.push({
-            type: 'hurdle',
+    // Lane 1: Guaranteed Fair Path (Jumpable Hurdle only)
+    obstacles.push({
+        type: 'hurdle',
+        lane: safeLane,
+        zFront: 1.05,
+        zBack: 1.09,
+        height: 18,
+        minClearY: 0
+    });
+    for (let c = 0; c < 3; c++) {
+        coinItems.push({
             lane: safeLane,
-            zFront: 1.05,
-            zBack: 1.09,
-            height: 18,
-            minClearY: 0
+            z: 0.96 + c * 0.09,
+            yHeight: c === 1 ? 30 : 16,
+            noteLetter: c === 1 ? activeTargetNote : null,
+            spin: c * 0.5,
+            collected: false
         });
-        for (let c = 0; c < 3; c++) {
-            coinItems.push({
-                lane: safeLane,
-                z: 0.96 + c * 0.09,
-                yHeight: c === 1 ? 30 : 16,
-                noteLetter: c === 1 ? activeTargetNote : null,
-                spin: c * 0.5,
-                collected: false
-            });
-        }
-    } else {
-        obstacles.push({
-            type: 'highGate',
-            lane: safeLane,
-            zFront: 1.05,
-            zBack: 1.09,
-            height: 44,
-            minClearY: 16
-        });
-        for (let c = 0; c < 3; c++) {
-            coinItems.push({
-                lane: safeLane,
-                z: 0.96 + c * 0.09,
-                yHeight: 6,
-                noteLetter: c === 1 ? activeTargetNote : null,
-                spin: c * 0.5,
-                collected: false
-            });
-        }
     }
 
     // Lane 2: Full 3D Subway Train (some with yellow boarding ramps!)
@@ -764,13 +743,6 @@ function gameLoop(now, bridge) {
                         triggerCrash(bridge);
                         break;
                     }
-                } else if (obs.type === 'highGate') {
-                    const isRolling = player.rollTimer > 0 && player.yHeight <= 4;
-                    const jumpedOver = player.yHeight >= obs.height - 4;
-                    if (!isRolling && !jumpedOver) {
-                        triggerCrash(bridge);
-                        break;
-                    }
                 }
             }
 
@@ -811,7 +783,6 @@ function gameLoop(now, bridge) {
             const o = item.data;
             if (o.type === 'train') draw3DSubwayTrain(ctx, o, W, H);
             else if (o.type === 'hurdle') draw3DHurdleBarrier(ctx, o, W, H);
-            else if (o.type === 'highGate') draw3DHighDuckGate(ctx, o, W, H);
         } else {
             draw3DGoldCoin(ctx, item.data, W, H);
         }
@@ -1223,37 +1194,6 @@ function draw3DHurdleBarrier(ctx, obs, W, H) {
         ctx.font = `900 ${Math.max(8, Math.round(10 * base.scale))}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.fillText('▲ JUMP', base.x, top.y - 3 * base.scale);
-    }
-    ctx.restore();
-}
-
-function draw3DHighDuckGate(ctx, obs, W, H) {
-    const base = projectPoint(obs.lane, obs.zFront, 0, W, H);
-    const top = projectPoint(obs.lane, obs.zFront, obs.height, W, H);
-    const bottomBeam = projectPoint(obs.lane, obs.zFront, obs.minClearY + 4, W, H);
-    const halfW = 35 * base.scale;
-    const beamH = Math.max(5, bottomBeam.y - top.y);
-
-    ctx.save();
-    ctx.fillStyle = '#64748b';
-    ctx.fillRect(base.x - halfW, top.y, 5 * base.scale, base.groundY - top.y);
-    ctx.fillRect(base.x + halfW - 5 * base.scale, top.y, 5 * base.scale, base.groundY - top.y);
-
-    ctx.fillStyle = '#ef4444';
-    ctx.fillRect(base.x - halfW, top.y, halfW * 2, beamH);
-    ctx.fillStyle = '#ffffff';
-    for (let sx = -halfW + 6 * base.scale; sx < halfW - 8 * base.scale; sx += 16 * base.scale) {
-        ctx.fillRect(base.x + sx, top.y, 8 * base.scale, beamH);
-    }
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 1.6;
-    ctx.strokeRect(base.x - halfW, top.y, halfW * 2, beamH);
-
-    if (obs.zFront < 0.65 && halfW > 18) {
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = `900 ${Math.max(8, Math.round(10 * base.scale))}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText('▼ ROLL', base.x, bottomBeam.y + 10 * base.scale);
     }
     ctx.restore();
 }
