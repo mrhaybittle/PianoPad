@@ -1,5 +1,6 @@
 // js/games/noteCraft/state.js
 import { CHUNK_HEIGHT } from './constants.js';
+import campusPreset from './campusPreset.js';
 
 export const ncState = {
     active: false,
