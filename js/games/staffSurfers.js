@@ -212,7 +212,7 @@ export function startStaffSurfers(bridge) {
         });
     }
 
-    document.getElementById('status').textContent = '🚇 Scale Surfers: Oct 1 = Left | Oct 2 = Center | Oct 3 = Right | Black Key = JUMP | Same Lane = ROLL!';
+    document.getElementById('status').textContent = '🚇 Scale Surfers: A = Left | B = Center | C = Right | Other Keys = JUMP | Same Lane Key = ROLL!';
     
     // Set phase to instructions and show the popup instead of starting immediately
     gamePhase = 'instructions'; 
@@ -266,12 +266,12 @@ function showInstructionsPopup(bridge) {
             ">Scale Surfers</h2>
         </div>
         <div style="background: rgba(0,0,0,0.3); padding: 16px; border-radius: 8px; text-align: left; font-size: 15px; line-height: 1.6; margin-bottom: 20px;">
-            <div style="margin-bottom: 8px;"><b>⬅️ LEFT TRACK:</b> Play Octave 1</div>
-            <div style="margin-bottom: 8px;"><b>⏺️ CENTER TRACK:</b> Play Octave 2</div>
-            <div style="margin-bottom: 8px;"><b>➡️ RIGHT TRACK:</b> Play Octave 3</div>
+            <div style="margin-bottom: 8px;"><b>⬅️ LEFT TRACK:</b> Play <b>A</b></div>
+            <div style="margin-bottom: 8px;"><b>⏺️ CENTER TRACK:</b> Play <b>B</b></div>
+            <div style="margin-bottom: 8px;"><b>➡️ RIGHT TRACK:</b> Play <b>C</b></div>
             <hr style="border-color: #334155; margin: 12px 0;">
-            <div style="margin-bottom: 8px;"><b>⬆️ JUMP:</b> Play ANY Black Key</div>
-            <div><b>⬇️ ROLL:</b> Re-play a White Key in your lane</div>
+            <div style="margin-bottom: 8px;"><b>⬆️ JUMP:</b> Play ANY Other Key (D, E, F, G, or Sharps)</div>
+            <div><b>⬇️ ROLL:</b> Re-play your current lane's key (A, B, or C)</div>
         </div>
         <div style="color: #22c55e; font-weight: 900; margin-bottom: 20px; font-size: 14px;">
             🎯 Hit the Target Notes to earn Jetpacks & Hoverboards!
@@ -303,45 +303,49 @@ function showInstructionsPopup(bridge) {
 export function handleStaffSurfersInput(noteStr, bridge) {
     if (gamePhase !== 'playing') return;
 
-    const match = (noteStr || '').trim().toLowerCase().match(/^([a-g])(#?)([0-9]+)$/);
-    if (!match) return;
+    const raw = (noteStr || '').trim();
+    if (!raw) return;
 
-    const letter = match[1].toUpperCase();
-    const isSharp = match[2] === '#';
-    const octave = parseInt(match[3], 10);
+    // Parse musical note format (e.g., "C4", "A#2") or raw single letter
+    const match = raw.toLowerCase().match(/^([a-g])(#?)([0-9]*)$/);
+    const letter = match ? match[1].toUpperCase() : raw.toUpperCase();
+    const isSharp = match ? match[2] === '#' : false;
+    const octave = match && match[3] ? parseInt(match[3], 10) : '';
     lastPlayedLabel = `${letter}${isSharp ? '#' : ''}${octave}`;
 
-    // Map Octave 1 -> Left (-1), Octave 2 -> Center (0), Octave 3+ -> Right (+1)
-    let targetLane = 0;
-    if (octave <= 1) targetLane = -1;
-    else if (octave === 2) targetLane = 0;
-    else targetLane = 1;
+    // Map A -> Left (-1), B -> Center (0), C -> Right (+1); any other key -> JUMP
+    const isTrackKey = !isSharp && (letter === 'A' || letter === 'B' || letter === 'C');
 
-    const laneChanged = targetLane !== player.lane;
+    if (isTrackKey) {
+        let targetLane = 0;
+        if (letter === 'A') targetLane = -1;
+        else if (letter === 'B') targetLane = 0;
+        else if (letter === 'C') targetLane = 1;
 
-    if (laneChanged) {
-        player.prevLane = player.lane;
-        player.lane = targetLane;
-        playWhooshSound(targetLane === 1 ? 1.25 : (targetLane === -1 ? 0.85 : 1.0));
-        spawnBurstParticles(player.visualLane, player.yHeight + 12, '#38bdf8', 6);
-    }
+        const laneChanged = targetLane !== player.lane;
 
-    // Any Black Key triggers JUMP (works both in current lane and while switching lanes!)
-    if (isSharp && player.jetpackTimer <= 0) {
-        if (!player.isJumping) {
+        if (laneChanged) {
+            player.prevLane = player.lane;
+            player.lane = targetLane;
+            playWhooshSound(targetLane === 1 ? 1.25 : (targetLane === -1 ? 0.85 : 1.0));
+            spawnBurstParticles(player.visualLane, player.yHeight + 12, '#38bdf8', 6);
+        } else if (player.jetpackTimer <= 0) {
+            // Re-tapping the SAME lane key triggers ROLL / DUCK (or fast-drop if mid-air)
+            if (player.isJumping && player.yHeight > 6) {
+                player.vy = -195;
+            }
+            player.rollTimer = 0.65;
+            playWhooshSound(0.75);
+        }
+    } else {
+        // Any other key triggers JUMP
+        if (player.jetpackTimer <= 0 && !player.isJumping) {
             player.isJumping = true;
             player.rollTimer = 0;
             player.vy = 152;
             playWhooshSound(1.4);
             spawnBurstParticles(player.visualLane, player.yHeight, '#facc15', 8);
         }
-    } else if (!laneChanged && player.jetpackTimer <= 0) {
-        // Re-tapping a White Key in the SAME lane triggers ROLL / DUCK (or fast-drop if mid-air)
-        if (player.isJumping && player.yHeight > 6) {
-            player.vy = -195;
-        }
-        player.rollTimer = 0.65;
-        playWhooshSound(0.75);
     }
 
     // Musical Challenge: Hit the active target note letter for bonus score, Hoverboard & Jetpack!
@@ -979,9 +983,9 @@ function drawSubwayBackdropAndTracks(ctx, W, H) {
 
     // Bottom Track Control Strip
     const guideItems = [
-        { lane: -1, text: 'OCT 1 (Z–M) • LEFT TRACK', active: player.lane === -1 },
-        { lane: 0, text: 'OCT 2 (,–T) • CENTER TRACK', active: player.lane === 0 },
-        { lane: 1, text: 'OCT 3 (Y–P) • RIGHT TRACK', active: player.lane === 1 }
+        { lane: -1, text: 'KEY A • LEFT TRACK', active: player.lane === -1 },
+        { lane: 0, text: 'KEY B • CENTER TRACK', active: player.lane === 0 },
+        { lane: 1, text: 'KEY C • RIGHT TRACK', active: player.lane === 1 }
     ];
     guideItems.forEach(g => {
         const gp = projectPoint(g.lane, -0.02, 0, W, H);
