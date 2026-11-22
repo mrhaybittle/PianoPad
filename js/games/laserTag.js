@@ -1756,20 +1756,24 @@ function gameLoop(now, bridge) {
             }
         }
 
-        // Musical Challenge Proximity
+        // Musical Challenge Beacons & Proximity
         lp.nearChallengeNode = null;
         if (gameState.challengeNodes) {
             for (const node of gameState.challengeNodes) {
-                if (node.active && Math.hypot(lp.x - node.x, lp.y - node.y) < 45) {
-                    lp.nearChallengeNode = node;
-                    // Purple sparkle effect to mark the challenge location
-                    if (Math.random() < 0.08) spawn3DExplosion(node.x, node.y, '#a855f7', 3);
+                if (node.active) {
+                    // 1. BEACON EFFECT: Spawns a constant glowing purple/gold fountain visible from far away
+                    if (Math.random() < 0.35) spawn3DExplosion(node.x, node.y, '#a855f7', 4);
+                    if (Math.random() < 0.15) spawn3DExplosion(node.x, node.y, '#facc15', 2);
                     
-                    const statusEl = document.getElementById('status');
-                    if (statusEl && node.currentStep === 0) {
-                        statusEl.textContent = `🎸 ${node.name} CHALLENGE: Play [${node.sequence.join(', ')}] for 2X Rainbow Lasers!`;
+                    // 2. PROXIMITY CHECK: Trigger the UI only when you walk into the fountain
+                    if (Math.hypot(lp.x - node.x, lp.y - node.y) < 45) {
+                        lp.nearChallengeNode = node;
+                        
+                        const statusEl = document.getElementById('status');
+                        if (statusEl && node.currentStep === 0) {
+                            statusEl.textContent = `🎸 ${node.name} CHALLENGE: Play [${node.sequence.join(', ')}] for 2X Rainbow Lasers!`;
+                        }
                     }
-                    break;
                 } else if (!node.active && now >= node.respawnAt) {
                     node.active = true;
                     node.currentStep = 0;
