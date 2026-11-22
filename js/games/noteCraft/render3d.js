@@ -3,6 +3,13 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.m
 import { BLOCKS, PLAYER_EYE_HEIGHT } from './constants.js';
 import { ncState } from './state.js';
 import { WORLD_HALF_X, WORLD_HALF_Z, getBaseTerrainBlock, isBlockSolid } from './engine.js';
+import {
+  CAMPUS_META,
+  CAMPUS_BUILDINGS,
+  CAMPUS_STRUCTURES,
+  CAMPUS_ZONES,
+  CAMPUS_ROADS_AND_PARKING,
+} from './campusPreset.js';
 
 let renderer = null;
 let scene = null;
