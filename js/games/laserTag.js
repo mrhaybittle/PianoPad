@@ -35,6 +35,14 @@ import { renderSpectatorOverheadView, renderMinimapAndTopHud } from './laserTag/
 
 const MIDI_PITCH_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
+const MUSICAL_CHALLENGES = [
+    { name: "Wipeout", sequence: ['G', 'A#', 'B'] },
+    { name: "Eye of the Tiger", sequence: ['C', 'C', 'A#'] },
+    { name: "Mary Had A Little Lamb", sequence: ['E', 'D', 'C'] },
+    { name: "Shape of You", sequence: ['C', 'D#', 'C'] },
+    { name: "Top Gun Theme", sequence: ['C', 'G', 'G'] }
+];
+
 function clearAllHeldMovement() {
     gameState.physicallyHeldNotes.clear();
     gameState.heldMoveKeys.clear();
@@ -638,53 +646,25 @@ async function sendSpectatorDroneAlert(targetPlayerId, targetName, messageText) 
     const senderName = state.sessionStudentName || 'Spectator';
 
     // If target is a local Test Mode bot, update its state, explosion, and respawn immediately
-        const localBot = gameState.simulatedBots[bestTarget.id];
-        if (localBot) {
-            localBot.lastProcessedHit = hitEventId;
-            localBot.hitsTaken += 1;
-            localBot.lives = Math.max(0, 3 - localBot.hitsTaken);
+    const localBot = gameState.simulatedBots[targetPlayerId];
+    if (localBot) {
+        // Mocking hit handling if we wanted to hit the bot, but this is an alert logic.
+        // Assuming original code meant bestTarget.id. Skipping bestTarget since it's alert context.
+    }
 
-            if (localBot.lives <= 0) {
-                localBot.isAlive = false;
-                localBot.isInvulnerable = false;
-                spawn3DExplosion(localBot.x, localBot.y, '#ef4444', 36);
-            } else {
-                const oldBotX = localBot.x;
-                const oldBotY = localBot.y;
-                spawn3DExplosion(oldBotX, oldBotY, '#f97316', 24);
-                const respawn = getSafeSpawnPoint(oldBotX, oldBotY);
-                localBot.x = respawn.x;
-                localBot.y = respawn.y;
-                localBot.angle = Math.random() * Math.PI * 2;
-                localBot.invulnerableUntil = now + 800; // Short 0.8s grace in Test Mode instead of 3.5s
-                localBot.isInvulnerable = true;
+    try {
+        const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+        const basePath = `pianopad_tournaments/${gameState.activeRoomCode}/lasertag`;
+        const targetUpdates = {
+            spectatorAlert: {
+                id: `${gameState.localId}_${Date.now()}`,
+                text: messageText,
+                fromName: senderName,
+                timestamp: Date.now()
             }
-        }
-
-        try {
-            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-            const basePath = `pianopad_tournaments/${gameState.activeRoomCode}/lasertag`;
-            const targetUpdates = {
-                lastHitEvent: {
-                    id: hitEventId,
-                    byId: gameState.localId,
-                    byName: state.sessionStudentName || 'Opponent',
-                    pitch: tagLabel,
-                    eliminated: eliminated,
-                    timestamp: Date.now()
-                }
-            };
-            if (localBot) {
-                targetUpdates.x = Number(localBot.x.toFixed(1));
-                targetUpdates.y = Number(localBot.y.toFixed(1));
-                targetUpdates.angle = Number(localBot.angle.toFixed(3));
-                targetUpdates.lives = localBot.lives;
-                targetUpdates.hitsTaken = localBot.hitsTaken;
-                targetUpdates.isAlive = localBot.isAlive;
-                targetUpdates.isInvulnerable = localBot.isInvulnerable;
-            }
-            await update(window.firebaseRef(window.firebaseDb, `${basePath}/${bestTarget.id}`), targetUpdates);
-        } catch (e) {}
+        };
+        await update(window.firebaseRef(window.firebaseDb, `${basePath}/${targetPlayerId}`), targetUpdates);
+    } catch (e) {}
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
@@ -761,6 +741,7 @@ export function stopLaserTag() {
     gameState.activeDecoys = [];
     gameState.empWaveRings = [];
     gameState.simulatedBots = {};
+    gameState.challengeNodes = [];
     gameState.spectatorSelectedTarget = null;
     gameState.incomingAlertBanner = null;
     gameState.maxPeakPlayers = 1;
@@ -851,6 +832,23 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     lp.gearBannerFlash = 1.0;
 
     gameState.activeBeams = [];
+    
+    // Spawn 3 random musical challenge nodes around the arena
+    gameState.challengeNodes = [];
+    for (let i = 0; i < 3; i++) {
+        const cSpawn = getSafeSpawnPoint();
+        const chal = MUSICAL_CHALLENGES[Math.floor(Math.random() * MUSICAL_CHALLENGES.length)];
+        gameState.challengeNodes.push({
+            x: cSpawn.x, 
+            y: cSpawn.y, 
+            sequence: chal.sequence,
+            name: chal.name,
+            currentStep: 0,
+            active: true,
+            respawnAt: 0
+        });
+    }
+    
     gameState.worldExplosions = [];
     gameState.activeDecoys = [];
     gameState.empWaveRings = [];
@@ -1305,6 +1303,39 @@ async function executeSingleNoteAction(pitchClass, bridge) {
     const lp = gameState.localPlayer;
     if (gameState.gamePhase !== 'playing' || !lp.isAlive) return;
 
+    if (lp.nearChallengeNode && lp.nearChallengeNode.active) {
+        const node = lp.nearChallengeNode;
+        if (pitchClass === node.sequence[node.currentStep]) {
+            node.currentStep++;
+            playHitMarkerTick();
+            
+            if (node.currentStep >= node.sequence.length) {
+                // Challenge Complete: Grant 15 seconds of 2x Rainbow Lasers
+                node.active = false;
+                node.respawnAt = performance.now() + 30000; // 30s cooldown
+                lp.comboCount = 2; 
+                lp.comboExpiresAt = performance.now() + 15000; 
+                
+                playMedKitHealChime();
+                spawn3DExplosion(node.x, node.y, '#a855f7', 42);
+                const statusEl = document.getElementById('status');
+                if (statusEl) statusEl.textContent = `🔥 ${node.name} COMPLETE! Rainbow 2X Lasers active for 15s!`;
+            } else {
+                const statusEl = document.getElementById('status');
+                if (statusEl) statusEl.textContent = `🎵 Hit ${node.currentStep}/${node.sequence.length}! Next note: ${node.sequence[node.currentStep]}`;
+            }
+            return; // Consume the note so it doesn't fire a standard laser
+            
+        } else if (node.currentStep > 0 && pitchClass !== 'C' && pitchClass !== 'D' && pitchClass !== 'C#') {
+            // Wrong note breaks the streak (ignoring movement keys)
+            node.currentStep = 0;
+            playJamBuzzSound();
+            const statusEl = document.getElementById('status');
+            if (statusEl) statusEl.textContent = `❌ Wrong note! Challenge reset. Start with: ${node.sequence[0]}`;
+            return; 
+        }
+    }
+
     if (pitchClass === 'C' || pitchClass === 'D') {
         // Only hold-turn if the key is STILL pressed down right now (prevents stuck spinning on quick taps)
         if (isPitchStillPhysicallyHeld(pitchClass)) {
@@ -1722,6 +1753,27 @@ function gameLoop(now, bridge) {
                 spawn3DExplosion(med.x, med.y, '#f43f5e', 16);
                 const statusEl = document.getElementById('status');
                 if (statusEl) statusEl.textContent = `💖 MED-KIT COLLECTED! Shield restored to ${lp.lives} Lives!`;
+            }
+        }
+
+        // Musical Challenge Proximity
+        lp.nearChallengeNode = null;
+        if (gameState.challengeNodes) {
+            for (const node of gameState.challengeNodes) {
+                if (node.active && Math.hypot(lp.x - node.x, lp.y - node.y) < 45) {
+                    lp.nearChallengeNode = node;
+                    // Purple sparkle effect to mark the challenge location
+                    if (Math.random() < 0.08) spawn3DExplosion(node.x, node.y, '#a855f7', 3);
+                    
+                    const statusEl = document.getElementById('status');
+                    if (statusEl && node.currentStep === 0) {
+                        statusEl.textContent = `🎸 ${node.name} CHALLENGE: Play [${node.sequence.join(', ')}] for 2X Rainbow Lasers!`;
+                    }
+                    break;
+                } else if (!node.active && now >= node.respawnAt) {
+                    node.active = true;
+                    node.currentStep = 0;
+                }
             }
         }
 
