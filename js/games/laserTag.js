@@ -539,18 +539,19 @@ function updateSimulatedBots(dt) {
 
     for (const bot of botList) {
         const serverBot = gameState.remotePlayers[bot.id];
-        if (serverBot && serverBot.lastHitEvent && serverBot.lastHitEvent.id !== bot.lastProcessedHit) {
+       if (serverBot && serverBot.lastHitEvent && serverBot.lastHitEvent.id !== bot.lastProcessedHit) {
             bot.lastProcessedHit = serverBot.lastHitEvent.id;
             bot.hitsTaken += 1;
             bot.lives = Math.max(0, 3 - bot.hitsTaken);
             if (bot.lives <= 0) {
                 bot.isAlive = false;
-                spawn3DExplosion(bot.x, bot.y, '#ef4444', 24);
+                spawn3DExplosion(bot.x, bot.y, '#ef4444', 32);
             } else {
+                spawn3DExplosion(bot.x, bot.y, '#f97316', 22);
                 const respawn = getSafeSpawnPoint(bot.x, bot.y);
                 bot.x = respawn.x;
                 bot.y = respawn.y;
-                bot.invulnerableUntil = now + 3500;
+                bot.invulnerableUntil = now + 800;
             }
         }
 
@@ -636,18 +637,54 @@ async function sendSpectatorDroneAlert(targetPlayerId, targetName, messageText) 
     const state = window._laserTagBridge && window._laserTagBridge.getState ? window._laserTagBridge.getState() : {};
     const senderName = state.sessionStudentName || 'Spectator';
 
-    try {
-        const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
-        const basePath = `pianopad_tournaments/${gameState.activeRoomCode}/lasertag`;
-        await update(window.firebaseRef(window.firebaseDb, `${basePath}/${targetPlayerId}`), {
-            spectatorAlert: {
-                id: `${gameState.localId}_${Date.now()}_${Math.floor(Math.random() * 999)}`,
-                text: messageText,
-                fromName: senderName,
-                timestamp: Date.now()
+    // If target is a local Test Mode bot, update its state, explosion, and respawn immediately
+        const localBot = gameState.simulatedBots[bestTarget.id];
+        if (localBot) {
+            localBot.lastProcessedHit = hitEventId;
+            localBot.hitsTaken += 1;
+            localBot.lives = Math.max(0, 3 - localBot.hitsTaken);
+
+            if (localBot.lives <= 0) {
+                localBot.isAlive = false;
+                localBot.isInvulnerable = false;
+                spawn3DExplosion(localBot.x, localBot.y, '#ef4444', 36);
+            } else {
+                const oldBotX = localBot.x;
+                const oldBotY = localBot.y;
+                spawn3DExplosion(oldBotX, oldBotY, '#f97316', 24);
+                const respawn = getSafeSpawnPoint(oldBotX, oldBotY);
+                localBot.x = respawn.x;
+                localBot.y = respawn.y;
+                localBot.angle = Math.random() * Math.PI * 2;
+                localBot.invulnerableUntil = now + 800; // Short 0.8s grace in Test Mode instead of 3.5s
+                localBot.isInvulnerable = true;
             }
-        });
-    } catch (e) {}
+        }
+
+        try {
+            const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+            const basePath = `pianopad_tournaments/${gameState.activeRoomCode}/lasertag`;
+            const targetUpdates = {
+                lastHitEvent: {
+                    id: hitEventId,
+                    byId: gameState.localId,
+                    byName: state.sessionStudentName || 'Opponent',
+                    pitch: tagLabel,
+                    eliminated: eliminated,
+                    timestamp: Date.now()
+                }
+            };
+            if (localBot) {
+                targetUpdates.x = Number(localBot.x.toFixed(1));
+                targetUpdates.y = Number(localBot.y.toFixed(1));
+                targetUpdates.angle = Number(localBot.angle.toFixed(3));
+                targetUpdates.lives = localBot.lives;
+                targetUpdates.hitsTaken = localBot.hitsTaken;
+                targetUpdates.isAlive = localBot.isAlive;
+                targetUpdates.isInvulnerable = localBot.isInvulnerable;
+            }
+            await update(window.firebaseRef(window.firebaseDb, `${basePath}/${bestTarget.id}`), targetUpdates);
+        } catch (e) {}
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
