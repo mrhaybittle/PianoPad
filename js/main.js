@@ -356,17 +356,27 @@ document.getElementById('btn-game-try-again').addEventListener('click', () => {
     else if (title === "Combo Strike" && window.startComboStrike) window.startComboStrike();
     else if (title === "Finger Sprint" && window.openSprintModeSelector) window.openSprintModeSelector();
     else if (title === "Rhythm Echo" && window.launchRhythmEcho) window.launchRhythmEcho();
-    else if (title === "Note Name Sniper" && window.launchNoteSniper) window.launchNoteSniper();
+    else if ((title === "Note Name Sniper" || title === "Note Sniper") && window.launchNoteSniper) window.launchNoteSniper();
     else if (title === "Flappy Pitch" && window.launchFlappyPitch) window.launchFlappyPitch();
-    else if (title === "ClefHook") {
+    else if (title === "Gridiron Groove" && window.launchGridironGroove) window.launchGridironGroove();
+    else if (title === "Sharp Shooter" && window.launchSharpShooter) window.launchSharpShooter();
+    else if (title === "ClefHook" || title === "Clef Hook") {
         if (window.startClefHook) window.startClefHook();
         else if (window.launchClefHook) window.launchClefHook();
+        else playSong();
+    }
+    else if (title === "3D Ski Slalom" || title === "Ski Slalom") {
+        if (window.launchSkiSlalom) window.launchSkiSlalom();
+        else if (window.startSkiSlalom) window.startSkiSlalom();
         else playSong();
     }
     else if (title === "Staff Surfers" || title === "Scale Surfers") {
         if (window.launchStaffSurfers) window.launchStaffSurfers();
         else if (window.startStaffSurfers) window.startStaffSurfers();
         else playSong();
+    }
+    else if (typeof window.replayLastCustomMiniGame === 'function') {
+        window.replayLastCustomMiniGame();
     }
     else playSong();
 });
@@ -628,15 +638,11 @@ function unlockBonusSounds(reasonText) {
         optionEl.textContent = opt.text;
         instSelect.appendChild(optionEl);
     });
-
-    if (reasonText) {
-        document.getElementById('unlock-modal-text').innerHTML = reasonText;
-    }
-    document.getElementById('unlock-modal').classList.add('open');
 }
 
 function closeUnlockModal() {
-    document.getElementById('unlock-modal').classList.remove('open');
+    const m = document.getElementById('unlock-modal');
+    if (m) m.classList.remove('open');
 }
 
 function initMIDIHardware() {
@@ -1165,7 +1171,7 @@ async function calculateAndDisplayRank(accuracyNum) {
         songScores.push({ accuracy: accuracyNum, speed: currentSpeedNum });
 
         const titleLower = currentSongTitle.toLowerCase();
-        const isAscending = titleLower.includes('mystery note') || titleLower.includes('finger sprint') || titleLower.includes('note name sniper');
+        const isAscending = titleLower.includes('mystery note') || titleLower.includes('finger sprint') || titleLower.includes('note name sniper') || titleLower.includes('ski slalom');
 
         songScores.sort((a, b) => {
             if (a.accuracy !== b.accuracy) {
@@ -1195,13 +1201,13 @@ function showGameResultsPopUp() {
     const accuracy = totalHits > 0 ? (((perfectHits * 1.0 + earlyLateHits * 0.5) / totalHits) * 100).toFixed(1) : '0.0';
     const accuracyNum = parseFloat(accuracy);
     const songObj = songList.find(s => s.title.toLowerCase() === currentSongTitle.toLowerCase());
-awardNoteCraftSongReward(
-    currentSongTitle,
-    songObj ? songObj.difficulty : 'medium',
-    accuracyNum,
-    parseInt(speedSlider.value, 10) || 100,
-    sessionStudentName
-);
+    awardNoteCraftSongReward(
+        currentSongTitle,
+        songObj ? songObj.difficulty : 'medium',
+        accuracyNum,
+        parseInt(speedSlider.value, 10) || 100,
+        sessionStudentName
+    );
 
     document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
 
@@ -1353,12 +1359,6 @@ window.addEventListener('keydown', (e) => {
         document.getElementById('status').textContent = ' Room Login modal opened via "(" hotkey.';
         return;
     }
-window.addEventListener('keyup', (e) => {
-    const keyChar = e.key.toLowerCase();
-    if (keyboardMap[keyChar]) {
-        handleMiniGameNoteRelease(keyboardMap[keyChar]);
-    }
-});
 
     if (e.key === ')') {
         if (!isAuthorizedTeacher()) return;
@@ -1392,6 +1392,13 @@ window.addEventListener('keyup', (e) => {
     if (keyboardMap[keyChar] && !e.repeat) {
         const noteStr = keyboardMap[keyChar];
         playManualNote(noteStr);
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    const keyChar = e.key.toLowerCase();
+    if (keyboardMap[keyChar]) {
+        handleMiniGameNoteRelease(keyboardMap[keyChar]);
     }
 });
 
@@ -1585,7 +1592,16 @@ function playManualNote(noteStr) {
         playTone(freq, 0.4, 1.0);
     }
 
-    // Route note input to any active Arcade mini-game (Rhythm Echo, Note Sniper, Drop Dodge, Simon, Mystery, Sprint, Laser Tag)
+    // If the Game Results modal is open, trigger the Play Again button directly
+    if (gameResultsModal && gameResultsModal.classList.contains('open')) {
+        const playAgainBtn = document.getElementById('btn-game-try-again');
+        if (playAgainBtn && playAgainBtn.style.display !== 'none') {
+            playAgainBtn.click();
+            return;
+        }
+    }
+
+    // Route note input to any active Arcade mini-game
     if (handleMiniGameNoteInput(noteStr)) {
         return;
     }
@@ -1957,9 +1973,6 @@ function drawNoteBlock(x, y, width, height, noteName, active, gameStatus = 'pend
     }
 
     ctx.fillStyle = blockColor;
-    // Remove shadowBlur for a massive FPS boost on school Chromebooks/laptops:
-    // ctx.shadowColor = shadowColor;
-    // ctx.shadowBlur = isFrozen ? 14 : 8;
 
     const radius = Math.min(6, width / 2, height / 2);
     ctx.beginPath();
@@ -2930,7 +2943,7 @@ async function loadStudentTickerStats(studentName) {
 
     itemsHtml += stats.map(s => {
         const medal = s.rank === 1 ? '🥇' : s.rank === 2 ? '🥈' : s.rank === 3 ? '🥉' : `#${s.rank}`;
-        const unit = s.title.toLowerCase().includes('finger sprint') ? 's' : (s.title.toLowerCase().includes('simon taps') ? ' lvl' : '%');
+        const unit = (s.title.toLowerCase().includes('finger sprint') || s.title.toLowerCase().includes('ski slalom')) ? 's' : (s.title.toLowerCase().includes('simon taps') ? ' lvl' : '%');
         return `
             <span class="ticker-item">
                 <span>${medal}</span>
