@@ -457,8 +457,29 @@ export async function startSkiSlalom(bridge, autoStart = false) {
         font-size: 12px; color: #e2e8f0;
       }
       #ski-slalom-3d-container .controls-grid span b { color: #38bdf8; }
+      #ski-slalom-3d-container .modal-actions {
+        display: flex;
+        gap: 10px;
+      }
+      #btn-ski-modal-recalib {
+        flex: 1;
+        padding: 11px 14px;
+        font-size: 13px;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: #e2e8f0;
+        background: rgba(51, 65, 85, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 10px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      #btn-ski-modal-recalib:hover {
+        background: rgba(71, 85, 105, 0.95);
+      }
       #btn-ski-play {
-        width: 100%; padding: 11px 20px; font-size: 15px; font-weight: 900;
+        flex: 1.4;
+        padding: 11px 20px; font-size: 15px; font-weight: 900;
         text-transform: uppercase; color: #ffffff;
         background: linear-gradient(135deg, #ef4444, #dc2626);
         border: none; border-radius: 10px; cursor: pointer;
@@ -553,7 +574,7 @@ export async function startSkiSlalom(bridge, autoStart = false) {
         <div class="badge-tag" id="ski-modal-badge">Alpine Slalom 3D</div>
         <h1 id="ski-modal-title">SLOPELINE 3D</h1>
         <p id="ski-modal-subtitle">
-          Race through 30 randomized slalom gates to the finish! Missed gates add a <b>+3.0s time penalty</b>. Jump onto steel rails to grind!
+          Race through 30 alternating red &amp; blue slalom gates to the finish! Missed gates add a <b>+3.0s time penalty</b>. Jump onto steel rails to grind!
         </p>
 
         <div class="controls-grid">
@@ -563,7 +584,10 @@ export async function startSkiSlalom(bridge, autoStart = false) {
           <span><b id="ski-lbl-view">V</b> Helmet / Chase Cam</span>
         </div>
 
-        <button type="button" id="btn-ski-play">Drop In</button>
+        <div class="modal-actions">
+          <button type="button" id="btn-ski-modal-recalib">🎹 Recalibrate Notes</button>
+          <button type="button" id="btn-ski-play">Drop In</button>
+        </div>
       </div>
     </div>
 
@@ -740,7 +764,6 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   const skierBodyGroup = new THREE.Group();
   skierRoot.add(skierBodyGroup);
 
-  // Smooth, realistic materials (no flatShading)
   const skiTopMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.25, metalness: 0.35 });
   const skiEdgeMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.2, metalness: 0.8 });
   const bindingMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.5 });
@@ -758,7 +781,6 @@ export async function startSkiSlalom(bridge, autoStart = false) {
 
   // Skis, Leather Shoes & Articulated Grey Trousers
   [-0.24, 0.24].forEach((sx) => {
-    // Cambered Carving Ski with Metallic Edges
     const skiBase = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.025, 2.25), skiEdgeMat);
     skiBase.position.set(sx, 0.015, 0);
     skierBodyGroup.add(skiBase);
@@ -768,18 +790,15 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     skiBody.castShadow = true;
     skierBodyGroup.add(skiBody);
 
-    // Upturned Front Ski Tip
     const tipCurve = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.34), skiTopMat);
     tipCurve.position.set(sx, 0.105, -1.22);
     tipCurve.rotation.x = 0.48;
     skierBodyGroup.add(tipCurve);
 
-    // Ski Binding Plate
     const binding = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.045, 0.44), bindingMat);
     binding.position.set(sx, 0.072, -0.02);
     skierBodyGroup.add(binding);
 
-    // Black Leather Dress/Casual Shoe with Heel & Rounded Toe
     const shoeSole = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.03, 0.36), soleMat);
     shoeSole.position.set(sx, 0.105, -0.03);
     skierBodyGroup.add(shoeSole);
@@ -795,19 +814,16 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     shoeToe.castShadow = true;
     skierBodyGroup.add(shoeToe);
 
-    // Lower Leg (Grey Trousers with Athletic Ski Bend)
     const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.088, 0.44, 14), pantsMat);
     shin.position.set(sx, 0.38, -0.03);
     shin.rotation.x = -0.22;
     shin.castShadow = true;
     skierBodyGroup.add(shin);
 
-    // Knee Joint
     const knee = new THREE.Mesh(new THREE.SphereGeometry(0.106, 12, 10), pantsMat);
     knee.position.set(sx, 0.58, -0.08);
     skierBodyGroup.add(knee);
 
-    // Upper Leg / Thigh (Grey Trousers)
     const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.132, 0.108, 0.44, 14), pantsMat);
     thigh.position.set(sx, 0.77, 0.01);
     thigh.rotation.x = 0.22;
@@ -846,7 +862,6 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   chest.castShadow = true;
   skierBodyGroup.add(chest);
 
-  // Polo Button Placket on Front Chest
   const placket = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.22, 0.025), poloMat);
   placket.position.set(0, 1.46, -0.265);
   placket.rotation.x = -0.20;
@@ -880,13 +895,11 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   [-1, 1].forEach((side) => {
     const sx = side * 0.36;
 
-    // Rounded Shoulder
     const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.115, 12, 10), poloMat);
     shoulder.position.set(sx, 1.53, -0.06);
     shoulder.castShadow = true;
     skierBodyGroup.add(shoulder);
 
-    // Black Polo Short Sleeve + Ribbed Cuff
     const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.095, 0.22, 12), poloMat);
     sleeve.position.set(side * 0.41, 1.43, -0.11);
     sleeve.rotation.set(-0.48, 0, side * -0.18);
@@ -898,7 +911,6 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     cuff.rotation.set(Math.PI / 2 - 0.48, side * -0.18, 0);
     skierBodyGroup.add(cuff);
 
-    // Exposed Skin Bicep & Elbow
     const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.082, 0.074, 0.16, 12), skinMat);
     upperArm.position.set(side * 0.44, 1.30, -0.18);
     upperArm.rotation.set(-0.48, 0, side * -0.15);
@@ -909,20 +921,17 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     elbow.position.set(side * 0.46, 1.23, -0.22);
     skierBodyGroup.add(elbow);
 
-    // Forearm Reaching Forward
     const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.056, 0.28, 12), skinMat);
     forearm.position.set(side * 0.44, 1.18, -0.35);
     forearm.rotation.set(-1.15, 0, side * 0.12);
     forearm.castShadow = true;
     skierBodyGroup.add(forearm);
 
-    // Hand Gripping Pole
     const hand = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 10), skinMat);
     hand.scale.set(0.85, 0.95, 1.2);
     hand.position.set(side * 0.42, 1.13, -0.49);
     skierBodyGroup.add(hand);
 
-    // Ski Pole with Grip, Shaft & Snow Basket
     const poleGroup = new THREE.Group();
     poleGroup.position.set(side * 0.42, 1.13, -0.49);
     poleGroup.rotation.set(0.78, 0, side * 0.08);
@@ -950,7 +959,6 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   neck.rotation.x = -0.15;
   headGroup.add(neck);
 
-  // Cranium & Jaw
   const cranium = new THREE.Mesh(new THREE.SphereGeometry(0.21, 20, 18), skinMat);
   cranium.scale.set(0.88, 1.12, 0.98);
   cranium.position.set(0, 1.84, -0.12);
@@ -962,13 +970,11 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   jaw.position.set(0, 1.75, -0.14);
   headGroup.add(jaw);
 
-  // Nose
   const nose = new THREE.Mesh(new THREE.ConeGeometry(0.032, 0.085, 8), skinMat);
   nose.rotation.x = -Math.PI * 0.42;
   nose.position.set(0, 1.81, -0.32);
   headGroup.add(nose);
 
-  // Ears
   [-0.185, 0.185].forEach((ex) => {
     const ear = new THREE.Mesh(new THREE.SphereGeometry(0.042, 10, 10), skinMat);
     ear.scale.set(0.45, 1.15, 0.75);
@@ -976,7 +982,6 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     headGroup.add(ear);
   });
 
-  // Sleek Wrap-Around Sport Sunglasses
   const visor = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.068, 0.04), lensMat);
   visor.position.set(0, 1.85, -0.305);
   headGroup.add(visor);
@@ -991,7 +996,7 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   scene.add(skierRoot);
 
   // ============================================================================
-  // 5. WORLD OBJECTS: RANDOMIZED SLALOM GATES, PINES, KICKERS, RAILS & BEARS
+  // 5. WORLD OBJECTS: ALTERNATING SLALOM GATES, PINES, SCULPTED RAMPS, RAILS & BEARS
   // ============================================================================
   const gates = [];
   const trees = [];
@@ -1023,22 +1028,18 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     if (gatesSpawnedCount >= TOTAL_GATES) return;
     gatesSpawnedCount++;
 
-    // Randomize gate width slightly per gate (6.5 to 8.4)
     const gateWidth = 6.5 + Math.random() * 1.9;
-    const dir = nextGateIsRed ? -1 : 1;
+    const isRed = nextGateIsRed;
+    const dir = isRed ? -1 : 1;
 
-    // Variable lateral offset so turns range from shallow speed-carves to sharp hairpins
-    const shift = 3.2 + Math.random() * 8.8;
+    // Strictly alternate Red (left) and Blue (right) on every single gate
+    nextGateIsRed = !nextGateIsRed;
+
+    const shift = 4.2 + Math.random() * 8.2;
     let centerX = lastGateX + dir * shift;
     if (centerX > 14.5) centerX = 14.5 - Math.random() * 2.5;
     if (centerX < -14.5) centerX = -14.5 + Math.random() * 2.5;
     lastGateX = centerX;
-
-    const isRed = nextGateIsRed;
-    // 22% chance of a double-gate chicane (same direction twice) so patterns aren't purely alternating
-    if (Math.random() > 0.22) {
-      nextGateIsRed = !nextGateIsRed;
-    }
 
     const group = new THREE.Group();
     const poleMat = isRed ? redPoleMat : bluePoleMat;
@@ -1144,39 +1145,93 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     });
   }
 
-  const kickerMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.45, flatShading: true });
-  const kickerLipMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.4, flatShading: true });
+  // Sculpted Curved Snow-Park Kickers (replaces boxy tilted cubes)
+  const kickerSnowMat = new THREE.MeshStandardMaterial({
+    color: 0xe0f2fe,
+    roughness: 0.62,
+    metalness: 0.04
+  });
+  const kickerSideMat = new THREE.MeshStandardMaterial({
+    color: 0xf8fafc,
+    roughness: 0.78
+  });
+  const kickerLipMat = new THREE.MeshStandardMaterial({
+    color: 0xf97316,
+    roughness: 0.45
+  });
 
   function spawnKicker(zPos) {
     const xPos = (Math.random() - 0.5) * 22;
-    // Skip if directly blocking a gate pole
     const collidesGate = gates.some(g => Math.abs(g.z - zPos) < 6 && Math.abs(g.x - xPos) < 5);
     if (collidesGate) return;
 
+    const width = 4.2;
+    const length = 5.4;
+    const height = 1.25;
     const group = new THREE.Group();
 
-    const rampGeo = new THREE.BoxGeometry(3.8, 1.1, 4.6);
-    const ramp = new THREE.Mesh(rampGeo, kickerMat);
-    ramp.position.set(0, 0.35, 0);
-    ramp.rotation.x = 0.26;
-    ramp.castShadow = true;
-    ramp.receiveShadow = true;
-    group.add(ramp);
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    shape.quadraticCurveTo(length * 0.58, height * 0.14, length, height);
+    shape.lineTo(length, 0);
+    shape.closePath();
 
-    const lip = new THREE.Mesh(new THREE.BoxGeometry(3.85, 0.16, 0.45), kickerLipMat);
-    lip.position.set(0, 0.94, -2.15);
-    group.add(lip);
+    const extrudeGeo = new THREE.ExtrudeGeometry(shape, {
+      depth: width,
+      bevelEnabled: true,
+      bevelSegments: 3,
+      steps: 1,
+      bevelSize: 0.08,
+      bevelThickness: 0.12
+    });
+
+    extrudeGeo.rotateY(Math.PI / 2);
+    extrudeGeo.translate(-width / 2, 0, length / 2);
+    extrudeGeo.computeVertexNormals();
+
+    const wedgeMesh = new THREE.Mesh(extrudeGeo, [kickerSnowMat, kickerSideMat]);
+    wedgeMesh.castShadow = true;
+    wedgeMesh.receiveShadow = true;
+    group.add(wedgeMesh);
+
+    [-width * 0.52, width * 0.52].forEach((bx) => {
+      const bermGeo = new THREE.CylinderGeometry(0.12, 0.42, length * 0.92, 8);
+      bermGeo.rotateX(Math.PI / 2);
+      const berm = new THREE.Mesh(bermGeo, kickerSideMat);
+      berm.scale.set(1.2, 0.75, 1);
+      berm.position.set(bx, 0.16, 0.1);
+      berm.rotation.x = 0.18;
+      group.add(berm);
+    });
+
+    const lipStrip = new THREE.Mesh(
+      new THREE.BoxGeometry(width * 0.94, 0.04, 0.14),
+      kickerLipMat
+    );
+    lipStrip.position.set(0, height + 0.05, -length / 2 + 0.08);
+    group.add(lipStrip);
+
+    [-width * 0.48, width * 0.48].forEach((wx) => {
+      const wand = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.025, 0.025, 0.65, 6),
+        kickerLipMat
+      );
+      wand.position.set(wx, height + 0.25, -length / 2 + 0.05);
+      wand.rotation.z = wx < 0 ? 0.15 : -0.15;
+      group.add(wand);
+    });
 
     const groundY = getTerrainHeight(xPos, zPos);
-    group.position.set(xPos, groundY - 0.1, zPos);
+    group.position.set(xPos, groundY - 0.12, zPos);
+    group.rotation.x = -SLOPE_ANGLE;
     scene.add(group);
 
     kickers.push({
       group,
       x: xPos,
       z: zPos,
-      width: 3.8,
-      length: 4.6,
+      width,
+      length,
       triggered: false
     });
   }
@@ -1417,6 +1472,10 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   document.getElementById('btn-ski-calibrate').addEventListener('click', () => {
     openCalibrationModal();
     document.getElementById('btn-ski-calibrate').blur();
+  });
+  document.getElementById('btn-ski-modal-recalib').addEventListener('click', () => {
+    openCalibrationModal();
+    document.getElementById('btn-ski-modal-recalib').blur();
   });
   document.getElementById('btn-ski-calib-skip').addEventListener('click', () => {
     bindings = JSON.parse(JSON.stringify(DEFAULT_BINDINGS));
@@ -1675,7 +1734,6 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     gatesSpawnedCount = 0;
     finishLineZ = -9999;
 
-    // Schedule 1 or 2 random grizzly bear crossings at different points on the mountain
     bearMilestones = [-130 - Math.random() * 140];
     if (Math.random() < 0.65) {
       bearMilestones.push(-340 - Math.random() * 180);
