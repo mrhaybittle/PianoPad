@@ -35,7 +35,7 @@ function ensureThreeLoaded() {
 }
 
 // ============================================================================
-// 1. PROCEDURAL WEB AUDIO ENGINE (Wind, Carve, Rail Grind, Piano Tone & FX)
+// 1. PROCEDURAL WEB AUDIO ENGINE (Wind, Carve, Rail Grind, Bear & FX)
 // ============================================================================
 class AlpineAudio {
   constructor() {
@@ -209,6 +209,23 @@ class AlpineAudio {
     osc.stop(now + 0.21);
   }
 
+  playBearGrowl() {
+    if (!this.initialized || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(92, now);
+    osc.frequency.exponentialRampToValueAtTime(54, now + 0.42);
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.15, now + 0.06);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.46);
+  }
+
   playTrickChime() {
     if (!this.initialized || !this.ctx) return;
     const now = this.ctx.currentTime;
@@ -297,7 +314,7 @@ export function handleSkiSlalomRelease(noteStr) {
   }
 }
 
-export async function startSkiSlalom(bridge) {
+export async function startSkiSlalom(bridge, autoStart = false) {
   initAudio();
   stopSkiSlalom();
   bridgeRef = bridge;
@@ -697,7 +714,6 @@ export async function startSkiSlalom(bridge) {
 
   // ============================================================================
   // 4. BALD SKIER CHARACTER (Black Polo, Red Collar, Grey Pants, Leather Shoes)
-  //    (No eyes or nose; headGroup cleanly hides in Helmet Cam)
   // ============================================================================
   const skierRoot = new THREE.Group();
   const skierBodyGroup = new THREE.Group();
@@ -767,7 +783,7 @@ export async function startSkiSlalom(bridge) {
     skierBodyGroup.add(pole);
   });
 
-  // Clean Smooth Bald Head Group (no eyes or nose; hidden completely in Helmet Cam)
+  // Clean Smooth Bald Head Group (hidden completely in Helmet Cam)
   const headGroup = new THREE.Group();
   const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.16, 8), skinMat);
   neck.position.set(0, 1.6, -0.12);
@@ -783,13 +799,15 @@ export async function startSkiSlalom(bridge) {
   scene.add(skierRoot);
 
   // ============================================================================
-  // 5. WORLD OBJECTS: SLALOM GATES, PINES, KICKERS, GRIND RAILS & FINISH ARCH
+  // 5. WORLD OBJECTS: SLALOM GATES, PINES, KICKERS, CLEAN RAILS & GRIZZLY BEAR
   // ============================================================================
   const gates = [];
   const trees = [];
   const kickers = [];
   const rails = [];
   let finishBannerGroup = null;
+  let bearEntity = null;
+  let bearSpawnTriggered = false;
 
   const TOTAL_GATES = 30;
   let gatesSpawnedCount = 0;
@@ -960,8 +978,8 @@ export async function startSkiSlalom(bridge) {
     });
   }
 
+  // Clean Grind Rails (no vertical support posts sticking into the air)
   const railSteelMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.75, roughness: 0.22, flatShading: true });
-  const railPostMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.5, roughness: 0.5, flatShading: true });
 
   function spawnGrindRail(zPos) {
     const xPos = (Math.random() - 0.5) * 20;
@@ -969,24 +987,13 @@ export async function startSkiSlalom(bridge) {
     const railHeight = 1.05;
     const group = new THREE.Group();
 
-    const barGeo = new THREE.CylinderGeometry(0.11, 0.11, length, 8);
+    const barGeo = new THREE.CylinderGeometry(0.12, 0.12, length, 8);
     barGeo.rotateX(Math.PI / 2);
     const bar = new THREE.Mesh(barGeo, railSteelMat);
     bar.position.set(0, railHeight, 0);
     bar.rotation.x = -SLOPE_ANGLE;
     bar.castShadow = true;
     group.add(bar);
-
-    const postCount = 3;
-    for (let i = 0; i < postCount; i++) {
-      const frac = (i / (postCount - 1)) - 0.5;
-      const lz = frac * (length - 1.6);
-      const yOffset = -lz * Math.tan(SLOPE_ANGLE);
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, railHeight, 6), railPostMat);
-      post.position.set(0, railHeight * 0.5 + yOffset, lz);
-      post.castShadow = true;
-      group.add(post);
-    }
 
     const groundY = getTerrainHeight(xPos, zPos);
     group.position.set(xPos, groundY, zPos);
@@ -999,6 +1006,88 @@ export async function startSkiSlalom(bridge) {
       length,
       height: railHeight
     });
+  }
+
+  // 3D Low-Poly Grizzly Bear that charges across the slope
+  function spawnGrizzlyBear(zPos) {
+    if (bearEntity) {
+      scene.remove(bearEntity.group);
+      bearEntity = null;
+    }
+
+    const dir = Math.random() > 0.5 ? 1 : -1;
+    const startX = -dir * 26;
+    const group = new THREE.Group();
+
+    const furDarkMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.85, flatShading: true });
+    const furMidMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8, flatShading: true });
+    const snoutMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.7, flatShading: true });
+    const noseMat = new THREE.MeshBasicMaterial({ color: 0x09090b });
+
+    // Torso & Shoulder Hump
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.05, 2.1), furDarkMat);
+    body.position.set(0, 0.92, 0);
+    body.castShadow = true;
+    group.add(body);
+
+    const hump = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.42, 0.95), furMidMat);
+    hump.position.set(0, 1.48, 0.35);
+    hump.castShadow = true;
+    group.add(hump);
+
+    // Head, Ears & Snout (facing +Z locally)
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.74, 0.78), furMidMat);
+    head.position.set(0, 1.18, 1.25);
+    head.castShadow = true;
+    group.add(head);
+
+    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.40, 0.48), snoutMat);
+    snout.position.set(0, 1.05, 1.72);
+    group.add(snout);
+
+    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.12), noseMat);
+    nose.position.set(0, 1.18, 1.96);
+    group.add(nose);
+
+    [-0.32, 0.32].forEach(ex => {
+      const ear = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.14), furDarkMat);
+      ear.position.set(ex, 1.60, 1.15);
+      group.add(ear);
+    });
+
+    // 4 Animated Legs
+    const legs = [];
+    const legCoords = [
+      { x: -0.38, z:  0.68, phase: 0 },
+      { x:  0.38, z:  0.68, phase: Math.PI },
+      { x: -0.38, z: -0.68, phase: Math.PI },
+      { x:  0.38, z: -0.68, phase: 0 }
+    ];
+    legCoords.forEach(lc => {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.72, 0.34), furDarkMat);
+      leg.position.set(lc.x, 0.36, lc.z);
+      leg.castShadow = true;
+      group.add(leg);
+      legs.push({ mesh: leg, phase: lc.phase });
+    });
+
+    // Orient bear to face across the mountain (+X or -X)
+    group.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+    group.scale.setScalar(1.25);
+    group.position.set(startX, getTerrainHeight(startX, zPos), zPos);
+    scene.add(group);
+
+    bearEntity = {
+      group,
+      legs,
+      x: startX,
+      z: zPos,
+      vx: dir * 13.5,
+      stride: 0
+    };
+
+    audio.playBearGrowl();
+    showCallout('🐻 GRIZZLY CROSSING!', '#f97316');
   }
 
   const particles = [];
@@ -1142,7 +1231,8 @@ export async function startSkiSlalom(bridge) {
   });
   btnCalibSave.addEventListener('click', closeCalibrationModal);
 
-  if (!localStorage.getItem('slopeline_calibrated_seen')) {
+  const hasSeenCalib = Boolean(localStorage.getItem('slopeline_calibrated_seen'));
+  if (!hasSeenCalib && !autoStart) {
     openCalibrationModal();
   }
 
@@ -1173,7 +1263,6 @@ export async function startSkiSlalom(bridge) {
     spinAccumulated: 0
   };
 
-  // Supports both continuous key holds AND sustained piano-note carve pulses across the slope
   const input = {
     left: false,
     right: false,
@@ -1206,7 +1295,6 @@ export async function startSkiSlalom(bridge) {
 
   function toggleCameraMode() {
     isFirstPerson = !isFirstPerson;
-    // Hide the entire headGroup in Helmet Cam so no facial parts ever appear in view
     headGroup.visible = !isFirstPerson;
     btnCamToggle.textContent = isFirstPerson ? '🥽 Helmet Cam' : '🎥 Chase Cam';
     showCallout(isFirstPerson ? 'HELMET CAM' : 'CHASE CAM', '#38bdf8');
@@ -1245,7 +1333,6 @@ export async function startSkiSlalom(bridge) {
     if (match(bindings.left) || (type === 'key' && code === 'ArrowLeft')) {
       input.left = true;
       if (type === 'piano') {
-        // Give a strong, smooth carve across the slope when a piano key is struck or held
         input.pianoLeftHoldUntil = performance.now() + 340;
         input.pianoRightHoldUntil = 0;
         state.vx = Math.min(state.vx, -9.5);
@@ -1283,7 +1370,6 @@ export async function startSkiSlalom(bridge) {
     }
   }
 
-  // PianoPad On-Screen / MIDI Note Input Bridge
   function onPianoNoteDown(noteStr, bridge) {
     const clean = (noteStr || '').trim().toLowerCase();
     if (!clean) return;
@@ -1298,7 +1384,6 @@ export async function startSkiSlalom(bridge) {
     handleControlUp('piano', clean);
   }
 
-  // Computer Keyboard Listeners (ignores keys mapped to PianoPad's virtual keyboard so they don't double-fire)
   const onKeyDown = (e) => {
     if (e.code === 'Space') {
       e.preventDefault();
@@ -1309,7 +1394,6 @@ export async function startSkiSlalom(bridge) {
     const k = e.key.toLowerCase();
     const pianoPadMappedKeys = ['z','s','x','d','c','v','g','b','h','n','j','m',',','l','.','1','q','w','3','e','4','r','5','t','y','7','u','8','i','o','0','p'];
     if (pianoPadMappedKeys.includes(k)) {
-      // Let PianoPad's own keyboard handler convert this into onPianoNoteDown(noteStr)
       return;
     }
 
@@ -1329,7 +1413,6 @@ export async function startSkiSlalom(bridge) {
   window.addEventListener('keydown', onKeyDown, { capture: true });
   window.addEventListener('keyup', onKeyUp, { capture: true });
 
-  // Mouse & Touch steering on 3D canvas
   const domCanvas = renderer.domElement;
   function updatePointerSteer(clientX) {
     const rect = domCanvas.getBoundingClientRect();
@@ -1378,6 +1461,10 @@ export async function startSkiSlalom(bridge) {
       scene.remove(finishBannerGroup);
       finishBannerGroup = null;
     }
+    if (bearEntity) {
+      scene.remove(bearEntity.group);
+      bearEntity = null;
+    }
     gates.length = 0;
     trees.length = 0;
     kickers.length = 0;
@@ -1395,6 +1482,7 @@ export async function startSkiSlalom(bridge) {
     gatesMissed = 0;
     gatesSpawnedCount = 0;
     finishLineZ = -9999;
+    bearSpawnTriggered = false;
 
     score = 0;
     streak = 0;
@@ -1494,7 +1582,7 @@ export async function startSkiSlalom(bridge) {
       '3D Ski Slalom',
       totalTime,
       summaryHtml,
-      () => startSkiSlalom(bridgeRef)
+      () => startSkiSlalom(bridgeRef, true)
     );
 
     requestAnimationFrame(() => {
@@ -1518,7 +1606,7 @@ export async function startSkiSlalom(bridge) {
 
     document.getElementById('ski-modal-badge').textContent = 'DNF — Wipeout';
     document.getElementById('ski-modal-title').textContent = reason;
-    document.getElementById('ski-modal-subtitle').textContent = 'Watch out for alpine pine trees on your next run!';
+    document.getElementById('ski-modal-subtitle').textContent = 'Watch out for pine trees and crossing bears on your next run!';
     document.getElementById('btn-ski-play').textContent = 'Try Again';
     overlayEl.style.display = 'flex';
   }
@@ -1539,7 +1627,13 @@ export async function startSkiSlalom(bridge) {
     if (isPlaying) {
       runTime += dt;
 
-      // 1. Horizontal Carving Physics (combines held keys, piano carve pulse, and pointer steer)
+      // Spawn the crossing grizzly bear once around the middle of the run (z <= -240)
+      if (!bearSpawnTriggered && state.z <= -240) {
+        bearSpawnTriggered = true;
+        spawnGrizzlyBear(state.z - 54);
+      }
+
+      // 1. Horizontal Carving Physics
       let steer = 0;
       if (input.left || now < input.pianoLeftHoldUntil) steer -= 1;
       if (input.right || now < input.pianoRightHoldUntil) steer += 1;
@@ -1679,6 +1773,36 @@ export async function startSkiSlalom(bridge) {
 
       const speedRatio = Math.min(1, (Math.abs(state.vz) - 20) / 24);
       audio.updateContinuous(speedRatio, carveIntensity, state.grounded, state.isGrinding, true);
+
+      // Update Crossing Grizzly Bear
+      if (bearEntity) {
+        bearEntity.x += bearEntity.vx * dt;
+        bearEntity.stride += dt * 16;
+        const bearGroundY = getTerrainHeight(bearEntity.x, bearEntity.z);
+        bearEntity.group.position.set(
+          bearEntity.x,
+          bearGroundY + Math.abs(Math.sin(bearEntity.stride)) * 0.14,
+          bearEntity.z
+        );
+        bearEntity.group.rotation.x = -SLOPE_ANGLE;
+
+        for (const l of bearEntity.legs) {
+          l.mesh.rotation.x = Math.sin(bearEntity.stride + l.phase) * 0.65;
+        }
+
+        if (Math.random() < 0.45) {
+          emitSnowSpray(bearEntity.x, bearGroundY, bearEntity.z, bearEntity.vx, 1);
+        }
+
+        // Check collision if skier hasn't jumped over the bear
+        const horizDist = Math.hypot(state.x - bearEntity.x, state.z - bearEntity.z);
+        if (horizDist < 1.55 && (state.y - bearGroundY) < 1.85) {
+          crashGame('RAN INTO A GRIZZLY BEAR!');
+        } else if (bearEntity.z > state.z + 25 || Math.abs(bearEntity.x) > 36) {
+          scene.remove(bearEntity.group);
+          bearEntity = null;
+        }
+      }
 
       // 4. Recycle Infinite Terrain Chunks & Spawn Ahead up to Finish Line
       for (const chunk of terrainChunks) {
@@ -1843,12 +1967,20 @@ export async function startSkiSlalom(bridge) {
     }
   };
 
-  if (statusEl) {
-    statusEl.textContent = '⛷️ 3D Ski Slalom Ready! Play your calibrated Piano Keys to carve across the mountain!';
+  if (autoStart) {
+    // Skip the splash screen on replay and launch straight into gameplay
+    startGame();
+    if (statusEl) {
+      statusEl.textContent = '⛷️ 3D Ski Slalom Restarted! Carve through all 30 gates!';
+    }
+  } else {
+    if (statusEl) {
+      statusEl.textContent = '⛷️ 3D Ski Slalom Ready! Play your calibrated Piano Keys to carve across the mountain!';
+    }
+    state.y = getTerrainHeight(0, 0);
+    skierRoot.position.set(0, state.y, 0);
+    skierRoot.rotation.x = -SLOPE_ANGLE;
   }
 
-  state.y = getTerrainHeight(0, 0);
-  skierRoot.position.set(0, state.y, 0);
-  skierRoot.rotation.x = -SLOPE_ANGLE;
   animFrameId = requestAnimationFrame(animate);
 }
