@@ -276,7 +276,6 @@ function gameLoop(now) {
 
                 stopNoteSniper();
                 return;
-            }
             } else {
                 pickNextSniperTarget();
             }
