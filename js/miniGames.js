@@ -9,6 +9,7 @@ import { startLaserTag, handleLaserTagInput, stopLaserTag } from './games/laserT
 import { startGridironGroove, handleGridironGrooveInput, stopGridironGroove } from './games/GridironGroove.js';
 import { startClefHook, handleClefHookInput, stopClefHook } from './games/clefHook.js';
 import { startSharpShooter, handleSharpShooterInput, handleSharpShooterRelease, stopSharpShooter } from './games/sharpShooter.js';
+import { startSkiSlalom, handleSkiSlalomInput, handleSkiSlalomRelease, stopSkiSlalom } from './games/skiSlalom.js';
 
 export const arcadeState = {
     activeMiniGame: null,
@@ -126,6 +127,16 @@ function injectNewArcadeButtons() {
         sharpBtn.innerHTML = `<span style="font-size:1.5rem;">⚽</span><strong>Sharp <span style="color:#facc15;">♯</span> Shooter</strong><small>Penalty kick shootout</small>`;
         btnContainer.appendChild(sharpBtn);
     }
+
+    if (!document.getElementById('btn-arcade-ski-slalom')) {
+        const skiBtn = document.createElement('button');
+        skiBtn.type = 'button';
+        skiBtn.id = 'btn-arcade-ski-slalom';
+        skiBtn.className = 'arcade-card-btn';
+        skiBtn.onclick = () => launchSkiSlalom();
+        skiBtn.innerHTML = `<span style="font-size:1.5rem;">⛷️</span><strong>3D Ski Slalom</strong><small>Carve gates & grind rails</small>`;
+        btnContainer.appendChild(skiBtn);
+    }
 }
 
 function resolveReplayHandler(title, explicitReplayFn) {
@@ -143,6 +154,7 @@ function resolveReplayHandler(title, explicitReplayFn) {
     if (normalized === 'combo strike') return () => startComboStrike();
     if (normalized === 'clef hook') return () => launchClefHook();
     if (normalized === 'sharp shooter') return () => launchSharpShooter();
+    if (normalized === '3d ski slalom' || normalized === 'ski slalom') return () => launchSkiSlalom();
     return null;
 }
 
@@ -233,6 +245,7 @@ export function exitActiveMiniGame() {
     stopGridironGroove();
     stopClefHook();
     stopSharpShooter();
+    stopSkiSlalom();
 
     const gridironPopup = document.getElementById('gridiron-groove-popup');
     if (gridironPopup) gridironPopup.style.display = 'none';
@@ -245,6 +258,9 @@ export function exitActiveMiniGame() {
     
     const sharpPopup = document.getElementById('sharp-shooter-popup');
     if (sharpPopup) sharpPopup.style.display = 'none';
+
+    const skiPopup = document.getElementById('ski-slalom-calib-popup');
+    if (skiPopup) skiPopup.style.display = 'none';
 
     arcadeState.activeMiniGame = null;
     bridge.setIsPlaying(false);
@@ -275,6 +291,10 @@ export function handleMiniGameNoteInput(noteStr) {
     const mode = arcadeState.activeMiniGame;
     if (!mode) return false;
 
+    if (mode === 'skiSlalom') {
+        handleSkiSlalomInput(noteStr, gameBridgeHelper);
+        return true;
+    }
     if (mode === 'clefHook') {
         window.__clefHookUsedDomKey = Boolean(document.querySelector('#keyboard .key.active'));
         handleClefHookInput(noteStr, gameBridgeHelper);
@@ -360,6 +380,10 @@ export function handleMiniGameNoteInput(noteStr) {
 }
 
 export function handleMiniGameNoteRelease(noteStr) {
+    if (arcadeState.activeMiniGame === 'skiSlalom') {
+        handleSkiSlalomRelease(noteStr);
+        return true;
+    }
     if (arcadeState.activeMiniGame === 'sharpShooter') {
         handleSharpShooterRelease(noteStr);
         return true;
@@ -1253,9 +1277,15 @@ export function launchClefHook() {
     document.getElementById('game-results-modal')?.classList.remove('open');
     startClefHook(gameBridgeHelper);
 }
+
 export function launchSharpShooter() {
     document.getElementById('game-results-modal')?.classList.remove('open');
     startSharpShooter(gameBridgeHelper);
+}
+
+export function launchSkiSlalom() {
+    document.getElementById('game-results-modal')?.classList.remove('open');
+    startSkiSlalom(gameBridgeHelper);
 }
 
 Object.assign(window, {
@@ -1305,5 +1335,10 @@ Object.assign(window, {
     startSharpShooter: (b) => {
         document.getElementById('game-results-modal')?.classList.remove('open');
         startSharpShooter(b || gameBridgeHelper);
+    },
+    launchSkiSlalom,
+    startSkiSlalom: (b) => {
+        document.getElementById('game-results-modal')?.classList.remove('open');
+        startSkiSlalom(b || gameBridgeHelper);
     }
 });
