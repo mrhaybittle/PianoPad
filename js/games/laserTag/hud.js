@@ -379,6 +379,33 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
             ctx.restore();
         }
 
+        // Musical Challenge Pop-Up Prompt
+        if (lp.nearChallengeNode && lp.nearChallengeNode.active) {
+            const node = lp.nearChallengeNode;
+            ctx.save();
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+            ctx.strokeStyle = '#a855f7';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.roundRect(W / 2 - 200, H / 2 - 140, 400, 85, 12);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#facc15';
+            ctx.font = '900 18px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`🎵 MUSICAL CHALLENGE 🎵`, W / 2, H / 2 - 110);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 15px sans-serif';
+            if (node.currentStep === 0) {
+                ctx.fillText(`Play the first 3 notes of: "${node.name}"`, W / 2, H / 2 - 85);
+            } else {
+                ctx.fillText(`Progress: ${node.currentStep} / ${node.sequence.length} notes! (Next: ${node.sequence[node.currentStep]})`, W / 2, H / 2 - 85);
+            }
+            ctx.restore();
+        }
+
         // Bottom-Center Chord Speed Gear & Ability Cooldowns HUD Pill
         const g = lp.currentGear;
         const boostTag = isBoosted ? ' • ⚡ 2.5x BOOST!' : '';
@@ -493,6 +520,19 @@ export function renderMinimapAndTopHud(ctx, W, H, now, activePlayers) {
                 ctx.beginPath();
                 ctx.arc(mmX + med.x * scaleX, mmY + med.y * scaleY, 2.5, 0, Math.PI * 2);
                 ctx.fill();
+            }
+        }
+
+        // Challenge Nodes on Minimap
+        if (gameState.challengeNodes) {
+            ctx.fillStyle = '#a855f7';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            for (const node of gameState.challengeNodes) {
+                if (node.active) {
+                    ctx.font = '12px sans-serif';
+                    ctx.fillText('❓', mmX + node.x * scaleX, mmY + node.y * scaleY);
+                }
             }
         }
 
@@ -843,3 +883,4 @@ export function renderMvpPodiumOverlay(ctx, W, H) {
     ctx.fillText('Press "test" to spawn another 50-bot wave or Exit to return to menu', cx, cy + 104);
     ctx.restore();
 }
+```[cite: 3]
