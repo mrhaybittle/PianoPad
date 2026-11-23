@@ -238,27 +238,45 @@ function gameLoop(now) {
             targetsHit++;
             if (targetsHit >= TOTAL_TARGETS) {
                 const totalTimeSec = parseFloat(((now - startTimeMs) / 1000).toFixed(2));
-                
+                const capturedMisses = wrongTaps;
+                const capturedHits = targetsHit;
+
                 bridgeRef.finishCustomMiniGame(
                     "Note Name Sniper",
                     totalTimeSec,
-                    `10 Notes Sniped in: <span style="color:#22c55e; font-size:1.4rem; font-weight:800;">${totalTimeSec}s</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${wrongTaps} missed shots)</span>`
+                    `10 Notes Sniped in: <span style="color:#22c55e; font-size:1.4rem; font-weight:800;">${totalTimeSec}s</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${capturedMisses} missed shots)</span>`
                 );
 
-                // Override the solid-green bar set by finishCustomMiniGame with actual hit/miss percentages
-                const totalShots = targetsHit + wrongTaps;
-                const greenPct = totalShots > 0 ? (targetsHit / totalShots) * 100 : 100;
-                const redPct = totalShots > 0 ? (wrongTaps / totalShots) * 100 : 0;
+                // Apply hit/miss percentages to both single-attempt and multi-attempt graphs
+                requestAnimationFrame(() => {
+                    const totalShots = capturedHits + capturedMisses;
+                    const greenPct = totalShots > 0 ? (capturedHits / totalShots) * 100 : 100;
+                    const redPct = totalShots > 0 ? (capturedMisses / totalShots) * 100 : 0;
 
-                const barGreen = document.getElementById('bar-green');
-                const barOrange = document.getElementById('bar-orange');
-                const barRed = document.getElementById('bar-red');
-                if (barGreen) barGreen.style.height = `${greenPct}%`;
-                if (barOrange) barOrange.style.height = '0%';
-                if (barRed) barRed.style.height = `${redPct}%`;
+                    // 1. Update single-attempt bar (Try 1)
+                    const barGreen = document.getElementById('bar-green');
+                    const barOrange = document.getElementById('bar-orange');
+                    const barRed = document.getElementById('bar-red');
+                    if (barGreen) barGreen.style.height = `${greenPct}%`;
+                    if (barOrange) barOrange.style.height = '0%';
+                    if (barRed) barRed.style.height = `${redPct}%`;
+
+                    // 2. Update the newest column in multi-attempt bar graph (Try 2+)
+                    const multiGraph = document.getElementById('multi-bar-graph');
+                    if (multiGraph && multiGraph.lastElementChild) {
+                        const latestCol = multiGraph.lastElementChild;
+                        const mRed = latestCol.querySelector('.bar-part-red');
+                        const mOrange = latestCol.querySelector('.bar-part-orange');
+                        const mGreen = latestCol.querySelector('.bar-part-green');
+                        if (mRed) mRed.style.height = `${redPct}%`;
+                        if (mOrange) mOrange.style.height = '0%';
+                        if (mGreen) mGreen.style.height = `${greenPct}%`;
+                    }
+                });
 
                 stopNoteSniper();
                 return;
+            }
             } else {
                 pickNextSniperTarget();
             }
