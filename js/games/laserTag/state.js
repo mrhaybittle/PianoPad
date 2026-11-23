@@ -39,6 +39,7 @@ export const gameState = {
         revengeTargetId: null,
         hitMarkerUntil: 0,
         hitMarkerElim: false,
+        nearChallengeNode: null,
         suitColor: '#38bdf8',
         score: 0,
         noteTag: 'F#',
@@ -56,6 +57,7 @@ export const gameState = {
     arenaPortals: [],
     speedBoostPads: [],
     medKitNodes: [],
+    challengeNodes: [],
     activeDecoys: [],
     empWaveRings: [],
 
