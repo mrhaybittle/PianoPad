@@ -1,0 +1,1946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>3D Alpine Ski Slalom</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0f172a;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #f8fafc;
+    }
+    #game-wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    /* Clean Top HUD */
+    #hud {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .hud-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .hud-pill {
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 12px;
+      padding: 8px 14px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+      min-width: 84px;
+    }
+    .hud-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 2px;
+    }
+    .hud-value {
+      font-size: 20px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      color: #ffffff;
+      line-height: 1.1;
+    }
+    #hud-streak .hud-value {
+      color: #38bdf8;
+    }
+    #hud-best .hud-value {
+      color: #facc15;
+    }
+    #hud-penalty .hud-value {
+      color: #f87171;
+    }
+
+    /* Camera & Calibration Buttons */
+    .hud-actions {
+      display: flex;
+      gap: 8px;
+      pointer-events: auto;
+    }
+    .hud-btn {
+      background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(8px);
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+      transition: transform 0.12s, background 0.15s;
+    }
+    .hud-btn:hover {
+      background: rgba(30, 41, 59, 0.92);
+    }
+    .hud-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* Floating Trick / Gate Callout */
+    #callout {
+      position: absolute;
+      top: 22%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.9);
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #facc15;
+      text-shadow: 0 4px 16px rgba(15, 23, 42, 0.75);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 12;
+      text-align: center;
+      white-space: nowrap;
+    }
+    #callout.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.05);
+    }
+
+    /* Bottom Touch / Keyboard Bar */
+    #bottom-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .controls-caption {
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+    #touch-jump-btn {
+      pointer-events: auto;
+      background: linear-gradient(135deg, #38bdf8, #0284c7);
+      color: #ffffff;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      border-radius: 14px;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      box-shadow: 0 8px 20px rgba(2, 132, 199, 0.45);
+      cursor: pointer;
+    }
+    #touch-jump-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* Start / Game Over Overlay */
+    #overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(15, 23, 42, 0.72), rgba(15, 23, 42, 0.92));
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 20;
+    }
+    .modal-card {
+      background: rgba(30, 41, 59, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 20px;
+      padding: 32px 28px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+    }
+    .badge-tag {
+      display: inline-block;
+      background: rgba(56, 189, 248, 0.18);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+    .modal-card h1 {
+      margin: 0 0 8px 0;
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+    }
+    .modal-subtitle {
+      margin: 0 0 20px 0;
+      font-size: 15px;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+    .stats-summary {
+      display: none;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 14px 10px;
+      margin-bottom: 20px;
+    }
+    .stat-item-label {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+    .stat-item-val {
+      font-size: 20px;
+      font-weight: 900;
+      color: #ffffff;
+      margin-top: 2px;
+    }
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      text-align: left;
+      background: rgba(15, 23, 42, 0.55);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 22px;
+      font-size: 12.5px;
+      color: #e2e8f0;
+    }
+    .controls-grid span b {
+      color: #38bdf8;
+    }
+    #btn-play {
+      width: 100%;
+      padding: 15px 24px;
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #ffffff;
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(239, 68, 68, 0.45);
+      transition: transform 0.12s, filter 0.15s;
+    }
+    #btn-play:hover {
+      filter: brightness(1.08);
+    }
+    #btn-play:active {
+      transform: scale(0.98);
+    }
+
+    /* Piano / Key Calibration Modal */
+    #calib-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 30;
+    }
+    .calib-card {
+      background: rgba(30, 41, 59, 0.96);
+      border: 2px solid #38bdf8;
+      border-radius: 20px;
+      padding: 26px 24px;
+      max-width: 460px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.65);
+    }
+    .calib-steps {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 18px 0;
+    }
+    .calib-slot {
+      background: rgba(15, 23, 42, 0.7);
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 10px;
+      transition: all 0.2s ease;
+    }
+    .calib-slot.active {
+      border-color: #facc15;
+      background: rgba(250, 204, 21, 0.14);
+      transform: scale(1.03);
+      box-shadow: 0 0 18px rgba(250, 204, 21, 0.25);
+    }
+    .calib-slot.done {
+      border-color: #22c55e;
+      background: rgba(34, 197, 94, 0.14);
+    }
+    .calib-slot-title {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+    .calib-slot-key {
+      font-size: 18px;
+      font-weight: 900;
+      color: #ffffff;
+      margin-top: 4px;
+    }
+    #calib-prompt {
+      font-size: 16px;
+      font-weight: 800;
+      color: #facc15;
+      min-height: 24px;
+      margin-bottom: 14px;
+    }
+    .calib-footer {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    .calib-footer button {
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: none;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    #btn-calib-skip {
+      background: #334155;
+      color: #e2e8f0;
+    }
+    #btn-calib-save {
+      background: #22c55e;
+      color: #052e16;
+    }
+
+    @media (max-width: 600px) {
+      .hud-pill {
+        padding: 6px 10px;
+        min-width: 64px;
+      }
+      .hud-value {
+        font-size: 15px;
+      }
+      .controls-caption {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+<div id="game-wrapper">
+  <!-- Top HUD -->
+  <div id="hud">
+    <div class="hud-group">
+      <div class="hud-pill" id="hud-time">
+        <div class="hud-label">Run Time</div>
+        <div class="hud-value" id="val-time">0.00s</div>
+      </div>
+      <div class="hud-pill" id="hud-penalty">
+        <div class="hud-label">Penalties</div>
+        <div class="hud-value" id="val-penalty">+0.0s</div>
+      </div>
+      <div class="hud-pill" id="hud-gates">
+        <div class="hud-label">Gates</div>
+        <div class="hud-value" id="val-gates">0/30</div>
+      </div>
+      <div class="hud-pill" id="hud-score">
+        <div class="hud-label">Style Pts</div>
+        <div class="hud-value" id="val-score">0</div>
+      </div>
+      <div class="hud-pill" id="hud-best">
+        <div class="hud-label">Best Time</div>
+        <div class="hud-value" id="val-best">--</div>
+      </div>
+    </div>
+    <div class="hud-actions">
+      <button type="button" class="hud-btn" id="btn-calibrate" title="Assign Piano or Keyboard Keys">🎹 Keys</button>
+      <button type="button" class="hud-btn" id="btn-cam-toggle" title="Toggle Camera">🎥 Chase Cam</button>
+    </div>
+  </div>
+
+  <!-- Trick / Gate Callout Banner -->
+  <div id="callout">360° SPIN! +250</div>
+
+  <!-- Bottom Controls Bar -->
+  <div id="bottom-bar">
+    <div class="controls-caption" id="controls-caption">
+      <b>A / D</b> Carve • <b>Space</b> Jump / Grind • <b>V</b> Camera • <b>Piano MIDI</b> Ready
+    </div>
+    <button type="button" id="touch-jump-btn">⬆ JUMP / SPIN</button>
+  </div>
+
+  <!-- Start / Game Over Modal -->
+  <div id="overlay">
+    <div class="modal-card">
+      <div class="badge-tag" id="modal-badge">Alpine Slalom 3D</div>
+      <h1 id="modal-title">SLOPELINE 3D</h1>
+      <p class="modal-subtitle" id="modal-subtitle">
+        Race through 30 slalom gates to the finish! Missed gates add a <b>+3.0s time penalty</b>. Jump onto steel rails to grind!
+      </p>
+
+      <div class="stats-summary" id="stats-summary">
+        <div>
+          <div class="stat-item-label">Total Time</div>
+          <div class="stat-item-val" id="end-time">0.00s</div>
+        </div>
+        <div>
+          <div class="stat-item-label">Best Time</div>
+          <div class="stat-item-val" id="end-best" style="color:#facc15;">--</div>
+        </div>
+        <div>
+          <div class="stat-item-label">Style Pts</div>
+          <div class="stat-item-val" id="end-score" style="color:#38bdf8;">0</div>
+        </div>
+      </div>
+
+      <div class="controls-grid" id="modal-controls-grid">
+        <span><b id="lbl-left">A / ←</b> Carve Left</span>
+        <span><b id="lbl-right">D / →</b> Carve Right</span>
+        <span><b id="lbl-jump">Space</b> Jump &amp; Grind</span>
+        <span><b id="lbl-view">V</b> Helmet / Chase Cam</span>
+      </div>
+
+      <button type="button" id="btn-play">Drop In</button>
+    </div>
+  </div>
+
+  <!-- Piano / Keyboard Calibration Modal -->
+  <div id="calib-overlay">
+    <div class="calib-card">
+      <div class="badge-tag">Piano &amp; Key Setup</div>
+      <h2 style="margin:0 0 6px 0; font-size:24px; color:#fff;">Assign Your Controls</h2>
+      <p style="margin:0 0 12px 0; font-size:13px; color:#cbd5e1;">
+        Play a note on your <b>MIDI Piano</b> or press a <b>Computer Key</b> for each action below:
+      </p>
+      <div id="calib-prompt">Step 1/4: Play key for CARVE LEFT</div>
+      <div class="calib-steps">
+        <div class="calib-slot active" id="slot-left">
+          <div class="calib-slot-title">1. Carve Left</div>
+          <div class="calib-slot-key" id="key-left">Listening...</div>
+        </div>
+        <div class="calib-slot" id="slot-right">
+          <div class="calib-slot-title">2. Carve Right</div>
+          <div class="calib-slot-key" id="key-right">--</div>
+        </div>
+        <div class="calib-slot" id="slot-jump">
+          <div class="calib-slot-title">3. Jump &amp; Spin</div>
+          <div class="calib-slot-key" id="key-jump">--</div>
+        </div>
+        <div class="calib-slot" id="slot-view">
+          <div class="calib-slot-title">4. Camera View</div>
+          <div class="calib-slot-key" id="key-view">--</div>
+        </div>
+      </div>
+      <div class="calib-footer">
+        <button type="button" id="btn-calib-skip">Use Defaults (A/D/Space/V)</button>
+        <button type="button" id="btn-calib-save" style="display:none;">Done &amp; Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ============================================================================
+  // 1. PROCEDURAL WEB AUDIO ENGINE (Wind, Carve, Rail Grind, Piano Tone & FX)
+  // ============================================================================
+  class AlpineAudio {
+    constructor() {
+      this.ctx = null;
+      this.windGain = null;
+      this.carveGain = null;
+      this.carveFilter = null;
+      this.grindOsc = null;
+      this.grindGain = null;
+      this.initialized = false;
+    }
+
+    init() {
+      if (this.initialized) return;
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioCtx();
+
+        const bufferSize = this.ctx.sampleRate * 2;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+
+        // Continuous wind sound
+        const windSource = this.ctx.createBufferSource();
+        windSource.buffer = noiseBuffer;
+        windSource.loop = true;
+        const windFilter = this.ctx.createBiquadFilter();
+        windFilter.type = 'lowpass';
+        windFilter.frequency.value = 320;
+        this.windGain = this.ctx.createGain();
+        this.windGain.gain.value = 0.0;
+        windSource.connect(windFilter);
+        windFilter.connect(this.windGain);
+        this.windGain.connect(this.ctx.destination);
+        windSource.start();
+
+        // Continuous snow carve sound
+        const carveSource = this.ctx.createBufferSource();
+        carveSource.buffer = noiseBuffer;
+        carveSource.loop = true;
+        this.carveFilter = this.ctx.createBiquadFilter();
+        this.carveFilter.type = 'bandpass';
+        this.carveFilter.frequency.value = 1100;
+        this.carveFilter.Q.value = 1.4;
+        this.carveGain = this.ctx.createGain();
+        this.carveGain.gain.value = 0.0;
+        carveSource.connect(this.carveFilter);
+        this.carveFilter.connect(this.carveGain);
+        this.carveGain.connect(this.ctx.destination);
+        carveSource.start();
+
+        // Metallic rail grind synth
+        this.grindOsc = this.ctx.createOscillator();
+        this.grindOsc.type = 'sawtooth';
+        this.grindOsc.frequency.value = 290;
+        const grindFilter = this.ctx.createBiquadFilter();
+        grindFilter.type = 'bandpass';
+        grindFilter.frequency.value = 1800;
+        grindFilter.Q.value = 4.0;
+        this.grindGain = this.ctx.createGain();
+        this.grindGain.gain.value = 0.0;
+        this.grindOsc.connect(grindFilter);
+        grindFilter.connect(this.grindGain);
+        this.grindGain.connect(this.ctx.destination);
+        this.grindOsc.start();
+
+        this.initialized = true;
+      } catch (e) {}
+    }
+
+    updateContinuous(speedRatio, carveIntensity, isGrounded, isGrinding, isPlaying) {
+      if (!this.initialized || !this.ctx) return;
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+
+      const now = this.ctx.currentTime;
+      if (!isPlaying) {
+        this.windGain.gain.setTargetAtTime(0, now, 0.1);
+        this.carveGain.gain.setTargetAtTime(0, now, 0.08);
+        this.grindGain.gain.setTargetAtTime(0, now, 0.06);
+        return;
+      }
+
+      this.windGain.gain.setTargetAtTime(0.02 + speedRatio * 0.06, now, 0.12);
+      const targetCarve = (isGrounded && !isGrinding) ? Math.min(0.14, carveIntensity * 0.14) : 0.0;
+      this.carveGain.gain.setTargetAtTime(targetCarve, now, 0.06);
+      this.carveFilter.frequency.setTargetAtTime(850 + carveIntensity * 1200, now, 0.06);
+
+      this.grindGain.gain.setTargetAtTime(isGrinding ? 0.11 : 0.0, now, 0.04);
+      if (isGrinding) {
+        this.grindOsc.frequency.setTargetAtTime(260 + speedRatio * 140, now, 0.05);
+      }
+    }
+
+    playPianoFeedback(midiNote = 60) {
+      this.init();
+      if (!this.ctx) return;
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+      const now = this.ctx.currentTime;
+      const freq = 440 * Math.pow(2, (midiNote - 69) / 12);
+
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.22, now + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.46);
+    }
+
+    playGateChime(streak) {
+      if (!this.initialized || !this.ctx) return;
+      const now = this.ctx.currentTime;
+      const semitone = Math.min(14, streak % 12);
+      const freq = 523.25 * Math.pow(2, semitone / 12);
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.25, now + 0.14);
+      gain.gain.setValueAtTime(0.14, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.19);
+    }
+
+    playPenaltyBuzz() {
+      if (!this.initialized || !this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(145, now);
+      osc.frequency.setValueAtTime(110, now + 0.11);
+      gain.gain.setValueAtTime(0.16, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.26);
+    }
+
+    playJumpWhoosh() {
+      if (!this.initialized || !this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(520, now + 0.18);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.21);
+    }
+
+    playTrickChime() {
+      if (!this.initialized || !this.ctx) return;
+      const now = this.ctx.currentTime;
+      [659.25, 880, 1174.66].forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+        gain.gain.setValueAtTime(0.12, now + idx * 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.25);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + idx * 0.05);
+        osc.stop(now + idx * 0.05 + 0.26);
+      });
+    }
+
+    playFinishFanfare() {
+      if (!this.initialized || !this.ctx) return;
+      const now = this.ctx.currentTime;
+      [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+        gain.gain.setValueAtTime(0.15, now + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.35);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + idx * 0.08);
+        osc.stop(now + idx * 0.08 + 0.36);
+      });
+    }
+
+    playCrash() {
+      if (!this.initialized || !this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(160, now);
+      osc.frequency.exponentialRampToValueAtTime(34, now + 0.35);
+      gain.gain.setValueAtTime(0.24, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.39);
+    }
+  }
+
+  const audio = new AlpineAudio();
+
+  // ============================================================================
+  // 2. THREE.JS SCENE, LIGHTING & ATMOSPHERIC ALPINE SKY
+  // ============================================================================
+  const wrapper = document.getElementById('game-wrapper');
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xbae6fd);
+  scene.fog = new THREE.FogExp2(0xdbeafe, 0.0068);
+
+  const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 350);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  wrapper.insertBefore(renderer.domElement, wrapper.firstChild);
+
+  // Crisp Alpine Sunlight & Sky Hemisphere Fill
+  const hemiLight = new THREE.HemisphereLight(0xf0f9ff, 0x93c5fd, 0.85);
+  scene.add(hemiLight);
+
+  const sunLight = new THREE.DirectionalLight(0xfffbeb, 0.95);
+  sunLight.position.set(35, 65, 25);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 1024;
+  sunLight.shadow.mapSize.height = 1024;
+  sunLight.shadow.camera.near = 5;
+  sunLight.shadow.camera.far = 180;
+  const d = 45;
+  sunLight.shadow.camera.left = -d;
+  sunLight.shadow.camera.right = d;
+  sunLight.shadow.camera.top = d;
+  sunLight.shadow.camera.bottom = -d;
+  scene.add(sunLight);
+  scene.add(sunLight.target);
+
+  // ============================================================================
+  // 3. PROCEDURAL ALPINE SNOW TERRAIN & DISTANT PEAKS
+  // ============================================================================
+  const SLOPE_ANGLE = 0.24;
+  const CHUNK_LENGTH = 70;
+  const CHUNK_WIDTH = 96;
+  const NUM_CHUNKS = 6;
+  const terrainChunks = [];
+
+  function getTerrainHeight(x, z) {
+    const baseSlope = z * Math.tan(SLOPE_ANGLE);
+    const mogul = Math.sin(x * 0.22) * Math.cos(z * 0.14) * 0.35;
+    const bank = Math.pow(Math.max(0, Math.abs(x) - 18), 1.6) * 0.16;
+    return baseSlope + mogul + bank;
+  }
+
+  const snowMat = new THREE.MeshStandardMaterial({
+    color: 0xf8fafc,
+    roughness: 0.72,
+    metalness: 0.05,
+    flatShading: true
+  });
+
+  function createTerrainChunk() {
+    const geo = new THREE.PlaneGeometry(CHUNK_WIDTH, CHUNK_LENGTH, 28, 20);
+    geo.rotateX(-Math.PI / 2);
+    const mesh = new THREE.Mesh(geo, snowMat);
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+    return { mesh, geo, zStart: 0 };
+  }
+
+  function updateChunkGeometry(chunk, zStart) {
+    chunk.zStart = zStart;
+    const pos = chunk.geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const vx = pos.getX(i);
+      const localZ = pos.getZ(i);
+      const worldZ = zStart + localZ - CHUNK_LENGTH * 0.5;
+      pos.setY(i, getTerrainHeight(vx, worldZ));
+    }
+    pos.needsUpdate = true;
+    chunk.geo.computeVertexNormals();
+    chunk.mesh.position.set(0, 0, zStart - CHUNK_LENGTH * 0.5);
+  }
+
+  for (let i = 0; i < NUM_CHUNKS; i++) {
+    const c = createTerrainChunk();
+    updateChunkGeometry(c, -i * CHUNK_LENGTH);
+    terrainChunks.push(c);
+  }
+
+  // Distant Mountain Range Backdrop (follows skier Z)
+  const mountainGroup = new THREE.Group();
+  const peakMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, flatShading: true, roughness: 0.9 });
+  const peakCapMat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, roughness: 0.6 });
+  for (let i = 0; i < 14; i++) {
+    const pGroup = new THREE.Group();
+    const h = 38 + (i % 4) * 14;
+    const r = 22 + (i % 3) * 8;
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(r, h, 5), peakMat);
+    cone.position.y = h * 0.5;
+    pGroup.add(cone);
+
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.42, h * 0.42, 5), peakCapMat);
+    cap.position.y = h * 0.79;
+    pGroup.add(cap);
+
+    pGroup.position.set((i - 6.5) * 26, -38, -220 - (i % 3) * 25);
+    mountainGroup.add(pGroup);
+  }
+  scene.add(mountainGroup);
+
+  // ============================================================================
+  // 4. BALD SKIER CHARACTER (Black Polo, Red Collar, Grey Pants, Leather Shoes)
+  // ============================================================================
+  const skierRoot = new THREE.Group();
+  const skierBodyGroup = new THREE.Group();
+  skierRoot.add(skierBodyGroup);
+
+  const skiMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3, metalness: 0.2 });
+  const shoeMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.22, metalness: 0.35 });
+  const pantsMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.7, flatShading: true });
+  const poloMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.65, flatShading: true });
+  const collarMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.5, flatShading: true });
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xf1c27d, roughness: 0.55, flatShading: true });
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.6, roughness: 0.3 });
+
+  // Twin Skis & Black Leather Shoes
+  [-0.26, 0.26].forEach((sx) => {
+    const ski = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 2.3), skiMat);
+    ski.position.set(sx, 0.04, 0);
+    ski.castShadow = true;
+    skierBodyGroup.add(ski);
+
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.32), skiMat);
+    tip.position.set(sx, 0.11, -1.24);
+    tip.rotation.x = 0.45;
+    skierBodyGroup.add(tip);
+
+    // Black Leather Shoe
+    const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.14, 0.38), shoeMat);
+    shoe.position.set(sx, 0.13, -0.04);
+    shoe.castShadow = true;
+    skierBodyGroup.add(shoe);
+
+    // Grey Pants Leg
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.21, 0.68, 0.22), pantsMat);
+    leg.position.set(sx, 0.52, 0.02);
+    leg.rotation.x = -0.14;
+    leg.castShadow = true;
+    skierBodyGroup.add(leg);
+  });
+
+  // Black Polo Shirt Torso
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.74, 0.36), poloMat);
+  torso.position.set(0, 1.15, -0.05);
+  torso.rotation.x = -0.18;
+  torso.castShadow = true;
+  skierBodyGroup.add(torso);
+
+  // Red Polo Collar
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.25, 0.13, 8), collarMat);
+  collar.position.set(0, 1.53, -0.11);
+  collar.rotation.x = -0.15;
+  skierBodyGroup.add(collar);
+
+  // Arms & Ski Poles
+  [-0.42, 0.42].forEach((ax) => {
+    const sleeve = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.24, 0.2), poloMat);
+    sleeve.position.set(ax, 1.38, -0.1);
+    sleeve.rotation.x = -0.45;
+    skierBodyGroup.add(sleeve);
+
+    const forearm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.36, 0.15), skinMat);
+    forearm.position.set(ax * 1.04, 1.16, -0.24);
+    forearm.rotation.x = -0.65;
+    skierBodyGroup.add(forearm);
+
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.45, 5), poleMat);
+    pole.position.set(ax * 1.08, 0.85, 0.22);
+    pole.rotation.x = 0.62;
+    skierBodyGroup.add(pole);
+  });
+
+  // Bald Head Group (hidden in Helmet Cam)
+  const headGroup = new THREE.Group();
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.16, 8), skinMat);
+  neck.position.set(0, 1.6, -0.12);
+  headGroup.add(neck);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 14, 12), skinMat);
+  head.scale.set(0.92, 1.08, 0.96);
+  head.position.set(0, 1.82, -0.14);
+  head.castShadow = true;
+  headGroup.add(head);
+
+  skierBodyGroup.add(headGroup);
+  scene.add(skierRoot);
+
+  // ============================================================================
+  // 5. WORLD OBJECTS: SLALOM GATES, PINES, KICKERS, GRIND RAILS & FINISH ARCH
+  // ============================================================================
+  const gates = [];
+  const trees = [];
+  const kickers = [];
+  const rails = [];
+  let finishBannerGroup = null;
+
+  const TOTAL_GATES = 30;
+  let gatesSpawnedCount = 0;
+  let finishLineZ = -9999;
+
+  let nextGateZ = -38;
+  let nextTreeZ = -22;
+  let nextKickerZ = -85;
+  let nextRailZ = -62;
+  let nextGateIsRed = true;
+  let lastGateX = 0;
+
+  // Shared Geometries & Materials for high FPS
+  const redPoleMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4, flatShading: true });
+  const bluePoleMat = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.4, flatShading: true });
+  const redBannerMat = new THREE.MeshStandardMaterial({ color: 0xf87171, side: THREE.DoubleSide, transparent: true, opacity: 0.88 });
+  const blueBannerMat = new THREE.MeshStandardMaterial({ color: 0x60a5fa, side: THREE.DoubleSide, transparent: true, opacity: 0.88 });
+  const poleGeo = new THREE.CylinderGeometry(0.08, 0.08, 2.7, 6);
+  const bannerGeo = new THREE.PlaneGeometry(1.15, 0.65);
+
+  function spawnGate(zPos) {
+    if (gatesSpawnedCount >= TOTAL_GATES) return;
+    gatesSpawnedCount++;
+
+    const gateWidth = 7.4;
+    const dir = nextGateIsRed ? -1 : 1;
+    const shift = 4.5 + Math.random() * 6.5;
+    let centerX = lastGateX + dir * shift;
+    centerX = Math.max(-14.5, Math.min(14.5, centerX));
+    lastGateX = centerX;
+
+    const isRed = nextGateIsRed;
+    nextGateIsRed = !nextGateIsRed;
+
+    const group = new THREE.Group();
+    const poleMat = isRed ? redPoleMat : bluePoleMat;
+    const bannerMat = isRed ? redBannerMat : blueBannerMat;
+
+    [-gateWidth / 2, gateWidth / 2].forEach((px, idx) => {
+      const pole = new THREE.Mesh(poleGeo, poleMat);
+      pole.position.set(px, 1.35, 0);
+      pole.castShadow = true;
+      group.add(pole);
+
+      const flag = new THREE.Mesh(bannerGeo, bannerMat);
+      flag.position.set(px + (idx === 0 ? -0.58 : 0.58), 2.15, 0);
+      group.add(flag);
+    });
+
+    const groundY = getTerrainHeight(centerX, zPos);
+    group.position.set(centerX, groundY, zPos);
+    scene.add(group);
+
+    gates.push({
+      group,
+      x: centerX,
+      z: zPos,
+      width: gateWidth,
+      passed: false
+    });
+
+    // Spawn the Finish Line Banner 28m past the final gate
+    if (gatesSpawnedCount === TOTAL_GATES) {
+      finishLineZ = zPos - 28;
+      spawnFinishBanner(finishLineZ);
+    }
+  }
+
+  function spawnFinishBanner(zPos) {
+    const group = new THREE.Group();
+    const postMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.3, roughness: 0.4 });
+    const bannerMat = new THREE.MeshStandardMaterial({ color: 0xef4444, side: THREE.DoubleSide });
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+
+    [-14, 14].forEach(px => {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 6.5, 8), postMat);
+      post.position.set(px, 3.25, 0);
+      group.add(post);
+    });
+
+    const topBanner = new THREE.Mesh(new THREE.BoxGeometry(28.5, 1.3, 0.25), bannerMat);
+    topBanner.position.set(0, 6.0, 0);
+    group.add(topBanner);
+
+    const snowStripe = new THREE.Mesh(new THREE.BoxGeometry(28, 0.08, 0.6), lineMat);
+    snowStripe.position.set(0, 0.05, 0);
+    group.add(snowStripe);
+
+    group.position.set(0, getTerrainHeight(0, zPos), zPos);
+    scene.add(group);
+    finishBannerGroup = group;
+  }
+
+  const trunkGeo = new THREE.CylinderGeometry(0.24, 0.36, 1.6, 5);
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c3a21, flatShading: true });
+  const foliageMat1 = new THREE.MeshStandardMaterial({ color: 0x15803d, flatShading: true });
+  const foliageMat2 = new THREE.MeshStandardMaterial({ color: 0x166534, flatShading: true });
+  const snowCapMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, flatShading: true });
+  const coneBotGeo = new THREE.ConeGeometry(1.9, 2.8, 6);
+  const coneMidGeo = new THREE.ConeGeometry(1.45, 2.4, 6);
+  const coneTopGeo = new THREE.ConeGeometry(0.95, 1.9, 6);
+
+  function spawnPineTree(xPos, zPos, scaleMult = 1.0) {
+    const tree = new THREE.Group();
+
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    trunk.position.y = 0.8;
+    trunk.castShadow = true;
+    tree.add(trunk);
+
+    const bCone = new THREE.Mesh(coneBotGeo, foliageMat2);
+    bCone.position.y = 2.4;
+    bCone.castShadow = true;
+    tree.add(bCone);
+
+    const mCone = new THREE.Mesh(coneMidGeo, foliageMat1);
+    mCone.position.y = 3.8;
+    mCone.castShadow = true;
+    tree.add(mCone);
+
+    const tCone = new THREE.Mesh(coneTopGeo, snowCapMat);
+    tCone.position.y = 5.0;
+    tCone.castShadow = true;
+    tree.add(tCone);
+
+    const groundY = getTerrainHeight(xPos, zPos);
+    tree.position.set(xPos, groundY - 0.15, zPos);
+    tree.scale.setScalar(scaleMult);
+    tree.rotation.y = Math.random() * Math.PI * 2;
+    scene.add(tree);
+
+    trees.push({
+      mesh: tree,
+      x: xPos,
+      z: zPos,
+      radius: 1.05 * scaleMult
+    });
+  }
+
+  // Jump Kicker Ramp
+  const kickerMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.45, flatShading: true });
+  const kickerLipMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.4, flatShading: true });
+
+  function spawnKicker(zPos) {
+    const xPos = (Math.random() - 0.5) * 18;
+    const group = new THREE.Group();
+
+    // Wedge ramp geometry
+    const rampGeo = new THREE.BoxGeometry(3.8, 1.1, 4.6);
+    const ramp = new THREE.Mesh(rampGeo, kickerMat);
+    ramp.position.set(0, 0.35, 0);
+    ramp.rotation.x = 0.26; // Sloped upward toward -Z
+    ramp.castShadow = true;
+    ramp.receiveShadow = true;
+    group.add(ramp);
+
+    // Bright yellow takeoff lip strip
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(3.85, 0.16, 0.45), kickerLipMat);
+    lip.position.set(0, 0.94, -2.15);
+    group.add(lip);
+
+    const groundY = getTerrainHeight(xPos, zPos);
+    group.position.set(xPos, groundY - 0.1, zPos);
+    scene.add(group);
+
+    kickers.push({
+      group,
+      x: xPos,
+      z: zPos,
+      width: 3.8,
+      length: 4.6,
+      triggered: false
+    });
+  }
+
+  // Terrain Park Grind Rails (Jump onto them to slide like a snowboarder!)
+  const railSteelMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.75, roughness: 0.22, flatShading: true });
+  const railPostMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.5, roughness: 0.5, flatShading: true });
+
+  function spawnGrindRail(zPos) {
+    const xPos = (Math.random() - 0.5) * 20;
+    const length = 14 + Math.random() * 8;
+    const railHeight = 1.05;
+    const group = new THREE.Group();
+
+    // Sloped top steel bar aligned with the mountain pitch
+    const barGeo = new THREE.CylinderGeometry(0.11, 0.11, length, 8);
+    barGeo.rotateX(Math.PI / 2);
+    const bar = new THREE.Mesh(barGeo, railSteelMat);
+    bar.position.set(0, railHeight, 0);
+    bar.rotation.x = -SLOPE_ANGLE;
+    bar.castShadow = true;
+    group.add(bar);
+
+    // Support stanchions along the rail
+    const postCount = 3;
+    for (let i = 0; i < postCount; i++) {
+      const frac = (i / (postCount - 1)) - 0.5;
+      const lz = frac * (length - 1.6);
+      const yOffset = -lz * Math.tan(SLOPE_ANGLE);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, railHeight, 6), railPostMat);
+      post.position.set(0, railHeight * 0.5 + yOffset, lz);
+      post.castShadow = true;
+      group.add(post);
+    }
+
+    const groundY = getTerrainHeight(xPos, zPos);
+    group.position.set(xPos, groundY, zPos);
+    scene.add(group);
+
+    rails.push({
+      group,
+      x: xPos,
+      z: zPos,
+      length,
+      height: railHeight
+    });
+  }
+
+  // Snow & Spark Particle Pool
+  const particles = [];
+  const particleGeo = new THREE.DodecahedronGeometry(0.14, 0);
+  const particleMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const sparkMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+
+  function emitSnowSpray(x, y, z, vx, count = 2, isSpark = false) {
+    for (let i = 0; i < count; i++) {
+      const mesh = new THREE.Mesh(particleGeo, isSpark ? sparkMat : particleMat);
+      mesh.position.set(
+        x + (Math.random() - 0.5) * 0.5,
+        y + 0.15,
+        z + (Math.random() - 0.5) * 0.5
+      );
+      scene.add(mesh);
+      particles.push({
+        mesh,
+        vx: -vx * 0.35 + (Math.random() - 0.5) * (isSpark ? 5.5 : 3.5),
+        vy: 1.8 + Math.random() * 2.8,
+        vz: 2.0 + Math.random() * 3.5,
+        life: 1.0
+      });
+    }
+  }
+
+  // ============================================================================
+  // 6. PIANO MIDI & KEYBOARD CALIBRATION + GAME STATE
+  // ============================================================================
+  const MIDI_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  function midiToNoteLabel(midiNum) {
+    const pitch = MIDI_NOTE_NAMES[midiNum % 12];
+    const octave = Math.floor(midiNum / 12) - 1;
+    return `${pitch}${octave}`;
+  }
+
+  const DEFAULT_BINDINGS = {
+    left:  { type: 'key', code: 'KeyA', label: 'A / ←' },
+    right: { type: 'key', code: 'KeyD', label: 'D / →' },
+    jump:  { type: 'key', code: 'Space', label: 'Space' },
+    view:  { type: 'key', code: 'KeyV', label: 'V' }
+  };
+
+  let bindings = JSON.parse(localStorage.getItem('slopeline_key_bindings') || 'null') || JSON.parse(JSON.stringify(DEFAULT_BINDINGS));
+
+  function updateControlsLabels() {
+    document.getElementById('lbl-left').textContent = bindings.left.label;
+    document.getElementById('lbl-right').textContent = bindings.right.label;
+    document.getElementById('lbl-jump').textContent = bindings.jump.label;
+    document.getElementById('lbl-view').textContent = bindings.view.label;
+    document.getElementById('controls-caption').innerHTML =
+      `<b>${bindings.left.label}</b> Left • <b>${bindings.right.label}</b> Right • <b>${bindings.jump.label}</b> Jump/Grind • <b>${bindings.view.label}</b> View`;
+  }
+  updateControlsLabels();
+
+  // Calibration Wizard State
+  const calibOverlay = document.getElementById('calib-overlay');
+  const calibPrompt = document.getElementById('calib-prompt');
+  const btnCalibSave = document.getElementById('btn-calib-save');
+  const CALIB_ORDER = ['left', 'right', 'jump', 'view'];
+  const CALIB_NAMES = {
+    left: 'CARVE LEFT',
+    right: 'CARVE RIGHT',
+    jump: 'JUMP & SPIN',
+    view: 'CAMERA VIEW'
+  };
+  let isCalibrating = false;
+  let calibStepIndex = 0;
+
+  function openCalibrationModal() {
+    audio.init();
+    isCalibrating = true;
+    calibStepIndex = 0;
+    btnCalibSave.style.display = 'none';
+
+    CALIB_ORDER.forEach((slot, idx) => {
+      const el = document.getElementById(`slot-${slot}`);
+      const keyEl = document.getElementById(`key-${slot}`);
+      el.classList.remove('active', 'done');
+      if (idx === 0) {
+        el.classList.add('active');
+        keyEl.textContent = 'Listening...';
+      } else {
+        keyEl.textContent = bindings[slot].label;
+      }
+    });
+
+    calibPrompt.textContent = `Step 1/4: Play key for ${CALIB_NAMES.left}`;
+    calibOverlay.style.display = 'flex';
+  }
+
+  function closeCalibrationModal() {
+    isCalibrating = false;
+    calibOverlay.style.display = 'none';
+    localStorage.setItem('slopeline_calibrated_seen', 'true');
+    localStorage.setItem('slopeline_key_bindings', JSON.stringify(bindings));
+    updateControlsLabels();
+  }
+
+  function recordCalibrationInput(bindingObj, feedbackMidiNote = 60) {
+    if (!isCalibrating || calibStepIndex >= CALIB_ORDER.length) return;
+    const currentSlot = CALIB_ORDER[calibStepIndex];
+
+    // Prevent assigning the exact same key to two different actions
+    for (let i = 0; i < calibStepIndex; i++) {
+      const prev = bindings[CALIB_ORDER[i]];
+      if (prev.type === bindingObj.type && prev.code === bindingObj.code) {
+        calibPrompt.textContent = `⚠️ Already used! Pick a different key for ${CALIB_NAMES[currentSlot]}`;
+        audio.playPenaltyBuzz();
+        return;
+      }
+    }
+
+    bindings[currentSlot] = bindingObj;
+    audio.playPianoFeedback(feedbackMidiNote);
+
+    const slotEl = document.getElementById(`slot-${currentSlot}`);
+    const keyEl = document.getElementById(`key-${currentSlot}`);
+    slotEl.classList.remove('active');
+    slotEl.classList.add('done');
+    keyEl.textContent = bindingObj.label;
+
+    calibStepIndex++;
+    if (calibStepIndex < CALIB_ORDER.length) {
+      const nextSlot = CALIB_ORDER[calibStepIndex];
+      document.getElementById(`slot-${nextSlot}`).classList.add('active');
+      document.getElementById(`key-${nextSlot}`).textContent = 'Listening...';
+      calibPrompt.textContent = `Step ${calibStepIndex + 1}/4: Play key for ${CALIB_NAMES[nextSlot]}`;
+    } else {
+      calibPrompt.textContent = '✅ All 4 controls calibrated!';
+      btnCalibSave.style.display = 'inline-block';
+    }
+  }
+
+  document.getElementById('btn-calibrate').addEventListener('click', () => {
+    openCalibrationModal();
+    document.getElementById('btn-calibrate').blur();
+  });
+  document.getElementById('btn-calib-skip').addEventListener('click', () => {
+    bindings = JSON.parse(JSON.stringify(DEFAULT_BINDINGS));
+    closeCalibrationModal();
+  });
+  btnCalibSave.addEventListener('click', closeCalibrationModal);
+
+  // Show calibration popup automatically on first-ever visit
+  if (!localStorage.getItem('slopeline_calibrated_seen')) {
+    openCalibrationModal();
+  }
+
+  let isPlaying = false;
+  let isFirstPerson = false;
+  let runTime = 0;
+  let penaltyTime = 0;
+  let gatesCleared = 0;
+  let gatesMissed = 0;
+  let score = 0;
+  let bestTime = parseFloat(localStorage.getItem('slopeline_3d_best_time') || '0');
+  let streak = 0;
+  let maxStreak = 0;
+
+  const state = {
+    x: 0,
+    y: 0,
+    z: 0,
+    vx: 0,
+    vy: 0,
+    vz: -24,
+    leanAngle: 0,
+    grounded: true,
+    isGrinding: false,
+    activeRail: null,
+    grindTime: 0,
+    spinAngle: 0,
+    isSpinning: false,
+    spinAccumulated: 0
+  };
+
+  const input = { left: false, right: false, pointerSteer: 0, pointerActive: false };
+
+  const valTime = document.getElementById('val-time');
+  const valPenalty = document.getElementById('val-penalty');
+  const valGates = document.getElementById('val-gates');
+  const valScore = document.getElementById('val-score');
+  const valBest = document.getElementById('val-best');
+  const calloutEl = document.getElementById('callout');
+  const overlayEl = document.getElementById('overlay');
+  const btnCamToggle = document.getElementById('btn-cam-toggle');
+
+  if (bestTime > 0) valBest.textContent = `${bestTime.toFixed(2)}s`;
+
+  let calloutTimeout = null;
+  function showCallout(text, color = '#facc15') {
+    calloutEl.textContent = text;
+    calloutEl.style.color = color;
+    calloutEl.classList.add('show');
+    clearTimeout(calloutTimeout);
+    calloutTimeout = setTimeout(() => calloutEl.classList.remove('show'), 950);
+  }
+
+  function toggleCameraMode() {
+    isFirstPerson = !isFirstPerson;
+    headGroup.visible = !isFirstPerson;
+    btnCamToggle.textContent = isFirstPerson ? '🥽 Helmet Cam' : '🎥 Chase Cam';
+    showCallout(isFirstPerson ? 'HELMET CAM' : 'CHASE CAM', '#38bdf8');
+  }
+
+  btnCamToggle.addEventListener('click', () => {
+    toggleCameraMode();
+    btnCamToggle.blur();
+  });
+
+  function triggerJumpOrSpin() {
+    if (!isPlaying) return;
+    if (state.grounded || state.isGrinding) {
+      state.grounded = false;
+      state.isGrinding = false;
+      state.activeRail = null;
+      state.vy = 9.5;
+      state.isSpinning = true;
+      state.spinAccumulated = 0;
+      audio.playJumpWhoosh();
+      emitSnowSpray(state.x, state.y, state.z, state.vx, 10);
+    } else if (!state.isSpinning) {
+      state.isSpinning = true;
+      audio.playJumpWhoosh();
+    }
+  }
+
+  // Unified Action Dispatcher (supports Keyboard, MIDI Piano, and Touch)
+  function handleControlDown(type, code, displayLabel, midiPitch = 60) {
+    if (isCalibrating) {
+      recordCalibrationInput({ type, code, label: displayLabel }, midiPitch);
+      return;
+    }
+
+    if (type === 'midi') {
+      audio.playPianoFeedback(midiPitch);
+    }
+
+    const match = (b) => b.type === type && b.code === code;
+
+    if (match(bindings.left) || (type === 'key' && code === 'ArrowLeft')) {
+      input.left = true;
+    }
+    if (match(bindings.right) || (type === 'key' && code === 'ArrowRight')) {
+      input.right = true;
+    }
+    if (match(bindings.jump)) {
+      if (!isPlaying && overlayEl.style.display !== 'none') {
+        startGame();
+      } else {
+        triggerJumpOrSpin();
+      }
+    }
+    if (match(bindings.view)) {
+      toggleCameraMode();
+    }
+  }
+
+  function handleControlUp(type, code) {
+    const match = (b) => b.type === type && b.code === code;
+    if (match(bindings.left) || (type === 'key' && code === 'ArrowLeft')) {
+      input.left = false;
+    }
+    if (match(bindings.right) || (type === 'key' && code === 'ArrowRight')) {
+      input.right = false;
+    }
+  }
+
+  // Computer Keyboard Listeners
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') e.preventDefault();
+    if (e.repeat) return;
+    const label = e.code === 'Space' ? 'Space' : (e.key.length === 1 ? e.key.toUpperCase() : e.code);
+    const pitchMap = { left: 60, right: 64, jump: 67, view: 72 };
+    const guessMidi = e.code === 'KeyA' ? 60 : (e.code === 'KeyD' ? 64 : (e.code === 'Space' ? 67 : pitchMap.view));
+    handleControlDown('key', e.code, label, guessMidi);
+  });
+
+  window.addEventListener('keyup', (e) => {
+    handleControlUp('key', e.code);
+  });
+
+  // Web MIDI Piano Support
+  if (navigator.requestMIDIAccess) {
+    navigator.requestMIDIAccess().then((midiAccess) => {
+      const bindMidiPort = (port) => {
+        port.onmidimessage = (msg) => {
+          if (!msg.data || msg.data.length < 2) return;
+          const status = msg.data[0] & 0xf0;
+          const noteNum = msg.data[1];
+          const velocity = msg.data.length > 2 ? msg.data[2] : 0;
+
+          if (status === 0x90 && velocity > 0) {
+            handleControlDown('midi', noteNum, `🎹 ${midiToNoteLabel(noteNum)}`, noteNum);
+          } else if (status === 0x80 || (status === 0x90 && velocity === 0)) {
+            handleControlUp('midi', noteNum);
+          }
+        };
+      };
+      for (const inputPort of midiAccess.inputs.values()) {
+        bindMidiPort(inputPort);
+      }
+      midiAccess.onstatechange = (e) => {
+        if (e.port && e.port.type === 'input' && e.port.state === 'connected') {
+          bindMidiPort(e.port);
+        }
+      };
+    }).catch(() => {});
+  }
+
+  // Mouse & Touch steering on canvas
+  const domCanvas = renderer.domElement;
+  function updatePointerSteer(clientX) {
+    const norm = (clientX / window.innerWidth) * 2 - 1;
+    input.pointerSteer = Math.max(-1, Math.min(1, norm * 1.45));
+  }
+
+  domCanvas.addEventListener('pointerdown', (e) => {
+    if (!isPlaying || isCalibrating) return;
+    input.pointerActive = true;
+    updatePointerSteer(e.clientX);
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!input.pointerActive || !isPlaying) return;
+    updatePointerSteer(e.clientX);
+  });
+  window.addEventListener('pointerup', () => {
+    input.pointerActive = false;
+    input.pointerSteer = 0;
+  });
+  window.addEventListener('pointercancel', () => {
+    input.pointerActive = false;
+    input.pointerSteer = 0;
+  });
+
+  document.getElementById('touch-jump-btn').addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    triggerJumpOrSpin();
+  });
+
+  // ============================================================================
+  // 7. START, FINISH, CRASH & WORLD RESET
+  // ============================================================================
+  function clearWorldEntities() {
+    gates.forEach(g => scene.remove(g.group));
+    trees.forEach(t => scene.remove(t.mesh));
+    kickers.forEach(k => scene.remove(k.group));
+    rails.forEach(r => scene.remove(r.group));
+    particles.forEach(p => scene.remove(p.mesh));
+    if (finishBannerGroup) {
+      scene.remove(finishBannerGroup);
+      finishBannerGroup = null;
+    }
+    gates.length = 0;
+    trees.length = 0;
+    kickers.length = 0;
+    rails.length = 0;
+    particles.length = 0;
+  }
+
+  function startGame() {
+    audio.init();
+    clearWorldEntities();
+
+    runTime = 0;
+    penaltyTime = 0;
+    gatesCleared = 0;
+    gatesMissed = 0;
+    gatesSpawnedCount = 0;
+    finishLineZ = -9999;
+
+    score = 0;
+    streak = 0;
+    maxStreak = 0;
+    valTime.textContent = '0.00s';
+    valPenalty.textContent = '+0.0s';
+    valGates.textContent = `0/${TOTAL_GATES}`;
+    valScore.textContent = '0';
+
+    state.x = 0;
+    state.z = 0;
+    state.y = getTerrainHeight(0, 0);
+    state.vx = 0;
+    state.vy = 0;
+    state.vz = -24;
+    state.leanAngle = 0;
+    state.grounded = true;
+    state.isGrinding = false;
+    state.activeRail = null;
+    state.grindTime = 0;
+    state.spinAngle = 0;
+    state.isSpinning = false;
+    state.spinAccumulated = 0;
+
+    nextGateZ = -34;
+    nextTreeZ = -18;
+    nextKickerZ = -85;
+    nextRailZ = -58;
+    nextGateIsRed = true;
+    lastGateX = 0;
+
+    for (let i = 0; i < NUM_CHUNKS; i++) {
+      updateChunkGeometry(terrainChunks[i], -i * CHUNK_LENGTH);
+    }
+
+    while (nextGateZ > -280 && gatesSpawnedCount < TOTAL_GATES) {
+      spawnGate(nextGateZ);
+      nextGateZ -= 25;
+    }
+    while (nextTreeZ > -280) {
+      spawnSideTrees(nextTreeZ);
+      nextTreeZ -= 11;
+    }
+    while (nextKickerZ > -280) {
+      spawnKicker(nextKickerZ);
+      nextKickerZ -= 95;
+    }
+    while (nextRailZ > -280) {
+      spawnGrindRail(nextRailZ);
+      nextRailZ -= 74;
+    }
+
+    overlayEl.style.display = 'none';
+    isPlaying = true;
+  }
+
+  function spawnSideTrees(zPos) {
+    spawnPineTree(-20 - Math.random() * 9, zPos, 0.9 + Math.random() * 0.55);
+    spawnPineTree(20 + Math.random() * 9, zPos, 0.9 + Math.random() * 0.55);
+
+    if (Math.random() < 0.38 && zPos > finishLineZ + 12) {
+      const rx = (Math.random() - 0.5) * 30;
+      const nearGate = gates.some(g => Math.abs(g.z - zPos) < 10 && Math.abs(g.x - rx) < 6.2);
+      const nearRail = rails.some(r => Math.abs(r.z - zPos) < r.length * 0.7 && Math.abs(r.x - rx) < 4.5);
+      if (!nearGate && !nearRail) {
+        spawnPineTree(rx, zPos, 0.8 + Math.random() * 0.4);
+      }
+    }
+  }
+
+  function finishSlalomCourse() {
+    isPlaying = false;
+    audio.playFinishFanfare();
+    audio.updateContinuous(0, 0, false, false, false);
+
+    const totalTime = runTime + penaltyTime;
+    if (bestTime === 0 || totalTime < bestTime) {
+      bestTime = totalTime;
+      localStorage.setItem('slopeline_3d_best_time', bestTime.toFixed(2));
+      valBest.textContent = `${bestTime.toFixed(2)}s`;
+    }
+
+    document.getElementById('modal-badge').textContent = 'Course Complete!';
+    document.getElementById('modal-title').textContent = 'FINISH LINE!';
+    document.getElementById('modal-subtitle').textContent =
+      `Raw Time: ${runTime.toFixed(2)}s + ${penaltyTime.toFixed(1)}s Gate Penalties (${gatesMissed} missed)`;
+    document.getElementById('stats-summary').style.display = 'grid';
+    document.getElementById('end-time').textContent = `${totalTime.toFixed(2)}s`;
+    document.getElementById('end-best').textContent = `${bestTime.toFixed(2)}s`;
+    document.getElementById('end-score').textContent = Math.floor(score);
+    document.getElementById('btn-play').textContent = 'Race Again';
+    overlayEl.style.display = 'flex';
+  }
+
+  function crashGame(reason) {
+    isPlaying = false;
+    audio.playCrash();
+    audio.updateContinuous(0, 0, false, false, false);
+    emitSnowSpray(state.x, state.y, state.z, 0, 22);
+
+    document.getElementById('modal-badge').textContent = 'DNF — Wipeout';
+    document.getElementById('modal-title').textContent = reason;
+    document.getElementById('modal-subtitle').textContent = 'Watch out for alpine pine trees on your next run!';
+    document.getElementById('stats-summary').style.display = 'none';
+    document.getElementById('btn-play').textContent = 'Try Again';
+    overlayEl.style.display = 'flex';
+  }
+
+  document.getElementById('btn-play').addEventListener('click', startGame);
+
+  // ============================================================================
+  // 8. MAIN SIMULATION & RENDER LOOP
+  // ============================================================================
+  let lastTime = performance.now();
+
+  function animate(now) {
+    requestAnimationFrame(animate);
+    const dt = Math.min(0.05, (now - lastTime) / 1000);
+    lastTime = now;
+
+    if (isPlaying) {
+      runTime += dt;
+
+      // 1. Horizontal Carving Physics (or balanced rail slide)
+      let steer = 0;
+      if (input.left) steer -= 1;
+      if (input.right) steer += 1;
+      if (input.pointerActive) steer = input.pointerSteer;
+
+      if (state.isGrinding && state.activeRail) {
+        // Lock cleanly onto the rail while allowing player to hop off sideways or jump off
+        state.x += (state.activeRail.x - state.x) * Math.min(1, dt * 18);
+        state.vx = steer * 4.5;
+        state.x += state.vx * dt;
+      } else {
+        const carveAccel = state.grounded ? 42 : 20;
+        state.vx += steer * carveAccel * dt;
+        state.vx *= Math.pow(state.grounded ? 0.14 : 0.45, dt);
+        state.vx = Math.max(-19, Math.min(19, state.vx));
+        state.x += state.vx * dt;
+        state.x = Math.max(-21.5, Math.min(21.5, state.x));
+      }
+
+      // Speed escalates slightly faster while grinding a rail
+      const railBonus = state.isGrinding ? 4.5 : 0;
+      const targetSpeed = Math.min(45, 24 + streak * 0.35 + railBonus);
+      state.vz += (-targetSpeed - state.vz) * Math.min(1, dt * 1.8);
+      state.z += state.vz * dt;
+
+      // 2. Terrain Elevation, Rail Grinding, Jump Kickers & Aerial Spins
+      const groundY = getTerrainHeight(state.x, state.z);
+
+      // Check kicker ramp launches
+      for (const k of kickers) {
+        if (!k.triggered && Math.abs(state.z - k.z) < k.length * 0.5 && Math.abs(state.x - k.x) < k.width * 0.55) {
+          k.triggered = true;
+          state.grounded = false;
+          state.isGrinding = false;
+          state.vy = 14.2;
+          state.isSpinning = true;
+          state.spinAccumulated = 0;
+          audio.playJumpWhoosh();
+          showCallout('BIG AIR! SPINNING!', '#38bdf8');
+          emitSnowSpray(state.x, state.y, state.z, state.vx, 14);
+        }
+      }
+
+      // Check Grind Rails (land on top from a jump to slide like a snowboarder!)
+      if (state.isGrinding && state.activeRail) {
+        const r = state.activeRail;
+        const railSurfaceY = getTerrainHeight(r.x, state.z) + r.height;
+        const stillOnZ = Math.abs(state.z - r.z) <= r.length * 0.52;
+        const stillOnX = Math.abs(state.x - r.x) <= 0.85;
+
+        if (stillOnZ && stillOnX) {
+          state.y = railSurfaceY;
+          state.vy = 0;
+          state.grindTime += dt;
+          score += dt * 320;
+          if (Math.random() < 0.85) {
+            emitSnowSpray(state.x, state.y, state.z, state.vx, 2, true);
+          }
+        } else {
+          // Pop cleanly off the end of the rail
+          state.isGrinding = false;
+          state.activeRail = null;
+          state.grounded = false;
+          state.vy = 4.2;
+          const grindPts = Math.round(state.grindTime * 300);
+          if (grindPts > 40) {
+            showCallout(`50-50 RAIL GRIND! +${grindPts}`, '#facc15');
+          }
+          state.grindTime = 0;
+        }
+      } else if (!state.grounded) {
+        state.vy -= 26 * dt;
+        state.y += state.vy * dt;
+
+        // Check if descending onto a rail
+        if (state.vy <= 0) {
+          for (const r of rails) {
+            const railSurfaceY = getTerrainHeight(r.x, state.z) + r.height;
+            if (
+              Math.abs(state.z - r.z) <= r.length * 0.5 &&
+              Math.abs(state.x - r.x) <= 0.78 &&
+              Math.abs(state.y - railSurfaceY) <= 0.65
+            ) {
+              state.isGrinding = true;
+              state.activeRail = r;
+              state.grindTime = 0;
+              state.y = railSurfaceY;
+              state.vy = 0;
+              state.isSpinning = false;
+              state.spinAngle = 0;
+              audio.playTrickChime();
+              showCallout('RAIL GRIND!', '#facc15');
+              emitSnowSpray(state.x, state.y, state.z, state.vx, 10, true);
+              break;
+            }
+          }
+        }
+
+        if (!state.isGrinding) {
+          if (state.isSpinning) {
+            const spinDelta = 10.5 * dt;
+            state.spinAngle += spinDelta;
+            state.spinAccumulated += spinDelta;
+
+            if (state.spinAccumulated >= Math.PI * 2) {
+              state.spinAccumulated -= Math.PI * 2;
+              const trickBonus = 250;
+              score += trickBonus;
+              audio.playTrickChime();
+              showCallout(`360° AERIAL SPIN! +${trickBonus}`, '#facc15');
+            }
+          }
+
+          if (state.y <= groundY) {
+            state.y = groundY;
+            state.vy = 0;
+            state.grounded = true;
+            state.isSpinning = false;
+            state.spinAngle = 0;
+            emitSnowSpray(state.x, state.y, state.z, state.vx, 12);
+          }
+        }
+      } else {
+        state.y = groundY;
+        state.spinAngle = 0;
+      }
+
+      // 3. Skier Visual Lean & Sideways Snowboard-Style Stance on Rails
+      const targetLean = state.isGrinding ? Math.sin(runTime * 14) * 0.14 : -state.vx * 0.036;
+      state.leanAngle += (targetLean - state.leanAngle) * Math.min(1, dt * 12);
+
+      skierRoot.position.set(state.x, state.y, state.z);
+      skierRoot.rotation.x = -SLOPE_ANGLE;
+      skierBodyGroup.rotation.z = state.leanAngle;
+      skierBodyGroup.rotation.y = state.isGrinding
+        ? Math.PI * 0.38
+        : (-state.vx * 0.022 + state.spinAngle);
+
+      // Snow spray particles when carving on snow
+      const carveIntensity = Math.min(1, Math.abs(state.vx) / 14);
+      if (state.grounded && !state.isGrinding && carveIntensity > 0.16 && Math.random() < 0.75) {
+        emitSnowSpray(state.x, state.y, state.z + 0.4, state.vx, 2);
+      }
+
+      const speedRatio = Math.min(1, (Math.abs(state.vz) - 20) / 24);
+      audio.updateContinuous(speedRatio, carveIntensity, state.grounded, state.isGrinding, true);
+
+      // 4. Recycle Infinite Terrain Chunks & Spawn Ahead up to Finish Line
+      for (const chunk of terrainChunks) {
+        if (chunk.zStart - CHUNK_LENGTH * 0.6 > state.z + 30) {
+          const minZ = Math.min(...terrainChunks.map(c => c.zStart));
+          updateChunkGeometry(chunk, minZ - CHUNK_LENGTH);
+        }
+      }
+
+      while (nextGateZ > state.z - 280 && gatesSpawnedCount < TOTAL_GATES) {
+        spawnGate(nextGateZ);
+        nextGateZ -= 25;
+      }
+      while (nextTreeZ > state.z - 280) {
+        spawnSideTrees(nextTreeZ);
+        nextTreeZ -= 11;
+      }
+      while (nextKickerZ > state.z - 280 && nextKickerZ > finishLineZ + 20) {
+        spawnKicker(nextKickerZ);
+        nextKickerZ -= 95 + Math.random() * 25;
+      }
+      while (nextRailZ > state.z - 280 && nextRailZ > finishLineZ + 20) {
+        spawnGrindRail(nextRailZ);
+        nextRailZ -= 74 + Math.random() * 20;
+      }
+
+      // 5. Gate Slalom Checks (+3.0s Penalty on Miss — Run Continues!)
+      for (let i = gates.length - 1; i >= 0; i--) {
+        const g = gates[i];
+        if (!g.passed && state.z <= g.z) {
+          g.passed = true;
+          const halfW = g.width * 0.56;
+          if (Math.abs(state.x - g.x) <= halfW) {
+            gatesCleared++;
+            streak++;
+            if (streak > maxStreak) maxStreak = streak;
+            const gatePts = 100 + streak * 15;
+            score += gatePts;
+            audio.playGateChime(streak);
+            if (streak % 5 === 0) {
+              showCallout(`${streak}x GATE STREAK! +${gatePts}`, '#38bdf8');
+            }
+          } else {
+            gatesMissed++;
+            streak = 0;
+            penaltyTime += 3.0;
+            audio.playPenaltyBuzz();
+            showCallout('MISSED GATE! +3.0s PENALTY', '#ef4444');
+          }
+        }
+        if (g.z > state.z + 25) {
+          scene.remove(g.group);
+          gates.splice(i, 1);
+        }
+      }
+
+      // Check Finish Line Crossing
+      if (gatesSpawnedCount >= TOTAL_GATES && state.z <= finishLineZ) {
+        finishSlalomCourse();
+      }
+
+      // 6. Pine Tree Collision Checks
+      for (let i = trees.length - 1; i >= 0; i--) {
+        const t = trees[i];
+        const dx = state.x - t.x;
+        const dz = state.z - t.z;
+        const horizDist = Math.hypot(dx, dz);
+        const heightAboveGround = state.y - groundY;
+
+        if (horizDist < t.radius + 0.35 && heightAboveGround < 3.6) {
+          crashGame('CRASHED INTO A PINE!');
+          break;
+        }
+        if (t.z > state.z + 25) {
+          scene.remove(t.mesh);
+          trees.splice(i, 1);
+        }
+      }
+
+      // Cleanup passed kickers & rails
+      for (let i = kickers.length - 1; i >= 0; i--) {
+        if (kickers[i].z > state.z + 25) {
+          scene.remove(kickers[i].group);
+          kickers.splice(i, 1);
+        }
+      }
+      for (let i = rails.length - 1; i >= 0; i--) {
+        if (rails[i].z - rails[i].length > state.z + 25) {
+          scene.remove(rails[i].group);
+          rails.splice(i, 1);
+        }
+      }
+
+      // 7. Update HUD Values
+      valTime.textContent = `${(runTime + penaltyTime).toFixed(2)}s`;
+      valPenalty.textContent = `+${penaltyTime.toFixed(1)}s`;
+      valGates.textContent = `${gatesCleared}/${TOTAL_GATES}`;
+      valScore.textContent = Math.floor(score);
+    }
+
+    // Update Snow Spray & Grind Spark Particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.vy -= 14 * dt;
+      p.mesh.position.x += p.vx * dt;
+      p.mesh.position.y += p.vy * dt;
+      p.mesh.position.z += p.vz * dt;
+      p.life -= dt * 2.2;
+      p.mesh.scale.setScalar(Math.max(0.01, p.life));
+      if (p.life <= 0) {
+        scene.remove(p.mesh);
+        particles.splice(i, 1);
+      }
+    }
+
+    // Keep distant mountains & directional shadow light tracking the skier
+    mountainGroup.position.set(state.x * 0.4, state.y, state.z);
+    sunLight.position.set(state.x + 35, state.y + 65, state.z + 25);
+    sunLight.target.position.set(state.x, state.y, state.z - 15);
+    sunLight.target.updateMatrixWorld();
+
+    // Update Chase Cam vs. First-Person Helmet Cam
+    if (isFirstPerson) {
+      camera.position.set(
+        state.x + state.leanAngle * 0.4,
+        state.y + 1.85,
+        state.z - 0.35
+      );
+      camera.lookAt(
+        state.x + state.vx * 0.25,
+        state.y + 0.2 - Math.tan(SLOPE_ANGLE) * 14,
+        state.z - 14
+      );
+    } else {
+      const desiredCamX = state.x * 0.85;
+      const desiredCamY = state.y + 5.2;
+      const desiredCamZ = state.z + 10.5;
+      camera.position.x += (desiredCamX - camera.position.x) * Math.min(1, dt * 8);
+      camera.position.y += (desiredCamY - camera.position.y) * Math.min(1, dt * 8);
+      camera.position.z = desiredCamZ;
+      camera.lookAt(state.x * 0.9, state.y + 1.2 - Math.tan(SLOPE_ANGLE) * 8, state.z - 12);
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  // Initial preview pose before dropping in
+  state.y = getTerrainHeight(0, 0);
+  skierRoot.position.set(0, state.y, 0);
+  skierRoot.rotation.x = -SLOPE_ANGLE;
+  requestAnimationFrame(animate);
+</script>
+</body>
+</html>
