@@ -2542,13 +2542,55 @@ async function startPedalPoint(bridge, autoStart = false) {
     }
   });
 
-  function startGame() {
-    // Mute the underlying piano synthesizer during active gameplay so only the groove & gate notes play
-    if (bridgeRef && typeof bridgeRef.setPianoMuted === 'function') {
-      bridgeRef.setPianoMuted(true);
-    } else if (window.PianoPadBridge && typeof window.PianoPadBridge.setPianoMuted === 'function') {
-      window.PianoPadBridge.setPianoMuted(true);
+  // Intercept and silence PianoPad's main synth output for left/right control notes during active gameplay
+  const pianoAudioSources = [];
+  const origAudioCtxCreateOsc = audioCtx ? audioCtx.createOscillator.bind(audioCtx) : null;
+  let muteControlNotesActive = false;
+
+  function isControlSteeringInputHeld() {
+    if (!isPlaying || isCalibrating) return false;
+    if (input.left || input.right || performance.now() < input.pianoLeftHoldUntil || performance.now() < input.pianoRightHoldUntil) {
+      return true;
     }
+    // Check if the currently pressed piano key matches the bound Left or Right steering note
+    const activeKeys = document.querySelectorAll('#keyboard .key.active');
+    for (let i = 0; i < activeKeys.length; i++) {
+      const noteAttr = (activeKeys[i].dataset.note || activeKeys[i].dataset.key || '').trim().toLowerCase();
+      if (!noteAttr) continue;
+      if ((bindings.left.type === 'piano' && bindings.left.code === noteAttr) ||
+          (bindings.right.type === 'piano' && bindings.right.code === noteAttr)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Patch main audioCtx oscillator/buffer creation while Pedal Point is active so left/right steering notes produce zero sound
+  if (audioCtx && !audioCtx._ppSteeringMutePatched) {
+    audioCtx._ppSteeringMutePatched = true;
+    const rawCreateOsc = audioCtx.createOscillator.bind(audioCtx);
+    const rawCreateGain = audioCtx.createGain.bind(audioCtx);
+    audioCtx.createOscillator = function () {
+      const osc = rawCreateOsc();
+      if (muteControlNotesActive && isControlSteeringInputHeld()) {
+        // Disconnect output or zero out frequency/gain on connect so steering keys are completely silent
+        const origConnect = osc.connect.bind(osc);
+        osc.connect = function (dest, ...rest) {
+          if (dest && dest.gain && typeof dest.gain.setValueAtTime === 'function') {
+            dest.gain.setValueAtTime(0, audioCtx.currentTime);
+            dest.gain.value = 0;
+          }
+          const silentGain = rawCreateGain();
+          silentGain.gain.value = 0;
+          return origConnect(silentGain);
+        };
+      }
+      return osc;
+    };
+  }
+
+  function startGame() {
+    muteControlNotesActive = true;
 
     currentSeed = Math.floor(1000 + Math.random() * 8999);
     buildWorld(currentSeed);
@@ -2598,11 +2640,7 @@ async function startPedalPoint(bridge, autoStart = false) {
   }
 
   function unmutePianoOnExit() {
-    if (bridgeRef && typeof bridgeRef.setPianoMuted === 'function') {
-      bridgeRef.setPianoMuted(false);
-    } else if (window.PianoPadBridge && typeof window.PianoPadBridge.setPianoMuted === 'function') {
-      window.PianoPadBridge.setPianoMuted(false);
-    }
+    muteControlNotesActive = false;
   }
 
   function finishCourse() {
