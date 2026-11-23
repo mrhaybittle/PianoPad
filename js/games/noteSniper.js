@@ -2,7 +2,7 @@ import { initAudio, playErrorClackSound, playTone, audioCtx } from '../audio.js'
 import { getNoteFrequency, getDiatonicStepAndShift } from '../musicTheory.js';
 import { drawSheetMusicStaff, drawStemlessNote, drawLedgerLines } from '../sheetMusic.js';
 
-const SNIPER_POOL = ['c1', 'd1', 'e1', 'f1', 'g1', 'a1', 'b1', 'c2', 'd2', 'e2', 'f2', 'g2'];
+const SNIPER_POOL = ['c1', 'd1', 'e1', 'f1', 'g1', 'a1', 'b1', 'c2'];
 const TOTAL_TARGETS = 10;
 
 let currentTargetNote = 'c2';
@@ -239,27 +239,24 @@ function gameLoop(now) {
             if (targetsHit >= TOTAL_TARGETS) {
                 const totalTimeSec = parseFloat(((now - startTimeMs) / 1000).toFixed(2));
                 
-                // Track hits vs misses in the shared GameStats system so the graph draws perfectly
-                const injectedGameStats = {
-                    perfect: targetsHit,
-                    earlyLate: 0,
-                    miss: wrongTaps
-                };
-                
-                // We inject our fake stats directly into the bridge before finishing
-                const bridgeState = bridgeRef.getState();
-                if (bridgeState && bridgeState.gameStats) {
-                    bridgeState.gameStats.perfect = injectedGameStats.perfect;
-                    bridgeState.gameStats.earlyLate = injectedGameStats.earlyLate;
-                    bridgeState.gameStats.miss = injectedGameStats.miss;
-                }
-                
                 bridgeRef.finishCustomMiniGame(
                     "Note Name Sniper",
                     totalTimeSec,
-                    `10 Notes Sniped in: <span style="color:#22c55e; font-size:1.4rem; font-weight:800;">${totalTimeSec}s</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${wrongTaps} missed shots)</span>`,
-                    injectedGameStats
+                    `10 Notes Sniped in: <span style="color:#22c55e; font-size:1.4rem; font-weight:800;">${totalTimeSec}s</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${wrongTaps} missed shots)</span>`
                 );
+
+                // Override the solid-green bar set by finishCustomMiniGame with actual hit/miss percentages
+                const totalShots = targetsHit + wrongTaps;
+                const greenPct = totalShots > 0 ? (targetsHit / totalShots) * 100 : 100;
+                const redPct = totalShots > 0 ? (wrongTaps / totalShots) * 100 : 0;
+
+                const barGreen = document.getElementById('bar-green');
+                const barOrange = document.getElementById('bar-orange');
+                const barRed = document.getElementById('bar-red');
+                if (barGreen) barGreen.style.height = `${greenPct}%`;
+                if (barOrange) barOrange.style.height = '0%';
+                if (barRed) barRed.style.height = `${redPct}%`;
+
                 stopNoteSniper();
                 return;
             } else {
