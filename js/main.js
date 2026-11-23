@@ -1282,10 +1282,6 @@ awardNoteCraftSongReward(
         badgeContainer.innerHTML = `<div style="font-size:0.8rem; color:#9ca3af; margin-top:4px;">Practice Speed: ${currentSpeed}% (Reach 50%+ for Practice Badges)</div>`;
     }
 
-    if (accuracyNum >= 80) {
-        unlockBonusSounds(`Awesome performance! You achieved <strong>${accuracyNum}%</strong> accuracy on ${currentSongTitle} and unlocked 5 bonus instrument sound engines!`);
-    }
-
     gameResultsModal.classList.add('open');
 
     postScoreToLeaderboard(accuracyNum);
