@@ -100,7 +100,6 @@ class AlpineAudio {
         output[i] = Math.random() * 2 - 1;
       }
 
-      // Continuous wind sound
       const windSource = this.ctx.createBufferSource();
       windSource.buffer = noiseBuffer;
       windSource.loop = true;
@@ -114,7 +113,6 @@ class AlpineAudio {
       this.windGain.connect(this.ctx.destination);
       windSource.start();
 
-      // Continuous snow carve sound
       const carveSource = this.ctx.createBufferSource();
       carveSource.buffer = noiseBuffer;
       carveSource.loop = true;
@@ -129,7 +127,6 @@ class AlpineAudio {
       this.carveGain.connect(this.ctx.destination);
       carveSource.start();
 
-      // Metallic rail grind synth
       this.grindOsc = this.ctx.createOscillator();
       this.grindOsc.type = 'sawtooth';
       this.grindOsc.frequency.value = 290;
@@ -457,6 +454,43 @@ export async function startSkiSlalom(bridge, autoStart = false) {
         background: rgba(6, 78, 59, 0.88) !important;
       }
       #ski-hud-shield .hud-value { color: #4ade80; font-size: 13px; }
+      #ski-chord-prompt {
+        position: absolute; top: 56px; left: 50%;
+        transform: translateX(-50%);
+        background: rgba(15, 23, 42, 0.9);
+        border: 2px solid #facc15;
+        border-radius: 14px;
+        padding: 6px 18px;
+        display: none;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+        z-index: 11;
+        pointer-events: none;
+      }
+      #ski-chord-prompt.locked {
+        border-color: #4ade80;
+        background: rgba(6, 78, 59, 0.94);
+      }
+      #ski-chord-symbol {
+        font-size: 28px;
+        font-weight: 900;
+        color: #facc15;
+        line-height: 1;
+      }
+      #ski-chord-prompt.locked #ski-chord-symbol { color: #4ade80; }
+      #ski-chord-notes {
+        font-size: 13px;
+        font-weight: 800;
+        color: #f8fafc;
+      }
+      #ski-chord-sub {
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #38bdf8;
+      }
       #ski-slalom-3d-container .hud-actions { display: flex; gap: 8px; pointer-events: auto; }
       #ski-slalom-3d-container .hud-btn {
         background: rgba(15, 23, 42, 0.82); color: #f8fafc;
@@ -466,7 +500,7 @@ export async function startSkiSlalom(bridge, autoStart = false) {
       }
       #ski-slalom-3d-container .hud-btn:hover { background: rgba(30, 41, 59, 0.95); }
       #ski-callout {
-        position: absolute; top: 32%; left: 50%;
+        position: absolute; top: 34%; left: 50%;
         transform: translate(-50%, -50%) scale(0.9);
         font-size: 23px; font-weight: 900; letter-spacing: 0.04em;
         text-transform: uppercase; color: #facc15;
@@ -631,6 +665,15 @@ export async function startSkiSlalom(bridge, autoStart = false) {
       </div>
     </div>
 
+    <!-- Approaching Rail Triad Prompt -->
+    <div id="ski-chord-prompt">
+      <div id="ski-chord-symbol">C</div>
+      <div>
+        <div id="ski-chord-sub">🎹 Play Triad to Auto-Grind Rail</div>
+        <div id="ski-chord-notes">C - E - G</div>
+      </div>
+    </div>
+
     <!-- Trick / Gate Callout Banner -->
     <div id="ski-callout">360° SPIN! +250</div>
 
@@ -720,7 +763,8 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   containerEl.insertBefore(renderer.domElement, containerEl.firstChild);
 
-  const hemiLight = new THREE.HemisphereLight(0xf0f9ff, 0x93c5fd, 0.85);
+  // Keep bright white snow ground bounce so snow never shades blue like water
+  const hemiLight = new THREE.HemisphereLight(0xf8fafc, 0xf1f5f9, 0.92);
   scene.add(hemiLight);
 
   const sunLight = new THREE.DirectionalLight(0xfffbeb, 0.95);
@@ -739,7 +783,7 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   scene.add(sunLight.target);
 
   // ============================================================================
-  // 3. PROCEDURAL ALPINE SNOW TERRAIN & DISTANT PEAKS (RANDOMIZED PER RUN)
+  // 3. PROCEDURAL ALPINE SNOW TERRAIN & DISTANT PEAKS (ORIGINAL SNOW LOOK)
   // ============================================================================
   const SLOPE_ANGLE = 0.24;
   const CHUNK_LENGTH = 70;
@@ -749,36 +793,30 @@ export async function startSkiSlalom(bridge, autoStart = false) {
 
   let terrainSeed = {
     phaseX: Math.random() * Math.PI * 2,
-    phaseZ: Math.random() * Math.PI * 2,
-    freqX: 0.18 + Math.random() * 0.08,
-    freqZ: 0.11 + Math.random() * 0.06,
-    amp: 0.28 + Math.random() * 0.18
+    phaseZ: Math.random() * Math.PI * 2
   };
 
   function randomizeTerrainSeed() {
     terrainSeed = {
       phaseX: Math.random() * Math.PI * 2,
-      phaseZ: Math.random() * Math.PI * 2,
-      freqX: 0.18 + Math.random() * 0.08,
-      freqZ: 0.11 + Math.random() * 0.06,
-      amp: 0.28 + Math.random() * 0.18
+      phaseZ: Math.random() * Math.PI * 2
     };
   }
 
   function getTerrainHeight(x, z) {
     const baseSlope = z * Math.tan(SLOPE_ANGLE);
     const mogul =
-      Math.sin(x * terrainSeed.freqX + terrainSeed.phaseX) *
-      Math.cos(z * terrainSeed.freqZ + terrainSeed.phaseZ) *
-      terrainSeed.amp;
+      Math.sin(x * 0.22 + terrainSeed.phaseX) *
+      Math.cos(z * 0.14 + terrainSeed.phaseZ) *
+      0.32;
     const bank = Math.pow(Math.max(0, Math.abs(x) - 18), 1.6) * 0.16;
     return baseSlope + mogul + bank;
   }
 
   const snowMat = new THREE.MeshStandardMaterial({
-    color: 0xf8fafc,
-    roughness: 0.72,
-    metalness: 0.05,
+    color: 0xffffff,
+    roughness: 0.78,
+    metalness: 0.02,
     flatShading: true
   });
 
@@ -1215,13 +1253,13 @@ export async function startSkiSlalom(bridge, autoStart = false) {
 
   // Sculpted Curved Snow-Park Kickers
   const kickerSnowMat = new THREE.MeshStandardMaterial({
-    color: 0xe0f2fe,
-    roughness: 0.62,
-    metalness: 0.04
+    color: 0xf8fafc,
+    roughness: 0.72,
+    metalness: 0.02
   });
   const kickerSideMat = new THREE.MeshStandardMaterial({
-    color: 0xf8fafc,
-    roughness: 0.78
+    color: 0xe2e8f0,
+    roughness: 0.8
   });
   const kickerLipMat = new THREE.MeshStandardMaterial({
     color: 0xf97316,
@@ -1304,7 +1342,7 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     });
   }
 
-  // Large Floating Triad Chord Sign Texture Generator for Grind Rails
+  // Large 3D Overhead Arch Sign Texture for Triad Grind Rails
   function createTriadSignTexture(triad, isUnlocked = false) {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
@@ -1313,51 +1351,25 @@ export async function startSkiSlalom(bridge, autoStart = false) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Rounded badge background
-    const rx = 18, ry = 14, rw = 476, rh = 200, rad = 34;
-    ctx.beginPath();
-    ctx.moveTo(rx + rad, ry);
-    ctx.lineTo(rx + rw - rad, ry);
-    ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
-    ctx.lineTo(rx + rw, ry + rh - rad);
-    ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
-    ctx.lineTo(rx + rad, ry + rh);
-    ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
-    ctx.lineTo(rx, ry + rad);
-    ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
-    ctx.closePath();
+    ctx.fillStyle = isUnlocked ? '#064e3b' : '#0f172a';
+    ctx.fillRect(12, 12, 488, 232);
 
-    ctx.fillStyle = isUnlocked ? 'rgba(6, 78, 59, 0.96)' : 'rgba(15, 23, 42, 0.94)';
-    ctx.fill();
-
-    ctx.lineWidth = 10;
+    ctx.lineWidth = 14;
     ctx.strokeStyle = isUnlocked ? '#4ade80' : '#facc15';
-    ctx.stroke();
+    ctx.strokeRect(12, 12, 488, 232);
 
-    // Pointer triangle at bottom center
-    ctx.beginPath();
-    ctx.moveTo(234, ry + rh);
-    ctx.lineTo(278, ry + rh);
-    ctx.lineTo(256, ry + rh + 28);
-    ctx.closePath();
-    ctx.fillStyle = isUnlocked ? '#4ade80' : '#facc15';
-    ctx.fill();
-
-    // Header tag
-    ctx.font = '800 22px system-ui, -apple-system, sans-serif';
+    ctx.font = '800 24px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = isUnlocked ? '#86efac' : '#38bdf8';
-    ctx.fillText(isUnlocked ? '⚡ TRIAD LOCKED! 3X GRIND' : '🎹 PLAY TRIAD TO GRIND', 256, 52);
+    ctx.fillText(isUnlocked ? '⚡ TRIAD LOCKED! 3X GRIND' : '🎹 PLAY TRIAD CHORD', 256, 52);
 
-    // Huge Triad Symbol
-    ctx.font = '900 96px system-ui, -apple-system, sans-serif';
+    ctx.font = '900 108px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = isUnlocked ? '#4ade80' : '#facc15';
-    ctx.fillText(triad.symbol, 256, 142);
+    ctx.fillText(triad.symbol, 256, 152);
 
-    // Component notes helper
-    ctx.font = '800 30px system-ui, -apple-system, sans-serif';
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillText(triad.notesLabel, 256, 188);
+    ctx.font = '800 34px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(triad.notesLabel, 256, 208);
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.needsUpdate = true;
@@ -1372,9 +1384,10 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     metalness: 0.85,
     roughness: 0.15
   });
+  const archPostMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.4, roughness: 0.35 });
 
   function spawnGrindRail(zPos) {
-    const xPos = (Math.random() - 0.5) * 20;
+    const xPos = (Math.random() - 0.5) * 18;
     const length = 13 + Math.random() * 10;
     const railHeight = 1.05;
     const group = new THREE.Group();
@@ -1387,14 +1400,24 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     barMesh.castShadow = true;
     group.add(barMesh);
 
-    // Pick random triad chord for this rail & mount large floating billboard at entry
+    // Build a tall, unmistakable 3D overhead arch billboard right at the entry of the rail
     const triad = TRIAD_LIBRARY[Math.floor(Math.random() * TRIAD_LIBRARY.length)];
+    const entryZ = length * 0.45;
+    const archWidth = 5.2;
+    const archTopY = 4.6;
+
+    [-archWidth / 2, archWidth / 2].forEach(px => {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, archTopY, 8), archPostMat);
+      post.position.set(px, archTopY / 2, entryZ);
+      post.castShadow = true;
+      group.add(post);
+    });
+
     const signTex = createTriadSignTexture(triad, false);
-    const signMat = new THREE.SpriteMaterial({ map: signTex, transparent: true, depthTest: false });
-    const signSprite = new THREE.Sprite(signMat);
-    signSprite.scale.set(5.4, 2.7, 1);
-    signSprite.position.set(0, railHeight + 3.2, length * 0.42);
-    group.add(signSprite);
+    const signMat = new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide });
+    const signBoard = new THREE.Mesh(new THREE.PlaneGeometry(archWidth, 2.5), signMat);
+    signBoard.position.set(0, archTopY - 0.4, entryZ);
+    group.add(signBoard);
 
     const groundY = getTerrainHeight(xPos, zPos);
     group.position.set(xPos, groundY, zPos);
@@ -1403,7 +1426,7 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     rails.push({
       group,
       barMesh,
-      signSprite,
+      signBoard,
       triad,
       x: xPos,
       z: zPos,
@@ -1654,7 +1677,6 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   let streak = 0;
   let forgiveNextGate = false;
 
-  // Tracks active piano notes (both held and recently struck within 450ms for arpeggiated chord input)
   const heldPianoNotes = new Set();
   const recentPitchClasses = new Map();
 
@@ -1692,6 +1714,10 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   const valScore = document.getElementById('ski-val-score');
   const valBest = document.getElementById('ski-val-best');
   const shieldPill = document.getElementById('ski-hud-shield');
+  const chordPromptEl = document.getElementById('ski-chord-prompt');
+  const chordSymbolEl = document.getElementById('ski-chord-symbol');
+  const chordNotesEl = document.getElementById('ski-chord-notes');
+  const chordSubEl = document.getElementById('ski-chord-sub');
   const calloutEl = document.getElementById('ski-callout');
   const overlayEl = document.getElementById('ski-overlay');
   const btnCamToggle = document.getElementById('btn-ski-cam-toggle');
@@ -1701,6 +1727,41 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   function updateShieldHUD() {
     if (!shieldPill) return;
     shieldPill.style.display = forgiveNextGate ? 'block' : 'none';
+  }
+
+  function updateApproachingChordHUD() {
+    if (!chordPromptEl || !isPlaying) {
+      if (chordPromptEl) chordPromptEl.style.display = 'none';
+      return;
+    }
+
+    let upcomingRail = null;
+    let closestDist = Infinity;
+    for (const r of rails) {
+      const railExitZ = r.z - r.length * 0.5;
+      const distAhead = state.z - railExitZ;
+      if (distAhead >= 0 && distAhead <= 78 && distAhead < closestDist) {
+        closestDist = distAhead;
+        upcomingRail = r;
+      }
+    }
+
+    if (!upcomingRail) {
+      chordPromptEl.style.display = 'none';
+      return;
+    }
+
+    chordPromptEl.style.display = 'flex';
+    chordSymbolEl.textContent = upcomingRail.triad.symbol;
+    chordNotesEl.textContent = upcomingRail.triad.notesLabel;
+
+    if (upcomingRail.triadActivated) {
+      chordPromptEl.classList.add('locked');
+      chordSubEl.textContent = '⚡ TRIAD LOCKED! 3X STYLE + GATE PASS';
+    } else {
+      chordPromptEl.classList.remove('locked');
+      chordSubEl.textContent = '🎹 PLAY TRIAD CHORD TO GRIND RAIL';
+    }
   }
 
   let calloutTimeout = null;
@@ -1748,7 +1809,6 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     if (!isPlaying || isCalibrating) return;
 
     const now = performance.now();
-    // Gather currently held pitch classes + notes played within last 420ms
     const activePcs = new Set();
     heldPianoNotes.forEach(n => {
       const pc = noteStringToPitchClass(n);
@@ -1761,14 +1821,13 @@ export async function startSkiSlalom(bridge, autoStart = false) {
 
     if (activePcs.size < 3) return;
 
-    // Look for an upcoming rail within 55 units ahead of the skier
     let candidateRail = null;
     let closestDist = Infinity;
     for (const r of rails) {
       if (r.triadActivated) continue;
       const railEntryZ = r.z + r.length * 0.5;
       const distAhead = state.z - railEntryZ;
-      if (distAhead >= -6 && distAhead <= 55 && distAhead < closestDist) {
+      if (distAhead >= -6 && distAhead <= 65 && distAhead < closestDist) {
         closestDist = distAhead;
         candidateRail = r;
       }
@@ -1779,22 +1838,20 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     const matched = candidateRail.triad.pcs.every(pc => activePcs.has(pc));
     if (!matched) return;
 
-    // Triad matched! Lock onto the rail and magnetize the skier smoothly toward it
     candidateRail.triadActivated = true;
     candidateRail.barMesh.material = railChargedMat;
 
-    if (candidateRail.signSprite.material.map) {
-      candidateRail.signSprite.material.map.dispose();
+    if (candidateRail.signBoard.material.map) {
+      candidateRail.signBoard.material.map.dispose();
     }
-    candidateRail.signSprite.material.map = createTriadSignTexture(candidateRail.triad, true);
-    candidateRail.signSprite.material.needsUpdate = true;
+    candidateRail.signBoard.material.map = createTriadSignTexture(candidateRail.triad, true);
+    candidateRail.signBoard.material.needsUpdate = true;
 
     state.targetRail = candidateRail;
     state.isTriadGrinding = true;
     input.pianoLeftHoldUntil = 0;
     input.pianoRightHoldUntil = 0;
 
-    // Hop smoothly toward the rail height if needed
     const targetRailY = getTerrainHeight(candidateRail.x, state.z) + candidateRail.height;
     if (state.y < targetRailY + 0.35) {
       state.grounded = false;
@@ -1812,7 +1869,6 @@ export async function startSkiSlalom(bridge, autoStart = false) {
       return;
     }
 
-    // If magnetized to a Triad Rail, let the auto-carve steer uninterrupted
     if (state.targetRail || state.isTriadGrinding) {
       return;
     }
@@ -1954,8 +2010,8 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     trees.forEach(t => scene.remove(t.mesh));
     kickers.forEach(k => scene.remove(k.group));
     rails.forEach(r => {
-      if (r.signSprite && r.signSprite.material.map) {
-        r.signSprite.material.map.dispose();
+      if (r.signBoard && r.signBoard.material.map) {
+        r.signBoard.material.map.dispose();
       }
       scene.remove(r.group);
     });
@@ -1986,6 +2042,7 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     finishLineZ = -9999;
     forgiveNextGate = false;
     updateShieldHUD();
+    if (chordPromptEl) chordPromptEl.style.display = 'none';
 
     heldPianoNotes.clear();
     recentPitchClasses.clear();
@@ -2073,6 +2130,7 @@ export async function startSkiSlalom(bridge, autoStart = false) {
 
   function finishSlalomCourse() {
     isPlaying = false;
+    if (chordPromptEl) chordPromptEl.style.display = 'none';
     audio.playFinishFanfare();
     audio.updateContinuous(0, 0, false, false, false);
 
@@ -2114,6 +2172,7 @@ export async function startSkiSlalom(bridge, autoStart = false) {
 
   function crashGame(reason) {
     isPlaying = false;
+    if (chordPromptEl) chordPromptEl.style.display = 'none';
     audio.playCrash();
     audio.updateContinuous(0, 0, false, false, false);
     emitSnowSpray(state.x, state.y, state.z, 0, 22);
@@ -2140,8 +2199,8 @@ export async function startSkiSlalom(bridge, autoStart = false) {
 
     if (isPlaying) {
       runTime += dt;
+      updateApproachingChordHUD();
 
-      // Spawn crossing grizzly bears at randomized slope milestones
       while (bearMilestones.length > 0 && state.z <= bearMilestones[0]) {
         bearMilestones.shift();
         if (state.z - 54 > finishLineZ + 18) {
@@ -2164,13 +2223,11 @@ export async function startSkiSlalom(bridge, autoStart = false) {
           state.targetRail = null;
           state.isTriadGrinding = false;
         } else {
-          // Smoothly pull skier horizontally right onto the rail's X line
           const dx = tr.x - state.x;
           const prevX = state.x;
           state.x += dx * Math.min(1, dt * 11);
           state.vx = (state.x - prevX) / Math.max(0.001, dt);
 
-          // Automatically snap onto the rail as soon as the skier reaches its entry Z
           if (state.z <= railEntryZ + 0.6 && Math.abs(dx) < 1.35) {
             state.x = tr.x;
             state.vx = 0;
@@ -2189,7 +2246,6 @@ export async function startSkiSlalom(bridge, autoStart = false) {
         }
       } else if (state.isGrinding && state.activeRail) {
         state.x += (state.activeRail.x - state.x) * Math.min(1, dt * 22);
-        // Keep skier locked center on Triad Grinds; allow slight manual balance on normal grinds
         state.vx = state.isTriadGrinding ? 0 : steer * 4.5;
         state.x += state.vx * dt;
       } else {
@@ -2236,7 +2292,6 @@ export async function startSkiSlalom(bridge, autoStart = false) {
           state.vy = 0;
           state.grindTime += dt;
 
-          // 3x Style Points multiplier & intense cyan/gold spark shower during Triad Grinds
           const mult = state.isTriadGrinding ? 3 : 1;
           score += dt * 320 * mult;
 
@@ -2256,7 +2311,6 @@ export async function startSkiSlalom(bridge, autoStart = false) {
           state.vy = wasTriad ? 6.8 : 4.2;
 
           if (wasTriad) {
-            // Stylistic 360 pop off the end of the Triad Rail + Gate Forgiveness Bonus
             state.isSpinning = true;
             state.spinAccumulated = 0;
             completedRail.triadGrindCompleted = true;
@@ -2427,7 +2481,6 @@ export async function startSkiSlalom(bridge, autoStart = false) {
               showCallout(`${streak}x GATE STREAK! +${gatePts}`, '#38bdf8');
             }
           } else if (forgiveNextGate) {
-            // Forgive missed gate after a Triad Rail Grind!
             forgiveNextGate = false;
             updateShieldHUD();
             gatesCleared++;
@@ -2456,7 +2509,7 @@ export async function startSkiSlalom(bridge, autoStart = false) {
         return;
       }
 
-      // 6. Pine Tree Collision Checks (immune while locked onto a Triad Rail)
+      // 6. Pine Tree Collision Checks
       for (let i = trees.length - 1; i >= 0; i--) {
         const t = trees[i];
         const dx = state.x - t.x;
@@ -2482,8 +2535,8 @@ export async function startSkiSlalom(bridge, autoStart = false) {
       }
       for (let i = rails.length - 1; i >= 0; i--) {
         if (rails[i].z - rails[i].length > state.z + 25) {
-          if (rails[i].signSprite && rails[i].signSprite.material.map) {
-            rails[i].signSprite.material.map.dispose();
+          if (rails[i].signBoard && rails[i].signBoard.material.map) {
+            rails[i].signBoard.material.map.dispose();
           }
           scene.remove(rails[i].group);
           rails.splice(i, 1);
@@ -2564,7 +2617,6 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   };
 
   if (autoStart) {
-    // Skip the splash screen on replay and launch straight into gameplay
     startGame();
     if (statusEl) {
       statusEl.textContent = '⛷️ 3D Ski Slalom Restarted! Carve through all 30 gates!';
