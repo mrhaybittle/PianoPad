@@ -200,13 +200,35 @@ function drawPlayerSprite(ctx, sp, screenX, horizon, W, H, now) {
     ctx.restore();
 }
 
+function drawChallengeNodeSprite(ctx, sp, screenX, horizon, W, H, now) {
+    const scale = (TILE_SIZE * H) / sp.dist;
+    const floatY = horizon + Math.sin(now * 0.005) * (scale * 0.08); 
+    const size = Math.max(24, Math.min(90, Math.floor(scale * 0.5)));
+
+    ctx.save();
+    ctx.shadowColor = '#a855f7'; 
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = '#facc15';
+    ctx.font = `900 ${size}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('❓', screenX, floatY - size * 0.6);
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#e9d5ff';
+    ctx.font = `900 ${Math.max(10, Math.floor(size * 0.22))}px sans-serif`;
+    ctx.fillText('CHALLENGE', screenX, floatY);
+    ctx.restore();
+}
+
 export const SPRITE_DRAWERS = {
     hub_beacon: drawHubBeaconSprite,
     boostpad:   drawBoostPadSprite,
     medkit:     drawMedKitSprite,
     portal:     drawPortalSprite,
     particle:   drawParticleSprite,
-    player:     drawPlayerSprite
+    player:     drawPlayerSprite,
+    challenge_node: drawChallengeNodeSprite
 };
 
 export function collectWorldSprites(dt, now) {
@@ -264,6 +286,15 @@ export function collectWorldSprites(dt, now) {
         sprites.push({ type: 'particle', p, dx, dy, dist: Math.hypot(dx, dy) });
     }
 
+    if (gameState.challengeNodes) {
+        for (const node of gameState.challengeNodes) {
+            if (!node.active) continue;
+            const dx = node.x - lp.x;
+            const dy = node.y - lp.y;
+            sprites.push({ type: 'challenge_node', node, dx, dy, dist: Math.hypot(dx, dy) });
+        }
+    }
+
     sprites.sort((a, b) => b.dist - a.dist);
     return sprites;
 }
@@ -281,9 +312,9 @@ export function drawWorldSprite(ctx, sp, zBuffer, numRays, stripW, horizon, W, H
 
     const screenX = (0.5 + relAngle / FOV) * W;
 
-    if (sp.type === 'player' || sp.type === 'portal' || sp.type === 'medkit' || sp.type === 'boostpad') {
-        const tx = sp.type === 'player' ? sp.opp.x : (sp.type === 'portal' ? sp.portal.x : (sp.type === 'medkit' ? sp.med.x : sp.pad.x));
-        const ty = sp.type === 'player' ? sp.opp.y : (sp.type === 'portal' ? sp.portal.y : (sp.type === 'medkit' ? sp.med.y : sp.pad.y));
+    if (sp.type === 'player' || sp.type === 'portal' || sp.type === 'medkit' || sp.type === 'boostpad' || sp.type === 'challenge_node') {
+        const tx = sp.type === 'player' ? sp.opp.x : (sp.type === 'portal' ? sp.portal.x : (sp.type === 'medkit' ? sp.med.x : (sp.type === 'challenge_node' ? sp.node.x : sp.pad.x)));
+        const ty = sp.type === 'player' ? sp.opp.y : (sp.type === 'portal' ? sp.portal.y : (sp.type === 'medkit' ? sp.med.y : (sp.type === 'challenge_node' ? sp.node.y : sp.pad.y)));
         if (!hasLineOfSight(lp.x, lp.y, tx, ty)) {
             const centerRay = Math.floor(screenX / stripW);
             const leftRay = Math.max(0, centerRay - 5);
