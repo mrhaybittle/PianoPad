@@ -883,4 +883,4 @@ export function renderMvpPodiumOverlay(ctx, W, H) {
     ctx.fillText('Press "test" to spawn another 50-bot wave or Exit to return to menu', cx, cy + 104);
     ctx.restore();
 }
-```[cite: 3]
+
