@@ -81,19 +81,30 @@ const BIKE_PRESETS = {
   }
 };
 
+const NOTE_PALETTE = {
+  c: { label: 'C', freq: 261.63, color: 0xef4444, hex: '#ef4444' }, // Red
+  d: { label: 'D', freq: 293.66, color: 0xf97316, hex: '#f97316' }, // Orange
+  e: { label: 'E', freq: 329.63, color: 0xeab308, hex: '#eab308' }, // Yellow
+  f: { label: 'F', freq: 349.23, color: 0x22c55e, hex: '#22c55e' }, // Green
+  g: { label: 'G', freq: 392.00, color: 0x3b82f6, hex: '#3b82f6' }, // Blue
+  a: { label: 'A', freq: 440.00, color: 0xa855f7, hex: '#a855f7' }, // Purple
+  b: { label: 'B', freq: 493.88, color: 0xec4899, hex: '#ec4899' }  // Pink
+};
+
 const SCALE_NOTES = [
-  { name: 'G4', freq: 392.00, color: 0x34d399, hex: '#34d399' },
-  { name: 'A4', freq: 440.00, color: 0x38bdf8, hex: '#38bdf8' },
-  { name: 'B4', freq: 493.88, color: 0xfbbf24, hex: '#fbbf24' },
-  { name: 'D5', freq: 587.33, color: 0xf97316, hex: '#f97316' },
-  { name: 'E5', freq: 659.25, color: 0xe879f9, hex: '#e879f9' },
-  { name: 'G5', freq: 783.99, color: 0x2dd4bf, hex: '#2dd4bf' }
+  { name: 'C4', pitchClass: 'c', freq: 261.63, color: 0xef4444, hex: '#ef4444' },
+  { name: 'D4', pitchClass: 'd', freq: 293.66, color: 0xf97316, hex: '#f97316' },
+  { name: 'E4', pitchClass: 'e', freq: 329.63, color: 0xeab308, hex: '#eab308' },
+  { name: 'F4', pitchClass: 'f', freq: 349.23, color: 0x22c55e, hex: '#22c55e' },
+  { name: 'G4', pitchClass: 'g', freq: 392.00, color: 0x3b82f6, hex: '#3b82f6' },
+  { name: 'A4', pitchClass: 'a', freq: 440.00, color: 0xa855f7, hex: '#a855f7' },
+  { name: 'B4', pitchClass: 'b', freq: 493.88, color: 0xec4899, hex: '#ec4899' }
 ];
 
 const MELODY_LANES = [
-  { label: 'G', pitchClass: 'g', freq: 392.00, color: 0x34d399, hex: '#34d399', offset: -2.2 },
-  { label: 'B', pitchClass: 'b', freq: 493.88, color: 0xfbbf24, hex: '#fbbf24', offset: 0.0 },
-  { label: 'D', pitchClass: 'd', freq: 587.33, color: 0xe879f9, hex: '#e879f9', offset: 2.2 }
+  { label: 'C', pitchClass: 'c', freq: 261.63, color: 0xef4444, hex: '#ef4444', offset: -2.3 },
+  { label: 'E', pitchClass: 'e', freq: 329.63, color: 0xeab308, hex: '#eab308', offset: 0.0 },
+  { label: 'G', pitchClass: 'g', freq: 392.00, color: 0x3b82f6, hex: '#3b82f6', offset: 2.3 }
 ];
 
 const TRAIL_ZONES = [
@@ -648,9 +659,9 @@ async function startPedalPoint(bridge, autoStart = false) {
   const colFogRainforest = new THREE.Color(0x3f6b5a);
 
   scene.background = colSkyCoastal.clone();
-  scene.fog = new THREE.FogExp2(0xa6d8f5, 0.0016);
+  scene.fog = new THREE.FogExp2(0xa6d8f5, 0.00095);
 
-  const camera = new THREE.PerspectiveCamera(65, initW / initH, 0.15, 1800);
+  const camera = new THREE.PerspectiveCamera(65, initW / initH, 0.15, 2600);
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setSize(initW, initH);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -676,6 +687,40 @@ async function startPedalPoint(bridge, autoStart = false) {
   let rhythmRamps = [];
   let melodyChallenges = [];
   let worldGroup = null;
+  let cargoShips = [];
+  let floatingNotes = [];
+
+  function createMusicalNoteMesh(THREE, hexColor, scale = 1.0, emissiveBoost = 0.65) {
+    const noteGroup = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({
+      color: hexColor,
+      emissive: hexColor,
+      emissiveIntensity: emissiveBoost,
+      roughness: 0.25,
+      metalness: 0.15
+    });
+
+    // Oval tilted notehead
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 12), mat);
+    head.scale.set(1.22, 0.86, 0.62);
+    head.rotation.z = 0.35;
+    head.position.set(-0.14, -0.35, 0);
+    noteGroup.add(head);
+
+    // Vertical stem on right side of notehead
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 1.35, 10), mat);
+    stem.position.set(0.28, 0.28, 0);
+    noteGroup.add(stem);
+
+    // Angled eighth-note flag at top of stem
+    const flag = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.22, 0.12), mat);
+    flag.position.set(0.50, 0.82, 0);
+    flag.rotation.z = -0.48;
+    noteGroup.add(flag);
+
+    noteGroup.scale.setScalar(scale);
+    return noteGroup;
+  }
 
   function mulberry32(seed) {
     let a = seed >>> 0;
@@ -993,20 +1038,152 @@ async function startPedalPoint(bridge, autoStart = false) {
       side: THREE.DoubleSide
     })));
 
-    // Pacific Ocean & Lake Illawarra Vista
+    // Procedural Ocean Wave Texture (Rich Deep Navy/Cobalt Pacific Ocean)
+    const oCan = document.createElement('canvas');
+    oCan.width = 256;
+    oCan.height = 256;
+    const oCtx = oCan.getContext('2d');
+    oCtx.fillStyle = '#07264a';
+    oCtx.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 240; i++) {
+      const wx = rng() * 256;
+      const wy = rng() * 256;
+      const ww = 14 + rng() * 34;
+      const wh = 2 + rng() * 3;
+      oCtx.fillStyle = rng() > 0.45 ? 'rgba(18, 72, 132, 0.52)' : 'rgba(3, 18, 42, 0.55)';
+      oCtx.fillRect(wx, wy, ww, wh);
+    }
+    for (let i = 0; i < 95; i++) {
+      oCtx.fillStyle = 'rgba(186, 230, 253, 0.28)';
+      oCtx.fillRect(rng() * 256, rng() * 256, 4 + rng() * 8, 1.5);
+    }
+    const oceanWaveTex = new THREE.CanvasTexture(oCan);
+    oceanWaveTex.wrapS = THREE.RepeatWrapping;
+    oceanWaveTex.wrapT = THREE.RepeatWrapping;
+    oceanWaveTex.repeat.set(28, 40);
+
+    // Pacific Ocean, Coastal Plain, Lake Illawarra & Port Kembla Cargo Ships
     const oceanY = -365;
-    const oceanGeo = new THREE.PlaneGeometry(3000, 4400);
+    const oceanGeo = new THREE.PlaneGeometry(3600, 4800);
     oceanGeo.rotateX(-Math.PI / 2);
-    const ocean = new THREE.Mesh(oceanGeo, new THREE.MeshStandardMaterial({ color: 0x0e3d6b, roughness: 0.28 }));
-    ocean.position.set(-900, oceanY, -1350);
+    const ocean = new THREE.Mesh(oceanGeo, new THREE.MeshStandardMaterial({
+      color: 0x09315e,
+      map: oceanWaveTex,
+      emissive: 0x03142b,
+      emissiveIntensity: 0.35,
+      roughness: 0.25,
+      metalness: 0.28,
+      fog: false
+    }));
+    ocean.position.set(-920, oceanY, -1350);
     worldGroup.add(ocean);
 
-    const lakeGeo = new THREE.CircleGeometry(145, 20);
+    // Wollongong Coastal Plain & Suburbs
+    const plainGeo = new THREE.PlaneGeometry(540, 3600);
+    plainGeo.rotateX(-Math.PI / 2);
+    const plain = new THREE.Mesh(plainGeo, new THREE.MeshStandardMaterial({ color: 0x3b6936, roughness: 0.95 }));
+    plain.position.set(-340, oceanY + 4, -1250);
+    worldGroup.add(plain);
+
+    const lakeGeo = new THREE.CircleGeometry(145, 24);
     lakeGeo.rotateX(-Math.PI / 2);
     lakeGeo.scale(0.85, 1, 2.25);
-    const lake = new THREE.Mesh(lakeGeo, new THREE.MeshStandardMaterial({ color: 0x2299a8, roughness: 0.22 }));
+    const lake = new THREE.Mesh(lakeGeo, new THREE.MeshStandardMaterial({
+      color: 0x1d8a99,
+      emissive: 0x083b47,
+      emissiveIntensity: 0.25,
+      roughness: 0.22
+    }));
     lake.position.set(-415, oceanY + 6.5, -1420);
     worldGroup.add(lake);
+
+    // Rolling Forested Foothills along the Escarpment Drop-off
+    const hillMat = new THREE.MeshStandardMaterial({ color: 0x2c5c30, roughness: 0.92, flatShading: true });
+    for (let i = 0; i < 22; i++) {
+      const r = 65 + rng() * 90;
+      const h = 75 + rng() * 140;
+      const hill = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), hillMat);
+      hill.scale.set(1.2, 1, 1.8);
+      hill.position.set(-140 - rng() * 185, oceanY + h * 0.45, 50 - i * 115);
+      worldGroup.add(hill);
+    }
+
+    // Port Kembla Bulk-Carrier Cargo Ships on the Pacific Ocean
+    cargoShips = [];
+    floatingNotes = [];
+    const hullMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.6, metalness: 0.35, fog: false });
+    const waterlineMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.7, fog: false });
+    const deckMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8, fog: false });
+    const hatchMat = new THREE.MeshStandardMaterial({ color: 0x7c4a32, roughness: 0.85, fog: false });
+    const bridgeMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4, fog: false });
+    const funnelMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5, fog: false });
+    const wakeMat = new THREE.MeshBasicMaterial({ color: 0xe0f2fe, transparent: true, opacity: 0.55, fog: false });
+
+    function createCargoShip(scale) {
+      const ship = new THREE.Group();
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(10, 5.5, 58), hullMat);
+      hull.position.set(0, 3.2, 0);
+      ship.add(hull);
+
+      const bow = new THREE.Mesh(new THREE.ConeGeometry(6.8, 12, 4), hullMat);
+      bow.rotation.x = -Math.PI / 2;
+      bow.rotation.z = Math.PI / 4;
+      bow.scale.set(1.02, 1, 0.56);
+      bow.position.set(0, 3.2, -35);
+      ship.add(bow);
+
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(10.3, 1.8, 59), waterlineMat);
+      stripe.position.set(0, 0.9, 0);
+      ship.add(stripe);
+
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(9.6, 0.6, 56), deckMat);
+      deck.position.set(0, 6.2, 0);
+      ship.add(deck);
+
+      for (let h = 0; h < 5; h++) {
+        const hatch = new THREE.Mesh(new THREE.BoxGeometry(6.8, 1.8, 6.8), hatchMat);
+        hatch.position.set(0, 7.2, -21 + h * 9.0);
+        ship.add(hatch);
+      }
+
+      const bridgeBase = new THREE.Mesh(new THREE.BoxGeometry(8.8, 6.5, 9.5), bridgeMat);
+      bridgeBase.position.set(0, 9.6, 22);
+      ship.add(bridgeBase);
+
+      const bridgeTop = new THREE.Mesh(new THREE.BoxGeometry(11.6, 2.4, 5.0), bridgeMat);
+      bridgeTop.position.set(0, 14.0, 21.5);
+      ship.add(bridgeTop);
+
+      const funnel = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.4, 4.4, 8), funnelMat);
+      funnel.position.set(0, 14.8, 25.2);
+      ship.add(funnel);
+
+      const wake = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 48), wakeMat);
+      wake.rotation.x = -Math.PI / 2;
+      wake.position.set(0, 0.4, 52);
+      ship.add(wake);
+
+      ship.scale.setScalar(scale);
+      return ship;
+    }
+
+    const shipPlacements = [
+      { x: -640,  z: -240,  rotY: 0.12,  scale: 1.75, speed: 3.4 },
+      { x: -820,  z: -480,  rotY: -0.08, scale: 1.95, speed: -2.6 },
+      { x: -680,  z: -860,  rotY: 0.18,  scale: 1.65, speed: 3.0 },
+      { x: -940,  z: -1240, rotY: 0.05,  scale: 2.10, speed: 3.8 },
+      { x: -720,  z: -1520, rotY: -0.15, scale: 1.80, speed: -3.1 },
+      { x: -1020, z: -1840, rotY: 0.10,  scale: 2.20, speed: 2.5 },
+      { x: -760,  z: -2120, rotY: 0.02,  scale: 1.85, speed: 3.2 }
+    ];
+
+    shipPlacements.forEach(sp => {
+      const ship = createCargoShip(sp.scale);
+      ship.position.set(sp.x, oceanY + 0.6, sp.z);
+      ship.rotation.y = sp.rotY;
+      worldGroup.add(ship);
+      cargoShips.push({ mesh: ship, speed: sp.speed });
+    });
 
     // Eucalyptus Trees
     const gumCount = 560;
@@ -1061,6 +1238,12 @@ async function startPedalPoint(bridge, autoStart = false) {
       const arch = new THREE.Mesh(new THREE.TorusGeometry(2.05, 0.14, 8, 20, Math.PI), mat);
       arch.position.y = 0.2;
       gateGroup.add(arch);
+
+      const noteIcon = createMusicalNoteMesh(THREE, note.color, 0.92, 0.8);
+      noteIcon.position.set(0, 1.35, 0);
+      gateGroup.add(noteIcon);
+      floatingNotes.push({ mesh: noteIcon, baseY: 1.35, phase: z * 0.1 });
+
       worldGroup.add(gateGroup);
       noteGates.push({ x, y, z, note, mesh: gateGroup, hit: false });
     }
@@ -1077,8 +1260,11 @@ async function startPedalPoint(bridge, autoStart = false) {
       worldGroup.add(strip);
     });
 
-    // Melody Trail Challenges
+    // Melody Trail Challenges (3D Musical Note Pickups in C-Red, D-Orange, E-Yellow, F-Green, G-Blue, A-Purple, B-Pink)
     melodyChallenges = [];
+    const noteKeys = ['c', 'd', 'e', 'f', 'g', 'a', 'b'];
+    const laneOffsets = [-2.3, 0.0, 2.3];
+
     [-700, -1720].forEach(startZ => {
       const seq = [Math.floor(rng() * 3), Math.floor(rng() * 3), Math.floor(rng() * 3), Math.floor(rng() * 3)];
       const rows = [];
@@ -1086,22 +1272,30 @@ async function startPedalPoint(bridge, autoStart = false) {
         const rowZ = startZ - 50 - step * 30;
         const cx = getTrailCenterX(rowZ);
         const orbs = [];
+
+        const shuffledKeys = [...noteKeys].sort(() => rng() - 0.5).slice(0, 3);
+
         for (let lane = 0; lane < 3; lane++) {
-          const info = MELODY_LANES[lane];
+          const pKey = shuffledKeys[lane];
+          const pInfo = NOTE_PALETTE[pKey];
+          const info = {
+            label: pInfo.label,
+            pitchClass: pKey,
+            freq: pInfo.freq,
+            color: pInfo.color,
+            hex: pInfo.hex,
+            offset: laneOffsets[lane]
+          };
           const ox = cx + info.offset;
-          const oy = getTerrainHeight(ox, rowZ) + 1.15;
+          const oy = getTerrainHeight(ox, rowZ) + 1.25;
           const isTarget = (lane === seq[step]);
-          const orb = new THREE.Mesh(
-            new THREE.OctahedronGeometry(isTarget ? 0.68 : 0.48, 0),
-            new THREE.MeshStandardMaterial({
-              color: info.color,
-              emissive: info.color,
-              emissiveIntensity: isTarget ? 0.95 : 0.35
-            })
-          );
-          orb.position.set(ox, oy, rowZ);
-          worldGroup.add(orb);
-          orbs.push({ mesh: orb, lane, x: ox, baseY: oy, info });
+
+          const noteMesh = createMusicalNoteMesh(THREE, info.color, isTarget ? 1.05 : 0.72, isTarget ? 0.95 : 0.4);
+          noteMesh.position.set(ox, oy, rowZ);
+          worldGroup.add(noteMesh);
+          floatingNotes.push({ mesh: noteMesh, baseY: oy, phase: step + lane });
+
+          orbs.push({ mesh: noteMesh, lane, x: ox, baseY: oy, info });
         }
         rows.push({ z: rowZ, targetLane: seq[step], orbs, resolved: false });
       }
@@ -1431,14 +1625,26 @@ async function startPedalPoint(bridge, autoStart = false) {
       return;
     }
 
-    // Any other piano note snaps to Melody Trail lanes (G, B, D) or gives cadence boost!
+    // Any other piano note snaps to matching Melody Trail note lane (C-B) or gives cadence boost!
     if (type === 'piano' && isPlaying) {
       const pitchMatch = code.match(/^([a-g]#?)/);
       const pitchClass = pitchMatch ? pitchMatch[1] : '';
-      const laneMatch = MELODY_LANES.find(l => l.pitchClass === pitchClass);
-      if (laneMatch) {
-        const targetX = getTrailCenterX(bike.pos.z) + laneMatch.offset;
-        bike.pos.x += (targetX - bike.pos.x) * 0.65;
+      let matchedOffset = null;
+
+      for (let i = 0; i < melodyChallenges.length; i++) {
+        const mc = melodyChallenges[i];
+        if (bike.pos.z <= mc.triggerZ && bike.pos.z >= mc.endZ && !mc.completed) {
+          const nextRow = mc.rows.find(r => !r.resolved);
+          if (nextRow) {
+            const orbMatch = nextRow.orbs.find(o => o.info.pitchClass === pitchClass);
+            if (orbMatch) matchedOffset = orbMatch.info.offset;
+          }
+        }
+      }
+
+      if (matchedOffset !== null) {
+        const targetX = getTrailCenterX(bike.pos.z) + matchedOffset;
+        bike.pos.x += (targetX - bike.pos.x) * 0.72;
         overdriveTimer = Math.max(overdriveTimer, 1.5);
       } else {
         bike.vel.z -= 2.2;
@@ -1698,7 +1904,7 @@ async function startPedalPoint(bridge, autoStart = false) {
           g.mesh.visible = false;
           audio.playGateNote(g.note.freq);
           addScore(200, true);
-          showCallout(`${g.note.name} GATE! +200`, '#34d399');
+          showCallout(`♪ ${g.note.name} NOTE! +200`, g.note.hex);
         } else if (bike.pos.z < g.z - 4.0) {
           g.hit = true;
         }
@@ -1717,10 +1923,10 @@ async function startPedalPoint(bridge, autoStart = false) {
             mc.announced = true;
             notesRowEl.innerHTML = '';
             mc.seq.forEach((laneIdx, idx) => {
-              const info = MELODY_LANES[laneIdx];
+              const info = mc.rows[idx].orbs[laneIdx].info;
               const pill = document.createElement('div');
-              pill.style.cssText = `width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px; color:#0f172a; background:${info.hex};`;
-              pill.textContent = info.label;
+              pill.style.cssText = `width:28px; height:26px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px; color:#ffffff; text-shadow:0 1px 2px rgba(0,0,0,0.65); background:${info.hex};`;
+              pill.textContent = `♪${info.label}`;
               notesRowEl.appendChild(pill);
               setTimeout(() => audio.playGateNote(info.freq), idx * 260);
             });
@@ -1807,11 +2013,28 @@ async function startPedalPoint(bridge, autoStart = false) {
     frontWheel.rotation.x = -bike.wheelSpin;
     rearWheel.rotation.x = -bike.wheelSpin;
 
+    // Spin and bob all 3D musical note icons
+    for (let i = 0; i < floatingNotes.length; i++) {
+      const fn = floatingNotes[i];
+      if (fn.mesh && fn.mesh.visible) {
+        fn.mesh.rotation.y = now * 0.0022 + fn.phase;
+        fn.mesh.position.y = fn.baseY + Math.sin(now * 0.0035 + fn.phase) * 0.14;
+      }
+    }
+
+    // Slowly drift Port Kembla cargo ships along the Pacific horizon
+    for (let i = 0; i < cargoShips.length; i++) {
+      const cs = cargoShips[i];
+      cs.mesh.position.z += cs.speed * dt;
+      if (cs.mesh.position.z > 200) cs.mesh.position.z = -2400;
+      if (cs.mesh.position.z < -2500) cs.mesh.position.z = 100;
+    }
+
     // Atmosphere Shift in Rainforest Gullies
     const rfNow = getRainforestBlend(bike.pos.z);
     scene.background.copy(colSkyCoastal).lerp(colSkyRainforest, rfNow * 0.72);
     scene.fog.color.copy(colFogCoastal).lerp(colFogRainforest, rfNow * 0.78);
-    scene.fog.density = 0.0016 + (0.0042 - 0.0016) * rfNow;
+    scene.fog.density = 0.00095 + (0.0042 - 0.00095) * rfNow;
 
     sunLight.position.set(bike.pos.x + 38, bike.pos.y + 72, bike.pos.z + 32);
     sunLight.target.position.copy(bike.pos);
