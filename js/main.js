@@ -353,7 +353,7 @@ document.getElementById('btn-game-try-again').addEventListener('click', () => {
     else if (currentSongTitle === "Rhythm Echo" && window.launchRhythmEcho) window.launchRhythmEcho();
     else if (currentSongTitle === "Note Name Sniper" && window.launchNoteSniper) window.launchNoteSniper();
     else if (currentSongTitle === "Flappy Pitch" && window.launchFlappyPitch) window.launchFlappyPitch();
-    else if (currentSongTitle === "Staff Surfers" && window.launchStaffSurfers) window.launchStaffSurfers();
+    else if ((currentSongTitle === "Staff Surfers" || currentSongTitle === "Scale Surfers") && window.launchStaffSurfers) window.launchStaffSurfers();
     else playSong();
 });
 
