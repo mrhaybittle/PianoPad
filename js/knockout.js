@@ -1643,21 +1643,29 @@ function handleKnockoutHostUpdate(data) {
 
         if (mode === 'notecraft') {
             statusBanner.textContent = `🏫 NoteCraft Campus Builder is Live! (${ranked.length} builders in world)`;
-            bracketDiv.innerHTML = `
-                <div style="grid-column: 1 / -1; padding: 20px; background: #141824; border: 1px solid #22c55e; border-radius: 10px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px;">
-                    <div style="font-size: 1.1rem; color: #22c55e; font-weight: 900;">
-                        🏫 NoteCraft 3D School World is Live! Students are building the campus together.
+
+            if (!document.getElementById('btn-host-enter-notecraft')) {
+                bracketDiv.innerHTML = `
+                    <div style="grid-column: 1 / -1; padding: 20px; background: #141824; border: 1px solid #22c55e; border-radius: 10px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+                        <div style="font-size: 1.1rem; color: #22c55e; font-weight: 900;">
+                            🏫 NoteCraft 3D School World is Live! Students are building the campus together.
+                        </div>
+                        <button type="button" id="btn-host-enter-notecraft" class="btn-success" style="padding: 10px 20px; font-size: 0.95rem; font-weight: 800; box-shadow: 0 0 15px rgba(34,197,94,0.4);">
+                            🚶 Enter 3D Campus (Inspect / Build)
+                        </button>
                     </div>
-                    <button type="button" id="btn-host-enter-notecraft" class="btn-success" style="padding: 10px 20px; font-size: 0.95rem; font-weight: 800; box-shadow: 0 0 15px rgba(34,197,94,0.4);">
-                        🚶 Enter 3D Campus (Inspect / Build)
-                    </button>
-                </div>
-            `;
-            document.getElementById('btn-host-enter-notecraft').onclick = () => {
-                document.getElementById('knockout-modal').classList.remove('open');
-                arcadeState.activeMiniGame = 'noteCraft';
-                startNoteCraft(bridge, 'school_campus_main');
-            };
+                `;
+                document.getElementById('btn-host-enter-notecraft').addEventListener('click', () => {
+                    document.getElementById('knockout-modal')?.classList.remove('open');
+                    document.getElementById('game-results-modal')?.classList.remove('open');
+                    document.getElementById('arcade-hub')?.classList.remove('open');
+                    const tugHud = document.getElementById('tug-of-war-hud');
+                    if (tugHud) tugHud.style.display = 'none';
+
+                    arcadeState.activeMiniGame = 'noteCraft';
+                    startNoteCraft(bridge, 'school_campus_main');
+                });
+            }
             return;
         }
 
