@@ -11,7 +11,6 @@ let score = 0;
 let coins = 0;
 let multiplier = 1;
 let noteStreak = 0;
-let chordBuffer = { A: 0, B: 0, C: 0 }; // Tracks chord strikes
 
 // Gracefully migrate best score from the old name to the new name if needed
 let bestScore = parseInt(localStorage.getItem('pianopad_scale_surfers_best') || localStorage.getItem('pianopad_staff_surfers_best') || '0', 10);
@@ -209,7 +208,6 @@ export function startStaffSurfers(bridge) {
     coins = 0;
     multiplier = 1;
     noteStreak = 0;
-    chordBuffer = { A: 0, B: 0, C: 0 };
     obstacles = [];
     coinItems = [];
     particles = [];
@@ -313,8 +311,7 @@ function showInstructionsPopup(bridge) {
             <div style="margin-bottom: 8px;"><b>⏺️ CENTER TRACK:</b> Piano <b>B</b> (or PC <b>M</b>)</div>
             <div style="margin-bottom: 8px;"><b>➡️ RIGHT TRACK:</b> Piano <b>C</b> (or PC <b>,</b>)</div>
             <hr style="border-color: #334155; margin: 12px 0;">
-            <div style="margin-bottom: 8px;"><b>⬆️ JUMP:</b> Play ANY Other Key</div>
-            <div><b>🚀 DBL JUMP:</b> Play A + B + C together!</div>
+            <div><b>⬆️ JUMP:</b> Play ANY Other Key</div>
         </div>
         <div style="color: #22c55e; font-weight: 900; margin-bottom: 20px; font-size: 14px;">
             🎯 Hit the Target Notes to earn Jetpacks & Hoverboards!
@@ -365,28 +362,6 @@ export function handleStaffSurfersInput(noteStr, bridge) {
 function triggerSurferAction(letter, isSharp, bridge, noteStr = null) {
     if (gamePhase !== 'playing') return;
 
-    const now = performance.now();
-    let chordJustTriggered = false;
-
-    // Chord Logic Check
-    if (letter === 'A' || letter === 'B' || letter === 'C') {
-        chordBuffer[letter] = now;
-    }
-
-    const isChord = (now - chordBuffer.A < 150) && (now - chordBuffer.B < 150) && (now - chordBuffer.C < 150);
-
-    if (isChord) {
-        player.isJumping = true;
-        player.rollTimer = 0;
-        player.vy = 210; // MASSIVE Double Jump
-        playWhooshSound(1.6);
-        spawnBurstParticles(player.visualLane, player.yHeight, '#facc15', 18);
-        document.getElementById('status').textContent = '🚀 A+B+C CHORD: DOUBLE JUMP!';
-        // Reset buffer to prevent duplicate triggers
-        chordBuffer.A = 0; chordBuffer.B = 0; chordBuffer.C = 0;
-        chordJustTriggered = true;
-    }
-
     // A -> Left (-1), B -> Center (0), C -> Right (+1); anything else -> JUMP
     const isTrackKey = !isSharp && (letter === 'A' || letter === 'B' || letter === 'C');
 
@@ -403,9 +378,8 @@ function triggerSurferAction(letter, isSharp, bridge, noteStr = null) {
             player.lane = targetLane;
             playWhooshSound(targetLane === 1 ? 1.25 : (targetLane === -1 ? 0.85 : 1.0));
             spawnBurstParticles(player.visualLane, player.yHeight + 12, '#38bdf8', 6);
-        } else if (player.jetpackTimer <= 0 && !chordJustTriggered) {
+        } else if (player.jetpackTimer <= 0) {
             // Re-tapping the SAME lane key triggers ROLL / DUCK (or fast-drop if mid-air)
-            // Blocked if a chord just triggered so the player doesn't instantly drop
             if (player.isJumping && player.yHeight > 6) {
                 player.vy = -195;
             }
@@ -413,8 +387,8 @@ function triggerSurferAction(letter, isSharp, bridge, noteStr = null) {
             playWhooshSound(0.75);
         }
     } else {
-        // Any other key triggers normal JUMP
-        if (player.jetpackTimer <= 0 && !player.isJumping && !chordJustTriggered) {
+        // Any other key triggers normal single JUMP (only when grounded)
+        if (player.jetpackTimer <= 0 && !player.isJumping) {
             player.isJumping = true;
             player.rollTimer = 0;
             player.vy = 152;
