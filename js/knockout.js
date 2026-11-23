@@ -23,6 +23,8 @@ export const CLASS_ROOMS = {
     G3: { name: 'G3', label: 'Room G3', icon: '🎼', color: '#22c55e', textColor: '#000000' }
 };
 
+const KEYBOARD_KNOCKOUT_MODES = ['solo', 'house', 'sides', 'rooms'];
+
 export const koState = {
     isClassKnockout: false,
     isKnockoutHost: false,
@@ -107,6 +109,18 @@ const KO_HYPE_EMOTES = [
 
 export function initKnockoutBridge(deps) {
     bridge = deps;
+}
+
+export function promptKnockoutCalibration(force = false) {
+    if (!force && sessionStorage.getItem('pianopad_ko_calibrated') === '1') return;
+    sessionStorage.setItem('pianopad_ko_calibrated', '1');
+
+    if (bridge && typeof bridge.openCalibrationWizard === 'function') {
+        bridge.openCalibrationWizard();
+    } else {
+        const startCalibBtn = document.getElementById('btn-start-calib');
+        if (startCalibBtn) startCalibBtn.click();
+    }
 }
 
 // ==========================================
@@ -576,8 +590,13 @@ export function initSwissTournamentUI() {
                 </div>
 
                 <div id="ko-student-panel" style="display:none; flex-direction:column; gap:12px; text-align:center;">
-                    <div id="ko-student-status" style="font-size:1rem; color:#ffffff; font-weight:800;">
-                        Connected to Class Battle! Waiting for Teacher to start Round 1...
+                    <div style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:10px;">
+                        <div id="ko-student-status" style="font-size:1rem; color:#ffffff; font-weight:800;">
+                            Connected to Class Battle! Waiting for Teacher to start Round 1...
+                        </div>
+                        <button type="button" id="btn-ko-student-calibrate" class="btn-midi" style="font-size:0.78rem; padding:6px 12px;" onclick="promptKnockoutCalibration(true)">
+                            🎹 Calibrate MIDI Keyboard
+                        </button>
                     </div>
 
                     <div id="ko-team-picker-box" style="display:none; background:#111; border:1px solid #4b5563; border-radius:10px; padding:12px;">
@@ -873,7 +892,7 @@ export function dealKnockoutEmoteDeck() {
     deckEl.style.marginTop = '12px';
 
     deckEl.innerHTML = hand.map(emote => `
-        <button type="button" class="ko-emote-btn" style="font-size:0.74rem; padding:5px 6px;" onclick="sendKnockoutQuickEmote('${emote.replace(/'/g, "\'")}')">${emote}</button>
+        <button type="button" class="ko-emote-btn" style="font-size:0.74rem; padding:5px 6px;" onclick="sendKnockoutQuickEmote('${emote.replace(/'/g, "\\'")}')">${emote}</button>
     `).join('') + `<button type="button" class="ko-shuffle-btn" style="font-size:0.78rem; padding:5px 8px; font-weight:800;" title="Deal 10 new reactions" onclick="dealKnockoutEmoteDeck()">🎲 Shuffle</button>`;
 }
 
@@ -1338,7 +1357,7 @@ function buildStandingsHTML(rankedPlayers, mode = 'solo', playersObj = {}, nttGr
             : '';
 
         const kickBtn = isHost && p.id !== localStudentId
-            ? `<button type="button" onclick="kickKnockoutPlayer('${p.id}', '${p.name.replace(/'/g, "\'")}')" style="margin-left:8px; background:#ef4444; color:#fff; border:none; border-radius:4px; padding:2px 6px; font-size:0.65rem; cursor:pointer;" title="Remove Student">❌ Kick</button>`
+            ? `<button type="button" onclick="kickKnockoutPlayer('${p.id}', '${p.name.replace(/'/g, "\\'")}')" style="margin-left:8px; background:#ef4444; color:#fff; border:none; border-radius:4px; padding:2px 6px; font-size:0.65rem; cursor:pointer;" title="Remove Student">❌ Kick</button>`
             : '';
 
         return `
@@ -1541,7 +1560,7 @@ function handleKnockoutHostUpdate(data) {
             <div class="lobby-player-card" style="position:relative;">
                 <span>${p.avatar || '🏃'}</span>
                 <span>${p.name} (${p.studentClass || 'Class'})${isTeamMode ? getTeamBadgeHTML(p, mode, nttGroupHouses) : ''}</span>
-                <button type="button" onclick="kickKnockoutPlayer('${p.id}', '${p.name.replace(/'/g, "\'")}')" style="position:absolute; top:4px; right:4px; background:#ef4444; color:#fff; border:none; border-radius:4px; width:20px; height:20px; font-size:0.7rem; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Remove Student">✖</button>
+                <button type="button" onclick="kickKnockoutPlayer('${p.id}', '${p.name.replace(/'/g, "\\'")}')" style="position:absolute; top:4px; right:4px; background:#ef4444; color:#fff; border:none; border-radius:4px; width:20px; height:20px; font-size:0.7rem; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Remove Student">✖</button>
             </div>
         `).join('');
         return;
@@ -2008,7 +2027,7 @@ function handleKnockoutStudentUpdate(data) {
     const { localStudentId, sessionStudentName, sessionStudentAvatar } = bridge.getState();
     const playersObj = data.players || {};
     
-    // NEW: Kick Handler for Students
+    // Kick Handler for Students
     if (!playersObj[localStudentId]) {
         alert("You have been removed from the tournament by the teacher.");
         leaveClassKnockout();
@@ -2025,6 +2044,11 @@ function handleKnockoutStudentUpdate(data) {
     if (me && me.house) koMyHouse = me.house;
     if (me && me.side) koMySide = me.side;
     if (me && me.roomTeam) koMyRoom = me.roomTeam;
+
+    // Trigger keyboard calibration once per session whenever entering/switching to a keyboard mode in lobby or between rounds
+    if ((data.status === 'lobby' || data.status === 'round_results') && KEYBOARD_KNOCKOUT_MODES.includes(mode)) {
+        promptKnockoutCalibration(false);
+    }
 
     const teamBox = document.getElementById('ko-team-picker-box');
     if (teamBox) {
@@ -2066,6 +2090,16 @@ function handleKnockoutStudentUpdate(data) {
 
     if (data.status === 'playing' && knockoutLastRoundStarted !== data.round) {
         knockoutLastRoundStarted = data.round;
+
+        // Failsafe: close calibration modal if still open so MIDI inputs aren't intercepted during gameplay
+        const calibModal = document.getElementById('calib-modal');
+        if (calibModal && calibModal.classList.contains('open')) {
+            if (typeof window.skipCalibration === 'function') {
+                window.skipCalibration();
+            } else {
+                calibModal.classList.remove('open');
+            }
+        }
 
         if (mode === 'lasertag') {
             document.getElementById('knockout-modal').classList.remove('open');
@@ -2377,7 +2411,7 @@ function renderKnockoutPostRoundComparison(me, res, myPlaceText) {
         : '';
 
     const all50Buttons = KO_HYPE_EMOTES.map(emote => `
-        <button type="button" class="ko-emote-btn" style="font-size:0.72rem; padding:4px 6px;" onclick="sendKnockoutQuickEmote('${emote.replace(/'/g, "\'")}')">${emote}</button>
+        <button type="button" class="ko-emote-btn" style="font-size:0.72rem; padding:4px 6px;" onclick="sendKnockoutQuickEmote('${emote.replace(/'/g, "\\'")}')">${emote}</button>
     `).join('');
 
     document.getElementById('game-summary-text').innerHTML = `
@@ -2425,6 +2459,7 @@ export function leaveClassKnockout() {
     bridge.stopSong();
 }
 
+window.promptKnockoutCalibration = promptKnockoutCalibration;
 window.kickKnockoutPlayer = kickKnockoutPlayer;
 window.selectKnockoutTeam = selectKnockoutTeam;
 window.dealKnockoutEmoteDeck = dealKnockoutEmoteDeck;
