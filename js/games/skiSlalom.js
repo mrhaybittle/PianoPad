@@ -258,7 +258,34 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
 }
+function ensureThreeLoaded() {
+    if (window.THREE) return Promise.resolve(window.THREE);
 
+    const cdnUrls = [
+        'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js',
+        'https://unpkg.com/three@0.128.0/build/three.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
+    ];
+
+    return new Promise((resolve, reject) => {
+        let idx = 0;
+        const tryNext = () => {
+            if (window.THREE) return resolve(window.THREE);
+            if (idx >= cdnUrls.length) return reject(new Error('All Three.js CDNs failed'));
+
+            const script = document.createElement('script');
+            script.src = cdnUrls[idx++];
+            script.async = true;
+            script.onload = () => (window.THREE ? resolve(window.THREE) : tryNext());
+            script.onerror = () => {
+                script.remove();
+                tryNext();
+            };
+            document.head.appendChild(script);
+        };
+        tryNext();
+    });
+}
 // --- THREE.JS WORLD & BALD POLO SKIER BUILDER ---
 function initThreeScene() {
     const THREE = window.THREE;
@@ -948,7 +975,7 @@ export function stopSkiSlalom() {
     }
 }
 
-export function startSkiSlalom(bridge) {
+export async function startSkiSlalom(bridge) {
     initAudio();
     stopSkiSlalom();
     bridgeRef = bridge;
@@ -960,6 +987,17 @@ export function startSkiSlalom(bridge) {
     bridge.setActiveMiniGame('skiSlalom');
     bridge.resetGameStats();
 
+    const statusEl = document.getElementById('status');
+    if (statusEl) statusEl.textContent = '⛷️ Loading 3D Alpine Engine...';
+
+    try {
+        await ensureThreeLoaded();
+    } catch (err) {
+        alert('Could not load 3D engine (Three.js). Your network may be blocking external CDN scripts.');
+        bridge.exitActiveMiniGame();
+        return;
+    }
+
     if (!initThreeScene()) return;
 
     window.addEventListener('keydown', onWindowKeyDown, { capture: true });
@@ -970,7 +1008,6 @@ export function startSkiSlalom(bridge) {
 
     resetCourseEntities();
 
-    const statusEl = document.getElementById('status');
     if (statusEl) {
         statusEl.textContent = '⛷️ 3D Ski Slalom: Carve through 30 gates (+3s per missed gate) & grind rails!';
     }
@@ -979,7 +1016,6 @@ export function startSkiSlalom(bridge) {
     if (!alreadyCalibrated) {
         gamePhase = 'calibration';
         openCalibrationPopup(bridge);
-        // Render initial mountain preview behind modal
         renderer.render(scene, camera);
     } else {
         gamePhase = 'playing';
