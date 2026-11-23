@@ -6,6 +6,39 @@ import { collectWorldSprites, drawWorldSprite } from './sprites.js';
 import { renderBeamsAndBlaster } from './viewmodel.js';
 import { renderFirstPersonHud } from './hud.js';
 
+function renderArenaFloor(ctx, W, H, horizon, now, isLastLife) {
+    // Oscillates smoothly between 0 and 1 roughly twice per second when on last life
+    const pulse = isLastLife ? (Math.sin(now * 0.012) + 1) * 0.5 : 0;
+
+    const floorGrad = ctx.createLinearGradient(0, horizon, 0, H);
+    if (isLastLife) {
+        const topRed = Math.floor(9 + pulse * 55);
+        const botRed = Math.floor(45 + pulse * 145);
+        const botBlue = Math.floor(75 * (1 - pulse * 0.8));
+        floorGrad.addColorStop(0, `rgb(${topRed}, 8, 14)`);
+        floorGrad.addColorStop(1, `rgb(${botRed}, 12, ${botBlue})`);
+    } else {
+        floorGrad.addColorStop(0, '#090d16');
+        floorGrad.addColorStop(1, '#1e1b4b');
+    }
+
+    ctx.fillStyle = floorGrad;
+    ctx.fillRect(0, horizon, W, H - horizon);
+
+    ctx.strokeStyle = isLastLife
+        ? `rgba(239, 68, 68, ${(0.22 + pulse * 0.48).toFixed(2)})`
+        : 'rgba(56, 189, 248, 0.14)';
+    ctx.lineWidth = isLastLife ? 1.5 : 1;
+
+    for (let i = 1; i <= 6; i++) {
+        const yLine = horizon + Math.pow(i / 6, 1.8) * (H - horizon);
+        ctx.beginPath();
+        ctx.moveTo(0, yLine);
+        ctx.lineTo(W, yLine);
+        ctx.stroke();
+    }
+}
+
 export function renderFirstPerson3D(ctx, W, H, dt, now) {
     const lp = gameState.localPlayer;
     const isSniper = now < (lp.sniperUntil || 0);
@@ -17,28 +50,15 @@ export function renderFirstPerson3D(ctx, W, H, dt, now) {
     const bobOffset = lp.isAlive ? Math.sin(lp.bobPhase) * bobAmp : 0;
     const horizon = H * 0.52 + bobOffset;
 
-    // 1. Sci-Fi Ceiling & Floor
+    // 1. Sci-Fi Ceiling & Last-Life Warning Floor
     const ceilGrad = ctx.createLinearGradient(0, 0, 0, horizon);
     ceilGrad.addColorStop(0, '#020617');
     ceilGrad.addColorStop(1, '#0f172a');
     ctx.fillStyle = ceilGrad;
     ctx.fillRect(0, 0, W, horizon);
 
-    const floorGrad = ctx.createLinearGradient(0, horizon, 0, H);
-    floorGrad.addColorStop(0, '#090d16');
-    floorGrad.addColorStop(1, '#1e1b4b');
-    ctx.fillStyle = floorGrad;
-    ctx.fillRect(0, horizon, W, H - horizon);
-
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.14)';
-    ctx.lineWidth = 1;
-    for (let i = 1; i <= 6; i++) {
-        const yLine = horizon + Math.pow(i / 6, 1.8) * (H - horizon);
-        ctx.beginPath();
-        ctx.moveTo(0, yLine);
-        ctx.lineTo(W, yLine);
-        ctx.stroke();
-    }
+    const isLastLife = lp.isAlive && lp.lives === 1;
+    renderArenaFloor(ctx, W, H, horizon, now, isLastLife);
 
     // 2. Raycast 3D Color-Coded & Geometrically Distinct Sector Walls
     const numRays = Math.min(340, Math.floor(W / 2.8));
