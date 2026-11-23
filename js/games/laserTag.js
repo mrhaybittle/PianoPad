@@ -740,7 +740,11 @@ export function stopLaserTag() {
 }
 
 export async function startLaserTag(bridge, autoRoomCode = null, isHost = false) {
-    await loadSongChallenges();
+    try {
+        await loadSongChallenges();
+    } catch (e) {
+        console.warn("Song challenges failed to load, continuing with defaults:", e);
+    }
     initAudio();
     stopLaserTag();
 
@@ -1648,7 +1652,7 @@ function gameLoop(now, bridge) {
         updateSimulatedBots(dt);
     }
 
-    // Update running Holo-Decoys
+   // Update running Holo-Decoys 
     for (let i = gameState.activeDecoys.length - 1; i >= 0; i--) {
         const dec = gameState.activeDecoys[i];
         if (now >= dec.expiresAt) {
@@ -1666,21 +1670,21 @@ function gameLoop(now, bridge) {
         } else {
             dec.angle += Math.PI / 2;
         }
-    }
+    } 
 
     const activePlayers = Object.values(gameState.remotePlayers).filter(isPlayerActiveInRoom);
     const totalCount = Object.keys(gameState.remotePlayers).length;
-    if (totalCount > gameState.maxPeakPlayers) gameState.maxPeakPlayers = totalCount;
+    if (totalCount > gameState.maxPeakPlayers) gameState.maxPeakPlayers = totalCount; 
 
     const lp = gameState.localPlayer;
     if (lp.isAlive) {
-        // Strict Hold-to-Turn: only turns while 'C' or 'D' is actively held down
+        // Strict Hold-to-Turn: only turns while 'C' or 'D' is actively held down 
         const leftHeld = gameState.heldMoveKeys.has('C') && isPitchStillPhysicallyHeld('C');
         const rightHeld = gameState.heldMoveKeys.has('D') && isPitchStillPhysicallyHeld('D');
         if (!leftHeld) gameState.heldMoveKeys.delete('C');
         if (!rightHeld) gameState.heldMoveKeys.delete('D');
 
-        lp.turnDir = (leftHeld && !rightHeld) ? -1 : (rightHeld && !leftHeld) ? 1 : 0;
+        lp.turnDir = (leftHeld && !rightHeld) ? -1 : (rightHeld && !leftHeld) ? 1 : 0; 
 
         if (lp.turnDir !== 0) {
             if (!lp.turnHoldStart) lp.turnHoldStart = now;
@@ -1689,9 +1693,9 @@ function gameLoop(now, bridge) {
             lp.angle += lp.turnDir * 1.65 * turnRamp * dt;
         } else {
             lp.turnHoldStart = 0;
-        }
+        } 
 
-        // King of the Emerald Hub (+5 points per second inside central hub)
+        // King of the Emerald Hub (+5 points per second inside central hub) 
         if (isInsideEmeraldHub(lp.x, lp.y)) {
             lp.hubScoreTimer += dt;
             if (lp.hubScoreTimer >= 1.0) {
@@ -1700,15 +1704,15 @@ function gameLoop(now, bridge) {
             }
         } else {
             lp.hubScoreTimer = 0;
-        }
+        } 
 
-        // Strict Hold-to-Move: only moves forward while 'C#' is actively held down
+        // Strict Hold-to-Move: only moves forward while 'C#' is actively held down 
         const forwardHeld = gameState.heldMoveKeys.has('C#') && isPitchStillPhysicallyHeld('C#');
         if (!forwardHeld) gameState.heldMoveKeys.delete('C#');
         lp.isMovingForward = forwardHeld;
 
         const isBoosted = now < lp.boostUntil;
-        const speedMult = lp.currentGear.mult * (isBoosted ? 1.5 : 1.0);
+        const speedMult = lp.currentGear.mult * (isBoosted ? 1.5 : 1.0); 
 
         if (lp.isMovingForward && speedMult > 0) {
             lp.bobPhase += dt * (6.5 + speedMult * 5.0);
@@ -1732,9 +1736,9 @@ function gameLoop(now, bridge) {
             if (ARENA_MAP[rowY] && ARENA_MAP[rowY][curCol] === 0) {
                 lp.y += dy;
             }
-        }
+        } 
 
-        // Speed Boost Pads Pickup
+        // Speed Boost Pads Pickup 
         for (const pad of gameState.speedBoostPads) {
             if (Math.hypot(lp.x - pad.x, lp.y - pad.y) < 34 && now >= lp.boostUntil - 1200) {
                 lp.boostUntil = now + 2200;
@@ -1742,9 +1746,9 @@ function gameLoop(now, bridge) {
                 const statusEl = document.getElementById('status');
                 if (statusEl) statusEl.textContent = `⚡ SPEED BOOST PAD ACTIVATED! (2.2s Turbo Surge)`;
             }
-        }
+        } 
 
-        // Floating Med-Kit Pickup
+        // Floating Med-Kit Pickup 
         for (const med of gameState.medKitNodes) {
             if (now >= med.respawnAt && lp.lives < 3 && Math.hypot(lp.x - med.x, lp.y - med.y) < 34) {
                 med.respawnAt = now + 18000;
@@ -1755,18 +1759,18 @@ function gameLoop(now, bridge) {
                 const statusEl = document.getElementById('status');
                 if (statusEl) statusEl.textContent = `💖 MED-KIT COLLECTED! Shield restored to ${lp.lives} Lives!`;
             }
-        }
+        } 
 
-        // Musical Challenge Beacons & Proximity
+        // Musical Challenge Beacons & Proximity 
         lp.nearChallengeNode = null;
         if (gameState.challengeNodes) {
             for (const node of gameState.challengeNodes) {
                 if (node.active) {
-                    // 1. BEACON EFFECT: Spawns a constant glowing purple/gold fountain visible from far away
+                    // 1. BEACON EFFECT: Spawns a constant glowing purple/gold fountain visible from far away 
                     if (Math.random() < 0.35) spawn3DExplosion(node.x, node.y, '#a855f7', 4);
                     if (Math.random() < 0.15) spawn3DExplosion(node.x, node.y, '#facc15', 2);
 
-                    // 2. PROXIMITY CHECK: Trigger the UI only when you walk into the fountain
+                    // 2. PROXIMITY CHECK: Trigger the UI only when you walk into the fountain 
                     if (Math.hypot(lp.x - node.x, lp.y - node.y) < 45) {
                         lp.nearChallengeNode = node;
 
@@ -1784,9 +1788,9 @@ function gameLoop(now, bridge) {
                     node.sequence = newChal.sequence;
                 }
             }
-        }
+        } 
 
-        // Quantum Portal Teleportation
+        // Quantum Portal Teleportation 
         if (gameState.arenaPortals.length === 2 && now >= lp.portalCooldownUntil) {
             for (let pIdx = 0; pIdx < 2; pIdx++) {
                 const p = gameState.arenaPortals[pIdx];
