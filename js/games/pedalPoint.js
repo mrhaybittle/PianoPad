@@ -939,6 +939,34 @@ async function startPedalPoint(bridge, autoStart = false) {
       osc.start(t);
       osc.stop(t + 0.16);
     }
+
+    playSkidScrub(intensity) {
+      if (!this.ctx || !this.isRunning) return;
+      const t = this.ctx.currentTime;
+      const dur = 0.07;
+      const bufLen = Math.floor(this.ctx.sampleRate * dur);
+      const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufLen; i++) {
+        data[i] = (Math.random() * 2 - 1) * (1 - i / bufLen);
+      }
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+
+      const filt = this.ctx.createBiquadFilter();
+      filt.type = 'bandpass';
+      filt.frequency.value = 950 + intensity * 650;
+      filt.Q.value = 1.4;
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(Math.min(0.16, 0.04 + intensity * 0.12), t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+      src.connect(filt);
+      filt.connect(gain);
+      gain.connect(this.masterGain);
+      src.start(t);
+    }
   }
 
   const audio = new CoastalAudioEngine();
@@ -1050,8 +1078,163 @@ async function startPedalPoint(bridge, autoStart = false) {
     return tex;
   }
 
+  function createDustPuffTexture() {
+    const size = 64;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createRadialGradient(size / 2, size / 2, 2, size / 2, size / 2, size / 2);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 0.92)');
+    grad.addColorStop(0.5, 'rgba(240, 224, 204, 0.45)');
+    grad.addColorStop(1, 'rgba(200, 175, 145, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    return new THREE.CanvasTexture(canvas);
+  }
+
   const jerseyTex = createJerseyTexture();
   const tireTreadTex = createTireTreadTexture();
+  const dustPuffTex = createDustPuffTexture();
+
+  // ============================================================================
+  // DIRT ROOST CHUNKS & BILLOWING DUST CLOUD PARTICLE SYSTEMS
+  // ============================================================================
+  const ROOST_COUNT = 220;
+  const roostGeo = new THREE.BufferGeometry();
+  const roostPositions = new Float32Array(ROOST_COUNT * 3);
+  const roostColors = new Float32Array(ROOST_COUNT * 3);
+  const roostData = [];
+  for (let i = 0; i < ROOST_COUNT; i++) {
+    roostPositions[i * 3 + 1] = -999;
+    roostData.push({
+      pos: new THREE.Vector3(0, -999, 0),
+      vel: new THREE.Vector3(),
+      life: 0,
+      color: new THREE.Color(0x9b6438)
+    });
+  }
+  roostGeo.setAttribute('position', new THREE.BufferAttribute(roostPositions, 3));
+  roostGeo.setAttribute('color', new THREE.BufferAttribute(roostColors, 3));
+  const roostSystem = new THREE.Points(
+    roostGeo,
+    new THREE.PointsMaterial({ size: 0.28, vertexColors: true, transparent: true, opacity: 0.95 })
+  );
+  roostSystem.frustumCulled = false;
+  scene.add(roostSystem);
+
+  const DUST_COUNT = 160;
+  const dustGeo = new THREE.BufferGeometry();
+  const dustPositions = new Float32Array(DUST_COUNT * 3);
+  const dustColors = new Float32Array(DUST_COUNT * 3);
+  const dustData = [];
+  for (let i = 0; i < DUST_COUNT; i++) {
+    dustPositions[i * 3 + 1] = -999;
+    dustData.push({
+      pos: new THREE.Vector3(0, -999, 0),
+      vel: new THREE.Vector3(),
+      life: 0,
+      maxLife: 1.2,
+      color: new THREE.Color(0xc89a6e)
+    });
+  }
+  dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+  dustGeo.setAttribute('color', new THREE.BufferAttribute(dustColors, 3));
+  const dustSystem = new THREE.Points(
+    dustGeo,
+    new THREE.PointsMaterial({
+      size: 2.35,
+      map: dustPuffTex,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.42,
+      depthWrite: false
+    })
+  );
+  dustSystem.frustumCulled = false;
+  scene.add(dustSystem);
+
+  let roostCursor = 0;
+  let dustCursor = 0;
+
+  function spawnDirtRoost(origin, sideDirX, sideDirZ, count, speed, hexColor = 0x8c5730) {
+    for (let i = 0; i < count; i++) {
+      const p = roostData[roostCursor];
+      roostCursor = (roostCursor + 1) % ROOST_COUNT;
+      p.pos.set(
+        origin.x + (Math.random() - 0.5) * 0.45,
+        origin.y + 0.18 + Math.random() * 0.25,
+        origin.z + (Math.random() - 0.5) * 0.55
+      );
+      p.vel.set(
+        sideDirX * (speed * (0.6 + Math.random() * 0.7)) + (Math.random() - 0.5) * 2.4,
+        2.6 + Math.random() * (speed * 0.65),
+        sideDirZ * (speed * (0.5 + Math.random() * 0.6)) + 2.5 + Math.random() * 3.0
+      );
+      p.life = 0.48 + Math.random() * 0.36;
+      p.color.setHex(hexColor);
+      p.color.offsetHSL((Math.random() - 0.5) * 0.03, 0, (Math.random() - 0.5) * 0.12);
+    }
+  }
+
+  function spawnDustCloud(origin, sideDirX, sideDirZ, count, speed) {
+    for (let i = 0; i < count; i++) {
+      const p = dustData[dustCursor];
+      dustCursor = (dustCursor + 1) % DUST_COUNT;
+      p.pos.set(
+        origin.x + (Math.random() - 0.5) * 0.8,
+        origin.y + 0.35 + Math.random() * 0.45,
+        origin.z + 0.4 + (Math.random() - 0.5) * 0.8
+      );
+      p.vel.set(
+        sideDirX * (speed * (0.45 + Math.random() * 0.5)) + (Math.random() - 0.5) * 1.4,
+        1.1 + Math.random() * 1.8,
+        sideDirZ * (speed * 0.35) + 1.5 + Math.random() * 1.8
+      );
+      p.maxLife = 0.95 + Math.random() * 0.65;
+      p.life = p.maxLife;
+      p.color.setHex(0xd2a87e);
+      p.color.offsetHSL(0, 0, (Math.random() - 0.5) * 0.08);
+    }
+  }
+
+  function updateParticleSystems(dt) {
+    const rPos = roostSystem.geometry.attributes.position;
+    const rCol = roostSystem.geometry.attributes.color;
+    for (let i = 0; i < ROOST_COUNT; i++) {
+      const p = roostData[i];
+      if (p.life > 0) {
+        p.life -= dt;
+        p.vel.y -= 17.5 * dt;
+        p.pos.addScaledVector(p.vel, dt);
+        rPos.setXYZ(i, p.pos.x, p.pos.y, p.pos.z);
+        rCol.setXYZ(i, p.color.r, p.color.g, p.color.b);
+      } else {
+        rPos.setXYZ(i, 0, -999, 0);
+      }
+    }
+    rPos.needsUpdate = true;
+    rCol.needsUpdate = true;
+
+    const dPos = dustSystem.geometry.attributes.position;
+    const dCol = dustSystem.geometry.attributes.color;
+    for (let i = 0; i < DUST_COUNT; i++) {
+      const p = dustData[i];
+      if (p.life > 0) {
+        p.life -= dt;
+        p.vel.multiplyScalar(Math.max(0, 1 - 1.9 * dt));
+        p.vel.y += 0.45 * dt; // Warm air buoyancy so dust hangs in a cloud
+        p.pos.addScaledVector(p.vel, dt);
+        const fade = Math.max(0, p.life / p.maxLife);
+        dPos.setXYZ(i, p.pos.x, p.pos.y, p.pos.z);
+        dCol.setXYZ(i, p.color.r * fade, p.color.g * fade, p.color.b * fade);
+      } else {
+        dPos.setXYZ(i, 0, -999, 0);
+      }
+    }
+    dPos.needsUpdate = true;
+    dCol.needsUpdate = true;
+  }
 
   let currentSeed = 2500;
   let trailParams = { p1: 0.4, p2: 1.7, p3: 2.9, a1: 22, a2: 11, a3: 4.5 };
@@ -1235,7 +1418,7 @@ async function startPedalPoint(bridge, autoStart = false) {
   }
 
   // ============================================================================
-  // ARTICULATED HIGH-DETAIL 3D MOUNTAIN BIKE & RIDER (From Illawarra Cadence)
+  // ARTICULATED HIGH-DETAIL 3D MOUNTAIN BIKE & RIDER
   // ============================================================================
   const bikeRoot = new THREE.Group();
   const bikeVisual = new THREE.Group();
@@ -1298,7 +1481,6 @@ async function startPedalPoint(bridge, autoStart = false) {
     return wheelGroup;
   }
 
-  // Grounding contact shadow blob beneath bike
   const shadowGeo = new THREE.CircleGeometry(0.95, 18);
   shadowGeo.rotateX(-Math.PI / 2);
   const groundShadow = new THREE.Mesh(
@@ -1311,26 +1493,22 @@ async function startPedalPoint(bridge, autoStart = false) {
   const chassisGroup = new THREE.Group();
   bikeVisual.add(chassisGroup);
 
-  // Hydroformed frame tubes + head tube
   addTube([0, 0.46, 0.08], [0, 0.94, -0.56], 0.048, 0.056, frameMat, chassisGroup);
   addTube([0, 1.04, -0.54], [0, 0.87, 0.25], 0.036, 0.044, frameMat, chassisGroup);
   addTube([0, 0.46, 0.08], [0, 0.96, 0.28], 0.038, 0.042, frameMat, chassisGroup);
   addTube([0, 0.90, -0.55], [0, 1.12, -0.63], 0.044, 0.044, darkMetalMat, chassisGroup);
 
-  // Rear triangle
   [-0.07, 0.07].forEach(xOff => {
     addTube([xOff, 0.46, 0.08], [xOff, 0.42, 0.72], 0.022, 0.024, frameMat, chassisGroup);
     addTube([xOff, 0.87, 0.25], [xOff, 0.42, 0.72], 0.020, 0.022, frameMat, chassisGroup);
   });
 
-  // Kashima rear shock + dropper post + saddle
   addTube([0, 0.84, 0.16], [0, 0.66, -0.18], 0.028, 0.032, kashimaMat, chassisGroup);
   addTube([0, 0.96, 0.28], [0, 1.08, 0.33], 0.022, 0.022, kashimaMat, chassisGroup);
   const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.045, 0.28), gripMat);
   saddle.position.set(0, 1.10, 0.34);
   chassisGroup.add(saddle);
 
-  // E-MTB Downtube Battery & Motor Group
   const ebikeGroup = new THREE.Group();
   const batteryMesh = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.13, 0.72), darkMetalMat);
   batteryMesh.position.set(0, 0.71, -0.23);
@@ -1347,7 +1525,6 @@ async function startPedalPoint(bridge, autoStart = false) {
   ebikeGroup.visible = false;
   chassisGroup.add(ebikeGroup);
 
-  // Water Bottle
   const bottle = new THREE.Mesh(
     new THREE.CylinderGeometry(0.048, 0.048, 0.22, 10),
     new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.35 })
@@ -1356,7 +1533,6 @@ async function startPedalPoint(bridge, autoStart = false) {
   bottle.rotation.x = 0.95;
   chassisGroup.add(bottle);
 
-  // Rotating Crankset & Pedals
   const crankGroup = new THREE.Group();
   crankGroup.position.set(0, 0.46, 0.08);
   const chainring = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.02, 16), darkMetalMat);
@@ -1371,12 +1547,10 @@ async function startPedalPoint(bridge, autoStart = false) {
   crankGroup.add(rightArm);
   chassisGroup.add(crankGroup);
 
-  // Rear Wheel
   const rearWheel = createMTBWheel();
   rearWheel.position.set(0, 0.42, 0.72);
   chassisGroup.add(rearWheel);
 
-  // Steering Group
   const steerGroup = new THREE.Group();
   steerGroup.position.set(0, 1.05, -0.60);
   chassisGroup.add(steerGroup);
@@ -1397,7 +1571,6 @@ async function startPedalPoint(bridge, autoStart = false) {
     steerGroup.add(grip);
   });
 
-  // Kashima Stanchions
   [-0.085, 0.085].forEach(xOff => {
     const stanchion = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.56, 10), kashimaMat);
     stanchion.position.set(xOff, -0.22, -0.11);
@@ -1405,7 +1578,6 @@ async function startPedalPoint(bridge, autoStart = false) {
     steerGroup.add(stanchion);
   });
 
-  // Dual-Crown DH 200 Upper Fork Group
   const dhForkGroup = new THREE.Group();
   [-0.088, 0.088].forEach(xOff => {
     const upperTube = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.34, 10), kashimaMat);
@@ -1419,7 +1591,6 @@ async function startPedalPoint(bridge, autoStart = false) {
   dhForkGroup.visible = false;
   steerGroup.add(dhForkGroup);
 
-  // Sliding Fork Lowers + Front Wheel
   const forkLowers = new THREE.Group();
   [-0.085, 0.085].forEach(xOff => {
     const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.028, 0.44, 10), darkMetalMat);
@@ -1436,7 +1607,6 @@ async function startPedalPoint(bridge, autoStart = false) {
   forkLowers.add(frontWheel);
   steerGroup.add(forkLowers);
 
-  // Articulated Rider (Tie-Dye Jersey, Hydration Pack, Visor Helmet, Goggles, Arms & Legs)
   const riderGroup = new THREE.Group();
   riderGroup.position.set(0, 1.15, 0.25);
   chassisGroup.add(riderGroup);
@@ -1477,7 +1647,6 @@ async function startPedalPoint(bridge, autoStart = false) {
   goggles.position.set(0, 0.025, -0.115);
   headGroup.add(goggles);
 
-  // Articulated Arms & Gloves reaching to grips
   [-1, 1].forEach(side => {
     const shoulder = new THREE.Group();
     shoulder.position.set(side * 0.21, 0.42, 0.0);
@@ -1489,7 +1658,6 @@ async function startPedalPoint(bridge, autoStart = false) {
     shoulder.add(glove);
   });
 
-  // Articulated Legs with Knee Pads & Trail Shoes
   const riderLegs = [];
   [-1, 1].forEach(side => {
     const legGroup = new THREE.Group();
@@ -1780,7 +1948,7 @@ async function startPedalPoint(bridge, autoStart = false) {
     gumTrunks.count = gumCanopy.count = placed;
     worldGroup.add(gumTrunks, gumCanopy);
 
-    // High-Visibility Melodic Note Gates (Thick Glowing Arch + Tall Pillars + Floating Note + Overhead Badge)
+    // High-Visibility Melodic Note Gates
     noteGates = [];
     for (let z = -65; z > -TRAIL_LENGTH + 70; z -= 72 + rng() * 22) {
       if ((z < -675 && z > -865) || (z < -1695 && z > -1885)) continue;
@@ -1840,7 +2008,7 @@ async function startPedalPoint(bridge, autoStart = false) {
       worldGroup.add(strip);
     });
 
-    // High-Visibility Melody Trail Challenges (Glowing Lane Guides + Big 3D Notes + Target Labels)
+    // High-Visibility Melody Trail Challenges
     melodyChallenges = [];
     const noteKeys = ['c', 'd', 'e', 'f', 'g', 'a', 'b'];
     const laneOffsets = [-2.3, 0.0, 2.3];
@@ -1877,7 +2045,6 @@ async function startPedalPoint(bridge, autoStart = false) {
           orbContainer.add(noteMesh);
 
           if (isTarget) {
-            // Glowing target ring + overhead floating note label so it is unmissable
             const ring = new THREE.Mesh(
               new THREE.RingGeometry(0.95, 1.35, 24),
               new THREE.MeshBasicMaterial({ color: info.color, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
@@ -2051,7 +2218,7 @@ async function startPedalPoint(bridge, autoStart = false) {
   }
 
   // ============================================================================
-  // 4. BIKE PHYSICS, INPUT HANDLERS & SIMULATION LOOP
+  // 4. SMOOTH BIKE PHYSICS, SKID DRIFTING, INPUT HANDLERS & SIMULATION LOOP
   // ============================================================================
   let isPlaying = false;
   let isFirstPerson = false;
@@ -2122,8 +2289,14 @@ async function startPedalPoint(bridge, autoStart = false) {
     pos: new THREE.Vector3(0, 366, 0),
     vel: new THREE.Vector3(0, 0, -12),
     yaw: 0,
+    yawRate: 0,
+    smoothSteer: 0,
     steerAngle: 0,
     leanAngle: 0,
+    skidAngle: 0,
+    skidIntensity: 0,
+    skidSoundCooldown: 0,
+    targetSnapX: null,
     grounded: true,
     coyoteTimer: 0.14,
     airTime: 0,
@@ -2203,6 +2376,8 @@ async function startPedalPoint(bridge, autoStart = false) {
     bike.suspensionComp = 0;
 
     audio.playJumpPop(isOnBeat);
+    spawnDirtRoost(bike.pos, 0, 1, 10, 4.2, isOnBeat ? 0x34d399 : 0x8c5730);
+    spawnDustCloud(bike.pos, 0, 1, 5, 2.4);
 
     for (let i = 0; i < rhythmRamps.length; i++) {
       const r = rhythmRamps[i];
@@ -2213,6 +2388,7 @@ async function startPedalPoint(bridge, autoStart = false) {
           bike.vel.z -= 4.5;
           addScore(450, true);
           showCallout('PERFECT BEAT BOOST! +450', '#fbbf24');
+          spawnDirtRoost(bike.pos, 0, 1, 16, 6.0, 0xfbbf24);
         } else {
           addScore(180, false);
           showCallout('BIG DIRT SEND! +180', '#34d399');
@@ -2232,6 +2408,7 @@ async function startPedalPoint(bridge, autoStart = false) {
 
     if (match(bindings.left) || (type === 'key' && code === 'ArrowLeft')) {
       input.left = true;
+      bike.targetSnapX = null;
       if (type === 'piano') {
         input.pianoLeftHoldUntil = performance.now() + 340;
         input.pianoRightHoldUntil = 0;
@@ -2240,6 +2417,7 @@ async function startPedalPoint(bridge, autoStart = false) {
     }
     if (match(bindings.right) || (type === 'key' && code === 'ArrowRight')) {
       input.right = true;
+      bike.targetSnapX = null;
       if (type === 'piano') {
         input.pianoRightHoldUntil = performance.now() + 340;
         input.pianoLeftHoldUntil = 0;
@@ -2267,7 +2445,7 @@ async function startPedalPoint(bridge, autoStart = false) {
       return;
     }
 
-    // Any other piano note snaps to matching Melody Trail note lane (C-B) or gives cadence boost!
+    // Smoothly steer toward matching Melody Trail note lane (C-B) or give cadence boost!
     if (type === 'piano' && isPlaying) {
       const pitchMatch = code.match(/^([a-g]#?)/);
       const pitchClass = pitchMatch ? pitchMatch[1] : '';
@@ -2285,8 +2463,7 @@ async function startPedalPoint(bridge, autoStart = false) {
       }
 
       if (matchedOffset !== null) {
-        const targetX = getTrailCenterX(bike.pos.z) + matchedOffset;
-        bike.pos.x += (targetX - bike.pos.x) * 0.78;
+        bike.targetSnapX = matchedOffset;
         overdriveTimer = Math.max(overdriveTimer, 1.5);
       } else {
         bike.vel.z -= 2.2;
@@ -2366,6 +2543,13 @@ async function startPedalPoint(bridge, autoStart = false) {
   });
 
   function startGame() {
+    // Mute the underlying piano synthesizer during active gameplay so only the groove & gate notes play
+    if (bridgeRef && typeof bridgeRef.setPianoMuted === 'function') {
+      bridgeRef.setPianoMuted(true);
+    } else if (window.PianoPadBridge && typeof window.PianoPadBridge.setPianoMuted === 'function') {
+      window.PianoPadBridge.setPianoMuted(true);
+    }
+
     currentSeed = Math.floor(1000 + Math.random() * 8999);
     buildWorld(currentSeed);
 
@@ -2374,8 +2558,14 @@ async function startPedalPoint(bridge, autoStart = false) {
     bike.pos.set(startX, startY, 0);
     bike.vel.set(0, 0, -12);
     bike.yaw = 0;
+    bike.yawRate = 0;
+    bike.smoothSteer = 0;
     bike.steerAngle = 0;
     bike.leanAngle = 0;
+    bike.skidAngle = 0;
+    bike.skidIntensity = 0;
+    bike.skidSoundCooldown = 0;
+    bike.targetSnapX = null;
     bike.grounded = true;
     bike.coyoteTimer = 0.14;
     bike.airTime = 0;
@@ -2407,9 +2597,18 @@ async function startPedalPoint(bridge, autoStart = false) {
     isPlaying = true;
   }
 
+  function unmutePianoOnExit() {
+    if (bridgeRef && typeof bridgeRef.setPianoMuted === 'function') {
+      bridgeRef.setPianoMuted(false);
+    } else if (window.PianoPadBridge && typeof window.PianoPadBridge.setPianoMuted === 'function') {
+      window.PianoPadBridge.setPianoMuted(false);
+    }
+  }
+
   function finishCourse() {
     isPlaying = false;
     audio.stop();
+    unmutePianoOnExit();
     if (score > bestScore) {
       bestScore = score;
       localStorage.setItem('pedalpoint_best_score', String(bestScore));
@@ -2459,8 +2658,10 @@ async function startPedalPoint(bridge, autoStart = false) {
       const preset = BIKE_PRESETS[selectedBikeKey];
       const normal = getTerrainNormal(bike.pos.x, bike.pos.z);
 
-      const steerInput = ((input.left || now < input.pianoLeftHoldUntil) ? 1 : 0) - ((input.right || now < input.pianoRightHoldUntil) ? 1 : 0);
-      bike.steerAngle += (steerInput * 0.45 - bike.steerAngle) * Math.min(1, dt * 11);
+      // Smooth damped steering interpolation so inputs feel fluid and organic
+      const rawSteer = ((input.left || now < input.pianoLeftHoldUntil) ? 1 : 0) - ((input.right || now < input.pianoRightHoldUntil) ? 1 : 0);
+      bike.smoothSteer += (rawSteer - bike.smoothSteer) * Math.min(1, dt * 11.5);
+      bike.steerAngle += (bike.smoothSteer * 0.45 - bike.steerAngle) * Math.min(1, dt * 12);
 
       const grav = 24.0 * (preset.gravityMult || 1.0);
       bike.vel.y -= grav * dt;
@@ -2480,12 +2681,34 @@ async function startPedalPoint(bridge, autoStart = false) {
           bike.vel.z += fwdZ * preset.pedalForce * boost * dt;
         }
 
-        const turnRate = preset.turnSpeed * (0.55 + Math.min(1, horizSpeed / 16) * 0.55);
-        bike.yaw = Math.max(-1.05, Math.min(1.05, bike.yaw + steerInput * turnRate * dt));
+        // Smooth angular velocity (yawRate) for fluid carving & drifting
+        const targetTurnRate = bike.smoothSteer * preset.turnSpeed * (0.62 + Math.min(1, horizSpeed / 16) * 0.48);
+        bike.yawRate += (targetTurnRate - bike.yawRate) * Math.min(1, dt * 10.5);
+        bike.yaw = Math.max(-1.05, Math.min(1.05, bike.yaw + bike.yawRate * dt));
 
+        // Smooth lateral grip: lower traction during aggressive high-speed turns creates realistic rear-wheel drift/skid!
         const speedNow = Math.hypot(bike.vel.x, bike.vel.z);
-        bike.vel.x += (-Math.sin(bike.yaw) * speedNow - bike.vel.x) * Math.min(1, dt * 6.5);
-        bike.vel.z += (-Math.cos(bike.yaw) * speedNow - bike.vel.z) * Math.min(1, dt * 6.5);
+        const desiredVx = -Math.sin(bike.yaw) * speedNow;
+        const desiredVz = -Math.cos(bike.yaw) * speedNow;
+
+        // Lateral slip velocity perpendicular to the bike's heading
+        const rightX = Math.cos(bike.yaw);
+        const rightZ = -Math.sin(bike.yaw);
+        const lateralSlip = bike.vel.x * rightX + bike.vel.z * rightZ;
+
+        const turnIntensity = Math.abs(bike.yawRate) * Math.max(0, (speedNow - 14) / 24);
+        const lateralGrip = Math.max(3.6, 8.2 - turnIntensity * 2.2);
+
+        bike.vel.x += (desiredVx - bike.vel.x) * Math.min(1, dt * lateralGrip);
+        bike.vel.z += (desiredVz - bike.vel.z) * Math.min(1, dt * lateralGrip);
+
+        // Smooth Melody Lane centering if a melody note key was tapped
+        if (bike.targetSnapX !== null) {
+          const desiredX = getTrailCenterX(bike.pos.z) + bike.targetSnapX;
+          const diffX = desiredX - bike.pos.x;
+          bike.pos.x += diffX * Math.min(1, dt * 8.5);
+          if (Math.abs(diffX) < 0.08) bike.targetSnapX = null;
+        }
 
         const maxSpd = preset.maxDownhillSpeed * (overdriveTimer > 0 ? 1.15 : 1.0);
         const clampedSpd = Math.hypot(bike.vel.x, bike.vel.z);
@@ -2496,11 +2719,43 @@ async function startPedalPoint(bridge, autoStart = false) {
         }
         if (bike.vel.z > -10.0) bike.vel.z -= 12.0 * dt;
         bike.whipTarget = 0;
+
+        // Skid detection & Dirt Roost + Dust Cloud physics
+        const skidMetric = Math.abs(lateralSlip) * 0.24 + turnIntensity * 0.55;
+        bike.skidIntensity += (Math.min(1.4, skidMetric) - bike.skidIntensity) * Math.min(1, dt * 10);
+        const targetSkidYaw = Math.max(-0.34, Math.min(0.34, lateralSlip * 0.055 + bike.yawRate * 0.08));
+        bike.skidAngle += (targetSkidYaw - bike.skidAngle) * Math.min(1, dt * 10);
+
+        if (bike.skidIntensity > 0.36 && clampedSpd > 15) {
+          const roostDirX = lateralSlip >= 0 ? rightX : -rightX;
+          const roostDirZ = lateralSlip >= 0 ? rightZ : -rightZ;
+          const rearTirePos = {
+            x: bike.pos.x - fwdX * 0.72,
+            y: bike.pos.y,
+            z: bike.pos.z - fwdZ * 0.72
+          };
+
+          const chunkCount = Math.min(6, Math.ceil(bike.skidIntensity * 3.5));
+          spawnDirtRoost(rearTirePos, roostDirX, roostDirZ, chunkCount, 4.5 + bike.skidIntensity * 3.5, 0x8c5730);
+
+          if (Math.random() < 0.78) {
+            spawnDustCloud(rearTirePos, roostDirX, roostDirZ, 2, 2.5 + bike.skidIntensity * 2.2);
+          }
+
+          bike.skidSoundCooldown -= dt;
+          if (bike.skidSoundCooldown <= 0) {
+            audio.playSkidScrub(Math.min(1, bike.skidIntensity));
+            bike.skidSoundCooldown = 0.065;
+          }
+        }
       } else {
         bike.coyoteTimer = Math.max(0, bike.coyoteTimer - dt);
         bike.airTime += dt;
         if (bike.airTime > maxAirtime) maxAirtime = bike.airTime;
-        bike.yaw += steerInput * 0.9 * dt;
+        bike.yawRate += (bike.smoothSteer * 0.95 - bike.yawRate) * Math.min(1, dt * 6.0);
+        bike.yaw += bike.yawRate * dt;
+        bike.skidIntensity *= Math.max(0, 1 - 6 * dt);
+        bike.skidAngle += (0 - bike.skidAngle) * Math.min(1, dt * 6);
       }
 
       if (input.jumpHeld && (bike.grounded || bike.coyoteTimer > 0)) {
@@ -2530,6 +2785,8 @@ async function startPedalPoint(bridge, autoStart = false) {
           const comp = Math.min(1, impactVel / (15 * forgive));
           bike.suspensionComp = Math.max(bike.suspensionComp, comp);
           audio.playLandingThud(comp);
+          spawnDirtRoost(bike.pos, 0, 1, 12, 4.5, 0x9b6438);
+          spawnDustCloud(bike.pos, 0, 1, 6, 2.8);
         }
         bike.pos.y = groundY;
         if (bike.vel.y < 0) bike.vel.y = 0;
@@ -2540,7 +2797,7 @@ async function startPedalPoint(bridge, autoStart = false) {
       }
 
       bike.suspensionComp = Math.max(0, bike.suspensionComp - preset.suspensionStiffness * 0.12 * dt);
-      bike.leanAngle += (steerInput * 0.36 - bike.leanAngle) * Math.min(1, dt * 8);
+      bike.leanAngle += (bike.smoothSteer * 0.38 - bike.leanAngle) * Math.min(1, dt * 8.5);
       bike.whipAngle += (bike.whipTarget - bike.whipAngle) * Math.min(1, dt * 9);
       if (overdriveTimer > 0) overdriveTimer = Math.max(0, overdriveTimer - dt);
 
@@ -2573,6 +2830,7 @@ async function startPedalPoint(bridge, autoStart = false) {
           audio.playNoteTrigger(g.note.freq, combo >= 4);
           addScore(200, true);
           showCallout(`♪ ${g.note.name} NOTE! +200`, g.note.hex);
+          spawnDirtRoost(bike.pos, 0, 1, 14, 5.5, g.note.color);
         } else if (bike.pos.z < g.z - 4.0) {
           g.hit = true;
         }
@@ -2588,7 +2846,7 @@ async function startPedalPoint(bridge, autoStart = false) {
         nextGatePillEl.style.display = 'none';
       }
 
-      // Melody Trail Challenges (Highly Visible Pop-Up Note Sequence + Audio Call)
+      // Melody Trail Challenges
       const bannerEl = document.getElementById('pp-melody-banner');
       const notesRowEl = document.getElementById('pp-melody-notes');
       let inMelodyZone = false;
@@ -2644,6 +2902,7 @@ async function startPedalPoint(bridge, autoStart = false) {
                 hitOrb.mesh.visible = false;
                 audio.playNoteTrigger(hitOrb.info.freq, true);
                 addScore(350, true);
+                spawnDirtRoost(bike.pos, 0, 1, 16, 6.2, hitOrb.info.color);
                 if (pill) {
                   pill.style.transform = 'scale(1.24)';
                   pill.style.boxShadow = '0 0 18px #ffffff';
@@ -2683,6 +2942,8 @@ async function startPedalPoint(bridge, autoStart = false) {
       }
     }
 
+    updateParticleSystems(dt);
+
     // Visual Bike, Rider & Camera Sync
     const preset = BIKE_PRESETS[selectedBikeKey];
     bikeRoot.position.copy(bike.pos);
@@ -2696,12 +2957,12 @@ async function startPedalPoint(bridge, autoStart = false) {
     const airPitch = Math.max(-0.45, Math.min(0.5, bike.vel.y * 0.032));
     bikeVisual.rotation.x += ((bike.grounded ? slopePitch : airPitch) - bikeVisual.rotation.x) * 0.18;
     bikeVisual.rotation.z = bike.leanAngle;
-    bikeVisual.rotation.y = bike.whipAngle;
+    bikeVisual.rotation.y = bike.whipAngle + bike.skidAngle;
 
     const travel = bike.suspensionComp * preset.forkTravel;
     chassisGroup.position.y = -travel * 0.55;
     forkLowers.position.y = travel * 0.52;
-    steerGroup.rotation.y = bike.steerAngle - bike.whipAngle * 0.55;
+    steerGroup.rotation.y = bike.steerAngle - (bike.whipAngle + bike.skidAngle) * 0.65;
 
     const spd = Math.hypot(bike.vel.x, bike.vel.z);
     bike.wheelSpin += spd * dt * 2.75;
@@ -2710,12 +2971,12 @@ async function startPedalPoint(bridge, autoStart = false) {
     rearWheel.rotation.x = -bike.wheelSpin;
     crankGroup.rotation.x = -bike.crankSpin;
 
-    // Articulated Rider Animation (crouch on pre-load, counter-rotate torso on air whip, pump legs)
+    // Articulated Rider Animation
     const crouch = bike.hopCharge * 0.22 + bike.suspensionComp * 0.16;
     riderGroup.position.y = 1.15 - crouch;
     riderGroup.position.z = 0.25;
     torsoGroup.rotation.x = 0.48 + crouch * 0.9;
-    torsoGroup.rotation.y = -bike.whipAngle * 0.6;
+    torsoGroup.rotation.y = -(bike.whipAngle + bike.skidAngle) * 0.6;
     riderLegs.forEach((leg, idx) => {
       const phase = bike.crankSpin + idx * Math.PI;
       leg.group.rotation.x = bike.grounded ? Math.sin(phase) * 0.28 : crouch * 0.8;
@@ -2803,6 +3064,7 @@ async function startPedalPoint(bridge, autoStart = false) {
     onPianoNoteUp,
     cleanup: () => {
       audio.stop();
+      unmutePianoOnExit();
       window.removeEventListener('keydown', onKeyDown, { capture: true });
       window.removeEventListener('keyup', onKeyUp, { capture: true });
       window.removeEventListener('resize', onResize);
