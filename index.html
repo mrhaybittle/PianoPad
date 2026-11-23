@@ -204,7 +204,6 @@
             align-items: center;
             justify-content: space-between;
         }
-        /* Difficulty Graph Bars */
         .diff-row {
             margin-bottom: 14px;
         }
@@ -241,7 +240,6 @@
             box-shadow: 0 0 6px #000;
             z-index: 2;
         }
-        /* Peer Comparison Spectrum */
         .spectrum-box {
             display: flex;
             flex-direction: column;
@@ -459,6 +457,7 @@
     <!-- GOOGLE AUTHENTICATION & INITIALIZATION SCRIPT -->
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzJ59p9HAgRFTiJou8zYat4cvo96Yu4rMh3qIyOdDMhUCgh7m-zYltyDvIro-HCYnbT/exec";
+        const UNIFIED_GAS_URL = "PASTE_YOUR_UNIFIED_BACKEND_GAS_EXEC_URL_HERE";
         
         window.pianoPadUser = {
             isTeacher: false,
@@ -492,7 +491,7 @@
 
         async function handleCredentialResponse(response) {
             const statusDiv = document.getElementById("login-status");
-            statusDiv.innerHTML = "Authenticating and fetching your stats...";
+            statusDiv.innerHTML = "Authenticating and fetching roster...";
 
             const profile = decodeJwtResponse(response.credential);
             window.pianoPadUser.email = profile.email;
@@ -500,10 +499,34 @@
             const surname = profile.family_name || "";
             window.pianoPadUser.firstName = firstName;
 
+            const dashboardEndpoint = (UNIFIED_GAS_URL && !UNIFIED_GAS_URL.includes("PASTE_YOUR"))
+                ? `${UNIFIED_GAS_URL}?action=GET_STUDENT_DASHBOARD`
+                : `${GAS_URL}?action=GET_STUDENT_DASHBOARD`;
+
             try {
-                const res = await fetch(GAS_URL);
+                const [res, dashRes] = await Promise.all([
+                    fetch(GAS_URL),
+                    fetch(dashboardEndpoint).catch(err => {
+                        console.warn("Dashboard fetch failed, using fallback:", err);
+                        return null;
+                    })
+                ]);
+
                 const data = await res.json();
-                window.pianoPadSheetData = data;
+                let dashData = {};
+                if (dashRes && dashRes.ok) {
+                    try {
+                        dashData = await dashRes.json();
+                    } catch (e) {
+                        console.warn("Could not parse dashboard JSON:", e);
+                    }
+                }
+
+                window.pianoPadSheetData = {
+                    ...data,
+                    scores: dashData.scores || data.scores || [],
+                    songs: dashData.songs || data.songs || []
+                };
 
                 if (data.teachers && data.teachers[profile.email]) {
                     window.pianoPadUser.isTeacher = true;
@@ -575,30 +598,24 @@
             };
         }
 
-        /**
-         * Parses the spreadsheet payload from GAS_URL and builds the personalised student comparison dashboard
-         */
         function buildAndShowStudentDashboard() {
             const user = window.pianoPadUser;
             const data = window.pianoPadSheetData || {};
-            const firstName = user.firstName || user.generatedName.split(" ")[0] || "Student";
+            const firstName = user.firstName || user.generatedName.split(" ")[0] || "Musician";
 
-            // Greeting header with FIRST NAME
             document.getElementById("dash-greeting").textContent = `Hey ${firstName}! Here's Your PianoPad Snapshot 🎹`;
 
-            // Candidate names to match this student in score/leaderboard records
             const myIdentifiers = [
                 user.generatedName,
                 user.oldName,
                 user.fullName,
-                user.email
+                user.email,
+                user.isTeacher ? "mr h" : ""
             ].filter(Boolean).map(n => n.trim().toLowerCase());
 
-            // Extract raw score entries from spreadsheet data (supports common GAS property names)
             const rawScores = data.scores || data.results || data.attempts || data.leaderboard || [];
             const songCatalog = data.songs || [];
 
-            // Build difficulty lookup map (Song Title -> Difficulty)
             const difficultyMap = {};
             if (Array.isArray(songCatalog)) {
                 songCatalog.forEach(s => {
@@ -608,9 +625,8 @@
                 });
             }
 
-            // Group records by student to compare against all other students
-            const studentMap = {}; // studentKey -> { songs: { songName: { bestAcc, bestScore, difficulty } }, leaderboardEntries: 0, podiums: 0 }
-            const songBoards = {}; // songName -> array of { studentKey, score }
+            const studentMap = {};
+            const songBoards = {};
 
             if (Array.isArray(rawScores)) {
                 rawScores.forEach(row => {
@@ -625,7 +641,7 @@
                     const diffRaw = (row.difficulty || difficultyMap[sKey] || "Medium").toString();
 
                     if (!studentMap[pKey]) {
-                        studentMap[pKey] = { songs: {}, leaderboardEntries: 0, podiums: 0, totalSpeed: 0, count: 0 };
+                        studentMap[pKey] = { songs: {}, leaderboardEntries: 0, podiums: 0 };
                     }
                     if (!studentMap[pKey].songs[sKey]) {
                         studentMap[pKey].songs[sKey] = { bestAcc: acc, bestScore: score, difficulty: diffRaw, title: songRaw };
@@ -639,7 +655,6 @@
                 });
             }
 
-            // Calculate Leaderboard Rankings (Top 10 per song/game = on leaderboard, Top 3 = podium)
             Object.values(songBoards).forEach(boardObj => {
                 const sorted = Object.entries(boardObj).sort((a, b) => b[1] - a[1]);
                 sorted.forEach(([pKey], idx) => {
@@ -650,7 +665,6 @@
                 });
             });
 
-            // Merge all records belonging to the logged-in student (both new name & legacy oldName)
             const myMergedSongs = {};
             let myLeaderboardCount = 0;
             let myPodiumCount = 0;
@@ -670,7 +684,6 @@
                 }
             });
 
-            // Compute Student Metrics
             const mySongList = Object.values(myMergedSongs);
             const myAttempted = mySongList.length;
             const myMasteredSongs = mySongList.filter(s => s.bestAcc >= 80);
@@ -679,7 +692,6 @@
                 ? (mySongList.reduce((sum, s) => sum + s.bestAcc, 0) / myAttempted)
                 : 0;
 
-            // Compute Cohort Averages across all active students
             const allStudentStats = Object.values(studentMap);
             const totalPeers = Math.max(allStudentStats.length, 1);
 
@@ -731,13 +743,11 @@
             const avgAttempted = (cohortAttemptedSum / totalPeers).toFixed(1);
             const avgCohortAcc = peersWithAttempts > 0 ? (cohortAccSum / peersWithAttempts).toFixed(1) : "0.0";
 
-            // Calculate Percentile Standing
             const beatenPeers = peerMasteredCounts.filter(c => myMastered >= c).length;
             const percentile = allStudentStats.length > 0
                 ? Math.min(99, Math.max(5, Math.round((beatenPeers / totalPeers) * 100)))
                 : 50;
 
-            // Populate KPI Cards
             document.getElementById("dash-mastered-count").textContent = myMastered;
             document.getElementById("dash-mastered-compare").textContent = `School avg: ${avgMastered} songs`;
 
@@ -750,14 +760,12 @@
             document.getElementById("dash-avg-accuracy").textContent = `${myAvgAcc.toFixed(1)}%`;
             document.getElementById("dash-accuracy-compare").textContent = `School avg: ${avgCohortAcc}%`;
 
-            // Percentile Badge & Spectrum Pin
             const topPct = Math.max(1, 100 - percentile);
             document.getElementById("dash-percentile-text").textContent =
                 myAttempted === 0 ? "Ready to Debut!" : `Top ${topPct}% of School`;
             document.getElementById("dash-spectrum-pin").style.left = `${percentile}%`;
             document.getElementById("dash-spectrum-pin").textContent = `${firstName.toUpperCase()} (${percentile}th %ile)`;
 
-            // Render Difficulty Breakdown Graph
             const diffContainer = document.getElementById("dash-difficulty-bars");
             diffContainer.innerHTML = "";
             const maxBarScale = Math.max(
@@ -785,7 +793,6 @@
                 diffContainer.appendChild(row);
             });
 
-            // Populate Personalised Highlights List
             const highlightsList = document.getElementById("dash-highlights-list");
             const bestSong = [...mySongList].sort((a, b) => b.bestAcc - a.bestAcc)[0];
             const closeToMastery = mySongList.filter(s => s.bestAcc >= 65 && s.bestAcc < 80);
@@ -805,7 +812,6 @@
                 </li>
             `;
 
-            // Dynamic Next Goal Tip
             const goalTip = document.getElementById("dash-next-goal-tip");
             if (closeToMastery.length > 0) {
                 goalTip.innerHTML = `💡 <strong>Quick Win, ${firstName}:</strong> You're at <strong>${closeToMastery[0].bestAcc.toFixed(0)}%</strong> on <em>${closeToMastery[0].title}</em> — push past 80% to master it!`;
@@ -816,8 +822,8 @@
                 goalTip.innerHTML = `🌟 <strong>Crushing it, ${firstName}!</strong> You're ahead of the school average — try a <strong>Hard</strong> or <strong>Expert</strong> song next!`;
             }
 
-            // Show the modal
             const dashModal = document.getElementById("student-stats-modal");
+            dashModal.style.display = "flex";
             dashModal.classList.add("open");
 
             document.getElementById("btn-close-stats-dashboard").onclick = () => {
@@ -846,10 +852,7 @@
                 }
             }
 
-            // Display the personalised student stats & peer comparison graphic upon login
-            if (!window.pianoPadUser.isTeacher) {
-                buildAndShowStudentDashboard();
-            }
+            buildAndShowStudentDashboard();
 
             // Force canvas and key layout recalculation now that the UI is visible
             requestAnimationFrame(() => {
@@ -1270,6 +1273,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Bonus Sound Unlock Notification Modal -->
+    
 
     <!-- Countdown Overlay -->
     <div class="countdown-overlay" id="countdown-overlay">
