@@ -1,338 +1,885 @@
-// js/games/laserTag/sprites.js
-import { TILE_SIZE, ARENA_CENTER_X, ARENA_CENTER_Y } from './constants.js';
+// js/games/laserTag/hud.js
+import {
+    TILE_SIZE,
+    MAP_COLS,
+    MAP_ROWS,
+    WALL_THEMES
+} from './constants.js';
 import { gameState } from './state.js';
-import { hasLineOfSight } from './arena.js';
+import {
+    ARENA_MAP,
+    isInsideEmeraldHub,
+    getZoneInfoForCoords,
+    castRay
+} from './arena.js';
 import { getSuitColorForAvatar, normalizePitchClass, isPlayerActiveInRoom } from './utils.js';
 
-function drawHubBeaconSprite(ctx, sp, screenX, horizon, W, H) {
-    const beamW = Math.max(8, (TILE_SIZE * 0.45 * H) / Math.max(60, sp.dist));
-    ctx.save();
-    const grad = ctx.createLinearGradient(0, 0, 0, horizon);
-    grad.addColorStop(0, 'rgba(52, 211, 153, 0)');
-    grad.addColorStop(1, 'rgba(52, 211, 153, 0.28)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(screenX - beamW / 2, 0, beamW, horizon);
-    ctx.restore();
+export function drawShapedMapTile(ctx, x, y, w, h, tileType) {
+    const theme = WALL_THEMES[tileType] || WALL_THEMES[1];
+    ctx.fillStyle = theme.mapHex;
+
+    if (theme.shape === 'curved') {
+        ctx.beginPath();
+        ctx.arc(x + w / 2, y + h / 2, Math.max(1.5, w * 0.48), 0, Math.PI * 2);
+        ctx.fill();
+    } else if (theme.shape === 'triangle') {
+        ctx.beginPath();
+        ctx.moveTo(x + w / 2, y);
+        ctx.lineTo(x + w, y + h);
+        ctx.lineTo(x, y + h);
+        ctx.closePath();
+        ctx.fill();
+    } else if (theme.shape === 'diamond') {
+        ctx.beginPath();
+        ctx.moveTo(x + w / 2, y);
+        ctx.lineTo(x + w, y + h / 2);
+        ctx.lineTo(x + w / 2, y + h);
+        ctx.lineTo(x, y + h / 2);
+        ctx.closePath();
+        ctx.fill();
+    } else {
+        ctx.fillRect(x, y, w, h);
+    }
 }
 
-function drawBoostPadSprite(ctx, sp, screenX, horizon, W, H, now) {
-    const padScale = (TILE_SIZE * H) / sp.dist;
-    const floorY = horizon + padScale * 0.44;
-    const padW = Math.max(24, padScale * 0.72);
-    const padH = Math.max(8, padScale * 0.16);
-    const pulse = 0.6 + 0.4 * Math.sin(now * 0.012);
+export function renderCompassRibbon(ctx, W) {
+    const compW = 240;
+    const compH = 24;
+    const cx = W / 2;
+    const topY = 8;
 
     ctx.save();
-    ctx.globalAlpha = pulse;
-    ctx.fillStyle = '#22c55e';
-    ctx.strokeStyle = '#bbf7d0';
-    ctx.lineWidth = 2;
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.82)';
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.ellipse(screenX, floorY, padW * 0.5, padH * 0.5, 0, 0, Math.PI * 2);
+    ctx.roundRect(cx - compW / 2, topY, compW, compH, 6);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `900 ${Math.max(10, Math.floor(padScale * 0.14))}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.fillText('⚡ BOOST', screenX, floorY - padH * 0.8);
-    ctx.restore();
-}
+    ctx.beginPath();
+    ctx.rect(cx - compW / 2 + 4, topY, compW - 8, compH);
+    ctx.clip();
 
-function drawMedKitSprite(ctx, sp, screenX, horizon, W, H, now) {
-    const medScale = (TILE_SIZE * H) / sp.dist;
-    const floatY = horizon + Math.sin(now * 0.005) * (medScale * 0.08);
-    const heartSize = Math.max(18, Math.min(72, Math.floor(medScale * 0.36)));
+    const bearings = [
+        { deg: 0,   label: 'E',  major: true },
+        { deg: 45,  label: 'SE', major: false },
+        { deg: 90,  label: 'S',  major: true },
+        { deg: 135, label: 'SW', major: false },
+        { deg: 180, label: 'W',  major: true },
+        { deg: 225, label: 'NW', major: false },
+        { deg: 270, label: 'N',  major: true },
+        { deg: 315, label: 'NE', major: false }
+    ];
 
-    ctx.save();
-    ctx.shadowColor = '#f43f5e';
-    ctx.shadowBlur = 16;
-    ctx.font = `${heartSize}px sans-serif`;
+    let curDeg = ((gameState.localPlayer.angle * 180) / Math.PI) % 360;
+    if (curDeg < 0) curDeg += 360;
+
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('💖', screenX, floatY);
 
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#fda4af';
-    ctx.font = `900 ${Math.max(9, Math.floor(heartSize * 0.30))}px sans-serif`;
-    ctx.fillText('+1 LIFE', screenX, floatY - heartSize * 0.68);
-    ctx.restore();
-}
+    for (const b of bearings) {
+        let diff = b.deg - curDeg;
+        while (diff > 180) diff -= 360;
+        while (diff < -180) diff += 360;
 
-function drawPortalSprite(ctx, sp, screenX, horizon, W, H, now) {
-    const portalH = Math.min(H * 1.15, Math.max(48, (TILE_SIZE * 0.95 * H) / sp.dist));
-    const portalW = portalH * 0.62;
-    const spin = now * 0.004;
-
-    ctx.save();
-    ctx.translate(screenX, horizon);
-
-    ctx.shadowColor = sp.portal.color;
-    ctx.shadowBlur = 22;
-    ctx.strokeStyle = sp.portal.color;
-    ctx.lineWidth = Math.max(3, portalW * 0.09);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, portalW * 0.5, portalH * 0.48, 0, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.strokeStyle = sp.portal.secondaryColor;
-    ctx.lineWidth = Math.max(2, portalW * 0.05);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, portalW * 0.34, portalH * 0.34, spin, 0, Math.PI * 1.5);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.ellipse(0, 0, portalW * 0.20, portalH * 0.20, -spin * 1.4, 0, Math.PI * 1.5);
-    ctx.stroke();
-
-    ctx.fillStyle = sp.portal.color;
-    ctx.globalAlpha = 0.28 + 0.12 * Math.sin(now * 0.008);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, portalW * 0.44, portalH * 0.44, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1.0;
-
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = sp.portal.secondaryColor;
-    ctx.font = `900 ${Math.max(11, Math.floor(portalH * 0.14))}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.fillText(`🌀 ${sp.portal.name}`, 0, -portalH * 0.54);
-    ctx.restore();
-}
-
-function drawParticleSprite(ctx, sp, screenX, horizon, W, H) {
-    const pScale = (TILE_SIZE * H) / sp.dist;
-    const py = horizon + (sp.p.z / TILE_SIZE) * pScale;
-    const radius = Math.max(2, (sp.p.size / TILE_SIZE) * pScale);
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, sp.p.life);
-    ctx.fillStyle = sp.p.color;
-    ctx.beginPath();
-    ctx.arc(screenX, py, radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-}
-
-function drawPlayerSprite(ctx, sp, screenX, horizon, W, H, now) {
-    const lp = gameState.localPlayer;
-    const spriteH = Math.min(H * 1.05, Math.max(46, (TILE_SIZE * 0.88 * H) / sp.dist));
-    const spriteW = spriteH * 0.65;
-    const topY = horizon - spriteH * 0.42;
-
-    const isGhostRespawning = Boolean(sp.opp.isInvulnerable);
-    const isSneaky = Boolean(sp.opp.isStealth);
-    const isLeader = !sp.isDecoy && Number(sp.opp.score || 0) >= 300;
-    const isRevengeBounty = !sp.isDecoy && lp.revengeTargetId === sp.id;
-    const oppSuitColor = sp.opp.suitColor || getSuitColorForAvatar(sp.opp.avatar, sp.id);
-
-    ctx.save();
-    if (isGhostRespawning) {
-        ctx.globalAlpha = 0.35 + 0.15 * Math.sin(now * 0.015);
-    } else if (sp.isDecoy) {
-        ctx.globalAlpha = 0.68 + 0.15 * Math.sin(now * 0.025);
-    } else if (isSneaky) {
-        ctx.globalAlpha = 0.48;
+        if (Math.abs(diff) <= 75) {
+            const px = cx + (diff / 75) * (compW * 0.46);
+            ctx.fillStyle = b.label === 'N' ? '#ef4444' : (b.major ? '#38bdf8' : '#94a3b8');
+            ctx.font = b.major ? '900 11px sans-serif' : 'bold 9.5px sans-serif';
+            ctx.fillText(b.label, px, topY + compH / 2 + 1);
+        }
     }
 
-    // Large full-body emoji character with suit/status glow aura
-    const bodyCenterY = topY + spriteH * 0.56;
-    const auraColor = isGhostRespawning
-        ? '#ffffff'
-        : (isRevengeBounty ? '#ef4444' : (isLeader ? '#facc15' : oppSuitColor));
-
-    ctx.save();
-    ctx.shadowColor = auraColor;
-    ctx.shadowBlur = Math.max(14, spriteH * 0.22);
-    const largeAvatarSize = Math.max(38, Math.floor(spriteH * 0.86));
-    ctx.font = `${largeAvatarSize}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(sp.opp.avatar || '🤖', screenX, bodyCenterY);
-    ctx.restore();
-
-    const pitchLabel = normalizePitchClass(sp.opp.noteTag || 'F#');
-    const badgeW = Math.max(68, spriteW * 1.15);
-    const badgeH = Math.max(28, spriteH * 0.28);
-    const badgeY = Math.max(12, topY - badgeH - 12);
-
-    if (isRevengeBounty) {
-        ctx.fillStyle = '#ef4444';
-        ctx.font = `900 ${Math.max(10, Math.floor(badgeH * 0.45))}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText('🎯 REVENGE (+100)', screenX, badgeY - badgeH * 0.48);
-    } else if (isLeader && !isGhostRespawning) {
-        ctx.font = `${Math.max(16, Math.floor(badgeH * 0.85))}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText('👑', screenX, badgeY - badgeH * 0.55);
-    }
-
-    ctx.shadowColor = isGhostRespawning ? '#ffffff' : (isRevengeBounty ? '#ef4444' : '#facc15');
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = isGhostRespawning ? '#f1f5f9' : (isRevengeBounty ? '#ef4444' : '#facc15');
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.roundRect(screenX - badgeW / 2, badgeY, badgeW, badgeH, 8);
-    ctx.fill();
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    ctx.fillStyle = isGhostRespawning ? '#f1f5f9' : (isRevengeBounty ? '#ef4444' : '#facc15');
-    ctx.beginPath();
-    ctx.moveTo(screenX - 6, badgeY + badgeH);
-    ctx.lineTo(screenX + 6, badgeY + badgeH);
-    ctx.lineTo(screenX, badgeY + badgeH + 7);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = isRevengeBounty ? '#ffffff' : '#000000';
-    ctx.font = `900 ${Math.max(16, Math.floor(badgeH * 0.68))}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(isGhostRespawning ? `👻 ${pitchLabel}` : `🎯 ${pitchLabel}`, screenX, badgeY + badgeH * 0.54);
-
-    const oppLives = sp.opp.lives !== undefined ? Number(sp.opp.lives) : 3;
-    const oppHearts = sp.isDecoy ? '👥 DECOY' : '❤️'.repeat(Math.max(0, oppLives));
-    ctx.fillStyle = isGhostRespawning ? '#e2e8f0' : '#ffffff';
-    ctx.font = `800 ${Math.max(11, Math.floor(spriteH * 0.13))}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.fillText(`${sp.opp.name || 'Player'} ${oppHearts}`, screenX, topY + spriteH + 12);
-    ctx.restore();
-}
-
-function drawChallengeNodeSprite(ctx, sp, screenX, horizon, W, H, now) {
-    const scale = (TILE_SIZE * H) / sp.dist;
-    const floatY = horizon + Math.sin(now * 0.005) * (scale * 0.08); 
-    const size = Math.max(24, Math.min(90, Math.floor(scale * 0.5)));
-
-    ctx.save();
-    ctx.shadowColor = '#a855f7'; 
-    ctx.shadowBlur = 18;
     ctx.fillStyle = '#facc15';
-    ctx.font = `900 ${size}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('❓', screenX, floatY - size * 0.6);
-
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#e9d5ff';
-    ctx.font = `900 ${Math.max(10, Math.floor(size * 0.22))}px sans-serif`;
-    ctx.fillText('CHALLENGE', screenX, floatY);
+    ctx.fillRect(cx - 1, topY, 2, 5);
     ctx.restore();
 }
 
-export const SPRITE_DRAWERS = {
-    hub_beacon: drawHubBeaconSprite,
-    boostpad:   drawBoostPadSprite,
-    medkit:     drawMedKitSprite,
-    portal:     drawPortalSprite,
-    particle:   drawParticleSprite,
-    player:     drawPlayerSprite,
-    challenge_node: drawChallengeNodeSprite
-};
-
-export function collectWorldSprites(dt, now) {
+export function renderProximityThreatRadar(ctx, W, H, now) {
     const lp = gameState.localPlayer;
-    const sprites = [];
+    let leftThreat = 0;
+    let rightThreat = 0;
+    let rearThreat = 0;
+    const maxRange = 270;
 
-    const hubDx = ARENA_CENTER_X - lp.x;
-    const hubDy = ARENA_CENTER_Y - lp.y;
-    sprites.push({ type: 'hub_beacon', dx: hubDx, dy: hubDy, dist: Math.hypot(hubDx, hubDy) });
+    for (const [id, opp] of Object.entries(gameState.remotePlayers)) {
+        if (id === gameState.localId || !isPlayerActiveInRoom(opp) || opp.isInvulnerable) continue;
+        const dx = opp.x - lp.x;
+        const dy = opp.y - lp.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > maxRange) continue;
 
-    for (const portal of gameState.arenaPortals) {
-        const dx = portal.x - lp.x;
-        const dy = portal.y - lp.y;
-        sprites.push({ type: 'portal', portal, dx, dy, dist: Math.hypot(dx, dy) });
+        const intensity = 1 - dist / maxRange;
+        let rel = Math.atan2(dy, dx) - lp.angle;
+        while (rel > Math.PI) rel -= Math.PI * 2;
+        while (rel < -Math.PI) rel += Math.PI * 2;
+
+        if (Math.abs(rel) > Math.PI * 0.28) {
+            if (Math.abs(rel) > Math.PI * 0.72) {
+                rearThreat = Math.max(rearThreat, intensity);
+            } else if (rel < 0) {
+                leftThreat = Math.max(leftThreat, intensity);
+            } else {
+                rightThreat = Math.max(rightThreat, intensity);
+            }
+        }
+    }
+
+    const pulse = 0.65 + 0.35 * Math.sin(now * 0.015);
+    ctx.save();
+    if (leftThreat > 0.05) {
+        const gradL = ctx.createLinearGradient(0, 0, 48, 0);
+        gradL.addColorStop(0, `rgba(239, 68, 68, ${leftThreat * 0.65 * pulse})`);
+        gradL.addColorStop(1, 'rgba(239, 68, 68, 0)');
+        ctx.fillStyle = gradL;
+        ctx.fillRect(0, 0, 48, H);
+    }
+    if (rightThreat > 0.05) {
+        const gradR = ctx.createLinearGradient(W, 0, W - 48, 0);
+        gradR.addColorStop(0, `rgba(239, 68, 68, ${rightThreat * 0.65 * pulse})`);
+        gradR.addColorStop(1, 'rgba(239, 68, 68, 0)');
+        ctx.fillStyle = gradR;
+        ctx.fillRect(W - 48, 0, 48, H);
+    }
+    if (rearThreat > 0.05) {
+        const gradB = ctx.createLinearGradient(0, H, 0, H - 44);
+        gradB.addColorStop(0, `rgba(249, 115, 22, ${rearThreat * 0.75 * pulse})`);
+        gradB.addColorStop(1, 'rgba(249, 115, 22, 0)');
+        ctx.fillStyle = gradB;
+        ctx.fillRect(0, H - 44, W, 44);
+    }
+    ctx.restore();
+}
+
+function renderSniperScopeOverlay(ctx, W, H, now) {
+    const lp = gameState.localPlayer;
+    const cx = W / 2;
+    const cy = H / 2;
+    const scopeRadius = Math.min(W, H) * 0.44;
+    const secsLeft = Math.max(0, (lp.sniperUntil - now) / 1000).toFixed(1);
+
+    ctx.save();
+
+    // 1. Darkened Vignette Outside Optic Lens
+    const grad = ctx.createRadialGradient(cx, cy, scopeRadius * 0.78, cx, cy, Math.max(W, H) * 0.72);
+    grad.addColorStop(0, 'rgba(2, 6, 23, 0)');
+    grad.addColorStop(0.55, 'rgba(2, 6, 23, 0.72)');
+    grad.addColorStop(1, 'rgba(2, 6, 23, 0.96)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // 2. Outer Lens Ring & Rangefinder Hairlines
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, scopeRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.42)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - scopeRadius, cy);
+    ctx.lineTo(cx + scopeRadius, cy);
+    ctx.moveTo(cx, cy - scopeRadius);
+    ctx.lineTo(cx, cy + scopeRadius);
+    ctx.stroke();
+
+    // Mil-Dot Range Ticks
+    for (let step = 1; step <= 4; step++) {
+        const offset = (scopeRadius / 5) * step;
+        const tick = step % 2 === 0 ? 7 : 4;
+        ctx.beginPath();
+        ctx.moveTo(cx - offset, cy - tick); ctx.lineTo(cx - offset, cy + tick);
+        ctx.moveTo(cx + offset, cy - tick); ctx.lineTo(cx + offset, cy + tick);
+        ctx.moveTo(cx - tick, cy - offset); ctx.lineTo(cx + tick, cy - offset);
+        ctx.moveTo(cx - tick, cy + offset); ctx.lineTo(cx + tick, cy + offset);
+        ctx.stroke();
+    }
+
+    // Center Precision Diamond
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 8);
+    ctx.lineTo(cx + 8, cy);
+    ctx.lineTo(cx, cy + 8);
+    ctx.lineTo(cx - 8, cy);
+    ctx.closePath();
+    ctx.stroke();
+
+    // 3. Live Laser Rangefinder Distance & Target Lock Check
+    const wallHit = castRay(lp.angle);
+    let rangeMeters = Math.round(wallHit.dist / 8);
+    let lockedTarget = null;
+
+    for (const [id, opp] of Object.entries(gameState.remotePlayers)) {
+        if (id === gameState.localId || !isPlayerActiveInRoom(opp) || opp.isInvulnerable) continue;
+        const dx = opp.x - lp.x;
+        const dy = opp.y - lp.y;
+        const d = Math.hypot(dx, dy);
+        if (d > 2600 || d > wallHit.dist) continue;
+        let rel = Math.atan2(dy, dx) - lp.angle;
+        while (rel > Math.PI) rel -= Math.PI * 2;
+        while (rel < -Math.PI) rel += Math.PI * 2;
+        if (Math.abs(rel) <= 0.14) {
+            rangeMeters = Math.round(d / 8);
+            lockedTarget = opp;
+            break;
+        }
+    }
+
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
+    ctx.fillRect(cx - 115, cy + scopeRadius - 34, 230, 22);
+    ctx.fillStyle = lockedTarget ? '#facc15' : '#38bdf8';
+    ctx.font = '900 10.5px sans-serif';
+    ctx.textAlign = 'center';
+    const lockText = lockedTarget
+        ? `🎯 LOCKED [${normalizePitchClass(lockedTarget.noteTag)}] • ${rangeMeters}m`
+        : `🔭 2.0x OPTIC • RNG: ${rangeMeters}m • ${secsLeft}s`;
+    ctx.fillText(lockText, cx, cy + scopeRadius - 19);
+
+    ctx.restore();
+}
+
+export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoosted) {
+    const lp = gameState.localPlayer;
+
+    if (lp.isAlive) {
+        lp.jamFlash = Math.max(0, lp.jamFlash - dt * 2.5);
+        lp.gearBannerFlash = Math.max(0, lp.gearBannerFlash - dt * 0.6);
+
+        const localRespawning = now < lp.invulnerableUntil;
+        const isEmpScrambled = now < lp.empScrambledUntil;
+
+        // 2x Sniper Scope Optic Overlay (when sus4 active)
+        if (now < (lp.sniperUntil || 0)) {
+            renderSniperScopeOverlay(ctx, W, H, now);
+        }
+
+        // Center Reticle + Hit-Marker Crosshair Snap
+        ctx.strokeStyle = lp.currentGear.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(W / 2, H / 2, 14, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = lp.suitColor;
+        ctx.fillRect(W / 2 - 2, H / 2 - 2, 4, 4);
+
+        if (now < lp.hitMarkerUntil) {
+            ctx.save();
+            ctx.strokeStyle = lp.hitMarkerElim ? '#ef4444' : '#ffffff';
+            ctx.lineWidth = 3;
+            const rIn = 6, rOut = 18;
+            ctx.beginPath();
+            ctx.moveTo(W / 2 - rOut, H / 2 - rOut); ctx.lineTo(W / 2 - rIn, H / 2 - rIn);
+            ctx.moveTo(W / 2 + rOut, H / 2 - rOut); ctx.lineTo(W / 2 + rIn, H / 2 - rIn);
+            ctx.moveTo(W / 2 - rOut, H / 2 + rOut); ctx.lineTo(W / 2 - rIn, H / 2 + rIn);
+            ctx.moveTo(W / 2 + rOut, H / 2 + rOut); ctx.lineTo(W / 2 + rIn, H / 2 + rIn);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        renderCompassRibbon(ctx, W);
+        renderProximityThreatRadar(ctx, W, H, now);
+
+        // Top-Left Current Sector Badge
+        const inHub = isInsideEmeraldHub(lp.x, lp.y);
+        const myZone = getZoneInfoForCoords(lp.x, lp.y);
+        ctx.save();
+        ctx.fillStyle = inHub ? 'rgba(6, 78, 59, 0.90)' : 'rgba(2, 6, 23, 0.86)';
+        ctx.strokeStyle = myZone.color;
+        ctx.lineWidth = inHub ? 2.5 : 1.8;
+        ctx.beginPath();
+        ctx.roundRect(12, 10, 205, 32, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = myZone.color;
+        ctx.font = '900 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(inHub ? `👑 KING OF HUB (+5/s)` : `📍 ${myZone.label}`, 114, 30);
+        ctx.restore();
+
+        // Kill Feed Ticker
+        gameState.killFeedEntries = gameState.killFeedEntries.filter(k => now < k.expiresAt);
+        if (gameState.killFeedEntries.length > 0) {
+            ctx.save();
+            ctx.font = 'bold 10.5px sans-serif';
+            ctx.textAlign = 'left';
+            gameState.killFeedEntries.forEach((entry, idx) => {
+                const ky = 50 + idx * 20;
+                ctx.fillStyle = 'rgba(2, 6, 23, 0.78)';
+                ctx.fillRect(12, ky, 255, 17);
+                ctx.fillStyle = entry.color;
+                ctx.fillText(entry.text, 18, ky + 12);
+            });
+            ctx.restore();
+        }
+
+        // EMP Scramble Glitch Overlay
+        if (isEmpScrambled) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(168, 85, 247, 0.22)';
+            ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+            ctx.strokeStyle = '#a855f7';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(W / 2 - 165, 82, 330, 30, 8);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#e9d5ff';
+            ctx.font = '900 11.5px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('⚡ EMP SCRAMBLED — SPEED LOCKED AT 0.35x', W / 2, 101);
+            ctx.restore();
+        }
+
+        // Incoming Spectator Alert Banner
+        const alertBanner = gameState.incomingAlertBanner;
+        if (alertBanner && now < alertBanner.until) {
+            const pulse = 0.75 + 0.25 * Math.sin(now * 0.02);
+            ctx.save();
+            ctx.globalAlpha = pulse;
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.roundRect(W / 2 - 195, 42, 390, 44, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#facc15';
+            ctx.font = '900 16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`📡 ${alertBanner.text.toUpperCase()}!`, W / 2, 63);
+
+            ctx.fillStyle = '#e2e8f0';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillText(`Drone Callout from ${alertBanner.fromName}`, W / 2, 79);
+            ctx.restore();
+        }
+
+        if (localRespawning) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(248, 250, 252, 0.14)';
+            ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(W / 2 - 165, 40, 330, 30, 8);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 11.5px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('👻 GHOST RESPAWN SHIELD ACTIVE', W / 2, 59);
+            ctx.restore();
+        }
+
+        // Musical Challenge Pop-Up Prompt
+        if (lp.nearChallengeNode && lp.nearChallengeNode.active) {
+            const node = lp.nearChallengeNode;
+            ctx.save();
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+            ctx.strokeStyle = '#a855f7';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.roundRect(W / 2 - 200, H / 2 - 140, 400, 85, 12);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#facc15';
+            ctx.font = '900 18px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`🎵 MUSICAL CHALLENGE 🎵`, W / 2, H / 2 - 110);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 15px sans-serif';
+            if (node.currentStep === 0) {
+                ctx.fillText(`Play the first 3 notes of: "${node.name}"`, W / 2, H / 2 - 85);
+            } else {
+                ctx.fillText(`Progress: ${node.currentStep} / ${node.sequence.length} notes! (Next: ${node.sequence[node.currentStep]})`, W / 2, H / 2 - 85);
+            }
+            ctx.restore();
+        }
+
+        // Bottom-Center Chord Speed Gear & Ability Cooldowns HUD Pill
+        const g = lp.currentGear;
+        const boostTag = isBoosted ? ' • ⚡ 2.5x BOOST!' : '';
+        const comboTag = (lp.comboCount >= 2 && now < lp.comboExpiresAt) ? ' • 🌈 2x COMBO!' : '';
+        const throttleText = activelyMoving ? ` • 🟢 C# THRUST${boostTag}${comboTag}` : ` • ⚪ HOLD C#${boostTag}${comboTag}`;
+
+        const snpStr = now < (lp.sniperUntil || 0)
+            ? `Sniper:${Math.ceil((lp.sniperUntil - now) / 1000)}s`
+            : (now >= (lp.sniperReadyAt || 0) ? 'sus4:🔭' : `Sniper:${Math.ceil((lp.sniperReadyAt - now) / 1000)}s`);
+        const ocStr = now >= lp.overchargeReadyAt ? 'Cmaj7/Fmaj7:⚡' : `Maj7:${Math.ceil((lp.overchargeReadyAt - now) / 1000)}s`;
+        const empStr = now >= lp.empReadyAt ? 'Bdim7:🌀' : `EMP:${Math.ceil((lp.empReadyAt - now) / 1000)}s`;
+        const decStr = now >= lp.decoyReadyAt ? 'Dm7/Em7:👥' : `Decoy:${Math.ceil((lp.decoyReadyAt - now) / 1000)}s`;
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
+        ctx.strokeStyle = isBoosted ? '#22c55e' : g.color;
+        ctx.lineWidth = (lp.gearBannerFlash > 0 || isBoosted) ? 3 : 1.8;
+        ctx.beginPath();
+        ctx.roundRect(W / 2 - 250, H - 56, 500, 38, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = isBoosted ? '#22c55e' : g.color;
+        ctx.font = '900 11.5px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`GEAR: ${g.label}${throttleText}`, W / 2, H - 40);
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = 'bold 9.5px sans-serif';
+        ctx.fillText(`C2+C4:180° • ${snpStr} • ${ocStr} • ${empStr} • ${decStr}`, W / 2, H - 25);
+        ctx.restore();
+
+        if (lp.jamFlash > 0) {
+            ctx.save();
+            ctx.globalAlpha = Math.min(1, lp.jamFlash * 1.4);
+            ctx.fillStyle = 'rgba(127, 29, 29, 0.92)';
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(W / 2 - 155, H - 96, 310, 30, 8);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 11.5px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('⚠️ BLASTER JAMMED! Play 1 Note or Valid Chord', W / 2, H - 77);
+            ctx.restore();
+        }
+    }
+
+    if (lp.portalFlash > 0) {
+        lp.portalFlash = Math.max(0, lp.portalFlash - dt * 1.8);
+        ctx.save();
+        ctx.globalAlpha = lp.portalFlash * 0.55;
+        ctx.fillStyle = '#22d3ee';
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+    }
+
+    if (lp.damageFlash > 0) {
+        lp.damageFlash = Math.max(0, lp.damageFlash - dt * 1.15);
+        ctx.save();
+        ctx.globalAlpha = lp.damageFlash * 0.72;
+        ctx.fillStyle = lp.damageFlashColor;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+    }
+}
+
+export function renderMinimapAndTopHud(ctx, W, H, now, activePlayers) {
+    const lp = gameState.localPlayer;
+
+    // Bottom-Left Color & Shape Coded Minimap Overlay
+    if (lp.isAlive) {
+        const mmSize = 162;
+        const mmX = 12;
+        const mmY = H - mmSize - 12;
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.90)';
+        ctx.fillRect(mmX, mmY, mmSize, mmSize);
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(mmX, mmY, mmSize, mmSize);
+
+        const scaleX = mmSize / (MAP_COLS * TILE_SIZE);
+        const scaleY = mmSize / (MAP_ROWS * TILE_SIZE);
+
+        for (let r = 0; r < MAP_ROWS; r++) {
+            for (let c = 0; c < MAP_COLS; c++) {
+                const tile = ARENA_MAP[r][c];
+                if (tile > 0) {
+                    drawShapedMapTile(
+                        ctx,
+                        mmX + c * TILE_SIZE * scaleX,
+                        mmY + r * TILE_SIZE * scaleY,
+                        TILE_SIZE * scaleX,
+                        TILE_SIZE * scaleY,
+                        tile
+                    );
+                }
+            }
+        }
+
+        // Boost Pads & Med-Kits on Minimap
+        ctx.fillStyle = '#22c55e';
+        for (const pad of gameState.speedBoostPads) {
+            ctx.fillRect(mmX + pad.x * scaleX - 2, mmY + pad.y * scaleY - 2, 4, 4);
+        }
+        ctx.fillStyle = '#f43f5e';
+        for (const med of gameState.medKitNodes) {
+            if (now >= med.respawnAt) {
+                ctx.beginPath();
+                ctx.arc(mmX + med.x * scaleX, mmY + med.y * scaleY, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Challenge Nodes on Minimap
+        if (gameState.challengeNodes) {
+            ctx.fillStyle = '#a855f7';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            for (const node of gameState.challengeNodes) {
+                if (node.active) {
+                    ctx.font = '12px sans-serif';
+                    ctx.fillText('❓', mmX + node.x * scaleX, mmY + node.y * scaleY);
+                }
+            }
+        }
+
+        // Pulsing Portals on Minimap
+        const pPulse = (Math.sin(now * 0.01) + 1) * 0.5;
+        for (const portal of gameState.arenaPortals) {
+            const px = mmX + portal.x * scaleX;
+            const py = mmY + portal.y * scaleY;
+            ctx.strokeStyle = portal.color;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(px, py, 3 + pPulse * 3, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = portal.secondaryColor;
+            ctx.beginPath();
+            ctx.arc(px, py, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (const [id, opp] of Object.entries(gameState.remotePlayers)) {
+            if (id === gameState.localId || !isPlayerActiveInRoom(opp)) continue;
+            const ox = mmX + opp.x * scaleX;
+            const oy = mmY + opp.y * scaleY;
+            const oppColor = opp.isInvulnerable ? '#ffffff' : (opp.suitColor || getSuitColorForAvatar(opp.avatar, id));
+            const isLeader = Number(opp.score || 0) >= 300;
+            const isRevenge = lp.revengeTargetId === id;
+
+            ctx.save();
+            if (opp.isInvulnerable) ctx.globalAlpha = 0.45;
+            else if (opp.isStealth) ctx.globalAlpha = 0.55;
+            ctx.fillStyle = oppColor;
+            ctx.beginPath();
+            ctx.arc(ox, oy, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (isRevenge) {
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(ox, oy, 7 + pPulse * 4, 0, Math.PI * 2);
+                ctx.stroke();
+            } else if (isLeader) {
+                ctx.strokeStyle = '#facc15';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+
+            ctx.font = '10px sans-serif';
+            ctx.fillText(opp.avatar || '🔴', ox, oy);
+
+            ctx.fillStyle = isRevenge ? '#ef4444' : '#facc15';
+            ctx.font = 'bold 7.5px sans-serif';
+            ctx.fillText(normalizePitchClass(opp.noteTag || ''), ox, oy - 7);
+            ctx.restore();
+        }
+
+        // Pulsing Bright Yellow Radar Beacon for Local Player
+        const lx = mmX + lp.x * scaleX;
+        const ly = mmY + lp.y * scaleY;
+        const pulseWave = (Math.sin(now * 0.008) + 1) * 0.5;
+
+        ctx.save();
+        ctx.strokeStyle = `rgba(250, 204, 21, ${0.95 - pulseWave * 0.65})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(lx, ly, 5 + pulseWave * 8, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = `rgba(250, 204, 21, ${0.35 - pulseWave * 0.2})`;
+        ctx.beginPath();
+        ctx.arc(lx, ly, 6 + pulseWave * 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(lx, ly);
+        ctx.lineTo(lx + Math.cos(lp.angle) * 15, ly + Math.sin(lp.angle) * 15);
+        ctx.stroke();
+
+        ctx.fillStyle = '#facc15';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(lx, ly, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // Top-Right HUD
+    const aliveCount = Math.max(1, activePlayers.length);
+    const heartsDisplay = '❤️'.repeat(lp.lives) + '🖤'.repeat(Math.max(0, 3 - lp.lives));
+
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
+    ctx.fillRect(W - 355, 10, 345, 56);
+    ctx.strokeStyle = lp.currentGear.color;
+    ctx.strokeRect(W - 355, 10, 345, 56);
+
+    ctx.fillStyle = lp.currentGear.color;
+    ctx.font = '900 13px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${heartsDisplay} | SCORE: ${lp.score} | ALIVE: ${aliveCount} | TAG: ${lp.noteTag}`, W - 18, 30);
+
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(`C: Left • D: Right • Hold C#: Forward • Chords: Speed`, W - 18, 50);
+
+    if (gameState.maxPeakPlayers >= 2 && activePlayers.length === 1) {
+        renderMvpPodiumOverlay(ctx, W, H);
+    }
+}
+
+export function renderSpectatorOverheadView(ctx, W, H, dt, now) {
+    const lp = gameState.localPlayer;
+    const scale = Math.min(W / (MAP_COLS * TILE_SIZE), H / (MAP_ROWS * TILE_SIZE)) * 0.92;
+    const offsetX = (W - MAP_COLS * TILE_SIZE * scale) / 2;
+    const offsetY = (H - MAP_ROWS * TILE_SIZE * scale) / 2;
+
+    ctx.fillStyle = '#050811';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+    ctx.scale(scale, scale);
+
+    for (let r = 0; r < MAP_ROWS; r++) {
+        for (let c = 0; c < MAP_COLS; c++) {
+            const tile = ARENA_MAP[r][c];
+            if (tile === 0) {
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                ctx.strokeStyle = '#1e293b';
+                ctx.strokeRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            } else {
+                drawShapedMapTile(ctx, c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE, tile);
+            }
+        }
     }
 
     for (const pad of gameState.speedBoostPads) {
-        const dx = pad.x - lp.x;
-        const dy = pad.y - lp.y;
-        sprites.push({ type: 'boostpad', pad, dx, dy, dist: Math.hypot(dx, dy) });
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.arc(pad.x, pad.y, 18, 0, Math.PI * 2);
+        ctx.fill();
     }
 
     for (const med of gameState.medKitNodes) {
         if (now < med.respawnAt) continue;
-        const dx = med.x - lp.x;
-        const dy = med.y - lp.y;
-        sprites.push({ type: 'medkit', med, dx, dy, dist: Math.hypot(dx, dy) });
+        ctx.font = '26px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('💖', med.x, med.y);
     }
 
-    for (const decoy of gameState.activeDecoys) {
-        const dx = decoy.x - lp.x;
-        const dy = decoy.y - lp.y;
-        sprites.push({ type: 'player', id: decoy.id, opp: decoy, isDecoy: true, dx, dy, dist: Math.hypot(dx, dy) });
+    for (const portal of gameState.arenaPortals) {
+        const pulse = (Math.sin(now * 0.008) + 1) * 0.5;
+        ctx.save();
+        ctx.strokeStyle = portal.color;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(portal.x, portal.y, 26 + pulse * 14, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = portal.secondaryColor;
+        ctx.beginPath();
+        ctx.arc(portal.x, portal.y, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
     }
 
     for (const [id, opp] of Object.entries(gameState.remotePlayers)) {
-        if (id === gameState.localId || !isPlayerActiveInRoom(opp)) continue;
-        const dx = opp.x - lp.x;
-        const dy = opp.y - lp.y;
-        sprites.push({ type: 'player', id, opp, isDecoy: false, dx, dy, dist: Math.hypot(dx, dy) });
+        if (!isPlayerActiveInRoom(opp)) continue;
+        const oppColor = opp.isInvulnerable ? '#ffffff' : (opp.suitColor || getSuitColorForAvatar(opp.avatar, id));
+        const isLeader = Number(opp.score || 0) >= 300;
+        ctx.save();
+        if (opp.isInvulnerable) ctx.globalAlpha = 0.45;
+        ctx.fillStyle = oppColor;
+        ctx.beginPath();
+        ctx.arc(opp.x, opp.y, 24, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (isLeader) {
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 5;
+            ctx.stroke();
+        }
+
+        const oppLives = opp.lives !== undefined ? Number(opp.lives) : 3;
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${isLeader ? '👑 ' : ''}${opp.name} [${opp.noteTag}] ${'❤️'.repeat(oppLives)}`, opp.x, opp.y - 32);
+        ctx.restore();
     }
 
     for (let i = gameState.worldExplosions.length - 1; i >= 0; i--) {
         const p = gameState.worldExplosions[i];
         p.x += p.vx * dt;
         p.y += p.vy * dt;
-        p.z += p.vz * dt;
         p.life -= dt * 1.4;
         if (p.life <= 0) {
             gameState.worldExplosions.splice(i, 1);
             continue;
         }
-        const dx = p.x - lp.x;
-        const dy = p.y - lp.y;
-        sprites.push({ type: 'particle', p, dx, dy, dist: Math.hypot(dx, dy) });
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
     }
 
-    if (gameState.challengeNodes) {
-        for (const node of gameState.challengeNodes) {
-            if (!node.active) continue;
-            const dx = node.x - lp.x;
-            const dy = node.y - lp.y;
-            sprites.push({ type: 'challenge_node', node, dx, dy, dist: Math.hypot(dx, dy) });
+    ctx.restore();
+
+    if (gameState.spectatorSelectedTarget) {
+        const targetObj = gameState.remotePlayers[gameState.spectatorSelectedTarget.id];
+        if (!targetObj || !isPlayerActiveInRoom(targetObj)) {
+            gameState.spectatorSelectedTarget = null;
+        } else {
+            const px = offsetX + targetObj.x * scale;
+            const py = offsetY + targetObj.y * scale;
+            gameState.spectatorSelectedTarget.screenX = px;
+            gameState.spectatorSelectedTarget.screenY = py;
+
+            const options = [
+                { msg: 'Watch Out', color: '#ef4444' },
+                { msg: 'Turn Left', color: '#38bdf8' },
+                { msg: 'Turn Right', color: '#22c55e' }
+            ];
+            const btnW = 94;
+            const btnH = 26;
+            const gap = 6;
+            const totalW = options.length * btnW + (options.length - 1) * gap;
+            const startX = Math.max(10, Math.min(W - totalW - 10, px - totalW / 2));
+            const startY = Math.max(54, py - 48);
+
+            ctx.save();
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(px, py, 16, 0, Math.PI * 2);
+            ctx.stroke();
+
+            gameState.spectatorSelectedTarget.buttons = [];
+            options.forEach((opt, idx) => {
+                const bx = startX + idx * (btnW + gap);
+                const by = startY;
+                gameState.spectatorSelectedTarget.buttons.push({ x: bx, y: by, w: btnW, h: btnH, msg: opt.msg });
+
+                ctx.fillStyle = '#0f172a';
+                ctx.strokeStyle = opt.color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(bx, by, btnW, btnH, 6);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = opt.color;
+                ctx.font = '900 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(opt.msg, bx + btnW / 2, by + btnH / 2);
+            });
+            ctx.restore();
         }
     }
 
-    sprites.sort((a, b) => b.dist - a.dist);
-    return sprites;
+    if (lp.damageFlash > 0) {
+        lp.damageFlash = Math.max(0, lp.damageFlash - dt * 0.85);
+        ctx.save();
+        ctx.globalAlpha = lp.damageFlash * 0.78;
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+    }
+
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.90)';
+    ctx.fillRect(W / 2 - 270, 10, 540, 36);
+    ctx.strokeStyle = '#facc15';
+    ctx.strokeRect(W / 2 - 270, 10, 540, 36);
+    ctx.fillStyle = '#facc15';
+    ctx.font = '900 12.5px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🛰️ SPECTATOR DRONE — CLICK ANY PLAYER TO SEND "WATCH OUT", "TURN LEFT", OR "TURN RIGHT"', W / 2, 32);
 }
 
-export function drawWorldSprite(ctx, sp, zBuffer, numRays, stripW, horizon, W, H, now) {
-    const lp = gameState.localPlayer;
-    const isSniper = now < (lp.sniperUntil || 0);
-    const FOV = isSniper ? (Math.PI / 6) : (Math.PI / 3);
+export function renderMvpPodiumOverlay(ctx, W, H) {
+    const allPlayers = Object.values(gameState.remotePlayers);
+    if (allPlayers.length === 0) return;
 
-    let relAngle = Math.atan2(sp.dy, sp.dx) - lp.angle;
-    while (relAngle > Math.PI) relAngle -= Math.PI * 2;
-    while (relAngle < -Math.PI) relAngle += Math.PI * 2;
+    const survivor = allPlayers.find(p => isPlayerActiveInRoom(p)) || allPlayers[0];
+    const sortedByScore = [...allPlayers].sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
+    const topScorer = sortedByScore[0] || survivor;
+    const sortedByElims = [...allPlayers].sort((a, b) => Number(b.eliminations || 0) - Number(a.eliminations || 0));
+    const topSlayer = sortedByElims[0] || survivor;
 
-    if (Math.abs(relAngle) > FOV * 0.68 || sp.dist < 10) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.86)';
+    ctx.fillRect(0, 0, W, H);
 
-    const screenX = (0.5 + relAngle / FOV) * W;
+    const cardW = Math.min(540, W * 0.90);
+    const cardH = 260;
+    const cx = W / 2;
+    const cy = H / 2;
 
-    if (sp.type === 'player' || sp.type === 'portal' || sp.type === 'medkit' || sp.type === 'boostpad' || sp.type === 'challenge_node') {
-        const tx = sp.type === 'player' ? sp.opp.x : (sp.type === 'portal' ? sp.portal.x : (sp.type === 'medkit' ? sp.med.x : (sp.type === 'challenge_node' ? sp.node.x : sp.pad.x)));
-        const ty = sp.type === 'player' ? sp.opp.y : (sp.type === 'portal' ? sp.portal.y : (sp.type === 'medkit' ? sp.med.y : (sp.type === 'challenge_node' ? sp.node.y : sp.pad.y)));
-        if (!hasLineOfSight(lp.x, lp.y, tx, ty)) {
-            const centerRay = Math.floor(screenX / stripW);
-            const leftRay = Math.max(0, centerRay - 5);
-            const rightRay = Math.min(numRays - 1, centerRay + 5);
-            let anyRayOpen = false;
-            for (let rIdx = leftRay; rIdx <= rightRay; rIdx++) {
-                if (zBuffer[rIdx] >= sp.dist - 14) {
-                    anyRayOpen = true;
-                    break;
-                }
-            }
-            if (!anyRayOpen) return;
-        }
-    } else if (sp.type !== 'hub_beacon') {
-        const rayIdx = Math.floor(screenX / stripW);
-        if (rayIdx >= 0 && rayIdx < numRays && zBuffer[rayIdx] < sp.dist) return;
+    ctx.fillStyle = '#0f172a';
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(cx - cardW / 2, cy - cardH / 2, cardW, cardH, 16);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#facc15';
+    ctx.font = '900 22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🏆 LASER TAG ARENA CHAMPIONS 🏆', cx, cy - 88);
+
+    const cols = [
+        { title: '👑 LAST SURVIVOR', p: survivor, stat: `${survivor.lives || 1} Lives Left`, color: '#22c55e', x: cx - cardW * 0.30 },
+        { title: '⭐ TOP SCORER',    p: topScorer, stat: `${topScorer.score || 0} pts`,      color: '#38bdf8', x: cx },
+        { title: '💥 MOST TAGS',     p: topSlayer, stat: `${topSlayer.eliminations || 0} Eliminations`, color: '#f97316', x: cx + cardW * 0.30 }
+    ];
+
+    for (const c of cols) {
+        ctx.fillStyle = c.color;
+        ctx.font = '900 11px sans-serif';
+        ctx.fillText(c.title, c.x, cy - 42);
+
+        ctx.font = '38px sans-serif';
+        ctx.fillText(c.p.avatar || '🤖', c.x, cy + 4);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 14px sans-serif';
+        ctx.fillText(c.p.name || 'Player', c.x, cy + 42);
+
+        ctx.fillStyle = c.color;
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText(c.stat, c.x, cy + 62);
     }
 
-    const drawFn = SPRITE_DRAWERS[sp.type];
-    if (drawFn) drawFn(ctx, sp, screenX, horizon, W, H, now);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText('Press "test" to spawn another 50-bot wave or Exit to return to menu', cx, cy + 104);
+    ctx.restore();
 }
