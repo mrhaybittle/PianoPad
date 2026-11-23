@@ -1,13 +1,14 @@
-// js/games/skiSlalom.js
-import { initAudio, audioCtx } from '../audio.js';
+// js/games/pedalPoint.js
+import { initAudio, audioCtx, playTone, playErrorClackSound } from '../audio.js';
 import { getNoteFrequency } from '../musicTheory.js';
 
 let animFrameId = null;
 let containerEl = null;
 let renderer = null;
 let bridgeRef = null;
+let activeController = null;
 
-// Dynamic Three.js Loader (uses jsDelivr first, matching PianoPad's MIDI CDN)
+// Dynamic Three.js Loader (matches skiSlalom.js CDN fallback chain)
 function ensureThreeLoaded() {
   if (window.THREE) return Promise.resolve(window.THREE);
   const cdnUrls = [
@@ -35,338 +36,82 @@ function ensureThreeLoaded() {
 }
 
 // ============================================================================
-// TRIAD DEFINITIONS & PITCH-CLASS CHORD MATCHER
+// CONSTANTS, BIKE PRESETS & ILLAWARRA ESCARPMENT ZONES
 // ============================================================================
-const TRIAD_LIBRARY = [
-  { symbol: 'C',  notesLabel: 'C - E - G',   pcs: [0, 4, 7] },
-  { symbol: 'Dm', notesLabel: 'D - F - A',   pcs: [2, 5, 9] },
-  { symbol: 'Em', notesLabel: 'E - G - B',   pcs: [4, 7, 11] },
-  { symbol: 'F',  notesLabel: 'F - A - C',   pcs: [5, 9, 0] },
-  { symbol: 'G',  notesLabel: 'G - B - D',   pcs: [7, 11, 2] },
-  { symbol: 'Am', notesLabel: 'A - C - E',   pcs: [9, 0, 4] },
-  { symbol: 'D',  notesLabel: 'D - F# - A',  pcs: [2, 6, 9] },
-  { symbol: 'A',  notesLabel: 'A - C# - E',  pcs: [9, 1, 4] },
-  { symbol: 'E',  notesLabel: 'E - G# - B',  pcs: [4, 8, 11] },
-  { symbol: 'Gm', notesLabel: 'G - Bb - D',  pcs: [7, 10, 2] },
-  { symbol: 'Bb', notesLabel: 'Bb - D - F',  pcs: [10, 2, 5] }
-];
+const TRAIL_LENGTH = 2400;
+const BPM = 122;
+const BEAT_DURATION = 60 / BPM;
 
-const NOTE_TO_PC = {
-  'c': 0, 'b#': 0,
-  'c#': 1, 'db': 1,
-  'd': 2,
-  'd#': 3, 'eb': 3,
-  'e': 4, 'fb': 4,
-  'f': 5, 'e#': 5,
-  'f#': 6, 'gb': 6,
-  'g': 7,
-  'g#': 8, 'ab': 8,
-  'a': 9,
-  'a#': 10, 'bb': 10,
-  'b': 11, 'cb': 11
+const BIKE_PRESETS = {
+  enduro: {
+    name: 'Kembla Trail 140',
+    pedalForce: 21,
+    maxPedalSpeed: 26,
+    maxDownhillSpeed: 43,
+    turnSpeed: 2.58,
+    hopImpulse: 13.2,
+    gravityMult: 1.0,
+    suspensionStiffness: 18,
+    forkTravel: 0.38,
+    landingForgiveness: 1.0
+  },
+  downhill: {
+    name: 'Escarpment DH 200',
+    pedalForce: 16,
+    maxPedalSpeed: 24,
+    maxDownhillSpeed: 52,
+    turnSpeed: 1.98,
+    hopImpulse: 11.4,
+    gravityMult: 1.14,
+    suspensionStiffness: 11,
+    forkTravel: 0.54,
+    landingForgiveness: 1.38
+  },
+  ebike: {
+    name: 'Illawarra Volt E-MTB',
+    pedalForce: 36,
+    maxPedalSpeed: 34,
+    maxDownhillSpeed: 46,
+    turnSpeed: 2.34,
+    hopImpulse: 11.8,
+    gravityMult: 1.04,
+    suspensionStiffness: 16,
+    forkTravel: 0.42,
+    landingForgiveness: 1.12
+  }
 };
 
-function noteStringToPitchClass(noteStr) {
-  if (!noteStr) return null;
-  const match = String(noteStr).trim().toLowerCase().match(/^([a-g][#b]?)/);
-  if (!match) return null;
-  return NOTE_TO_PC[match[1]] !== undefined ? NOTE_TO_PC[match[1]] : null;
-}
+const SCALE_NOTES = [
+  { name: 'G4', freq: 392.00, color: 0x34d399, hex: '#34d399' },
+  { name: 'A4', freq: 440.00, color: 0x38bdf8, hex: '#38bdf8' },
+  { name: 'B4', freq: 493.88, color: 0xfbbf24, hex: '#fbbf24' },
+  { name: 'D5', freq: 587.33, color: 0xf97316, hex: '#f97316' },
+  { name: 'E5', freq: 659.25, color: 0xe879f9, hex: '#e879f9' },
+  { name: 'G5', freq: 783.99, color: 0x2dd4bf, hex: '#2dd4bf' }
+];
+
+const MELODY_LANES = [
+  { label: 'G', pitchClass: 'g', freq: 392.00, color: 0x34d399, hex: '#34d399', offset: -2.2 },
+  { label: 'B', pitchClass: 'b', freq: 493.88, color: 0xfbbf24, hex: '#fbbf24', offset: 0.0 },
+  { label: 'D', pitchClass: 'd', freq: 587.33, color: 0xe879f9, hex: '#e879f9', offset: 2.2 }
+];
+
+const TRAIL_ZONES = [
+  { z: -15,   name: 'MT KEMBLA LOOKOUT RIDGE',   sub: 'Open Pacific Ocean & Port Kembla Horizon' },
+  { z: -500,  name: 'DEEP RAINFOREST GULLY',     sub: 'Enclosed Mountain Valley • Trees Both Sides' },
+  { z: -1150, name: 'LAKE ILLAWARRA VISTA',      sub: 'Coastal Escarpment Shelf & Cargo Ship Views' },
+  { z: -1600, name: 'SUBLIME POINT CANOPY',      sub: 'Subtropical Rainforest Tunnel & Final Bridges' }
+];
+
+const LOOKOUT_WINDOWS = [
+  { zMax: 45,    zMin: -460 },
+  { zMax: -1160, zMin: -1560 }
+];
 
 // ============================================================================
-// 1. PROCEDURAL WEB AUDIO ENGINE (Wind, Carve, Rail Fanfare, Bear & FX)
+// EXPORTED PIANOPAD LIFECYCLE & INPUT HOOKS
 // ============================================================================
-class AlpineAudio {
-  constructor() {
-    this.ctx = null;
-    this.windGain = null;
-    this.carveGain = null;
-    this.carveFilter = null;
-    this.initialized = false;
-  }
-
-  init() {
-    if (this.initialized) return;
-    try {
-      initAudio();
-      this.ctx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-
-      const bufferSize = this.ctx.sampleRate * 2;
-      const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-      const output = noiseBuffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        output[i] = Math.random() * 2 - 1;
-      }
-
-      const windSource = this.ctx.createBufferSource();
-      windSource.buffer = noiseBuffer;
-      windSource.loop = true;
-      const windFilter = this.ctx.createBiquadFilter();
-      windFilter.type = 'lowpass';
-      windFilter.frequency.value = 320;
-      this.windGain = this.ctx.createGain();
-      this.windGain.gain.value = 0.0;
-      windSource.connect(windFilter);
-      windFilter.connect(this.windGain);
-      this.windGain.connect(this.ctx.destination);
-      windSource.start();
-
-      const carveSource = this.ctx.createBufferSource();
-      carveSource.buffer = noiseBuffer;
-      carveSource.loop = true;
-      this.carveFilter = this.ctx.createBiquadFilter();
-      this.carveFilter.type = 'bandpass';
-      this.carveFilter.frequency.value = 1100;
-      this.carveFilter.Q.value = 1.4;
-      this.carveGain = this.ctx.createGain();
-      this.carveGain.gain.value = 0.0;
-      carveSource.connect(this.carveFilter);
-      this.carveFilter.connect(this.carveGain);
-      this.carveGain.connect(this.ctx.destination);
-      carveSource.start();
-
-      this.initialized = true;
-    } catch (e) {}
-  }
-
-  updateContinuous(speedRatio, carveIntensity, isGrounded, isGrinding, isPlaying) {
-    if (!this.initialized || !this.ctx) return;
-    if (this.ctx.state === 'suspended') this.ctx.resume();
-
-    const now = this.ctx.currentTime;
-    if (!isPlaying) {
-      this.windGain.gain.setTargetAtTime(0, now, 0.1);
-      this.carveGain.gain.setTargetAtTime(0, now, 0.08);
-      return;
-    }
-
-    this.windGain.gain.setTargetAtTime(0.02 + speedRatio * 0.06, now, 0.12);
-    const targetCarve = (isGrounded && !isGrinding) ? Math.min(0.14, carveIntensity * 0.14) : 0.0;
-    this.carveGain.gain.setTargetAtTime(targetCarve, now, 0.06);
-    this.carveFilter.frequency.setTargetAtTime(850 + carveIntensity * 1200, now, 0.06);
-  }
-
-  playRailFanfare(isTriad = false) {
-    this.init();
-    if (!this.ctx) return;
-    if (this.ctx.state === 'suspended') this.ctx.resume();
-    const now = this.ctx.currentTime;
-
-    // Short celebratory brass/synth fanfare chord flourish
-    const notes = isTriad
-      ? [523.25, 659.25, 783.99, 1046.50, 1318.51] // C5 - E5 - G5 - C6 - E6
-      : [523.25, 659.25, 783.99, 1046.50];         // C5 - E5 - G5 - C6
-
-    notes.forEach((freq, idx) => {
-      const start = now + idx * 0.055;
-      const dur = idx === notes.length - 1 ? 0.42 : 0.22;
-
-      const osc = this.ctx.createOscillator();
-      const shimmerOsc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, start);
-
-      shimmerOsc.type = 'sine';
-      shimmerOsc.frequency.setValueAtTime(freq * 2, start);
-
-      const shimmerGain = this.ctx.createGain();
-      shimmerGain.gain.setValueAtTime(0.05, start);
-      shimmerGain.gain.exponentialRampToValueAtTime(0.001, start + dur);
-
-      gain.gain.setValueAtTime(0.001, start);
-      gain.gain.linearRampToValueAtTime(0.16, start + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
-
-      osc.connect(gain);
-      shimmerOsc.connect(shimmerGain);
-      shimmerGain.connect(this.ctx.destination);
-      gain.connect(this.ctx.destination);
-
-      osc.start(start);
-      shimmerOsc.start(start);
-      osc.stop(start + dur + 0.02);
-      shimmerOsc.stop(start + dur + 0.02);
-    });
-  }
-
-  playPianoFeedback(noteOrMidi = 60) {
-    this.init();
-    if (!this.ctx) return;
-    if (this.ctx.state === 'suspended') this.ctx.resume();
-    const now = this.ctx.currentTime;
-    let freq = 261.63;
-    if (typeof noteOrMidi === 'number') {
-      freq = 440 * Math.pow(2, (noteOrMidi - 69) / 12);
-    } else {
-      freq = getNoteFrequency(noteOrMidi) || 261.63;
-    }
-
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(freq, now);
-
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.22, now + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.46);
-  }
-
-  playTriadLockSound(pcs = [0, 4, 7]) {
-    this.init();
-    if (!this.ctx) return;
-    if (this.ctx.state === 'suspended') this.ctx.resume();
-    const now = this.ctx.currentTime;
-
-    pcs.forEach((pc, idx) => {
-      const midi = 60 + pc + (idx === 2 ? 12 : 0);
-      const freq = 440 * Math.pow(2, (midi - 69) / 12);
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, now + idx * 0.045);
-
-      gain.gain.setValueAtTime(0.001, now + idx * 0.045);
-      gain.gain.linearRampToValueAtTime(0.2, now + idx * 0.045 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.045 + 0.48);
-
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(now + idx * 0.045);
-      osc.stop(now + idx * 0.045 + 0.5);
-    });
-  }
-
-  playGateChime(streak) {
-    if (!this.initialized || !this.ctx) return;
-    const now = this.ctx.currentTime;
-    const semitone = Math.min(14, streak % 12);
-    const freq = 523.25 * Math.pow(2, semitone / 12);
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(freq, now);
-    osc.frequency.exponentialRampToValueAtTime(freq * 1.25, now + 0.14);
-    gain.gain.setValueAtTime(0.14, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.19);
-  }
-
-  playPenaltyBuzz() {
-    if (!this.initialized || !this.ctx) return;
-    const now = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(145, now);
-    osc.frequency.setValueAtTime(110, now + 0.11);
-    gain.gain.setValueAtTime(0.16, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.26);
-  }
-
-  playJumpWhoosh() {
-    if (!this.initialized || !this.ctx) return;
-    const now = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(220, now);
-    osc.frequency.exponentialRampToValueAtTime(520, now + 0.18);
-    gain.gain.setValueAtTime(0.12, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.21);
-  }
-
-  playBearGrowl() {
-    if (!this.initialized || !this.ctx) return;
-    const now = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(92, now);
-    osc.frequency.exponentialRampToValueAtTime(54, now + 0.42);
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.15, now + 0.06);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.46);
-  }
-
-  playTrickChime() {
-    if (!this.initialized || !this.ctx) return;
-    const now = this.ctx.currentTime;
-    [659.25, 880, 1174.66].forEach((freq, idx) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, now + idx * 0.05);
-      gain.gain.setValueAtTime(0.12, now + idx * 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.25);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(now + idx * 0.05);
-      osc.stop(now + idx * 0.05 + 0.26);
-    });
-  }
-
-  playFinishFanfare() {
-    if (!this.initialized || !this.ctx) return;
-    const now = this.ctx.currentTime;
-    [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, now + idx * 0.08);
-      gain.gain.setValueAtTime(0.15, now + idx * 0.08);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.35);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(now + idx * 0.08);
-      osc.stop(now + idx * 0.08 + 0.36);
-    });
-  }
-
-  playCrash() {
-    if (!this.initialized || !this.ctx) return;
-    const now = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(160, now);
-    osc.frequency.exponentialRampToValueAtTime(34, now + 0.35);
-    gain.gain.setValueAtTime(0.24, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.39);
-  }
-}
-
-// ============================================================================
-// MODULE STATE & CONTROLLER HOOKS FOR PIANOPAD
-// ============================================================================
-let activeController = null;
-
-export function stopSkiSlalom() {
+function stopPedalPoint() {
   if (animFrameId !== null) {
     cancelAnimationFrame(animFrameId);
     animFrameId = null;
@@ -377,7 +122,7 @@ export function stopSkiSlalom() {
   activeController = null;
 
   if (renderer) {
-    renderer.dispose();
+    try { renderer.dispose(); } catch (e) {}
     renderer = null;
   }
   if (containerEl) {
@@ -386,32 +131,32 @@ export function stopSkiSlalom() {
   }
 }
 
-export function handleSkiSlalomInput(noteStr, bridge) {
+function handlePedalPointInput(noteStr, bridge) {
   if (activeController && activeController.onPianoNoteDown) {
     activeController.onPianoNoteDown(noteStr, bridge);
   }
 }
 
-export function handleSkiSlalomRelease(noteStr) {
+function handlePedalPointRelease(noteStr) {
   if (activeController && activeController.onPianoNoteUp) {
     activeController.onPianoNoteUp(noteStr);
   }
 }
 
-export async function startSkiSlalom(bridge, autoStart = false) {
+async function startPedalPoint(bridge, autoStart = false) {
   initAudio();
-  stopSkiSlalom();
+  stopPedalPoint();
   bridgeRef = bridge;
 
   bridge.exitActiveMiniGame();
   document.getElementById('game-results-modal')?.classList.remove('open');
   document.getElementById('arcade-hub')?.classList.remove('open');
 
-  bridge.setActiveMiniGame('skiSlalom');
+  bridge.setActiveMiniGame('pedalPoint');
   bridge.resetGameStats();
 
   const statusEl = document.getElementById('status');
-  if (statusEl) statusEl.textContent = '⛷️ Loading 3D Alpine Slalom...';
+  if (statusEl) statusEl.textContent = '🚵‍♂️ Loading Pedal Point 3D Escarpment...';
 
   let THREE;
   try {
@@ -428,7 +173,7 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   const initH = (waterfall && waterfall.height) || 380;
 
   containerEl = document.createElement('div');
-  containerEl.id = 'ski-slalom-3d-container';
+  containerEl.id = 'pedal-point-3d-container';
   containerEl.style.cssText = `
     position: absolute;
     top: 0;
@@ -437,7 +182,7 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     height: ${initH}px;
     z-index: 25;
     overflow: hidden;
-    background: #0f172a;
+    background: #0b1b2b;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: #f8fafc;
     user-select: none;
@@ -446,321 +191,311 @@ export async function startSkiSlalom(bridge, autoStart = false) {
 
   containerEl.innerHTML = `
     <style>
-      #ski-slalom-3d-container * { box-sizing: border-box; }
-      #ski-hud {
+      #pedal-point-3d-container * { box-sizing: border-box; }
+      #pp-hud {
         position: absolute; top: 10px; left: 12px; right: 12px;
         display: flex; justify-content: space-between; align-items: flex-start;
         gap: 8px; pointer-events: none; z-index: 10;
       }
-      #ski-slalom-3d-container .hud-group { display: flex; flex-wrap: wrap; gap: 8px; }
-      #ski-slalom-3d-container .hud-pill {
-        background: rgba(15, 23, 42, 0.78);
+      #pedal-point-3d-container .hud-group { display: flex; flex-wrap: wrap; gap: 8px; }
+      #pedal-point-3d-container .hud-pill {
+        background: rgba(14, 24, 22, 0.80);
         backdrop-filter: blur(8px);
         border: 1px solid rgba(255, 255, 255, 0.16);
         border-radius: 10px; padding: 6px 11px;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
         min-width: 72px;
       }
-      #ski-slalom-3d-container .hud-label {
+      #pedal-point-3d-container .hud-label {
         font-size: 9px; font-weight: 800; letter-spacing: 0.08em;
         text-transform: uppercase; color: #94a3b8; margin-bottom: 1px;
       }
-      #ski-slalom-3d-container .hud-value {
+      #pedal-point-3d-container .hud-value {
         font-size: 16px; font-weight: 900; font-variant-numeric: tabular-nums;
         color: #ffffff; line-height: 1.1;
       }
-      #ski-hud-best .hud-value { color: #facc15; }
-      #ski-hud-penalty .hud-value { color: #f87171; }
-      #ski-hud-shield {
-        display: none;
-        border-color: #22c55e !important;
-        background: rgba(6, 78, 59, 0.88) !important;
-      }
-      #ski-hud-shield .hud-value { color: #4ade80; font-size: 13px; }
-      #ski-chord-prompt {
+      #pp-hud-combo .hud-value { color: #fbbf24; }
+      #pp-hud-rem .hud-value { color: #38bdf8; }
+      #pp-hud-best .hud-value { color: #34d399; }
+      #pp-melody-banner {
         position: absolute; top: 56px; left: 50%;
         transform: translateX(-50%);
-        background: rgba(15, 23, 42, 0.9);
-        border: 2px solid #facc15;
+        background: rgba(14, 24, 22, 0.92);
+        border: 2px solid #fbbf24;
         border-radius: 14px;
         padding: 6px 18px;
         display: none;
+        flex-direction: column;
         align-items: center;
-        gap: 12px;
+        gap: 4px;
         box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
         z-index: 11;
         pointer-events: none;
       }
-      #ski-chord-prompt.locked {
-        border-color: #4ade80;
-        background: rgba(6, 78, 59, 0.94);
-      }
-      #ski-chord-symbol {
-        font-size: 28px;
-        font-weight: 900;
-        color: #facc15;
-        line-height: 1;
-      }
-      #ski-chord-prompt.locked #ski-chord-symbol { color: #4ade80; }
-      #ski-chord-notes {
-        font-size: 13px;
-        font-weight: 800;
-        color: #f8fafc;
-      }
-      #ski-chord-sub {
-        font-size: 10px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: #38bdf8;
-      }
-      #ski-slalom-3d-container .hud-actions { display: flex; gap: 8px; pointer-events: auto; }
-      #ski-slalom-3d-container .hud-btn {
-        background: rgba(15, 23, 42, 0.82); color: #f8fafc;
-        border: 1px solid rgba(255, 255, 255, 0.22);
+      #pp-melody-notes { display: flex; gap: 8px; }
+      #pedal-point-3d-container .hud-actions { display: flex; gap: 8px; pointer-events: auto; }
+      #pedal-point-3d-container .hud-btn {
+        background: rgba(14, 24, 22, 0.85); color: #f8fafc;
+        border: 1px solid rgba(167, 243, 208, 0.3);
         border-radius: 10px; padding: 8px 12px;
         font-size: 12px; font-weight: 800; cursor: pointer;
       }
-      #ski-slalom-3d-container .hud-btn:hover { background: rgba(30, 41, 59, 0.95); }
-      #ski-callout {
+      #pedal-point-3d-container .hud-btn:hover { background: rgba(30, 41, 59, 0.95); }
+      #pp-callout {
         position: absolute; top: 34%; left: 50%;
         transform: translate(-50%, -50%) scale(0.9);
-        font-size: 23px; font-weight: 900; letter-spacing: 0.04em;
-        text-transform: uppercase; color: #facc15;
-        text-shadow: 0 4px 16px rgba(15, 23, 42, 0.92);
+        font-size: 22px; font-weight: 900; letter-spacing: 0.04em;
+        text-transform: uppercase; color: #34d399;
+        text-shadow: 0 4px 16px rgba(0, 0, 0, 0.92);
         opacity: 0; pointer-events: none;
         transition: opacity 0.18s ease, transform 0.18s ease;
         z-index: 12; text-align: center; white-space: nowrap;
       }
-      #ski-callout.show { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
-      #ski-bottom-bar {
+      #pp-callout.show { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
+      #pp-bottom-bar {
         position: absolute; bottom: 10px; left: 12px; right: 12px;
         display: flex; justify-content: space-between; align-items: flex-end;
         pointer-events: none; z-index: 10;
       }
-      #ski-controls-caption {
-        background: rgba(15, 23, 42, 0.72);
+      #pp-controls-caption {
+        background: rgba(14, 24, 22, 0.78);
         border: 1px solid rgba(255, 255, 255, 0.14);
         border-radius: 8px; padding: 6px 10px;
         font-size: 11px; font-weight: 700; color: #cbd5e1;
       }
-      #ski-touch-jump-btn {
+      #pp-preload-pill {
+        background: rgba(15, 23, 42, 0.88);
+        border: 1px solid #fbbf24;
+        border-radius: 999px; padding: 4px 12px;
+        font-size: 11px; font-weight: 900; color: #fbbf24;
+        opacity: 0; transition: opacity 0.1s ease;
+      }
+      #pp-touch-jump-btn {
         pointer-events: auto;
-        background: linear-gradient(135deg, #38bdf8, #0284c7);
+        background: linear-gradient(135deg, #10b981, #0ea5e9);
         color: #ffffff; border: 2px solid rgba(255, 255, 255, 0.4);
         border-radius: 10px; padding: 8px 14px;
         font-size: 12px; font-weight: 900; cursor: pointer;
       }
-      #ski-overlay {
+      #pp-overlay {
         position: absolute; inset: 0;
-        background: radial-gradient(circle at center, rgba(15, 23, 42, 0.72), rgba(15, 23, 42, 0.92));
+        background: radial-gradient(circle at center, rgba(11, 27, 43, 0.68), rgba(11, 27, 43, 0.92));
         display: flex; align-items: center; justify-content: center;
         padding: 12px; z-index: 20;
       }
-      #ski-slalom-3d-container .modal-card {
-        background: rgba(30, 41, 59, 0.95);
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-radius: 16px; padding: 18px 22px;
-        max-width: 460px; width: 100%; text-align: center;
+      #pedal-point-3d-container .modal-card {
+        background: rgba(18, 32, 29, 0.96);
+        border: 1px solid rgba(52, 211, 153, 0.35);
+        border-radius: 16px; padding: 16px 20px;
+        max-width: 520px; width: 100%; text-align: center;
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.55);
       }
-      #ski-slalom-3d-container .badge-tag {
-        display: inline-block; background: rgba(56, 189, 248, 0.18);
-        color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4);
+      #pedal-point-3d-container .badge-tag {
+        display: inline-block; background: rgba(16, 185, 129, 0.18);
+        color: #34d399; border: 1px solid rgba(52, 211, 153, 0.4);
         font-size: 10px; font-weight: 800; letter-spacing: 0.1em;
         text-transform: uppercase; padding: 3px 10px;
-        border-radius: 999px; margin-bottom: 6px;
+        border-radius: 999px; margin-bottom: 4px;
       }
-      #ski-slalom-3d-container .modal-card h1 {
-        margin: 0 0 6px 0; font-size: 26px; font-weight: 900; color: #ffffff;
+      #pedal-point-3d-container .modal-card h1 {
+        margin: 0 0 4px 0; font-size: 24px; font-weight: 900; color: #ffffff;
       }
-      #ski-modal-subtitle {
-        margin: 0 0 12px 0; font-size: 13px; color: #cbd5e1; line-height: 1.4;
+      #pp-modal-subtitle {
+        margin: 0 0 10px 0; font-size: 12px; color: #cbd5e1; line-height: 1.35;
       }
-      #ski-slalom-3d-container .controls-grid {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
-        text-align: left; background: rgba(15, 23, 42, 0.65);
-        border-radius: 10px; padding: 10px 12px; margin-bottom: 14px;
-        font-size: 12px; color: #e2e8f0;
+      #pedal-point-3d-container .bike-grid {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+        margin-bottom: 10px; text-align: left;
       }
-      #ski-slalom-3d-container .controls-grid span b { color: #38bdf8; }
-      #ski-slalom-3d-container .modal-actions {
-        display: flex;
-        gap: 10px;
+      #pedal-point-3d-container .bike-opt {
+        border: 2px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px; padding: 8px; cursor: pointer;
       }
-      #btn-ski-modal-recalib {
-        flex: 1;
-        padding: 11px 14px;
-        font-size: 13px;
-        font-weight: 800;
-        text-transform: uppercase;
-        color: #e2e8f0;
-        background: rgba(51, 65, 85, 0.9);
+      #pedal-point-3d-container .bike-opt.selected {
+        border-color: #34d399;
+        background: rgba(16, 185, 129, 0.18);
+      }
+      #pedal-point-3d-container .controls-grid {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 5px;
+        text-align: left; background: rgba(11, 27, 43, 0.65);
+        border-radius: 10px; padding: 8px 12px; margin-bottom: 12px;
+        font-size: 11px; color: #e2e8f0;
+      }
+      #pedal-point-3d-container .controls-grid span b { color: #34d399; }
+      #pedal-point-3d-container .modal-actions { display: flex; gap: 10px; }
+      #btn-pp-modal-recalib {
+        flex: 1; padding: 10px 12px; font-size: 12px; font-weight: 800;
+        text-transform: uppercase; color: #e2e8f0;
+        background: rgba(30, 41, 59, 0.9);
         border: 1px solid rgba(255, 255, 255, 0.22);
-        border-radius: 10px;
-        cursor: pointer;
-        white-space: nowrap;
+        border-radius: 10px; cursor: pointer;
       }
-      #btn-ski-modal-recalib:hover {
-        background: rgba(71, 85, 105, 0.95);
-      }
-      #btn-ski-play {
-        flex: 1.4;
-        padding: 11px 20px; font-size: 15px; font-weight: 900;
+      #btn-pp-play {
+        flex: 1.4; padding: 10px 20px; font-size: 15px; font-weight: 900;
         text-transform: uppercase; color: #ffffff;
-        background: linear-gradient(135deg, #ef4444, #dc2626);
+        background: linear-gradient(135deg, #10b981, #0ea5e9);
         border: none; border-radius: 10px; cursor: pointer;
       }
-      #ski-calib-overlay {
+      #pp-calib-overlay {
         position: absolute; inset: 0;
-        background: rgba(15, 23, 42, 0.9);
+        background: rgba(11, 27, 43, 0.92);
         display: none; align-items: center; justify-content: center;
         padding: 12px; z-index: 30;
       }
-      #ski-slalom-3d-container .calib-card {
-        background: rgba(30, 41, 59, 0.98);
-        border: 2px solid #38bdf8; border-radius: 16px;
+      #pedal-point-3d-container .calib-card {
+        background: rgba(18, 32, 29, 0.98);
+        border: 2px solid #34d399; border-radius: 16px;
         padding: 18px 20px; max-width: 450px; width: 100%; text-align: center;
       }
-      #ski-slalom-3d-container .calib-steps {
+      #pedal-point-3d-container .calib-steps {
         display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0;
       }
-      #ski-slalom-3d-container .calib-slot {
-        background: rgba(15, 23, 42, 0.75);
+      #pedal-point-3d-container .calib-slot {
+        background: rgba(11, 27, 43, 0.75);
         border: 2px solid rgba(255, 255, 255, 0.12);
         border-radius: 10px; padding: 8px;
       }
-      #ski-slalom-3d-container .calib-slot.active {
-        border-color: #facc15; background: rgba(250, 204, 21, 0.16);
+      #pedal-point-3d-container .calib-slot.active {
+        border-color: #fbbf24; background: rgba(251, 191, 36, 0.16);
       }
-      #ski-slalom-3d-container .calib-slot.done {
-        border-color: #22c55e; background: rgba(34, 197, 94, 0.16);
+      #pedal-point-3d-container .calib-slot.done {
+        border-color: #34d399; background: rgba(52, 211, 153, 0.16);
       }
-      #ski-slalom-3d-container .calib-slot-title {
+      #pedal-point-3d-container .calib-slot-title {
         font-size: 10px; font-weight: 800; text-transform: uppercase; color: #94a3b8;
       }
-      #ski-slalom-3d-container .calib-slot-key {
+      #pedal-point-3d-container .calib-slot-key {
         font-size: 15px; font-weight: 900; color: #ffffff; margin-top: 2px;
       }
-      #ski-calib-prompt {
-        font-size: 14px; font-weight: 800; color: #facc15; margin-bottom: 8px;
+      #pp-calib-prompt {
+        font-size: 14px; font-weight: 800; color: #fbbf24; margin-bottom: 8px;
       }
-      #ski-slalom-3d-container .calib-footer { display: flex; gap: 8px; justify-content: center; }
-      #ski-slalom-3d-container .calib-footer button {
+      #pedal-point-3d-container .calib-footer { display: flex; gap: 8px; justify-content: center; }
+      #pedal-point-3d-container .calib-footer button {
         padding: 8px 14px; border-radius: 8px; border: none;
         font-weight: 800; font-size: 12px; cursor: pointer;
       }
-      #btn-ski-calib-skip { background: #334155; color: #e2e8f0; }
-      #btn-ski-calib-save { background: #22c55e; color: #052e16; }
+      #btn-pp-calib-skip { background: #334155; color: #e2e8f0; }
+      #btn-pp-calib-save { background: #10b981; color: #052e16; }
     </style>
 
     <!-- Top HUD -->
-    <div id="ski-hud">
+    <div id="pp-hud">
       <div class="hud-group">
-        <div class="hud-pill" id="ski-hud-time">
-          <div class="hud-label">Run Time</div>
-          <div class="hud-value" id="ski-val-time">0.00s</div>
+        <div class="hud-pill">
+          <div class="hud-label">Speed</div>
+          <div class="hud-value" id="pp-val-speed">0 km/h</div>
         </div>
-        <div class="hud-pill" id="ski-hud-penalty">
-          <div class="hud-label">Penalties</div>
-          <div class="hud-value" id="ski-val-penalty">+0.0s</div>
+        <div class="hud-pill" id="pp-hud-rem">
+          <div class="hud-label">Remaining</div>
+          <div class="hud-value" id="pp-val-rem">2400m</div>
         </div>
-        <div class="hud-pill" id="ski-hud-gates">
-          <div class="hud-label">Gates</div>
-          <div class="hud-value" id="ski-val-gates">0/30</div>
+        <div class="hud-pill">
+          <div class="hud-label">Score</div>
+          <div class="hud-value" id="pp-val-score">0</div>
         </div>
-        <div class="hud-pill" id="ski-hud-score">
-          <div class="hud-label">Style Pts</div>
-          <div class="hud-value" id="ski-val-score">0</div>
+        <div class="hud-pill" id="pp-hud-combo">
+          <div class="hud-label">Flow</div>
+          <div class="hud-value" id="pp-val-combo">x1</div>
         </div>
-        <div class="hud-pill" id="ski-hud-best">
-          <div class="hud-label">Best Time</div>
-          <div class="hud-value" id="ski-val-best">--</div>
-        </div>
-        <div class="hud-pill" id="ski-hud-shield">
-          <div class="hud-label">Rail Bonus</div>
-          <div class="hud-value" id="ski-val-shield">🛡️ 2 GATE PASSES</div>
+        <div class="hud-pill" id="pp-hud-best">
+          <div class="hud-label">Best Score</div>
+          <div class="hud-value" id="pp-val-best">--</div>
         </div>
       </div>
       <div class="hud-actions">
-        <button type="button" class="hud-btn" id="btn-ski-calibrate" title="Assign Piano or Keyboard Keys">🎹 Keys</button>
-        <button type="button" class="hud-btn" id="btn-ski-cam-toggle" title="Toggle Camera">🎥 Chase Cam</button>
+        <button type="button" class="hud-btn" id="btn-pp-calibrate" title="Assign Piano or Keyboard Keys">🎹 Keys</button>
+        <button type="button" class="hud-btn" id="btn-pp-cam-toggle" title="Toggle Camera">🎥 Chase Cam</button>
       </div>
     </div>
 
-    <!-- Approaching Rail Triad Prompt -->
-    <div id="ski-chord-prompt">
-      <div id="ski-chord-symbol">C</div>
-      <div>
-        <div id="ski-chord-sub">🎹 Play Triad to Auto-Grind Rail</div>
-        <div id="ski-chord-notes">C - E - G</div>
-      </div>
+    <!-- Approaching Melody Trail Prompt -->
+    <div id="pp-melody-banner">
+      <div style="font-size:10px; font-weight:900; letter-spacing:0.08em; color:#fbbf24;">🎹 MELODY TRAIL — PLAY THE NOTES</div>
+      <div id="pp-melody-notes"></div>
     </div>
 
-    <!-- Trick / Gate Callout Banner -->
-    <div id="ski-callout">360° SPIN! +250</div>
+    <!-- Callout Banner -->
+    <div id="pp-callout">G4 NOTE GATE! +200</div>
 
     <!-- Bottom Controls Bar -->
-    <div id="ski-bottom-bar">
-      <div id="ski-controls-caption">
-        <b>A / D</b> Carve • <b>Space</b> Jump • <b>Play Triad Chord</b> Auto-Grind Rail
+    <div id="pp-bottom-bar">
+      <div id="pp-controls-caption">
+        <b>A / ←</b> Steer Left • <b>D / →</b> Steer Right • <b>Space</b> Jump &amp; Whip
       </div>
-      <button type="button" id="ski-touch-jump-btn">⬆ JUMP / SPIN</button>
+      <div id="pp-preload-pill">PRE-LOAD: 0%</div>
+      <button type="button" id="pp-touch-jump-btn">⬆ JUMP / WHIP</button>
     </div>
 
-    <!-- Start / Crash Overlay -->
-    <div id="ski-overlay">
+    <!-- Start / Garage Overlay -->
+    <div id="pp-overlay">
       <div class="modal-card">
-        <div class="badge-tag" id="ski-modal-badge">Alpine Slalom 3D</div>
-        <h1 id="ski-modal-title">SLOPELINE 3D</h1>
-        <p id="ski-modal-subtitle">
-          Race through 30 alternating red &amp; blue slalom gates! Play the <b>Triad Chord</b> prompt to auto-grind rails with <b>3x Style Points</b> — and grinding any rail grants a <b>2-Gate Forgiveness Pass</b>!
+        <div class="badge-tag">Wollongong NSW • Illawarra Escarpment</div>
+        <h1>PEDAL POINT 3D</h1>
+        <p id="pp-modal-subtitle">
+          Shred red-dirt singletrack down Mt Kembla! Carve through <b>Melodic Note Gates</b>, launch off <b>Beat-Synced Dirt Jumps</b>, and match <b>Melody Trails</b>!
         </p>
 
+        <div class="bike-grid" id="pp-bike-grid">
+          <div class="bike-opt selected" data-bike="enduro">
+            <div style="font-size:12px; font-weight:900; color:#fff;">Kembla Trail 140</div>
+            <div style="font-size:10px; color:#cbd5e1; margin-top:2px;">High agility &amp; huge bunny-hop pop.</div>
+          </div>
+          <div class="bike-opt" data-bike="downhill">
+            <div style="font-size:12px; font-weight:900; color:#fff;">Escarpment DH 200</div>
+            <div style="font-size:10px; color:#cbd5e1; margin-top:2px;">Fastest top speed &amp; plush landings.</div>
+          </div>
+          <div class="bike-opt" data-bike="ebike">
+            <div style="font-size:12px; font-weight:900; color:#fff;">Illawarra Volt E-MTB</div>
+            <div style="font-size:10px; color:#cbd5e1; margin-top:2px;">Instant electric cadence boost.</div>
+          </div>
+        </div>
+
         <div class="controls-grid">
-          <span><b id="ski-lbl-left">A / ←</b> Carve Left</span>
-          <span><b id="ski-lbl-right">D / →</b> Carve Right</span>
-          <span><b id="ski-lbl-jump">Space</b> Jump &amp; Spin</span>
-          <span><b id="ski-lbl-view">V</b> Helmet / Chase Cam</span>
+          <span><b id="pp-lbl-left">A / ←</b> Steer Left</span>
+          <span><b id="pp-lbl-right">D / →</b> Steer Right</span>
+          <span><b id="pp-lbl-jump">Space</b> Pre-Load &amp; Jump</span>
+          <span><b id="pp-lbl-view">V</b> Helmet / Chase Cam</span>
         </div>
 
         <div class="modal-actions">
-          <button type="button" id="btn-ski-modal-recalib">🎹 Recalibrate Notes</button>
-          <button type="button" id="btn-ski-play">Drop In</button>
+          <button type="button" id="btn-pp-modal-recalib">🎹 Recalibrate Notes</button>
+          <button type="button" id="btn-pp-play">Drop In 🚵‍♂️</button>
         </div>
       </div>
     </div>
 
-    <!-- Piano / Keyboard Calibration Modal -->
-    <div id="ski-calib-overlay">
+    <!-- 4-Step Piano / Keyboard Calibration Modal (Matches 3D Ski Slalom) -->
+    <div id="pp-calib-overlay">
       <div class="calib-card">
         <div class="badge-tag">Piano &amp; Key Setup</div>
         <h2 style="margin:0 0 4px 0; font-size:20px; color:#fff;">Assign Your Controls</h2>
         <p style="margin:0 0 8px 0; font-size:12px; color:#cbd5e1;">
           Play a note on your <b>Piano Keyboard</b> or press a <b>Computer Key</b> for each action:
         </p>
-        <div id="ski-calib-prompt">Step 1/4: Play key for CARVE LEFT</div>
+        <div id="pp-calib-prompt">Step 1/4: Play key for STEER LEFT</div>
         <div class="calib-steps">
-          <div class="calib-slot active" id="ski-slot-left">
-            <div class="calib-slot-title">1. Carve Left</div>
-            <div class="calib-slot-key" id="ski-key-left">Listening...</div>
+          <div class="calib-slot active" id="pp-slot-left">
+            <div class="calib-slot-title">1. Steer Left</div>
+            <div class="calib-slot-key" id="pp-key-left">Listening...</div>
           </div>
-          <div class="calib-slot" id="ski-slot-right">
-            <div class="calib-slot-title">2. Carve Right</div>
-            <div class="calib-slot-key" id="ski-key-right">--</div>
+          <div class="calib-slot" id="pp-slot-right">
+            <div class="calib-slot-title">2. Steer Right</div>
+            <div class="calib-slot-key" id="pp-key-right">--</div>
           </div>
-          <div class="calib-slot" id="ski-slot-jump">
-            <div class="calib-slot-title">3. Jump &amp; Spin</div>
-            <div class="calib-slot-key" id="ski-key-jump">--</div>
+          <div class="calib-slot" id="pp-slot-jump">
+            <div class="calib-slot-title">3. Jump &amp; Air Whip</div>
+            <div class="calib-slot-key" id="pp-key-jump">--</div>
           </div>
-          <div class="calib-slot" id="ski-slot-view">
+          <div class="calib-slot" id="pp-slot-view">
             <div class="calib-slot-title">4. Camera View</div>
-            <div class="calib-slot-key" id="ski-key-view">--</div>
+            <div class="calib-slot-key" id="pp-key-view">--</div>
           </div>
         </div>
         <div class="calib-footer">
-          <button type="button" id="btn-ski-calib-skip">Use Defaults (A/D/Space/V)</button>
-          <button type="button" id="btn-ski-calib-save" style="display:none;">Done &amp; Save</button>
+          <button type="button" id="btn-pp-calib-skip">Use Defaults (A/D/Space/V)</button>
+          <button type="button" id="btn-pp-calib-save" style="display:none;">Done &amp; Save</button>
         </div>
       </div>
     </div>
@@ -769,16 +504,153 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   wrapperParent.style.position = 'relative';
   wrapperParent.appendChild(containerEl);
 
-  const audio = new AlpineAudio();
+  // ============================================================================
+  // 1. PROCEDURAL WEB AUDIO (122 BPM Groove + Melodic Gate Chimes)
+  // ============================================================================
+  class EscarpmentAudio {
+    constructor() {
+      this.ctx = null;
+      this.initialized = false;
+      this.nextStepTime = 0;
+      this.currentStep = 0;
+      this.lastBeatTime = 0;
+    }
+
+    init() {
+      if (this.initialized) return;
+      try {
+        initAudio();
+        this.ctx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        this.initialized = true;
+      } catch (e) {}
+    }
+
+    startGroove() {
+      this.init();
+      if (!this.ctx) return;
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+      this.currentStep = 0;
+      this.nextStepTime = this.ctx.currentTime + 0.05;
+      this.lastBeatTime = this.nextStepTime;
+    }
+
+    getBeatAccuracy() {
+      if (!this.ctx) return 0.25;
+      const elapsed = this.ctx.currentTime - this.lastBeatTime;
+      const p = ((elapsed / BEAT_DURATION) % 1 + 1) % 1;
+      return Math.min(p, 1 - p);
+    }
+
+    updateGroove(comboCount, active) {
+      if (!this.initialized || !this.ctx || !active) return;
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+      const stepDur = BEAT_DURATION / 4;
+      while (this.nextStepTime < this.ctx.currentTime + 0.12) {
+        this.scheduleStep(this.currentStep, this.nextStepTime, comboCount);
+        this.nextStepTime += stepDur;
+        this.currentStep = (this.currentStep + 1) % 16;
+      }
+    }
+
+    scheduleStep(step, t, comboCount) {
+      if (step % 4 === 0) {
+        this.lastBeatTime = t;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(140, t);
+        osc.frequency.exponentialRampToValueAtTime(42, t + 0.12);
+        gain.gain.setValueAtTime(0.24, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.16);
+      }
+      if (comboCount >= 2 && step % 4 === 0) {
+        const bassNotes = [98.0, 123.47, 130.81, 146.83];
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(bassNotes[(step / 4) % 4], t);
+        gain.gain.setValueAtTime(0.12, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.24);
+      }
+    }
+
+    playFeedbackNote(noteOrMidi = 60) {
+      this.init();
+      if (!this.ctx) return;
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+      const now = this.ctx.currentTime;
+      const freq = typeof noteOrMidi === 'number'
+        ? 440 * Math.pow(2, (noteOrMidi - 69) / 12)
+        : (getNoteFrequency(noteOrMidi) || 392.0);
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.36);
+    }
+
+    playGateNote(freq) {
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(0.26, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    }
+
+    playJump(perfect) {
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(perfect ? 280 : 190, now);
+      osc.frequency.exponentialRampToValueAtTime(perfect ? 760 : 440, now + 0.16);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.19);
+    }
+  }
+
+  const audio = new EscarpmentAudio();
 
   // ============================================================================
-  // 2. THREE.JS SCENE, LIGHTING & ATMOSPHERIC ALPINE SKY
+  // 2. THREE.JS SCENE, ILLAWARRA TERRAIN, OCEAN VISTA & 3D MTB BUILDER
   // ============================================================================
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xbae6fd);
-  scene.fog = new THREE.FogExp2(0xdbeafe, 0.0068);
+  const colSkyCoastal = new THREE.Color(0x6bb6e8);
+  const colSkyRainforest = new THREE.Color(0x3a6e63);
+  const colFogCoastal = new THREE.Color(0xa6d8f5);
+  const colFogRainforest = new THREE.Color(0x3f6b5a);
 
-  const camera = new THREE.PerspectiveCamera(62, initW / initH, 0.1, 350);
+  scene.background = colSkyCoastal.clone();
+  scene.fog = new THREE.FogExp2(0xa6d8f5, 0.0016);
+
+  const camera = new THREE.PerspectiveCamera(65, initW / initH, 0.15, 1800);
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setSize(initW, initH);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -786,730 +658,481 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   containerEl.insertBefore(renderer.domElement, containerEl.firstChild);
 
-  const hemiLight = new THREE.HemisphereLight(0xf8fafc, 0xf1f5f9, 0.92);
+  const hemiLight = new THREE.HemisphereLight(0xdff2ff, 0x3b5930, 0.92);
   scene.add(hemiLight);
 
-  const sunLight = new THREE.DirectionalLight(0xfffbeb, 0.95);
-  sunLight.position.set(35, 65, 25);
+  const sunLight = new THREE.DirectionalLight(0xfff4d6, 1.45);
+  sunLight.position.set(40, 85, 35);
   sunLight.castShadow = true;
   sunLight.shadow.mapSize.width = 1024;
   sunLight.shadow.mapSize.height = 1024;
-  sunLight.shadow.camera.near = 5;
-  sunLight.shadow.camera.far = 180;
-  const d = 45;
-  sunLight.shadow.camera.left = -d;
-  sunLight.shadow.camera.right = d;
-  sunLight.shadow.camera.top = d;
-  sunLight.shadow.camera.bottom = -d;
   scene.add(sunLight);
   scene.add(sunLight.target);
 
-  // ============================================================================
-  // 3. PROCEDURAL ALPINE SNOW TERRAIN & DISTANT PEAKS
-  // ============================================================================
-  const SLOPE_ANGLE = 0.24;
-  const CHUNK_LENGTH = 70;
-  const CHUNK_WIDTH = 96;
-  const NUM_CHUNKS = 6;
-  const terrainChunks = [];
+  let currentSeed = 2500;
+  let trailParams = { p1: 0.4, p2: 1.7, p3: 2.9, a1: 22, a2: 11, a3: 4.5 };
+  let dirtFeatures = [];
+  let noteGates = [];
+  let rhythmRamps = [];
+  let melodyChallenges = [];
+  let worldGroup = null;
 
-  let terrainSeed = {
-    phaseX: Math.random() * Math.PI * 2,
-    phaseZ: Math.random() * Math.PI * 2
-  };
-
-  function randomizeTerrainSeed() {
-    terrainSeed = {
-      phaseX: Math.random() * Math.PI * 2,
-      phaseZ: Math.random() * Math.PI * 2
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a |= 0;
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
 
-  function getTerrainHeight(x, z) {
-    const baseSlope = z * Math.tan(SLOPE_ANGLE);
-    const mogul =
-      Math.sin(x * 0.22 + terrainSeed.phaseX) *
-      Math.cos(z * 0.14 + terrainSeed.phaseZ) *
-      0.32;
-    const bank = Math.pow(Math.max(0, Math.abs(x) - 18), 1.6) * 0.16;
-    return baseSlope + mogul + bank;
-  }
-
-  const snowMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    roughness: 0.78,
-    metalness: 0.02,
-    flatShading: true
-  });
-
-  function createTerrainChunk() {
-    const geo = new THREE.PlaneGeometry(CHUNK_WIDTH, CHUNK_LENGTH, 28, 20);
-    geo.rotateX(-Math.PI / 2);
-    const mesh = new THREE.Mesh(geo, snowMat);
-    mesh.receiveShadow = true;
-    scene.add(mesh);
-    return { mesh, geo, zStart: 0 };
-  }
-
-  function updateChunkGeometry(chunk, zStart) {
-    chunk.zStart = zStart;
-    const pos = chunk.geo.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      const vx = pos.getX(i);
-      const localZ = pos.getZ(i);
-      const worldZ = zStart + localZ - CHUNK_LENGTH * 0.5;
-      pos.setY(i, getTerrainHeight(vx, worldZ));
+  function getRainforestBlend(z) {
+    function smoothBand(val, startZ, endZ, fade) {
+      const enter = Math.max(0, Math.min(1, (startZ - val) / fade));
+      const exit = Math.max(0, Math.min(1, (val - endZ) / fade));
+      const sEnter = enter * enter * (3 - 2 * enter);
+      const sExit = exit * exit * (3 - 2 * exit);
+      return sEnter * sExit;
     }
-    pos.needsUpdate = true;
-    chunk.geo.computeVertexNormals();
-    chunk.mesh.position.set(0, 0, zStart - CHUNK_LENGTH * 0.5);
+    return Math.min(1, Math.max(smoothBand(z, -460, -1160, 85), smoothBand(z, -1560, -2550, 85)));
   }
 
-  for (let i = 0; i < NUM_CHUNKS; i++) {
-    const c = createTerrainChunk();
-    updateChunkGeometry(c, -i * CHUNK_LENGTH);
-    terrainChunks.push(c);
+  function isLookoutZ(z) {
+    return LOOKOUT_WINDOWS.some(w => z <= w.zMax && z >= w.zMin);
   }
 
-  const mountainGroup = new THREE.Group();
-  const peakMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, flatShading: true, roughness: 0.9 });
-  const peakCapMat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, roughness: 0.6 });
-  for (let i = 0; i < 14; i++) {
-    const pGroup = new THREE.Group();
-    const h = 38 + (i % 4) * 14;
-    const r = 22 + (i % 3) * 8;
-    const cone = new THREE.Mesh(new THREE.ConeGeometry(r, h, 5), peakMat);
-    cone.position.y = h * 0.5;
-    pGroup.add(cone);
-
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.42, h * 0.42, 5), peakCapMat);
-    cap.position.y = h * 0.79;
-    pGroup.add(cap);
-
-    pGroup.position.set((i - 6.5) * 26, -38, -220 - (i % 3) * 25);
-    mountainGroup.add(pGroup);
+  function initTrailParams(seed) {
+    const rng = mulberry32(seed);
+    trailParams = {
+      p1: rng() * Math.PI * 2,
+      p2: rng() * Math.PI * 2,
+      p3: rng() * Math.PI * 2,
+      a1: 18 + rng() * 12,
+      a2: 9 + rng() * 7,
+      a3: 3.5 + rng() * 3.5
+    };
   }
-  scene.add(mountainGroup);
 
-  // ============================================================================
-  // 4. REALISTIC BALD SKIER
-  // ============================================================================
-  const skierRoot = new THREE.Group();
-  const skierBodyGroup = new THREE.Group();
-  skierRoot.add(skierBodyGroup);
+  function getTrailCenterX(z) {
+    return (
+      Math.sin(z * 0.0042 + trailParams.p1) * trailParams.a1 +
+      Math.sin(z * 0.0115 + trailParams.p2) * trailParams.a2 +
+      Math.cos(z * 0.023 + trailParams.p3) * trailParams.a3
+    );
+  }
 
-  const skiTopMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.25, metalness: 0.35 });
-  const skiEdgeMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.2, metalness: 0.8 });
-  const bindingMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.5 });
-  const shoeMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.18, metalness: 0.45 });
-  const soleMat = new THREE.MeshStandardMaterial({ color: 0x3f2e21, roughness: 0.7 });
-  const pantsMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.62, metalness: 0.05 });
-  const beltMat = new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.3, metalness: 0.2 });
-  const buckleMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, roughness: 0.2, metalness: 0.85 });
-  const poloMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.58, metalness: 0.04 });
-  const collarMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.48 });
-  const skinMat = new THREE.MeshStandardMaterial({ color: 0xf1c27d, roughness: 0.46, metalness: 0.02 });
-  const poleMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.75, roughness: 0.22 });
-  const gripMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
-  const lensMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
+  function getTrailCurvature(z) {
+    const eps = 2.0;
+    return (getTrailCenterX(z - eps) - 2 * getTrailCenterX(z) + getTrailCenterX(z + eps)) / (eps * eps);
+  }
 
-  [-0.24, 0.24].forEach((sx) => {
-    const skiBase = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.025, 2.25), skiEdgeMat);
-    skiBase.position.set(sx, 0.015, 0);
-    skierBodyGroup.add(skiBase);
+  function getBaseTrailY(z) {
+    const dist = Math.max(0, -z);
+    return 365 - 0.148 * dist + Math.sin(z * 0.028) * 1.45 + Math.cos(z * 0.062) * 0.55;
+  }
 
-    const skiBody = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.035, 2.22), skiTopMat);
-    skiBody.position.set(sx, 0.038, 0);
-    skiBody.castShadow = true;
-    skierBodyGroup.add(skiBody);
+  function getFeatureHeightOffset(x, z) {
+    let extraY = 0;
+    for (let i = 0; i < dirtFeatures.length; i++) {
+      const f = dirtFeatures[i];
+      const dz = z - f.z;
+      if (Math.abs(dz) > f.halfLen + 2) continue;
+      const dx = Math.abs(x - f.x);
+      if (dx > f.halfWidth + 1.5) continue;
 
-    const tipCurve = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.34), skiTopMat);
-    tipCurve.position.set(sx, 0.105, -1.22);
-    tipCurve.rotation.x = 0.48;
-    skierBodyGroup.add(tipCurve);
+      const latBlend = Math.max(0, Math.min(1, 1 - Math.max(0, dx - f.halfWidth * 0.72) / (f.halfWidth * 0.55 + 0.8)));
+      const smoothLat = latBlend * latBlend * (3 - 2 * latBlend);
 
-    const binding = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.045, 0.44), bindingMat);
-    binding.position.set(sx, 0.072, -0.02);
-    skierBodyGroup.add(binding);
+      let prof = 0;
+      if (f.type === 'kicker') {
+        if (dz >= 0 && dz <= f.halfLen) {
+          prof = Math.pow(1 - dz / f.halfLen, 1.55) * f.height;
+        } else if (dz < 0 && dz >= -2.2) {
+          prof = Math.max(0, 1 + dz / 2.2) * f.height * 0.75;
+        }
+      } else if (f.type === 'tabletop') {
+        const t = (f.halfLen - dz) / (f.halfLen * 2);
+        if (t >= 0 && t <= 1) {
+          if (t < 0.28) prof = Math.pow(t / 0.28, 1.4) * f.height;
+          else if (t < 0.68) prof = f.height;
+          else prof = ((1 - t) / 0.32) * f.height;
+        }
+      }
+      extraY = Math.max(extraY, prof * smoothLat);
+    }
+    return extraY;
+  }
 
-    const shoeSole = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.03, 0.36), soleMat);
-    shoeSole.position.set(sx, 0.105, -0.03);
-    skierBodyGroup.add(shoeSole);
+  function getTerrainHeight(x, z) {
+    const cx = getTrailCenterX(z);
+    const dx = x - cx;
+    const absDx = Math.abs(dx);
+    const trailHalfWidth = 3.8;
+    const baseY = getBaseTrailY(z);
 
-    const shoeUpper = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.095, 0.28), shoeMat);
-    shoeUpper.position.set(sx, 0.155, 0.0);
-    shoeUpper.castShadow = true;
-    skierBodyGroup.add(shoeUpper);
+    const curv = getTrailCurvature(z);
+    const offTrail = Math.max(0, Math.min(1, (absDx - trailHalfWidth) / 3.0));
+    const berm = (1 - offTrail * 0.5) * Math.max(-1.3, Math.min(1.9, curv * dx * 18.0));
+    const rut = (1 - offTrail) * (-0.08 * Math.exp(-dx * dx * 0.8));
 
-    const shoeToe = new THREE.Mesh(new THREE.SphereGeometry(0.072, 12, 10), shoeMat);
-    shoeToe.scale.set(0.95, 0.65, 1.35);
-    shoeToe.position.set(sx, 0.145, -0.14);
-    shoeToe.castShadow = true;
-    skierBodyGroup.add(shoeToe);
+    const rfBlend = getRainforestBlend(z);
+    let sideSlope = 0;
+    if (dx > trailHalfWidth) {
+      sideSlope = Math.pow(dx - trailHalfWidth, 1.26) * (0.42 + rfBlend * 0.10);
+    } else if (dx < -trailHalfWidth) {
+      const d = -dx - trailHalfWidth;
+      const coastalDrop = -Math.pow(d, 1.18) * 0.50;
+      const gullyWall = Math.pow(d, 1.24) * 0.42;
+      sideSlope = coastalDrop + (gullyWall - coastalDrop) * rfBlend;
+    }
 
-    const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.088, 0.44, 14), pantsMat);
-    shin.position.set(sx, 0.38, -0.03);
-    shin.rotation.x = -0.22;
-    shin.castShadow = true;
-    skierBodyGroup.add(shin);
+    const rough = offTrail * (Math.sin(x * 0.19 + z * 0.14) * 1.1 + Math.cos(x * 0.08 - z * 0.09) * 1.6);
+    return baseY + berm + rut + sideSlope + rough + getFeatureHeightOffset(x, z);
+  }
 
-    const knee = new THREE.Mesh(new THREE.SphereGeometry(0.106, 12, 10), pantsMat);
-    knee.position.set(sx, 0.58, -0.08);
-    skierBodyGroup.add(knee);
+  const tmpNormal = new THREE.Vector3();
+  function getTerrainNormal(x, z) {
+    const eps = 0.45;
+    const hL = getTerrainHeight(x - eps, z);
+    const hR = getTerrainHeight(x + eps, z);
+    const hD = getTerrainHeight(x, z - eps);
+    const hU = getTerrainHeight(x, z + eps);
+    return tmpNormal.set(hL - hR, 2 * eps, hD - hU).normalize();
+  }
 
-    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.132, 0.108, 0.44, 14), pantsMat);
-    thigh.position.set(sx, 0.77, 0.01);
-    thigh.rotation.x = 0.22;
-    thigh.castShadow = true;
-    skierBodyGroup.add(thigh);
+  // Build 3D Mountain Bike & Articulated Rider
+  const bikeRoot = new THREE.Group();
+  const bikeVisual = new THREE.Group();
+  bikeRoot.add(bikeVisual);
+
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.32, metalness: 0.48 });
+  const darkMetalMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.45, metalness: 0.72 });
+  const kashimaMat = new THREE.MeshStandardMaterial({ color: 0xd4a03a, roughness: 0.2, metalness: 0.88 });
+  const jerseyMat = new THREE.MeshStandardMaterial({ color: 0x0d9488, roughness: 0.7 });
+  const shortsMat = new THREE.MeshStandardMaterial({ color: 0x1e242b, roughness: 0.88 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xd8a37c, roughness: 0.65 });
+  const helmetMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.35 });
+  const goggleMat = new THREE.MeshStandardMaterial({ color: 0xf97316, emissive: 0x7c2d12, emissiveIntensity: 0.35 });
+
+  function addTube(p1, p2, r1, r2, mat, parent) {
+    const v1 = new THREE.Vector3(p1[0], p1[1], p1[2]);
+    const v2 = new THREE.Vector3(p2[0], p2[1], p2[2]);
+    const dist = v1.distanceTo(v2);
+    const mesh = new THREE.Mesh(new THREE.CylinderGeometry(r2, r1, dist, 8), mat);
+    mesh.position.copy(v1).add(v2).multiplyScalar(0.5);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), v2.clone().sub(v1).normalize());
+    parent.add(mesh);
+    return mesh;
+  }
+
+  function createWheel() {
+    const wg = new THREE.Group();
+    const tire = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.068, 10, 22), darkMetalMat);
+    tire.rotation.y = Math.PI / 2;
+    wg.add(tire);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.31, 0.022, 8, 18), kashimaMat);
+    rim.rotation.y = Math.PI / 2;
+    wg.add(rim);
+    return wg;
+  }
+
+  const chassisGroup = new THREE.Group();
+  bikeVisual.add(chassisGroup);
+
+  addTube([0, 0.46, 0.08], [0, 0.94, -0.56], 0.048, 0.056, frameMat, chassisGroup);
+  addTube([0, 1.04, -0.54], [0, 0.87, 0.25], 0.036, 0.044, frameMat, chassisGroup);
+  addTube([0, 0.46, 0.08], [0, 0.96, 0.28], 0.038, 0.042, frameMat, chassisGroup);
+  [-0.07, 0.07].forEach(xOff => {
+    addTube([xOff, 0.46, 0.08], [xOff, 0.42, 0.72], 0.022, 0.024, frameMat, chassisGroup);
+    addTube([xOff, 0.87, 0.25], [xOff, 0.42, 0.72], 0.020, 0.022, frameMat, chassisGroup);
   });
 
-  const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.25, 0.20, 16), pantsMat);
-  pelvis.scale.set(1.22, 1.0, 0.76);
-  pelvis.position.set(0, 0.96, 0.05);
-  pelvis.castShadow = true;
-  skierBodyGroup.add(pelvis);
+  const rearWheel = createWheel();
+  rearWheel.position.set(0, 0.42, 0.72);
+  chassisGroup.add(rearWheel);
 
-  const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.245, 0.245, 0.045, 16), beltMat);
-  belt.scale.set(1.22, 1.0, 0.77);
-  belt.position.set(0, 1.04, 0.04);
-  skierBodyGroup.add(belt);
+  const steerGroup = new THREE.Group();
+  steerGroup.position.set(0, 1.05, -0.60);
+  chassisGroup.add(steerGroup);
 
-  const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.052, 0.03), buckleMat);
-  buckle.position.set(0, 1.04, -0.15);
-  skierBodyGroup.add(buckle);
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.82, 8), darkMetalMat);
+  bar.rotation.z = Math.PI / 2;
+  bar.position.set(0, 0.11, -0.08);
+  steerGroup.add(bar);
 
-  const abdomen = new THREE.Mesh(new THREE.CylinderGeometry(0.265, 0.24, 0.32, 16), poloMat);
-  abdomen.scale.set(1.24, 1.0, 0.76);
-  abdomen.position.set(0, 1.18, 0.01);
-  abdomen.rotation.x = -0.16;
-  abdomen.castShadow = true;
-  skierBodyGroup.add(abdomen);
-
-  const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.265, 0.34, 16), poloMat);
-  chest.scale.set(1.26, 1.0, 0.78);
-  chest.position.set(0, 1.44, -0.04);
-  chest.rotation.x = -0.20;
-  chest.castShadow = true;
-  skierBodyGroup.add(chest);
-
-  const placket = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.22, 0.025), poloMat);
-  placket.position.set(0, 1.46, -0.265);
-  placket.rotation.x = -0.20;
-  skierBodyGroup.add(placket);
-
-  [1.50, 1.43, 1.36].forEach((by, idx) => {
-    const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.015, 8), buckleMat);
-    btn.rotation.x = Math.PI / 2 - 0.20;
-    btn.position.set(0, by, -0.275 + idx * 0.014);
-    skierBodyGroup.add(btn);
+  [-0.085, 0.085].forEach(xOff => {
+    const stanchion = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.56, 8), kashimaMat);
+    stanchion.position.set(xOff, -0.22, -0.11);
+    stanchion.rotation.x = 0.36;
+    steerGroup.add(stanchion);
   });
 
-  const collarBack = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.165, 0.195, 0.085, 16, 1, false, -Math.PI * 0.25, Math.PI * 1.5),
-    collarMat
-  );
-  collarBack.position.set(0, 1.61, -0.08);
-  collarBack.rotation.y = Math.PI * 0.5;
-  collarBack.rotation.x = -0.18;
-  skierBodyGroup.add(collarBack);
+  const forkLowers = new THREE.Group();
+  const frontWheel = createWheel();
+  frontWheel.position.set(0, -0.63, -0.26);
+  forkLowers.add(frontWheel);
+  steerGroup.add(forkLowers);
 
-  [-0.065, 0.065].forEach((lx) => {
-    const lapel = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.075, 0.028), collarMat);
-    lapel.position.set(lx, 1.57, -0.235);
-    lapel.rotation.set(-0.35, lx > 0 ? -0.35 : 0.35, lx > 0 ? -0.25 : 0.25);
-    skierBodyGroup.add(lapel);
-  });
+  const riderGroup = new THREE.Group();
+  riderGroup.position.set(0, 1.15, 0.25);
+  chassisGroup.add(riderGroup);
 
-  [-1, 1].forEach((side) => {
-    const sx = side * 0.36;
+  const hips = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.18, 0.24), shortsMat);
+  hips.position.set(0, 0.04, 0.06);
+  riderGroup.add(hips);
 
-    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.115, 12, 10), poloMat);
-    shoulder.position.set(sx, 1.53, -0.06);
-    shoulder.castShadow = true;
-    skierBodyGroup.add(shoulder);
+  const torsoGroup = new THREE.Group();
+  torsoGroup.position.set(0, 0.12, 0.04);
+  torsoGroup.rotation.x = 0.48;
+  riderGroup.add(torsoGroup);
 
-    const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.095, 0.22, 12), poloMat);
-    sleeve.position.set(side * 0.41, 1.43, -0.11);
-    sleeve.rotation.set(-0.48, 0, side * -0.18);
-    sleeve.castShadow = true;
-    skierBodyGroup.add(sleeve);
-
-    const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.094, 0.012, 8, 14), poloMat);
-    cuff.position.set(side * 0.43, 1.33, -0.16);
-    cuff.rotation.set(Math.PI / 2 - 0.48, side * -0.18, 0);
-    skierBodyGroup.add(cuff);
-
-    const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.082, 0.074, 0.16, 12), skinMat);
-    upperArm.position.set(side * 0.44, 1.30, -0.18);
-    upperArm.rotation.set(-0.48, 0, side * -0.15);
-    upperArm.castShadow = true;
-    skierBodyGroup.add(upperArm);
-
-    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 10), skinMat);
-    elbow.position.set(side * 0.46, 1.23, -0.22);
-    skierBodyGroup.add(elbow);
-
-    const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.056, 0.28, 12), skinMat);
-    forearm.position.set(side * 0.44, 1.18, -0.35);
-    forearm.rotation.set(-1.15, 0, side * 0.12);
-    forearm.castShadow = true;
-    skierBodyGroup.add(forearm);
-
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 10), skinMat);
-    hand.scale.set(0.85, 0.95, 1.2);
-    hand.position.set(side * 0.42, 1.13, -0.49);
-    skierBodyGroup.add(hand);
-
-    const poleGroup = new THREE.Group();
-    poleGroup.position.set(side * 0.42, 1.13, -0.49);
-    poleGroup.rotation.set(0.78, 0, side * 0.08);
-
-    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.022, 0.16, 10), gripMat);
-    grip.position.y = 0.02;
-    poleGroup.add(grip);
-
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.010, 1.32, 8), poleMat);
-    shaft.position.y = -0.66;
-    poleGroup.add(shaft);
-
-    const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.012, 12), gripMat);
-    basket.position.y = -1.24;
-    poleGroup.add(basket);
-
-    skierBodyGroup.add(poleGroup);
-  });
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.48, 0.22), jerseyMat);
+  chest.position.set(0, 0.24, 0);
+  torsoGroup.add(chest);
 
   const headGroup = new THREE.Group();
+  headGroup.position.set(0, 0.56, -0.02);
+  headGroup.rotation.x = -0.38;
+  torsoGroup.add(headGroup);
 
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.115, 0.16, 14), skinMat);
-  neck.position.set(0, 1.65, -0.09);
-  neck.rotation.x = -0.15;
-  headGroup.add(neck);
+  headGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.115, 12, 12), skinMat));
+  const helmetShell = new THREE.Mesh(new THREE.SphereGeometry(0.145, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), helmetMat);
+  helmetShell.position.set(0, 0.02, 0.01);
+  headGroup.add(helmetShell);
 
-  const cranium = new THREE.Mesh(new THREE.SphereGeometry(0.21, 20, 18), skinMat);
-  cranium.scale.set(0.88, 1.12, 0.98);
-  cranium.position.set(0, 1.84, -0.12);
-  cranium.castShadow = true;
-  headGroup.add(cranium);
+  const goggles = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.062, 0.055), goggleMat);
+  goggles.position.set(0, 0.025, -0.115);
+  headGroup.add(goggles);
 
-  const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.155, 16, 14), skinMat);
-  jaw.scale.set(0.86, 1.05, 0.95);
-  jaw.position.set(0, 1.75, -0.14);
-  headGroup.add(jaw);
+  scene.add(bikeRoot);
 
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.032, 0.085, 8), skinMat);
-  nose.rotation.x = -Math.PI * 0.42;
-  nose.position.set(0, 1.81, -0.32);
-  headGroup.add(nose);
+  function buildWorld(seed) {
+    if (worldGroup) scene.remove(worldGroup);
+    worldGroup = new THREE.Group();
+    scene.add(worldGroup);
 
-  [-0.185, 0.185].forEach((ex) => {
-    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.042, 10, 10), skinMat);
-    ear.scale.set(0.45, 1.15, 0.75);
-    ear.position.set(ex, 1.82, -0.11);
-    headGroup.add(ear);
-  });
+    initTrailParams(seed);
+    const rng = mulberry32(seed + 1337);
 
-  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.068, 0.04), lensMat);
-  visor.position.set(0, 1.85, -0.305);
-  headGroup.add(visor);
-
-  [-0.165, 0.165].forEach((tx) => {
-    const temple = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.022, 0.21), gripMat);
-    temple.position.set(tx, 1.855, -0.20);
-    headGroup.add(temple);
-  });
-
-  skierBodyGroup.add(headGroup);
-  scene.add(skierRoot);
-
-  // ============================================================================
-  // 5. WORLD OBJECTS: ALTERNATING SLALOM GATES, PINES, SCULPTED RAMPS, RAILS & BEARS
-  // ============================================================================
-  const gates = [];
-  const trees = [];
-  const kickers = [];
-  const rails = [];
-  const bears = [];
-  let finishBannerGroup = null;
-  let bearMilestones = [];
-
-  const TOTAL_GATES = 30;
-  let gatesSpawnedCount = 0;
-  let finishLineZ = -9999;
-
-  let nextGateZ = -38;
-  let nextTreeZ = -22;
-  let nextKickerZ = -85;
-  let nextRailZ = -62;
-  let nextGateIsRed = true;
-  let lastGateX = 0;
-
-  const redPoleMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4, flatShading: true });
-  const bluePoleMat = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.4, flatShading: true });
-  const redBannerMat = new THREE.MeshStandardMaterial({ color: 0xf87171, side: THREE.DoubleSide, transparent: true, opacity: 0.88 });
-  const blueBannerMat = new THREE.MeshStandardMaterial({ color: 0x60a5fa, side: THREE.DoubleSide, transparent: true, opacity: 0.88 });
-  const poleGeo = new THREE.CylinderGeometry(0.08, 0.08, 2.7, 6);
-  const bannerGeo = new THREE.PlaneGeometry(1.15, 0.65);
-
-  function spawnGate(zPos) {
-    if (gatesSpawnedCount >= TOTAL_GATES) return;
-    gatesSpawnedCount++;
-
-    const gateWidth = 6.5 + Math.random() * 1.9;
-    const isRed = nextGateIsRed;
-    const dir = isRed ? -1 : 1;
-
-    nextGateIsRed = !nextGateIsRed;
-
-    const shift = 4.2 + Math.random() * 8.2;
-    let centerX = lastGateX + dir * shift;
-    if (centerX > 14.5) centerX = 14.5 - Math.random() * 2.5;
-    if (centerX < -14.5) centerX = -14.5 + Math.random() * 2.5;
-    lastGateX = centerX;
-
-    const group = new THREE.Group();
-    const poleMat = isRed ? redPoleMat : bluePoleMat;
-    const bannerMat = isRed ? redBannerMat : blueBannerMat;
-
-    [-gateWidth / 2, gateWidth / 2].forEach((px, idx) => {
-      const pole = new THREE.Mesh(poleGeo, poleMat);
-      pole.position.set(px, 1.35, 0);
-      pole.castShadow = true;
-      group.add(pole);
-
-      const flag = new THREE.Mesh(bannerGeo, bannerMat);
-      flag.position.set(px + (idx === 0 ? -0.58 : 0.58), 2.15, 0);
-      group.add(flag);
-    });
-
-    const groundY = getTerrainHeight(centerX, zPos);
-    group.position.set(centerX, groundY, zPos);
-    scene.add(group);
-
-    gates.push({
-      group,
-      x: centerX,
-      z: zPos,
-      width: gateWidth,
-      passed: false
-    });
-
-    if (gatesSpawnedCount === TOTAL_GATES) {
-      finishLineZ = zPos - (24 + Math.random() * 10);
-      spawnFinishBanner(finishLineZ);
+    dirtFeatures = [];
+    rhythmRamps = [];
+    for (let z = -95; z > -TRAIL_LENGTH + 90; z -= 95 + rng() * 55) {
+      if ((z < -680 && z > -860) || (z < -1700 && z > -1880)) continue;
+      const cx = getTrailCenterX(z);
+      const isTable = rng() > 0.42;
+      const feat = {
+        x: cx,
+        z,
+        type: isTable ? 'tabletop' : 'kicker',
+        halfLen: isTable ? 9.5 : 5.2,
+        halfWidth: 2.9,
+        height: isTable ? (1.45 + rng() * 0.55) : (1.35 + rng() * 0.55),
+        triggered: false
+      };
+      dirtFeatures.push(feat);
+      rhythmRamps.push(feat);
     }
-  }
 
-  function spawnFinishBanner(zPos) {
-    const group = new THREE.Group();
-    const postMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.3, roughness: 0.4 });
-    const bannerMat = new THREE.MeshStandardMaterial({ color: 0xef4444, side: THREE.DoubleSide });
-    const lineMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+    const zStart = 45;
+    const zEnd = -TRAIL_LENGTH - 95;
+    const zSegs = 340;
+    const xSegs = 34;
+    const corridorHalfWidth = 65;
 
-    [-14, 14].forEach(px => {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 6.5, 8), postMat);
-      post.position.set(px, 3.25, 0);
-      group.add(post);
-    });
+    const positions = [];
+    const colors = [];
+    const indices = [];
 
-    const topBanner = new THREE.Mesh(new THREE.BoxGeometry(28.5, 1.3, 0.25), bannerMat);
-    topBanner.position.set(0, 6.0, 0);
-    group.add(topBanner);
+    const colDirt = new THREE.Color(0x8c5730);
+    const colDirtWarm = new THREE.Color(0xb27343);
+    const colFern = new THREE.Color(0x4b8b34);
+    const colRainforest = new THREE.Color(0x1f4d24);
+    const tmpColor = new THREE.Color();
 
-    const snowStripe = new THREE.Mesh(new THREE.BoxGeometry(28, 0.08, 0.6), lineMat);
-    snowStripe.position.set(0, 0.05, 0);
-    group.add(snowStripe);
+    for (let iz = 0; iz <= zSegs; iz++) {
+      const z = zStart + (zEnd - zStart) * (iz / zSegs);
+      const centerX = getTrailCenterX(z);
+      const rfBlend = getRainforestBlend(z);
 
-    group.position.set(0, getTerrainHeight(0, zPos), zPos);
-    scene.add(group);
-    finishBannerGroup = group;
-  }
+      for (let ix = 0; ix <= xSegs; ix++) {
+        const u = (ix / xSegs) * 2 - 1;
+        const signedOffset = Math.sign(u) * Math.pow(Math.abs(u), 1.48) * corridorHalfWidth;
+        const x = centerX + signedOffset;
+        const y = getTerrainHeight(x, z);
+        positions.push(x, y, z);
 
-  const trunkGeo = new THREE.CylinderGeometry(0.24, 0.36, 1.6, 5);
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c3a21, flatShading: true });
-  const foliageMat1 = new THREE.MeshStandardMaterial({ color: 0x15803d, flatShading: true });
-  const foliageMat2 = new THREE.MeshStandardMaterial({ color: 0x166534, flatShading: true });
-  const snowCapMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, flatShading: true });
-  const coneBotGeo = new THREE.ConeGeometry(1.9, 2.8, 6);
-  const coneMidGeo = new THREE.ConeGeometry(1.45, 2.4, 6);
-  const coneTopGeo = new THREE.ConeGeometry(0.95, 1.9, 6);
+        const absDx = Math.abs(signedOffset);
+        if (absDx < 3.4) tmpColor.copy(colDirt).lerp(colDirtWarm, absDx / 3.4);
+        else tmpColor.copy(colFern).lerp(colRainforest, Math.min(1, (absDx - 3.4) / 18 + rfBlend * 0.5));
+        colors.push(tmpColor.r, tmpColor.g, tmpColor.b);
+      }
+    }
 
-  function spawnPineTree(xPos, zPos, scaleMult = 1.0) {
-    const tree = new THREE.Group();
+    const stride = xSegs + 1;
+    for (let iz = 0; iz < zSegs; iz++) {
+      for (let ix = 0; ix < xSegs; ix++) {
+        const a = iz * stride + ix;
+        const b = a + 1;
+        const c = (iz + 1) * stride + ix;
+        const d = c + 1;
+        indices.push(a, b, c, b, d, c);
+      }
+    }
 
-    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-    trunk.position.y = 0.8;
-    trunk.castShadow = true;
-    tree.add(trunk);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
 
-    const bCone = new THREE.Mesh(coneBotGeo, foliageMat2);
-    bCone.position.y = 2.4;
-    bCone.castShadow = true;
-    tree.add(bCone);
+    worldGroup.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.94,
+      side: THREE.DoubleSide
+    })));
 
-    const mCone = new THREE.Mesh(coneMidGeo, foliageMat1);
-    mCone.position.y = 3.8;
-    mCone.castShadow = true;
-    tree.add(mCone);
+    // Pacific Ocean & Lake Illawarra Vista
+    const oceanY = -365;
+    const oceanGeo = new THREE.PlaneGeometry(3000, 4400);
+    oceanGeo.rotateX(-Math.PI / 2);
+    const ocean = new THREE.Mesh(oceanGeo, new THREE.MeshStandardMaterial({ color: 0x0e3d6b, roughness: 0.28 }));
+    ocean.position.set(-900, oceanY, -1350);
+    worldGroup.add(ocean);
 
-    const tCone = new THREE.Mesh(coneTopGeo, snowCapMat);
-    tCone.position.y = 5.0;
-    tCone.castShadow = true;
-    tree.add(tCone);
+    const lakeGeo = new THREE.CircleGeometry(145, 20);
+    lakeGeo.rotateX(-Math.PI / 2);
+    lakeGeo.scale(0.85, 1, 2.25);
+    const lake = new THREE.Mesh(lakeGeo, new THREE.MeshStandardMaterial({ color: 0x2299a8, roughness: 0.22 }));
+    lake.position.set(-415, oceanY + 6.5, -1420);
+    worldGroup.add(lake);
 
-    const groundY = getTerrainHeight(xPos, zPos);
-    tree.position.set(xPos, groundY - 0.15, zPos);
-    tree.scale.setScalar(scaleMult);
-    tree.rotation.y = Math.random() * Math.PI * 2;
-    scene.add(tree);
+    // Eucalyptus Trees
+    const gumCount = 560;
+    const trunkGeo = new THREE.CylinderGeometry(0.18, 0.38, 14.5, 5);
+    trunkGeo.translate(0, 7.25, 0);
+    const canopyGeo = new THREE.DodecahedronGeometry(3.6, 0);
+    canopyGeo.scale(1.3, 0.72, 1.2);
+    canopyGeo.translate(0.5, 14.2, 0.2);
 
-    trees.push({
-      mesh: tree,
-      x: xPos,
-      z: zPos,
-      radius: 1.05 * scaleMult
-    });
-  }
+    const gumTrunks = new THREE.InstancedMesh(trunkGeo, new THREE.MeshStandardMaterial({ color: 0xbcb6a8, flatShading: true }), gumCount);
+    const gumCanopy = new THREE.InstancedMesh(canopyGeo, new THREE.MeshStandardMaterial({ color: 0x3b7236, flatShading: true }), gumCount);
+    const dummy = new THREE.Object3D();
 
-  // Sculpted Curved Snow-Park Kickers
-  const kickerSnowMat = new THREE.MeshStandardMaterial({
-    color: 0xf8fafc,
-    roughness: 0.72,
-    metalness: 0.02
-  });
-  const kickerSideMat = new THREE.MeshStandardMaterial({
-    color: 0xe2e8f0,
-    roughness: 0.8
-  });
-  const kickerLipMat = new THREE.MeshStandardMaterial({
-    color: 0xf97316,
-    roughness: 0.45
-  });
+    let placed = 0;
+    for (let i = 0; i < gumCount * 2 && placed < gumCount; i++) {
+      const z = 25 - rng() * (TRAIL_LENGTH + 90);
+      const rf = getRainforestBlend(z);
+      const side = rng() < (rf > 0.35 ? 0.5 : 0.72) ? 1 : -1;
+      if (side === -1 && isLookoutZ(z) && rf < 0.25 && rng() < 0.9) continue;
 
-  function spawnKicker(zPos) {
-    const xPos = (Math.random() - 0.5) * 22;
-    const collidesGate = gates.some(g => Math.abs(g.z - zPos) < 6 && Math.abs(g.x - xPos) < 5);
-    if (collidesGate) return;
+      const dist = 5.4 + Math.pow(rng(), 1.25) * 40;
+      const x = getTrailCenterX(z) + side * dist;
+      const y = getTerrainHeight(x, z);
+      const s = 0.85 + rng() * 0.8;
 
-    const width = 4.2;
-    const length = 5.4;
-    const height = 1.25;
-    const group = new THREE.Group();
+      dummy.position.set(x, y - 0.5, z);
+      dummy.rotation.set(0, rng() * Math.PI * 2, 0);
+      dummy.scale.set(s, s * 1.1, s);
+      dummy.updateMatrix();
+      gumTrunks.setMatrixAt(placed, dummy.matrix);
+      gumCanopy.setMatrixAt(placed, dummy.matrix);
+      placed++;
+    }
+    gumTrunks.count = gumCanopy.count = placed;
+    worldGroup.add(gumTrunks, gumCanopy);
 
-    const shape = new THREE.Shape();
-    shape.moveTo(0, 0);
-    shape.quadraticCurveTo(length * 0.58, height * 0.14, length, height);
-    shape.lineTo(length, 0);
-    shape.closePath();
+    // Melodic Note Gates
+    noteGates = [];
+    for (let z = -65; z > -TRAIL_LENGTH + 70; z -= 72 + rng() * 22) {
+      if ((z < -675 && z > -865) || (z < -1695 && z > -1885)) continue;
+      const note = SCALE_NOTES[Math.floor(rng() * SCALE_NOTES.length)];
+      const x = getTrailCenterX(z) + (rng() - 0.5) * 3.0;
+      const y = getTerrainHeight(x, z);
 
-    const extrudeGeo = new THREE.ExtrudeGeometry(shape, {
-      depth: width,
-      bevelEnabled: true,
-      bevelSegments: 3,
-      steps: 1,
-      bevelSize: 0.08,
-      bevelThickness: 0.12
-    });
-
-    extrudeGeo.rotateY(Math.PI / 2);
-    extrudeGeo.translate(-width / 2, 0, length / 2);
-    extrudeGeo.computeVertexNormals();
-
-    const wedgeMesh = new THREE.Mesh(extrudeGeo, [kickerSnowMat, kickerSideMat]);
-    wedgeMesh.castShadow = true;
-    wedgeMesh.receiveShadow = true;
-    group.add(wedgeMesh);
-
-    [-width * 0.52, width * 0.52].forEach((bx) => {
-      const bermGeo = new THREE.CylinderGeometry(0.12, 0.42, length * 0.92, 8);
-      bermGeo.rotateX(Math.PI / 2);
-      const berm = new THREE.Mesh(bermGeo, kickerSideMat);
-      berm.scale.set(1.2, 0.75, 1);
-      berm.position.set(bx, 0.16, 0.1);
-      berm.rotation.x = 0.18;
-      group.add(berm);
-    });
-
-    const lipStrip = new THREE.Mesh(
-      new THREE.BoxGeometry(width * 0.94, 0.04, 0.14),
-      kickerLipMat
-    );
-    lipStrip.position.set(0, height + 0.05, -length / 2 + 0.08);
-    group.add(lipStrip);
-
-    [-width * 0.48, width * 0.48].forEach((wx) => {
-      const wand = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.025, 0.025, 0.65, 6),
-        kickerLipMat
-      );
-      wand.position.set(wx, height + 0.25, -length / 2 + 0.05);
-      wand.rotation.z = wx < 0 ? 0.15 : -0.15;
-      group.add(wand);
-    });
-
-    const groundY = getTerrainHeight(xPos, zPos);
-    group.position.set(xPos, groundY - 0.12, zPos);
-    group.rotation.x = -SLOPE_ANGLE;
-    scene.add(group);
-
-    kickers.push({
-      group,
-      x: xPos,
-      z: zPos,
-      width,
-      length,
-      triggered: false
-    });
-  }
-
-  const railSteelMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.75, roughness: 0.22, flatShading: true });
-  const railChargedMat = new THREE.MeshStandardMaterial({
-    color: 0x38bdf8,
-    emissive: 0x0ea5e9,
-    emissiveIntensity: 0.65,
-    metalness: 0.85,
-    roughness: 0.15
-  });
-
-  function spawnGrindRail(zPos) {
-    const xPos = (Math.random() - 0.5) * 18;
-    const length = 13 + Math.random() * 10;
-    const railHeight = 1.05;
-    const group = new THREE.Group();
-
-    const barGeo = new THREE.CylinderGeometry(0.13, 0.13, length, 10);
-    barGeo.rotateX(Math.PI / 2);
-    const barMesh = new THREE.Mesh(barGeo, railSteelMat);
-    barMesh.position.set(0, railHeight, 0);
-    barMesh.rotation.x = -SLOPE_ANGLE;
-    barMesh.castShadow = true;
-    group.add(barMesh);
-
-    const triad = TRIAD_LIBRARY[Math.floor(Math.random() * TRIAD_LIBRARY.length)];
-
-    const groundY = getTerrainHeight(xPos, zPos);
-    group.position.set(xPos, groundY, zPos);
-    scene.add(group);
-
-    rails.push({
-      group,
-      barMesh,
-      triad,
-      x: xPos,
-      z: zPos,
-      length,
-      height: railHeight,
-      triadActivated: false,
-      triadGrindCompleted: false
-    });
-  }
-
-  // 3D Low-Poly Grizzly Bear that charges across the slope
-  function spawnGrizzlyBear(zPos) {
-    const dir = Math.random() > 0.5 ? 1 : -1;
-    const startX = -dir * (23 + Math.random() * 6);
-    const group = new THREE.Group();
-
-    const furDarkMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.85, flatShading: true });
-    const furMidMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8, flatShading: true });
-    const snoutMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.7, flatShading: true });
-    const noseMat = new THREE.MeshBasicMaterial({ color: 0x09090b });
-
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.05, 2.1), furDarkMat);
-    body.position.set(0, 0.92, 0);
-    body.castShadow = true;
-    group.add(body);
-
-    const hump = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.42, 0.95), furMidMat);
-    hump.position.set(0, 1.48, 0.35);
-    hump.castShadow = true;
-    group.add(hump);
-
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.74, 0.78), furMidMat);
-    head.position.set(0, 1.18, 1.25);
-    head.castShadow = true;
-    group.add(head);
-
-    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.40, 0.48), snoutMat);
-    snout.position.set(0, 1.05, 1.72);
-    group.add(snout);
-
-    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.12), noseMat);
-    nose.position.set(0, 1.18, 1.96);
-    group.add(nose);
-
-    [-0.32, 0.32].forEach(ex => {
-      const ear = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.14), furDarkMat);
-      ear.position.set(ex, 1.60, 1.15);
-      group.add(ear);
-    });
-
-    const legs = [];
-    const legCoords = [
-      { x: -0.38, z:  0.68, phase: 0 },
-      { x:  0.38, z:  0.68, phase: Math.PI },
-      { x: -0.38, z: -0.68, phase: Math.PI },
-      { x:  0.38, z: -0.68, phase: 0 }
-    ];
-    legCoords.forEach(lc => {
-      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.72, 0.34), furDarkMat);
-      leg.position.set(lc.x, 0.36, lc.z);
-      leg.castShadow = true;
-      group.add(leg);
-      legs.push({ mesh: leg, phase: lc.phase });
-    });
-
-    group.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2;
-    group.scale.setScalar(1.25);
-    group.position.set(startX, getTerrainHeight(startX, zPos), zPos);
-    scene.add(group);
-
-    bears.push({
-      group,
-      legs,
-      x: startX,
-      z: zPos,
-      vx: dir * (11.5 + Math.random() * 4.5),
-      stride: Math.random() * Math.PI
-    });
-
-    audio.playBearGrowl();
-    showCallout('🐻 GRIZZLY CROSSING!', '#f97316');
-  }
-
-  const particles = [];
-  const particleGeo = new THREE.DodecahedronGeometry(0.14, 0);
-  const particleMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const sparkMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
-  const cyanSparkMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
-
-  function emitSnowSpray(x, y, z, vx, count = 2, sparkMode = 0) {
-    for (let i = 0; i < count; i++) {
-      let mat = particleMat;
-      if (sparkMode === 1) mat = sparkMat;
-      else if (sparkMode === 2) mat = (i % 2 === 0 ? sparkMat : cyanSparkMat);
-
-      const mesh = new THREE.Mesh(particleGeo, mat);
-      mesh.position.set(
-        x + (Math.random() - 0.5) * 0.55,
-        y + 0.15,
-        z + (Math.random() - 0.5) * 0.55
-      );
-      scene.add(mesh);
-      const spread = sparkMode === 2 ? 7.5 : (sparkMode === 1 ? 5.5 : 3.5);
-      particles.push({
-        mesh,
-        vx: -vx * 0.35 + (Math.random() - 0.5) * spread,
-        vy: (sparkMode === 2 ? 2.6 : 1.8) + Math.random() * 3.4,
-        vz: 2.0 + Math.random() * 3.8,
-        life: 1.0
+      const gateGroup = new THREE.Group();
+      gateGroup.position.set(x, y, z);
+      const mat = new THREE.MeshStandardMaterial({
+        color: note.color,
+        emissive: note.color,
+        emissiveIntensity: 0.75
       });
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(2.05, 0.14, 8, 20, Math.PI), mat);
+      arch.position.y = 0.2;
+      gateGroup.add(arch);
+      worldGroup.add(gateGroup);
+      noteGates.push({ x, y, z, note, mesh: gateGroup, hit: false });
     }
+
+    // Beat-Synced Jump Strips
+    rhythmRamps.forEach(feat => {
+      const stripY = getTerrainHeight(feat.x, feat.z) + 0.08;
+      const strip = new THREE.Mesh(
+        new THREE.PlaneGeometry(feat.halfWidth * 1.85, 0.65),
+        new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.82 })
+      );
+      strip.rotation.x = -Math.PI / 2;
+      strip.position.set(feat.x, stripY, feat.z + 0.3);
+      worldGroup.add(strip);
+    });
+
+    // Melody Trail Challenges
+    melodyChallenges = [];
+    [-700, -1720].forEach(startZ => {
+      const seq = [Math.floor(rng() * 3), Math.floor(rng() * 3), Math.floor(rng() * 3), Math.floor(rng() * 3)];
+      const rows = [];
+      for (let step = 0; step < 4; step++) {
+        const rowZ = startZ - 50 - step * 30;
+        const cx = getTrailCenterX(rowZ);
+        const orbs = [];
+        for (let lane = 0; lane < 3; lane++) {
+          const info = MELODY_LANES[lane];
+          const ox = cx + info.offset;
+          const oy = getTerrainHeight(ox, rowZ) + 1.15;
+          const isTarget = (lane === seq[step]);
+          const orb = new THREE.Mesh(
+            new THREE.OctahedronGeometry(isTarget ? 0.68 : 0.48, 0),
+            new THREE.MeshStandardMaterial({
+              color: info.color,
+              emissive: info.color,
+              emissiveIntensity: isTarget ? 0.95 : 0.35
+            })
+          );
+          orb.position.set(ox, oy, rowZ);
+          worldGroup.add(orb);
+          orbs.push({ mesh: orb, lane, x: ox, baseY: oy, info });
+        }
+        rows.push({ z: rowZ, targetLane: seq[step], orbs, resolved: false });
+      }
+      melodyChallenges.push({
+        triggerZ: startZ + 12,
+        endZ: startZ - 175,
+        seq,
+        rows,
+        announced: false,
+        completed: false,
+        hits: 0
+      });
+    });
+
+    // Finish Archway
+    const fz = -TRAIL_LENGTH;
+    const fx = getTrailCenterX(fz);
+    const fy = getTerrainHeight(fx, fz);
+    const archGroup = new THREE.Group();
+    archGroup.position.set(fx, fy, fz);
+    const banner = new THREE.Mesh(
+      new THREE.BoxGeometry(7.8, 1.1, 0.35),
+      new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x059669, emissiveIntensity: 0.6 })
+    );
+    banner.position.set(0, 4.9, 0);
+    archGroup.add(banner);
+    worldGroup.add(archGroup);
   }
 
   // ============================================================================
-  // 6. PIANO MIDI & KEYBOARD CALIBRATION + TRIAD CHORD LISTENER
+  // 3. 4-STEP PIANO & KEYBOARD CALIBRATION (Mirrors skiSlalom.js)
   // ============================================================================
   const DEFAULT_BINDINGS = {
     left:  { type: 'key', code: 'KeyA', label: 'A / ←' },
@@ -1518,14 +1141,14 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     view:  { type: 'key', code: 'KeyV', label: 'V' }
   };
 
-  let bindings = JSON.parse(localStorage.getItem('slopeline_key_bindings') || 'null') || JSON.parse(JSON.stringify(DEFAULT_BINDINGS));
+  let bindings = JSON.parse(localStorage.getItem('pedalpoint_key_bindings') || 'null') || JSON.parse(JSON.stringify(DEFAULT_BINDINGS));
 
   function updateControlsLabels() {
-    const lblLeft = document.getElementById('ski-lbl-left');
-    const lblRight = document.getElementById('ski-lbl-right');
-    const lblJump = document.getElementById('ski-lbl-jump');
-    const lblView = document.getElementById('ski-lbl-view');
-    const caption = document.getElementById('ski-controls-caption');
+    const lblLeft = document.getElementById('pp-lbl-left');
+    const lblRight = document.getElementById('pp-lbl-right');
+    const lblJump = document.getElementById('pp-lbl-jump');
+    const lblView = document.getElementById('pp-lbl-view');
+    const caption = document.getElementById('pp-controls-caption');
 
     if (lblLeft) lblLeft.textContent = bindings.left.label;
     if (lblRight) lblRight.textContent = bindings.right.label;
@@ -1533,19 +1156,19 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     if (lblView) lblView.textContent = bindings.view.label;
     if (caption) {
       caption.innerHTML =
-        `<b>${bindings.left.label}</b> Left • <b>${bindings.right.label}</b> Right • <b>${bindings.jump.label}</b> Jump • <b>Play Triad</b> Auto-Grind Rail`;
+        `<b>${bindings.left.label}</b> Steer Left • <b>${bindings.right.label}</b> Steer Right • <b>${bindings.jump.label}</b> Jump &amp; Whip`;
     }
   }
   updateControlsLabels();
 
-  const calibOverlay = document.getElementById('ski-calib-overlay');
-  const calibPrompt = document.getElementById('ski-calib-prompt');
-  const btnCalibSave = document.getElementById('btn-ski-calib-save');
+  const calibOverlay = document.getElementById('pp-calib-overlay');
+  const calibPrompt = document.getElementById('pp-calib-prompt');
+  const btnCalibSave = document.getElementById('btn-pp-calib-save');
   const CALIB_ORDER = ['left', 'right', 'jump', 'view'];
   const CALIB_NAMES = {
-    left: 'CARVE LEFT',
-    right: 'CARVE RIGHT',
-    jump: 'JUMP & SPIN',
+    left: 'STEER LEFT',
+    right: 'STEER RIGHT',
+    jump: 'JUMP & AIR WHIP',
     view: 'CAMERA VIEW'
   };
   let isCalibrating = false;
@@ -1558,8 +1181,8 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     btnCalibSave.style.display = 'none';
 
     CALIB_ORDER.forEach((slot, idx) => {
-      const el = document.getElementById(`ski-slot-${slot}`);
-      const keyEl = document.getElementById(`ski-key-${slot}`);
+      const el = document.getElementById(`pp-slot-${slot}`);
+      const keyEl = document.getElementById(`pp-key-${slot}`);
       el.classList.remove('active', 'done');
       if (idx === 0) {
         el.classList.add('active');
@@ -1576,8 +1199,8 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   function closeCalibrationModal() {
     isCalibrating = false;
     calibOverlay.style.display = 'none';
-    localStorage.setItem('slopeline_calibrated_seen', 'true');
-    localStorage.setItem('slopeline_key_bindings', JSON.stringify(bindings));
+    localStorage.setItem('pedalpoint_calibrated_seen', 'true');
+    localStorage.setItem('pedalpoint_key_bindings', JSON.stringify(bindings));
     updateControlsLabels();
   }
 
@@ -1589,16 +1212,16 @@ export async function startSkiSlalom(bridge, autoStart = false) {
       const prev = bindings[CALIB_ORDER[i]];
       if (prev.type === bindingObj.type && prev.code === bindingObj.code) {
         calibPrompt.textContent = `⚠️ Already used! Pick a different key for ${CALIB_NAMES[currentSlot]}`;
-        audio.playPenaltyBuzz();
+        playErrorClackSound();
         return;
       }
     }
 
     bindings[currentSlot] = bindingObj;
-    audio.playPianoFeedback(feedbackNoteOrMidi);
+    audio.playFeedbackNote(feedbackNoteOrMidi);
 
-    const slotEl = document.getElementById(`ski-slot-${currentSlot}`);
-    const keyEl = document.getElementById(`ski-key-${currentSlot}`);
+    const slotEl = document.getElementById(`pp-slot-${currentSlot}`);
+    const keyEl = document.getElementById(`pp-key-${currentSlot}`);
     slotEl.classList.remove('active');
     slotEl.classList.add('done');
     keyEl.textContent = bindingObj.label;
@@ -1606,8 +1229,8 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     calibStepIndex++;
     if (calibStepIndex < CALIB_ORDER.length) {
       const nextSlot = CALIB_ORDER[calibStepIndex];
-      document.getElementById(`ski-slot-${nextSlot}`).classList.add('active');
-      document.getElementById(`ski-key-${nextSlot}`).textContent = 'Listening...';
+      document.getElementById(`pp-slot-${nextSlot}`).classList.add('active');
+      document.getElementById(`pp-key-${nextSlot}`).textContent = 'Listening...';
       calibPrompt.textContent = `Step ${calibStepIndex + 1}/4: Play key for ${CALIB_NAMES[nextSlot]}`;
     } else {
       calibPrompt.textContent = '✅ All 4 controls calibrated!';
@@ -1615,135 +1238,89 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     }
   }
 
-  document.getElementById('btn-ski-calibrate').addEventListener('click', () => {
+  document.getElementById('btn-pp-calibrate').addEventListener('click', () => {
     openCalibrationModal();
-    document.getElementById('btn-ski-calibrate').blur();
+    document.getElementById('btn-pp-calibrate').blur();
   });
-  document.getElementById('btn-ski-modal-recalib').addEventListener('click', () => {
+  document.getElementById('btn-pp-modal-recalib').addEventListener('click', () => {
     openCalibrationModal();
-    document.getElementById('btn-ski-modal-recalib').blur();
+    document.getElementById('btn-pp-modal-recalib').blur();
   });
-  document.getElementById('btn-ski-calib-skip').addEventListener('click', () => {
+  document.getElementById('btn-pp-calib-skip').addEventListener('click', () => {
     bindings = JSON.parse(JSON.stringify(DEFAULT_BINDINGS));
     closeCalibrationModal();
   });
   btnCalibSave.addEventListener('click', closeCalibrationModal);
 
-  const hasSeenCalib = Boolean(localStorage.getItem('slopeline_calibrated_seen'));
+  const hasSeenCalib = Boolean(localStorage.getItem('pedalpoint_calibrated_seen'));
   if (!hasSeenCalib && !autoStart) {
     openCalibrationModal();
   }
 
+  // ============================================================================
+  // 4. BIKE PHYSICS, INPUT HANDLERS & SIMULATION LOOP
+  // ============================================================================
   let isPlaying = false;
   let isFirstPerson = false;
-  let runTime = 0;
-  let penaltyTime = 0;
-  let gatesCleared = 0;
-  let gatesMissed = 0;
+  let selectedBikeKey = 'enduro';
   let score = 0;
-  let bestTime = parseFloat(localStorage.getItem('slopeline_3d_best_time') || '0');
-  let streak = 0;
-  let forgivenGatesLeft = 0;
+  let combo = 0;
+  let maxCombo = 1;
+  let maxAirtime = 0;
+  let notesAttempted = 0;
+  let notesHit = 0;
+  let overdriveTimer = 0;
+  let lastZoneIdx = -1;
+  let bestScore = parseInt(localStorage.getItem('pedalpoint_best_score') || '0', 10);
 
-  const heldPianoNotes = new Set();
-  const recentPitchClasses = new Map();
+  const valSpeed = document.getElementById('pp-val-speed');
+  const valRem = document.getElementById('pp-val-rem');
+  const valScore = document.getElementById('pp-val-score');
+  const valCombo = document.getElementById('pp-val-combo');
+  const valBest = document.getElementById('pp-val-best');
+  const preloadPill = document.getElementById('pp-preload-pill');
+  const calloutEl = document.getElementById('pp-callout');
+  const overlayEl = document.getElementById('pp-overlay');
+  const btnCamToggle = document.getElementById('btn-pp-cam-toggle');
 
-  const state = {
-    x: 0,
-    y: 0,
-    z: 0,
-    vx: 0,
-    vy: 0,
-    vz: -24,
+  if (bestScore > 0) valBest.textContent = bestScore.toLocaleString();
+
+  document.querySelectorAll('#pp-bike-grid .bike-opt').forEach(card => {
+    card.addEventListener('click', () => {
+      selectedBikeKey = card.dataset.bike;
+      document.querySelectorAll('#pp-bike-grid .bike-opt').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+    });
+  });
+
+  const bike = {
+    pos: new THREE.Vector3(0, 366, 0),
+    vel: new THREE.Vector3(0, 0, -12),
+    yaw: 0,
+    steerAngle: 0,
     leanAngle: 0,
     grounded: true,
-    isGrinding: false,
-    isTriadGrinding: false,
-    activeRail: null,
-    targetRail: null,
-    grindTime: 0,
-    spinAngle: 0,
-    isSpinning: false,
-    spinAccumulated: 0
+    coyoteTimer: 0.14,
+    airTime: 0,
+    hopCharge: 0,
+    wasCharging: false,
+    suspensionComp: 0,
+    wheelSpin: 0,
+    whipAngle: 0,
+    whipTarget: 0,
+    whipAwarded: false
   };
 
   const input = {
     left: false,
     right: false,
+    jumpHeld: false,
     pianoLeftHoldUntil: 0,
-    pianoRightHoldUntil: 0,
-    pointerSteer: 0,
-    pointerActive: false
+    pianoRightHoldUntil: 0
   };
 
-  const valTime = document.getElementById('ski-val-time');
-  const valPenalty = document.getElementById('ski-val-penalty');
-  const valGates = document.getElementById('ski-val-gates');
-  const valScore = document.getElementById('ski-val-score');
-  const valBest = document.getElementById('ski-val-best');
-  const shieldPill = document.getElementById('ski-hud-shield');
-  const valShield = document.getElementById('ski-val-shield');
-  const chordPromptEl = document.getElementById('ski-chord-prompt');
-  const chordSymbolEl = document.getElementById('ski-chord-symbol');
-  const chordNotesEl = document.getElementById('ski-chord-notes');
-  const chordSubEl = document.getElementById('ski-chord-sub');
-  const calloutEl = document.getElementById('ski-callout');
-  const overlayEl = document.getElementById('ski-overlay');
-  const btnCamToggle = document.getElementById('btn-ski-cam-toggle');
-
-  if (bestTime > 0) valBest.textContent = `${bestTime.toFixed(2)}s`;
-
-  function updateShieldHUD() {
-    if (!shieldPill) return;
-    if (forgivenGatesLeft > 0) {
-      shieldPill.style.display = 'block';
-      if (valShield) {
-        valShield.textContent = forgivenGatesLeft === 1
-          ? '🛡️ 1 GATE PASS'
-          : `🛡️ ${forgivenGatesLeft} GATE PASSES`;
-      }
-    } else {
-      shieldPill.style.display = 'none';
-    }
-  }
-
-  function updateApproachingChordHUD() {
-    if (!chordPromptEl || !isPlaying) {
-      if (chordPromptEl) chordPromptEl.style.display = 'none';
-      return;
-    }
-
-    let upcomingRail = null;
-    let closestDist = Infinity;
-    for (const r of rails) {
-      const railExitZ = r.z - r.length * 0.5;
-      const distAhead = state.z - railExitZ;
-      if (distAhead >= 0 && distAhead <= 78 && distAhead < closestDist) {
-        closestDist = distAhead;
-        upcomingRail = r;
-      }
-    }
-
-    if (!upcomingRail) {
-      chordPromptEl.style.display = 'none';
-      return;
-    }
-
-    chordPromptEl.style.display = 'flex';
-    chordSymbolEl.textContent = upcomingRail.triad.symbol;
-    chordNotesEl.textContent = upcomingRail.triad.notesLabel;
-
-    if (upcomingRail.triadActivated) {
-      chordPromptEl.classList.add('locked');
-      chordSubEl.textContent = '⚡ TRIAD LOCKED! 3X STYLE + 2 GATE PASSES';
-    } else {
-      chordPromptEl.classList.remove('locked');
-      chordSubEl.textContent = '🎹 PLAY TRIAD CHORD TO GRIND RAIL';
-    }
-  }
-
   let calloutTimeout = null;
-  function showCallout(text, color = '#facc15') {
+  function showCallout(text, color = '#34d399') {
     if (!calloutEl) return;
     calloutEl.textContent = text;
     calloutEl.style.color = color;
@@ -1764,88 +1341,54 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     btnCamToggle.blur();
   });
 
-  function triggerJumpOrSpin() {
-    if (!isPlaying) return;
-    if (state.grounded || state.isGrinding) {
-      if (state.isGrinding && state.grindTime > 0.12) {
-        forgivenGatesLeft = 2;
-        updateShieldHUD();
-      }
-      state.grounded = false;
-      state.isGrinding = false;
-      state.isTriadGrinding = false;
-      state.activeRail = null;
-      state.targetRail = null;
-      state.vy = 9.5;
-      state.isSpinning = true;
-      state.spinAccumulated = 0;
-      audio.playJumpWhoosh();
-      emitSnowSpray(state.x, state.y, state.z, state.vx, 10);
-    } else if (!state.isSpinning) {
-      state.isSpinning = true;
-      audio.playJumpWhoosh();
+  function addScore(pts, hitNote = false) {
+    if (hitNote) {
+      combo++;
+      notesHit++;
+      notesAttempted++;
+      if (combo > maxCombo) maxCombo = combo;
+      if (combo >= 6) overdriveTimer = 4.5;
     }
+    const mult = Math.max(1, Math.min(8, 1 + Math.floor(combo / 2)));
+    score += Math.round(pts * mult);
+    valScore.textContent = score.toLocaleString();
+    valCombo.textContent = `x${mult}`;
   }
 
-  function checkApproachingRailTriadMatch() {
-    if (!isPlaying || isCalibrating) return;
+  function triggerHop() {
+    const preset = BIKE_PRESETS[selectedBikeKey];
+    const chargeBonus = 0.68 + bike.hopCharge * 0.62;
+    const isOnBeat = audio.getBeatAccuracy() < 0.18;
 
-    const now = performance.now();
-    const activePcs = new Set();
-    heldPianoNotes.forEach(n => {
-      const pc = noteStringToPitchClass(n);
-      if (pc !== null) activePcs.add(pc);
-    });
-    for (const [pc, expiresAt] of recentPitchClasses.entries()) {
-      if (expiresAt > now) activePcs.add(pc);
-      else recentPitchClasses.delete(pc);
-    }
+    bike.vel.y = preset.hopImpulse * chargeBonus * (isOnBeat ? 1.14 : 1.0);
+    bike.grounded = false;
+    bike.coyoteTimer = 0;
+    bike.whipAwarded = false;
+    bike.suspensionComp = 0;
 
-    if (activePcs.size < 3) return;
+    audio.playJump(isOnBeat);
 
-    let candidateRail = null;
-    let closestDist = Infinity;
-    for (const r of rails) {
-      if (r.triadActivated) continue;
-      const railEntryZ = r.z + r.length * 0.5;
-      const distAhead = state.z - railEntryZ;
-      if (distAhead >= -6 && distAhead <= 65 && distAhead < closestDist) {
-        closestDist = distAhead;
-        candidateRail = r;
+    for (let i = 0; i < rhythmRamps.length; i++) {
+      const r = rhythmRamps[i];
+      if (!r.triggered && Math.abs(bike.pos.z - r.z) < 7.5 && Math.abs(bike.pos.x - r.x) < 4.5) {
+        r.triggered = true;
+        if (isOnBeat) {
+          bike.vel.y *= 1.16;
+          bike.vel.z -= 4.5;
+          addScore(450, true);
+          showCallout('PERFECT BEAT BOOST! +450', '#fbbf24');
+        } else {
+          addScore(180, false);
+          showCallout('BIG DIRT SEND! +180', '#34d399');
+        }
+        break;
       }
     }
-
-    if (!candidateRail) return;
-
-    const matched = candidateRail.triad.pcs.every(pc => activePcs.has(pc));
-    if (!matched) return;
-
-    candidateRail.triadActivated = true;
-    candidateRail.barMesh.material = railChargedMat;
-
-    state.targetRail = candidateRail;
-    state.isTriadGrinding = true;
-    input.pianoLeftHoldUntil = 0;
-    input.pianoRightHoldUntil = 0;
-
-    const targetRailY = getTerrainHeight(candidateRail.x, state.z) + candidateRail.height;
-    if (state.y < targetRailY + 0.35) {
-      state.grounded = false;
-      state.vy = Math.max(state.vy, 6.2);
-    }
-
-    audio.playTriadLockSound(candidateRail.triad.pcs);
-    showCallout(`🎸 ${candidateRail.triad.symbol} TRIAD LOCKED! 3X STYLE!`, '#4ade80');
-    emitSnowSpray(state.x, state.y, state.z, state.vx, 18, 2);
   }
 
   function handleControlDown(type, code, displayLabel, feedbackNoteOrMidi = 60) {
     if (isCalibrating) {
       recordCalibrationInput({ type, code, label: displayLabel }, feedbackNoteOrMidi);
-      return;
-    }
-
-    if (state.targetRail || state.isTriadGrinding) {
       return;
     }
 
@@ -1856,26 +1399,51 @@ export async function startSkiSlalom(bridge, autoStart = false) {
       if (type === 'piano') {
         input.pianoLeftHoldUntil = performance.now() + 340;
         input.pianoRightHoldUntil = 0;
-        state.vx = Math.min(state.vx, -9.5);
       }
+      return;
     }
     if (match(bindings.right) || (type === 'key' && code === 'ArrowRight')) {
       input.right = true;
       if (type === 'piano') {
         input.pianoRightHoldUntil = performance.now() + 340;
         input.pianoLeftHoldUntil = 0;
-        state.vx = Math.max(state.vx, 9.5);
       }
+      return;
     }
     if (match(bindings.jump)) {
       if (!isPlaying && overlayEl.style.display !== 'none') {
         startGame();
+      } else if (bike.grounded || bike.coyoteTimer > 0) {
+        input.jumpHeld = true;
       } else {
-        triggerJumpOrSpin();
+        bike.whipTarget = 0.95;
+        if (!bike.whipAwarded && bike.airTime > 0.2) {
+          bike.whipAwarded = true;
+          audio.playGateNote(659.25);
+          addScore(300, true);
+          showCallout('STYLISH AIR WHIP! +300', '#fb923c');
+        }
       }
+      return;
     }
     if (match(bindings.view)) {
       toggleCameraMode();
+      return;
+    }
+
+    // Any other piano note snaps to Melody Trail lanes (G, B, D) or gives cadence boost!
+    if (type === 'piano' && isPlaying) {
+      const pitchMatch = code.match(/^([a-g]#?)/);
+      const pitchClass = pitchMatch ? pitchMatch[1] : '';
+      const laneMatch = MELODY_LANES.find(l => l.pitchClass === pitchClass);
+      if (laneMatch) {
+        const targetX = getTrailCenterX(bike.pos.z) + laneMatch.offset;
+        bike.pos.x += (targetX - bike.pos.x) * 0.65;
+        overdriveTimer = Math.max(overdriveTimer, 1.5);
+      } else {
+        bike.vel.z -= 2.2;
+        overdriveTimer = Math.max(overdriveTimer, 1.2);
+      }
     }
   }
 
@@ -1889,28 +1457,23 @@ export async function startSkiSlalom(bridge, autoStart = false) {
       input.right = false;
       if (type === 'piano') input.pianoRightHoldUntil = 0;
     }
+    if (match(bindings.jump)) {
+      input.jumpHeld = false;
+      bike.whipTarget = 0;
+    }
   }
 
   function onPianoNoteDown(noteStr, bridge) {
     const clean = (noteStr || '').trim().toLowerCase();
     if (!clean) return;
     const upperLabel = `🎹 ${clean.toUpperCase()}`;
-    if (bridge) bridge.highlightKey(noteStr, 250, '#38bdf8');
-
-    heldPianoNotes.add(clean);
-    const pc = noteStringToPitchClass(clean);
-    if (pc !== null) {
-      recentPitchClasses.set(pc, performance.now() + 450);
-    }
-
-    checkApproachingRailTriadMatch();
+    if (bridge) bridge.highlightKey(noteStr, 250, '#34d399');
     handleControlDown('piano', clean, upperLabel, clean);
   }
 
   function onPianoNoteUp(noteStr) {
     const clean = (noteStr || '').trim().toLowerCase();
     if (!clean) return;
-    heldPianoNotes.delete(clean);
     handleControlUp('piano', clean);
   }
 
@@ -1923,9 +1486,7 @@ export async function startSkiSlalom(bridge, autoStart = false) {
 
     const k = e.key.toLowerCase();
     const pianoPadMappedKeys = ['z','s','x','d','c','v','g','b','h','n','j','m',',','l','.','1','q','w','3','e','4','r','5','t','y','7','u','8','i','o','0','p'];
-    if (pianoPadMappedKeys.includes(k)) {
-      return;
-    }
+    if (pianoPadMappedKeys.includes(k)) return;
 
     const label = e.code === 'Space' ? 'Space' : (e.key.length === 1 ? e.key.toUpperCase() : e.code);
     const guessMidi = e.code === 'ArrowLeft' ? 60 : (e.code === 'ArrowRight' ? 64 : (e.code === 'Space' ? 67 : 72));
@@ -1937,229 +1498,94 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     if (!document.querySelector('#keyboard .key.active')) {
       input.left = false;
       input.right = false;
+      input.jumpHeld = false;
     }
   };
 
   window.addEventListener('keydown', onKeyDown, { capture: true });
   window.addEventListener('keyup', onKeyUp, { capture: true });
 
-  const domCanvas = renderer.domElement;
-  function updatePointerSteer(clientX) {
-    const rect = domCanvas.getBoundingClientRect();
-    const norm = ((clientX - rect.left) / rect.width) * 2 - 1;
-    input.pointerSteer = Math.max(-1, Math.min(1, norm * 1.45));
-  }
-
-  const onPointerDown = (e) => {
-    if (!isPlaying || isCalibrating) return;
-    input.pointerActive = true;
-    updatePointerSteer(e.clientX);
-  };
-  const onPointerMove = (e) => {
-    if (!input.pointerActive || !isPlaying) return;
-    updatePointerSteer(e.clientX);
-  };
-  const onPointerUp = () => {
-    input.pointerActive = false;
-    input.pointerSteer = 0;
-    if (!document.querySelector('#keyboard .key.active')) {
-      input.left = false;
-      input.right = false;
-    }
-  };
-
-  domCanvas.addEventListener('pointerdown', onPointerDown);
-  window.addEventListener('pointermove', onPointerMove);
-  window.addEventListener('pointerup', onPointerUp);
-  window.addEventListener('pointercancel', onPointerUp);
-
-  document.getElementById('ski-touch-jump-btn').addEventListener('pointerdown', (e) => {
+  document.getElementById('pp-touch-jump-btn').addEventListener('pointerdown', (e) => {
     e.stopPropagation();
-    triggerJumpOrSpin();
+    if (isPlaying) {
+      if (bike.grounded || bike.coyoteTimer > 0) {
+        bike.hopCharge = 0.6;
+        triggerHop();
+      } else {
+        bike.whipTarget = 0.95;
+      }
+    }
   });
 
-  // ============================================================================
-  // 7. START, FINISH, CRASH & WORLD RESET
-  // ============================================================================
-  function clearWorldEntities() {
-    gates.forEach(g => scene.remove(g.group));
-    trees.forEach(t => scene.remove(t.mesh));
-    kickers.forEach(k => scene.remove(k.group));
-    rails.forEach(r => scene.remove(r.group));
-    bears.forEach(b => scene.remove(b.group));
-    particles.forEach(p => scene.remove(p.mesh));
-    if (finishBannerGroup) {
-      scene.remove(finishBannerGroup);
-      finishBannerGroup = null;
-    }
-    gates.length = 0;
-    trees.length = 0;
-    kickers.length = 0;
-    rails.length = 0;
-    bears.length = 0;
-    particles.length = 0;
-  }
-
   function startGame() {
-    audio.init();
-    randomizeTerrainSeed();
-    clearWorldEntities();
+    audio.startGroove();
+    currentSeed = Math.floor(1000 + Math.random() * 8999);
+    buildWorld(currentSeed);
 
-    runTime = 0;
-    penaltyTime = 0;
-    gatesCleared = 0;
-    gatesMissed = 0;
-    gatesSpawnedCount = 0;
-    finishLineZ = -9999;
-    forgivenGatesLeft = 0;
-    updateShieldHUD();
-    if (chordPromptEl) chordPromptEl.style.display = 'none';
-
-    heldPianoNotes.clear();
-    recentPitchClasses.clear();
-
-    bearMilestones = [-130 - Math.random() * 140];
-    if (Math.random() < 0.65) {
-      bearMilestones.push(-340 - Math.random() * 180);
-    }
+    const startX = getTrailCenterX(0);
+    const startY = getTerrainHeight(startX, 0);
+    bike.pos.set(startX, startY, 0);
+    bike.vel.set(0, 0, -12);
+    bike.yaw = 0;
+    bike.steerAngle = 0;
+    bike.leanAngle = 0;
+    bike.grounded = true;
+    bike.coyoteTimer = 0.14;
+    bike.airTime = 0;
+    bike.hopCharge = 0;
+    bike.wasCharging = false;
+    bike.suspensionComp = 0;
+    bike.whipAngle = 0;
+    bike.whipTarget = 0;
+    bike.whipAwarded = false;
 
     score = 0;
-    streak = 0;
-    valTime.textContent = '0.00s';
-    valPenalty.textContent = '+0.0s';
-    valGates.textContent = `0/${TOTAL_GATES}`;
+    combo = 0;
+    maxCombo = 1;
+    maxAirtime = 0;
+    notesAttempted = 0;
+    notesHit = 0;
+    overdriveTimer = 0;
+    lastZoneIdx = -1;
+
     valScore.textContent = '0';
-
-    state.x = 0;
-    state.z = 0;
-    state.y = getTerrainHeight(0, 0);
-    state.vx = 0;
-    state.vy = 0;
-    state.vz = -24;
-    state.leanAngle = 0;
-    state.grounded = true;
-    state.isGrinding = false;
-    state.isTriadGrinding = false;
-    state.activeRail = null;
-    state.targetRail = null;
-    state.grindTime = 0;
-    state.spinAngle = 0;
-    state.isSpinning = false;
-    state.spinAccumulated = 0;
-
-    input.left = false;
-    input.right = false;
-    input.pianoLeftHoldUntil = 0;
-    input.pianoRightHoldUntil = 0;
-
-    nextGateZ = -32 - Math.random() * 10;
-    nextTreeZ = -18;
-    nextKickerZ = -65 - Math.random() * 45;
-    nextRailZ = -52 - Math.random() * 25;
-    nextGateIsRed = Math.random() < 0.5;
-    lastGateX = (Math.random() - 0.5) * 10;
-
-    for (let i = 0; i < NUM_CHUNKS; i++) {
-      updateChunkGeometry(terrainChunks[i], -i * CHUNK_LENGTH);
-    }
-
-    while (nextGateZ > -280 && gatesSpawnedCount < TOTAL_GATES) {
-      spawnGate(nextGateZ);
-      nextGateZ -= 21 + Math.random() * 11;
-    }
-    while (nextTreeZ > -280) {
-      spawnSideTrees(nextTreeZ);
-      nextTreeZ -= 9 + Math.random() * 5;
-    }
-    while (nextKickerZ > -280) {
-      spawnKicker(nextKickerZ);
-      nextKickerZ -= 75 + Math.random() * 65;
-    }
-    while (nextRailZ > -280) {
-      spawnGrindRail(nextRailZ);
-      nextRailZ -= 64 + Math.random() * 45;
-    }
+    valCombo.textContent = 'x1';
+    valRem.textContent = `${TRAIL_LENGTH}m`;
 
     overlayEl.style.display = 'none';
     isPlaying = true;
   }
 
-  function spawnSideTrees(zPos) {
-    spawnPineTree(-20 - Math.random() * 9, zPos, 0.85 + Math.random() * 0.65);
-    spawnPineTree(20 + Math.random() * 9, zPos, 0.85 + Math.random() * 0.65);
-
-    if (Math.random() < 0.44 && zPos > finishLineZ + 12) {
-      const rx = (Math.random() - 0.5) * 32;
-      const nearGate = gates.some(g => Math.abs(g.z - zPos) < 10 && Math.abs(g.x - rx) < 6.4);
-      const nearRail = rails.some(r => Math.abs(r.z - zPos) < r.length * 0.75 && Math.abs(r.x - rx) < 5.2);
-      const nearKicker = kickers.some(k => Math.abs(k.z - zPos) < 8 && Math.abs(k.x - rx) < 4.5);
-      if (!nearGate && !nearRail && !nearKicker) {
-        spawnPineTree(rx, zPos, 0.75 + Math.random() * 0.5);
-      }
-    }
-  }
-
-  function finishSlalomCourse() {
+  function finishCourse() {
     isPlaying = false;
-    if (chordPromptEl) chordPromptEl.style.display = 'none';
-    audio.playFinishFanfare();
-    audio.updateContinuous(0, 0, false, false, false);
-
-    const totalTime = parseFloat((runTime + penaltyTime).toFixed(2));
-    if (bestTime === 0 || totalTime < bestTime) {
-      bestTime = totalTime;
-      localStorage.setItem('slopeline_3d_best_time', bestTime.toFixed(2));
-      valBest.textContent = `${bestTime.toFixed(2)}s`;
+    if (score > bestScore) {
+      bestScore = score;
+      localStorage.setItem('pedalpoint_best_score', String(bestScore));
+      valBest.textContent = bestScore.toLocaleString();
     }
 
-    const capturedCleared = gatesCleared;
-    const capturedMissed = gatesMissed;
+    const accuracy = notesAttempted > 0 ? Math.round((notesHit / notesAttempted) * 100) : 100;
     const summaryHtml =
-      `<span style="color:#22c55e; font-weight:900;">🏁 FINISH LINE!</span><br>` +
-      `Total Time: <span style="color:#facc15; font-size:1.4rem; font-weight:900;">${totalTime.toFixed(2)}s</span> ` +
-      `<span style="font-size:0.8rem; color:#94a3b8;">(${runTime.toFixed(2)}s + ${penaltyTime.toFixed(1)}s penalties)</span><br>` +
-      `<span style="font-size:0.82rem; color:#38bdf8;">Gates: ${capturedCleared}/${TOTAL_GATES} • Style Pts: ${Math.floor(score)}</span>`;
+      `<span style="color:#34d399; font-weight:900;">🚵‍♂️ ESCARPMENT DESCENT COMPLETE!</span><br>` +
+      `Score: <span style="color:#fbbf24; font-size:1.4rem; font-weight:900;">${score.toLocaleString()}</span><br>` +
+      `<span style="font-size:0.82rem; color:#38bdf8;">Musical Accuracy: ${accuracy}% • Max Flow: x${maxCombo} • Max Air: ${maxAirtime.toFixed(2)}s</span>`;
 
-    stopSkiSlalom();
+    stopPedalPoint();
     bridgeRef.finishCustomMiniGame(
-      '3D Ski Slalom',
-      totalTime,
+      'Pedal Point',
+      score,
       summaryHtml,
-      () => startSkiSlalom(bridgeRef, true)
+      () => startPedalPoint(bridgeRef, true)
     );
-
-    requestAnimationFrame(() => {
-      const totalG = capturedCleared + capturedMissed;
-      const greenPct = totalG > 0 ? (capturedCleared / totalG) * 100 : 100;
-      const redPct = totalG > 0 ? (capturedMissed / totalG) * 100 : 0;
-      const barGreen = document.getElementById('bar-green');
-      const barOrange = document.getElementById('bar-orange');
-      const barRed = document.getElementById('bar-red');
-      if (barGreen) barGreen.style.height = `${greenPct}%`;
-      if (barOrange) barOrange.style.height = '0%';
-      if (barRed) barRed.style.height = `${redPct}%`;
-    });
   }
 
-  function crashGame(reason) {
-    isPlaying = false;
-    if (chordPromptEl) chordPromptEl.style.display = 'none';
-    audio.playCrash();
-    audio.updateContinuous(0, 0, false, false, false);
-    emitSnowSpray(state.x, state.y, state.z, 0, 22);
+  document.getElementById('btn-pp-play').addEventListener('click', startGame);
 
-    document.getElementById('ski-modal-badge').textContent = 'DNF — Wipeout';
-    document.getElementById('ski-modal-title').textContent = reason;
-    document.getElementById('ski-modal-subtitle').textContent = 'Watch out for pine trees and crossing bears on your next run!';
-    document.getElementById('btn-ski-play').textContent = 'Try Again';
-    overlayEl.style.display = 'flex';
-  }
+  // Build initial preview world while in garage/calibration
+  buildWorld(currentSeed);
+  const initX = getTrailCenterX(0);
+  bike.pos.set(initX, getTerrainHeight(initX, 0), 0);
 
-  document.getElementById('btn-ski-play').addEventListener('click', startGame);
-
-  // ============================================================================
-  // 8. MAIN SIMULATION & RENDER LOOP
-  // ============================================================================
   let lastTime = performance.now();
 
   function animate(now) {
@@ -2169,399 +1595,242 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     lastTime = now;
 
     if (isPlaying) {
-      runTime += dt;
-      updateApproachingChordHUD();
+      audio.updateGroove(combo, true);
 
-      while (bearMilestones.length > 0 && state.z <= bearMilestones[0]) {
-        bearMilestones.shift();
-        if (state.z - 54 > finishLineZ + 18) {
-          spawnGrizzlyBear(state.z - (48 + Math.random() * 14));
+      const preset = BIKE_PRESETS[selectedBikeKey];
+      const normal = getTerrainNormal(bike.pos.x, bike.pos.z);
+
+      const steerInput = ((input.left || now < input.pianoLeftHoldUntil) ? 1 : 0) - ((input.right || now < input.pianoRightHoldUntil) ? 1 : 0);
+      bike.steerAngle += (steerInput * 0.45 - bike.steerAngle) * Math.min(1, dt * 11);
+
+      const grav = 24.0 * (preset.gravityMult || 1.0);
+      bike.vel.y -= grav * dt;
+      const horizSpeed = Math.hypot(bike.vel.x, bike.vel.z);
+
+      if (bike.grounded) {
+        bike.coyoteTimer = 0.14;
+        bike.vel.x += normal.x * grav * dt;
+        bike.vel.z += normal.z * grav * dt;
+
+        const fwdX = -Math.sin(bike.yaw);
+        const fwdZ = -Math.cos(bike.yaw);
+        const boost = overdriveTimer > 0 ? 1.22 : 1.0;
+
+        if (horizSpeed < preset.maxPedalSpeed * boost) {
+          bike.vel.x += fwdX * preset.pedalForce * boost * dt;
+          bike.vel.z += fwdZ * preset.pedalForce * boost * dt;
         }
-      }
 
-      // 1. Horizontal Carving & Triad Magnetic Rail Homing Physics
-      let steer = 0;
-      if (input.left || now < input.pianoLeftHoldUntil) steer -= 1;
-      if (input.right || now < input.pianoRightHoldUntil) steer += 1;
-      if (input.pointerActive) steer = input.pointerSteer;
+        const turnRate = preset.turnSpeed * (0.55 + Math.min(1, horizSpeed / 16) * 0.55);
+        bike.yaw = Math.max(-1.05, Math.min(1.05, bike.yaw + steerInput * turnRate * dt));
 
-      if (state.targetRail && !state.isGrinding) {
-        const tr = state.targetRail;
-        const railEntryZ = tr.z + tr.length * 0.5;
-        const railExitZ = tr.z - tr.length * 0.5;
+        const speedNow = Math.hypot(bike.vel.x, bike.vel.z);
+        bike.vel.x += (-Math.sin(bike.yaw) * speedNow - bike.vel.x) * Math.min(1, dt * 6.5);
+        bike.vel.z += (-Math.cos(bike.yaw) * speedNow - bike.vel.z) * Math.min(1, dt * 6.5);
 
-        if (state.z < railExitZ) {
-          state.targetRail = null;
-          state.isTriadGrinding = false;
-        } else {
-          const dx = tr.x - state.x;
-          const prevX = state.x;
-          state.x += dx * Math.min(1, dt * 11);
-          state.vx = (state.x - prevX) / Math.max(0.001, dt);
-
-          if (state.z <= railEntryZ + 0.6 && Math.abs(dx) < 1.35) {
-            state.x = tr.x;
-            state.vx = 0;
-            state.isGrinding = true;
-            state.isTriadGrinding = true;
-            state.activeRail = tr;
-            state.targetRail = null;
-            state.grindTime = 0;
-            state.y = getTerrainHeight(tr.x, state.z) + tr.height;
-            state.vy = 0;
-            state.isSpinning = false;
-            state.spinAngle = 0;
-            forgivenGatesLeft = 2;
-            updateShieldHUD();
-            audio.playRailFanfare(true);
-            emitSnowSpray(state.x, state.y, state.z, 0, 20, 2);
-          }
+        const maxSpd = preset.maxDownhillSpeed * (overdriveTimer > 0 ? 1.15 : 1.0);
+        const clampedSpd = Math.hypot(bike.vel.x, bike.vel.z);
+        if (clampedSpd > maxSpd) {
+          const s = maxSpd / clampedSpd;
+          bike.vel.x *= s;
+          bike.vel.z *= s;
         }
-      } else if (state.isGrinding && state.activeRail) {
-        state.x += (state.activeRail.x - state.x) * Math.min(1, dt * 22);
-        state.vx = state.isTriadGrinding ? 0 : steer * 4.5;
-        state.x += state.vx * dt;
+        if (bike.vel.z > -10.0) bike.vel.z -= 12.0 * dt;
+        bike.whipTarget = 0;
       } else {
-        const carveAccel = state.grounded ? 42 : 20;
-        state.vx += steer * carveAccel * dt;
-        state.vx *= Math.pow(state.grounded ? 0.14 : 0.45, dt);
-        state.vx = Math.max(-19, Math.min(19, state.vx));
-        state.x += state.vx * dt;
-        state.x = Math.max(-21.5, Math.min(21.5, state.x));
+        bike.coyoteTimer = Math.max(0, bike.coyoteTimer - dt);
+        bike.airTime += dt;
+        if (bike.airTime > maxAirtime) maxAirtime = bike.airTime;
+        bike.yaw += steerInput * 0.9 * dt;
       }
 
-      const railBonus = state.isGrinding ? (state.isTriadGrinding ? 7.5 : 4.5) : 0;
-      const targetSpeed = Math.min(46, 24 + streak * 0.35 + railBonus);
-      state.vz += (-targetSpeed - state.vz) * Math.min(1, dt * 1.8);
-      state.z += state.vz * dt;
-
-      // 2. Terrain Elevation, Rail Grinding, Jump Kickers & Aerial Spins
-      const groundY = getTerrainHeight(state.x, state.z);
-
-      for (const k of kickers) {
-        if (!k.triggered && Math.abs(state.z - k.z) < k.length * 0.5 && Math.abs(state.x - k.x) < k.width * 0.55) {
-          k.triggered = true;
-          state.grounded = false;
-          state.isGrinding = false;
-          state.isTriadGrinding = false;
-          state.targetRail = null;
-          state.vy = 14.2;
-          state.isSpinning = true;
-          state.spinAccumulated = 0;
-          audio.playJumpWhoosh();
-          showCallout('BIG AIR! SPINNING!', '#38bdf8');
-          emitSnowSpray(state.x, state.y, state.z, state.vx, 14);
-        }
+      if (input.jumpHeld && (bike.grounded || bike.coyoteTimer > 0)) {
+        bike.hopCharge = Math.min(1, bike.hopCharge + dt * 1.9);
+        bike.wasCharging = true;
+        bike.suspensionComp = Math.max(bike.suspensionComp, bike.hopCharge * 0.72);
+        preloadPill.style.opacity = '1';
+        preloadPill.textContent = `PRE-LOAD: ${Math.round(bike.hopCharge * 100)}%`;
+      } else if (bike.wasCharging) {
+        if (bike.grounded || bike.coyoteTimer > 0) triggerHop();
+        bike.wasCharging = false;
+        bike.hopCharge = 0;
+        preloadPill.style.opacity = '0';
       }
 
-      if (state.isGrinding && state.activeRail) {
-        const r = state.activeRail;
-        const railSurfaceY = getTerrainHeight(r.x, state.z) + r.height;
-        const stillOnZ = Math.abs(state.z - r.z) <= r.length * 0.52;
-        const stillOnX = Math.abs(state.x - r.x) <= 0.85;
+      bike.pos.addScaledVector(bike.vel, dt);
 
-        if (stillOnZ && stillOnX) {
-          state.y = railSurfaceY;
-          state.vy = 0;
-          state.grindTime += dt;
+      const cx = getTrailCenterX(bike.pos.z);
+      if (bike.pos.x < cx - 20) { bike.pos.x = cx - 20; bike.vel.x = Math.max(0, bike.vel.x); }
+      else if (bike.pos.x > cx + 20) { bike.pos.x = cx + 20; bike.vel.x = Math.min(0, bike.vel.x); }
 
-          const mult = state.isTriadGrinding ? 3 : 1;
-          score += dt * 320 * mult;
-
-          if (state.isTriadGrinding) {
-            emitSnowSpray(state.x, state.y, state.z, state.vx, 4, 2);
-          } else if (Math.random() < 0.85) {
-            emitSnowSpray(state.x, state.y, state.z, state.vx, 2, 1);
-          }
-        } else {
-          const wasTriad = state.isTriadGrinding;
-          const completedRail = state.activeRail;
-
-          state.isGrinding = false;
-          state.isTriadGrinding = false;
-          state.activeRail = null;
-          state.grounded = false;
-          state.vy = wasTriad ? 6.8 : 4.2;
-
-          forgivenGatesLeft = 2;
-          updateShieldHUD();
-
-          if (wasTriad) {
-            state.isSpinning = true;
-            state.spinAccumulated = 0;
-            completedRail.triadGrindCompleted = true;
-
-            const grindPts = Math.round(state.grindTime * 960) + 500;
-            score += 500;
-
-            audio.playRailFanfare(true);
-            emitSnowSpray(state.x, state.y, state.z, 0, 24, 2);
-            showCallout(`⚡ ${completedRail.triad.symbol} TRIAD GRIND! +${grindPts} & 2 GATE PASSES!`, '#4ade80');
-          } else {
-            const grindPts = Math.round(state.grindTime * 300);
-            audio.playRailFanfare(false);
-            if (grindPts > 40) {
-              showCallout(`50-50 RAIL GRIND! +${grindPts} & 2 GATE PASSES!`, '#facc15');
-            }
-          }
-          state.grindTime = 0;
-        }
-      } else if (!state.grounded) {
-        state.vy -= 26 * dt;
-        state.y += state.vy * dt;
-
-        if (state.vy <= 0 && !state.targetRail) {
-          for (const r of rails) {
-            const railSurfaceY = getTerrainHeight(r.x, state.z) + r.height;
-            if (
-              Math.abs(state.z - r.z) <= r.length * 0.5 &&
-              Math.abs(state.x - r.x) <= 0.78 &&
-              Math.abs(state.y - railSurfaceY) <= 0.65
-            ) {
-              state.isGrinding = true;
-              state.isTriadGrinding = r.triadActivated;
-              state.activeRail = r;
-              state.grindTime = 0;
-              state.y = railSurfaceY;
-              state.vy = 0;
-              state.isSpinning = false;
-              state.spinAngle = 0;
-              forgivenGatesLeft = 2;
-              updateShieldHUD();
-              audio.playRailFanfare(r.triadActivated);
-              showCallout(r.triadActivated ? `⚡ ${r.triad.symbol} TRIAD GRIND!` : 'RAIL GRIND!', r.triadActivated ? '#4ade80' : '#facc15');
-              emitSnowSpray(state.x, state.y, state.z, state.vx, 12, r.triadActivated ? 2 : 1);
-              break;
-            }
-          }
-        }
-
-        if (!state.isGrinding) {
-          if (state.isSpinning) {
-            const spinDelta = 10.5 * dt;
-            state.spinAngle += spinDelta;
-            state.spinAccumulated += spinDelta;
-
-            if (state.spinAccumulated >= Math.PI * 2) {
-              state.spinAccumulated -= Math.PI * 2;
-              const trickBonus = 250;
-              score += trickBonus;
-              audio.playTrickChime();
-              showCallout(`360° AERIAL SPIN! +${trickBonus}`, '#facc15');
-            }
-          }
-
-          if (state.y <= groundY) {
-            state.y = groundY;
-            state.vy = 0;
-            state.grounded = true;
-            state.isSpinning = false;
-            state.spinAngle = 0;
-            emitSnowSpray(state.x, state.y, state.z, state.vx, 12);
-          }
-        }
-      } else {
-        state.y = groundY;
-        state.spinAngle = 0;
+      const groundY = getTerrainHeight(bike.pos.x, bike.pos.z);
+      if (bike.pos.y <= groundY + 0.04) {
+        bike.pos.y = groundY;
+        if (bike.vel.y < 0) bike.vel.y = 0;
+        bike.grounded = true;
+        bike.airTime = 0;
+      } else if (bike.pos.y > groundY + 0.42) {
+        bike.grounded = false;
       }
 
-      // 3. Skier Visual Lean & Stylish Grind Stance
-      const targetLean = state.isGrinding
-        ? (state.isTriadGrinding ? Math.sin(runTime * 18) * 0.24 : Math.sin(runTime * 14) * 0.14)
-        : -state.vx * 0.036;
-      state.leanAngle += (targetLean - state.leanAngle) * Math.min(1, dt * 12);
+      bike.suspensionComp = Math.max(0, bike.suspensionComp - preset.suspensionStiffness * 0.12 * dt);
+      bike.leanAngle += (steerInput * 0.36 - bike.leanAngle) * Math.min(1, dt * 8);
+      bike.whipAngle += (bike.whipTarget - bike.whipAngle) * Math.min(1, dt * 9);
+      if (overdriveTimer > 0) overdriveTimer = Math.max(0, overdriveTimer - dt);
 
-      skierRoot.position.set(state.x, state.y, state.z);
-      skierRoot.rotation.x = -SLOPE_ANGLE;
-      skierBodyGroup.rotation.z = state.leanAngle;
-      skierBodyGroup.rotation.y = state.isGrinding
-        ? (state.isTriadGrinding ? Math.PI * 0.48 : Math.PI * 0.38)
-        : (-state.vx * 0.022 + state.spinAngle);
-
-      const carveIntensity = Math.min(1, Math.abs(state.vx) / 14);
-      if (state.grounded && !state.isGrinding && carveIntensity > 0.16 && Math.random() < 0.75) {
-        emitSnowSpray(state.x, state.y, state.z + 0.4, state.vx, 2);
-      }
-
-      const speedRatio = Math.min(1, (Math.abs(state.vz) - 20) / 24);
-      audio.updateContinuous(speedRatio, carveIntensity, state.grounded, state.isGrinding, true);
-
-      // Update Crossing Grizzly Bears
-      for (let i = bears.length - 1; i >= 0; i--) {
-        const b = bears[i];
-        b.x += b.vx * dt;
-        b.stride += dt * 16;
-        const bearGroundY = getTerrainHeight(b.x, b.z);
-        b.group.position.set(
-          b.x,
-          bearGroundY + Math.abs(Math.sin(b.stride)) * 0.14,
-          b.z
-        );
-        b.group.rotation.x = -SLOPE_ANGLE;
-
-        for (const l of b.legs) {
-          l.mesh.rotation.x = Math.sin(b.stride + l.phase) * 0.65;
-        }
-
-        if (Math.random() < 0.45) {
-          emitSnowSpray(b.x, bearGroundY, b.z, b.vx, 1);
-        }
-
-        const horizDist = Math.hypot(state.x - b.x, state.z - b.z);
-        if (horizDist < 1.55 && (state.y - bearGroundY) < 1.85) {
-          crashGame('RAN INTO A GRIZZLY BEAR!');
+      // Scenic Zone Callouts
+      for (let i = TRAIL_ZONES.length - 1; i >= 0; i--) {
+        if (bike.pos.z <= TRAIL_ZONES[i].z) {
+          if (i !== lastZoneIdx) {
+            lastZoneIdx = i;
+            showCallout(TRAIL_ZONES[i].name, '#38bdf8');
+          }
           break;
-        } else if (b.z > state.z + 25 || Math.abs(b.x) > 38) {
-          scene.remove(b.group);
-          bears.splice(i, 1);
         }
       }
 
-      // 4. Recycle Infinite Terrain Chunks & Spawn Ahead up to Finish Line
-      for (const chunk of terrainChunks) {
-        if (chunk.zStart - CHUNK_LENGTH * 0.6 > state.z + 30) {
-          const minZ = Math.min(...terrainChunks.map(c => c.zStart));
-          updateChunkGeometry(chunk, minZ - CHUNK_LENGTH);
+      // Melodic Note Gates
+      for (let i = 0; i < noteGates.length; i++) {
+        const g = noteGates[i];
+        if (g.hit) continue;
+        if (Math.abs(bike.pos.z - g.z) < 2.5 && Math.abs(bike.pos.x - g.x) < 2.7) {
+          g.hit = true;
+          g.mesh.visible = false;
+          audio.playGateNote(g.note.freq);
+          addScore(200, true);
+          showCallout(`${g.note.name} GATE! +200`, '#34d399');
+        } else if (bike.pos.z < g.z - 4.0) {
+          g.hit = true;
         }
       }
 
-      while (nextGateZ > state.z - 280 && gatesSpawnedCount < TOTAL_GATES) {
-        spawnGate(nextGateZ);
-        nextGateZ -= 21 + Math.random() * 11;
-      }
-      while (nextTreeZ > state.z - 280) {
-        spawnSideTrees(nextTreeZ);
-        nextTreeZ -= 9 + Math.random() * 5;
-      }
-      while (nextKickerZ > state.z - 280 && nextKickerZ > finishLineZ + 20) {
-        spawnKicker(nextKickerZ);
-        nextKickerZ -= 75 + Math.random() * 65;
-      }
-      while (nextRailZ > state.z - 280 && nextRailZ > finishLineZ + 20) {
-        spawnGrindRail(nextRailZ);
-        nextRailZ -= 64 + Math.random() * 45;
-      }
+      // Melody Trail Challenges
+      const bannerEl = document.getElementById('pp-melody-banner');
+      const notesRowEl = document.getElementById('pp-melody-notes');
+      let inMelodyZone = false;
 
-      // 5. Gate Slalom Checks (+ 2-Gate Rail Grind Forgiveness Bonus!)
-      for (let i = gates.length - 1; i >= 0; i--) {
-        const g = gates[i];
-        if (!g.passed && state.z <= g.z) {
-          g.passed = true;
-          const halfW = g.width * 0.56;
-          if (Math.abs(state.x - g.x) <= halfW) {
-            gatesCleared++;
-            streak++;
-            const gatePts = 100 + streak * 15;
-            score += gatePts;
-            audio.playGateChime(streak);
-            if (streak % 5 === 0) {
-              showCallout(`${streak}x GATE STREAK! +${gatePts}`, '#38bdf8');
-            }
-          } else if (forgivenGatesLeft > 0) {
-            forgivenGatesLeft--;
-            updateShieldHUD();
-            gatesCleared++;
-            streak++;
-            const bonusPts = 150 + streak * 15;
-            score += bonusPts;
-            audio.playGateChime(streak + 2);
-            emitSnowSpray(state.x, state.y, state.z, 0, 16, 2);
-            const remLabel = forgivenGatesLeft > 0 ? ` (${forgivenGatesLeft} LEFT)` : '';
-            showCallout(`✨ RAIL GRIND PASS! GATE CLEARED +${bonusPts}${remLabel}`, '#4ade80');
-          } else {
-            gatesMissed++;
-            streak = 0;
-            penaltyTime += 3.0;
-            audio.playPenaltyBuzz();
-            showCallout('MISSED GATE! +3.0s PENALTY', '#ef4444');
+      for (let i = 0; i < melodyChallenges.length; i++) {
+        const mc = melodyChallenges[i];
+        if (bike.pos.z <= mc.triggerZ && bike.pos.z >= mc.endZ && !mc.completed) {
+          inMelodyZone = true;
+          if (!mc.announced && notesRowEl && bannerEl) {
+            mc.announced = true;
+            notesRowEl.innerHTML = '';
+            mc.seq.forEach((laneIdx, idx) => {
+              const info = MELODY_LANES[laneIdx];
+              const pill = document.createElement('div');
+              pill.style.cssText = `width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px; color:#0f172a; background:${info.hex};`;
+              pill.textContent = info.label;
+              notesRowEl.appendChild(pill);
+              setTimeout(() => audio.playGateNote(info.freq), idx * 260);
+            });
+            bannerEl.style.display = 'flex';
           }
-        }
-        if (g.z > state.z + 25) {
-          scene.remove(g.group);
-          gates.splice(i, 1);
+
+          mc.rows.forEach((row, rIdx) => {
+            if (row.resolved) return;
+            if (Math.abs(bike.pos.z - row.z) < 2.6) {
+              row.resolved = true;
+              let bestLane = 1;
+              let bestDist = 999;
+              row.orbs.forEach(o => {
+                const d = Math.abs(bike.pos.x - o.x);
+                if (d < bestDist) { bestDist = d; bestLane = o.lane; }
+              });
+
+              const pill = notesRowEl ? notesRowEl.children[rIdx] : null;
+              if (bestLane === row.targetLane && bestDist < 2.4) {
+                mc.hits++;
+                const hitOrb = row.orbs[bestLane];
+                hitOrb.mesh.visible = false;
+                audio.playGateNote(hitOrb.info.freq);
+                addScore(350, true);
+                if (pill) pill.style.transform = 'scale(1.22)';
+              } else {
+                combo = 0;
+                notesAttempted++;
+                playErrorClackSound();
+                if (pill) pill.style.opacity = '0.25';
+              }
+
+              if (rIdx === mc.rows.length - 1) {
+                mc.completed = true;
+                if (mc.hits === 4) {
+                  addScore(1000, true);
+                  showCallout('MELODY MASTERED! +1000', '#e879f9');
+                } else {
+                  showCallout(`MELODY ${mc.hits}/4`, '#38bdf8');
+                }
+                setTimeout(() => { if (bannerEl) bannerEl.style.display = 'none'; }, 1000);
+              }
+            }
+          });
         }
       }
+      if (!inMelodyZone && bannerEl && bannerEl.style.display !== 'none') {
+        bannerEl.style.display = 'none';
+      }
 
-      if (gatesSpawnedCount >= TOTAL_GATES && state.z <= finishLineZ) {
-        finishSlalomCourse();
+      const speedKmh = Math.round(Math.hypot(bike.vel.x, bike.vel.z) * 3.6);
+      const rem = Math.max(0, Math.round(TRAIL_LENGTH + bike.pos.z));
+      valSpeed.textContent = `${speedKmh} km/h`;
+      valRem.textContent = `${rem}m`;
+
+      if (bike.pos.z <= -TRAIL_LENGTH) {
+        finishCourse();
         return;
       }
-
-      // 6. Pine Tree Collision Checks
-      for (let i = trees.length - 1; i >= 0; i--) {
-        const t = trees[i];
-        const dx = state.x - t.x;
-        const dz = state.z - t.z;
-        const horizDist = Math.hypot(dx, dz);
-        const heightAboveGround = state.y - groundY;
-
-        if (!state.targetRail && !state.isTriadGrinding && horizDist < t.radius + 0.35 && heightAboveGround < 3.6) {
-          crashGame('CRASHED INTO A PINE!');
-          break;
-        }
-        if (t.z > state.z + 25) {
-          scene.remove(t.mesh);
-          trees.splice(i, 1);
-        }
-      }
-
-      for (let i = kickers.length - 1; i >= 0; i--) {
-        if (kickers[i].z > state.z + 25) {
-          scene.remove(kickers[i].group);
-          kickers.splice(i, 1);
-        }
-      }
-      for (let i = rails.length - 1; i >= 0; i--) {
-        if (rails[i].z - rails[i].length > state.z + 25) {
-          scene.remove(rails[i].group);
-          rails.splice(i, 1);
-        }
-      }
-
-      valTime.textContent = `${(runTime + penaltyTime).toFixed(2)}s`;
-      valPenalty.textContent = `+${penaltyTime.toFixed(1)}s`;
-      valGates.textContent = `${gatesCleared}/${TOTAL_GATES}`;
-      valScore.textContent = Math.floor(score);
     }
 
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i];
-      p.vy -= 14 * dt;
-      p.mesh.position.x += p.vx * dt;
-      p.mesh.position.y += p.vy * dt;
-      p.mesh.position.z += p.vz * dt;
-      p.life -= dt * 2.2;
-      p.mesh.scale.setScalar(Math.max(0.01, p.life));
-      if (p.life <= 0) {
-        scene.remove(p.mesh);
-        particles.splice(i, 1);
-      }
-    }
+    // Visual Bike & Camera Sync
+    const preset = BIKE_PRESETS[selectedBikeKey];
+    bikeRoot.position.copy(bike.pos);
+    bikeRoot.rotation.set(0, bike.yaw, 0);
 
-    mountainGroup.position.set(state.x * 0.4, state.y, state.z);
-    sunLight.position.set(state.x + 35, state.y + 65, state.z + 25);
-    sunLight.target.position.set(state.x, state.y, state.z - 15);
+    const fwdX = -Math.sin(bike.yaw);
+    const fwdZ = -Math.cos(bike.yaw);
+    const hAhead = getTerrainHeight(bike.pos.x + fwdX * 1.1, bike.pos.z + fwdZ * 1.1);
+    const hBehind = getTerrainHeight(bike.pos.x - fwdX * 1.1, bike.pos.z - fwdZ * 1.1);
+    const slopePitch = Math.atan2(hAhead - hBehind, 2.2);
+    const airPitch = Math.max(-0.45, Math.min(0.5, bike.vel.y * 0.032));
+    bikeVisual.rotation.x += ((bike.grounded ? slopePitch : airPitch) - bikeVisual.rotation.x) * 0.18;
+    bikeVisual.rotation.z = bike.leanAngle;
+    bikeVisual.rotation.y = bike.whipAngle;
+
+    const travel = bike.suspensionComp * preset.forkTravel;
+    chassisGroup.position.y = -travel * 0.55;
+    forkLowers.position.y = travel * 0.52;
+    steerGroup.rotation.y = bike.steerAngle - bike.whipAngle * 0.55;
+
+    const spd = Math.hypot(bike.vel.x, bike.vel.z);
+    bike.wheelSpin += spd * dt * 2.75;
+    frontWheel.rotation.x = -bike.wheelSpin;
+    rearWheel.rotation.x = -bike.wheelSpin;
+
+    // Atmosphere Shift in Rainforest Gullies
+    const rfNow = getRainforestBlend(bike.pos.z);
+    scene.background.copy(colSkyCoastal).lerp(colSkyRainforest, rfNow * 0.72);
+    scene.fog.color.copy(colFogCoastal).lerp(colFogRainforest, rfNow * 0.78);
+    scene.fog.density = 0.0016 + (0.0042 - 0.0016) * rfNow;
+
+    sunLight.position.set(bike.pos.x + 38, bike.pos.y + 72, bike.pos.z + 32);
+    sunLight.target.position.copy(bike.pos);
     sunLight.target.updateMatrixWorld();
 
-    if (isFirstPerson) {
-      camera.position.set(
-        state.x + state.leanAngle * 0.4,
-        state.y + 1.85,
-        state.z - 0.35
-      );
-      camera.lookAt(
-        state.x + state.vx * 0.25,
-        state.y + 0.2 - Math.tan(SLOPE_ANGLE) * 14,
-        state.z - 14
-      );
+    if (!isPlaying) {
+      const ang = now * 0.00035;
+      camera.position.set(bike.pos.x + Math.sin(ang) * 4.6, bike.pos.y + 2.0, bike.pos.z + Math.cos(ang) * 4.6);
+      camera.lookAt(bike.pos.x, bike.pos.y + 1.0, bike.pos.z - 0.5);
+    } else if (isFirstPerson) {
+      camera.position.set(bike.pos.x + fwdX * 0.25, bike.pos.y + 1.65, bike.pos.z + fwdZ * 0.25);
+      camera.lookAt(bike.pos.x + fwdX * 14, bike.pos.y + 0.85, bike.pos.z + fwdZ * 14);
     } else {
-      const desiredCamX = state.x * 0.85;
-      const desiredCamY = state.y + 5.2;
-      const desiredCamZ = state.z + 10.5;
-      camera.position.x += (desiredCamX - camera.position.x) * Math.min(1, dt * 8);
-      camera.position.y += (desiredCamY - camera.position.y) * Math.min(1, dt * 8);
-      camera.position.z = desiredCamZ;
-      camera.lookAt(state.x * 0.9, state.y + 1.2 - Math.tan(SLOPE_ANGLE) * 8, state.z - 12);
+      const camX = bike.pos.x + Math.sin(bike.yaw) * 5.6;
+      const camZ = bike.pos.z + Math.cos(bike.yaw) * 5.6;
+      const camGround = getTerrainHeight(camX, camZ);
+      const targetY = Math.max(camGround + 0.8, bike.pos.y + 2.55);
+      camera.position.lerp(new THREE.Vector3(camX, targetY, camZ), Math.min(1, dt * 9.5));
+      camera.lookAt(bike.pos.x - Math.sin(bike.yaw) * 6, bike.pos.y + 1.15, bike.pos.z - Math.cos(bike.yaw) * 6);
     }
 
     renderer.render(scene, camera);
@@ -2581,29 +1850,25 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     onPianoNoteDown,
     onPianoNoteUp,
     cleanup: () => {
-      audio.updateContinuous(0, 0, false, false, false);
       window.removeEventListener('keydown', onKeyDown, { capture: true });
       window.removeEventListener('keyup', onKeyUp, { capture: true });
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-      window.removeEventListener('pointercancel', onPointerUp);
       window.removeEventListener('resize', onResize);
     }
   };
 
   if (autoStart) {
     startGame();
-    if (statusEl) {
-      statusEl.textContent = '⛷️ 3D Ski Slalom Restarted! Carve through all 30 gates!';
-    }
+    if (statusEl) statusEl.textContent = '🚵‍♂️ Pedal Point Restarted! Carve down the Illawarra Escarpment!';
   } else {
-    if (statusEl) {
-      statusEl.textContent = '⛷️ 3D Ski Slalom Ready! Play your calibrated Piano Keys to carve across the mountain!';
-    }
-    state.y = getTerrainHeight(0, 0);
-    skierRoot.position.set(0, state.y, 0);
-    skierRoot.rotation.x = -SLOPE_ANGLE;
+    if (statusEl) statusEl.textContent = '🚵‍♂️ Pedal Point Ready! Play your calibrated Piano Keys to carve the trail!';
   }
 
   animFrameId = requestAnimationFrame(animate);
 }
+
+export {
+  startPedalPoint,
+  handlePedalPointInput,
+  handlePedalPointRelease,
+  stopPedalPoint
+};
