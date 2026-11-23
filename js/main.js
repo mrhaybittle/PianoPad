@@ -631,14 +631,37 @@ function initMIDIHardware() {
     }
 }
 
+function handleQuickRestartMidiMessage(event) {
+    const resultsModal = document.getElementById('game-results-modal');
+    // Only intercept if the Game Results screen is actively open
+    if (!resultsModal || !resultsModal.classList.contains('open')) return;
+
+    const status = event.data[0];
+    const command = status & 0xF0;
+    const velocity = event.data.length > 2 ? event.data[2] : 0;
+
+    // If it's a "Note On" message with velocity > 0, trigger restart
+    if (command === 144 && velocity > 0) {
+        const playAgainBtn = document.getElementById('btn-game-try-again');
+        if (playAgainBtn && playAgainBtn.style.display !== 'none') {
+            playAgainBtn.click();
+        }
+    }
+}
+
 function onMIDISuccess(midiAccess) {
     const inputs = midiAccess.inputs.values();
     for (let input of inputs) {
+        // Register the standard note player callback
         input.onmidimessage = handleMIDIMessage;
+        
+        // Also register the quick-restart listener (it will self-filter if the modal is closed)
+        input.addEventListener('midimessage', handleQuickRestartMidiMessage);
     }
     midiAccess.onstatechange = (e) => {
         if (e.port.type === 'input' && e.port.state === 'connected') {
             e.port.onmidimessage = handleMIDIMessage;
+            e.port.addEventListener('midimessage', handleQuickRestartMidiMessage);
         }
     };
 }
