@@ -2,6 +2,7 @@ import { initAudio, audioCtx, playTone, playErrorClackSound } from './audio.js';
 import { autoTransposeSong, parsePianoPad, getNoteFrequency } from './musicTheory.js';
 import { arcadeState } from './miniGames.js';
 import { startNoteCraft } from './games/noteCraft/notecraft.js';
+import { startLaserTag } from './games/laserTag.js';
 
 export const ER_HOUSES = {
     Crown:     { name: 'Crown',     icon: '👑', color: '#facc15', textColor: '#000000' },
@@ -1611,29 +1612,32 @@ function handleKnockoutHostUpdate(data) {
         
         if (mode === 'lasertag') {
             statusBanner.textContent = `🛸 Neon Laser Tag Arena is Live! (${ranked.length} players in lobby)`;
-            bracketDiv.innerHTML = `
-                <div style="grid-column: 1 / -1; padding: 20px; background: #141824; border: 1px solid #38bdf8; border-radius: 10px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px;">
-                    <div style="font-size: 1.1rem; color: #38bdf8; font-weight: 900;">
-                        🛸 Laser Tag Arena is Live! (Monitoring matches...)
-                    </div>
-                    <button type="button" id="btn-host-enter-lasertag" class="btn-success" style="padding: 10px 20px; font-size: 0.95rem; font-weight: 800; background: #0284c7; box-shadow: 0 0 15px rgba(56,189,248,0.45);">
-                        🔫 Enter 3D Arena (Join as Host)
-                    </button>
-                </div>
-            `;
-            document.getElementById('btn-host-enter-lasertag').onclick = () => {
-                document.getElementById('knockout-modal').classList.remove('open');
-                const resModal = document.getElementById('game-results-modal');
-                if (resModal) resModal.classList.remove('open');
-                const arcadeHub = document.getElementById('arcade-hub');
-                if (arcadeHub) arcadeHub.classList.remove('open');
-                const tugHud = document.getElementById('tug-of-war-hud');
-                if (tugHud) tugHud.style.display = 'none';
 
-                if (window.launchLaserTag) {
-                    window.launchLaserTag(koState.knockoutRoomCode, true);
-                }
-            };
+            if (!document.getElementById('btn-host-enter-lasertag')) {
+                bracketDiv.innerHTML = `
+                    <div style="grid-column: 1 / -1; padding: 20px; background: #141824; border: 1px solid #38bdf8; border-radius: 10px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+                        <div style="font-size: 1.1rem; color: #38bdf8; font-weight: 900;">
+                            🛸 Laser Tag Arena is Live! (Monitoring matches...)
+                        </div>
+                        <button type="button" id="btn-host-enter-lasertag" class="btn-success" style="padding: 10px 20px; font-size: 0.95rem; font-weight: 800; background: #0284c7; box-shadow: 0 0 15px rgba(56,189,248,0.45);">
+                            🔫 Enter 3D Arena (Join as Host)
+                        </button>
+                    </div>
+                `;
+                document.getElementById('btn-host-enter-lasertag').addEventListener('click', () => {
+                    document.getElementById('knockout-modal')?.classList.remove('open');
+                    document.getElementById('game-results-modal')?.classList.remove('open');
+                    document.getElementById('arcade-hub')?.classList.remove('open');
+                    const tugHud = document.getElementById('tug-of-war-hud');
+                    if (tugHud) tugHud.style.display = 'none';
+
+                    if (typeof window.launchLaserTag === 'function') {
+                        window.launchLaserTag(koState.knockoutRoomCode, true);
+                    } else {
+                        startLaserTag(bridge, koState.knockoutRoomCode, true);
+                    }
+                });
+            }
             return;
         }
 
