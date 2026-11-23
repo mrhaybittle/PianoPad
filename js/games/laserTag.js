@@ -32,16 +32,10 @@ import {
 } from './laserTag/arena.js';
 import { renderFirstPerson3D } from './laserTag/render3d.js';
 import { renderSpectatorOverheadView, renderMinimapAndTopHud } from './laserTag/hud.js';
+import { loadSongChallenges, getRandomChallenge } from './laserTag/songChallenges.js';
 
 const MIDI_PITCH_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
-const MUSICAL_CHALLENGES = [
-    { name: "Wipeout", sequence: ['G', 'A#', 'B'] },
-    { name: "Eye of the Tiger", sequence: ['C', 'C', 'A#'] },
-    { name: "Mary Had A Little Lamb", sequence: ['E', 'D', 'C'] },
-    { name: "Shape of You", sequence: ['C', 'D#', 'C'] },
-    { name: "Top Gun Theme", sequence: ['C', 'G', 'G'] }
-];
 
 function clearAllHeldMovement() {
     gameState.physicallyHeldNotes.clear();
