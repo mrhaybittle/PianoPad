@@ -340,20 +340,34 @@ document.getElementById('btn-game-arcade-menu').addEventListener('click', () => 
 document.getElementById('btn-game-try-again').addEventListener('click', () => {
     gameResultsModal.classList.remove('open');
     stopBattlePolling();
+    
     if (koState.isClassKnockout) {
         const koModal = document.getElementById('knockout-modal');
         if (koModal) koModal.classList.add('open');
         return;
     }
-    if (currentSongTitle === "Mystery Note" && window.startMysteryNote) window.startMysteryNote();
-    else if (currentSongTitle === "Simon Taps" && window.startSimonTaps) window.startSimonTaps();
-    else if (currentSongTitle === "Drop Dodge" && window.startDropDodge) window.startDropDodge();
-    else if (currentSongTitle === "Combo Strike" && window.startComboStrike) window.startComboStrike();
-    else if (currentSongTitle === "Finger Sprint" && window.openSprintModeSelector) window.openSprintModeSelector();
-    else if (currentSongTitle === "Rhythm Echo" && window.launchRhythmEcho) window.launchRhythmEcho();
-    else if (currentSongTitle === "Note Name Sniper" && window.launchNoteSniper) window.launchNoteSniper();
-    else if (currentSongTitle === "Flappy Pitch" && window.launchFlappyPitch) window.launchFlappyPitch();
-    else if ((currentSongTitle === "Staff Surfers" || currentSongTitle === "Scale Surfers") && window.launchStaffSurfers) window.launchStaffSurfers();
+    
+    // Clean the title just in case there are trailing spaces
+    const title = currentSongTitle.trim();
+    
+    if (title === "Mystery Note" && window.startMysteryNote) window.startMysteryNote();
+    else if (title === "Simon Taps" && window.startSimonTaps) window.startSimonTaps();
+    else if (title === "Drop Dodge" && window.startDropDodge) window.startDropDodge();
+    else if (title === "Combo Strike" && window.startComboStrike) window.startComboStrike();
+    else if (title === "Finger Sprint" && window.openSprintModeSelector) window.openSprintModeSelector();
+    else if (title === "Rhythm Echo" && window.launchRhythmEcho) window.launchRhythmEcho();
+    else if (title === "Note Name Sniper" && window.launchNoteSniper) window.launchNoteSniper();
+    else if (title === "Flappy Pitch" && window.launchFlappyPitch) window.launchFlappyPitch();
+    else if (title === "ClefHook") {
+        if (window.startClefHook) window.startClefHook();
+        else if (window.launchClefHook) window.launchClefHook();
+        else playSong();
+    }
+    else if (title === "Staff Surfers" || title === "Scale Surfers") {
+        if (window.launchStaffSurfers) window.launchStaffSurfers();
+        else if (window.startStaffSurfers) window.startStaffSurfers();
+        else playSong();
+    }
     else playSong();
 });
 
