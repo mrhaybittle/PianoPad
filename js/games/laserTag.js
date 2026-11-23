@@ -1310,17 +1310,23 @@ async function executeSingleNoteAction(pitchClass, bridge) {
             playHitMarkerTick();
             
             if (node.currentStep >= node.sequence.length) {
-                // Challenge Complete: Grant 15 seconds of 2x Rainbow Lasers
+                // Challenge Complete: Instant +250 pts, Full 3-Life Shield Restore, and 15s Speed Boost!
                 node.active = false;
                 node.respawnAt = performance.now() + 30000; // 30s cooldown
-                lp.comboCount = 2; 
-                lp.comboExpiresAt = performance.now() + 15000; 
+                
+                lp.score += 250;
+                lp.lives = 3;
+                lp.hitsTaken = 0;
+                lp.boostUntil = performance.now() + 15000;
                 
                 playMedKitHealChime();
                 spawn3DExplosion(node.x, node.y, '#a855f7', 42);
                 const statusEl = document.getElementById('status');
-                if (statusEl) statusEl.textContent = `🔥 ${node.name} COMPLETE! Rainbow 2X Lasers active for 15s!`;
-            } else {
+                if (statusEl) {
+                    statusEl.textContent = `🔥 ${node.name} COMPLETE! +250 PTS, FULL SHIELD & 15s TURBO BOOST!`;
+                }
+            }
+            else {
                 const statusEl = document.getElementById('status');
                 if (statusEl) statusEl.textContent = `🎵 Hit ${node.currentStep}/${node.sequence.length}! Next note: ${node.sequence[node.currentStep]}`;
             }
