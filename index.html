@@ -42,6 +42,285 @@
             display: none; 
             z-index: 10001; 
         }
+
+        /* =========================================================
+           PERSONALISED STUDENT STATS & COMPARISON DASHBOARD STYLES
+           ========================================================= */
+        #student-stats-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(7, 10, 19, 0.92);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        #student-stats-modal.open {
+            display: flex;
+            animation: fadeInDash 0.35s ease-out;
+        }
+        @keyframes fadeInDash {
+            from { opacity: 0; transform: scale(0.96); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .stats-dashboard-card {
+            background: linear-gradient(145deg, #111827 0%, #1e1b4b 50%, #0f172a 100%);
+            border: 2px solid rgba(129, 140, 248, 0.45);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75), 0 0 35px rgba(99, 102, 241, 0.25);
+            border-radius: 20px;
+            max-width: 860px;
+            width: 100%;
+            max-height: 92vh;
+            overflow-y: auto;
+            padding: 28px;
+            color: #f8fafc;
+            position: relative;
+        }
+        .stats-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            padding-bottom: 18px;
+            margin-bottom: 22px;
+        }
+        .stats-greeting {
+            font-size: 1.75rem;
+            font-weight: 900;
+            margin: 0;
+            background: linear-gradient(90deg, #38bdf8, #a855f7, #f472b6, #facc15);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+        .stats-subtitle {
+            color: #cbd5e1;
+            font-size: 0.92rem;
+            margin: 4px 0 0 0;
+        }
+        .percentile-pill {
+            background: linear-gradient(135deg, #f59e0b, #ec4899);
+            color: #ffffff;
+            padding: 10px 18px;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 0.92rem;
+            box-shadow: 0 6px 20px rgba(236, 72, 153, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+        .stats-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+        .kpi-card {
+            border-radius: 14px;
+            padding: 16px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            transition: transform 0.2s ease;
+        }
+        .kpi-card:hover {
+            transform: translateY(-3px);
+        }
+        .kpi-mastered {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.24), rgba(6, 78, 59, 0.55));
+            border-color: rgba(52, 211, 153, 0.5);
+        }
+        .kpi-attempted {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.24), rgba(30, 58, 138, 0.55));
+            border-color: rgba(96, 165, 250, 0.5);
+        }
+        .kpi-leaderboard {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.26), rgba(120, 53, 15, 0.55));
+            border-color: rgba(251, 191, 36, 0.55);
+        }
+        .kpi-accuracy {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.26), rgba(88, 28, 135, 0.55));
+            border-color: rgba(192, 132, 252, 0.5);
+        }
+        .kpi-icon {
+            font-size: 1.4rem;
+            margin-bottom: 6px;
+            display: block;
+        }
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 900;
+            line-height: 1.1;
+            color: #ffffff;
+        }
+        .kpi-label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #e2e8f0;
+            margin-top: 4px;
+        }
+        .kpi-compare {
+            margin-top: 8px;
+            font-size: 0.76rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.35);
+            color: #cbd5e1;
+            display: inline-block;
+            font-weight: 600;
+        }
+        .stats-visual-row {
+            display: grid;
+            grid-template-columns: 1.35fr 1fr;
+            gap: 18px;
+            margin-bottom: 22px;
+        }
+        @media (max-width: 720px) {
+            .stats-visual-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        .stats-panel {
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            padding: 18px;
+        }
+        .stats-panel-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #f8fafc;
+            margin: 0 0 14px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        /* Difficulty Graph Bars */
+        .diff-row {
+            margin-bottom: 14px;
+        }
+        .diff-row:last-child {
+            margin-bottom: 0;
+        }
+        .diff-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.82rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        .diff-track {
+            width: 100%;
+            height: 14px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+        }
+        .diff-fill {
+            height: 100%;
+            border-radius: 999px;
+            transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+            position: relative;
+        }
+        .diff-avg-marker {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: #ffffff;
+            box-shadow: 0 0 6px #000;
+            z-index: 2;
+        }
+        /* Peer Comparison Spectrum */
+        .spectrum-box {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .spectrum-bar-bg {
+            height: 18px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 45%, #ec4899 75%, #facc15 100%);
+            position: relative;
+            margin: 18px 0 8px 0;
+        }
+        .spectrum-you-pin {
+            position: absolute;
+            top: -26px;
+            transform: translateX(-50%);
+            background: #22c55e;
+            color: #052e16;
+            font-weight: 900;
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+        }
+        .spectrum-you-pin::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px 5px 0;
+            border-style: solid;
+            border-color: #22c55e transparent transparent transparent;
+        }
+        .highlight-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .highlight-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid #38bdf8;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            color: #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .stats-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .btn-continue-pianopad {
+            background: linear-gradient(135deg, #22c55e 0%, #10b981 100%);
+            color: #052e16;
+            font-weight: 900;
+            font-size: 1.02rem;
+            padding: 12px 28px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.45);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .btn-continue-pianopad:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(34, 197, 94, 0.6);
+        }
     </style>
 </head>
 <body>
@@ -86,18 +365,111 @@
         </div>
     </div>
 
+    <!-- PERSONALISED STUDENT STATS & COMPARISON DASHBOARD -->
+    <div id="student-stats-modal">
+        <div class="stats-dashboard-card">
+            <div class="stats-header">
+                <div>
+                    <h2 class="stats-greeting" id="dash-greeting">Welcome back, Musician! 🎹</h2>
+                    <p class="stats-subtitle" id="dash-subtitle">Here is how your PianoPad progress compares across the school.</p>
+                </div>
+                <div class="percentile-pill" id="dash-percentile-badge">
+                    <span>🏆</span>
+                    <span id="dash-percentile-text">Calculating Rank...</span>
+                </div>
+            </div>
+
+            <!-- 4 Colourful KPI Cards -->
+            <div class="stats-kpi-grid">
+                <div class="kpi-card kpi-mastered">
+                    <span class="kpi-icon">🌟</span>
+                    <div class="kpi-value" id="dash-mastered-count">0</div>
+                    <div class="kpi-label">Songs Mastered (&gt;80%)</div>
+                    <div class="kpi-compare" id="dash-mastered-compare">School avg: --</div>
+                </div>
+
+                <div class="kpi-card kpi-attempted">
+                    <span class="kpi-icon">🎵</span>
+                    <div class="kpi-value" id="dash-attempted-count">0</div>
+                    <div class="kpi-label">Songs Attempted</div>
+                    <div class="kpi-compare" id="dash-attempted-compare">School avg: --</div>
+                </div>
+
+                <div class="kpi-card kpi-leaderboard">
+                    <span class="kpi-icon">🏅</span>
+                    <div class="kpi-value" id="dash-leaderboard-count">0</div>
+                    <div class="kpi-label">Leaderboard Ranks</div>
+                    <div class="kpi-compare" id="dash-podium-compare">Top 3 finishes: 0</div>
+                </div>
+
+                <div class="kpi-card kpi-accuracy">
+                    <span class="kpi-icon">🎯</span>
+                    <div class="kpi-value" id="dash-avg-accuracy">0%</div>
+                    <div class="kpi-label">Best Avg Accuracy</div>
+                    <div class="kpi-compare" id="dash-accuracy-compare">School avg: --%</div>
+                </div>
+            </div>
+
+            <!-- Visual Charts Row -->
+            <div class="stats-visual-row">
+                <!-- Left: Song Difficulty Breakdown Graph -->
+                <div class="stats-panel">
+                    <div class="stats-panel-title">
+                        <span>📊 Songs Mastered by Difficulty</span>
+                        <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 600;">White line = School Avg</span>
+                    </div>
+                    <div id="dash-difficulty-bars">
+                        <!-- Dynamically populated Easy / Medium / Hard / Expert bars -->
+                    </div>
+                </div>
+
+                <!-- Right: Cohort Standing & Personal Highlights -->
+                <div class="stats-panel">
+                    <div class="stats-panel-title">
+                        <span>🚀 Where You Stand vs. All Students</span>
+                    </div>
+                    <div class="spectrum-box">
+                        <div class="spectrum-bar-bg">
+                            <div class="spectrum-you-pin" id="dash-spectrum-pin" style="left: 50%;">YOU</div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:#94a3b8; margin-top:-6px;">
+                            <span>Beginner</span>
+                            <span>Rising Star</span>
+                            <span>Virtuoso</span>
+                        </div>
+
+                        <ul class="highlight-list" id="dash-highlights-list">
+                            <!-- Dynamically populated personal milestones -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-footer">
+                <div style="font-size: 0.82rem; color: #94a3b8;" id="dash-next-goal-tip">
+                    💡 <strong>Next Milestone:</strong> Score over 80% on 1 more song to climb the leaderboard!
+                </div>
+                <button type="button" class="btn-continue-pianopad" id="btn-close-stats-dashboard">
+                    Let's Play PianoPad →
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- GOOGLE AUTHENTICATION & INITIALIZATION SCRIPT -->
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzJ59p9HAgRFTiJou8zYat4cvo96Yu4rMh3qIyOdDMhUCgh7m-zYltyDvIro-HCYnbT/exec";
         
         window.pianoPadUser = {
             isTeacher: false,
+            firstName: "",
             fullName: "",
             generatedName: "",
             className: "",
             oldName: "",
             email: ""
         };
+        window.pianoPadSheetData = null;
 
         function decodeJwtResponse(token) {
             let base64Url = token.split('.')[1];
@@ -120,16 +492,18 @@
 
         async function handleCredentialResponse(response) {
             const statusDiv = document.getElementById("login-status");
-            statusDiv.innerHTML = "Authenticating and fetching roster...";
+            statusDiv.innerHTML = "Authenticating and fetching your stats...";
 
             const profile = decodeJwtResponse(response.credential);
             window.pianoPadUser.email = profile.email;
-            const firstName = profile.given_name;
-            const surname = profile.family_name;
+            const firstName = profile.given_name || profile.name.split(" ")[0];
+            const surname = profile.family_name || "";
+            window.pianoPadUser.firstName = firstName;
 
             try {
                 const res = await fetch(GAS_URL);
                 const data = await res.json();
+                window.pianoPadSheetData = data;
 
                 if (data.teachers && data.teachers[profile.email]) {
                     window.pianoPadUser.isTeacher = true;
@@ -201,6 +575,257 @@
             };
         }
 
+        /**
+         * Parses the spreadsheet payload from GAS_URL and builds the personalised student comparison dashboard
+         */
+        function buildAndShowStudentDashboard() {
+            const user = window.pianoPadUser;
+            const data = window.pianoPadSheetData || {};
+            const firstName = user.firstName || user.generatedName.split(" ")[0] || "Student";
+
+            // Greeting header with FIRST NAME
+            document.getElementById("dash-greeting").textContent = `Hey ${firstName}! Here's Your PianoPad Snapshot 🎹`;
+
+            // Candidate names to match this student in score/leaderboard records
+            const myIdentifiers = [
+                user.generatedName,
+                user.oldName,
+                user.fullName,
+                user.email
+            ].filter(Boolean).map(n => n.trim().toLowerCase());
+
+            // Extract raw score entries from spreadsheet data (supports common GAS property names)
+            const rawScores = data.scores || data.results || data.attempts || data.leaderboard || [];
+            const songCatalog = data.songs || [];
+
+            // Build difficulty lookup map (Song Title -> Difficulty)
+            const difficultyMap = {};
+            if (Array.isArray(songCatalog)) {
+                songCatalog.forEach(s => {
+                    const title = (s.title || s.name || s.song || "").toString().trim().toLowerCase();
+                    const diff = (s.difficulty || s.level || "Medium").toString().trim();
+                    if (title) difficultyMap[title] = diff;
+                });
+            }
+
+            // Group records by student to compare against all other students
+            const studentMap = {}; // studentKey -> { songs: { songName: { bestAcc, bestScore, difficulty } }, leaderboardEntries: 0, podiums: 0 }
+            const songBoards = {}; // songName -> array of { studentKey, score }
+
+            if (Array.isArray(rawScores)) {
+                rawScores.forEach(row => {
+                    const playerRaw = (row.player || row.student || row.name || row.studentName || "").toString().trim();
+                    const songRaw = (row.song || row.title || row.songName || row.game || "").toString().trim();
+                    if (!playerRaw || !songRaw) return;
+
+                    const pKey = playerRaw.toLowerCase();
+                    const sKey = songRaw.toLowerCase();
+                    const acc = parseFloat(row.accuracy ?? row.acc ?? row.percentage ?? 0) || 0;
+                    const score = parseFloat(row.score ?? row.points ?? acc) || 0;
+                    const diffRaw = (row.difficulty || difficultyMap[sKey] || "Medium").toString();
+
+                    if (!studentMap[pKey]) {
+                        studentMap[pKey] = { songs: {}, leaderboardEntries: 0, podiums: 0, totalSpeed: 0, count: 0 };
+                    }
+                    if (!studentMap[pKey].songs[sKey]) {
+                        studentMap[pKey].songs[sKey] = { bestAcc: acc, bestScore: score, difficulty: diffRaw, title: songRaw };
+                    } else {
+                        studentMap[pKey].songs[sKey].bestAcc = Math.max(studentMap[pKey].songs[sKey].bestAcc, acc);
+                        studentMap[pKey].songs[sKey].bestScore = Math.max(studentMap[pKey].songs[sKey].bestScore, score);
+                    }
+
+                    if (!songBoards[sKey]) songBoards[sKey] = {};
+                    songBoards[sKey][pKey] = Math.max(songBoards[sKey][pKey] || 0, score);
+                });
+            }
+
+            // Calculate Leaderboard Rankings (Top 10 per song/game = on leaderboard, Top 3 = podium)
+            Object.values(songBoards).forEach(boardObj => {
+                const sorted = Object.entries(boardObj).sort((a, b) => b[1] - a[1]);
+                sorted.forEach(([pKey], idx) => {
+                    if (studentMap[pKey]) {
+                        if (idx < 10) studentMap[pKey].leaderboardEntries += 1;
+                        if (idx < 3) studentMap[pKey].podiums += 1;
+                    }
+                });
+            });
+
+            // Merge all records belonging to the logged-in student (both new name & legacy oldName)
+            const myMergedSongs = {};
+            let myLeaderboardCount = 0;
+            let myPodiumCount = 0;
+
+            Object.entries(studentMap).forEach(([pKey, stats]) => {
+                if (myIdentifiers.includes(pKey)) {
+                    myLeaderboardCount += stats.leaderboardEntries;
+                    myPodiumCount += stats.podiums;
+                    Object.entries(stats.songs).forEach(([sKey, sData]) => {
+                        if (!myMergedSongs[sKey]) {
+                            myMergedSongs[sKey] = { ...sData };
+                        } else {
+                            myMergedSongs[sKey].bestAcc = Math.max(myMergedSongs[sKey].bestAcc, sData.bestAcc);
+                            myMergedSongs[sKey].bestScore = Math.max(myMergedSongs[sKey].bestScore, sData.bestScore);
+                        }
+                    });
+                }
+            });
+
+            // Compute Student Metrics
+            const mySongList = Object.values(myMergedSongs);
+            const myAttempted = mySongList.length;
+            const myMasteredSongs = mySongList.filter(s => s.bestAcc >= 80);
+            const myMastered = myMasteredSongs.length;
+            const myAvgAcc = myAttempted > 0
+                ? (mySongList.reduce((sum, s) => sum + s.bestAcc, 0) / myAttempted)
+                : 0;
+
+            // Compute Cohort Averages across all active students
+            const allStudentStats = Object.values(studentMap);
+            const totalPeers = Math.max(allStudentStats.length, 1);
+
+            let cohortMasteredSum = 0;
+            let cohortAttemptedSum = 0;
+            let cohortAccSum = 0;
+            let peersWithAttempts = 0;
+            const peerMasteredCounts = [];
+
+            const diffTiers = {
+                Easy: { label: "Easy", color: "linear-gradient(90deg, #22c55e, #4ade80)", mine: 0, cohortSum: 0 },
+                Medium: { label: "Medium", color: "linear-gradient(90deg, #38bdf8, #818cf8)", mine: 0, cohortSum: 0 },
+                Hard: { label: "Hard", color: "linear-gradient(90deg, #f59e0b, #fb923c)", mine: 0, cohortSum: 0 },
+                Expert: { label: "Expert", color: "linear-gradient(90deg, #ec4899, #f43f5e)", mine: 0, cohortSum: 0 }
+            };
+
+            function normalizeDiff(d) {
+                const lower = (d || "").toLowerCase();
+                if (lower.includes("easy") || lower.includes("beg") || lower === "1") return "Easy";
+                if (lower.includes("hard") || lower.includes("adv") || lower === "3") return "Hard";
+                if (lower.includes("exp") || lower.includes("insane") || lower.includes("mast") || lower === "4") return "Expert";
+                return "Medium";
+            }
+
+            myMasteredSongs.forEach(s => {
+                const tier = normalizeDiff(s.difficulty);
+                diffTiers[tier].mine += 1;
+            });
+
+            allStudentStats.forEach(st => {
+                const sArr = Object.values(st.songs);
+                const mArr = sArr.filter(s => s.bestAcc >= 80);
+                cohortAttemptedSum += sArr.length;
+                cohortMasteredSum += mArr.length;
+                peerMasteredCounts.push(mArr.length);
+
+                mArr.forEach(s => {
+                    const tier = normalizeDiff(s.difficulty);
+                    diffTiers[tier].cohortSum += 1;
+                });
+
+                if (sArr.length > 0) {
+                    cohortAccSum += sArr.reduce((acc, s) => acc + s.bestAcc, 0) / sArr.length;
+                    peersWithAttempts += 1;
+                }
+            });
+
+            const avgMastered = (cohortMasteredSum / totalPeers).toFixed(1);
+            const avgAttempted = (cohortAttemptedSum / totalPeers).toFixed(1);
+            const avgCohortAcc = peersWithAttempts > 0 ? (cohortAccSum / peersWithAttempts).toFixed(1) : "0.0";
+
+            // Calculate Percentile Standing
+            const beatenPeers = peerMasteredCounts.filter(c => myMastered >= c).length;
+            const percentile = allStudentStats.length > 0
+                ? Math.min(99, Math.max(5, Math.round((beatenPeers / totalPeers) * 100)))
+                : 50;
+
+            // Populate KPI Cards
+            document.getElementById("dash-mastered-count").textContent = myMastered;
+            document.getElementById("dash-mastered-compare").textContent = `School avg: ${avgMastered} songs`;
+
+            document.getElementById("dash-attempted-count").textContent = myAttempted;
+            document.getElementById("dash-attempted-compare").textContent = `School avg: ${avgAttempted} songs`;
+
+            document.getElementById("dash-leaderboard-count").textContent = myLeaderboardCount;
+            document.getElementById("dash-podium-compare").textContent = `Top 3 Podiums: ${myPodiumCount}`;
+
+            document.getElementById("dash-avg-accuracy").textContent = `${myAvgAcc.toFixed(1)}%`;
+            document.getElementById("dash-accuracy-compare").textContent = `School avg: ${avgCohortAcc}%`;
+
+            // Percentile Badge & Spectrum Pin
+            const topPct = Math.max(1, 100 - percentile);
+            document.getElementById("dash-percentile-text").textContent =
+                myAttempted === 0 ? "Ready to Debut!" : `Top ${topPct}% of School`;
+            document.getElementById("dash-spectrum-pin").style.left = `${percentile}%`;
+            document.getElementById("dash-spectrum-pin").textContent = `${firstName.toUpperCase()} (${percentile}th %ile)`;
+
+            // Render Difficulty Breakdown Graph
+            const diffContainer = document.getElementById("dash-difficulty-bars");
+            diffContainer.innerHTML = "";
+            const maxBarScale = Math.max(
+                5,
+                ...Object.values(diffTiers).map(t => Math.max(t.mine, Math.ceil(t.cohortSum / totalPeers)))
+            );
+
+            Object.values(diffTiers).forEach(tier => {
+                const cohortAvgForTier = tier.cohortSum / totalPeers;
+                const myPct = Math.min(100, Math.round((tier.mine / maxBarScale) * 100));
+                const avgPct = Math.min(98, Math.round((cohortAvgForTier / maxBarScale) * 100));
+
+                const row = document.createElement("div");
+                row.className = "diff-row";
+                row.innerHTML = `
+                    <div class="diff-meta">
+                        <span>${tier.label}</span>
+                        <span><strong style="color:#fff;">${tier.mine}</strong> mastered <span style="color:#94a3b8; font-weight:500;">(Avg: ${cohortAvgForTier.toFixed(1)})</span></span>
+                    </div>
+                    <div class="diff-track">
+                        <div class="diff-fill" style="width: ${myPct}%; background: ${tier.color};"></div>
+                        <div class="diff-avg-marker" style="left: ${avgPct}%;" title="School Average: ${cohortAvgForTier.toFixed(1)}"></div>
+                    </div>
+                `;
+                diffContainer.appendChild(row);
+            });
+
+            // Populate Personalised Highlights List
+            const highlightsList = document.getElementById("dash-highlights-list");
+            const bestSong = [...mySongList].sort((a, b) => b.bestAcc - a.bestAcc)[0];
+            const closeToMastery = mySongList.filter(s => s.bestAcc >= 65 && s.bestAcc < 80);
+
+            highlightsList.innerHTML = `
+                <li class="highlight-item">
+                    <span>🔥 Highest Accuracy Song</span>
+                    <strong>${bestSong ? `${bestSong.title} (${bestSong.bestAcc.toFixed(0)}%)` : "Play a song to set!"}</strong>
+                </li>
+                <li class="highlight-item" style="border-left-color: #facc15;">
+                    <span>⚡ Almost Mastered (65%–79%)</span>
+                    <strong>${closeToMastery.length} song${closeToMastery.length === 1 ? "" : "s"}</strong>
+                </li>
+                <li class="highlight-item" style="border-left-color: #a855f7;">
+                    <span>👥 Active School Players</span>
+                    <strong>${allStudentStats.length} students</strong>
+                </li>
+            `;
+
+            // Dynamic Next Goal Tip
+            const goalTip = document.getElementById("dash-next-goal-tip");
+            if (closeToMastery.length > 0) {
+                goalTip.innerHTML = `💡 <strong>Quick Win, ${firstName}:</strong> You're at <strong>${closeToMastery[0].bestAcc.toFixed(0)}%</strong> on <em>${closeToMastery[0].title}</em> — push past 80% to master it!`;
+            } else if (myMastered < parseFloat(avgMastered)) {
+                const diffNeeded = Math.max(1, Math.ceil(parseFloat(avgMastered) - myMastered));
+                goalTip.innerHTML = `💡 <strong>Goal for ${firstName}:</strong> Master <strong>${diffNeeded} more song${diffNeeded > 1 ? "s" : ""}</strong> (>80%) to beat the school average!`;
+            } else {
+                goalTip.innerHTML = `🌟 <strong>Crushing it, ${firstName}!</strong> You're ahead of the school average — try a <strong>Hard</strong> or <strong>Expert</strong> song next!`;
+            }
+
+            // Show the modal
+            const dashModal = document.getElementById("student-stats-modal");
+            dashModal.classList.add("open");
+
+            document.getElementById("btn-close-stats-dashboard").onclick = () => {
+                dashModal.classList.remove("open");
+                dashModal.style.display = "none";
+            };
+        }
+
         function finalizeLogin() {
             const overlay = document.getElementById("google-login-overlay");
             if (overlay) overlay.remove();
@@ -219,6 +844,11 @@
                 if (!window.pianoPadUser.isTeacher) {
                     classSelect.disabled = true;
                 }
+            }
+
+            // Display the personalised student stats & peer comparison graphic upon login
+            if (!window.pianoPadUser.isTeacher) {
+                buildAndShowStudentDashboard();
             }
 
             // Force canvas and key layout recalculation now that the UI is visible
@@ -640,9 +1270,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Bonus Sound Unlock Notification Modal -->
-    
 
     <!-- Countdown Overlay -->
     <div class="countdown-overlay" id="countdown-overlay">
