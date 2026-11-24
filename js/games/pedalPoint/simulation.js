@@ -1,9 +1,10 @@
 // js/games/pedalPoint/simulation.js
 import { playErrorClackSound } from '../../audio.js';
 import {
-  TRAIL_LENGTH,
+  LEVELS,
   BIKE_PRESETS,
   TRAIL_ZONES,
+  COASTAL_ZONES,
   DEFAULT_BINDINGS
 } from './constants.js';
 import { detectTriadFromPitchClasses } from './musicTheoryUtils.js';
@@ -18,6 +19,12 @@ import {
 import { createParticleSystem } from './particles.js';
 import { createPlayerBike, createGhostBike } from './bikeBuilder.js';
 import { buildWorld } from './worldBuilder.js';
+import {
+  buildCoastalWorld,
+  getCoastalPathX,
+  getCoastalTerrainHeight,
+  getCoastalTerrainNormal
+} from './coastalLevel.js';
 import { mountPedalPointHUD } from './hud.js';
 
 export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
@@ -48,8 +55,10 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
   // Three.js Scene & Lighting
   const scene = new THREE.Scene();
   const colSkyCoastal = new THREE.Color(0x6bb6e8);
+  const colSkySummer = new THREE.Color(0x52b6f5);
   const colSkyRainforest = new THREE.Color(0x3a6e63);
   const colFogCoastal = new THREE.Color(0xa6d8f5);
+  const colFogSummer = new THREE.Color(0xbce6ff);
   const colFogRainforest = new THREE.Color(0x3f6b5a);
   const colSunCoastal = new THREE.Color(0xfff4d6);
   const colSunRainforest = new THREE.Color(0xdcf5c8);
@@ -87,6 +96,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
   const playerBike = createPlayerBike(THREE, scene);
   const ghostBike = createGhostBike(THREE, scene);
 
+  let selectedLevelKey = 'escarpment';
   let currentSeed = 2500;
   let worldData = {
     worldGroup: null,
@@ -97,8 +107,18 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     cargoShips: [],
     floatingNotes: [],
     coastalBirds: [],
-    hangGliders: []
+    hangGliders: [],
+    pedestrians: []
   };
+
+  // Active-level geometry helpers
+  const getLevelLength = () => LEVELS[selectedLevelKey].length;
+  const getPathCenterX = (z) => (selectedLevelKey === 'coastal' ? getCoastalPathX(z) : getTrailCenterX(z));
+  const getGroundY = (x, z) => (selectedLevelKey === 'coastal' ? getCoastalTerrainHeight(x, z) : getTerrainHeight(x, z));
+  const getGroundNormal = (x, z, outVec) =>
+    selectedLevelKey === 'coastal'
+      ? getCoastalTerrainNormal(THREE, x, z, outVec)
+      : getTerrainNormal(THREE, x, z, outVec);
 
   // Key Bindings & 4-Step Calibration
   let bindings = JSON.parse(localStorage.getItem('pedalpoint_key_bindings') || 'null') || JSON.parse(JSON.stringify(DEFAULT_BINDINGS));
@@ -204,19 +224,29 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
   let notesHit = 0;
   let overdriveTimer = 0;
   let lastZoneIdx = -1;
-  let bestScore = parseInt(localStorage.getItem('pedalpoint_best_score') || '0', 10);
 
+  const getBestStorageKey = () =>
+    selectedLevelKey === 'coastal' ? 'pedalpoint_coastal_best_score' : 'pedalpoint_best_score';
+  const getGhostStorageKey = () =>
+    selectedLevelKey === 'coastal' ? 'pedalpoint_coastal_best_ghost' : 'pedalpoint_best_ghost';
+
+  let bestScore = parseInt(localStorage.getItem(getBestStorageKey()) || '0', 10);
   let bestGhostFrames = [];
-  try {
-    bestGhostFrames = JSON.parse(localStorage.getItem('pedalpoint_best_ghost') || '[]') || [];
-  } catch (e) {
-    bestGhostFrames = [];
+  function loadLevelRecords() {
+    bestScore = parseInt(localStorage.getItem(getBestStorageKey()) || '0', 10);
+    els.valBest.textContent = bestScore > 0 ? bestScore.toLocaleString() : '--';
+    try {
+      bestGhostFrames = JSON.parse(localStorage.getItem(getGhostStorageKey()) || '[]') || [];
+    } catch (e) {
+      bestGhostFrames = [];
+    }
   }
+
   let currentGhostFrames = [];
   let ghostRecordTimer = 0;
   let runElapsedTime = 0;
 
-  if (bestScore > 0) els.valBest.textContent = bestScore.toLocaleString();
+  loadLevelRecords();
 
   els.btnGhostToggle.addEventListener('click', () => {
     showGhost = !showGhost;
@@ -284,6 +314,53 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     heldPianoNotes: new Map()
   };
 
+  function rebuildActiveWorld() {
+    worldData =
+      selectedLevelKey === 'coastal'
+        ? buildCoastalWorld(THREE, scene, currentSeed, worldData.worldGroup)
+        : buildWorld(THREE, scene, currentSeed, worldData.worldGroup);
+  }
+
+  function selectLevel(levelKey, autoDropIn = false) {
+    selectedLevelKey = LEVELS[levelKey] ? levelKey : 'escarpment';
+    const lvl = LEVELS[selectedLevelKey];
+
+    selectedBikeKey = lvl.defaultBike;
+    playerBike.setPresetGeometry(selectedBikeKey);
+    document.querySelectorAll('#pp-bike-grid .bike-opt').forEach(c => {
+      c.classList.toggle('selected', c.dataset.bike === selectedBikeKey);
+    });
+
+    hud.setLevelUI(selectedLevelKey);
+    loadLevelRecords();
+
+    if (autoDropIn) {
+      startGame();
+    } else {
+      isPlaying = false;
+      audio.stop();
+      els.overlayEl.style.display = 'flex';
+      rebuildActiveWorld();
+      const startX = getPathCenterX(0);
+      bike.pos.set(startX, getGroundY(startX, 0), 0);
+      bike.yaw = 0;
+    }
+  }
+
+  els.levelBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectLevel(btn.dataset.level, false);
+    });
+  });
+
+  if (els.btnLevelSwitch) {
+    els.btnLevelSwitch.addEventListener('click', () => {
+      const nextLvl = selectedLevelKey === 'escarpment' ? 'coastal' : 'escarpment';
+      selectLevel(nextLvl, isPlaying);
+      els.btnLevelSwitch.blur();
+    });
+  }
+
   function toggleCameraMode() {
     isFirstPerson = !isFirstPerson;
     playerBike.headGroup.visible = !isFirstPerson;
@@ -340,7 +417,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         hud.showCallout(`🚵‍♂️ ${triad.name} WHEELIE! +250`, '#c084fc');
         overdriveTimer = Math.max(overdriveTimer, 2.2);
 
-        if (isLookoutZ(bike.pos.z) && Math.random() < 0.45) {
+        if ((selectedLevelKey === 'coastal' || isLookoutZ(bike.pos.z)) && Math.random() < 0.45) {
           audio.playPortKemblaFoghorn(triad.root);
         }
       }
@@ -384,8 +461,10 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     bike.suspensionComp = 0;
 
     audio.playJumpPop(isOnBeat || lipBoost > 1.0);
-    particles.spawnDirtRoost(bike.pos, 0, 1, 10, 4.2, isOnBeat ? 0x34d399 : 0x8c5730);
-    particles.spawnDustCloud(bike.pos, 0, 1, 5, 2.4);
+    if (selectedLevelKey === 'escarpment') {
+      particles.spawnDirtRoost(bike.pos, 0, 1, 10, 4.2, isOnBeat ? 0x34d399 : 0x8c5730);
+      particles.spawnDustCloud(bike.pos, 0, 1, 5, 2.4);
+    }
   }
 
   function handleControlDown(type, code, displayLabel, feedbackNoteOrMidi = 60) {
@@ -427,7 +506,9 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
           overdriveTimer = Math.max(overdriveTimer, 1.4);
           addScore(150, false);
           hud.showCallout('⚡ TRANSITION PUMP! +150', '#38bdf8');
-          particles.spawnDirtRoost(bike.pos, 0, 1, 10, 4.5, 0x38bdf8);
+          if (selectedLevelKey === 'escarpment') {
+            particles.spawnDirtRoost(bike.pos, 0, 1, 10, 4.5, 0x38bdf8);
+          }
         }
       } else {
         input.jumpHeld = true;
@@ -467,8 +548,8 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         bike.targetSnapX = matchedOffset;
         overdriveTimer = Math.max(overdriveTimer, 1.5);
       } else if (!bike.wheelieActive) {
-        bike.vel.z -= 2.2;
-        overdriveTimer = Math.max(overdriveTimer, 1.2);
+        bike.vel.z -= selectedLevelKey === 'coastal' ? 3.2 : 2.2;
+        overdriveTimer = Math.max(overdriveTimer, 1.3);
       }
     }
   }
@@ -568,12 +649,12 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     muteControlNotesActive = true;
 
     currentSeed = Math.floor(1000 + Math.random() * 8999);
-    worldData = buildWorld(THREE, scene, currentSeed, worldData.worldGroup);
+    rebuildActiveWorld();
 
-    const startX = getTrailCenterX(0);
-    const startY = getTerrainHeight(startX, 0);
+    const startX = getPathCenterX(0);
+    const startY = getGroundY(startX, 0);
     bike.pos.set(startX, startY, 0);
-    bike.vel.set(0, 0, -16);
+    bike.vel.set(0, 0, selectedLevelKey === 'coastal' ? -20 : -16);
     bike.yaw = 0;
     bike.yawRate = 0;
     bike.smoothSteer = 0;
@@ -622,7 +703,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
 
     els.valScore.textContent = '0';
     els.valCombo.textContent = 'x1';
-    els.valRem.textContent = `${TRAIL_LENGTH}m`;
+    els.valRem.textContent = `${getLevelLength()}m`;
 
     audio.setComboLayer(0);
     hud.updateEqVisuals(0);
@@ -630,6 +711,13 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
 
     els.overlayEl.style.display = 'none';
     isPlaying = true;
+
+    if (statusEl) {
+      statusEl.textContent =
+        selectedLevelKey === 'coastal'
+          ? '⚡ Wollongong Coastal E-Bike Sprint! Drop past the Lighthouse & Harbour and dodge path traffic!'
+          : '🚵‍♂️ Pedal Point Active! Carve down the Illawarra Escarpment!';
+    }
   }
 
   function finishCourse() {
@@ -638,19 +726,24 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     muteControlNotesActive = false;
     if (score > bestScore) {
       bestScore = score;
-      localStorage.setItem('pedalpoint_best_score', String(bestScore));
+      localStorage.setItem(getBestStorageKey(), String(bestScore));
       els.valBest.textContent = bestScore.toLocaleString();
       if (currentGhostFrames.length > 1) {
         bestGhostFrames = currentGhostFrames;
         try {
-          localStorage.setItem('pedalpoint_best_ghost', JSON.stringify(bestGhostFrames));
+          localStorage.setItem(getGhostStorageKey(), JSON.stringify(bestGhostFrames));
         } catch (e) {}
       }
     }
 
     const accuracy = notesAttempted > 0 ? Math.round((notesHit / notesAttempted) * 100) : 100;
+    const isCoastal = selectedLevelKey === 'coastal';
+    const bannerTitle = isCoastal
+      ? '⚡ WOLLONGONG COASTAL E-BIKE SPRINT COMPLETE!'
+      : '🚵‍♂️ ESCARPMENT DESCENT COMPLETE!';
+
     const summaryHtml =
-      `<span style="color:#34d399; font-weight:900;">🚵‍♂️ ESCARPMENT DESCENT COMPLETE!</span><br>` +
+      `<span style="color:#34d399; font-weight:900;">${bannerTitle}</span><br>` +
       `Score: <span style="color:#fbbf24; font-size:1.4rem; font-weight:900;">${score.toLocaleString()}</span><br>` +
       `<span style="font-size:0.82rem; color:#38bdf8;">Musical Accuracy: ${accuracy}% • Max Flow: x${maxCombo} • Max Air: ${maxAirtime.toFixed(2)}s</span>`;
 
@@ -661,9 +754,9 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
 
   // Initial Preview World
   playerBike.setPresetGeometry(selectedBikeKey);
-  worldData = buildWorld(THREE, scene, currentSeed, worldData.worldGroup);
-  const initX = getTrailCenterX(0);
-  bike.pos.set(initX, getTerrainHeight(initX, 0), 0);
+  rebuildActiveWorld();
+  const initX = getPathCenterX(0);
+  bike.pos.set(initX, getGroundY(initX, 0), 0);
 
   const tmpNormal = new THREE.Vector3();
   let lastTime = performance.now();
@@ -674,6 +767,9 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     animFrameId = requestAnimationFrame(animate);
     const dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
+
+    const activeLength = getLevelLength();
+    const isCoastal = selectedLevelKey === 'coastal';
 
     if (isPlaying) {
       runElapsedTime += dt;
@@ -690,11 +786,11 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       ghostRecordTimer += dt;
       if (ghostRecordTimer >= 0.1) {
         ghostRecordTimer = 0;
-        const cxNow = getTrailCenterX(bike.pos.z);
+        const cxNow = getPathCenterX(bike.pos.z);
         currentGhostFrames.push({
           t: Number(runElapsedTime.toFixed(2)),
           dx: Number((bike.pos.x - cxNow).toFixed(2)),
-          yOff: Number((bike.pos.y - getTerrainHeight(bike.pos.x, bike.pos.z)).toFixed(2)),
+          yOff: Number((bike.pos.y - getGroundY(bike.pos.x, bike.pos.z)).toFixed(2)),
           z: Number(bike.pos.z.toFixed(1)),
           yaw: Number(bike.yaw.toFixed(3)),
           wh: Number(bike.wheelieAngle.toFixed(2))
@@ -707,23 +803,20 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       if (els.beatRightEl) els.beatRightEl.style.right = `${pct}%`;
 
       const preset = BIKE_PRESETS[selectedBikeKey];
-      const normal = getTerrainNormal(THREE, bike.pos.x, bike.pos.z, tmpNormal);
+      const normal = getGroundNormal(bike.pos.x, bike.pos.z, tmpNormal);
 
-      // Progressive hold-based steering: quick taps give tiny nudges, holding builds up to full carve
+      // Progressive hold-based steering: quick taps give fine lane adjustments, holding carves harder
       const rawSteer = (input.left ? 1 : 0) - (input.right ? 1 : 0);
       if (rawSteer !== 0) {
-        // Reset hold timer immediately if direction reverses
         if (Math.sign(bike.smoothSteer) !== 0 && Math.sign(bike.smoothSteer) !== rawSteer) {
           bike.steerHoldTime = 0;
         }
         bike.steerHoldTime = Math.min(0.85, bike.steerHoldTime + dt);
-        // Starts at 22% turn authority on tap, ramping smoothly to 100% after ~0.65s of holding
         const holdGain = 0.22 + 0.78 * Math.pow(bike.steerHoldTime / 0.85, 1.45);
         const targetSteer = rawSteer * holdGain;
         bike.smoothSteer += (targetSteer - bike.smoothSteer) * Math.min(1, dt * 8.5);
       } else {
         bike.steerHoldTime = 0;
-        // Snap back to straight promptly when key is released
         bike.smoothSteer += (0 - bike.smoothSteer) * Math.min(1, dt * 14.0);
       }
       bike.steerAngle += (bike.smoothSteer * 0.44 - bike.steerAngle) * Math.min(1, dt * 10.0);
@@ -737,7 +830,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         bike.vel.x += normal.x * grav * dt;
         bike.vel.z += normal.z * grav * dt;
 
-        // Downslope pumping bonus: holding Jump while rolling down steep hills/rollers builds free speed
+        // Downslope pumping bonus
         if (input.jumpHeld && normal.z < -0.06) {
           bike.vel.z += normal.z * 16.0 * dt;
         }
@@ -745,7 +838,8 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         const fwdX = -Math.sin(bike.yaw);
         const fwdZ = -Math.cos(bike.yaw);
         const wheelieBoost = bike.wheelieActive ? 1.14 : 1.0;
-        const boost = (overdriveTimer > 0 ? 1.24 : 1.0) * wheelieBoost;
+        const coastalMotorBoost = isCoastal ? 1.26 : 1.0;
+        const boost = (overdriveTimer > 0 ? 1.24 : 1.0) * wheelieBoost * coastalMotorBoost;
 
         if (horizSpeed < preset.maxPedalSpeed * boost) {
           bike.vel.x += fwdX * preset.pedalForce * boost * dt;
@@ -756,11 +850,13 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         bike.yawRate += (targetTurnRate - bike.yawRate) * Math.min(1, dt * (rawSteer !== 0 ? 8.5 : 13.0));
         bike.yaw = Math.max(-0.85, Math.min(0.85, bike.yaw + bike.yawRate * dt));
 
-        // Berm Slingshot: carving high on banked corners adds exit speed
-        const cxAtBike = getTrailCenterX(bike.pos.z);
-        const distFromCenter = Math.abs(bike.pos.x - cxAtBike);
-        if (distFromCenter > 2.2 && distFromCenter < 4.5 && Math.abs(bike.smoothSteer) > 0.35 && horizSpeed > 18) {
-          bike.vel.z -= 5.2 * dt;
+        // Berm Slingshot on Level 1 singletrack
+        if (!isCoastal) {
+          const cxAtBike = getPathCenterX(bike.pos.z);
+          const distFromCenter = Math.abs(bike.pos.x - cxAtBike);
+          if (distFromCenter > 2.2 && distFromCenter < 4.5 && Math.abs(bike.smoothSteer) > 0.35 && horizSpeed > 18) {
+            bike.vel.z -= 5.2 * dt;
+          }
         }
 
         const speedNow = Math.hypot(bike.vel.x, bike.vel.z);
@@ -772,29 +868,33 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         const lateralSlip = bike.vel.x * rightX + bike.vel.z * rightZ;
 
         const turnIntensity = Math.abs(bike.yawRate) * Math.max(0, (speedNow - 15) / 24);
-        const lateralGrip = Math.max(4.5, 9.2 - turnIntensity * 1.8);
+        // Paved concrete path in Level 2 has higher tire grip than loose mountain dirt
+        const baseGrip = isCoastal ? 12.5 : 9.2;
+        const lateralGrip = Math.max(4.5, baseGrip - turnIntensity * 1.8);
 
         bike.vel.x += (desiredVx - bike.vel.x) * Math.min(1, dt * lateralGrip);
         bike.vel.z += (desiredVz - bike.vel.z) * Math.min(1, dt * lateralGrip);
 
         if (bike.targetSnapX !== null) {
-          const desiredX = getTrailCenterX(bike.pos.z) + bike.targetSnapX;
+          const desiredX = getPathCenterX(bike.pos.z) + bike.targetSnapX;
           const diffX = desiredX - bike.pos.x;
           bike.pos.x += diffX * Math.min(1, dt * 4.8);
           bike.leanAngle += (Math.max(-0.35, Math.min(0.35, -diffX * 0.14)) - bike.leanAngle) * Math.min(1, dt * 6);
           if (Math.abs(diffX) < 0.08) bike.targetSnapX = null;
         }
 
-        const maxSpd = preset.maxDownhillSpeed * (overdriveTimer > 0 ? 1.16 : 1.0);
+        const coastalTopMult = isCoastal ? 1.24 : 1.0;
+        const maxSpd = preset.maxDownhillSpeed * coastalTopMult * (overdriveTimer > 0 ? 1.16 : 1.0);
         const clampedSpd = Math.hypot(bike.vel.x, bike.vel.z);
         if (clampedSpd > maxSpd) {
           const s = maxSpd / clampedSpd;
           bike.vel.x *= s;
           bike.vel.z *= s;
         }
-        // Guarantee steady downhill forward momentum so bike never stalls at 0 km/h
-        if (bike.vel.z > -14.0) {
-          bike.vel.z = Math.min(-14.0, bike.vel.z - 18.0 * dt);
+
+        const minCruiseZ = isCoastal ? -19.5 : -14.0;
+        if (bike.vel.z > minCruiseZ) {
+          bike.vel.z = Math.min(minCruiseZ, bike.vel.z - 22.0 * dt);
         }
         bike.whipTarget = 0;
 
@@ -807,12 +907,16 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
           }
         }
 
+        // Dirt roost & skid sound only on dirt (Level 1) or if drifting onto grass
+        const cxCheck = getPathCenterX(bike.pos.z);
+        const onPavedConcrete = isCoastal && Math.abs(bike.pos.x - cxCheck) <= 2.7;
+
         const skidMetric = Math.abs(lateralSlip) * 0.24 + turnIntensity * 0.52;
         bike.skidIntensity += (Math.min(1.4, skidMetric) - bike.skidIntensity) * Math.min(1, dt * 9);
         const targetSkidYaw = Math.max(-0.32, Math.min(0.32, lateralSlip * 0.05 + bike.yawRate * 0.07));
         bike.skidAngle += (targetSkidYaw - bike.skidAngle) * Math.min(1, dt * 9);
 
-        if (bike.skidIntensity > 0.36 && clampedSpd > 15) {
+        if (!onPavedConcrete && bike.skidIntensity > 0.36 && clampedSpd > 15) {
           const roostDirX = lateralSlip >= 0 ? rightX : -rightX;
           const roostDirZ = lateralSlip >= 0 ? rightZ : -rightZ;
           const rearTirePos = {
@@ -862,17 +966,18 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
 
       bike.pos.addScaledVector(bike.vel, dt);
 
-      // Soft Mountain-Edge Guardrail & Trail Recovery
-      const cx = getTrailCenterX(bike.pos.z);
+      // Soft Path / Trail Boundary Guardrail
+      const cx = getPathCenterX(bike.pos.z);
       const offsetFromTrail = bike.pos.x - cx;
-      const maxEdgeOffset = 8.5;
+      const softZoneOffset = isCoastal ? 2.5 : 6.0;
+      const maxEdgeOffset = isCoastal ? 4.4 : 8.5;
       if (bike.edgeGuardCooldown > 0) bike.edgeGuardCooldown -= dt;
 
-      if (Math.abs(offsetFromTrail) > 6.0) {
+      if (Math.abs(offsetFromTrail) > softZoneOffset) {
         const pullSign = offsetFromTrail > 0 ? -1 : 1;
-        const edgePenetration = Math.min(1, (Math.abs(offsetFromTrail) - 6.0) / (maxEdgeOffset - 6.0));
-        bike.vel.x += pullSign * edgePenetration * 14.0 * dt;
-        bike.yaw += (0 - bike.yaw) * Math.min(1, dt * 3.5 * edgePenetration);
+        const edgePenetration = Math.min(1, (Math.abs(offsetFromTrail) - softZoneOffset) / (maxEdgeOffset - softZoneOffset));
+        bike.vel.x += pullSign * edgePenetration * (isCoastal ? 18.0 : 14.0) * dt;
+        bike.yaw += (0 - bike.yaw) * Math.min(1, dt * 4.0 * edgePenetration);
       }
 
       if (Math.abs(offsetFromTrail) > maxEdgeOffset) {
@@ -882,12 +987,19 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         bike.yaw *= 0.4;
         if (bike.edgeGuardCooldown <= 0) {
           bike.edgeGuardCooldown = 2.0;
-          hud.showCallout('TRAIL EDGE GUARD!', '#38bdf8');
-          particles.spawnDirtRoost(bike.pos, -clampedSide, 0, 8, 3.8, 0x9b6438);
+          hud.showCallout(
+            isCoastal
+              ? (clampedSide > 0 ? 'STAY OFF THE DUNE DROP-OFF!' : 'STAY ON THE CONCRETE PATH!')
+              : 'TRAIL EDGE GUARD!',
+            '#38bdf8'
+          );
+          if (!isCoastal) {
+            particles.spawnDirtRoost(bike.pos, -clampedSide, 0, 8, 3.8, 0x9b6438);
+          }
         }
       }
 
-      // Check Fallen Logs & Wooden North-Shore Bridges
+      // Level 1: Fallen Logs & Wooden North-Shore Bridges
       let bridgeFloorY = -9999;
       bike.onBridge = false;
 
@@ -897,7 +1009,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         if (obs.type === 'log') {
           if (!obs.resolved && Math.abs(bike.pos.z - obs.z) < 1.35 && Math.abs(bike.pos.x - obs.x) < obs.halfWidth) {
             obs.resolved = true;
-            const groundAtLog = getTerrainHeight(bike.pos.x, obs.z);
+            const groundAtLog = getGroundY(bike.pos.x, obs.z);
             const wheelClearance = bike.pos.y - groundAtLog;
             if (wheelClearance >= obs.height * 0.62 || bike.wheelieActive) {
               addScore(250, true);
@@ -915,8 +1027,8 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
           }
         } else if (obs.type === 'bridge') {
           if (Math.abs(bike.pos.z - obs.z) <= obs.halfLen && Math.abs(bike.pos.x - obs.x) <= obs.halfWidth) {
-            const startY = getTerrainHeight(obs.x, obs.z + obs.halfLen);
-            const endY = getTerrainHeight(obs.x, obs.z - obs.halfLen);
+            const startY = getGroundY(obs.x, obs.z + obs.halfLen);
+            const endY = getGroundY(obs.x, obs.z - obs.halfLen);
             const t = (obs.z + obs.halfLen - bike.pos.z) / (obs.halfLen * 2);
             const deckY = startY + (endY - startY) * t + 0.42;
             if (bike.pos.y >= deckY - 0.35) {
@@ -933,7 +1045,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         }
       }
 
-      const terrainY = getTerrainHeight(bike.pos.x, bike.pos.z);
+      const terrainY = getGroundY(bike.pos.x, bike.pos.z);
       const groundY = Math.max(terrainY, bridgeFloorY);
 
       if (bike.pos.y <= groundY + 0.04) {
@@ -944,8 +1056,10 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
           bike.suspensionComp = Math.max(bike.suspensionComp, comp);
           bike.pumpWindowTimer = 0.32;
           audio.playLandingThud(comp);
-          particles.spawnDirtRoost(bike.pos, 0, 1, 12, 4.5, 0x9b6438);
-          particles.spawnDustCloud(bike.pos, 0, 1, 6, 2.8);
+          if (!isCoastal) {
+            particles.spawnDirtRoost(bike.pos, 0, 1, 12, 4.5, 0x9b6438);
+            particles.spawnDustCloud(bike.pos, 0, 1, 6, 2.8);
+          }
 
           if (input.jumpHeld && normal.z < -0.05) {
             bike.pumpWindowTimer = 0;
@@ -979,11 +1093,12 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         }
       }
 
-      for (let i = TRAIL_ZONES.length - 1; i >= 0; i--) {
-        if (bike.pos.z <= TRAIL_ZONES[i].z) {
+      const activeZones = isCoastal ? COASTAL_ZONES : TRAIL_ZONES;
+      for (let i = activeZones.length - 1; i >= 0; i--) {
+        if (bike.pos.z <= activeZones[i].z) {
           if (i !== lastZoneIdx) {
             lastZoneIdx = i;
-            hud.showCallout(TRAIL_ZONES[i].name, '#38bdf8');
+            hud.showCallout(activeZones[i].name, '#38bdf8');
           }
           break;
         }
@@ -1006,6 +1121,10 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
           g.mesh.visible = false;
           audio.playNoteTrigger(g.note.freq, combo >= 4);
           addScore(200, true);
+          if (isCoastal) {
+            bike.vel.z -= 2.5;
+            overdriveTimer = Math.max(overdriveTimer, 2.0);
+          }
           hud.showCallout(`♪ ${g.note.name} NOTE! +200`, g.note.hex);
           particles.spawnDirtRoost(bike.pos, 0, 1, 14, 5.5, g.note.color);
         } else if (bike.pos.z < g.z - 4.0) {
@@ -1143,13 +1262,49 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       }
 
       const speedKmh = Math.round(Math.hypot(bike.vel.x, bike.vel.z) * 3.6);
-      const rem = Math.max(0, Math.round(TRAIL_LENGTH + bike.pos.z));
+      const rem = Math.max(0, Math.round(activeLength + bike.pos.z));
       els.valSpeed.textContent = `${speedKmh} km/h`;
       els.valRem.textContent = `${rem}m`;
 
-      if (bike.pos.z <= -TRAIL_LENGTH) {
+      if (bike.pos.z <= -activeLength) {
         finishCourse();
         return;
+      }
+    }
+
+    // Level 2: Animate Walkers, Runners, Prams & Surfers with Surfboards on Concrete Path
+    const peds = worldData.pedestrians || [];
+    for (let i = 0; i < peds.length; i++) {
+      const p = peds[i];
+      p.z += p.velZ * dt;
+      const px = getCoastalPathX(p.z) + p.laneOff;
+      const py = getCoastalTerrainHeight(px, p.z);
+      p.group.position.set(px, py, p.z);
+
+      const strideFreq = p.type === 'runner' ? 0.016 : 0.008;
+      const swing = Math.sin(now * strideFreq + p.phase) * (p.type === 'runner' ? 0.72 : 0.42);
+      p.leftLeg.rotation.x = swing;
+      p.rightLeg.rotation.x = -swing;
+      if (p.type !== 'pram' && p.type !== 'surfer') {
+        p.leftArm.rotation.x = -swing * 0.85;
+        p.rightArm.rotation.x = swing * 0.85;
+      }
+
+      if (!isPlaying || p.resolved) continue;
+      const dz = Math.abs(bike.pos.z - p.z);
+      const dx = Math.abs(bike.pos.x - px);
+
+      if (dz < 1.15 && dx < p.hitHalfWidth + 0.32 && (bike.pos.y - py) < 1.45) {
+        p.resolved = true;
+        bike.vel.z = Math.min(-11.0, bike.vel.z * 0.48);
+        breakCombo();
+        audio.playMissBuzz();
+        hud.showCallout(`⚠️ WATCH OUT! ${p.labelText}!`, '#f87171');
+      } else if (!p.nearMissAwarded && bike.pos.z < p.z - 1.2 && dz < 3.6 && dx < p.hitHalfWidth + 1.45) {
+        p.nearMissAwarded = true;
+        addScore(150, true);
+        bike.vel.z -= 2.2;
+        hud.showCallout(`⚡ CLEAN PASS (${p.labelText})! +150`, '#34d399');
       }
     }
 
@@ -1173,8 +1328,8 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       const gYaw = fA.yaw + (fB.yaw - fA.yaw) * alpha;
       const gWh = (fA.wh || 0) + ((fB.wh || 0) - (fA.wh || 0)) * alpha;
 
-      const gX = getTrailCenterX(gZ) + gDx;
-      const gY = getTerrainHeight(gX, gZ) + gYOff;
+      const gX = getPathCenterX(gZ) + gDx;
+      const gY = getGroundY(gX, gZ) + gYOff;
       ghostBike.ghostRoot.position.set(gX, gY, gZ);
       ghostBike.ghostRoot.rotation.set(0, gYaw, 0);
       ghostBike.ghostPivot.rotation.x = gWh;
@@ -1189,8 +1344,8 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
 
     const fwdX = -Math.sin(bike.yaw);
     const fwdZ = -Math.cos(bike.yaw);
-    const hAhead = getTerrainHeight(bike.pos.x + fwdX * 1.1, bike.pos.z + fwdZ * 1.1);
-    const hBehind = getTerrainHeight(bike.pos.x - fwdX * 1.1, bike.pos.z - fwdZ * 1.1);
+    const hAhead = getGroundY(bike.pos.x + fwdX * 1.1, bike.pos.z + fwdZ * 1.1);
+    const hBehind = getGroundY(bike.pos.x - fwdX * 1.1, bike.pos.z - fwdZ * 1.1);
     const slopePitch = Math.atan2(hAhead - hBehind, 2.2);
     const airPitch = Math.max(-0.55, Math.min(0.6, bike.vel.y * 0.028 + bike.airPitchOffset));
     playerBike.bikeVisual.rotation.x += ((bike.grounded ? slopePitch : airPitch) - playerBike.bikeVisual.rotation.x) * 0.18;
@@ -1221,7 +1376,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       leg.group.rotation.x = bike.grounded ? Math.sin(phase) * 0.28 : crouch * 0.8;
     });
 
-    const groundY = getTerrainHeight(bike.pos.x, bike.pos.z);
+    const groundY = getGroundY(bike.pos.x, bike.pos.z);
     const alt = Math.max(0, bike.pos.y - groundY);
     playerBike.groundShadow.position.y = -alt + 0.05;
     const sScale = Math.max(0.35, 1 - alt * 0.09);
@@ -1280,22 +1435,37 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       if (cs.mesh.position.z < -2700) cs.mesh.position.z = 100;
     }
 
-    const rfNow = getRainforestBlend(bike.pos.z);
-    scene.background.copy(colSkyCoastal).lerp(colSkyRainforest, rfNow * 0.72);
-    scene.fog.color.copy(colFogCoastal).lerp(colFogRainforest, rfNow * 0.78);
-    scene.fog.density = 0.00095 + (0.0042 - 0.00095) * rfNow;
-    sunLight.color.copy(colSunCoastal).lerp(colSunRainforest, rfNow * 0.65);
-    sunLight.intensity = 1.48 + (1.15 - 1.48) * rfNow;
-    hemiLight.color.copy(colHemiSkyCoastal).lerp(colHemiSkyRainforest, rfNow * 0.7);
+    if (isCoastal) {
+      scene.background.copy(colSkySummer);
+      scene.fog.color.copy(colFogSummer);
+      scene.fog.density = 0.00055;
+      sunLight.color.copy(colSunCoastal);
+      sunLight.intensity = 1.65;
+      hemiLight.color.copy(colHemiSkyCoastal);
+    } else {
+      const rfNow = getRainforestBlend(bike.pos.z);
+      scene.background.copy(colSkyCoastal).lerp(colSkyRainforest, rfNow * 0.72);
+      scene.fog.color.copy(colFogCoastal).lerp(colFogRainforest, rfNow * 0.78);
+      scene.fog.density = 0.00095 + (0.0042 - 0.00095) * rfNow;
+      sunLight.color.copy(colSunCoastal).lerp(colSunRainforest, rfNow * 0.65);
+      sunLight.intensity = 1.48 + (1.15 - 1.48) * rfNow;
+      hemiLight.color.copy(colHemiSkyCoastal).lerp(colHemiSkyRainforest, rfNow * 0.7);
+    }
 
     sunLight.position.set(bike.pos.x + 38, bike.pos.y + 72, bike.pos.z + 32);
     sunLight.target.position.copy(bike.pos);
     sunLight.target.updateMatrixWorld();
 
     if (!isPlaying) {
-      const ang = now * 0.00035;
-      camera.position.set(bike.pos.x + Math.sin(ang) * 4.6, bike.pos.y + 2.0, bike.pos.z + Math.cos(ang) * 4.6);
-      camera.lookAt(bike.pos.x, bike.pos.y + 1.0, bike.pos.z - 0.5);
+      if (isCoastal) {
+        // Angle preview camera behind the bike so Wollongong Lighthouse (right) & Harbour hill ahead are in full view
+        camera.position.set(bike.pos.x - 1.4, bike.pos.y + 2.6, bike.pos.z + 5.6);
+        camera.lookAt(bike.pos.x + 2.8, bike.pos.y + 1.2, bike.pos.z - 22);
+      } else {
+        const ang = now * 0.00035;
+        camera.position.set(bike.pos.x + Math.sin(ang) * 4.6, bike.pos.y + 2.0, bike.pos.z + Math.cos(ang) * 4.6);
+        camera.lookAt(bike.pos.x, bike.pos.y + 1.0, bike.pos.z - 0.5);
+      }
     } else if (isFirstPerson) {
       camera.position.set(bike.pos.x + fwdX * 0.25, bike.pos.y + 1.65 + bike.wheelieAngle * 0.55, bike.pos.z + fwdZ * 0.25);
       camera.lookAt(bike.pos.x + fwdX * 14, bike.pos.y + 0.85 + bike.wheelieAngle * 6.5, bike.pos.z + fwdZ * 14);
@@ -1303,7 +1473,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       const camYaw = bike.yaw * 0.45;
       const camX = bike.pos.x + Math.sin(camYaw) * 5.8;
       const camZ = bike.pos.z + Math.cos(camYaw) * 5.8;
-      const camGround = getTerrainHeight(camX, camZ);
+      const camGround = getGroundY(camX, camZ);
       const targetY = Math.max(camGround + 0.9, bike.pos.y + 2.65);
       camera.position.lerp(new THREE.Vector3(camX, targetY, camZ), Math.min(1, dt * 9.5));
       camera.lookAt(bike.pos.x - Math.sin(camYaw) * 7, bike.pos.y + 1.15, bike.pos.z - Math.cos(camYaw) * 7);
@@ -1336,7 +1506,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     startGame();
     if (statusEl) statusEl.textContent = '🚵‍♂️ Pedal Point Restarted! Carve down the Illawarra Escarpment!';
   } else {
-    if (statusEl) statusEl.textContent = '🚵‍♂️ Pedal Point Ready! Play your calibrated Piano Keys to carve the trail!';
+    if (statusEl) statusEl.textContent = '🚵‍♂️ Pedal Point Ready! Choose Level 1 (Escarpment) or Level 2 (Wollongong Bike Path)!';
   }
 
   animFrameId = requestAnimationFrame(animate);
