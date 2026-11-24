@@ -139,6 +139,7 @@ function injectNewArcadeButtons() {
         skiBtn.innerHTML = `<span style="font-size:1.5rem;">⛷️</span><strong>3D Ski Slalom</strong><small>Carve gates & grind rails</small>`;
         btnContainer.appendChild(skiBtn);
     }
+
     if (!document.getElementById('btn-arcade-rockball')) {
         const rockBallBtn = document.createElement('button');
         rockBallBtn.type = 'button';
@@ -1333,6 +1334,7 @@ export function launchPedalPoint() {
     document.getElementById('game-results-modal')?.classList.remove('open');
     startPedalPoint(gameBridgeHelper);
 }
+
 export function launchRockBall() {
     document.getElementById('game-results-modal')?.classList.remove('open');
     startRockBall(gameBridgeHelper);
@@ -1395,11 +1397,10 @@ Object.assign(window, {
     startPedalPoint: (b) => {
         document.getElementById('game-results-modal')?.classList.remove('open');
         startPedalPoint(b || gameBridgeHelper);
-    }, // <-- ADD THIS COMMA
+    },
     launchRockBall,
     startRockBall: (b) => {
         document.getElementById('game-results-modal')?.classList.remove('open');
         startRockBall(b || gameBridgeHelper);
     }
-    
 });
