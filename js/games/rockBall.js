@@ -7,7 +7,7 @@ let lastFrameTime = 0;
 let bridgeRef = null;
 let gamePhase = 'calibration'; // 'calibration' | 'ready' | 'playing' | 'gameover'
 
-// Calibration State (Lowest & Highest Keyboard Keys)
+// Calibration State (Lowest & Highest White Keyboard Keys)
 let calibStep = 1;
 let lowPitchNum = 12;  // Default C1
 let highPitchNum = 35; // Default B2
@@ -60,6 +60,16 @@ let floatingPopups = [];
 
 const SCALE_NOTES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 const NEON_COLORS = ['#ec4899', '#38bdf8', '#facc15', '#22c55e', '#a855f7'];
+const WHITE_PITCH_CLASSES = new Set([0, 2, 4, 5, 7, 9, 11]); // C, D, E, F, G, A, B
+
+function isWhiteKeyNote(noteStr) {
+    const clean = (noteStr || '').trim().toLowerCase();
+    return /^[a-g][0-9]+$/.test(clean);
+}
+
+function isWhitePitchNum(pNum) {
+    return WHITE_PITCH_CLASSES.has(((pNum % 12) + 12) % 12);
+}
 
 // ============================================================================
 // PROCEDURAL 96 BPM ROCK / HIP-HOP BACKGROUND MUSIC ENGINE
@@ -100,7 +110,7 @@ class RockHipHopGrooveEngine {
         const barStep = step % 16;
 
         // 808 Boom-Bap Kick
-        if (barStep === 0 || barStep === 3 || barStep === 7 || barStep === 10 || (step === 27)) {
+        if (barStep === 0 || barStep === 3 || barStep === 7 || barStep === 10 || step === 27) {
             this.play808Kick(t);
             beatPulse = 1.0;
         }
@@ -128,7 +138,7 @@ class RockHipHopGrooveEngine {
             16: 65.41,  // C2
             19: 77.78,  // Eb2
             22: 87.31,  // F2
-            24: 92.50,  // F#2 (blues passing tone)
+            24: 92.50,  // F#2
             26: 98.00,  // G2
             30: 58.27   // Bb1
         };
@@ -136,9 +146,9 @@ class RockHipHopGrooveEngine {
             this.playSubBass(t, bassNotes[step], 0.25);
         }
 
-        // Electric Rock Guitar Power-Chord Stabs on Beats 1 & & of 3
+        // Electric Rock Guitar Power-Chord Stabs
         if (step === 0 || step === 10 || step === 16 || step === 26) {
-            const root = (step === 0 || step === 16) ? 130.81 : 196.00; // C3 or G3
+            const root = (step === 0 || step === 16) ? 130.81 : 196.00;
             this.playRockGuitarChord(t, root, 0.28);
         }
     }
@@ -245,7 +255,7 @@ class RockHipHopGrooveEngine {
 const hipHopMusic = new RockHipHopGrooveEngine();
 
 // ============================================================================
-// MECHANICAL PINBALL SOUND EFFECTS (Flippers, Spring Plunger, Bumpers, Rails)
+// MECHANICAL PINBALL SOUND EFFECTS
 // ============================================================================
 function playRockBallSfx(type, param = null) {
     try {
@@ -254,7 +264,6 @@ function playRockBallSfx(type, param = null) {
         const now = audioCtx.currentTime;
 
         if (type === 'flipperUp' || type === 'flipperDown') {
-            // Crisp mechanical solenoid relay click + paddle stop thud
             const bufLen = Math.floor(audioCtx.sampleRate * 0.028);
             const buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
             const data = buf.getChannelData(0);
@@ -286,7 +295,6 @@ function playRockBallSfx(type, param = null) {
             thud.stop(now + 0.05);
 
         } else if (type === 'springPull') {
-            // Metallic coil tension ratchet tick while pulling plunger back
             const charge = typeof param === 'number' ? param : 0.5;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
@@ -301,7 +309,6 @@ function playRockBallSfx(type, param = null) {
             osc.stop(now + 0.04);
 
         } else if (type === 'springLaunch') {
-            // Authentic boinging spring release + steel ball rail launch whoosh
             const power = typeof param === 'number' ? param : 0.8;
             const springOsc = audioCtx.createOscillator();
             const lfo = audioCtx.createOscillator();
@@ -413,7 +420,7 @@ function playRockBallSfx(type, param = null) {
 }
 
 // ============================================================================
-// CALIBRATION MODAL
+// CALIBRATION MODAL (White Keys Only for Flipper Paddles)
 // ============================================================================
 function showRockBallCalibrationModal(bridge) {
     let modal = document.getElementById('rockball-calib-modal');
@@ -430,11 +437,11 @@ function showRockBallCalibrationModal(bridge) {
         <div class="modal" style="max-width: 540px; text-align: center; border: 2px solid #ec4899; box-shadow: 0 0 35px rgba(236,72,153,0.55); background: linear-gradient(145deg, #0f172a, #1e1b4b);">
             <h2 style="color: #facc15; margin-bottom: 6px; font-size: 1.5rem;">🎸 RockBall Keyboard Calibration</h2>
             <p id="rockball-calib-instructions" style="font-size: 0.98rem; color: #38bdf8; font-weight: 800; margin-bottom: 12px;">
-                Step 1: Press the LOWEST key on your keyboard...
+                Step 1: Press the LOWEST WHITE key on your keyboard...
             </p>
             <div style="background: rgba(15,23,42,0.9); border: 1px solid #4f46e5; border-radius: 10px; padding: 14px; font-size: 0.84rem; color: #e2e8f0; text-align: left; margin-bottom: 14px; line-height: 1.65;">
-                <div>• <b style="color:#ec4899;">Lowest &amp; Highest Keys:</b> Control the <b>Outer Lower Flippers</b></div>
-                <div>• <b style="color:#38bdf8;">2nd-Lowest &amp; 2nd-Highest Keys:</b> Control the <b>Inner Mid-Field Flippers</b></div>
+                <div>• <b style="color:#ec4899;">Lowest &amp; Highest White Keys:</b> Control the <b>Outer Lower Flippers</b></div>
+                <div>• <b style="color:#38bdf8;">2nd-Lowest &amp; 2nd-Highest White Keys:</b> Control the <b>Inner Mid-Field Flippers</b></div>
                 <div>• <b style="color:#facc15;">Middle Scale Keys (C–B):</b> Light up Bumpers for <b>Multiball &amp; Jackpots</b> + Pull Spring Plunger!</div>
             </div>
             <div class="modal-footer" style="justify-content: center; gap: 10px;">
@@ -447,7 +454,7 @@ function showRockBallCalibrationModal(bridge) {
     const skipBtn = document.getElementById('btn-rockball-calib-skip');
     if (skipBtn) {
         skipBtn.onclick = () => {
-            applyCalibratedRange(12, 35);
+            applyCalibratedRange(12, 35); // C1 to B2
             modal.classList.remove('open');
             beginRockBallSession(bridge);
         };
@@ -455,13 +462,29 @@ function showRockBallCalibrationModal(bridge) {
 }
 
 function applyCalibratedRange(lowP, highP) {
-    lowPitchNum = Math.min(lowP, highP - 4);
-    highPitchNum = Math.max(highP, lowPitchNum + 4);
+    const startP = Math.min(lowP, highP);
+    const endP = Math.max(lowP, highP);
 
-    lowOuterNote = pitchToNote(lowPitchNum) || 'c1';
-    lowInnerNote = pitchToNote(lowPitchNum + 1) || 'd1';
-    highInnerNote = pitchToNote(highPitchNum - 1) || 'a2';
-    highOuterNote = pitchToNote(highPitchNum) || 'b2';
+    const whitePitches = [];
+    for (let p = startP; p <= endP; p++) {
+        if (isWhitePitchNum(p)) whitePitches.push(p);
+    }
+
+    if (whitePitches.length >= 4) {
+        lowPitchNum = whitePitches[0];
+        highPitchNum = whitePitches[whitePitches.length - 1];
+        lowOuterNote = (pitchToNote(whitePitches[0]) || 'c1').toLowerCase();
+        lowInnerNote = (pitchToNote(whitePitches[1]) || 'd1').toLowerCase();
+        highInnerNote = (pitchToNote(whitePitches[whitePitches.length - 2]) || 'a2').toLowerCase();
+        highOuterNote = (pitchToNote(whitePitches[whitePitches.length - 1]) || 'b2').toLowerCase();
+    } else {
+        lowPitchNum = 12;
+        highPitchNum = 35;
+        lowOuterNote = 'c1';
+        lowInnerNote = 'd1';
+        highInnerNote = 'a2';
+        highOuterNote = 'b2';
+    }
 }
 
 // ============================================================================
@@ -541,7 +564,7 @@ export function startRockBall(bridge) {
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = '🎸 RockBall Calibration: Press your LOWEST key, then your HIGHEST key!';
+        statusEl.textContent = '🎸 RockBall Calibration: Press your LOWEST WHITE key, then your HIGHEST WHITE key!';
     }
 }
 
@@ -570,7 +593,7 @@ function beginRockBallSession(bridge) {
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = `🎤 RockBall Ready! Outer Flippers: ${lowOuterNote.toUpperCase()} / ${highOuterNote.toUpperCase()} | Inner: ${lowInnerNote.toUpperCase()} / ${highInnerNote.toUpperCase()} | Hold middle key to pull spring plunger!`;
+        statusEl.textContent = `🎤 RockBall Ready! White-Key Flippers: ${lowOuterNote.toUpperCase()} / ${highOuterNote.toUpperCase()} (Outer) & ${lowInnerNote.toUpperCase()} / ${highInnerNote.toUpperCase()} (Inner) | Hold middle key to pull spring plunger!`;
     }
 
     if (animFrameId === null) {
@@ -582,10 +605,20 @@ export function handleRockBallInput(noteStr, bridge) {
     const clean = (noteStr || '').trim().toLowerCase();
     if (!clean) return;
 
+    // 1. White-Key Only Calibration
     if (gamePhase === 'calibration') {
+        const instrEl = document.getElementById('rockball-calib-instructions');
+        if (!isWhiteKeyNote(clean)) {
+            playErrorClackSound();
+            bridge.highlightKey(noteStr, 250, '#ef4444');
+            if (instrEl) {
+                instrEl.innerHTML = `<span style="color:#ef4444;">Black key ignored!</span> Please press a <b>WHITE</b> key for Step ${calibStep}...`;
+            }
+            return;
+        }
+
         const pNum = noteToPitch(clean);
         if (pNum === null) return;
-        const instrEl = document.getElementById('rockball-calib-instructions');
 
         if (calibStep === 1) {
             lowPitchNum = pNum;
@@ -593,9 +626,16 @@ export function handleRockBallInput(noteStr, bridge) {
             playRockBallSfx('bumper', clean);
             bridge.highlightKey(noteStr, 300, '#22c55e');
             if (instrEl) {
-                instrEl.innerHTML = `Lowest key set to <span style="color:#22c55e;">${clean.toUpperCase()}</span>! Now Step 2: Press the <b>HIGHEST</b> key on your keyboard...`;
+                instrEl.innerHTML = `Lowest white key set to <span style="color:#22c55e;">${clean.toUpperCase()}</span>! Now Step 2: Press the <b>HIGHEST WHITE</b> key on your keyboard...`;
             }
         } else if (calibStep === 2) {
+            if (Math.abs(pNum - lowPitchNum) < 5) {
+                playErrorClackSound();
+                if (instrEl) {
+                    instrEl.innerHTML = `<span style="color:#ef4444;">Range too narrow!</span> Pick a higher <b>WHITE</b> key at least 5 notes away...`;
+                }
+                return;
+            }
             applyCalibratedRange(lowPitchNum, pNum);
             playRockBallSfx('jackpot');
             bridge.highlightKey(noteStr, 300, '#22c55e');
@@ -608,31 +648,35 @@ export function handleRockBallInput(noteStr, bridge) {
 
     if (gamePhase !== 'ready' && gamePhase !== 'playing') return;
 
-    if (clean === lowOuterNote) {
-        if (!flippers.outerLeft.active) playRockBallSfx('flipperUp');
-        flippers.outerLeft.active = true;
-        bridge.highlightKey(noteStr, 180, '#ec4899');
-        return;
-    }
-    if (clean === highOuterNote) {
-        if (!flippers.outerRight.active) playRockBallSfx('flipperUp');
-        flippers.outerRight.active = true;
-        bridge.highlightKey(noteStr, 180, '#ec4899');
-        return;
-    }
-    if (clean === lowInnerNote) {
-        if (!flippers.innerLeft.active) playRockBallSfx('flipperUp');
-        flippers.innerLeft.active = true;
-        bridge.highlightKey(noteStr, 180, '#38bdf8');
-        return;
-    }
-    if (clean === highInnerNote) {
-        if (!flippers.innerRight.active) playRockBallSfx('flipperUp');
-        flippers.innerRight.active = true;
-        bridge.highlightKey(noteStr, 180, '#38bdf8');
-        return;
+    // 2. White-Key Only Outer & Inner Flipper Triggers
+    if (isWhiteKeyNote(clean)) {
+        if (clean === lowOuterNote) {
+            if (!flippers.outerLeft.active) playRockBallSfx('flipperUp');
+            flippers.outerLeft.active = true;
+            bridge.highlightKey(noteStr, 180, '#ec4899');
+            return;
+        }
+        if (clean === highOuterNote) {
+            if (!flippers.outerRight.active) playRockBallSfx('flipperUp');
+            flippers.outerRight.active = true;
+            bridge.highlightKey(noteStr, 180, '#ec4899');
+            return;
+        }
+        if (clean === lowInnerNote) {
+            if (!flippers.innerLeft.active) playRockBallSfx('flipperUp');
+            flippers.innerLeft.active = true;
+            bridge.highlightKey(noteStr, 180, '#38bdf8');
+            return;
+        }
+        if (clean === highInnerNote) {
+            if (!flippers.innerRight.active) playRockBallSfx('flipperUp');
+            flippers.innerRight.active = true;
+            bridge.highlightKey(noteStr, 180, '#38bdf8');
+            return;
+        }
     }
 
+    // 3. Plunger Pull-Back if Ball is in the Launch Lane
     const ballInShooter = balls.some(b => b.inShooterLane);
     if (ballInShooter) {
         plunger.pulling = true;
@@ -640,6 +684,7 @@ export function handleRockBallInput(noteStr, bridge) {
         return;
     }
 
+    // 4. Musical Bumper Note Matching (Triggers Jackpot Ramps & Multiball)
     const letter = clean.replace(/[0-9#b]+$/g, '').toUpperCase();
     let matchedAnyBumper = false;
 
@@ -672,19 +717,29 @@ export function handleRockBallInput(noteStr, bridge) {
 
 export function handleRockBallRelease(noteStr) {
     const clean = (noteStr || '').trim().toLowerCase();
-    if (clean === lowOuterNote) {
-        if (flippers.outerLeft.active) playRockBallSfx('flipperDown');
-        flippers.outerLeft.active = false;
-    } else if (clean === highOuterNote) {
-        if (flippers.outerRight.active) playRockBallSfx('flipperDown');
-        flippers.outerRight.active = false;
-    } else if (clean === lowInnerNote) {
-        if (flippers.innerLeft.active) playRockBallSfx('flipperDown');
-        flippers.innerLeft.active = false;
-    } else if (clean === highInnerNote) {
-        if (flippers.innerRight.active) playRockBallSfx('flipperDown');
-        flippers.innerRight.active = false;
-    } else if (plunger.pulling) {
+    if (isWhiteKeyNote(clean)) {
+        if (clean === lowOuterNote) {
+            if (flippers.outerLeft.active) playRockBallSfx('flipperDown');
+            flippers.outerLeft.active = false;
+            return;
+        }
+        if (clean === highOuterNote) {
+            if (flippers.outerRight.active) playRockBallSfx('flipperDown');
+            flippers.outerRight.active = false;
+            return;
+        }
+        if (clean === lowInnerNote) {
+            if (flippers.innerLeft.active) playRockBallSfx('flipperDown');
+            flippers.innerLeft.active = false;
+            return;
+        }
+        if (clean === highInnerNote) {
+            if (flippers.innerRight.active) playRockBallSfx('flipperDown');
+            flippers.innerRight.active = false;
+            return;
+        }
+    }
+    if (plunger.pulling) {
         releasePlunger();
     }
 }
@@ -1095,7 +1150,6 @@ function gameLoop(now, bridge) {
         ctx.translate((Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9);
     }
 
-    // 1. Concert Club Backdrop with Sweeping Stage Spotlights
     const bgGrad = ctx.createRadialGradient(W / 2, H * 0.2, 40, W / 2, H * 0.5, W * 0.65);
     bgGrad.addColorStop(0, '#1e1b4b');
     bgGrad.addColorStop(0.55, '#090d16');
@@ -1103,7 +1157,6 @@ function gameLoop(now, bridge) {
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, W, H);
 
-    // Subtle Concert Spotlight Cones behind Cabinet
     ctx.save();
     ctx.globalAlpha = 0.08 + beatPulse * 0.05;
     ctx.fillStyle = '#ec4899';
@@ -1123,7 +1176,6 @@ function gameLoop(now, bridge) {
     ctx.fill();
     ctx.restore();
 
-    // 2. Outer Brushed-Steel Pinball Cabinet Bezel & Drop Shadow
     ctx.save();
     ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
     ctx.shadowBlur = 24;
@@ -1132,7 +1184,6 @@ function gameLoop(now, bridge) {
     ctx.fill();
     ctx.restore();
 
-    // Playfield Surface with Rich Diagonal Stage Lighting & Grid
     const deckGrad = ctx.createLinearGradient(tableLeft, 0, tableRight, H);
     deckGrad.addColorStop(0, '#1e1b4b');
     deckGrad.addColorStop(0.45, '#111827');
@@ -1141,7 +1192,6 @@ function gameLoop(now, bridge) {
     drawRoundedBox(ctx, tableLeft, 12, tableW, H - 12, 14);
     ctx.fill();
 
-    // Subtle Stage Floor Grid Lines
     ctx.save();
     ctx.strokeStyle = 'rgba(99, 102, 241, 0.12)';
     ctx.lineWidth = 1;
@@ -1159,21 +1209,14 @@ function gameLoop(now, bridge) {
     }
     ctx.restore();
 
-    // 3. Live Beat-Synced Neon Equalizer Bars + Spinning Hip-Hop Turntable Decal
     drawPlayfieldEqualizer(ctx, centerX, H * 0.56, 170, 54);
     drawTurntableFloorDecal(ctx, centerX, H * 0.45, 66, vinylAngle, beatPulse);
-
-    // 4. Elevated Translucent Glass/Neon Center Jackpot Ramp
     drawElevatedJackpotRamp(ctx, centerX, H * 0.11, 42, H * 0.28, rampLit, now);
-
-    // 5. Inlane & Outlane Illuminated Floor Arrows
     drawLaneArrows(ctx, tableLeft, shooterLaneX, H);
 
-    // 6. 3D Chrome Rails & Orbit Guides (Dark Drop Shadow + Metallic Base + Specular Core)
     walls.forEach(w => {
         ctx.save();
         ctx.lineCap = 'round';
-        // Shadow
         ctx.strokeStyle = 'rgba(0,0,0,0.65)';
         ctx.lineWidth = 7;
         ctx.beginPath();
@@ -1181,7 +1224,6 @@ function gameLoop(now, bridge) {
         ctx.lineTo(w.x2 + 2, w.y2 + 3);
         ctx.stroke();
 
-        // Steel Rail Body
         ctx.strokeStyle = '#64748b';
         ctx.lineWidth = 5;
         ctx.beginPath();
@@ -1189,7 +1231,6 @@ function gameLoop(now, bridge) {
         ctx.lineTo(w.x2, w.y2);
         ctx.stroke();
 
-        // Chrome Highlight
         ctx.strokeStyle = '#f8fafc';
         ctx.lineWidth = 1.8;
         ctx.beginPath();
@@ -1199,10 +1240,8 @@ function gameLoop(now, bridge) {
         ctx.restore();
     });
 
-    // 7. 3D R-O-C-K Drop Targets with Recessed Housings
     dropTargets.forEach(dtg => {
         ctx.save();
-        // Housing socket
         ctx.beginPath();
         ctx.arc(dtg.x, dtg.y, dtg.r + 3, 0, Math.PI * 2);
         ctx.fillStyle = '#090d16';
@@ -1235,7 +1274,6 @@ function gameLoop(now, bridge) {
         ctx.restore();
     });
 
-    // 8. 3D Triangular Rubber-Banded Slingshots with Posts
     slingshots.forEach(sl => {
         ctx.save();
         ctx.shadowColor = sl.flash > 0 ? '#ffffff' : '#ec4899';
@@ -1257,7 +1295,6 @@ function gameLoop(now, bridge) {
         ctx.strokeStyle = sl.flash > 0 ? '#ffffff' : '#f472b6';
         ctx.stroke();
 
-        // Corner Chrome Posts
         [sl.p1, sl.p2, sl.p3].forEach(pt => {
             ctx.beginPath();
             ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
@@ -1267,24 +1304,20 @@ function gameLoop(now, bridge) {
         ctx.restore();
     });
 
-    // 9. 3D Solenoid Pop Bumpers (Layered Skirt + Neon Halo + Glossy Cap)
     bumpers.forEach(bmp => {
         const scaleR = bmp.r + bmp.pulse * 6;
         ctx.save();
 
-        // Outer neon shock ring
         ctx.beginPath();
         ctx.arc(bmp.x, bmp.y, scaleR + 7, 0, Math.PI * 2);
         ctx.fillStyle = bmp.charged ? 'rgba(34, 197, 94, 0.32)' : 'rgba(255, 255, 255, 0.10)';
         ctx.fill();
 
-        // Drop shadow
         ctx.beginPath();
         ctx.arc(bmp.x + 2, bmp.y + 4, scaleR, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.fill();
 
-        // 3D Dome Gradient
         const activeColor = bmp.charged ? '#22c55e' : bmp.color;
         const bGrad = ctx.createRadialGradient(bmp.x - scaleR * 0.3, bmp.y - scaleR * 0.3, 2, bmp.x, bmp.y, scaleR);
         bGrad.addColorStop(0, '#ffffff');
@@ -1296,19 +1329,16 @@ function gameLoop(now, bridge) {
         ctx.fillStyle = bGrad;
         ctx.fill();
 
-        // Chrome Rim
         ctx.lineWidth = 3;
         ctx.strokeStyle = '#ffffff';
         ctx.stroke();
 
-        // Inner Starburst Ring
         ctx.beginPath();
         ctx.arc(bmp.x, bmp.y, scaleR * 0.68, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(15, 23, 42, 0.55)';
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Note Letter Badge
         ctx.fillStyle = '#0f172a';
         ctx.font = '900 16px sans-serif';
         ctx.textAlign = 'center';
@@ -1317,16 +1347,13 @@ function gameLoop(now, bridge) {
         ctx.restore();
     });
 
-    // 10. 3D Spring Plunger & Shooter Lane Gauge
     drawSpringPlunger(ctx, plunger);
 
-    // 11. Tapered 3D Rubber-Wrapped Flippers
     drawRockBallFlipper(ctx, flippers.outerLeft, '#ec4899', lowOuterNote.toUpperCase());
     drawRockBallFlipper(ctx, flippers.outerRight, '#ec4899', highOuterNote.toUpperCase());
     drawRockBallFlipper(ctx, flippers.innerLeft, '#38bdf8', lowInnerNote.toUpperCase());
     drawRockBallFlipper(ctx, flippers.innerRight, '#38bdf8', highInnerNote.toUpperCase());
 
-    // 12. High-Gloss Chrome Steel Pinballs & Neon Trails
     balls.forEach(b => {
         b.trail.forEach((t, idx) => {
             const ratio = (idx + 1) / b.trail.length;
@@ -1336,13 +1363,11 @@ function gameLoop(now, bridge) {
             ctx.fill();
         });
 
-        // Ball shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
         ctx.beginPath();
         ctx.arc(b.x + 2, b.y + 3, b.r, 0, Math.PI * 2);
         ctx.fill();
 
-        // Chrome sphere shading
         const ballGrad = ctx.createRadialGradient(b.x - 3.5, b.y - 3.5, 1, b.x, b.y, b.r);
         ballGrad.addColorStop(0, '#ffffff');
         ballGrad.addColorStop(0.35, '#e2e8f0');
@@ -1354,7 +1379,6 @@ function gameLoop(now, bridge) {
         ctx.fill();
     });
 
-    // 13. Sparks & Floating Score Popups
     particles.forEach(pt => {
         ctx.globalAlpha = Math.max(0, pt.life);
         ctx.fillStyle = pt.color;
@@ -1376,7 +1400,6 @@ function gameLoop(now, bridge) {
         ctx.restore();
     });
 
-    // 14. Left & Right Illuminated Backglass Side Cabinets
     drawRockHipHopSidePanels(ctx, W, H, tableLeft, tableRight);
 
     if (bannerTimer > 0 && bannerText) {
@@ -1471,7 +1494,6 @@ function drawTurntableFloorDecal(ctx, cx, cy, radius, angle, pulse) {
     ctx.translate(cx, cy);
     ctx.rotate(angle);
 
-    // Outer Vinyl Disc
     ctx.fillStyle = 'rgba(9, 13, 22, 0.85)';
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
@@ -1480,7 +1502,6 @@ function drawTurntableFloorDecal(ctx, cx, cy, radius, angle, pulse) {
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // Concentric Vinyl Grooves
     ctx.strokeStyle = 'rgba(148, 163, 184, 0.18)';
     ctx.lineWidth = 1;
     [0.82, 0.68, 0.54].forEach(scale => {
@@ -1489,7 +1510,6 @@ function drawTurntableFloorDecal(ctx, cx, cy, radius, angle, pulse) {
         ctx.stroke();
     });
 
-    // Center Record Label
     ctx.fillStyle = '#ec4899';
     ctx.beginPath();
     ctx.arc(0, 0, 22, 0, Math.PI * 2);
@@ -1517,7 +1537,6 @@ function drawElevatedJackpotRamp(ctx, cx, topY, w, h, isLit, now) {
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // Animated Upward Chevrons
     const offset = (now / 40) % 24;
     ctx.strokeStyle = isLit ? '#fef08a' : 'rgba(56, 189, 248, 0.65)';
     ctx.lineWidth = 2;
@@ -1541,12 +1560,10 @@ function drawLaneArrows(ctx, tableLeft, shooterLaneX, H) {
     ctx.font = '900 9px monospace';
     ctx.textAlign = 'center';
 
-    // Safe Inlane Indicators
     ctx.fillStyle = '#22c55e';
     ctx.fillText('▼ IN', tableLeft + 42, H - 72);
     ctx.fillText('IN ▼', shooterLaneX - 52, H - 72);
 
-    // Outlane Danger Indicators
     ctx.fillStyle = '#ef4444';
     ctx.fillText('OUT', tableLeft + 14, H - 40);
     ctx.fillText('OUT', shooterLaneX - 24, H - 40);
@@ -1559,11 +1576,9 @@ function drawSpringPlunger(ctx, p) {
     const botY = p.y + p.h;
 
     ctx.save();
-    // Chrome Plunger Shaft
     ctx.fillStyle = '#94a3b8';
     ctx.fillRect(p.x + p.w / 2 - 2.5, topY, 5, botY - topY);
 
-    // Coiled Tension Spring
     ctx.strokeStyle = p.pulling ? '#facc15' : '#cbd5e1';
     ctx.lineWidth = 2.8;
     ctx.beginPath();
@@ -1576,7 +1591,6 @@ function drawSpringPlunger(ctx, p) {
     }
     ctx.stroke();
 
-    // Red Rubber Plunger Tip
     const tipGrad = ctx.createLinearGradient(p.x, topY - 7, p.x + p.w, topY + 2);
     tipGrad.addColorStop(0, '#f87171');
     tipGrad.addColorStop(1, '#b91c1c');
@@ -1591,7 +1605,6 @@ function drawRockBallFlipper(ctx, f, color, label) {
     const tipY = f.y + Math.sin(f.angle) * f.len;
 
     ctx.save();
-    // Drop shadow
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.lineWidth = 14;
     ctx.lineCap = 'round';
@@ -1600,7 +1613,6 @@ function drawRockBallFlipper(ctx, f, color, label) {
     ctx.lineTo(tipX + 2, tipY + 4);
     ctx.stroke();
 
-    // Colored Rubber Sleeve
     ctx.strokeStyle = color;
     ctx.lineWidth = 13;
     ctx.beginPath();
@@ -1608,7 +1620,6 @@ function drawRockBallFlipper(ctx, f, color, label) {
     ctx.lineTo(tipX, tipY);
     ctx.stroke();
 
-    // White Core Paddle Body
     ctx.strokeStyle = '#f8fafc';
     ctx.lineWidth = 6;
     ctx.beginPath();
@@ -1616,7 +1627,6 @@ function drawRockBallFlipper(ctx, f, color, label) {
     ctx.lineTo(tipX, tipY);
     ctx.stroke();
 
-    // Chrome Pivot Cap with Note Badge
     ctx.fillStyle = '#0f172a';
     ctx.beginPath();
     ctx.arc(f.x, f.y, 11, 0, Math.PI * 2);
@@ -1653,7 +1663,6 @@ function drawRockHipHopSidePanels(ctx, W, H, tableLeft, tableRight) {
         ctx.font = '900 16px monospace';
         ctx.fillText('🎤 ROCKBALL 🎸', px + panelW / 2, 44);
 
-        // LED Score Display Box
         ctx.fillStyle = '#050811';
         drawRoundedBox(ctx, px + 14, 58, panelW - 28, 48, 8);
         ctx.fill();
@@ -1696,7 +1705,7 @@ function drawRockHipHopSidePanels(ctx, W, H, tableLeft, tableRight) {
         ctx.textAlign = 'left';
         ctx.fillStyle = '#38bdf8';
         ctx.font = '900 12px monospace';
-        ctx.fillText('🎛️ CALIBRATED DECK', px + 12, 42);
+        ctx.fillText('🎛️ WHITE-KEY FLIPPERS', px + 12, 42);
 
         ctx.font = '800 11px monospace';
         ctx.fillStyle = '#f472b6';
