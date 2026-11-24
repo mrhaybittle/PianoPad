@@ -38,7 +38,7 @@ function ensureThreeLoaded() {
 // ============================================================================
 // CONSTANTS, BIKE PRESETS & ILLAWARRA ESCARPMENT ZONES
 // ============================================================================
-const TRAIL_LENGTH = 2400;
+const TRAIL_LENGTH = 2600;
 const BPM = 122;
 const BEAT_DURATION = 60 / BPM;
 
@@ -48,7 +48,7 @@ const BIKE_PRESETS = {
     pedalForce: 21,
     maxPedalSpeed: 26,
     maxDownhillSpeed: 43,
-    turnSpeed: 2.58,
+    turnSpeed: 2.22,
     hopImpulse: 13.2,
     gravityMult: 1.0,
     suspensionStiffness: 18,
@@ -60,7 +60,7 @@ const BIKE_PRESETS = {
     pedalForce: 16,
     maxPedalSpeed: 24,
     maxDownhillSpeed: 52,
-    turnSpeed: 1.98,
+    turnSpeed: 1.78,
     hopImpulse: 11.4,
     gravityMult: 1.14,
     suspensionStiffness: 11,
@@ -72,7 +72,7 @@ const BIKE_PRESETS = {
     pedalForce: 36,
     maxPedalSpeed: 34,
     maxDownhillSpeed: 46,
-    turnSpeed: 2.34,
+    turnSpeed: 2.04,
     hopImpulse: 11.8,
     gravityMult: 1.04,
     suspensionStiffness: 16,
@@ -101,16 +101,61 @@ const SCALE_NOTES = [
   { name: 'B4', pitchClass: 'b', freq: 493.88, color: 0xec4899, hex: '#ec4899' }
 ];
 
+const SEMITONE_MAP = {
+  'c': 0, 'c#': 1, 'db': 1,
+  'd': 2, 'd#': 3, 'eb': 3,
+  'e': 4, 'fb': 4, 'e#': 5,
+  'f': 5, 'f#': 6, 'gb': 6,
+  'g': 7, 'g#': 8, 'ab': 8,
+  'a': 9, 'a#': 10, 'bb': 10,
+  'b': 11, 'cb': 11, 'b#': 0
+};
+
+const SEMITONE_NAMES = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+function detectTriadFromPitchClasses(pitchSet) {
+  const semis = new Set();
+  pitchSet.forEach(p => {
+    const clean = p.toLowerCase().replace(/[0-9]/g, '');
+    if (SEMITONE_MAP[clean] !== undefined) {
+      semis.add(SEMITONE_MAP[clean]);
+    }
+  });
+  if (semis.size < 3) return null;
+
+  const patterns = [
+    { intervals: [4, 7], quality: 'MAJOR' },
+    { intervals: [3, 7], quality: 'MINOR' },
+    { intervals: [3, 6], quality: 'DIMINISHED' },
+    { intervals: [4, 8], quality: 'AUGMENTED' }
+  ];
+
+  for (const root of semis) {
+    for (const pat of patterns) {
+      const third = (root + pat.intervals[0]) % 12;
+      const fifth = (root + pat.intervals[1]) % 12;
+      if (semis.has(third) && semis.has(fifth)) {
+        return {
+          root,
+          name: `${SEMITONE_NAMES[root]} ${pat.quality}`,
+          quality: pat.quality
+        };
+      }
+    }
+  }
+  return null;
+}
+
 const TRAIL_ZONES = [
   { z: -15,   name: 'MT KEMBLA LOOKOUT RIDGE',   sub: 'Open Pacific Ocean & Port Kembla Horizon' },
-  { z: -500,  name: 'DEEP RAINFOREST GULLY',     sub: 'Enclosed Mountain Valley • Trees Both Sides' },
-  { z: -1150, name: 'LAKE ILLAWARRA VISTA',      sub: 'Coastal Escarpment Shelf & Cargo Ship Views' },
-  { z: -1600, name: 'SUBLIME POINT CANOPY',      sub: 'Subtropical Rainforest Tunnel & Final Bridges' }
+  { z: -520,  name: 'DEEP RAINFOREST GULLY',     sub: 'Enclosed Mountain Valley • Trees Both Sides' },
+  { z: -1280, name: 'LAKE ILLAWARRA VISTA',      sub: 'Coastal Escarpment Shelf & Cargo Ship Views' },
+  { z: -1820, name: 'SUBLIME POINT CANOPY',      sub: 'Subtropical Rainforest Tunnel & Final Bridges' }
 ];
 
 const LOOKOUT_WINDOWS = [
-  { zMax: 45,    zMin: -460 },
-  { zMax: -1160, zMin: -1560 }
+  { zMax: 45,    zMin: -480 },
+  { zMax: -1260, zMin: -1780 }
 ];
 
 // ============================================================================
@@ -217,7 +262,7 @@ async function startPedalPoint(bridge, autoStart = false) {
       #pedal-point-3d-container * { box-sizing: border-box; }
       @keyframes ppNoteSpeak {
         0% { transform: scale(1); }
-        45% { transform: scale(1.36); filter: brightness(1.45); }
+        45% { transform: scale(1.38); filter: brightness(1.45); }
         100% { transform: scale(1); }
       }
       @keyframes ppBannerPulse {
@@ -232,7 +277,7 @@ async function startPedalPoint(bridge, autoStart = false) {
         0%, 100% { height: 28%; }
         50% { height: 100%; }
       }
-      .pp-note-speaking { animation: ppNoteSpeak 0.36s ease-out; }
+      .pp-note-speaking { animation: ppNoteSpeak 0.38s ease-out; }
       .pp-beat-hit { animation: ppDiamondHit 0.25s ease-out; }
       .pp-eq-active { animation: ppEqBounce 0.48s ease-in-out infinite; }
 
@@ -248,7 +293,7 @@ async function startPedalPoint(bridge, autoStart = false) {
         border: 1px solid rgba(255, 255, 255, 0.16);
         border-radius: 10px; padding: 6px 11px;
         box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
-        min-width: 70px;
+        min-width: 68px;
       }
       #pedal-point-3d-container .hud-label {
         font-size: 9px; font-weight: 800; letter-spacing: 0.08em;
@@ -262,7 +307,6 @@ async function startPedalPoint(bridge, autoStart = false) {
       #pp-hud-rem .hud-value { color: #38bdf8; }
       #pp-hud-best .hud-value { color: #34d399; }
 
-      /* Groove Layer Equalizer Pill */
       #pp-eq-bars {
         display: flex; align-items: flex-end; gap: 3px; height: 16px; margin-top: 2px;
       }
@@ -287,16 +331,16 @@ async function startPedalPoint(bridge, autoStart = false) {
         pointer-events: none;
       }
       #pp-melody-title {
-        font-size: 12px; font-weight: 900; letter-spacing: 0.1em;
+        font-size: 12px; font-weight: 900; letter-spacing: 0.08em;
         text-transform: uppercase; color: #fde047;
         text-shadow: 0 2px 8px rgba(0,0,0,0.8);
       }
       #pp-melody-notes { display: flex; gap: 12px; align-items: center; }
 
-      /* Next Approaching Note Gate Beacon */
+      /* Unified Upcoming Musical Challenge Radar */
       #pp-next-gate-pill {
         position: absolute; top: 64px; left: 12px;
-        background: rgba(14, 24, 22, 0.88);
+        background: rgba(14, 24, 22, 0.90);
         border: 2px solid rgba(255, 255, 255, 0.25);
         border-radius: 12px;
         padding: 6px 12px;
@@ -306,6 +350,22 @@ async function startPedalPoint(bridge, autoStart = false) {
         z-index: 11;
         pointer-events: none;
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+      }
+
+      /* Wheelie Balance Pill */
+      #pp-wheelie-pill {
+        position: absolute; top: 64px; right: 12px;
+        background: rgba(24, 16, 42, 0.92);
+        border: 2px solid #c084fc;
+        border-radius: 12px;
+        padding: 6px 12px;
+        display: none;
+        align-items: center;
+        gap: 7px;
+        z-index: 11;
+        pointer-events: none;
+        box-shadow: 0 6px 18px rgba(168, 85, 247, 0.35);
+        font-size: 11px; font-weight: 900; color: #f3e8ff;
       }
 
       #pedal-point-3d-container .hud-actions { display: flex; gap: 8px; pointer-events: auto; }
@@ -320,7 +380,7 @@ async function startPedalPoint(bridge, autoStart = false) {
       #pp-callout {
         position: absolute; top: 34%; left: 50%;
         transform: translate(-50%, -50%) scale(0.9);
-        font-size: 26px; font-weight: 900; letter-spacing: 0.04em;
+        font-size: 25px; font-weight: 900; letter-spacing: 0.04em;
         text-transform: uppercase; color: #34d399;
         text-shadow: 0 4px 18px rgba(0, 0, 0, 0.95);
         opacity: 0; pointer-events: none;
@@ -341,7 +401,6 @@ async function startPedalPoint(bridge, autoStart = false) {
         font-size: 11px; font-weight: 700; color: #cbd5e1;
       }
 
-      /* Live 122 BPM Beat Bar */
       #pp-beat-bar {
         background: rgba(14, 24, 22, 0.84);
         border: 1px solid rgba(52, 211, 153, 0.32);
@@ -392,7 +451,7 @@ async function startPedalPoint(bridge, autoStart = false) {
         background: rgba(18, 32, 29, 0.96);
         border: 1px solid rgba(52, 211, 153, 0.35);
         border-radius: 16px; padding: 16px 20px;
-        max-width: 520px; width: 100%; text-align: center;
+        max-width: 530px; width: 100%; text-align: center;
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.55);
       }
       #pedal-point-3d-container .badge-tag {
@@ -494,7 +553,7 @@ async function startPedalPoint(bridge, autoStart = false) {
         </div>
         <div class="hud-pill" id="pp-hud-rem">
           <div class="hud-label">Remaining</div>
-          <div class="hud-value" id="pp-val-rem">2400m</div>
+          <div class="hud-value" id="pp-val-rem">2600m</div>
         </div>
         <div class="hud-pill">
           <div class="hud-label">Score</div>
@@ -519,21 +578,28 @@ async function startPedalPoint(bridge, autoStart = false) {
         </div>
       </div>
       <div class="hud-actions">
+        <button type="button" class="hud-btn" id="btn-pp-ghost" title="Toggle Personal Best Ghost Rider">👻 Ghost: ON</button>
         <button type="button" class="hud-btn" id="btn-pp-calibrate" title="Assign Piano or Keyboard Keys">🎹 Keys</button>
         <button type="button" class="hud-btn" id="btn-pp-cam-toggle" title="Toggle Camera">🎥 Chase Cam</button>
       </div>
     </div>
 
-    <!-- Approaching Next Note Gate Indicator -->
+    <!-- Approaching Challenge Radar Pill -->
     <div id="pp-next-gate-pill">
-      <span style="font-size:10px; font-weight:900; letter-spacing:0.08em; color:#94a3b8; text-transform:uppercase;">NEXT GATE</span>
+      <span id="pp-next-gate-title" style="font-size:10px; font-weight:900; letter-spacing:0.08em; color:#94a3b8; text-transform:uppercase;">NEXT GATE</span>
       <span id="pp-next-gate-badge" style="padding:2px 9px; border-radius:7px; font-size:13px; font-weight:900; color:#fff; background:#ef4444;">♪ C4</span>
-      <span id="pp-next-gate-dist" style="font-size:11px; font-weight:800; color:#e2e8f0; font-variant-numeric:tabular-nums;">65m</span>
+      <span id="pp-next-gate-dist" style="font-size:11px; font-weight:800; color:#e2e8f0; font-variant-numeric:tabular-nums;">110m</span>
+    </div>
+
+    <!-- Triad Wheelie Active Pill -->
+    <div id="pp-wheelie-pill">
+      <span>🚵‍♂️ WHEELIE</span>
+      <span id="pp-wheelie-chord" style="color:#fde047;">C MAJOR</span>
     </div>
 
     <!-- Prominent Approaching Melody Trail Prompt -->
     <div id="pp-melody-banner">
-      <div id="pp-melody-title">🎹 MELODY TRAIL — STEER INTO OR PLAY THESE 4 NOTES!</div>
+      <div id="pp-melody-title">🎹 UPCOMING MELODY TRAIL — STEER INTO OR PLAY THESE 4 NOTES!</div>
       <div id="pp-melody-notes"></div>
     </div>
 
@@ -543,7 +609,7 @@ async function startPedalPoint(bridge, autoStart = false) {
     <!-- Bottom Controls Bar -->
     <div id="pp-bottom-bar">
       <div id="pp-controls-caption">
-        <b>A / ←</b> Steer Left • <b>D / →</b> Steer Right • <b>Space</b> Jump &amp; Whip
+        <b>A / ←</b> Steer Left • <b>D / →</b> Steer Right • <b>Space</b> Jump • <b>Any Triad</b> Wheelie
       </div>
       <div id="pp-beat-bar">
         <span style="font-size:10px; font-weight:900; color:#34d399; letter-spacing:0.05em;">122 BPM</span>
@@ -565,7 +631,7 @@ async function startPedalPoint(bridge, autoStart = false) {
         <div class="badge-tag">Wollongong NSW • Illawarra Escarpment</div>
         <h1>PEDAL POINT 3D</h1>
         <p id="pp-modal-subtitle">
-          Shred red-dirt singletrack down Mt Kembla! Carve through <b>Melodic Note Gates</b>, launch off <b>Beat-Synced Dirt Jumps</b>, and match <b>Melody Trails</b>!
+          Carve red-dirt singletrack down Mt Kembla! Thread <b>Melodic Note Gates</b>, play <b>any 3-note Triad</b> to pop a wheelie, and race your <b>Ghost Rider</b>!
         </p>
 
         <div class="bike-grid" id="pp-bike-grid">
@@ -587,7 +653,7 @@ async function startPedalPoint(bridge, autoStart = false) {
           <span><b id="pp-lbl-left">A / ←</b> Steer Left</span>
           <span><b id="pp-lbl-right">D / →</b> Steer Right</span>
           <span><b id="pp-lbl-jump">Space</b> Pre-Load &amp; Jump</span>
-          <span><b id="pp-lbl-view">V</b> Helmet / Chase Cam</span>
+          <span><b>Any Triad (3 Notes)</b> Wheelie</span>
         </div>
 
         <div class="modal-actions">
@@ -719,19 +785,16 @@ async function startPedalPoint(bridge, autoStart = false) {
         }
       }
 
-      // Layer 0: Warm Punchy Kick, Crisp Coastal Shaker & Rim Clap
       if (step % 4 === 0) this.playKick(t);
       if (step % 2 === 1) this.playShaker(t, step % 4 === 2 ? 0.11 : 0.06);
       if (step === 4 || step === 12) this.playRimClap(t);
 
-      // Layer 1: Warm Funky Coastal Bassline (G Major groove)
       if (this.comboLayer >= 1) {
         const bassPattern = [98.0, 0, 98.0, 110.0, 0, 123.47, 0, 146.83, 130.81, 0, 130.81, 146.83, 0, 164.81, 146.83, 110.0];
         const f = bassPattern[step];
         if (f > 0) this.playBass(t, f, BEAT_DURATION * 0.45);
       }
 
-      // Layer 2: Sunlit Marimba Pluck Arpeggio
       if (this.comboLayer >= 2) {
         const arpNotes = [392.0, 493.88, 587.33, 659.25, 783.99, 659.25, 587.33, 493.88];
         if (step % 2 === 0) {
@@ -739,7 +802,6 @@ async function startPedalPoint(bridge, autoStart = false) {
         }
       }
 
-      // Layer 3: Lush Sunny Major-7th Pad Chords
       if (this.comboLayer >= 3 && (step === 0 || step === 8)) {
         const chord = step === 0 ? [196.0, 246.94, 293.66, 369.99] : [261.63, 329.63, 392.0, 493.88];
         this.playPadChord(t, chord, BEAT_DURATION * 1.9);
@@ -860,6 +922,54 @@ async function startPedalPoint(bridge, autoStart = false) {
       osc2.start(t);
       osc1.stop(t + 0.48);
       osc2.stop(t + 0.48);
+    }
+
+    playWheelieChordShimmer(rootSemitone = 0) {
+      this.init();
+      if (!this.ctx) return;
+      const t = this.ctx.currentTime;
+      const baseFreq = 261.63 * Math.pow(2, rootSemitone / 12);
+      [1, 1.25, 1.5, 2].forEach((ratio, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(baseFreq * ratio, t + idx * 0.03);
+        gain.gain.setValueAtTime(0.14, t + idx * 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55 + idx * 0.03);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(t + idx * 0.03);
+        osc.stop(t + 0.6 + idx * 0.03);
+      });
+    }
+
+    playPortKemblaFoghorn(rootSemitone = 0) {
+      this.init();
+      if (!this.ctx) return;
+      const t = this.ctx.currentTime;
+      const freq = 65.41 * Math.pow(2, rootSemitone / 12); // Deep C2-B2 ship horn
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const filt = this.ctx.createBiquadFilter();
+      const gain = this.ctx.createGain();
+      osc1.type = 'sawtooth';
+      osc2.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(freq, t);
+      osc2.frequency.setValueAtTime(freq * 1.006, t);
+      filt.type = 'lowpass';
+      filt.frequency.setValueAtTime(240, t);
+      gain.gain.setValueAtTime(0.001, t);
+      gain.gain.linearRampToValueAtTime(0.22, t + 0.25);
+      gain.gain.setValueAtTime(0.20, t + 1.35);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 2.1);
+      osc1.connect(filt);
+      osc2.connect(filt);
+      filt.connect(gain);
+      gain.connect(this.masterGain);
+      osc1.start(t);
+      osc2.start(t);
+      osc1.stop(t + 2.15);
+      osc2.stop(t + 2.15);
     }
 
     playFeedbackNote(noteOrMidi = 60) {
@@ -1223,7 +1333,7 @@ async function startPedalPoint(bridge, autoStart = false) {
       if (p.life > 0) {
         p.life -= dt;
         p.vel.multiplyScalar(Math.max(0, 1 - 1.9 * dt));
-        p.vel.y += 0.45 * dt; // Warm air buoyancy so dust hangs in a cloud
+        p.vel.y += 0.45 * dt;
         p.pos.addScaledVector(p.vel, dt);
         const fade = Math.max(0, p.life / p.maxLife);
         dPos.setXYZ(i, p.pos.x, p.pos.y, p.pos.z);
@@ -1245,6 +1355,8 @@ async function startPedalPoint(bridge, autoStart = false) {
   let worldGroup = null;
   let cargoShips = [];
   let floatingNotes = [];
+  let coastalBirds = [];
+  let hangGliders = [];
 
   function createMusicalNoteMesh(THREE, hexColor, scale = 1.0, emissiveBoost = 0.75) {
     const noteGroup = new THREE.Group();
@@ -1311,7 +1423,7 @@ async function startPedalPoint(bridge, autoStart = false) {
       const sExit = exit * exit * (3 - 2 * exit);
       return sEnter * sExit;
     }
-    return Math.min(1, Math.max(smoothBand(z, -460, -1160, 85), smoothBand(z, -1560, -2550, 85)));
+    return Math.min(1, Math.max(smoothBand(z, -480, -1260, 90), smoothBand(z, -1780, -2750, 90)));
   }
 
   function isLookoutZ(z) {
@@ -1384,7 +1496,7 @@ async function startPedalPoint(bridge, autoStart = false) {
     const cx = getTrailCenterX(z);
     const dx = x - cx;
     const absDx = Math.abs(dx);
-    const trailHalfWidth = 3.8;
+    const trailHalfWidth = 3.9;
     const baseY = getBaseTrailY(z);
 
     const curv = getTrailCurvature(z);
@@ -1395,15 +1507,18 @@ async function startPedalPoint(bridge, autoStart = false) {
     const rfBlend = getRainforestBlend(z);
     let sideSlope = 0;
     if (dx > trailHalfWidth) {
-      sideSlope = Math.pow(dx - trailHalfWidth, 1.26) * (0.42 + rfBlend * 0.10);
+      sideSlope = Math.pow(dx - trailHalfWidth, 1.26) * (0.45 + rfBlend * 0.12);
     } else if (dx < -trailHalfWidth) {
       const d = -dx - trailHalfWidth;
-      const coastalDrop = -Math.pow(d, 1.18) * 0.50;
-      const gullyWall = Math.pow(d, 1.24) * 0.42;
+      // Gentle shoulder lip up to 3.2m past the trail edge so riders don't plummet off the cliff
+      const lipRise = Math.min(1.6, d * 0.55);
+      const beyondLip = Math.max(0, d - 3.0);
+      const coastalDrop = lipRise - Math.pow(beyondLip, 1.15) * 0.42;
+      const gullyWall = Math.pow(d, 1.24) * 0.44;
       sideSlope = coastalDrop + (gullyWall - coastalDrop) * rfBlend;
     }
 
-    const rough = offTrail * (Math.sin(x * 0.19 + z * 0.14) * 1.1 + Math.cos(x * 0.08 - z * 0.09) * 1.6);
+    const rough = offTrail * (Math.sin(x * 0.19 + z * 0.14) * 0.65 + Math.cos(x * 0.08 - z * 0.09) * 0.9);
     return baseY + berm + rut + sideSlope + rough + getFeatureHeightOffset(x, z);
   }
 
@@ -1418,11 +1533,16 @@ async function startPedalPoint(bridge, autoStart = false) {
   }
 
   // ============================================================================
-  // ARTICULATED HIGH-DETAIL 3D MOUNTAIN BIKE & RIDER
+  // ARTICULATED HIGH-DETAIL 3D MOUNTAIN BIKE & RIDER + GHOST RIDER
   // ============================================================================
   const bikeRoot = new THREE.Group();
   const bikeVisual = new THREE.Group();
-  bikeRoot.add(bikeVisual);
+  const wheeliePivot = new THREE.Group();
+  // Pivot around rear wheel axle (y=0.42, z=0.72) so wheelies lift the front wheel naturally!
+  wheeliePivot.position.set(0, 0.42, 0.72);
+  bikeVisual.position.set(0, -0.42, -0.72);
+  wheeliePivot.add(bikeVisual);
+  bikeRoot.add(wheeliePivot);
 
   const frameMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.32, metalness: 0.48 });
   const darkMetalMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.45, metalness: 0.72 });
@@ -1678,6 +1798,42 @@ async function startPedalPoint(bridge, autoStart = false) {
 
   scene.add(bikeRoot);
 
+  // Translucent Emerald Personal Best Ghost Rider
+  const ghostMat = new THREE.MeshBasicMaterial({
+    color: 0x34d399,
+    transparent: true,
+    opacity: 0.36,
+    depthWrite: false
+  });
+  const ghostRoot = new THREE.Group();
+  const ghostPivot = new THREE.Group();
+  ghostPivot.position.set(0, 0.42, 0.72);
+  const ghostBody = new THREE.Group();
+  ghostBody.position.set(0, -0.42, -0.72);
+  ghostPivot.add(ghostBody);
+  ghostRoot.add(ghostPivot);
+
+  addTube([0, 0.46, 0.08], [0, 0.94, -0.56], 0.045, 0.052, ghostMat, ghostBody);
+  addTube([0, 1.04, -0.54], [0, 0.87, 0.25], 0.034, 0.040, ghostMat, ghostBody);
+  addTube([0, 0.46, 0.08], [0, 0.96, 0.28], 0.036, 0.040, ghostMat, ghostBody);
+  addTube([0, 0.90, -0.55], [0, 0.42, -0.86], 0.032, 0.030, ghostMat, ghostBody);
+  const gWheel1 = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.06, 8, 18), ghostMat);
+  gWheel1.rotation.y = Math.PI / 2;
+  gWheel1.position.set(0, 0.42, 0.72);
+  const gWheel2 = gWheel1.clone();
+  gWheel2.position.set(0, 0.42, -0.86);
+  const gTorso = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.48, 0.22), ghostMat);
+  gTorso.position.set(0, 1.42, 0.16);
+  gTorso.rotation.x = 0.45;
+  const gHead = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), ghostMat);
+  gHead.position.set(0, 1.75, 0.04);
+  const gBeacon = createNoteSpriteLabel(THREE, '👻 PB GHOST', 'rgba(16, 185, 129, 0.78)');
+  gBeacon.position.set(0, 2.35, 0);
+  gBeacon.scale.set(2.0, 1.0, 1);
+  ghostBody.add(gWheel1, gWheel2, gTorso, gHead, gBeacon);
+  ghostRoot.visible = false;
+  scene.add(ghostRoot);
+
   function updateBikeGeometryForPreset(presetKey) {
     dhForkGroup.visible = (presetKey === 'downhill');
     ebikeGroup.visible = (presetKey === 'ebike');
@@ -1692,10 +1848,17 @@ async function startPedalPoint(bridge, autoStart = false) {
     initTrailParams(seed);
     const rng = mulberry32(seed + 1337);
 
+    // Wider Melody Trail zones so challenges feel spacious and well-telegraphed
+    const melodyZones = [
+      { startZ: -640, endZ: -950 },
+      { startZ: -1640, endZ: -1950 }
+    ];
+    const inMelodyCorridor = (z) => melodyZones.some(mz => z <= mz.startZ + 35 && z >= mz.endZ - 35);
+
     dirtFeatures = [];
     rhythmRamps = [];
-    for (let z = -95; z > -TRAIL_LENGTH + 90; z -= 95 + rng() * 55) {
-      if ((z < -680 && z > -860) || (z < -1700 && z > -1880)) continue;
+    for (let z = -115; z > -TRAIL_LENGTH + 110; z -= 115 + rng() * 60) {
+      if (inMelodyCorridor(z)) continue;
       const cx = getTrailCenterX(z);
       const isTable = rng() > 0.42;
       const feat = {
@@ -1713,7 +1876,7 @@ async function startPedalPoint(bridge, autoStart = false) {
 
     const zStart = 45;
     const zEnd = -TRAIL_LENGTH - 95;
-    const zSegs = 340;
+    const zSegs = 360;
     const xSegs = 34;
     const corridorHalfWidth = 65;
 
@@ -1740,8 +1903,8 @@ async function startPedalPoint(bridge, autoStart = false) {
         positions.push(x, y, z);
 
         const absDx = Math.abs(signedOffset);
-        if (absDx < 3.4) tmpColor.copy(colDirt).lerp(colDirtWarm, absDx / 3.4);
-        else tmpColor.copy(colFern).lerp(colRainforest, Math.min(1, (absDx - 3.4) / 18 + rfBlend * 0.5));
+        if (absDx < 3.6) tmpColor.copy(colDirt).lerp(colDirtWarm, absDx / 3.6);
+        else tmpColor.copy(colFern).lerp(colRainforest, Math.min(1, (absDx - 3.6) / 18 + rfBlend * 0.5));
         colors.push(tmpColor.r, tmpColor.g, tmpColor.b);
       }
     }
@@ -1806,13 +1969,13 @@ async function startPedalPoint(bridge, autoStart = false) {
       metalness: 0.28,
       fog: false
     }));
-    ocean.position.set(-920, oceanY, -1350);
+    ocean.position.set(-920, oceanY, -1450);
     worldGroup.add(ocean);
 
-    const plainGeo = new THREE.PlaneGeometry(540, 3600);
+    const plainGeo = new THREE.PlaneGeometry(540, 3800);
     plainGeo.rotateX(-Math.PI / 2);
     const plain = new THREE.Mesh(plainGeo, new THREE.MeshStandardMaterial({ color: 0x3b6936, roughness: 0.95 }));
-    plain.position.set(-340, oceanY + 4, -1250);
+    plain.position.set(-340, oceanY + 4, -1350);
     worldGroup.add(plain);
 
     const lakeGeo = new THREE.CircleGeometry(145, 24);
@@ -1824,11 +1987,11 @@ async function startPedalPoint(bridge, autoStart = false) {
       emissiveIntensity: 0.25,
       roughness: 0.22
     }));
-    lake.position.set(-415, oceanY + 6.5, -1420);
+    lake.position.set(-415, oceanY + 6.5, -1520);
     worldGroup.add(lake);
 
     const hillMat = new THREE.MeshStandardMaterial({ color: 0x2c5c30, roughness: 0.92, flatShading: true });
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < 24; i++) {
       const r = 65 + rng() * 90;
       const h = 75 + rng() * 140;
       const hill = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), hillMat);
@@ -1839,6 +2002,9 @@ async function startPedalPoint(bridge, autoStart = false) {
 
     cargoShips = [];
     floatingNotes = [];
+    coastalBirds = [];
+    hangGliders = [];
+
     const hullMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.6, metalness: 0.35, fog: false });
     const waterlineMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.7, fog: false });
     const deckMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8, fog: false });
@@ -1899,10 +2065,10 @@ async function startPedalPoint(bridge, autoStart = false) {
       { x: -640,  z: -240,  rotY: 0.12,  scale: 1.75, speed: 3.4 },
       { x: -820,  z: -480,  rotY: -0.08, scale: 1.95, speed: -2.6 },
       { x: -680,  z: -860,  rotY: 0.18,  scale: 1.65, speed: 3.0 },
-      { x: -940,  z: -1240, rotY: 0.05,  scale: 2.10, speed: 3.8 },
-      { x: -720,  z: -1520, rotY: -0.15, scale: 1.80, speed: -3.1 },
-      { x: -1020, z: -1840, rotY: 0.10,  scale: 2.20, speed: 2.5 },
-      { x: -760,  z: -2120, rotY: 0.02,  scale: 1.85, speed: 3.2 }
+      { x: -940,  z: -1340, rotY: 0.05,  scale: 2.10, speed: 3.8 },
+      { x: -720,  z: -1620, rotY: -0.15, scale: 1.80, speed: -3.1 },
+      { x: -1020, z: -1940, rotY: 0.10,  scale: 2.20, speed: 2.5 },
+      { x: -760,  z: -2320, rotY: 0.02,  scale: 1.85, speed: 3.2 }
     ];
 
     shipPlacements.forEach(sp => {
@@ -1913,8 +2079,94 @@ async function startPedalPoint(bridge, autoStart = false) {
       cargoShips.push({ mesh: ship, speed: sp.speed });
     });
 
+    // Dynamic Coastal Wildlife & Illawarra Scenery Easter Eggs:
+    // 1. Sulphur-crested Cockatoo Flocks soaring off the escarpment ridge
+    const cockatooBodyMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
+    const crestMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+    for (let f = 0; f < 5; f++) {
+      const flockZ = -160 - f * 480;
+      const flockBaseX = getTrailCenterX(flockZ) - 14;
+      const flockBaseY = getBaseTrailY(flockZ) + 12;
+      for (let b = 0; b < 6; b++) {
+        const bird = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.65, 6), cockatooBodyMat);
+        body.rotation.x = -Math.PI / 2;
+        bird.add(body);
+
+        const crest = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 5), crestMat);
+        crest.position.set(0, 0.16, -0.22);
+        crest.rotation.x = 0.45;
+        bird.add(crest);
+
+        const leftWing = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.04, 0.26), cockatooBodyMat);
+        leftWing.position.set(-0.34, 0, 0);
+        const rightWing = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.04, 0.26), cockatooBodyMat);
+        rightWing.position.set(0.34, 0, 0);
+        bird.add(leftWing, rightWing);
+
+        bird.position.set(
+          flockBaseX + (rng() - 0.5) * 14,
+          flockBaseY + (rng() - 0.5) * 6,
+          flockZ + (rng() - 0.5) * 18
+        );
+        worldGroup.add(bird);
+        coastalBirds.push({
+          mesh: bird,
+          leftWing,
+          rightWing,
+          originX: bird.position.x,
+          originY: bird.position.y,
+          originZ: bird.position.z,
+          phase: rng() * Math.PI * 2,
+          startled: false,
+          startleVel: new THREE.Vector3()
+        });
+      }
+    }
+
+    // 2. Bald Hill / Mt Kembla Coastal Hang-Gliders thermalling over the ocean drop
+    const sailColors = [0xef4444, 0x38bdf8, 0xfbbf24];
+    [-310, -1420, -2100].forEach((gz, idx) => {
+      const glider = new THREE.Group();
+      const wingMat = new THREE.MeshStandardMaterial({
+        color: sailColors[idx % sailColors.length],
+        emissive: sailColors[idx % sailColors.length],
+        emissiveIntensity: 0.2,
+        side: THREE.DoubleSide,
+        roughness: 0.4
+      });
+      const deltaGeo = new THREE.BufferGeometry();
+      deltaGeo.setAttribute('position', new THREE.Float32BufferAttribute([
+        0, 0, -3.2,
+        -5.8, 0.3, 2.2,
+        5.8, 0.3, 2.2
+      ], 3));
+      deltaGeo.computeVertexNormals();
+      const sail = new THREE.Mesh(deltaGeo, wingMat);
+      glider.add(sail);
+
+      const pilot = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 1.8), darkMetalMat);
+      pilot.position.set(0, -1.1, 0.3);
+      glider.add(pilot);
+
+      const centerX = getTrailCenterX(gz) - 65 - idx * 15;
+      const centerY = getBaseTrailY(gz) + 18;
+      glider.position.set(centerX, centerY, gz);
+      worldGroup.add(glider);
+      hangGliders.push({
+        mesh: glider,
+        centerX,
+        centerY,
+        centerZ: gz,
+        radiusX: 28 + idx * 6,
+        radiusZ: 45 + idx * 8,
+        speed: 0.22 + idx * 0.04,
+        phase: idx * 2.1
+      });
+    });
+
     // Eucalyptus Trees
-    const gumCount = 560;
+    const gumCount = 580;
     const trunkGeo = new THREE.CylinderGeometry(0.18, 0.38, 14.5, 5);
     trunkGeo.translate(0, 7.25, 0);
     const canopyGeo = new THREE.DodecahedronGeometry(3.6, 0);
@@ -1932,7 +2184,7 @@ async function startPedalPoint(bridge, autoStart = false) {
       const side = rng() < (rf > 0.35 ? 0.5 : 0.72) ? 1 : -1;
       if (side === -1 && isLookoutZ(z) && rf < 0.25 && rng() < 0.9) continue;
 
-      const dist = 5.4 + Math.pow(rng(), 1.25) * 40;
+      const dist = 6.2 + Math.pow(rng(), 1.25) * 40;
       const x = getTrailCenterX(z) + side * dist;
       const y = getTerrainHeight(x, z);
       const s = 0.85 + rng() * 0.8;
@@ -1948,12 +2200,12 @@ async function startPedalPoint(bridge, autoStart = false) {
     gumTrunks.count = gumCanopy.count = placed;
     worldGroup.add(gumTrunks, gumCanopy);
 
-    // High-Visibility Melodic Note Gates
+    // High-Visibility Melodic Note Gates (Spaced wider: 108-138m apart)
     noteGates = [];
-    for (let z = -65; z > -TRAIL_LENGTH + 70; z -= 72 + rng() * 22) {
-      if ((z < -675 && z > -865) || (z < -1695 && z > -1885)) continue;
+    for (let z = -95; z > -TRAIL_LENGTH + 110; z -= 108 + rng() * 30) {
+      if (inMelodyCorridor(z)) continue;
       const note = SCALE_NOTES[Math.floor(rng() * SCALE_NOTES.length)];
-      const x = getTrailCenterX(z) + (rng() - 0.5) * 2.8;
+      const x = getTrailCenterX(z) + (rng() - 0.5) * 2.4;
       const y = getTerrainHeight(x, z);
 
       const gateGroup = new THREE.Group();
@@ -1965,31 +2217,31 @@ async function startPedalPoint(bridge, autoStart = false) {
         roughness: 0.2
       });
 
-      const arch = new THREE.Mesh(new THREE.TorusGeometry(2.35, 0.22, 10, 24, Math.PI), mat);
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(2.45, 0.22, 10, 24, Math.PI), mat);
       arch.position.y = 0.25;
       gateGroup.add(arch);
 
-      [-2.35, 2.35].forEach(px => {
+      [-2.45, 2.45].forEach(px => {
         const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.20, 1.35, 10), mat);
         pillar.position.set(px, 0.65, 0);
         gateGroup.add(pillar);
       });
 
       const pad = new THREE.Mesh(
-        new THREE.PlaneGeometry(4.6, 1.2),
+        new THREE.PlaneGeometry(4.8, 1.3),
         new THREE.MeshBasicMaterial({ color: note.color, transparent: true, opacity: 0.42 })
       );
       pad.rotation.x = -Math.PI / 2;
       pad.position.y = 0.08;
       gateGroup.add(pad);
 
-      const noteIcon = createMusicalNoteMesh(THREE, note.color, 1.2, 0.95);
+      const noteIcon = createMusicalNoteMesh(THREE, note.color, 1.25, 0.95);
       noteIcon.position.set(0, 1.45, 0);
       gateGroup.add(noteIcon);
       floatingNotes.push({ mesh: noteIcon, baseY: 1.45, phase: z * 0.1 });
 
       const badgeSprite = createNoteSpriteLabel(THREE, `♪ ${note.name}`, note.hex);
-      badgeSprite.position.set(0, 3.45, 0);
+      badgeSprite.position.set(0, 3.55, 0);
       gateGroup.add(badgeSprite);
 
       worldGroup.add(gateGroup);
@@ -2008,16 +2260,20 @@ async function startPedalPoint(bridge, autoStart = false) {
       worldGroup.add(strip);
     });
 
-    // High-Visibility Melody Trail Challenges
+    // Spacious, Well-Telegraphed Melody Trail Challenges
+    // Triggered 120m early with 58m spacing between each note row
     melodyChallenges = [];
     const noteKeys = ['c', 'd', 'e', 'f', 'g', 'a', 'b'];
-    const laneOffsets = [-2.3, 0.0, 2.3];
+    const laneOffsets = [-2.2, 0.0, 2.2];
 
-    [-700, -1720].forEach(startZ => {
+    [-660, -1660].forEach(firstRowZ => {
       const seq = [Math.floor(rng() * 3), Math.floor(rng() * 3), Math.floor(rng() * 3), Math.floor(rng() * 3)];
       const rows = [];
+      const rowSpacing = 58;
+      const targetPoints = [];
+
       for (let step = 0; step < 4; step++) {
-        const rowZ = startZ - 50 - step * 30;
+        const rowZ = firstRowZ - step * rowSpacing;
         const cx = getTrailCenterX(rowZ);
         const orbs = [];
 
@@ -2038,36 +2294,65 @@ async function startPedalPoint(bridge, autoStart = false) {
           const oy = getTerrainHeight(ox, rowZ) + 1.35;
           const isTarget = (lane === seq[step]);
 
+          if (isTarget) {
+            targetPoints.push(new THREE.Vector3(ox, oy - 1.15, rowZ));
+          }
+
           const orbContainer = new THREE.Group();
           orbContainer.position.set(ox, oy, rowZ);
 
-          const noteMesh = createMusicalNoteMesh(THREE, info.color, isTarget ? 1.45 : 0.72, isTarget ? 1.05 : 0.35);
+          const noteMesh = createMusicalNoteMesh(THREE, info.color, isTarget ? 1.55 : 0.65, isTarget ? 1.1 : 0.3);
           orbContainer.add(noteMesh);
 
+          let ringMesh = null;
+          let beamMesh = null;
           if (isTarget) {
-            const ring = new THREE.Mesh(
-              new THREE.RingGeometry(0.95, 1.35, 24),
-              new THREE.MeshBasicMaterial({ color: info.color, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
+            ringMesh = new THREE.Mesh(
+              new THREE.RingGeometry(1.05, 1.55, 24),
+              new THREE.MeshBasicMaterial({ color: info.color, side: THREE.DoubleSide, transparent: true, opacity: 0.9 })
             );
-            ring.rotation.x = -Math.PI / 2;
-            ring.position.y = -1.22;
-            orbContainer.add(ring);
+            ringMesh.rotation.x = -Math.PI / 2;
+            ringMesh.position.y = -1.22;
+            orbContainer.add(ringMesh);
+
+            beamMesh = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.16, 0.42, 6.5, 12, 1, true),
+              new THREE.MeshBasicMaterial({ color: info.color, transparent: true, opacity: 0.24, side: THREE.DoubleSide, depthWrite: false })
+            );
+            beamMesh.position.y = 2.0;
+            orbContainer.add(beamMesh);
 
             const targetSprite = createNoteSpriteLabel(THREE, `♪ ${info.label}`, info.hex);
-            targetSprite.position.set(0, 1.75, 0);
+            targetSprite.position.set(0, 1.9, 0);
             orbContainer.add(targetSprite);
           }
 
           worldGroup.add(orbContainer);
           floatingNotes.push({ mesh: noteMesh, baseY: 0, phase: step + lane });
 
-          orbs.push({ mesh: orbContainer, lane, x: ox, baseY: oy, info });
+          orbs.push({ mesh: orbContainer, ringMesh, beamMesh, lane, x: ox, baseY: oy, info });
         }
         rows.push({ z: rowZ, targetLane: seq[step], orbs, resolved: false });
       }
+
+      // Draw a glowing trail ribbon connecting the 4 target notes so the player sees the exact line ahead!
+      if (targetPoints.length >= 2) {
+        const curve = new THREE.CatmullRomCurve3(targetPoints);
+        const guideGeo = new THREE.TubeGeometry(curve, 36, 0.14, 6, false);
+        const guideMat = new THREE.MeshBasicMaterial({
+          color: 0xfde047,
+          transparent: true,
+          opacity: 0.48,
+          depthWrite: false
+        });
+        worldGroup.add(new THREE.Mesh(guideGeo, guideMat));
+      }
+
+      const lastRowZ = firstRowZ - 3 * rowSpacing;
       melodyChallenges.push({
-        triggerZ: startZ + 28,
-        endZ: startZ - 175,
+        firstRowZ,
+        triggerZ: firstRowZ + 125,
+        endZ: lastRowZ - 18,
         seq,
         rows,
         announced: false,
@@ -2107,16 +2392,14 @@ async function startPedalPoint(bridge, autoStart = false) {
     const lblLeft = document.getElementById('pp-lbl-left');
     const lblRight = document.getElementById('pp-lbl-right');
     const lblJump = document.getElementById('pp-lbl-jump');
-    const lblView = document.getElementById('pp-lbl-view');
     const caption = document.getElementById('pp-controls-caption');
 
     if (lblLeft) lblLeft.textContent = bindings.left.label;
     if (lblRight) lblRight.textContent = bindings.right.label;
     if (lblJump) lblJump.textContent = bindings.jump.label;
-    if (lblView) lblView.textContent = bindings.view.label;
     if (caption) {
       caption.innerHTML =
-        `<b>${bindings.left.label}</b> Steer Left • <b>${bindings.right.label}</b> Steer Right • <b>${bindings.jump.label}</b> Jump &amp; Whip`;
+        `<b>${bindings.left.label}</b> Steer Left • <b>${bindings.right.label}</b> Steer Right • <b>${bindings.jump.label}</b> Jump • <b>Any Triad</b> Wheelie`;
     }
   }
   updateControlsLabels();
@@ -2218,10 +2501,11 @@ async function startPedalPoint(bridge, autoStart = false) {
   }
 
   // ============================================================================
-  // 4. SMOOTH BIKE PHYSICS, SKID DRIFTING, INPUT HANDLERS & SIMULATION LOOP
+  // 4. SMOOTH BIKE PHYSICS, TRIAD WHEELIES, GHOST RIDER & SIMULATION LOOP
   // ============================================================================
   let isPlaying = false;
   let isFirstPerson = false;
+  let showGhost = true;
   let selectedBikeKey = 'enduro';
   let score = 0;
   let combo = 0;
@@ -2233,6 +2517,17 @@ async function startPedalPoint(bridge, autoStart = false) {
   let lastZoneIdx = -1;
   let bestScore = parseInt(localStorage.getItem('pedalpoint_best_score') || '0', 10);
 
+  // Ghost Replay Storage
+  let bestGhostFrames = [];
+  try {
+    bestGhostFrames = JSON.parse(localStorage.getItem('pedalpoint_best_ghost') || '[]') || [];
+  } catch (e) {
+    bestGhostFrames = [];
+  }
+  let currentGhostFrames = [];
+  let ghostRecordTimer = 0;
+  let runElapsedTime = 0;
+
   const valSpeed = document.getElementById('pp-val-speed');
   const valRem = document.getElementById('pp-val-rem');
   const valScore = document.getElementById('pp-val-score');
@@ -2242,16 +2537,27 @@ async function startPedalPoint(bridge, autoStart = false) {
   const calloutEl = document.getElementById('pp-callout');
   const overlayEl = document.getElementById('pp-overlay');
   const btnCamToggle = document.getElementById('btn-pp-cam-toggle');
+  const btnGhostToggle = document.getElementById('btn-pp-ghost');
   const eqBars = document.querySelectorAll('#pp-eq-bars > div');
   const beatDiamondEl = document.getElementById('pp-beat-diamond');
   const beatLabelEl = document.getElementById('pp-beat-label');
   const beatLeftEl = document.getElementById('pp-beat-l');
   const beatRightEl = document.getElementById('pp-beat-r');
   const nextGatePillEl = document.getElementById('pp-next-gate-pill');
+  const nextGateTitleEl = document.getElementById('pp-next-gate-title');
   const nextGateBadgeEl = document.getElementById('pp-next-gate-badge');
   const nextGateDistEl = document.getElementById('pp-next-gate-dist');
+  const wheeliePillEl = document.getElementById('pp-wheelie-pill');
+  const wheelieChordEl = document.getElementById('pp-wheelie-chord');
 
   if (bestScore > 0) valBest.textContent = bestScore.toLocaleString();
+
+  btnGhostToggle.addEventListener('click', () => {
+    showGhost = !showGhost;
+    btnGhostToggle.textContent = showGhost ? '👻 Ghost: ON' : '👻 Ghost: OFF';
+    ghostRoot.visible = showGhost && isPlaying && bestGhostFrames.length > 1;
+    btnGhostToggle.blur();
+  });
 
   function updateEqVisuals() {
     eqBars.forEach((bar, idx) => {
@@ -2307,7 +2613,12 @@ async function startPedalPoint(bridge, autoStart = false) {
     crankSpin: 0,
     whipAngle: 0,
     whipTarget: 0,
-    whipAwarded: false
+    whipAwarded: false,
+    wheelieAngle: 0,
+    wheelieActive: false,
+    wheelieChordName: '',
+    wheelieScoreAccum: 0,
+    edgeGuardCooldown: 0
   };
 
   const input = {
@@ -2315,7 +2626,8 @@ async function startPedalPoint(bridge, autoStart = false) {
     right: false,
     jumpHeld: false,
     pianoLeftHoldUntil: 0,
-    pianoRightHoldUntil: 0
+    pianoRightHoldUntil: 0,
+    heldPianoNotes: new Map() // noteStr -> timestamp
   };
 
   let calloutTimeout = null;
@@ -2325,7 +2637,7 @@ async function startPedalPoint(bridge, autoStart = false) {
     calloutEl.style.color = color;
     calloutEl.classList.add('show');
     clearTimeout(calloutTimeout);
-    calloutTimeout = setTimeout(() => calloutEl.classList.remove('show'), 1350);
+    calloutTimeout = setTimeout(() => calloutEl.classList.remove('show'), 1450);
   }
 
   function toggleCameraMode() {
@@ -2362,6 +2674,37 @@ async function startPedalPoint(bridge, autoStart = false) {
     audio.setComboLayer(0);
     updateEqVisuals();
     valCombo.textContent = 'x1';
+  }
+
+  function evaluateTriadWheelie(nowMs) {
+    // Include currently held notes plus any note released within the last 130ms (for slightly rolled chords)
+    const activeSet = new Set();
+    input.heldPianoNotes.forEach((ts, noteStr) => {
+      if (ts === Infinity || (nowMs - ts) < 130) {
+        activeSet.add(noteStr);
+      }
+    });
+
+    const triad = detectTriadFromPitchClasses(activeSet);
+    if (triad && isPlaying) {
+      const wasWheelie = bike.wheelieActive;
+      bike.wheelieActive = true;
+      bike.wheelieChordName = triad.name;
+      if (!wasWheelie || bike.wheelieChordName !== triad.name) {
+        audio.playWheelieChordShimmer(triad.root);
+        addScore(250, true);
+        showCallout(`🚵‍♂️ ${triad.name} WHEELIE! +250`, '#c084fc');
+        overdriveTimer = Math.max(overdriveTimer, 2.2);
+
+        // Easter egg: playing a major/minor triad sounds a distant Port Kembla cargo ship horn in that root key!
+        if (isLookoutZ(bike.pos.z) && Math.random() < 0.45) {
+          audio.playPortKemblaFoghorn(triad.root);
+        }
+      }
+    } else {
+      bike.wheelieActive = false;
+      bike.wheelieChordName = '';
+    }
   }
 
   function triggerHop() {
@@ -2404,13 +2747,18 @@ async function startPedalPoint(bridge, autoStart = false) {
       return;
     }
 
+    if (type === 'piano') {
+      input.heldPianoNotes.set(code, Infinity);
+      evaluateTriadWheelie(performance.now());
+    }
+
     const match = (b) => b.type === type && b.code === code;
 
     if (match(bindings.left) || (type === 'key' && code === 'ArrowLeft')) {
       input.left = true;
       bike.targetSnapX = null;
       if (type === 'piano') {
-        input.pianoLeftHoldUntil = performance.now() + 340;
+        input.pianoLeftHoldUntil = performance.now() + 280;
         input.pianoRightHoldUntil = 0;
       }
       return;
@@ -2419,7 +2767,7 @@ async function startPedalPoint(bridge, autoStart = false) {
       input.right = true;
       bike.targetSnapX = null;
       if (type === 'piano') {
-        input.pianoRightHoldUntil = performance.now() + 340;
+        input.pianoRightHoldUntil = performance.now() + 280;
         input.pianoLeftHoldUntil = 0;
       }
       return;
@@ -2465,7 +2813,7 @@ async function startPedalPoint(bridge, autoStart = false) {
       if (matchedOffset !== null) {
         bike.targetSnapX = matchedOffset;
         overdriveTimer = Math.max(overdriveTimer, 1.5);
-      } else {
+      } else if (!bike.wheelieActive) {
         bike.vel.z -= 2.2;
         overdriveTimer = Math.max(overdriveTimer, 1.2);
       }
@@ -2473,6 +2821,11 @@ async function startPedalPoint(bridge, autoStart = false) {
   }
 
   function handleControlUp(type, code) {
+    if (type === 'piano') {
+      input.heldPianoNotes.set(code, performance.now());
+      evaluateTriadWheelie(performance.now());
+    }
+
     const match = (b) => b.type === type && b.code === code;
     if (match(bindings.left) || (type === 'key' && code === 'ArrowLeft')) {
       input.left = false;
@@ -2524,6 +2877,8 @@ async function startPedalPoint(bridge, autoStart = false) {
       input.left = false;
       input.right = false;
       input.jumpHeld = false;
+      input.heldPianoNotes.clear();
+      bike.wheelieActive = false;
     }
   };
 
@@ -2543,8 +2898,6 @@ async function startPedalPoint(bridge, autoStart = false) {
   });
 
   // Intercept and silence PianoPad's main synth output for left/right control notes during active gameplay
-  const pianoAudioSources = [];
-  const origAudioCtxCreateOsc = audioCtx ? audioCtx.createOscillator.bind(audioCtx) : null;
   let muteControlNotesActive = false;
 
   function isControlSteeringInputHeld() {
@@ -2552,7 +2905,6 @@ async function startPedalPoint(bridge, autoStart = false) {
     if (input.left || input.right || performance.now() < input.pianoLeftHoldUntil || performance.now() < input.pianoRightHoldUntil) {
       return true;
     }
-    // Check if the currently pressed piano key matches the bound Left or Right steering note
     const activeKeys = document.querySelectorAll('#keyboard .key.active');
     for (let i = 0; i < activeKeys.length; i++) {
       const noteAttr = (activeKeys[i].dataset.note || activeKeys[i].dataset.key || '').trim().toLowerCase();
@@ -2565,7 +2917,6 @@ async function startPedalPoint(bridge, autoStart = false) {
     return false;
   }
 
-  // Patch main audioCtx oscillator/buffer creation while Pedal Point is active so left/right steering notes produce zero sound
   if (audioCtx && !audioCtx._ppSteeringMutePatched) {
     audioCtx._ppSteeringMutePatched = true;
     const rawCreateOsc = audioCtx.createOscillator.bind(audioCtx);
@@ -2573,9 +2924,8 @@ async function startPedalPoint(bridge, autoStart = false) {
     audioCtx.createOscillator = function () {
       const osc = rawCreateOsc();
       if (muteControlNotesActive && isControlSteeringInputHeld()) {
-        // Disconnect output or zero out frequency/gain on connect so steering keys are completely silent
         const origConnect = osc.connect.bind(osc);
-        osc.connect = function (dest, ...rest) {
+        osc.connect = function (dest) {
           if (dest && dest.gain && typeof dest.gain.setValueAtTime === 'function') {
             dest.gain.setValueAtTime(0, audioCtx.currentTime);
             dest.gain.value = 0;
@@ -2617,6 +2967,17 @@ async function startPedalPoint(bridge, autoStart = false) {
     bike.whipAngle = 0;
     bike.whipTarget = 0;
     bike.whipAwarded = false;
+    bike.wheelieAngle = 0;
+    bike.wheelieActive = false;
+    bike.wheelieChordName = '';
+    bike.wheelieScoreAccum = 0;
+    bike.edgeGuardCooldown = 0;
+
+    input.heldPianoNotes.clear();
+    currentGhostFrames = [];
+    ghostRecordTimer = 0;
+    runElapsedTime = 0;
+    ghostRoot.visible = showGhost && bestGhostFrames.length > 1;
 
     score = 0;
     combo = 0;
@@ -2651,6 +3012,12 @@ async function startPedalPoint(bridge, autoStart = false) {
       bestScore = score;
       localStorage.setItem('pedalpoint_best_score', String(bestScore));
       valBest.textContent = bestScore.toLocaleString();
+      if (currentGhostFrames.length > 1) {
+        bestGhostFrames = currentGhostFrames;
+        try {
+          localStorage.setItem('pedalpoint_best_ghost', JSON.stringify(bestGhostFrames));
+        } catch (e) {}
+      }
     }
 
     const accuracy = notesAttempted > 0 ? Math.round((notesHit / notesAttempted) * 100) : 100;
@@ -2685,7 +3052,28 @@ async function startPedalPoint(bridge, autoStart = false) {
     lastTime = now;
 
     if (isPlaying) {
+      runElapsedTime += dt;
       audio.update();
+
+      // Re-evaluate rolled triad timeout cleanly
+      if (input.heldPianoNotes.size > 0) {
+        evaluateTriadWheelie(now);
+      }
+
+      // Record Ghost Frame every 0.1s
+      ghostRecordTimer += dt;
+      if (ghostRecordTimer >= 0.1) {
+        ghostRecordTimer = 0;
+        const cxNow = getTrailCenterX(bike.pos.z);
+        currentGhostFrames.push({
+          t: Number(runElapsedTime.toFixed(2)),
+          dx: Number((bike.pos.x - cxNow).toFixed(2)),
+          yOff: Number((bike.pos.y - getTerrainHeight(bike.pos.x, bike.pos.z)).toFixed(2)),
+          z: Number(bike.pos.z.toFixed(1)),
+          yaw: Number(bike.yaw.toFixed(3)),
+          wh: Number(bike.wheelieAngle.toFixed(2))
+        });
+      }
 
       // Update live 122 BPM Beat Bar markers
       const phase = audio.getBeatPhase();
@@ -2696,10 +3084,13 @@ async function startPedalPoint(bridge, autoStart = false) {
       const preset = BIKE_PRESETS[selectedBikeKey];
       const normal = getTerrainNormal(bike.pos.x, bike.pos.z);
 
-      // Smooth damped steering interpolation so inputs feel fluid and organic
+      // Smoother, progressive steering so taps carve gently instead of snapping abruptly
       const rawSteer = ((input.left || now < input.pianoLeftHoldUntil) ? 1 : 0) - ((input.right || now < input.pianoRightHoldUntil) ? 1 : 0);
-      bike.smoothSteer += (rawSteer - bike.smoothSteer) * Math.min(1, dt * 11.5);
-      bike.steerAngle += (bike.smoothSteer * 0.45 - bike.steerAngle) * Math.min(1, dt * 12);
+      const steerLerpRate = rawSteer !== 0 ? 5.2 : 6.8;
+      bike.smoothSteer += (rawSteer - bike.smoothSteer) * Math.min(1, dt * steerLerpRate);
+      // Gentle non-linear curve gives fine control near center and full carve at full lock
+      const curvedSteer = Math.sign(bike.smoothSteer) * Math.pow(Math.abs(bike.smoothSteer), 1.35);
+      bike.steerAngle += (curvedSteer * 0.42 - bike.steerAngle) * Math.min(1, dt * 8.0);
 
       const grav = 24.0 * (preset.gravityMult || 1.0);
       bike.vel.y -= grav * dt;
@@ -2712,39 +3103,40 @@ async function startPedalPoint(bridge, autoStart = false) {
 
         const fwdX = -Math.sin(bike.yaw);
         const fwdZ = -Math.cos(bike.yaw);
-        const boost = overdriveTimer > 0 ? 1.22 : 1.0;
+        const wheelieBoost = bike.wheelieActive ? 1.12 : 1.0;
+        const boost = (overdriveTimer > 0 ? 1.22 : 1.0) * wheelieBoost;
 
         if (horizSpeed < preset.maxPedalSpeed * boost) {
           bike.vel.x += fwdX * preset.pedalForce * boost * dt;
           bike.vel.z += fwdZ * preset.pedalForce * boost * dt;
         }
 
-        // Smooth angular velocity (yawRate) for fluid carving & drifting
-        const targetTurnRate = bike.smoothSteer * preset.turnSpeed * (0.62 + Math.min(1, horizSpeed / 16) * 0.48);
-        bike.yawRate += (targetTurnRate - bike.yawRate) * Math.min(1, dt * 10.5);
-        bike.yaw = Math.max(-1.05, Math.min(1.05, bike.yaw + bike.yawRate * dt));
+        // Smooth angular velocity (yawRate) for fluid, natural carving
+        const targetTurnRate = curvedSteer * preset.turnSpeed * (0.58 + Math.min(1, horizSpeed / 18) * 0.45);
+        bike.yawRate += (targetTurnRate - bike.yawRate) * Math.min(1, dt * 5.8);
+        bike.yaw = Math.max(-0.92, Math.min(0.92, bike.yaw + bike.yawRate * dt));
 
-        // Smooth lateral grip: lower traction during aggressive high-speed turns creates realistic rear-wheel drift/skid!
+        // Smooth lateral grip with organic rear-wheel drift on hard carves
         const speedNow = Math.hypot(bike.vel.x, bike.vel.z);
         const desiredVx = -Math.sin(bike.yaw) * speedNow;
         const desiredVz = -Math.cos(bike.yaw) * speedNow;
 
-        // Lateral slip velocity perpendicular to the bike's heading
         const rightX = Math.cos(bike.yaw);
         const rightZ = -Math.sin(bike.yaw);
         const lateralSlip = bike.vel.x * rightX + bike.vel.z * rightZ;
 
-        const turnIntensity = Math.abs(bike.yawRate) * Math.max(0, (speedNow - 14) / 24);
-        const lateralGrip = Math.max(3.6, 8.2 - turnIntensity * 2.2);
+        const turnIntensity = Math.abs(bike.yawRate) * Math.max(0, (speedNow - 15) / 24);
+        const lateralGrip = Math.max(3.8, 7.6 - turnIntensity * 1.9);
 
         bike.vel.x += (desiredVx - bike.vel.x) * Math.min(1, dt * lateralGrip);
         bike.vel.z += (desiredVz - bike.vel.z) * Math.min(1, dt * lateralGrip);
 
-        // Smooth Melody Lane centering if a melody note key was tapped
+        // Smooth, non-abrupt glide toward matching Melody Lane when a note is played
         if (bike.targetSnapX !== null) {
           const desiredX = getTrailCenterX(bike.pos.z) + bike.targetSnapX;
           const diffX = desiredX - bike.pos.x;
-          bike.pos.x += diffX * Math.min(1, dt * 8.5);
+          bike.pos.x += diffX * Math.min(1, dt * 4.6);
+          bike.leanAngle += (Math.max(-0.35, Math.min(0.35, -diffX * 0.14)) - bike.leanAngle) * Math.min(1, dt * 6);
           if (Math.abs(diffX) < 0.08) bike.targetSnapX = null;
         }
 
@@ -2758,11 +3150,21 @@ async function startPedalPoint(bridge, autoStart = false) {
         if (bike.vel.z > -10.0) bike.vel.z -= 12.0 * dt;
         bike.whipTarget = 0;
 
+        // Continuous Wheelie Flow Points
+        if (bike.wheelieActive) {
+          bike.wheelieScoreAccum += dt * 140;
+          if (bike.wheelieScoreAccum >= 25) {
+            const pts = Math.floor(bike.wheelieScoreAccum);
+            bike.wheelieScoreAccum -= pts;
+            addScore(pts, false);
+          }
+        }
+
         // Skid detection & Dirt Roost + Dust Cloud physics
-        const skidMetric = Math.abs(lateralSlip) * 0.24 + turnIntensity * 0.55;
-        bike.skidIntensity += (Math.min(1.4, skidMetric) - bike.skidIntensity) * Math.min(1, dt * 10);
-        const targetSkidYaw = Math.max(-0.34, Math.min(0.34, lateralSlip * 0.055 + bike.yawRate * 0.08));
-        bike.skidAngle += (targetSkidYaw - bike.skidAngle) * Math.min(1, dt * 10);
+        const skidMetric = Math.abs(lateralSlip) * 0.24 + turnIntensity * 0.52;
+        bike.skidIntensity += (Math.min(1.4, skidMetric) - bike.skidIntensity) * Math.min(1, dt * 9);
+        const targetSkidYaw = Math.max(-0.32, Math.min(0.32, lateralSlip * 0.05 + bike.yawRate * 0.07));
+        bike.skidAngle += (targetSkidYaw - bike.skidAngle) * Math.min(1, dt * 9);
 
         if (bike.skidIntensity > 0.36 && clampedSpd > 15) {
           const roostDirX = lateralSlip >= 0 ? rightX : -rightX;
@@ -2790,7 +3192,7 @@ async function startPedalPoint(bridge, autoStart = false) {
         bike.coyoteTimer = Math.max(0, bike.coyoteTimer - dt);
         bike.airTime += dt;
         if (bike.airTime > maxAirtime) maxAirtime = bike.airTime;
-        bike.yawRate += (bike.smoothSteer * 0.95 - bike.yawRate) * Math.min(1, dt * 6.0);
+        bike.yawRate += (curvedSteer * 0.85 - bike.yawRate) * Math.min(1, dt * 5.0);
         bike.yaw += bike.yawRate * dt;
         bike.skidIntensity *= Math.max(0, 1 - 6 * dt);
         bike.skidAngle += (0 - bike.skidAngle) * Math.min(1, dt * 6);
@@ -2811,9 +3213,37 @@ async function startPedalPoint(bridge, autoStart = false) {
 
       bike.pos.addScaledVector(bike.vel, dt);
 
+      // Soft Mountain-Edge Guardrail & Trail Recovery (prevents falling down the cliffside)
       const cx = getTrailCenterX(bike.pos.z);
-      if (bike.pos.x < cx - 20) { bike.pos.x = cx - 20; bike.vel.x = Math.max(0, bike.vel.x); }
-      else if (bike.pos.x > cx + 20) { bike.pos.x = cx + 20; bike.vel.x = Math.min(0, bike.vel.x); }
+      const offsetFromTrail = bike.pos.x - cx;
+      const maxEdgeOffset = 8.8;
+      if (bike.edgeGuardCooldown > 0) bike.edgeGuardCooldown -= dt;
+
+      if (offsetFromTrail < -6.2) {
+        // Gentle inward banking force near the ocean-side shoulder
+        const edgePenetration = Math.min(1, (-offsetFromTrail - 6.2) / (maxEdgeOffset - 6.2));
+        bike.vel.x += edgePenetration * 18.0 * dt;
+        bike.yaw += edgePenetration * 0.55 * dt;
+      }
+
+      if (offsetFromTrail < -maxEdgeOffset) {
+        bike.pos.x = cx - maxEdgeOffset;
+        bike.vel.x = Math.max(2.5, bike.vel.x * 0.5 + 3.2);
+        bike.yaw = Math.max(0.08, bike.yaw * 0.5);
+        if (bike.edgeGuardCooldown <= 0) {
+          bike.edgeGuardCooldown = 1.6;
+          showCallout('TRAIL EDGE GUARD!', '#38bdf8');
+          spawnDirtRoost(bike.pos, 1, 0, 10, 4.0, 0x9b6438);
+        }
+      } else if (offsetFromTrail > maxEdgeOffset) {
+        bike.pos.x = cx + maxEdgeOffset;
+        bike.vel.x = Math.min(-2.5, bike.vel.x * 0.5 - 3.2);
+        bike.yaw = Math.min(-0.08, bike.yaw * 0.5);
+        if (bike.edgeGuardCooldown <= 0) {
+          bike.edgeGuardCooldown = 1.6;
+          showCallout('BANK RECOVERY!', '#38bdf8');
+        }
+      }
 
       const groundY = getTerrainHeight(bike.pos.x, bike.pos.z);
       if (bike.pos.y <= groundY + 0.04) {
@@ -2835,11 +3265,23 @@ async function startPedalPoint(bridge, autoStart = false) {
       }
 
       bike.suspensionComp = Math.max(0, bike.suspensionComp - preset.suspensionStiffness * 0.12 * dt);
-      bike.leanAngle += (bike.smoothSteer * 0.38 - bike.leanAngle) * Math.min(1, dt * 8.5);
+      bike.leanAngle += (curvedSteer * 0.36 - bike.leanAngle) * Math.min(1, dt * 7.2);
       bike.whipAngle += (bike.whipTarget - bike.whipAngle) * Math.min(1, dt * 9);
+      const targetWheelie = bike.wheelieActive ? 0.56 : 0;
+      bike.wheelieAngle += (targetWheelie - bike.wheelieAngle) * Math.min(1, dt * (bike.wheelieActive ? 7.5 : 10.0));
       if (overdriveTimer > 0) overdriveTimer = Math.max(0, overdriveTimer - dt);
 
-      // Scenic Zone Callouts
+      // Wheelie HUD Pill
+      if (wheeliePillEl && wheelieChordEl) {
+        if (bike.wheelieActive) {
+          wheeliePillEl.style.display = 'flex';
+          wheelieChordEl.textContent = bike.wheelieChordName;
+        } else {
+          wheeliePillEl.style.display = 'none';
+        }
+      }
+
+      // Scenic Zone Callouts + Cockatoo Flock Startle Easter Egg
       for (let i = TRAIL_ZONES.length - 1; i >= 0; i--) {
         if (bike.pos.z <= TRAIL_ZONES[i].z) {
           if (i !== lastZoneIdx) {
@@ -2850,7 +3292,7 @@ async function startPedalPoint(bridge, autoStart = false) {
         }
       }
 
-      // Melodic Note Gates + Next Approaching Gate HUD Indicator
+      // Melodic Note Gates + Unified Upcoming Challenge Radar
       let nearestGate = null;
       let nearestGateDist = 999;
 
@@ -2862,7 +3304,7 @@ async function startPedalPoint(bridge, autoStart = false) {
           nearestGateDist = distAhead;
           nearestGate = g;
         }
-        if (Math.abs(bike.pos.z - g.z) < 2.6 && Math.abs(bike.pos.x - g.x) < 2.9) {
+        if (Math.abs(bike.pos.z - g.z) < 2.7 && Math.abs(bike.pos.x - g.x) < 3.0) {
           g.hit = true;
           g.mesh.visible = false;
           audio.playNoteTrigger(g.note.freq, combo >= 4);
@@ -2874,20 +3316,12 @@ async function startPedalPoint(bridge, autoStart = false) {
         }
       }
 
-      if (nearestGate && nearestGateDist < 95 && nextGatePillEl && nextGateBadgeEl && nextGateDistEl) {
-        nextGatePillEl.style.display = 'flex';
-        nextGatePillEl.style.borderColor = nearestGate.note.hex;
-        nextGateBadgeEl.style.background = nearestGate.note.hex;
-        nextGateBadgeEl.textContent = `♪ ${nearestGate.note.name}`;
-        nextGateDistEl.textContent = `${Math.round(nearestGateDist)}m`;
-      } else if (nextGatePillEl) {
-        nextGatePillEl.style.display = 'none';
-      }
-
-      // Melody Trail Challenges
+      // Melody Trail Challenges (Pre-empted 125m early with active-row highlighting)
       const bannerEl = document.getElementById('pp-melody-banner');
       const notesRowEl = document.getElementById('pp-melody-notes');
       let inMelodyZone = false;
+      let activeMelodyRowInfo = null;
+      let activeMelodyRowDist = 999;
 
       for (let i = 0; i < melodyChallenges.length; i++) {
         const mc = melodyChallenges[i];
@@ -2896,7 +3330,7 @@ async function startPedalPoint(bridge, autoStart = false) {
           if (!mc.announced && notesRowEl && bannerEl) {
             mc.announced = true;
             const noteSeqLabels = mc.seq.map((laneIdx, idx) => mc.rows[idx].orbs[laneIdx].info.label).join(' → ');
-            showCallout(`🎹 MELODY TRAIL: ${noteSeqLabels}`, '#fbbf24');
+            showCallout(`🎹 UPCOMING MELODY: ${noteSeqLabels}`, '#fbbf24');
 
             notesRowEl.innerHTML = '';
             mc.seq.forEach((laneIdx, idx) => {
@@ -2910,6 +3344,7 @@ async function startPedalPoint(bridge, autoStart = false) {
                 box-shadow: 0 4px 12px rgba(0,0,0,0.55);
                 text-shadow: 0 1px 3px rgba(0,0,0,0.75);
                 background:${info.hex};
+                transition: transform 0.2s ease, opacity 0.2s ease;
               `;
               pill.textContent = `♪${info.label}`;
               notesRowEl.appendChild(pill);
@@ -2917,14 +3352,37 @@ async function startPedalPoint(bridge, autoStart = false) {
                 audio.playNoteTrigger(info.freq, false);
                 pill.classList.add('pp-note-speaking');
                 setTimeout(() => pill.classList.remove('pp-note-speaking'), 380);
-              }, idx * 270);
+              }, idx * 290);
             });
             bannerEl.style.display = 'flex';
           }
 
+          let foundNextUnresolved = false;
           mc.rows.forEach((row, rIdx) => {
             if (row.resolved) return;
-            if (Math.abs(bike.pos.z - row.z) < 2.6) {
+
+            const targetOrb = row.orbs[row.targetLane];
+            if (!foundNextUnresolved) {
+              foundNextUnresolved = true;
+              activeMelodyRowInfo = targetOrb.info;
+              activeMelodyRowDist = Math.max(0, bike.pos.z - row.z);
+
+              // Pulse the active target note's 3D ground ring & light beam so player knows what to aim for!
+              if (targetOrb.ringMesh) {
+                const pulse = 1.15 + Math.sin(now * 0.012) * 0.22;
+                targetOrb.ringMesh.scale.set(pulse, pulse, 1);
+              }
+              if (targetOrb.beamMesh) {
+                targetOrb.beamMesh.material.opacity = 0.42;
+              }
+              const pill = notesRowEl ? notesRowEl.children[rIdx] : null;
+              if (pill) {
+                pill.style.transform = 'scale(1.18)';
+                pill.style.borderColor = '#fde047';
+              }
+            }
+
+            if (Math.abs(bike.pos.z - row.z) < 2.8) {
               row.resolved = true;
               let bestLane = 1;
               let bestDist = 999;
@@ -2934,7 +3392,7 @@ async function startPedalPoint(bridge, autoStart = false) {
               });
 
               const pill = notesRowEl ? notesRowEl.children[rIdx] : null;
-              if (bestLane === row.targetLane && bestDist < 2.4) {
+              if (bestLane === row.targetLane && bestDist < 2.5) {
                 mc.hits++;
                 const hitOrb = row.orbs[bestLane];
                 hitOrb.mesh.visible = false;
@@ -2948,7 +3406,10 @@ async function startPedalPoint(bridge, autoStart = false) {
               } else {
                 audio.playMissBuzz();
                 breakCombo();
-                if (pill) pill.style.opacity = '0.25';
+                if (pill) {
+                  pill.style.transform = 'scale(0.92)';
+                  pill.style.opacity = '0.25';
+                }
               }
 
               if (rIdx === mc.rows.length - 1) {
@@ -2969,6 +3430,25 @@ async function startPedalPoint(bridge, autoStart = false) {
         bannerEl.style.display = 'none';
       }
 
+      // Update Unified Upcoming Challenge Radar
+      if (activeMelodyRowInfo && nextGatePillEl && nextGateTitleEl && nextGateBadgeEl && nextGateDistEl) {
+        nextGatePillEl.style.display = 'flex';
+        nextGateTitleEl.textContent = 'TARGET NOTE';
+        nextGatePillEl.style.borderColor = activeMelodyRowInfo.hex;
+        nextGateBadgeEl.style.background = activeMelodyRowInfo.hex;
+        nextGateBadgeEl.textContent = `♪ ${activeMelodyRowInfo.label}`;
+        nextGateDistEl.textContent = `${Math.round(activeMelodyRowDist)}m`;
+      } else if (nearestGate && nearestGateDist < 130 && nextGatePillEl && nextGateTitleEl && nextGateBadgeEl && nextGateDistEl) {
+        nextGatePillEl.style.display = 'flex';
+        nextGateTitleEl.textContent = 'NEXT GATE';
+        nextGatePillEl.style.borderColor = nearestGate.note.hex;
+        nextGateBadgeEl.style.background = nearestGate.note.hex;
+        nextGateBadgeEl.textContent = `♪ ${nearestGate.note.name}`;
+        nextGateDistEl.textContent = `${Math.round(nearestGateDist)}m`;
+      } else if (nextGatePillEl) {
+        nextGatePillEl.style.display = 'none';
+      }
+
       const speedKmh = Math.round(Math.hypot(bike.vel.x, bike.vel.z) * 3.6);
       const rem = Math.max(0, Math.round(TRAIL_LENGTH + bike.pos.z));
       valSpeed.textContent = `${speedKmh} km/h`;
@@ -2981,6 +3461,33 @@ async function startPedalPoint(bridge, autoStart = false) {
     }
 
     updateParticleSystems(dt);
+
+    // Ghost Rider Playback Interpolation
+    if (showGhost && isPlaying && bestGhostFrames.length > 1) {
+      ghostRoot.visible = true;
+      let fIdx = 0;
+      while (fIdx < bestGhostFrames.length - 2 && bestGhostFrames[fIdx + 1].t < runElapsedTime) {
+        fIdx++;
+      }
+      const fA = bestGhostFrames[fIdx];
+      const fB = bestGhostFrames[fIdx + 1];
+      const span = Math.max(0.001, fB.t - fA.t);
+      const alpha = Math.max(0, Math.min(1, (runElapsedTime - fA.t) / span));
+
+      const gZ = fA.z + (fB.z - fA.z) * alpha;
+      const gDx = fA.dx + (fB.dx - fA.dx) * alpha;
+      const gYOff = fA.yOff + (fB.yOff - fA.yOff) * alpha;
+      const gYaw = fA.yaw + (fB.yaw - fA.yaw) * alpha;
+      const gWh = (fA.wh || 0) + ((fB.wh || 0) - (fA.wh || 0)) * alpha;
+
+      const gX = getTrailCenterX(gZ) + gDx;
+      const gY = getTerrainHeight(gX, gZ) + gYOff;
+      ghostRoot.position.set(gX, gY, gZ);
+      ghostRoot.rotation.set(0, gYaw, 0);
+      ghostPivot.rotation.x = gWh;
+    } else {
+      ghostRoot.visible = false;
+    }
 
     // Visual Bike, Rider & Camera Sync
     const preset = BIKE_PRESETS[selectedBikeKey];
@@ -2996,6 +3503,7 @@ async function startPedalPoint(bridge, autoStart = false) {
     bikeVisual.rotation.x += ((bike.grounded ? slopePitch : airPitch) - bikeVisual.rotation.x) * 0.18;
     bikeVisual.rotation.z = bike.leanAngle;
     bikeVisual.rotation.y = bike.whipAngle + bike.skidAngle;
+    wheeliePivot.rotation.x = bike.wheelieAngle;
 
     const travel = bike.suspensionComp * preset.forkTravel;
     chassisGroup.position.y = -travel * 0.55;
@@ -3009,11 +3517,12 @@ async function startPedalPoint(bridge, autoStart = false) {
     rearWheel.rotation.x = -bike.wheelSpin;
     crankGroup.rotation.x = -bike.crankSpin;
 
-    // Articulated Rider Animation
+    // Articulated Rider Animation (shifts weight back during Triad Wheelies!)
     const crouch = bike.hopCharge * 0.22 + bike.suspensionComp * 0.16;
-    riderGroup.position.y = 1.15 - crouch;
-    riderGroup.position.z = 0.25;
-    torsoGroup.rotation.x = 0.48 + crouch * 0.9;
+    const wheelieShift = bike.wheelieAngle * 0.35;
+    riderGroup.position.y = 1.15 - crouch - wheelieShift * 0.25;
+    riderGroup.position.z = 0.25 + wheelieShift;
+    torsoGroup.rotation.x = 0.48 + crouch * 0.9 - wheelieShift * 0.85;
     torsoGroup.rotation.y = -(bike.whipAngle + bike.skidAngle) * 0.6;
     riderLegs.forEach((leg, idx) => {
       const phase = bike.crankSpin + idx * Math.PI;
@@ -3037,12 +3546,47 @@ async function startPedalPoint(bridge, autoStart = false) {
       }
     }
 
+    // Animate Sulphur-Crested Cockatoo Flocks (startle & soar over ocean when rider approaches)
+    for (let i = 0; i < coastalBirds.length; i++) {
+      const cb = coastalBirds[i];
+      const flap = Math.sin(now * 0.016 + cb.phase) * 0.55;
+      cb.leftWing.rotation.z = flap;
+      cb.rightWing.rotation.z = -flap;
+
+      if (!cb.startled && isPlaying && Math.abs(bike.pos.z - cb.mesh.position.z) < 55) {
+        cb.startled = true;
+        cb.startleVel.set(-7 - Math.random() * 5, 4.5 + Math.random() * 3.5, -8 - Math.random() * 6);
+      }
+
+      if (cb.startled) {
+        cb.mesh.position.addScaledVector(cb.startleVel, dt);
+        cb.mesh.rotation.y = 0.65;
+      } else {
+        cb.mesh.position.x = cb.originX + Math.cos(now * 0.001 + cb.phase) * 4.5;
+        cb.mesh.position.y = cb.originY + Math.sin(now * 0.002 + cb.phase) * 1.4;
+        cb.mesh.position.z = cb.originZ + Math.sin(now * 0.001 + cb.phase) * 4.5;
+        cb.mesh.rotation.y = -(now * 0.001 + cb.phase);
+      }
+    }
+
+    // Animate Coastal Hang-Gliders thermalling above Lake Illawarra & Mt Kembla
+    for (let i = 0; i < hangGliders.length; i++) {
+      const hg = hangGliders[i];
+      const ang = now * 0.001 * hg.speed + hg.phase;
+      const nx = hg.centerX + Math.cos(ang) * hg.radiusX;
+      const nz = hg.centerZ + Math.sin(ang) * hg.radiusZ;
+      const ny = hg.centerY + Math.sin(ang * 2) * 3.5;
+      hg.mesh.rotation.y = -ang;
+      hg.mesh.rotation.z = 0.18;
+      hg.mesh.position.set(nx, ny, nz);
+    }
+
     // Slowly drift Port Kembla cargo ships along the Pacific horizon
     for (let i = 0; i < cargoShips.length; i++) {
       const cs = cargoShips[i];
       cs.mesh.position.z += cs.speed * dt;
-      if (cs.mesh.position.z > 200) cs.mesh.position.z = -2400;
-      if (cs.mesh.position.z < -2500) cs.mesh.position.z = 100;
+      if (cs.mesh.position.z > 200) cs.mesh.position.z = -2600;
+      if (cs.mesh.position.z < -2700) cs.mesh.position.z = 100;
     }
 
     // Atmosphere Shift in Rainforest Gullies
@@ -3063,8 +3607,8 @@ async function startPedalPoint(bridge, autoStart = false) {
       camera.position.set(bike.pos.x + Math.sin(ang) * 4.6, bike.pos.y + 2.0, bike.pos.z + Math.cos(ang) * 4.6);
       camera.lookAt(bike.pos.x, bike.pos.y + 1.0, bike.pos.z - 0.5);
     } else if (isFirstPerson) {
-      camera.position.set(bike.pos.x + fwdX * 0.25, bike.pos.y + 1.65, bike.pos.z + fwdZ * 0.25);
-      camera.lookAt(bike.pos.x + fwdX * 14, bike.pos.y + 0.85, bike.pos.z + fwdZ * 14);
+      camera.position.set(bike.pos.x + fwdX * 0.25, bike.pos.y + 1.65 + bike.wheelieAngle * 0.55, bike.pos.z + fwdZ * 0.25);
+      camera.lookAt(bike.pos.x + fwdX * 14, bike.pos.y + 0.85 + bike.wheelieAngle * 6.5, bike.pos.z + fwdZ * 14);
     } else {
       const camX = bike.pos.x + Math.sin(bike.yaw) * 5.6;
       const camZ = bike.pos.z + Math.cos(bike.yaw) * 5.6;
