@@ -1395,11 +1395,11 @@ Object.assign(window, {
     startPedalPoint: (b) => {
         document.getElementById('game-results-modal')?.classList.remove('open');
         startPedalPoint(b || gameBridgeHelper);
-    }
+    }, // <-- ADD THIS COMMA
     launchRockBall,
     startRockBall: (b) => {
         document.getElementById('game-results-modal')?.classList.remove('open');
         startRockBall(b || gameBridgeHelper);
-    },
+    }
     
 });
