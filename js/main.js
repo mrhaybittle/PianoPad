@@ -8,6 +8,8 @@ import { koState, initKnockoutBridge, initSwissTournamentUI, dealKnockoutEmoteDe
 import { initFinaleBridge, showGrandFinale, closeGrandFinale, toggleFanfareMute } from './finale.js';
 import { initEyesFront, stopEyesFront, isEyesFrontFrozen, openEyesFrontPrompt } from './eyesFront.js';
 import { awardNoteCraftSongReward } from './games/noteCraft/notecraft.js';
+import { initDailyChallengeBridge, promptDailyChallenge, notifyDailySongComplete, notifyDailyStreak, notifyDailyTick, notifyDailyRecording } from './dailyChallenge.js';
+
 
 let songList = [];
 let currentSong = [];
@@ -179,6 +181,16 @@ function updateMonitorWidget() {
             trackEl.appendChild(marker);
         });
     }
+    notifyDailyTick({
+        elapsedMs,
+        tabSwitches: localTabSwitches,
+        isPlaying,
+        isLooping,
+        isStepMode,
+        stepFinished: isStepMode && noteTimeline.length > 0 && currentStepIndex >= noteTimeline.length,
+        currentSongTitle,
+        speed: parseInt(speedSlider?.value, 10) || 100
+    });
 }
 
 function syncStudentToFirebase(statusOverride = null) {
@@ -242,6 +254,7 @@ document.getElementById('btn-join-room').addEventListener('click', () => {
     syncStudentToFirebase("active");
     updateMonitorWidget();
     loadStudentTickerStats(sessionStudentName);
+    promptDailyChallenge();
 });
 
 function checkIsOutsideSchoolHours() {
@@ -1208,6 +1221,18 @@ function showGameResultsPopUp() {
         parseInt(speedSlider.value, 10) || 100,
         sessionStudentName
     );
+    notifyDailySongComplete({
+        songTitle: currentSongTitle,
+        difficulty: songObj ? songObj.difficulty : 'medium',
+        accuracy: accuracyNum,
+        speed: parseInt(speedSlider.value, 10) || 100,
+        perfect: perfectHits,
+        miss: missedHits,
+        theme: currentTheme,
+        instrument: document.getElementById('instrument-select')?.value || 'piano',
+        showSheetMusic,
+        isMicListening
+    });
 
     document.getElementById('game-summary-text').innerHTML = `Student: <span style="color:#38bdf8;">${sessionStudentName}</span><br>Final Score: <span style="color:#22c55e;">${accuracy}%</span><br><span style="font-size:0.8rem; color:#9ca3af;">(${perfectHits} Perfect, ${earlyLateHits} Early/Late, ${missedHits} Missed out of ${totalHits} notes)</span>`;
 
@@ -1332,6 +1357,7 @@ function toggleRecording() {
             btnShare.style.display = 'inline-flex';
             document.getElementById('status').textContent = ` RECORDING STOPPED! ${recordedNotes.length} notes saved. Click "Share Haycode" or "Add SONG (Teacher)".`;
             openExportModal();
+            notifyDailyRecording(recordedNotes.length);
         } else {
             document.getElementById('status').textContent = 'Recording stopped. No notes captured.';
         }
@@ -1633,6 +1659,7 @@ function playManualNote(noteStr) {
                 target.gameStatus = 'perfect';
                 gameStats.perfect++;
                 currentPerfectStreak++;
+                notifyDailyStreak(currentPerfectStreak);
                 highlightKey(noteStr, 220, '#22c55e');
 
                 if (koState.isClassKnockout && currentPerfectStreak > 0 && currentPerfectStreak % 15 === 0) {
@@ -2707,6 +2734,15 @@ function initApp() {
             }
             loadStudentTickerStats(sessionStudentName);
         }
+    });
+
+    initDailyChallengeBridge({
+        getState: () => ({ sessionStudentName, currentStudentClass, currentRoom }),
+        ensureStudentName,
+        sendJSONP,
+        unlockBonusSounds,
+        spawnConfetti,
+        showFlashingStatus
     });
 
     initMiniGamesBridge({
