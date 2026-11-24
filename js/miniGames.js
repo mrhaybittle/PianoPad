@@ -11,6 +11,7 @@ import { startClefHook, handleClefHookInput, stopClefHook } from './games/clefHo
 import { startSharpShooter, handleSharpShooterInput, handleSharpShooterRelease, stopSharpShooter } from './games/sharpShooter.js';
 import { startSkiSlalom, handleSkiSlalomInput, handleSkiSlalomRelease, stopSkiSlalom } from './games/skiSlalom.js';
 import { startPedalPoint, handlePedalPointInput, handlePedalPointRelease, stopPedalPoint } from './games/pedalPoint.js';
+import { startRockBall, handleRockBallInput, handleRockBallRelease, stopRockBall } from './games/rockBall.js';
 
 export const arcadeState = {
     activeMiniGame: null,
@@ -138,6 +139,15 @@ function injectNewArcadeButtons() {
         skiBtn.innerHTML = `<span style="font-size:1.5rem;">⛷️</span><strong>3D Ski Slalom</strong><small>Carve gates & grind rails</small>`;
         btnContainer.appendChild(skiBtn);
     }
+    if (!document.getElementById('btn-arcade-rockball')) {
+        const rockBallBtn = document.createElement('button');
+        rockBallBtn.type = 'button';
+        rockBallBtn.id = 'btn-arcade-rockball';
+        rockBallBtn.className = 'arcade-card-btn';
+        rockBallBtn.onclick = () => launchRockBall();
+        rockBallBtn.innerHTML = `<span style="font-size:1.5rem;">🎸</span><strong>RockBall</strong><small>Rock &amp; Hip-Hop arcade pinball</small>`;
+        btnContainer.appendChild(rockBallBtn);
+    }
 
     if (!document.getElementById('btn-arcade-pedal-point')) {
         const mtbBtn = document.createElement('button');
@@ -167,6 +177,7 @@ function resolveReplayHandler(title, explicitReplayFn) {
     if (normalized === 'sharp shooter') return () => launchSharpShooter();
     if (normalized === '3d ski slalom' || normalized === 'ski slalom') return () => launchSkiSlalom();
     if (normalized === 'pedal point') return () => launchPedalPoint();
+    if (normalized === 'rockball') return () => launchRockBall();
     return null;
 }
 
@@ -259,6 +270,7 @@ export function exitActiveMiniGame() {
     stopSharpShooter();
     stopSkiSlalom();
     stopPedalPoint();
+    stopRockBall();
 
     const gridironPopup = document.getElementById('gridiron-groove-popup');
     if (gridironPopup) gridironPopup.style.display = 'none';
@@ -345,6 +357,10 @@ export function handleMiniGameNoteInput(noteStr) {
         handleNoteSniperInput(noteStr, gameBridgeHelper);
         return true;
     }
+    if (mode === 'rockBall') {
+        handleRockBallInput(noteStr, gameBridgeHelper);
+        return true;
+    }
     
     if (mode === 'drop') {
         const { noteTimeline, playbackStartTime, accumulatedPauseMs, gameStats, keyPosMap } = bridge.getState();
@@ -407,6 +423,10 @@ export function handleMiniGameNoteRelease(noteStr) {
     }
     if (arcadeState.activeMiniGame === 'sharpShooter') {
         handleSharpShooterRelease(noteStr);
+        return true;
+    }
+    if (arcadeState.activeMiniGame === 'rockBall') {
+        handleRockBallRelease(noteStr);
         return true;
     }
     return false;
@@ -1313,6 +1333,10 @@ export function launchPedalPoint() {
     document.getElementById('game-results-modal')?.classList.remove('open');
     startPedalPoint(gameBridgeHelper);
 }
+export function launchRockBall() {
+    document.getElementById('game-results-modal')?.classList.remove('open');
+    startRockBall(gameBridgeHelper);
+}
 
 Object.assign(window, {
     startSimonTaps,
@@ -1372,4 +1396,10 @@ Object.assign(window, {
         document.getElementById('game-results-modal')?.classList.remove('open');
         startPedalPoint(b || gameBridgeHelper);
     }
+    launchRockBall,
+    startRockBall: (b) => {
+        document.getElementById('game-results-modal')?.classList.remove('open');
+        startRockBall(b || gameBridgeHelper);
+    },
+    
 });
