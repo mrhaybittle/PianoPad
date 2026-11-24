@@ -215,16 +215,6 @@ export const DAILY_CHALLENGES = [
         tier: 'Silver',
         target: 3,
         unit: 'songs'
-    },
-
-    // 22. Turn MIC INPUT ON and complete any song in Game Mode with at least 75% accuracy.
-    {
-        id: 'acoustic_mic_song',
-        title: 'Acoustic Musician',
-        description: 'Turn MIC INPUT: ON and complete any song with 75%+ accuracy.',
-        tier: 'Gold',
-        target: 1,
-        unit: 'song'
     }
 ];
 
@@ -600,8 +590,7 @@ export function notifyDailySongComplete({
     miss,
     theme,
     instrument,
-    showSheetMusic,
-    isMicListening
+    showSheetMusic
 }) {
     refreshDailyState();
     if (dailyState.completed) return;
@@ -705,12 +694,6 @@ export function notifyDailySongComplete({
                     dailyState.meta.mediumMasteredSongs.push(cleanTitle);
                 }
                 dailyState.progress = dailyState.meta.mediumMasteredSongs.length;
-            }
-            break;
-
-        case 'acoustic_mic_song':
-            if (isMicListening && accuracy >= 75) {
-                dailyState.progress = 1;
             }
             break;
     }
