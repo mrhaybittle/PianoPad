@@ -61,7 +61,9 @@ export function getTrailCurvature(z) {
 
 export function getBaseTrailY(z) {
   const dist = Math.max(0, -z);
-  return 365 - 0.148 * dist + Math.sin(z * 0.028) * 1.45 + Math.cos(z * 0.062) * 0.55;
+  // Rhythmic pump rollers woven into the natural downhill grade
+  const pumpRollers = Math.sin(z * 0.14) * 0.65 + Math.sin(z * 0.045) * 1.45;
+  return 365 - 0.152 * dist + pumpRollers;
 }
 
 export function getFeatureHeightOffset(x, z) {
@@ -69,29 +71,34 @@ export function getFeatureHeightOffset(x, z) {
   for (let i = 0; i < dirtFeatures.length; i++) {
     const f = dirtFeatures[i];
     const dz = z - f.z;
-    if (Math.abs(dz) > f.halfLen + 2) continue;
+    if (Math.abs(dz) > f.halfLen + 6) continue;
     const dx = Math.abs(x - f.x);
-    if (dx > f.halfWidth + 1.5) continue;
+    if (dx > f.halfWidth + 1.8) continue;
 
     const latBlend = Math.max(0, Math.min(1, 1 - Math.max(0, dx - f.halfWidth * 0.72) / (f.halfWidth * 0.55 + 0.8)));
     const smoothLat = latBlend * latBlend * (3 - 2 * latBlend);
 
     let prof = 0;
     if (f.type === 'kicker') {
+      // Steep takeoff ramp (dz from +halfLen down to 0), sharp lip drop, and sloped landing zone (-3 to -11)
       if (dz >= 0 && dz <= f.halfLen) {
-        prof = Math.pow(1 - dz / f.halfLen, 1.55) * f.height;
-      } else if (dz < 0 && dz >= -2.2) {
-        prof = Math.max(0, 1 + dz / 2.2) * f.height * 0.75;
+        prof = Math.pow(1 - dz / f.halfLen, 1.45) * f.height;
+      } else if (dz < 0 && dz >= -2.5) {
+        prof = Math.max(0, 1 + dz / 2.5) * f.height * 0.45 - 0.35;
+      } else if (dz < -5.5 && dz >= -12.5) {
+        // Sloped dirt landing mound for smooth pump transitions
+        const landT = (-dz - 5.5) / 7.0;
+        prof = Math.sin(landT * Math.PI) * (f.height * 0.65);
       }
     } else if (f.type === 'tabletop') {
       const t = (f.halfLen - dz) / (f.halfLen * 2);
       if (t >= 0 && t <= 1) {
-        if (t < 0.28) prof = Math.pow(t / 0.28, 1.4) * f.height;
-        else if (t < 0.68) prof = f.height;
-        else prof = ((1 - t) / 0.32) * f.height;
+        if (t < 0.28) prof = Math.pow(t / 0.28, 1.35) * f.height;
+        else if (t < 0.66) prof = f.height;
+        else prof = ((1 - t) / 0.34) * f.height;
       }
     }
-    extraY = Math.max(extraY, prof * smoothLat);
+    extraY += prof * smoothLat;
   }
   return extraY;
 }
@@ -100,13 +107,14 @@ export function getTerrainHeight(x, z) {
   const cx = getTrailCenterX(z);
   const dx = x - cx;
   const absDx = Math.abs(dx);
-  const trailHalfWidth = 3.9;
+  const trailHalfWidth = 4.0;
   const baseY = getBaseTrailY(z);
 
   const curv = getTrailCurvature(z);
   const offTrail = Math.max(0, Math.min(1, (absDx - trailHalfWidth) / 3.0));
-  const berm = (1 - offTrail * 0.5) * Math.max(-1.3, Math.min(1.9, curv * dx * 18.0));
-  const rut = (1 - offTrail) * (-0.08 * Math.exp(-dx * dx * 0.8));
+  // Deeper, carved singletrack berms on outside of corners
+  const berm = (1 - offTrail * 0.45) * Math.max(-1.4, Math.min(2.4, curv * dx * 24.0));
+  const rut = (1 - offTrail) * (-0.09 * Math.exp(-dx * dx * 0.8));
 
   const rfBlend = getRainforestBlend(z);
   let sideSlope = 0;
