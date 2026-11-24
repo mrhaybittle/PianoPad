@@ -431,7 +431,7 @@ function ensureDailyChallengeUI() {
             const statusEl = document.getElementById('status');
             if (statusEl) {
                 const ch = getTodaysChallenge();
-                statusEl.textContent = `🎯 Daily Challenge Accepted: ${ch.title} (${dailyState.progress}/${ch.target} ${ch.unit})`;
+                statusEl.textContent = `🎯 Daily Merit Award Challenge Accepted: ${ch.title} (${dailyState.progress}/${ch.target} ${ch.unit})`;
             }
         });
     }
