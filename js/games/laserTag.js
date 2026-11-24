@@ -41,12 +41,15 @@ const activeComputerKeys = new Set();
 let currentTurnVel = 0;
 let currentMoveSpeed = 0;
 
-function clearAllHeldMovement() {
-    if (gameState.physicallyHeldNotes && typeof gameState.physicallyHeldNotes.clear === 'function') {
-        gameState.physicallyHeldNotes.clear();
-    } else {
+function ensureHeldNotesMap() {
+    if (!(gameState.physicallyHeldNotes instanceof Map)) {
         gameState.physicallyHeldNotes = new Map();
     }
+    return gameState.physicallyHeldNotes;
+}
+
+function clearAllHeldMovement() {
+    ensureHeldNotesMap().clear();
     activeComputerKeys.clear();
     gameState.heldMoveKeys.clear();
     gameState.localPlayer.turnDir = 0;
@@ -54,44 +57,45 @@ function clearAllHeldMovement() {
     gameState.localPlayer.isMovingForward = false;
 }
 
-function markPitchHeld(pitchClass) {
-    if (!(gameState.physicallyHeldNotes instanceof Map)) {
-        gameState.physicallyHeldNotes = new Map();
+function markPitchHeld(pitchClass, exactNote = null) {
+    const map = ensureHeldNotesMap();
+    if (!map.has(pitchClass)) {
+        map.set(pitchClass, new Set());
     }
-    gameState.physicallyHeldNotes.set(pitchClass, performance.now());
+    const token = (exactNote || pitchClass).toUpperCase().trim();
+    map.get(pitchClass).add(token);
+    gameState.heldMoveKeys.add(pitchClass);
 }
 
-function unmarkPitchHeld(pitchClass) {
-    if (gameState.physicallyHeldNotes instanceof Map) {
-        gameState.physicallyHeldNotes.delete(pitchClass);
+function unmarkPitchHeld(pitchClass, exactNote = null) {
+    const map = ensureHeldNotesMap();
+    const bucket = map.get(pitchClass);
+    if (bucket) {
+        if (exactNote) {
+            bucket.delete(exactNote.toUpperCase().trim());
+        } else {
+            bucket.clear();
+        }
+        if (bucket.size === 0) {
+            map.delete(pitchClass);
+            gameState.heldMoveKeys.delete(pitchClass);
+        }
+    } else {
+        gameState.heldMoveKeys.delete(pitchClass);
     }
-    gameState.heldMoveKeys.delete(pitchClass);
 }
 
 function isPitchStillPhysicallyHeld(pitchClass) {
-    if (!(gameState.physicallyHeldNotes instanceof Map)) return false;
-    const pressedAt = gameState.physicallyHeldNotes.get(pitchClass);
-    if (!pressedAt) return false;
-
-    const domKeyActive = Boolean(document.querySelector('#keyboard .key.active'));
-    if (domKeyActive || activeComputerKeys.size > 0) {
-        gameState.physicallyHeldNotes.set(pitchClass, performance.now());
-        return true;
-    }
-
-    // Auto-expire after 450ms if no Note-Off arrived (prevents stuck spinning from Mic Input or dropped MIDI Note-Off)
-    if (performance.now() - pressedAt > 450) {
-        unmarkPitchHeld(pitchClass);
-        return false;
-    }
-    return true;
+    const map = ensureHeldNotesMap();
+    const bucket = map.get(pitchClass);
+    return Boolean(bucket && bucket.size > 0);
 }
 
 function attachUniversalReleaseListeners() {
     if (gameState.autoReleaseListenersAttached) return;
     gameState.autoReleaseListenersAttached = true;
 
-    // 1. Computer Keyboard Release (stops movement immediately when key is lifted)
+    // 1. Computer Keyboard Release (stops movement only when that specific key is lifted)
     window.addEventListener('keydown', (e) => {
         if (gameState.gamePhase !== 'playing' && gameState.gamePhase !== 'spectating') return;
         if (!e.repeat && e.code) {
@@ -110,22 +114,38 @@ function attachUniversalReleaseListeners() {
         if (e.code) activeComputerKeys.delete(e.code);
         const k = (e.key || '').toLowerCase();
 
-        // Directly release C, C#, or D when its mapped computer key is lifted, even if another key is still held
-        if (k === 'z' || k === 'q' || k === ',') handleLaserTagRelease('C4');
-        if (k === 's' || k === '2' || k === 'l') handleLaserTagRelease('C#4');
-        if (k === 'x' || k === 'w' || k === '.') handleLaserTagRelease('D4');
+        // Release C, C#, or D when its mapped computer key is lifted
+        if (k === 'z' || k === 'q' || k === ',') handleLaserTagRelease('C');
+        if (k === 's' || k === '2' || k === 'l') handleLaserTagRelease('C#');
+        if (k === 'x' || k === 'w' || k === '.') handleLaserTagRelease('D');
 
-        if (activeComputerKeys.size === 0) {
+        // Only wipe everything if no computer keys AND no MIDI keys are held
+        const map = ensureHeldNotesMap();
+        let hasMidiHeld = false;
+        for (const bucket of map.values()) {
+            for (const token of bucket) {
+                if (token.startsWith('MIDI_')) hasMidiHeld = true;
+            }
+        }
+        if (activeComputerKeys.size === 0 && !hasMidiHeld && !document.querySelector('#keyboard .key.active')) {
             clearAllHeldMovement();
         }
     });
 
     // 2. Mouse / Touchscreen Piano Key Release
-    window.addEventListener('pointerup', () => clearAllHeldMovement());
-    window.addEventListener('pointercancel', () => clearAllHeldMovement());
-    window.addEventListener('mouseup', () => clearAllHeldMovement());
+    window.addEventListener('pointerup', () => {
+        if (activeComputerKeys.size === 0) clearAllHeldMovement();
+    });
+    window.addEventListener('pointercancel', () => {
+        if (activeComputerKeys.size === 0) clearAllHeldMovement();
+    });
+    window.addEventListener('mouseup', () => {
+        if (activeComputerKeys.size === 0) clearAllHeldMovement();
+    });
     window.addEventListener('touchend', (e) => {
-        if (!e.touches || e.touches.length === 0) clearAllHeldMovement();
+        if ((!e.touches || e.touches.length === 0) && activeComputerKeys.size === 0) {
+            clearAllHeldMovement();
+        }
     });
 
     // 3. Window Focus Lost Safety Net
@@ -133,7 +153,7 @@ function attachUniversalReleaseListeners() {
         clearAllHeldMovement();
     });
 
-    // 4. Physical MIDI Piano Note-Off Listener
+    // 4. Physical MIDI Piano Note-On / Note-Off Listener
     if (navigator.requestMIDIAccess) {
         navigator.requestMIDIAccess().then((midiAccess) => {
             const bindMidiInput = (input) => {
@@ -142,11 +162,16 @@ function attachUniversalReleaseListeners() {
                     const status = msg.data[0] & 0xf0;
                     const noteNum = msg.data[1];
                     const velocity = msg.data.length > 2 ? msg.data[2] : 0;
+                    const pitch = MIDI_PITCH_NAMES[noteNum % 12];
+                    const octave = Math.floor(noteNum / 12) - 1;
+                    const midiToken = `MIDI_${pitch}${octave}`;
 
-                    // MIDI Note Off (0x80) OR Note On with velocity 0
-                    if (status === 0x80 || (status === 0x90 && velocity === 0)) {
-                        const pitch = MIDI_PITCH_NAMES[noteNum % 12];
-                        const octave = Math.floor(noteNum / 12) - 1;
+                    if (status === 0x90 && velocity > 0) {
+                        if (pitch === 'C' || pitch === 'C#' || pitch === 'D') {
+                            markPitchHeld(pitch, midiToken);
+                        }
+                    } else if (status === 0x80 || (status === 0x90 && velocity === 0)) {
+                        unmarkPitchHeld(pitch, midiToken);
                         handleLaserTagRelease(`${pitch}${octave}`);
                     }
                 });
@@ -1379,7 +1404,7 @@ async function executeSingleNoteAction(pitchClass, bridge) {
         }
     }
 
-    // C, D, and C# already engage immediately in handleLaserTagInput for zero-latency fluid movement
+    // C, D, and C# engage immediately in handleLaserTagInput for zero-latency movement
     if (pitchClass === 'C' || pitchClass === 'D' || pitchClass === 'C#') {
         return;
     }
@@ -1391,11 +1416,12 @@ export function handleLaserTagRelease(noteStr) {
     const { pitchClass } = parseNoteDetails(noteStr);
     if (!pitchClass) return;
 
+    // Release all held instances of this pitch class when key is let go
     unmarkPitchHeld(pitchClass);
 
     if (pitchClass === 'C' || pitchClass === 'D') {
-        const leftHeld = gameState.heldMoveKeys.has('C');
-        const rightHeld = gameState.heldMoveKeys.has('D');
+        const leftHeld = isPitchStillPhysicallyHeld('C');
+        const rightHeld = isPitchStillPhysicallyHeld('D');
         gameState.localPlayer.turnDir = (leftHeld && !rightHeld) ? -1 : (rightHeld && !leftHeld) ? 1 : 0;
         if (gameState.localPlayer.turnDir === 0) {
             gameState.localPlayer.turnHoldStart = 0;
@@ -1403,7 +1429,7 @@ export function handleLaserTagRelease(noteStr) {
     }
 
     if (pitchClass === 'C#') {
-        gameState.localPlayer.isMovingForward = false;
+        gameState.localPlayer.isMovingForward = isPitchStillPhysicallyHeld('C#');
     }
 }
 
@@ -1420,32 +1446,29 @@ export async function handleLaserTagInput(noteStr, bridge) {
     const { pitchClass, octave } = parseNoteDetails(noteStr);
     if (!pitchClass) return;
 
-    const alreadyHeld = gameState.heldMoveKeys.has(pitchClass);
+    const alreadyHeld = isPitchStillPhysicallyHeld(pitchClass);
 
-    // Refresh timestamped physical hold immediately
-    markPitchHeld(pitchClass);
+    // Keep pitch marked as held until handleLaserTagRelease is called
+    markPitchHeld(pitchClass, noteStr);
 
-    // Instant, zero-lag movement engagement for C (Turn Left), D (Turn Right), and C# (Move Forward)
+    // Instant, continuous movement engagement for C (Turn Left), D (Turn Right), and C# (Move Forward)
     if (pitchClass === 'C#') {
-        gameState.heldMoveKeys.add('C#');
         lp.isMovingForward = true;
         return;
     }
     if (pitchClass === 'C') {
-        gameState.heldMoveKeys.add('C');
-        if (!gameState.heldMoveKeys.has('D')) {
+        if (!isPitchStillPhysicallyHeld('D')) {
             lp.turnDir = -1;
             if (!lp.turnHoldStart) lp.turnHoldStart = now;
         }
     } else if (pitchClass === 'D') {
-        gameState.heldMoveKeys.add('D');
-        if (!gameState.heldMoveKeys.has('C')) {
+        if (!isPitchStillPhysicallyHeld('C')) {
             lp.turnDir = 1;
             if (!lp.turnHoldStart) lp.turnHoldStart = now;
         }
     }
 
-    // Ignore OS keyboard auto-repeat pulses once movement is already engaged so timers don't reset
+    // Ignore keyboard auto-repeat events while movement key is already held down
     if (alreadyHeld && (pitchClass === 'C' || pitchClass === 'D')) {
         return;
     }
@@ -1723,11 +1746,9 @@ function gameLoop(now, bridge) {
 
     const lp = gameState.localPlayer;
     if (lp.isAlive) {
-        // Fluid Hold-to-Turn with smooth angular acceleration & damping
-        const leftHeld = gameState.heldMoveKeys.has('C') && isPitchStillPhysicallyHeld('C');
-        const rightHeld = gameState.heldMoveKeys.has('D') && isPitchStillPhysicallyHeld('D');
-        if (!leftHeld) gameState.heldMoveKeys.delete('C');
-        if (!rightHeld) gameState.heldMoveKeys.delete('D');
+        // Continuous Hold-to-Turn until key is released
+        const leftHeld = isPitchStillPhysicallyHeld('C');
+        const rightHeld = isPitchStillPhysicallyHeld('D');
 
         lp.turnDir = (leftHeld && !rightHeld) ? -1 : (rightHeld && !leftHeld) ? 1 : 0;
 
@@ -1750,9 +1771,8 @@ function gameLoop(now, bridge) {
             lp.hubScoreTimer = 0;
         }
 
-        // Fluid Hold-to-Move with smooth acceleration & deceleration
-        const forwardHeld = gameState.heldMoveKeys.has('C#') && isPitchStillPhysicallyHeld('C#');
-        if (!forwardHeld) gameState.heldMoveKeys.delete('C#');
+        // Continuous Hold-to-Move until key is released
+        const forwardHeld = isPitchStillPhysicallyHeld('C#');
         lp.isMovingForward = forwardHeld;
 
         const isBoosted = now < lp.boostUntil;
