@@ -55,19 +55,20 @@ export function buildWorld(THREE, scene, seed, previousWorldGroup = null) {
   ];
   const inMelodyCorridor = (z) => melodyZones.some(mz => z <= mz.startZ + 35 && z >= mz.endZ - 35);
 
+  // 1. Dirt Kickers & Tabletop Jumps
   const dirtFeatures = [];
   const rhythmRamps = [];
-  for (let z = -115; z > -TRAIL_LENGTH + 110; z -= 115 + rng() * 60) {
+  for (let z = -85; z > -TRAIL_LENGTH + 110; z -= 88 + rng() * 42) {
     if (inMelodyCorridor(z)) continue;
     const cx = getTrailCenterX(z);
-    const isTable = rng() > 0.42;
+    const isTable = rng() > 0.46;
     const feat = {
       x: cx,
       z,
       type: isTable ? 'tabletop' : 'kicker',
-      halfLen: isTable ? 9.5 : 5.2,
-      halfWidth: 2.9,
-      height: isTable ? (1.45 + rng() * 0.55) : (1.35 + rng() * 0.55),
+      halfLen: isTable ? 9.0 : 5.5,
+      halfWidth: 3.1,
+      height: isTable ? (1.65 + rng() * 0.55) : (1.75 + rng() * 0.65),
       triggered: false
     };
     dirtFeatures.push(feat);
@@ -75,9 +76,10 @@ export function buildWorld(THREE, scene, seed, previousWorldGroup = null) {
   }
   setDirtFeatures(dirtFeatures);
 
+  // 2. Terrain Mesh
   const zStart = 45;
   const zEnd = -TRAIL_LENGTH - 95;
-  const zSegs = 360;
+  const zSegs = 420;
   const xSegs = 34;
   const corridorHalfWidth = 65;
 
@@ -133,7 +135,99 @@ export function buildWorld(THREE, scene, seed, previousWorldGroup = null) {
     side: THREE.DoubleSide
   })));
 
-  // Procedural Ocean Wave Texture
+  // 3. Fallen Mossy Eucalyptus Logs & Wooden North-Shore Trail Features
+  const trailObstacles = [];
+  const barkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.92, flatShading: true });
+  const cutWoodMat = new THREE.MeshStandardMaterial({ color: 0xd9a066, roughness: 0.75 });
+  const mossMat = new THREE.MeshStandardMaterial({ color: 0x3f7a2c, roughness: 0.9 });
+  const plankMat = new THREE.MeshStandardMaterial({ color: 0x784b2a, roughness: 0.85 });
+
+  for (let z = -60; z > -TRAIL_LENGTH + 90; z -= 75 + rng() * 38) {
+    if (inMelodyCorridor(z)) continue;
+    if (rhythmRamps.some(r => Math.abs(r.z - z) < 16)) continue;
+
+    const cx = getTrailCenterX(z);
+    const isLog = rng() > 0.34;
+
+    if (isLog) {
+      const fullWidth = rng() > 0.45;
+      const sideSign = rng() > 0.5 ? 1 : -1;
+      const logLen = fullWidth ? 7.6 : 4.4;
+      const logX = fullWidth ? cx : (cx + sideSign * 1.4);
+      const logRadius = 0.34 + rng() * 0.14;
+      const logY = getTerrainHeight(logX, z) + logRadius * 0.72;
+
+      const logGroup = new THREE.Group();
+      logGroup.position.set(logX, logY, z);
+      logGroup.rotation.y = (rng() - 0.5) * 0.22;
+
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(logRadius, logRadius * 1.08, logLen, 10), barkMat);
+      trunk.rotation.z = Math.PI / 2;
+      trunk.castShadow = true;
+      logGroup.add(trunk);
+
+      [-logLen / 2, logLen / 2].forEach(endX => {
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(logRadius * 0.96, logRadius * 0.96, 0.04, 10), cutWoodMat);
+        cap.rotation.z = Math.PI / 2;
+        cap.position.x = endX;
+        logGroup.add(cap);
+      });
+
+      const moss = new THREE.Mesh(new THREE.BoxGeometry(logLen * 0.55, 0.08, logRadius * 0.9), mossMat);
+      moss.position.set(0, logRadius * 0.92, 0);
+      logGroup.add(moss);
+
+      worldGroup.add(logGroup);
+      trailObstacles.push({
+        type: 'log',
+        x: logX,
+        z,
+        halfWidth: logLen * 0.48,
+        height: logRadius * 1.85,
+        resolved: false
+      });
+    } else {
+      const bridgeLen = 14 + rng() * 6;
+      const bridgeWidth = 1.65;
+      const bridgeX = cx + (rng() - 0.5) * 2.2;
+      const startY = getTerrainHeight(bridgeX, z + bridgeLen / 2);
+      const endY = getTerrainHeight(bridgeX, z - bridgeLen / 2);
+      const midY = (startY + endY) * 0.5 + 0.35;
+      const pitch = Math.atan2(endY - startY, -bridgeLen);
+
+      const bridgeGroup = new THREE.Group();
+      bridgeGroup.position.set(bridgeX, midY, z);
+      bridgeGroup.rotation.x = pitch;
+
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(bridgeWidth, 0.14, bridgeLen), plankMat);
+      deck.castShadow = true;
+      bridgeGroup.add(deck);
+
+      [-bridgeWidth * 0.46, bridgeWidth * 0.46].forEach(rx => {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, bridgeLen), cutWoodMat);
+        rail.position.set(rx, 0.1, 0);
+        bridgeGroup.add(rail);
+      });
+
+      [-bridgeLen * 0.35, 0, bridgeLen * 0.35].forEach(pz => {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 1.4, 6), barkMat);
+        post.position.set(0, -0.7, pz);
+        bridgeGroup.add(post);
+      });
+
+      worldGroup.add(bridgeGroup);
+      trailObstacles.push({
+        type: 'bridge',
+        x: bridgeX,
+        z,
+        halfLen: bridgeLen * 0.5,
+        halfWidth: bridgeWidth * 0.55,
+        awarded: false
+      });
+    }
+  }
+
+  // 4. Procedural Ocean Wave Texture & Illawarra Coastline
   const oCan = document.createElement('canvas');
   oCan.width = 256;
   oCan.height = 256;
@@ -157,7 +251,6 @@ export function buildWorld(THREE, scene, seed, previousWorldGroup = null) {
   oceanWaveTex.wrapT = THREE.RepeatWrapping;
   oceanWaveTex.repeat.set(28, 40);
 
-  // Pacific Ocean, Coastal Plain, Lake Illawarra & Port Kembla Cargo Ships
   const oceanY = -365;
   const oceanGeo = new THREE.PlaneGeometry(3600, 4800);
   oceanGeo.rotateX(-Math.PI / 2);
@@ -449,16 +542,20 @@ export function buildWorld(THREE, scene, seed, previousWorldGroup = null) {
     noteGates.push({ x, y, z, note, mesh: gateGroup, hit: false });
   }
 
-  // Beat-Synced Jump Strips
+  // Beat-Synced Jump Strips & Wooden Takeoff Lips
   rhythmRamps.forEach(feat => {
     const stripY = getTerrainHeight(feat.x, feat.z) + 0.08;
     const strip = new THREE.Mesh(
-      new THREE.PlaneGeometry(feat.halfWidth * 1.85, 0.75),
-      new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.88 })
+      new THREE.PlaneGeometry(feat.halfWidth * 1.9, 0.9),
+      new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.92 })
     );
     strip.rotation.x = -Math.PI / 2;
-    strip.position.set(feat.x, stripY, feat.z + 0.3);
+    strip.position.set(feat.x, stripY, feat.z + 0.35);
     worldGroup.add(strip);
+
+    const lipBoard = new THREE.Mesh(new THREE.BoxGeometry(feat.halfWidth * 1.95, 0.22, 0.45), cutWoodMat);
+    lipBoard.position.set(feat.x, stripY - 0.04, feat.z);
+    worldGroup.add(lipBoard);
   });
 
   // Spacious Melody Trail Challenges
@@ -578,6 +675,7 @@ export function buildWorld(THREE, scene, seed, previousWorldGroup = null) {
     worldGroup,
     noteGates,
     rhythmRamps,
+    trailObstacles,
     melodyChallenges,
     cargoShips,
     floatingNotes,
