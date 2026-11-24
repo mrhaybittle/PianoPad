@@ -866,4 +866,493 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       }
 
       if (offsetFromTrail < -maxEdgeOffset) {
-        bike.pos.x = cx
+        bike.pos.x = cx - maxEdgeOffset;
+        bike.vel.x = Math.max(2.5, bike.vel.x * 0.5 + 3.2);
+        bike.yaw = Math.max(0.08, bike.yaw * 0.5);
+        if (bike.edgeGuardCooldown <= 0) {
+          bike.edgeGuardCooldown = 1.6;
+          hud.showCallout('TRAIL EDGE GUARD!', '#38bdf8');
+          particles.spawnDirtRoost(bike.pos, 1, 0, 10, 4.0, 0x9b6438);
+        }
+      } else if (offsetFromTrail > maxEdgeOffset) {
+        bike.pos.x = cx + maxEdgeOffset;
+        bike.vel.x = Math.min(-2.5, bike.vel.x * 0.5 - 3.2);
+        bike.yaw = Math.min(-0.08, bike.yaw * 0.5);
+        if (bike.edgeGuardCooldown <= 0) {
+          bike.edgeGuardCooldown = 1.6;
+          hud.showCallout('BANK RECOVERY!', '#38bdf8');
+        }
+      }
+
+      // Check Fallen Logs & Wooden North-Shore Bridges
+      let bridgeFloorY = -9999;
+      bike.onBridge = false;
+
+      for (let i = 0; i < worldData.trailObstacles.length; i++) {
+        const obs = worldData.trailObstacles[i];
+        if (obs.type === 'log') {
+          if (!obs.resolved && Math.abs(bike.pos.z - obs.z) < 1.35 && Math.abs(bike.pos.x - obs.x) < obs.halfWidth) {
+            obs.resolved = true;
+            const groundAtLog = getTerrainHeight(bike.pos.x, obs.z);
+            const wheelClearance = bike.pos.y - groundAtLog;
+            if (wheelClearance >= obs.height * 0.62 || bike.wheelieActive) {
+              // Clean bunny-hop or Triad Wheelie over the log!
+              addScore(250, true);
+              bike.vel.z -= 2.4;
+              hud.showCallout(bike.wheelieActive ? '🪵 WHEELIE LOG ROLL! +250' : '🪵 CLEAN LOG HOP! +250', '#34d399');
+              particles.spawnDirtRoost(bike.pos, 0, 1, 10, 4.5, 0x34d399);
+            } else {
+              // Clipped the log—fork compression, bounce & speed penalty
+              bike.vel.z *= 0.64;
+              bike.vel.y = Math.max(bike.vel.y, 4.2);
+              bike.suspensionComp = 1.0;
+              audio.playLandingThud(0.95);
+              hud.showCallout('💥 CLIPPED LOG! (HOP OR WHEELIE)', '#f87171');
+              particles.spawnDirtRoost(bike.pos, 0, 1, 14, 5.2, 0x5c4033);
+            }
+          }
+        } else if (obs.type === 'bridge') {
+          if (Math.abs(bike.pos.z - obs.z) <= obs.halfLen && Math.abs(bike.pos.x - obs.x) <= obs.halfWidth) {
+            const startY = getTerrainHeight(obs.x, obs.z + obs.halfLen);
+            const endY = getTerrainHeight(obs.x, obs.z - obs.halfLen);
+            const t = (obs.z + obs.halfLen - bike.pos.z) / (obs.halfLen * 2);
+            const deckY = startY + (endY - startY) * t + 0.42;
+            if (bike.pos.y >= deckY - 0.35) {
+              bridgeFloorY = Math.max(bridgeFloorY, deckY);
+              bike.onBridge = true;
+              if (!obs.awarded) {
+                obs.awarded = true;
+                addScore(220, true);
+                bike.vel.z -= 2.8;
+                hud.showCallout('🌲 NORTH-SHORE SKINNY! +220', '#fbbf24');
+              }
+            }
+          }
+        }
+      }
+
+      const terrainY = getTerrainHeight(bike.pos.x, bike.pos.z);
+      const groundY = Math.max(terrainY, bridgeFloorY);
+
+      if (bike.pos.y <= groundY + 0.04) {
+        const impactVel = -bike.vel.y;
+        if (!bike.grounded && bike.airTime > 0.25) {
+          const forgive = preset.landingForgiveness || 1.0;
+          const comp = Math.min(1, impactVel / (15 * forgive));
+          bike.suspensionComp = Math.max(bike.suspensionComp, comp);
+          bike.pumpWindowTimer = 0.32; // Open 320ms pump-slingshot window on landing!
+          audio.playLandingThud(comp);
+          particles.spawnDirtRoost(bike.pos, 0, 1, 12, 4.5, 0x9b6438);
+          particles.spawnDustCloud(bike.pos, 0, 1, 6, 2.8);
+
+          // Automatic bonus if player held Jump to nose-tuck into a downslope landing!
+          if (input.jumpHeld && normal.z < -0.05) {
+            bike.pumpWindowTimer = 0;
+            bike.vel.z -= 4.8;
+            addScore(200, false);
+            hud.showCallout('⚡ DOWNHILL LANDING PUMP! +200', '#38bdf8');
+          }
+        }
+        bike.pos.y = groundY;
+        if (bike.vel.y < 0) bike.vel.y = 0;
+        bike.grounded = true;
+        bike.airTime = 0;
+        bike.airPitchOffset = 0;
+      } else if (bike.pos.y > groundY + 0.42) {
+        bike.grounded = false;
+      }
+
+      bike.suspensionComp = Math.max(0, bike.suspensionComp - preset.suspensionStiffness * 0.12 * dt);
+      bike.leanAngle += (curvedSteer * 0.36 - bike.leanAngle) * Math.min(1, dt * 7.2);
+      bike.whipAngle += (bike.whipTarget - bike.whipAngle) * Math.min(1, dt * 9);
+      const targetWheelie = bike.wheelieActive ? 0.56 : 0;
+      bike.wheelieAngle += (targetWheelie - bike.wheelieAngle) * Math.min(1, dt * (bike.wheelieActive ? 7.5 : 10.0));
+      if (overdriveTimer > 0) overdriveTimer = Math.max(0, overdriveTimer - dt);
+
+      if (els.wheeliePillEl && els.wheelieChordEl) {
+        if (bike.wheelieActive) {
+          els.wheeliePillEl.style.display = 'flex';
+          els.wheelieChordEl.textContent = bike.wheelieChordName;
+        } else {
+          els.wheeliePillEl.style.display = 'none';
+        }
+      }
+
+      for (let i = TRAIL_ZONES.length - 1; i >= 0; i--) {
+        if (bike.pos.z <= TRAIL_ZONES[i].z) {
+          if (i !== lastZoneIdx) {
+            lastZoneIdx = i;
+            hud.showCallout(TRAIL_ZONES[i].name, '#38bdf8');
+          }
+          break;
+        }
+      }
+
+      let nearestGate = null;
+      let nearestGateDist = 999;
+
+      for (let i = 0; i < worldData.noteGates.length; i++) {
+        const g = worldData.noteGates[i];
+        if (g.hit) continue;
+        const distAhead = bike.pos.z - g.z;
+        if (distAhead > 0 && distAhead < nearestGateDist) {
+          nearestGateDist = distAhead;
+          nearestGate = g;
+        }
+        if (Math.abs(bike.pos.z - g.z) < 2.7 && Math.abs(bike.pos.x - g.x) < 3.0) {
+          g.hit = true;
+          g.mesh.visible = false;
+          audio.playNoteTrigger(g.note.freq, combo >= 4);
+          addScore(200, true);
+          hud.showCallout(`♪ ${g.note.name} NOTE! +200`, g.note.hex);
+          particles.spawnDirtRoost(bike.pos, 0, 1, 14, 5.5, g.note.color);
+        } else if (bike.pos.z < g.z - 4.0) {
+          g.hit = true;
+        }
+      }
+
+      let inMelodyZone = false;
+      let activeMelodyRowInfo = null;
+      let activeMelodyRowDist = 999;
+
+      for (let i = 0; i < worldData.melodyChallenges.length; i++) {
+        const mc = worldData.melodyChallenges[i];
+        if (bike.pos.z <= mc.triggerZ && bike.pos.z >= mc.endZ && !mc.completed) {
+          inMelodyZone = true;
+          if (!mc.announced && els.notesRowEl && els.bannerEl) {
+            mc.announced = true;
+            const noteSeqLabels = mc.seq.map((laneIdx, idx) => mc.rows[idx].orbs[laneIdx].info.label).join(' → ');
+            hud.showCallout(`🎹 UPCOMING MELODY: ${noteSeqLabels}`, '#fbbf24');
+
+            els.notesRowEl.innerHTML = '';
+            mc.seq.forEach((laneIdx, idx) => {
+              const info = mc.rows[idx].orbs[laneIdx].info;
+              const pill = document.createElement('div');
+              pill.style.cssText = `
+                width:44px; height:44px; border-radius:12px;
+                display:flex; align-items:center; justify-content:center;
+                font-weight:900; font-size:17px; color:#ffffff;
+                border: 2px solid #ffffff;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.55);
+                text-shadow: 0 1px 3px rgba(0,0,0,0.75);
+                background:${info.hex};
+                transition: transform 0.2s ease, opacity 0.2s ease;
+              `;
+              pill.textContent = `♪${info.label}`;
+              els.notesRowEl.appendChild(pill);
+              setTimeout(() => {
+                audio.playNoteTrigger(info.freq, false);
+                pill.classList.add('pp-note-speaking');
+                setTimeout(() => pill.classList.remove('pp-note-speaking'), 380);
+              }, idx * 290);
+            });
+            els.bannerEl.style.display = 'flex';
+          }
+
+          let foundNextUnresolved = false;
+          mc.rows.forEach((row, rIdx) => {
+            if (row.resolved) return;
+
+            const targetOrb = row.orbs[row.targetLane];
+            if (!foundNextUnresolved) {
+              foundNextUnresolved = true;
+              activeMelodyRowInfo = targetOrb.info;
+              activeMelodyRowDist = Math.max(0, bike.pos.z - row.z);
+
+              if (targetOrb.ringMesh) {
+                const pulse = 1.15 + Math.sin(now * 0.012) * 0.22;
+                targetOrb.ringMesh.scale.set(pulse, pulse, 1);
+              }
+              if (targetOrb.beamMesh) {
+                targetOrb.beamMesh.material.opacity = 0.42;
+              }
+              const pill = els.notesRowEl ? els.notesRowEl.children[rIdx] : null;
+              if (pill) {
+                pill.style.transform = 'scale(1.18)';
+                pill.style.borderColor = '#fde047';
+              }
+            }
+
+            if (Math.abs(bike.pos.z - row.z) < 2.8) {
+              row.resolved = true;
+              let bestLane = 1;
+              let bestDist = 999;
+              row.orbs.forEach(o => {
+                const d = Math.abs(bike.pos.x - o.x);
+                if (d < bestDist) { bestDist = d; bestLane = o.lane; }
+              });
+
+              const pill = els.notesRowEl ? els.notesRowEl.children[rIdx] : null;
+              if (bestLane === row.targetLane && bestDist < 2.5) {
+                mc.hits++;
+                const hitOrb = row.orbs[bestLane];
+                hitOrb.mesh.visible = false;
+                audio.playNoteTrigger(hitOrb.info.freq, true);
+                addScore(350, true);
+                particles.spawnDirtRoost(bike.pos, 0, 1, 16, 6.2, hitOrb.info.color);
+                if (pill) {
+                  pill.style.transform = 'scale(1.24)';
+                  pill.style.boxShadow = '0 0 18px #ffffff';
+                }
+              } else {
+                audio.playMissBuzz();
+                breakCombo();
+                if (pill) {
+                  pill.style.transform = 'scale(0.92)';
+                  pill.style.opacity = '0.25';
+                }
+              }
+
+              if (rIdx === mc.rows.length - 1) {
+                mc.completed = true;
+                if (mc.hits === 4) {
+                  addScore(1000, true);
+                  hud.showCallout('MELODY MASTERED! +1000', '#e879f9');
+                } else {
+                  hud.showCallout(`MELODY ${mc.hits}/4`, '#38bdf8');
+                }
+                setTimeout(() => { if (els.bannerEl) els.bannerEl.style.display = 'none'; }, 1100);
+              }
+            }
+          });
+        }
+      }
+      if (!inMelodyZone && els.bannerEl && els.bannerEl.style.display !== 'none') {
+        els.bannerEl.style.display = 'none';
+      }
+
+      if (activeMelodyRowInfo && els.nextGatePillEl) {
+        els.nextGatePillEl.style.display = 'flex';
+        els.nextGateTitleEl.textContent = 'TARGET NOTE';
+        els.nextGatePillEl.style.borderColor = activeMelodyRowInfo.hex;
+        els.nextGateBadgeEl.style.background = activeMelodyRowInfo.hex;
+        els.nextGateBadgeEl.textContent = `♪ ${activeMelodyRowInfo.label}`;
+        els.nextGateDistEl.textContent = `${Math.round(activeMelodyRowDist)}m`;
+      } else if (nearestGate && nearestGateDist < 130 && els.nextGatePillEl) {
+        els.nextGatePillEl.style.display = 'flex';
+        els.nextGateTitleEl.textContent = 'NEXT GATE';
+        els.nextGatePillEl.style.borderColor = nearestGate.note.hex;
+        els.nextGateBadgeEl.style.background = nearestGate.note.hex;
+        els.nextGateBadgeEl.textContent = `♪ ${nearestGate.note.name}`;
+        els.nextGateDistEl.textContent = `${Math.round(nearestGateDist)}m`;
+      } else if (els.nextGatePillEl) {
+        els.nextGatePillEl.style.display = 'none';
+      }
+
+      const speedKmh = Math.round(Math.hypot(bike.vel.x, bike.vel.z) * 3.6);
+      const rem = Math.max(0, Math.round(TRAIL_LENGTH + bike.pos.z));
+      els.valSpeed.textContent = `${speedKmh} km/h`;
+      els.valRem.textContent = `${rem}m`;
+
+      if (bike.pos.z <= -TRAIL_LENGTH) {
+        finishCourse();
+        return;
+      }
+    }
+
+    particles.update(dt);
+
+    // Ghost Rider Playback
+    if (showGhost && isPlaying && bestGhostFrames.length > 1) {
+      ghostBike.ghostRoot.visible = true;
+      let fIdx = 0;
+      while (fIdx < bestGhostFrames.length - 2 && bestGhostFrames[fIdx + 1].t < runElapsedTime) {
+        fIdx++;
+      }
+      const fA = bestGhostFrames[fIdx];
+      const fB = bestGhostFrames[fIdx + 1];
+      const span = Math.max(0.001, fB.t - fA.t);
+      const alpha = Math.max(0, Math.min(1, (runElapsedTime - fA.t) / span));
+
+      const gZ = fA.z + (fB.z - fA.z) * alpha;
+      const gDx = fA.dx + (fB.dx - fA.dx) * alpha;
+      const gYOff = fA.yOff + (fB.yOff - fA.yOff) * alpha;
+      const gYaw = fA.yaw + (fB.yaw - fA.yaw) * alpha;
+      const gWh = (fA.wh || 0) + ((fB.wh || 0) - (fA.wh || 0)) * alpha;
+
+      const gX = getTrailCenterX(gZ) + gDx;
+      const gY = getTerrainHeight(gX, gZ) + gYOff;
+      ghostBike.ghostRoot.position.set(gX, gY, gZ);
+      ghostBike.ghostRoot.rotation.set(0, gYaw, 0);
+      ghostBike.ghostPivot.rotation.x = gWh;
+    } else {
+      ghostBike.ghostRoot.visible = false;
+    }
+
+    // Visual Bike, Rider & Camera Sync
+    const preset = BIKE_PRESETS[selectedBikeKey];
+    playerBike.bikeRoot.position.copy(bike.pos);
+    playerBike.bikeRoot.rotation.set(0, bike.yaw, 0);
+
+    const fwdX = -Math.sin(bike.yaw);
+    const fwdZ = -Math.cos(bike.yaw);
+    const hAhead = getTerrainHeight(bike.pos.x + fwdX * 1.1, bike.pos.z + fwdZ * 1.1);
+    const hBehind = getTerrainHeight(bike.pos.x - fwdX * 1.1, bike.pos.z - fwdZ * 1.1);
+    const slopePitch = Math.atan2(hAhead - hBehind, 2.2);
+    const airPitch = Math.max(-0.55, Math.min(0.6, bike.vel.y * 0.028 + bike.airPitchOffset));
+    playerBike.bikeVisual.rotation.x += ((bike.grounded ? slopePitch : airPitch) - playerBike.bikeVisual.rotation.x) * 0.18;
+    playerBike.bikeVisual.rotation.z = bike.leanAngle;
+    playerBike.bikeVisual.rotation.y = bike.whipAngle + bike.skidAngle;
+    playerBike.wheeliePivot.rotation.x = bike.wheelieAngle;
+
+    const travel = bike.suspensionComp * preset.forkTravel;
+    playerBike.chassisGroup.position.y = -travel * 0.55;
+    playerBike.forkLowers.position.y = travel * 0.52;
+    playerBike.steerGroup.rotation.y = bike.steerAngle - (bike.whipAngle + bike.skidAngle) * 0.65;
+
+    const spd = Math.hypot(bike.vel.x, bike.vel.z);
+    bike.wheelSpin += spd * dt * 2.75;
+    if (bike.grounded) bike.crankSpin += dt * 9.0;
+    playerBike.frontWheel.rotation.x = -bike.wheelSpin;
+    playerBike.rearWheel.rotation.x = -bike.wheelSpin;
+    playerBike.crankGroup.rotation.x = -bike.crankSpin;
+
+    const crouch = bike.hopCharge * 0.22 + bike.suspensionComp * 0.16;
+    const wheelieShift = bike.wheelieAngle * 0.35;
+    playerBike.riderGroup.position.y = 1.15 - crouch - wheelieShift * 0.25;
+    playerBike.riderGroup.position.z = 0.25 + wheelieShift;
+    playerBike.torsoGroup.rotation.x = 0.48 + crouch * 0.9 - wheelieShift * 0.85;
+    playerBike.torsoGroup.rotation.y = -(bike.whipAngle + bike.skidAngle) * 0.6;
+    playerBike.riderLegs.forEach((leg, idx) => {
+      const phase = bike.crankSpin + idx * Math.PI;
+      leg.group.rotation.x = bike.grounded ? Math.sin(phase) * 0.28 : crouch * 0.8;
+    });
+
+    const groundY = getTerrainHeight(bike.pos.x, bike.pos.z);
+    const alt = Math.max(0, bike.pos.y - groundY);
+    playerBike.groundShadow.position.y = -alt + 0.05;
+    const sScale = Math.max(0.35, 1 - alt * 0.09);
+    playerBike.groundShadow.scale.set(sScale, sScale, sScale);
+    playerBike.groundShadow.material.opacity = Math.max(0.08, 0.34 - alt * 0.035);
+
+    for (let i = 0; i < worldData.floatingNotes.length; i++) {
+      const fn = worldData.floatingNotes[i];
+      if (fn.mesh && fn.mesh.visible) {
+        fn.mesh.rotation.y = now * 0.0022 + fn.phase;
+        fn.mesh.position.y = fn.baseY + Math.sin(now * 0.0035 + fn.phase) * 0.14;
+      }
+    }
+
+    for (let i = 0; i < worldData.coastalBirds.length; i++) {
+      const cb = worldData.coastalBirds[i];
+      const flap = Math.sin(now * 0.016 + cb.phase) * 0.55;
+      cb.leftWing.rotation.z = flap;
+      cb.rightWing.rotation.z = -flap;
+
+      if (!cb.startled && isPlaying && Math.abs(bike.pos.z - cb.mesh.position.z) < 55) {
+        cb.startled = true;
+        cb.startleVel.set(-7 - Math.random() * 5, 4.5 + Math.random() * 3.5, -8 - Math.random() * 6);
+      }
+
+      if (cb.startled) {
+        cb.mesh.position.addScaledVector(cb.startleVel, dt);
+        cb.mesh.rotation.y = 0.65;
+      } else {
+        cb.mesh.position.x = cb.originX + Math.cos(now * 0.001 + cb.phase) * 4.5;
+        cb.mesh.position.y = cb.originY + Math.sin(now * 0.002 + cb.phase) * 1.4;
+        cb.mesh.position.z = cb.originZ + Math.sin(now * 0.001 + cb.phase) * 4.5;
+        cb.mesh.rotation.y = -(now * 0.001 + cb.phase);
+      }
+    }
+
+    for (let i = 0; i < worldData.hangGliders.length; i++) {
+      const hg = worldData.hangGliders[i];
+      const ang = now * 0.001 * hg.speed + hg.phase;
+      const nx = hg.centerX + Math.cos(ang) * hg.radiusX;
+      const nz = hg.centerZ + Math.sin(ang) * hg.radiusZ;
+      const ny = hg.centerY + Math.sin(ang * 2) * 3.5;
+      hg.mesh.rotation.y = -ang;
+      hg.mesh.rotation.z = 0.18;
+      hg.mesh.position.set(nx, ny, nz);
+    }
+
+    for (let i = 0; i < worldData.cargoShips.length; i++) {
+      const cs = worldData.cargoShips[i];
+      cs.mesh.position.z += cs.speed * dt;
+      if (cs.mesh.position.z > 200) cs.mesh.position.z = -2600;
+      if (cs.mesh.position.z < -2700) cs.mesh.position.z = 100;
+    }
+
+    const rfNow = getRainforestBlend(bike.pos.z);
+    scene.background.copy(colSkyCoastal).lerp(colSkyRainforest, rfNow * 0.72);
+    scene.fog.color.copy(colFogCoastal).lerp(colFogRainforest, rfNow * 0.78);
+    scene.fog.density = 0.00095 + (0.0042 - 0.00095) * rfNow;
+    sunLight.color.copy(colSunCoastal).lerp(colSunRainforest, rfNow * 0.65);
+    sunLight.intensity = 1.48 + (1.15 - 1.48) * rfNow;
+    hemiLight.color.copy(colHemiSkyCoastal).lerp(colHemiSkyRainforest, rfNow * 0.7);
+
+    sunLight.position.set(bike.pos.x + 38, bike.pos.y + 72, bike.pos.z + 32);
+    sunLight.target.position.copy(bike.pos);
+    sunLight.target.updateMatrixWorld();
+
+    if (!isPlaying) {
+      const ang = now * 0.00035;
+      camera.position.set(bike.pos.x + Math.sin(ang) * 4.6, bike.pos.y + 2.0, bike.pos.z + Math.cos(ang) * 4.6);
+      camera.lookAt(bike.pos.x, bike.pos.y + 1.0, bike.pos.z - 0.5);
+    } else if (isFirstPerson) {
+      camera.position.set(bike.pos.x + fwdX * 0.25, bike.pos.y + 1.65 + bike.wheelieAngle * 0.55, bike.pos.z + fwdZ * 0.25);
+      camera.lookAt(bike.pos.x + fwdX * 14, bike.pos.y + 0.85 + bike.wheelieAngle * 6.5, bike.pos.z + fwdZ * 14);
+    } else {
+      const camX = bike.pos.x + Math.sin(bike.yaw) * 5.6;
+      const camZ = bike.pos.z + Math.cos(bike.yaw) * 5.6;
+      const camGround = getTerrainHeight(camX, camZ);
+      const targetY = Math.max(camGround + 0.8, bike.pos.y + 2.55);
+      camera.position.lerp(new THREE.Vector3(camX, targetY, camZ), Math.min(1, dt * 9.5));
+      camera.lookAt(bike.pos.x - Math.sin(bike.yaw) * 6, bike.pos.y + 1.15, bike.pos.z - Math.cos(bike.yaw) * 6);
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  const onResize = () => {
+    if (!els.containerEl || !renderer || !wrapperParent) return;
+    const { w, h } = getViewportDimensions();
+    els.containerEl.style.height = `${h}px`;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h, false);
+    renderer.domElement.style.width = '100%';
+    renderer.domElement.style.height = '100%';
+  };
+
+  let resizeObserver = null;
+  if (typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(onResize);
+    resizeObserver.observe(wrapperParent);
+    if (keyboardEl) resizeObserver.observe(keyboardEl);
+  }
+  window.addEventListener('resize', onResize);
+  requestAnimationFrame(onResize);
+
+  if (autoStart) {
+    startGame();
+    if (statusEl) statusEl.textContent = '🚵‍♂️ Pedal Point Restarted! Carve down the Illawarra Escarpment!';
+  } else {
+    if (statusEl) statusEl.textContent = '🚵‍♂️ Pedal Point Ready! Play your calibrated Piano Keys to carve the trail!';
+  }
+
+  animFrameId = requestAnimationFrame(animate);
+
+  return {
+    onPianoNoteDown,
+    onPianoNoteUp,
+    cleanup: () => {
+      if (animFrameId !== null) {
+        cancelAnimationFrame(animFrameId);
+        animFrameId = null;
+      }
+      audio.stop();
+      muteControlNotesActive = false;
+      window.removeEventListener('keydown', onKeyDown, { capture: true });
+      window.removeEventListener('keyup', onKeyUp, { capture: true });
+      window.removeEventListener('resize', onResize);
+      if (resizeObserver) resizeObserver.disconnect();
+      if (renderer) {
+        try { renderer.dispose(); } catch (e) {}
+      }
+      if (els.containerEl) {
+        els.containerEl.remove();
+      }
+    }
+  };
+}
