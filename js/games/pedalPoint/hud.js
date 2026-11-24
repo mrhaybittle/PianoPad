@@ -368,7 +368,7 @@ export function mountPedalPointHUD(wrapperParent, initH) {
     <!-- Bottom Controls Bar -->
     <div id="pp-bottom-bar">
       <div id="pp-controls-caption">
-        <b>A / ←</b> Steer Left • <b>D / →</b> Steer Right • <b>Space</b> Jump • <b>Any Triad</b> Wheelie
+        <b>A / ←</b> Left • <b>D / →</b> Right • <b>Space</b> Hop / Pump • <b>Any Triad</b> Wheelie
       </div>
       <div id="pp-beat-bar">
         <span style="font-size:10px; font-weight:900; color:#34d399; letter-spacing:0.05em;">122 BPM</span>
@@ -381,7 +381,7 @@ export function mountPedalPointHUD(wrapperParent, initH) {
         <span id="pp-beat-label" style="font-size:10px; font-weight:900; color:#e2e8f0; width:22px; text-align:right;">1/4</span>
       </div>
       <div id="pp-preload-pill">PRE-LOAD: 0%</div>
-      <button type="button" id="pp-touch-jump-btn">⬆ JUMP / WHIP</button>
+      <button type="button" id="pp-touch-jump-btn">⬆ HOP / PUMP / WHIP</button>
     </div>
 
     <!-- Start / Garage Overlay -->
@@ -390,7 +390,7 @@ export function mountPedalPointHUD(wrapperParent, initH) {
         <div class="badge-tag">Wollongong NSW • Illawarra Escarpment</div>
         <h1>PEDAL POINT 3D</h1>
         <p id="pp-modal-subtitle">
-          Carve red-dirt singletrack down Mt Kembla! Thread <b>Melodic Note Gates</b>, play <b>any 3-note Triad</b> to pop a wheelie, and race your <b>Ghost Rider</b>!
+          Carve red-dirt singletrack down Mt Kembla! Bunny-hop or <b>Triad Wheelie</b> over fallen logs, ride <b>North-Shore bridges</b>, and <b>pump landings</b> for speed!
         </p>
 
         <div class="bike-grid" id="pp-bike-grid">
@@ -411,7 +411,7 @@ export function mountPedalPointHUD(wrapperParent, initH) {
         <div class="controls-grid">
           <span><b id="pp-lbl-left">A / ←</b> Steer Left</span>
           <span><b id="pp-lbl-right">D / →</b> Steer Right</span>
-          <span><b id="pp-lbl-jump">Space</b> Pre-Load &amp; Jump</span>
+          <span><b id="pp-lbl-jump">Space</b> Hop / Pump / Whip</span>
           <span><b>Any Triad (3 Notes)</b> Wheelie</span>
         </div>
 
@@ -441,7 +441,7 @@ export function mountPedalPointHUD(wrapperParent, initH) {
             <div class="calib-slot-key" id="pp-key-right">--</div>
           </div>
           <div class="calib-slot" id="pp-slot-jump">
-            <div class="calib-slot-title">3. Jump &amp; Air Whip</div>
+            <div class="calib-slot-title">3. Hop / Pump / Whip</div>
             <div class="calib-slot-key" id="pp-key-jump">--</div>
           </div>
           <div class="calib-slot" id="pp-slot-view">
@@ -516,7 +516,7 @@ export function mountPedalPointHUD(wrapperParent, initH) {
     if (lblJump) lblJump.textContent = bindings.jump.label;
     if (caption) {
       caption.innerHTML =
-        `<b>${bindings.left.label}</b> Steer Left • <b>${bindings.right.label}</b> Steer Right • <b>${bindings.jump.label}</b> Jump • <b>Any Triad</b> Wheelie`;
+        `<b>${bindings.left.label}</b> Left • <b>${bindings.right.label}</b> Right • <b>${bindings.jump.label}</b> Hop / Pump • <b>Any Triad</b> Wheelie`;
     }
   }
 
