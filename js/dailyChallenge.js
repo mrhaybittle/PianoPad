@@ -441,7 +441,7 @@ function ensureDailyChallengeUI() {
         const pill = document.createElement('button');
         pill.type = 'button';
         pill.id = 'daily-challenge-hud-pill';
-        pill.title = "Click to view Today's Daily Challenge";
+        pill.title = "Click to view Today's Daily Merit Award Challenge";
         pill.addEventListener('click', () => openDailyChallengeModal(true));
         footerRight.prepend(pill);
     }
