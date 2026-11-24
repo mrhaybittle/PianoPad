@@ -39,7 +39,6 @@ const plunger = {
 let score = 0;
 let ballsLeft = 3;
 let multiplier = 1;
-let ballSaveTimer = 0;
 let rampLit = false;
 let multiballTriggered = false;
 let shakeTimer = 0;
@@ -756,10 +755,9 @@ function releasePlunger() {
             b.vy = -(820 + launchPower * 540);
             b.vx = -38;
             gamePhase = 'playing';
-            ballSaveTimer = 14.0;
             playRockBallSfx('springLaunch', launchPower);
             spawnSparkBurst(plunger.x + plunger.w / 2, plunger.y, '#facc15', 14);
-            triggerBanner('🚀 BALL LAUNCHED! BALL SAVER ACTIVE (14s)', '#38bdf8', 1.2);
+            triggerBanner('🚀 BALL LAUNCHED! ROCK THE STAGE!', '#38bdf8', 1.2);
         }
     });
 }
@@ -938,7 +936,6 @@ function gameLoop(now, bridge) {
 
     if (shakeTimer > 0) shakeTimer = Math.max(0, shakeTimer - dt);
     if (bannerTimer > 0) bannerTimer = Math.max(0, bannerTimer - dt);
-    if (ballSaveTimer > 0) ballSaveTimer = Math.max(0, ballSaveTimer - dt);
 
     if (plunger.pulling) {
         plunger.charge = Math.min(1, plunger.charge + dt * 1.45);
@@ -1099,31 +1096,24 @@ function gameLoop(now, bridge) {
 
     if (balls.length === 0 && gamePhase === 'playing') {
         multiballTriggered = false;
-        if (ballSaveTimer > 0) {
-            playRockBallSfx('jackpot');
-            triggerBanner('🛡️ BALL SAVED! SHOOT AGAIN!', '#22c55e', 1.2);
+        ballsLeft--;
+        playRockBallSfx('drain');
+        if (ballsLeft > 0) {
+            triggerBanner(`BALL DRAINED! ${ballsLeft} ${ballsLeft === 1 ? 'BALL' : 'BALLS'} LEFT`, '#ef4444', 1.3);
             spawnBallInPlungerLane();
             gamePhase = 'ready';
         } else {
-            ballsLeft--;
-            playRockBallSfx('drain');
-            if (ballsLeft > 0) {
-                triggerBanner(`BALL DRAINED! ${ballsLeft} ${ballsLeft === 1 ? 'BALL' : 'BALLS'} LEFT`, '#ef4444', 1.3);
-                spawnBallInPlungerLane();
-                gamePhase = 'ready';
-            } else {
-                gamePhase = 'gameover';
-                stopRockBall();
-                const finalScore = Math.floor(score);
-                bridge.finishCustomMiniGame(
-                    'RockBall',
-                    finalScore,
-                    `Final RockBall Score: <span style="color:#facc15; font-size:1.45rem; font-weight:900;">${finalScore.toLocaleString()}</span><br>` +
-                    `<span style="font-size:0.82rem; color:#ec4899;">🎸 Rock &amp; Hip-Hop Table • Multiplier: ${multiplier}x</span>`,
-                    () => startRockBall(bridge)
-                );
-                return;
-            }
+            gamePhase = 'gameover';
+            stopRockBall();
+            const finalScore = Math.floor(score);
+            bridge.finishCustomMiniGame(
+                'RockBall',
+                finalScore,
+                `Final RockBall Score: <span style="color:#facc15; font-size:1.45rem; font-weight:900;">${finalScore.toLocaleString()}</span><br>` +
+                `<span style="font-size:0.82rem; color:#ec4899;">🎸 Rock &amp; Hip-Hop Table • Multiplier: ${multiplier}x</span>`,
+                () => startRockBall(bridge)
+            );
+            return;
         }
     }
 
@@ -1680,11 +1670,6 @@ function drawRockHipHopSidePanels(ctx, W, H, tableLeft, tableRight) {
         ctx.fillStyle = '#38bdf8';
         ctx.font = '800 12px monospace';
         ctx.fillText(`BALLS: ${ballsLeft}  •  ${multiplier}X`, px + panelW / 2, 128);
-
-        if (ballSaveTimer > 0) {
-            ctx.fillStyle = '#22c55e';
-            ctx.fillText(`🛡️ SAVE: ${ballSaveTimer.toFixed(1)}s`, px + panelW / 2, 152);
-        }
     }
 
     const rightSpace = W - tableRight;
