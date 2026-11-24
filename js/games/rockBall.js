@@ -27,7 +27,7 @@ const flippers = {
 // Plunger State
 const plunger = {
     pulling: false,
-    charge: 0, // 0..1
+    charge: 0,
     x: 0,
     y: 0,
     w: 28,
@@ -86,7 +86,6 @@ class HipHopBeatEngine {
         const sixteenth = (60 / this.bpm) / 4;
         while (this.nextTime < audioCtx.currentTime + 0.12) {
             this.scheduleStep(this.step, this.nextTime);
-            // Subtle hip-hop swing on odd 16th steps
             const swingOffset = (this.step % 2 === 0) ? sixteenth * 1.12 : sixteenth * 0.88;
             this.nextTime += swingOffset;
             this.step = (this.step + 1) % 16;
@@ -94,26 +93,22 @@ class HipHopBeatEngine {
     }
 
     scheduleStep(step, t) {
-        // Boom-bap Kick pattern: 1, &, 3, 3&
         if (step === 0 || step === 3 || step === 7 || step === 10 || step === 11) {
             this.play808Kick(t);
         }
-        // Crisp Snare + Clap on 2 and 4
         if (step === 4 || step === 12) {
             this.playSnare(t);
         }
-        // Closed Hi-Hat every 8th note + open hat ghost
         if (step % 2 === 0 || step === 15) {
             this.playHiHat(t, step === 14 ? 0.14 : 0.045, step === 14 ? 0.06 : 0.025);
         }
-        // Sub-Bass Funk Groove (C Minor Pentatonic)
         const bassMap = {
-            0: 65.41,  // C2
-            3: 65.41,  // C2
-            6: 77.78,  // Eb2
-            8: 87.31,  // F2
-            10: 98.00, // G2
-            14: 116.54 // Bb2
+            0: 65.41,
+            3: 65.41,
+            6: 77.78,
+            8: 87.31,
+            10: 98.00,
+            14: 116.54
         };
         if (bassMap[step]) {
             this.playSubBass(t, bassMap[step], 0.24);
@@ -205,6 +200,7 @@ const hipHopMusic = new HipHopBeatEngine();
 function playRockBallSfx(type, noteStr = null) {
     try {
         initAudio();
+        if (!audioCtx) return;
         const now = audioCtx.currentTime;
         if (type === 'bumper') {
             const freq = (noteStr && getNoteFrequency(noteStr)) || 523.25;
@@ -273,7 +269,7 @@ function playRockBallSfx(type, noteStr = null) {
 }
 
 // ============================================================================
-// CALIBRATION MODAL (Matches PianoPad's Lowest / Highest Key Calibration Flow)
+// CALIBRATION MODAL
 // ============================================================================
 function showRockBallCalibrationModal(bridge) {
     let modal = document.getElementById('rockball-calib-modal');
@@ -304,11 +300,14 @@ function showRockBallCalibrationModal(bridge) {
     `;
     modal.classList.add('open');
 
-    document.getElementById('btn-rockball-calib-skip').onclick = () => {
-        applyCalibratedRange(12, 35); // C1 to B2
-        modal.classList.remove('open');
-        beginRockBallSession(bridge);
-    };
+    const skipBtn = document.getElementById('btn-rockball-calib-skip');
+    if (skipBtn) {
+        skipBtn.onclick = () => {
+            applyCalibratedRange(12, 35);
+            modal.classList.remove('open');
+            beginRockBallSession(bridge);
+        };
+    }
 }
 
 function applyCalibratedRange(lowP, highP) {
@@ -435,7 +434,6 @@ export function handleRockBallInput(noteStr, bridge) {
     const clean = (noteStr || '').trim().toLowerCase();
     if (!clean) return;
 
-    // 1. Handle Calibration Key Presses
     if (gamePhase === 'calibration') {
         const pNum = noteToPitch(clean);
         if (pNum === null) return;
@@ -462,7 +460,6 @@ export function handleRockBallInput(noteStr, bridge) {
 
     if (gamePhase !== 'ready' && gamePhase !== 'playing') return;
 
-    // 2. Outer & Inner Flipper Triggers
     if (clean === lowOuterNote) {
         if (!flippers.outerLeft.active) playRockBallSfx('flipper');
         flippers.outerLeft.active = true;
@@ -488,7 +485,6 @@ export function handleRockBallInput(noteStr, bridge) {
         return;
     }
 
-    // 3. Plunger Pull-Back if Ball is in the Launch Lane
     const ballInShooter = balls.some(b => b.inShooterLane);
     if (ballInShooter) {
         plunger.pulling = true;
@@ -496,7 +492,6 @@ export function handleRockBallInput(noteStr, bridge) {
         return;
     }
 
-    // 4. Musical Bumper Note Matching (Triggers Jackpot Ramps & Multiball!)
     const letter = clean.replace(/[0-9#b]+$/g, '').toUpperCase();
     let matchedAnyBumper = false;
 
@@ -557,8 +552,8 @@ function releasePlunger() {
 // ============================================================================
 function buildRockBallTable() {
     const canvas = document.getElementById('waterfall-canvas');
-    const W = canvas ? canvas.width : 1232;
-    const H = canvas ? canvas.height : 380;
+    const W = (canvas && canvas.width) || 1232;
+    const H = (canvas && canvas.height) || 380;
 
     const tableW = Math.min(540, W * 0.56);
     const tableLeft = (W - tableW) / 2;
@@ -566,33 +561,28 @@ function buildRockBallTable() {
     const shooterLaneX = tableRight - 36;
     const playRight = shooterLaneX - 10;
 
-    // Position Outer Lower Flippers
     const centerX = (tableLeft + playRight) / 2;
     flippers.outerLeft.x = centerX - 78;
     flippers.outerLeft.y = H - 36;
     flippers.outerRight.x = centerX + 78;
     flippers.outerRight.y = H - 36;
 
-    // Position Inner Mid-Field Flippers (closer together in middle of playfield)
     flippers.innerLeft.x = centerX - 62;
     flippers.innerLeft.y = H * 0.54;
     flippers.innerRight.x = centerX + 62;
     flippers.innerRight.y = H * 0.54;
 
-    // Plunger coordinates
     plunger.x = shooterLaneX + 5;
     plunger.y = H - 56;
     plunger.w = 24;
     plunger.h = 50;
 
-    // 3 Solenoid Pop Bumpers (Top Triangle Cluster)
     bumpers = [
         { x: centerX - 46, y: H * 0.25, r: 22, litNote: 'C', color: '#ec4899', pulse: 0, charged: false },
         { x: centerX + 46, y: H * 0.25, r: 22, litNote: 'E', color: '#38bdf8', pulse: 0, charged: false },
         { x: centerX,      y: H * 0.36, r: 24, litNote: 'G', color: '#facc15', pulse: 0, charged: false }
     ];
 
-    // 2 Triangular Slingshots just above the Outer Lower Flippers
     slingshots = [
         {
             p1: { x: tableLeft + 46, y: H - 115 },
@@ -608,7 +598,6 @@ function buildRockBallTable() {
         }
     ];
 
-    // 4 Stationary / Drop Targets ("R - O - C - K") along upper left wall
     const letters = ['R', 'O', 'C', 'K'];
     dropTargets = letters.map((ch, idx) => ({
         x: tableLeft + 26 + idx * 14,
@@ -619,35 +608,26 @@ function buildRockBallTable() {
         color: NEON_COLORS[idx % NEON_COLORS.length]
     }));
 
-    // Table Boundary Walls, Inlane Dividers, Outlane Guides & Orbit Arch
     walls = [
-        // Outer Left Wall
         { x1: tableLeft, y1: 36, x2: tableLeft, y2: H },
-        // Outer Right Wall (outside shooter lane)
         { x1: tableRight, y1: 36, x2: tableRight, y2: H },
-        // Top Orbit Arch (segments guiding ball from shooter lane over to left orbit)
         { x1: tableRight, y1: 42, x2: tableRight - 35, y2: 14 },
         { x1: tableRight - 35, y1: 14, x2: tableLeft + 45, y2: 14 },
         { x1: tableLeft + 45, y1: 14, x2: tableLeft, y2: 42 },
-        // Shooter Lane Inner Divider (stops below top arch so ball enters orbit)
         { x1: shooterLaneX, y1: 68, x2: shooterLaneX, y2: H },
-        // Left Inlane / Outlane Divider Post (guides safe inlane to outerLeft flipper)
         { x1: tableLeft + 28, y1: H - 122, x2: tableLeft + 28, y2: H - 58 },
         { x1: tableLeft + 28, y1: H - 58, x2: flippers.outerLeft.x - 4, y2: flippers.outerLeft.y - 2 },
-        // Left Outlane Funnel Wall
         { x1: tableLeft, y1: H - 60, x2: tableLeft + 24, y2: H - 15 },
-        // Right Inlane / Outlane Divider Post (guides safe inlane to outerRight flipper)
         { x1: playRight - 28, y1: H - 122, x2: playRight - 28, y2: H - 58 },
         { x1: playRight - 28, y1: H - 58, x2: flippers.outerRight.x + 4, y2: flippers.outerRight.y - 2 },
-        // Right Outlane Funnel Wall
         { x1: playRight, y1: H - 60, x2: playRight - 24, y2: H - 15 }
     ];
 }
 
 function spawnBallInPlungerLane() {
     const canvas = document.getElementById('waterfall-canvas');
-    const W = canvas ? canvas.width : 1232;
-    const H = canvas ? canvas.height : 380;
+    const W = (canvas && canvas.width) || 1232;
+    const H = (canvas && canvas.height) || 380;
     const tableW = Math.min(540, W * 0.56);
     const tableRight = (W + tableW) / 2;
 
@@ -711,7 +691,13 @@ function spawnSparkBurst(x, y, color, count = 10) {
 // PHYSICS & RENDER LOOP
 // ============================================================================
 function gameLoop(now, bridge) {
-    if (bridge.getActiveMiniGame() !== 'rockBall') {
+    if (!bridge || bridge.getActiveMiniGame() !== 'rockBall') {
+        stopRockBall();
+        return;
+    }
+
+    const canvas = document.getElementById('waterfall-canvas');
+    if (!canvas) {
         stopRockBall();
         return;
     }
@@ -740,7 +726,6 @@ function gameLoop(now, bridge) {
     bumpers.forEach(b => { if (b.pulse > 0) b.pulse = Math.max(0, b.pulse - dt * 3.5); });
     slingshots.forEach(s => { if (s.flash > 0) s.flash = Math.max(0, s.flash - dt * 4); });
 
-    const canvas = document.getElementById('waterfall-canvas');
     const W = canvas.width;
     const H = canvas.height;
     const tableW = Math.min(540, W * 0.56);
@@ -777,12 +762,10 @@ function gameLoop(now, bridge) {
                 b.vy = (b.vy / spd) * 1150;
             }
 
-            // 1. Wall & Lane Collisions
             for (const w of walls) {
                 resolveSegmentCollision(b, w.x1, w.y1, w.x2, w.y2, 0.72);
             }
 
-            // 2. Round Solenoid Pop Bumpers
             for (const bmp of bumpers) {
                 const dx = b.x - bmp.x;
                 const dy = b.y - bmp.y;
@@ -803,7 +786,6 @@ function gameLoop(now, bridge) {
                 }
             }
 
-            // 3. Angled Triangular Slingshots
             for (const sl of slingshots) {
                 const hitHypotenuse = resolveSegmentCollision(b, sl.p1.x, sl.p1.y, sl.p3.x, sl.p3.y, 1.35);
                 if (hitHypotenuse) {
@@ -818,7 +800,6 @@ function gameLoop(now, bridge) {
                 resolveSegmentCollision(b, sl.p2.x, sl.p2.y, sl.p3.x, sl.p3.y, 0.7);
             }
 
-            // 4. R-O-C-K Drop Targets
             for (const dtg of dropTargets) {
                 if (dtg.down) continue;
                 const dx = b.x - dtg.x;
@@ -841,7 +822,6 @@ function gameLoop(now, bridge) {
                 }
             }
 
-            // 5. Elevated Center Jackpot Ramp Sensor
             if (Math.abs(b.x - centerX) < 22 && Math.abs(b.y - H * 0.16) < 18 && b.vy < -150) {
                 const rampPts = (rampLit ? 1000 : 300) * multiplier;
                 score += rampPts;
@@ -852,7 +832,6 @@ function gameLoop(now, bridge) {
                 triggerBanner(`🚀 RAMP COMBO SHOT! +${rampPts}`, '#facc15', 1.0);
             }
 
-            // 6. Outer & Inner Flipper Collisions
             Object.values(flippers).forEach(f => {
                 const tipX = f.x + Math.cos(f.angle) * f.len;
                 const tipY = f.y + Math.sin(f.angle) * f.len;
@@ -869,14 +848,12 @@ function gameLoop(now, bridge) {
                 if (b.trail.length > 8) b.trail.shift();
             }
 
-            // 7. Outlane / Center Drain Check
             if (b.y > H + 14) {
                 balls.splice(i, 1);
             }
         }
     }
 
-    // Handle Ball Drain / Ball Saver / Game Over
     if (balls.length === 0 && gamePhase === 'playing') {
         multiballTriggered = false;
         if (ballSaveTimer > 0) {
@@ -1066,7 +1043,10 @@ function gameLoop(now, bridge) {
     }
 
     ctx.restore();
-    animFrameId = requestAnimationFrame((t) => gameLoop(t, bridge));
+
+    if (gamePhase === 'ready' || gamePhase === 'playing') {
+        animFrameId = requestAnimationFrame((t) => gameLoop(t, bridge));
+    }
 }
 
 function resolveSegmentCollision(ball, x1, y1, x2, y2, restitution) {
@@ -1094,6 +1074,21 @@ function resolveSegmentCollision(ball, x1, y1, x2, y2, restitution) {
         }
     }
     return false;
+}
+
+function drawRoundedBox(ctx, x, y, w, h, r) {
+    const radius = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + w - radius, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+    ctx.lineTo(x + w, y + h - radius);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+    ctx.lineTo(x + radius, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
 }
 
 function drawTurntableFloorDecal(ctx, cx, cy, radius, angle) {
@@ -1179,8 +1174,7 @@ function drawRockHipHopSidePanels(ctx, W, H, tableLeft, tableRight) {
         ctx.fillStyle = '#111827';
         ctx.strokeStyle = '#ec4899';
         ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.roundRect(px, 16, panelW, H - 32, 10);
+        drawRoundedBox(ctx, px, 16, panelW, H - 32, 10);
         ctx.fill();
         ctx.stroke();
 
@@ -1213,8 +1207,7 @@ function drawRockHipHopSidePanels(ctx, W, H, tableLeft, tableRight) {
         ctx.fillStyle = '#111827';
         ctx.strokeStyle = '#38bdf8';
         ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.roundRect(px, 16, panelW, H - 32, 10);
+        drawRoundedBox(ctx, px, 16, panelW, H - 32, 10);
         ctx.fill();
         ctx.stroke();
 
