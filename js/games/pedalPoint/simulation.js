@@ -128,7 +128,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
   const CALIB_NAMES = {
     left: 'STEER LEFT',
     right: 'STEER RIGHT',
-    jump: 'JUMP / PUMP / WHIP',
+    jump: 'JUMP / PUMP / FLIP',
     view: 'CAMERA VIEW'
   };
   let isCalibrating = false;
@@ -275,7 +275,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
 
   const bike = {
     pos: new THREE.Vector3(0, 366, 0),
-    vel: new THREE.Vector3(0, 0, -16),
+    vel: new THREE.Vector3(0, 0, -11),
     yaw: 0,
     yawRate: 0,
     smoothSteer: 0,
@@ -304,7 +304,17 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     wheelieChordName: '',
     wheelieScoreAccum: 0,
     edgeGuardCooldown: 0,
-    onBridge: false
+    onBridge: false,
+    // Trails: The Game physics state
+    lastTerrainVelY: 0,
+    carveWindup: 0,
+    spinVel: 0,
+    airPitch: 0,
+    pitchVel: 0,
+    trickHoldScore: 0,
+    lineMultiplier: 1,
+    spinAccum: 0,
+    flipAccum: 0
   };
 
   const input = {
@@ -373,6 +383,13 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     els.btnCamToggle.blur();
   });
 
+  function updateComboHUD() {
+    const flowMult = Math.max(1, Math.min(8, 1 + Math.floor(combo / 2)));
+    els.valCombo.textContent = bike.lineMultiplier > 1
+      ? `x${flowMult} • ${bike.lineMultiplier}xL`
+      : `x${flowMult}`;
+  }
+
   function addScore(pts, hitNote = false) {
     if (hitNote) {
       combo++;
@@ -386,7 +403,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     const mult = Math.max(1, Math.min(8, 1 + Math.floor(combo / 2)));
     score += Math.round(pts * mult);
     els.valScore.textContent = score.toLocaleString();
-    els.valCombo.textContent = `x${mult}`;
+    updateComboHUD();
   }
 
   function breakCombo() {
@@ -394,7 +411,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     notesAttempted++;
     audio.setComboLayer(0);
     hud.updateEqVisuals(0);
-    els.valCombo.textContent = 'x1';
+    updateComboHUD();
   }
 
   function evaluateTriadWheelie(nowMs) {
@@ -453,11 +470,18 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       }
     }
 
-    bike.vel.y = preset.hopImpulse * chargeBonus * lipBoost * (isOnBeat ? 1.12 : 1.0);
+    const activeSteer = (input.left ? 1 : 0) - (input.right ? 1 : 0);
+    if (activeSteer !== 0 && Math.abs(bike.spinVel) < 1.0) {
+      bike.spinVel = activeSteer * (preset.airSpinSpeed * 0.55);
+    }
+
+    bike.vel.y = Math.max(bike.vel.y, bike.lastTerrainVelY) +
+      preset.hopImpulse * chargeBonus * lipBoost * (isOnBeat ? 1.12 : 1.0);
+    bike.lastTerrainVelY = 0;
     bike.grounded = false;
     bike.coyoteTimer = 0;
     bike.whipAwarded = false;
-    bike.airPitchOffset = 0.28;
+    bike.airPitchOffset = 0.22;
     bike.suspensionComp = 0;
 
     audio.playJumpPop(isOnBeat || lipBoost > 1.0);
@@ -502,7 +526,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         input.jumpHeld = true;
         if (bike.pumpWindowTimer > 0) {
           bike.pumpWindowTimer = 0;
-          bike.vel.z -= 4.6;
+          bike.vel.z -= 4.8;
           overdriveTimer = Math.max(overdriveTimer, 1.4);
           addScore(150, false);
           hud.showCallout('⚡ TRANSITION PUMP! +150', '#38bdf8');
@@ -512,12 +536,11 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         }
       } else {
         input.jumpHeld = true;
-        bike.whipTarget = 0.95;
+        bike.whipTarget = 0.85;
         if (!bike.whipAwarded && bike.airTime > 0.22) {
           bike.whipAwarded = true;
           audio.playWhipWhoosh();
-          addScore(300, true);
-          hud.showCallout('STYLISH TABLETOP WHIP! +300', '#fb923c');
+          addScore(200, true);
         }
       }
       return;
@@ -624,9 +647,15 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         bike.hopCharge = 0.65;
         triggerHop();
       } else {
-        bike.whipTarget = 0.95;
+        input.jumpHeld = true;
+        bike.whipTarget = 0.85;
       }
     }
+  });
+
+  els.btnTouchJump.addEventListener('pointerup', () => {
+    input.jumpHeld = false;
+    bike.whipTarget = 0;
   });
 
   let muteControlNotesActive = false;
@@ -654,7 +683,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     const startX = getPathCenterX(0);
     const startY = getGroundY(startX, 0);
     bike.pos.set(startX, startY, 0);
-    bike.vel.set(0, 0, selectedLevelKey === 'coastal' ? -20 : -16);
+    bike.vel.set(0, 0, selectedLevelKey === 'coastal' ? -20 : -11);
     bike.yaw = 0;
     bike.yawRate = 0;
     bike.smoothSteer = 0;
@@ -682,6 +711,16 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     bike.wheelieScoreAccum = 0;
     bike.edgeGuardCooldown = 0;
     bike.onBridge = false;
+
+    bike.lastTerrainVelY = 0;
+    bike.carveWindup = 0;
+    bike.spinVel = 0;
+    bike.airPitch = 0;
+    bike.pitchVel = 0;
+    bike.trickHoldScore = 0;
+    bike.lineMultiplier = 1;
+    bike.spinAccum = 0;
+    bike.flipAccum = 0;
 
     input.left = false;
     input.right = false;
@@ -716,7 +755,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       statusEl.textContent =
         selectedLevelKey === 'coastal'
           ? '⚡ Wollongong Coastal E-Bike Sprint! Drop past the Lighthouse & Harbour and dodge path traffic!'
-          : '🚵‍♂️ Pedal Point Active! Carve down the Illawarra Escarpment!';
+          : '🚵‍♂️ Pedal Point Active! Pump transitions, launch kickers into 360s & backflips, and stomp landings!';
     }
   }
 
@@ -827,28 +866,48 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
 
       if (bike.grounded) {
         bike.coyoteTimer = 0.14;
+        const fwdX = -Math.sin(bike.yaw);
+        const fwdZ = -Math.cos(bike.yaw);
+
+        // 1. Measure ramp slope along bike's heading for automatic ramp-tangent lip launches
+        const hFront = getGroundY(bike.pos.x + fwdX * 1.0, bike.pos.z + fwdZ * 1.0);
+        const hBack = getGroundY(bike.pos.x - fwdX * 1.0, bike.pos.z - fwdZ * 1.0);
+        const slopeRatio = (hFront - hBack) / 2.0; // Positive = riding up a takeoff lip
+        bike.lastTerrainVelY = Math.max(0, slopeRatio * horizSpeed);
+
+        // 2. Gravity along slope + active transition pumping (replaces forced minCruiseZ)
         bike.vel.x += normal.x * grav * dt;
         bike.vel.z += normal.z * grav * dt;
 
-        // Downslope pumping bonus
-        if (input.jumpHeld && normal.z < -0.06) {
-          bike.vel.z += normal.z * 16.0 * dt;
-        }
-
-        const fwdX = -Math.sin(bike.yaw);
-        const fwdZ = -Math.cos(bike.yaw);
         const wheelieBoost = bike.wheelieActive ? 1.14 : 1.0;
-        const coastalMotorBoost = isCoastal ? 1.26 : 1.0;
-        const boost = (overdriveTimer > 0 ? 1.24 : 1.0) * wheelieBoost * coastalMotorBoost;
+        const coastalMotorMult = isCoastal ? 1.45 : 1.0;
+        const boost = (overdriveTimer > 0 ? 1.24 : 1.0) * wheelieBoost * coastalMotorMult;
 
-        if (horizSpeed < preset.maxPedalSpeed * boost) {
+        if (input.jumpHeld && normal.z < -0.04) {
+          // Pumping down a landing/roller converts vertical drop into forward momentum
+          const pumpAccel = -normal.z * (preset.pumpPower || 24.0) * (overdriveTimer > 0 ? 1.2 : 1.0);
+          bike.vel.x += fwdX * pumpAccel * dt;
+          bike.vel.z += fwdZ * pumpAccel * dt;
+        } else if (horizSpeed < preset.maxPedalSpeed * boost) {
+          // Light start-hill / flat recovery pedaling when moving slowly
           bike.vel.x += fwdX * preset.pedalForce * boost * dt;
           bike.vel.z += fwdZ * preset.pedalForce * boost * dt;
         }
 
+        // 3. Counter-steer wind-up on the run-in for snappy 360 / 540 / 720 spins at the lip
+        if (rawSteer !== 0) {
+          if (Math.sign(bike.carveWindup) !== 0 && Math.sign(bike.carveWindup) !== rawSteer) {
+            bike.spinVel = rawSteer * ((preset.airSpinSpeed || 6.5) + Math.min(3.5, Math.abs(bike.carveWindup) * 4.5));
+          }
+          bike.carveWindup = Math.max(-1.0, Math.min(1.0, bike.carveWindup + rawSteer * dt * 1.6));
+        } else {
+          bike.carveWindup *= Math.max(0, 1 - dt * 3.0);
+          bike.spinVel *= Math.max(0, 1 - dt * 5.0);
+        }
+
         const targetTurnRate = bike.smoothSteer * (preset.turnSpeed * 1.18) * (0.64 + Math.min(1, horizSpeed / 16) * 0.44);
         bike.yawRate += (targetTurnRate - bike.yawRate) * Math.min(1, dt * (rawSteer !== 0 ? 8.5 : 13.0));
-        bike.yaw = Math.max(-0.85, Math.min(0.85, bike.yaw + bike.yawRate * dt));
+        bike.yaw = Math.max(-0.95, Math.min(0.95, bike.yaw + bike.yawRate * dt));
 
         // Berm Slingshot on Level 1 singletrack
         if (!isCoastal) {
@@ -868,7 +927,6 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         const lateralSlip = bike.vel.x * rightX + bike.vel.z * rightZ;
 
         const turnIntensity = Math.abs(bike.yawRate) * Math.max(0, (speedNow - 15) / 24);
-        // Paved concrete path in Level 2 has higher tire grip than loose mountain dirt
         const baseGrip = isCoastal ? 12.5 : 9.2;
         const lateralGrip = Math.max(4.5, baseGrip - turnIntensity * 1.8);
 
@@ -883,7 +941,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
           if (Math.abs(diffX) < 0.08) bike.targetSnapX = null;
         }
 
-        const coastalTopMult = isCoastal ? 1.24 : 1.0;
+        const coastalTopMult = isCoastal ? 1.15 : 1.0;
         const maxSpd = preset.maxDownhillSpeed * coastalTopMult * (overdriveTimer > 0 ? 1.16 : 1.0);
         const clampedSpd = Math.hypot(bike.vel.x, bike.vel.z);
         if (clampedSpd > maxSpd) {
@@ -892,9 +950,9 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
           bike.vel.z *= s;
         }
 
-        const minCruiseZ = isCoastal ? -19.5 : -14.0;
-        if (bike.vel.z > minCruiseZ) {
-          bike.vel.z = Math.min(minCruiseZ, bike.vel.z - 22.0 * dt);
+        // Prevent rolling backwards uphill
+        if (bike.vel.z > -4.0) {
+          bike.vel.z = Math.min(-4.0, bike.vel.z - 12.0 * dt);
         }
         bike.whipTarget = 0;
 
@@ -939,28 +997,60 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
           }
         }
       } else {
+        // Airborne physics: unclamped 360/540/720 spins, backflips, and live trick score accumulation
         bike.coyoteTimer = Math.max(0, bike.coyoteTimer - dt);
         bike.airTime += dt;
         if (bike.airTime > maxAirtime) maxAirtime = bike.airTime;
-        bike.yawRate += (bike.smoothSteer * 0.9 - bike.yawRate) * Math.min(1, dt * 6.5);
-        bike.yaw = Math.max(-0.85, Math.min(0.85, bike.yaw + bike.yawRate * dt));
+
+        const targetSpin = bike.spinVel + rawSteer * (preset.airSpinSpeed || 6.5);
+        bike.yawRate += (targetSpin - bike.yawRate) * Math.min(1, dt * 8.0);
+        bike.yaw += bike.yawRate * dt;
+        bike.spinAccum += Math.abs(bike.yawRate) * dt;
+
+        // Subtle mid-air carve line control
+        bike.vel.x += rawSteer * 3.2 * dt;
+
+        // Unclamped pitch rotation (hold jump in mid-air to backflip)
+        const targetPitchVel = input.jumpHeld ? (preset.airFlipSpeed || 5.2) : 0;
+        bike.pitchVel += (targetPitchVel - bike.pitchVel) * Math.min(1, dt * 7.5);
+        bike.airPitch += bike.pitchVel * dt;
+        bike.flipAccum += Math.abs(bike.pitchVel) * dt;
+
+        bike.whipTarget = input.jumpHeld ? 0.85 : (rawSteer !== 0 ? rawSteer * 0.55 : 0);
         bike.skidIntensity *= Math.max(0, 1 - 6 * dt);
         bike.skidAngle += (0 - bike.skidAngle) * Math.min(1, dt * 6);
 
-        const targetAirPitch = input.jumpHeld ? -0.32 : 0.14;
-        bike.airPitchOffset += (targetAirPitch - bike.airPitchOffset) * Math.min(1, dt * 6.5);
+        // Holdable air tricks (whip / flip / spin) continuously climb in points until landing
+        const isHoldingTrick =
+          Math.abs(bike.whipAngle) > 0.35 ||
+          Math.abs(bike.pitchVel) > 1.0 ||
+          Math.abs(bike.yawRate) > 2.2;
+        if (isHoldingTrick && bike.airTime > 0.16) {
+          bike.trickHoldScore += 240 * dt;
+        }
       }
 
+      // Preload suspension when holding jump on flat/upslope; release to bunny-hop / lip-pop
       if (input.jumpHeld && (bike.grounded || bike.coyoteTimer > 0)) {
-        bike.hopCharge = Math.min(1, bike.hopCharge + dt * 2.1);
-        bike.wasCharging = true;
-        bike.suspensionComp = Math.max(bike.suspensionComp, bike.hopCharge * 0.75);
-        els.preloadPill.style.opacity = '1';
-        els.preloadPill.textContent = `PRE-LOAD: ${Math.round(bike.hopCharge * 100)}%`;
+        if (normal.z >= -0.04) {
+          bike.hopCharge = Math.min(1, bike.hopCharge + dt * 2.2);
+          bike.wasCharging = true;
+          bike.suspensionComp = Math.max(bike.suspensionComp, bike.hopCharge * 0.75);
+          els.preloadPill.style.opacity = '1';
+          els.preloadPill.textContent = `PRE-LOAD: ${Math.round(bike.hopCharge * 100)}%`;
+        }
       } else if (bike.wasCharging) {
         if (bike.grounded || bike.coyoteTimer > 0) triggerHop();
         bike.wasCharging = false;
         bike.hopCharge = 0;
+        els.preloadPill.style.opacity = '0';
+      }
+
+      // Display live climbing air-trick points in mid-air
+      if (!bike.grounded && bike.trickHoldScore > 15) {
+        els.preloadPill.style.opacity = '1';
+        els.preloadPill.textContent = `AIR TRICK: +${Math.round(bike.trickHoldScore * bike.lineMultiplier)}`;
+      } else if (!bike.wasCharging) {
         els.preloadPill.style.opacity = '0';
       }
 
@@ -977,14 +1067,16 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         const pullSign = offsetFromTrail > 0 ? -1 : 1;
         const edgePenetration = Math.min(1, (Math.abs(offsetFromTrail) - softZoneOffset) / (maxEdgeOffset - softZoneOffset));
         bike.vel.x += pullSign * edgePenetration * (isCoastal ? 18.0 : 14.0) * dt;
-        bike.yaw += (0 - bike.yaw) * Math.min(1, dt * 4.0 * edgePenetration);
+        if (bike.grounded) {
+          bike.yaw += (0 - bike.yaw) * Math.min(1, dt * 4.0 * edgePenetration);
+        }
       }
 
       if (Math.abs(offsetFromTrail) > maxEdgeOffset) {
         const clampedSide = Math.sign(offsetFromTrail);
         bike.pos.x = cx + clampedSide * maxEdgeOffset;
         bike.vel.x = -clampedSide * 3.5;
-        bike.yaw *= 0.4;
+        if (bike.grounded) bike.yaw *= 0.4;
         if (bike.edgeGuardCooldown <= 0) {
           bike.edgeGuardCooldown = 2.0;
           hud.showCallout(
@@ -1017,9 +1109,11 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
               hud.showCallout(bike.wheelieActive ? '🪵 WHEELIE LOG ROLL! +250' : '🪵 CLEAN LOG HOP! +250', '#34d399');
               particles.spawnDirtRoost(bike.pos, 0, 1, 10, 4.5, 0x34d399);
             } else {
-              bike.vel.z = Math.min(-13.5, bike.vel.z * 0.72);
+              bike.vel.z = Math.min(-10.5, bike.vel.z * 0.72);
               bike.vel.y = Math.max(bike.vel.y, 4.2);
               bike.suspensionComp = 1.0;
+              bike.lineMultiplier = 1;
+              updateComboHUD();
               audio.playLandingThud(0.95);
               hud.showCallout('💥 CLIPPED LOG! (HOP OR WHEELIE)', '#f87171');
               particles.spawnDirtRoost(bike.pos, 0, 1, 14, 5.2, 0x5c4033);
@@ -1050,30 +1144,115 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
 
       if (bike.pos.y <= groundY + 0.04) {
         const impactVel = -bike.vel.y;
-        if (!bike.grounded && bike.airTime > 0.25) {
+        if (!bike.grounded && bike.airTime > 0.22) {
           const forgive = preset.landingForgiveness || 1.0;
           const comp = Math.min(1, impactVel / (15 * forgive));
           bike.suspensionComp = Math.max(bike.suspensionComp, comp);
-          bike.pumpWindowTimer = 0.32;
+          bike.pumpWindowTimer = 0.34;
           audio.playLandingThud(comp);
+
           if (!isCoastal) {
             particles.spawnDirtRoost(bike.pos, 0, 1, 12, 4.5, 0x9b6438);
             particles.spawnDustCloud(bike.pos, 0, 1, 6, 2.8);
           }
 
-          if (input.jumpHeld && normal.z < -0.05) {
-            bike.pumpWindowTimer = 0;
-            bike.vel.z -= 4.8;
-            addScore(200, false);
-            hud.showCallout('⚡ DOWNHILL LANDING PUMP! +200', '#38bdf8');
+          // Landing-angle alignment & line multiplier check
+          const aheadX = getPathCenterX(bike.pos.z - 2);
+          const currX = getPathCenterX(bike.pos.z);
+          const trailHeading = Math.atan2(-(aheadX - currX), 2);
+
+          const lFwdX = -Math.sin(trailHeading);
+          const lFwdZ = -Math.cos(trailHeading);
+          const lhAhead = getGroundY(bike.pos.x + lFwdX * 1.1, bike.pos.z + lFwdZ * 1.1);
+          const lhBehind = getGroundY(bike.pos.x - lFwdX * 1.1, bike.pos.z - lFwdZ * 1.1);
+          const landingSlopePitch = Math.atan2(lhAhead - lhBehind, 2.2);
+
+          const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+          const yawError = Math.abs(wrapAngle(bike.yaw - trailHeading));
+          const pitchError = Math.abs(wrapAngle(bike.airPitch - landingSlopePitch));
+
+          const yawTol = bike.wheelieActive ? 0.52 : 0.44;
+          const pitchTol = bike.wheelieActive ? 0.56 : 0.48;
+
+          if (yawError < yawTol && pitchError < pitchTol) {
+            // CLEAN / STOMPED LANDING: Convert vertical impact into forward transition pump speed
+            const slopePumpBoost = Math.min(7.5, impactVel * 0.48) * (input.jumpHeld ? 1.35 : 1.0);
+            bike.vel.x += lFwdX * slopePumpBoost;
+            bike.vel.z += lFwdZ * slopePumpBoost;
+
+            const flips = Math.round(bike.flipAccum / (Math.PI * 2));
+            const halfSpins = Math.round(bike.spinAccum / Math.PI);
+            const spinDeg = halfSpins * 180;
+
+            const trickBonus = flips * 350 + (spinDeg >= 360 ? spinDeg : 0);
+            const rawTrickPts = bike.trickHoldScore + trickBonus;
+
+            if (rawTrickPts > 20 || flips > 0 || spinDeg >= 360) {
+              const banked = Math.round(rawTrickPts * bike.lineMultiplier);
+              addScore(banked, true);
+
+              let trickLabel = 'CLEAN STOMP';
+              if (flips > 0 && spinDeg >= 360) {
+                trickLabel = `${flips > 1 ? flips + 'X ' : ''}CORK ${spinDeg}°`;
+              } else if (flips > 0) {
+                trickLabel = `${flips > 1 ? flips + 'X ' : ''}BACKFLIP`;
+              } else if (spinDeg >= 360) {
+                trickLabel = `${spinDeg}° SPIN`;
+              } else if (bike.whipAwarded) {
+                trickLabel = 'TABLETOP WHIP';
+              }
+
+              hud.showCallout(`${trickLabel}! +${banked} (${bike.lineMultiplier}x LINE)`, '#34d399');
+            } else if (input.jumpHeld && normal.z < -0.05) {
+              addScore(200, false);
+              hud.showCallout(`⚡ DOWNHILL LANDING PUMP! +200 (${bike.lineMultiplier}x LINE)`, '#38bdf8');
+            }
+
+            bike.lineMultiplier = Math.min(10, bike.lineMultiplier + 1);
+            updateComboHUD();
+          } else if (yawError < 0.95 && pitchError < 0.95) {
+            // SKETCHY LANDING: Scrub speed and reset line multiplier
+            bike.vel.x *= 0.68;
+            bike.vel.z *= 0.68;
+            bike.lineMultiplier = 1;
+            updateComboHUD();
+            if (bike.trickHoldScore > 30) {
+              addScore(Math.round(bike.trickHoldScore * 0.5), false);
+            }
+            hud.showCallout('SKETCHY LANDING! SPEED SCRUBBED', '#fbbf24');
+          } else {
+            // BAIL / CRASH: Landed sideways or upside down
+            bike.vel.set(lFwdX * 8.0, 0, lFwdZ * 8.0);
+            bike.lineMultiplier = 1;
+            breakCombo();
+            hud.showCallout('💥 BAILED! LINE RESET', '#f87171');
           }
+
+          bike.yaw = trailHeading;
+          bike.yawRate = 0;
+          bike.airPitch = 0;
+          bike.pitchVel = 0;
+          bike.spinVel = 0;
+          bike.spinAccum = 0;
+          bike.flipAccum = 0;
+          bike.trickHoldScore = 0;
+          bike.carveWindup = 0;
         }
+
         bike.pos.y = groundY;
         if (bike.vel.y < 0) bike.vel.y = 0;
         bike.grounded = true;
         bike.airTime = 0;
         bike.airPitchOffset = 0;
-      } else if (bike.pos.y > groundY + 0.42) {
+      } else if (bike.pos.y > groundY + 0.25) {
+        // Automatic ramp-tangent launch when rolling off a kicker or roller lip
+        if (bike.grounded && bike.lastTerrainVelY > 1.5) {
+          const preloadKick = bike.wasCharging ? bike.hopCharge * preset.hopImpulse * 0.55 : 0;
+          bike.vel.y = Math.max(bike.vel.y, bike.lastTerrainVelY + preloadKick);
+          bike.lastTerrainVelY = 0;
+          bike.wasCharging = false;
+          bike.hopCharge = 0;
+        }
         bike.grounded = false;
       }
 
@@ -1297,6 +1476,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       if (dz < 1.15 && dx < p.hitHalfWidth + 0.32 && (bike.pos.y - py) < 1.45) {
         p.resolved = true;
         bike.vel.z = Math.min(-11.0, bike.vel.z * 0.48);
+        bike.lineMultiplier = 1;
         breakCombo();
         audio.playMissBuzz();
         hud.showCallout(`⚠️ WATCH OUT! ${p.labelText}!`, '#f87171');
@@ -1347,8 +1527,10 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     const hAhead = getGroundY(bike.pos.x + fwdX * 1.1, bike.pos.z + fwdZ * 1.1);
     const hBehind = getGroundY(bike.pos.x - fwdX * 1.1, bike.pos.z - fwdZ * 1.1);
     const slopePitch = Math.atan2(hAhead - hBehind, 2.2);
-    const airPitch = Math.max(-0.55, Math.min(0.6, bike.vel.y * 0.028 + bike.airPitchOffset));
-    playerBike.bikeVisual.rotation.x += ((bike.grounded ? slopePitch : airPitch) - playerBike.bikeVisual.rotation.x) * 0.18;
+
+    playerBike.bikeVisual.rotation.x = bike.grounded
+      ? playerBike.bikeVisual.rotation.x + (slopePitch - playerBike.bikeVisual.rotation.x) * 0.22
+      : bike.airPitch;
     playerBike.bikeVisual.rotation.z = bike.leanAngle;
     playerBike.bikeVisual.rotation.y = bike.whipAngle + bike.skidAngle;
     playerBike.wheeliePivot.rotation.x = bike.wheelieAngle;
@@ -1458,7 +1640,6 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
 
     if (!isPlaying) {
       if (isCoastal) {
-        // Angle preview camera behind the bike so Wollongong Lighthouse (right) & Harbour hill ahead are in full view
         camera.position.set(bike.pos.x - 1.4, bike.pos.y + 2.6, bike.pos.z + 5.6);
         camera.lookAt(bike.pos.x + 2.8, bike.pos.y + 1.2, bike.pos.z - 22);
       } else {
@@ -1470,7 +1651,8 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       camera.position.set(bike.pos.x + fwdX * 0.25, bike.pos.y + 1.65 + bike.wheelieAngle * 0.55, bike.pos.z + fwdZ * 0.25);
       camera.lookAt(bike.pos.x + fwdX * 14, bike.pos.y + 0.85 + bike.wheelieAngle * 6.5, bike.pos.z + fwdZ * 14);
     } else {
-      const camYaw = bike.yaw * 0.45;
+      // Keep chase camera aligned behind the trail rather than spinning wildly during 360s/720s
+      const camYaw = bike.grounded ? bike.yaw * 0.45 : Math.atan2(Math.sin(bike.yaw), Math.cos(bike.yaw)) * 0.18;
       const camX = bike.pos.x + Math.sin(camYaw) * 5.8;
       const camZ = bike.pos.z + Math.cos(camYaw) * 5.8;
       const camGround = getGroundY(camX, camZ);
@@ -1504,7 +1686,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
 
   if (autoStart) {
     startGame();
-    if (statusEl) statusEl.textContent = '🚵‍♂️ Pedal Point Restarted! Carve down the Illawarra Escarpment!';
+    if (statusEl) statusEl.textContent = '🚵‍♂️ Pedal Point Restarted! Pump transitions, throw 360s & backflips, and stomp landings!';
   } else {
     if (statusEl) statusEl.textContent = '🚵‍♂️ Pedal Point Ready! Choose Level 1 (Escarpment) or Level 2 (Wollongong Bike Path)!';
   }
