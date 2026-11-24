@@ -5,7 +5,7 @@ import { startRhythmEcho, handleRhythmEchoInput } from './games/rhythmEcho.js';
 import { startNoteSniper, handleNoteSniperInput } from './games/noteSniper.js';
 import { startFlappyPitch, handleFlappyPitchInput, stopFlappyPitch } from './games/flappyPitch.js';
 import { startStaffSurfers, handleStaffSurfersInput, stopStaffSurfers } from './games/staffSurfers.js';
-import { startLaserTag, handleLaserTagInput, stopLaserTag } from './games/laserTag.js';
+import { startLaserTag, handleLaserTagInput, handleLaserTagRelease, stopLaserTag } from './games/laserTag.js';
 import { startGridironGroove, handleGridironGrooveInput, stopGridironGroove } from './games/GridironGroove.js';
 import { startClefHook, handleClefHookInput, stopClefHook } from './games/clefHook.js';
 import { startSharpShooter, handleSharpShooterInput, handleSharpShooterRelease, stopSharpShooter } from './games/sharpShooter.js';
@@ -414,6 +414,10 @@ export function handleMiniGameNoteInput(noteStr) {
 }
 
 export function handleMiniGameNoteRelease(noteStr) {
+    if (arcadeState.activeMiniGame === 'laserTag') {
+        handleLaserTagRelease(noteStr);
+        return true;
+    }
     if (arcadeState.activeMiniGame === 'skiSlalom') {
         handleSkiSlalomRelease(noteStr);
         return true;
