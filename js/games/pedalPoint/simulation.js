@@ -245,7 +245,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
 
   const bike = {
     pos: new THREE.Vector3(0, 366, 0),
-    vel: new THREE.Vector3(0, 0, -12),
+    vel: new THREE.Vector3(0, 0, -16),
     yaw: 0,
     yawRate: 0,
     smoothSteer: 0,
@@ -356,10 +356,10 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     const chargeBonus = 0.72 + bike.hopCharge * 0.68;
     const isOnBeat = audio.getBeatAccuracy() < 0.18;
 
-    // Check if launching off a kicker/tabletop lip for massive lip boost!
     let lipBoost = 1.0;
-    for (let i = 0; i < worldData.rhythmRamps.length; i++) {
-      const r = worldData.rhythmRamps[i];
+    const ramps = worldData.rhythmRamps || [];
+    for (let i = 0; i < ramps.length; i++) {
+      const r = ramps[i];
       if (!r.triggered && Math.abs(bike.pos.z - r.z) < 7.0 && Math.abs(bike.pos.x - r.x) < 4.2) {
         r.triggered = true;
         lipBoost = 1.24;
@@ -381,7 +381,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     bike.grounded = false;
     bike.coyoteTimer = 0;
     bike.whipAwarded = false;
-    bike.airPitchOffset = 0.28; // Pull bars up into nose-high launch
+    bike.airPitchOffset = 0.28;
     bike.suspensionComp = 0;
 
     audio.playJumpPop(isOnBeat || lipBoost > 1.0);
@@ -395,12 +395,19 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       return;
     }
 
+    const match = (b) => b.type === type && b.code === code;
+
+    if (!isPlaying) {
+      if (match(bindings.jump) && els.overlayEl.style.display !== 'none') {
+        startGame();
+      }
+      return;
+    }
+
     if (type === 'piano') {
       input.heldPianoNotes.set(code, Infinity);
       evaluateTriadWheelie(performance.now());
     }
-
-    const match = (b) => b.type === type && b.code === code;
 
     if (match(bindings.left) || (type === 'key' && code === 'ArrowLeft')) {
       input.left = true;
@@ -421,11 +428,8 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       return;
     }
     if (match(bindings.jump)) {
-      if (!isPlaying && els.overlayEl.style.display !== 'none') {
-        startGame();
-      } else if (bike.grounded || bike.coyoteTimer > 0) {
+      if (bike.grounded || bike.coyoteTimer > 0) {
         input.jumpHeld = true;
-        // If pressed right after landing, trigger a suspension pump slingshot!
         if (bike.pumpWindowTimer > 0) {
           bike.pumpWindowTimer = 0;
           bike.vel.z -= 4.6;
@@ -435,7 +439,6 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
           particles.spawnDirtRoost(bike.pos, 0, 1, 10, 4.5, 0x38bdf8);
         }
       } else {
-        // In mid-air: holding jump tucks the nose down for landing & throws a whip!
         input.jumpHeld = true;
         bike.whipTarget = 0.95;
         if (!bike.whipAwarded && bike.airTime > 0.22) {
@@ -452,13 +455,14 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       return;
     }
 
-    if (type === 'piano' && isPlaying) {
+    if (type === 'piano') {
       const pitchMatch = code.match(/^([a-g]#?)/);
       const pitchClass = pitchMatch ? pitchMatch[1] : '';
       let matchedOffset = null;
 
-      for (let i = 0; i < worldData.melodyChallenges.length; i++) {
-        const mc = worldData.melodyChallenges[i];
+      const challenges = worldData.melodyChallenges || [];
+      for (let i = 0; i < challenges.length; i++) {
+        const mc = challenges[i];
         if (bike.pos.z <= mc.triggerZ && bike.pos.z >= mc.endZ && !mc.completed) {
           const nextRow = mc.rows.find(r => !r.resolved);
           if (nextRow) {
@@ -582,7 +586,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     const startX = getTrailCenterX(0);
     const startY = getTerrainHeight(startX, 0);
     bike.pos.set(startX, startY, 0);
-    bike.vel.set(0, 0, -14);
+    bike.vel.set(0, 0, -16);
     bike.yaw = 0;
     bike.yawRate = 0;
     bike.smoothSteer = 0;
@@ -730,7 +734,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         bike.vel.x += normal.x * grav * dt;
         bike.vel.z += normal.z * grav * dt;
 
-        // Downslope pumping bonus: holding Jump while rolling down steep hills/rollers builds free speed!
+        // Downslope pumping bonus: holding Jump while rolling down steep hills/rollers builds free speed
         if (input.jumpHeld && normal.z < -0.06) {
           bike.vel.z += normal.z * 16.0 * dt;
         }
@@ -747,7 +751,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
 
         const targetTurnRate = curvedSteer * preset.turnSpeed * (0.64 + Math.min(1, horizSpeed / 16) * 0.44);
         bike.yawRate += (targetTurnRate - bike.yawRate) * Math.min(1, dt * 6.8);
-        bike.yaw = Math.max(-0.98, Math.min(0.98, bike.yaw + bike.yawRate * dt));
+        bike.yaw = Math.max(-0.85, Math.min(0.85, bike.yaw + bike.yawRate * dt));
 
         // Berm Slingshot: carving high on banked corners adds exit speed
         const cxAtBike = getTrailCenterX(bike.pos.z);
@@ -785,7 +789,10 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
           bike.vel.x *= s;
           bike.vel.z *= s;
         }
-      if (bike.vel.z > -14.0) bike.vel.z = Math.min(-14.0, bike.vel.z - 18.0 * dt);
+        // Guarantee steady downhill forward momentum so bike never stalls at 0 km/h
+        if (bike.vel.z > -14.0) {
+          bike.vel.z = Math.min(-14.0, bike.vel.z - 18.0 * dt);
+        }
         bike.whipTarget = 0;
 
         if (bike.wheelieActive) {
@@ -829,11 +836,10 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         bike.airTime += dt;
         if (bike.airTime > maxAirtime) maxAirtime = bike.airTime;
         bike.yawRate += (curvedSteer * 0.9 - bike.yawRate) * Math.min(1, dt * 5.5);
-        bike.yaw += bike.yawRate * dt;
+        bike.yaw = Math.max(-0.85, Math.min(0.85, bike.yaw + bike.yawRate * dt));
         bike.skidIntensity *= Math.max(0, 1 - 6 * dt);
         bike.skidAngle += (0 - bike.skidAngle) * Math.min(1, dt * 6);
 
-        // Air pitch control: holding Jump tucks front wheel down into landing transitions
         const targetAirPitch = input.jumpHeld ? -0.32 : 0.14;
         bike.airPitchOffset += (targetAirPitch - bike.airPitchOffset) * Math.min(1, dt * 6.5);
       }
@@ -853,34 +859,28 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
 
       bike.pos.addScaledVector(bike.vel, dt);
 
-      // Soft Mountain-Edge Guardrail & Trail Recovery
+      // Soft Mountain-Edge Guardrail & Trail Recovery (guides bike smoothly down the trail)
       const cx = getTrailCenterX(bike.pos.z);
       const offsetFromTrail = bike.pos.x - cx;
-      const maxEdgeOffset = 8.8;
+      const maxEdgeOffset = 8.5;
       if (bike.edgeGuardCooldown > 0) bike.edgeGuardCooldown -= dt;
 
-      if (offsetFromTrail < -6.2) {
-        const edgePenetration = Math.min(1, (-offsetFromTrail - 6.2) / (maxEdgeOffset - 6.2));
-        bike.vel.x += edgePenetration * 18.0 * dt;
-        bike.yaw += edgePenetration * 0.55 * dt;
+      if (Math.abs(offsetFromTrail) > 6.0) {
+        const pullSign = offsetFromTrail > 0 ? -1 : 1;
+        const edgePenetration = Math.min(1, (Math.abs(offsetFromTrail) - 6.0) / (maxEdgeOffset - 6.0));
+        bike.vel.x += pullSign * edgePenetration * 14.0 * dt;
+        bike.yaw += (0 - bike.yaw) * Math.min(1, dt * 3.5 * edgePenetration);
       }
 
-      if (offsetFromTrail < -maxEdgeOffset) {
-        bike.pos.x = cx - maxEdgeOffset;
-        bike.vel.x = Math.max(2.5, bike.vel.x * 0.5 + 3.2);
-        bike.yaw = Math.max(0.08, bike.yaw * 0.5);
+      if (Math.abs(offsetFromTrail) > maxEdgeOffset) {
+        const clampedSide = Math.sign(offsetFromTrail);
+        bike.pos.x = cx + clampedSide * maxEdgeOffset;
+        bike.vel.x = -clampedSide * 3.5;
+        bike.yaw *= 0.4;
         if (bike.edgeGuardCooldown <= 0) {
-          bike.edgeGuardCooldown = 1.6;
+          bike.edgeGuardCooldown = 2.0;
           hud.showCallout('TRAIL EDGE GUARD!', '#38bdf8');
-          particles.spawnDirtRoost(bike.pos, 1, 0, 10, 4.0, 0x9b6438);
-        }
-      } else if (offsetFromTrail > maxEdgeOffset) {
-        bike.pos.x = cx + maxEdgeOffset;
-        bike.vel.x = Math.min(-2.5, bike.vel.x * 0.5 - 3.2);
-        bike.yaw = Math.min(-0.08, bike.yaw * 0.5);
-        if (bike.edgeGuardCooldown <= 0) {
-          bike.edgeGuardCooldown = 1.6;
-          hud.showCallout('BANK RECOVERY!', '#38bdf8');
+          particles.spawnDirtRoost(bike.pos, -clampedSide, 0, 8, 3.8, 0x9b6438);
         }
       }
 
@@ -888,22 +888,21 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       let bridgeFloorY = -9999;
       bike.onBridge = false;
 
-      for (let i = 0; i < worldData.trailObstacles.length; i++) {
-        const obs = worldData.trailObstacles[i];
+      const obstacles = worldData.trailObstacles || [];
+      for (let i = 0; i < obstacles.length; i++) {
+        const obs = obstacles[i];
         if (obs.type === 'log') {
           if (!obs.resolved && Math.abs(bike.pos.z - obs.z) < 1.35 && Math.abs(bike.pos.x - obs.x) < obs.halfWidth) {
             obs.resolved = true;
             const groundAtLog = getTerrainHeight(bike.pos.x, obs.z);
             const wheelClearance = bike.pos.y - groundAtLog;
             if (wheelClearance >= obs.height * 0.62 || bike.wheelieActive) {
-              // Clean bunny-hop or Triad Wheelie over the log!
               addScore(250, true);
               bike.vel.z -= 2.4;
               hud.showCallout(bike.wheelieActive ? '🪵 WHEELIE LOG ROLL! +250' : '🪵 CLEAN LOG HOP! +250', '#34d399');
               particles.spawnDirtRoost(bike.pos, 0, 1, 10, 4.5, 0x34d399);
             } else {
-              // Clipped the log—fork compression, bounce & speed penalty
-              bike.vel.z *= 0.64;
+              bike.vel.z = Math.min(-13.5, bike.vel.z * 0.72);
               bike.vel.y = Math.max(bike.vel.y, 4.2);
               bike.suspensionComp = 1.0;
               audio.playLandingThud(0.95);
@@ -940,12 +939,11 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
           const forgive = preset.landingForgiveness || 1.0;
           const comp = Math.min(1, impactVel / (15 * forgive));
           bike.suspensionComp = Math.max(bike.suspensionComp, comp);
-          bike.pumpWindowTimer = 0.32; // Open 320ms pump-slingshot window on landing!
+          bike.pumpWindowTimer = 0.32;
           audio.playLandingThud(comp);
           particles.spawnDirtRoost(bike.pos, 0, 1, 12, 4.5, 0x9b6438);
           particles.spawnDustCloud(bike.pos, 0, 1, 6, 2.8);
 
-          // Automatic bonus if player held Jump to nose-tuck into a downslope landing!
           if (input.jumpHeld && normal.z < -0.05) {
             bike.pumpWindowTimer = 0;
             bike.vel.z -= 4.8;
@@ -990,9 +988,10 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
 
       let nearestGate = null;
       let nearestGateDist = 999;
+      const gates = worldData.noteGates || [];
 
-      for (let i = 0; i < worldData.noteGates.length; i++) {
-        const g = worldData.noteGates[i];
+      for (let i = 0; i < gates.length; i++) {
+        const g = gates[i];
         if (g.hit) continue;
         const distAhead = bike.pos.z - g.z;
         if (distAhead > 0 && distAhead < nearestGateDist) {
@@ -1014,9 +1013,10 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       let inMelodyZone = false;
       let activeMelodyRowInfo = null;
       let activeMelodyRowDist = 999;
+      const challenges = worldData.melodyChallenges || [];
 
-      for (let i = 0; i < worldData.melodyChallenges.length; i++) {
-        const mc = worldData.melodyChallenges[i];
+      for (let i = 0; i < challenges.length; i++) {
+        const mc = challenges[i];
         if (bike.pos.z <= mc.triggerZ && bike.pos.z >= mc.endZ && !mc.completed) {
           inMelodyZone = true;
           if (!mc.announced && els.notesRowEl && els.bannerEl) {
@@ -1225,16 +1225,18 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     playerBike.groundShadow.scale.set(sScale, sScale, sScale);
     playerBike.groundShadow.material.opacity = Math.max(0.08, 0.34 - alt * 0.035);
 
-    for (let i = 0; i < worldData.floatingNotes.length; i++) {
-      const fn = worldData.floatingNotes[i];
+    const fNotes = worldData.floatingNotes || [];
+    for (let i = 0; i < fNotes.length; i++) {
+      const fn = fNotes[i];
       if (fn.mesh && fn.mesh.visible) {
         fn.mesh.rotation.y = now * 0.0022 + fn.phase;
         fn.mesh.position.y = fn.baseY + Math.sin(now * 0.0035 + fn.phase) * 0.14;
       }
     }
 
-    for (let i = 0; i < worldData.coastalBirds.length; i++) {
-      const cb = worldData.coastalBirds[i];
+    const birds = worldData.coastalBirds || [];
+    for (let i = 0; i < birds.length; i++) {
+      const cb = birds[i];
       const flap = Math.sin(now * 0.016 + cb.phase) * 0.55;
       cb.leftWing.rotation.z = flap;
       cb.rightWing.rotation.z = -flap;
@@ -1255,8 +1257,9 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       }
     }
 
-    for (let i = 0; i < worldData.hangGliders.length; i++) {
-      const hg = worldData.hangGliders[i];
+    const gliders = worldData.hangGliders || [];
+    for (let i = 0; i < gliders.length; i++) {
+      const hg = gliders[i];
       const ang = now * 0.001 * hg.speed + hg.phase;
       const nx = hg.centerX + Math.cos(ang) * hg.radiusX;
       const nz = hg.centerZ + Math.sin(ang) * hg.radiusZ;
@@ -1266,8 +1269,9 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       hg.mesh.position.set(nx, ny, nz);
     }
 
-    for (let i = 0; i < worldData.cargoShips.length; i++) {
-      const cs = worldData.cargoShips[i];
+    const ships = worldData.cargoShips || [];
+    for (let i = 0; i < ships.length; i++) {
+      const cs = ships[i];
       cs.mesh.position.z += cs.speed * dt;
       if (cs.mesh.position.z > 200) cs.mesh.position.z = -2600;
       if (cs.mesh.position.z < -2700) cs.mesh.position.z = 100;
@@ -1293,12 +1297,13 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       camera.position.set(bike.pos.x + fwdX * 0.25, bike.pos.y + 1.65 + bike.wheelieAngle * 0.55, bike.pos.z + fwdZ * 0.25);
       camera.lookAt(bike.pos.x + fwdX * 14, bike.pos.y + 0.85 + bike.wheelieAngle * 6.5, bike.pos.z + fwdZ * 14);
     } else {
-      const camX = bike.pos.x + Math.sin(bike.yaw) * 5.6;
-      const camZ = bike.pos.z + Math.cos(bike.yaw) * 5.6;
+      const camYaw = bike.yaw * 0.45;
+      const camX = bike.pos.x + Math.sin(camYaw) * 5.8;
+      const camZ = bike.pos.z + Math.cos(camYaw) * 5.8;
       const camGround = getTerrainHeight(camX, camZ);
-      const targetY = Math.max(camGround + 0.8, bike.pos.y + 2.55);
+      const targetY = Math.max(camGround + 0.9, bike.pos.y + 2.65);
       camera.position.lerp(new THREE.Vector3(camX, targetY, camZ), Math.min(1, dt * 9.5));
-      camera.lookAt(bike.pos.x - Math.sin(bike.yaw) * 6, bike.pos.y + 1.15, bike.pos.z - Math.cos(bike.yaw) * 6);
+      camera.lookAt(bike.pos.x - Math.sin(camYaw) * 7, bike.pos.y + 1.15, bike.pos.z - Math.cos(camYaw) * 7);
     }
 
     renderer.render(scene, camera);
