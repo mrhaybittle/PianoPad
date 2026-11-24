@@ -37,6 +37,10 @@ import { loadSongChallenges, getRandomChallenge } from './laserTag/songChallenge
 const MIDI_PITCH_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const activeComputerKeys = new Set();
 
+// Smooth velocity state for fluid turning & movement
+let currentTurnVel = 0;
+let currentMoveSpeed = 0;
+
 function clearAllHeldMovement() {
     if (gameState.physicallyHeldNotes && typeof gameState.physicallyHeldNotes.clear === 'function') {
         gameState.physicallyHeldNotes.clear();
@@ -753,6 +757,8 @@ export function stopLaserTag() {
     gameState.syncIntervalId = null;
     gameState.pendingActionTimer = null;
     gameState.recentNoteBuffer = [];
+    currentTurnVel = 0;
+    currentMoveSpeed = 0;
     clearAllHeldMovement();
     gameState.typedCheatBuffer = '';
     gameState.processedHitIds.clear();
@@ -857,6 +863,9 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     lp.portalFlash = 0;
     lp.jamFlash = 0;
     lp.gearBannerFlash = 1.0;
+
+    currentTurnVel = 0;
+    currentMoveSpeed = 0;
 
     gameState.activeBeams = [];
 
@@ -1370,21 +1379,8 @@ async function executeSingleNoteAction(pitchClass, bridge) {
         }
     }
 
-    if (pitchClass === 'C' || pitchClass === 'D') {
-        if (isPitchStillPhysicallyHeld(pitchClass)) {
-            gameState.heldMoveKeys.add(pitchClass);
-            lp.turnDir = pitchClass === 'C' ? -1 : 1;
-            if (!lp.turnHoldStart) lp.turnHoldStart = performance.now();
-        } else {
-            lp.angle += (pitchClass === 'C' ? -1 : 1) * 0.05;
-        }
-        return;
-    }
-
-    if (pitchClass === 'C#') {
-        if (isPitchStillPhysicallyHeld('C#')) {
-            gameState.heldMoveKeys.add('C#');
-        }
+    // C, D, and C# already engage immediately in handleLaserTagInput for zero-latency fluid movement
+    if (pitchClass === 'C' || pitchClass === 'D' || pitchClass === 'C#') {
         return;
     }
 
@@ -1424,12 +1420,33 @@ export async function handleLaserTagInput(noteStr, bridge) {
     const { pitchClass, octave } = parseNoteDetails(noteStr);
     if (!pitchClass) return;
 
-    // Track timestamped physical hold immediately
+    const alreadyHeld = gameState.heldMoveKeys.has(pitchClass);
+
+    // Refresh timestamped physical hold immediately
     markPitchHeld(pitchClass);
 
-    // C# is never part of any chord — engage thrust immediately while held
+    // Instant, zero-lag movement engagement for C (Turn Left), D (Turn Right), and C# (Move Forward)
     if (pitchClass === 'C#') {
         gameState.heldMoveKeys.add('C#');
+        lp.isMovingForward = true;
+        return;
+    }
+    if (pitchClass === 'C') {
+        gameState.heldMoveKeys.add('C');
+        if (!gameState.heldMoveKeys.has('D')) {
+            lp.turnDir = -1;
+            if (!lp.turnHoldStart) lp.turnHoldStart = now;
+        }
+    } else if (pitchClass === 'D') {
+        gameState.heldMoveKeys.add('D');
+        if (!gameState.heldMoveKeys.has('C')) {
+            lp.turnDir = 1;
+            if (!lp.turnHoldStart) lp.turnHoldStart = now;
+        }
+    }
+
+    // Ignore OS keyboard auto-repeat pulses once movement is already engaged so timers don't reset
+    if (alreadyHeld && (pitchClass === 'C' || pitchClass === 'D')) {
         return;
     }
 
@@ -1453,6 +1470,7 @@ export async function handleLaserTagInput(noteStr, bridge) {
                 lp.angle += Math.PI;
                 lp.turnDir = 0;
                 lp.turnHoldStart = 0;
+                currentTurnVel = 0;
                 playOctaveSnapSound();
                 const statusEl = document.getElementById('status');
                 if (statusEl) {
@@ -1472,6 +1490,7 @@ export async function handleLaserTagInput(noteStr, bridge) {
         gameState.recentNoteBuffer = [];
         unmarkPitchHeld('D');
         lp.turnDir = 0;
+        currentTurnVel = 0;
         if (now >= lp.empReadyAt) {
             await triggerEmpShockwave(bridge);
         } else {
@@ -1494,6 +1513,7 @@ export async function handleLaserTagInput(noteStr, bridge) {
         unmarkPitchHeld('C');
         unmarkPitchHeld('D');
         lp.turnDir = 0;
+        currentTurnVel = 0;
         if (now >= lp.decoyReadyAt) {
             spawnHoloDecoy(matchedDecoy.label, bridge);
         } else {
@@ -1515,6 +1535,7 @@ export async function handleLaserTagInput(noteStr, bridge) {
         gameState.recentNoteBuffer = [];
         unmarkPitchHeld('C');
         lp.turnDir = 0;
+        currentTurnVel = 0;
 
         if (now >= lp.overchargeReadyAt) {
             lp.overchargeReadyAt = now + 15000;
@@ -1544,6 +1565,7 @@ export async function handleLaserTagInput(noteStr, bridge) {
             unmarkPitchHeld('C');
             unmarkPitchHeld('D');
             lp.turnDir = 0;
+            currentTurnVel = 0;
             const tNow = performance.now();
 
             if (tNow < (lp.sniperUntil || 0)) {
@@ -1591,6 +1613,7 @@ export async function handleLaserTagInput(noteStr, bridge) {
                 lp.currentGear = matchedGear;
                 lp.turnDir = 0;
                 lp.turnHoldStart = 0;
+                currentTurnVel = 0;
                 lp.gearBannerFlash = 1.0;
                 playGearShiftSound(matchedGear.mult);
 
@@ -1629,6 +1652,11 @@ export async function handleLaserTagInput(noteStr, bridge) {
         if (statusEl) {
             statusEl.textContent = `⚠️ MULTI-NOTE SPAM BLOCKED! Play 1 note to shoot, C# to move, or a valid chord!`;
         }
+        return;
+    }
+
+    // If C or D was pressed alone, movement is already active — no need to schedule a delayed shot
+    if (pitchClass === 'C' || pitchClass === 'D') {
         return;
     }
 
@@ -1695,7 +1723,7 @@ function gameLoop(now, bridge) {
 
     const lp = gameState.localPlayer;
     if (lp.isAlive) {
-        // Strict Hold-to-Turn: only turns while 'C' or 'D' is actively held down
+        // Fluid Hold-to-Turn with smooth angular acceleration & damping
         const leftHeld = gameState.heldMoveKeys.has('C') && isPitchStillPhysicallyHeld('C');
         const rightHeld = gameState.heldMoveKeys.has('D') && isPitchStillPhysicallyHeld('D');
         if (!leftHeld) gameState.heldMoveKeys.delete('C');
@@ -1703,13 +1731,12 @@ function gameLoop(now, bridge) {
 
         lp.turnDir = (leftHeld && !rightHeld) ? -1 : (rightHeld && !leftHeld) ? 1 : 0;
 
-        if (lp.turnDir !== 0) {
-            if (!lp.turnHoldStart) lp.turnHoldStart = now;
-            const holdMs = now - lp.turnHoldStart;
-            const turnRamp = Math.min(1, 0.45 + (holdMs / 140) * 0.55);
-            lp.angle += lp.turnDir * 1.65 * turnRamp * dt;
+        const targetTurnVel = lp.turnDir * 1.95;
+        currentTurnVel += (targetTurnVel - currentTurnVel) * Math.min(1, dt * 18);
+        if (Math.abs(currentTurnVel) > 0.005) {
+            lp.angle += currentTurnVel * dt;
         } else {
-            lp.turnHoldStart = 0;
+            currentTurnVel = 0;
         }
 
         // King of the Emerald Hub (+5 points per second inside central hub)
@@ -1723,22 +1750,22 @@ function gameLoop(now, bridge) {
             lp.hubScoreTimer = 0;
         }
 
-        // Strict Hold-to-Move: only moves forward while 'C#' is actively held down
+        // Fluid Hold-to-Move with smooth acceleration & deceleration
         const forwardHeld = gameState.heldMoveKeys.has('C#') && isPitchStillPhysicallyHeld('C#');
         if (!forwardHeld) gameState.heldMoveKeys.delete('C#');
         lp.isMovingForward = forwardHeld;
 
         const isBoosted = now < lp.boostUntil;
         const speedMult = lp.currentGear.mult * (isBoosted ? 1.5 : 1.0);
+        const targetSpeed = (lp.isMovingForward && speedMult > 0) ? (190 * speedMult) : 0;
+        currentMoveSpeed += (targetSpeed - currentMoveSpeed) * Math.min(1, dt * 16);
 
-        if (lp.isMovingForward && speedMult > 0) {
+        if (currentMoveSpeed > 2) {
             lp.bobPhase += dt * (6.5 + speedMult * 5.0);
 
-            const baseSpeed = 180;
-            const speed = baseSpeed * speedMult;
             const pad = 12;
-            const dx = Math.cos(lp.angle) * speed * dt;
-            const dy = Math.sin(lp.angle) * speed * dt;
+            const dx = Math.cos(lp.angle) * currentMoveSpeed * dt;
+            const dy = Math.sin(lp.angle) * currentMoveSpeed * dt;
 
             const checkX = lp.x + dx + (dx > 0 ? pad : -pad);
             const colX = Math.floor(checkX / TILE_SIZE);
@@ -1753,6 +1780,8 @@ function gameLoop(now, bridge) {
             if (ARENA_MAP[rowY] && ARENA_MAP[rowY][curCol] === 0) {
                 lp.y += dy;
             }
+        } else {
+            currentMoveSpeed = 0;
         }
 
         // Speed Boost Pads Pickup
