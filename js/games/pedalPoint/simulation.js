@@ -249,6 +249,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     yaw: 0,
     yawRate: 0,
     smoothSteer: 0,
+    steerHoldTime: 0,
     steerAngle: 0,
     leanAngle: 0,
     skidAngle: 0,
@@ -280,8 +281,6 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     left: false,
     right: false,
     jumpHeld: false,
-    pianoLeftHoldUntil: 0,
-    pianoRightHoldUntil: 0,
     heldPianoNotes: new Map()
   };
 
@@ -412,19 +411,11 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     if (match(bindings.left) || (type === 'key' && code === 'ArrowLeft')) {
       input.left = true;
       bike.targetSnapX = null;
-      if (type === 'piano') {
-        input.pianoLeftHoldUntil = performance.now() + 280;
-        input.pianoRightHoldUntil = 0;
-      }
       return;
     }
     if (match(bindings.right) || (type === 'key' && code === 'ArrowRight')) {
       input.right = true;
       bike.targetSnapX = null;
-      if (type === 'piano') {
-        input.pianoRightHoldUntil = performance.now() + 280;
-        input.pianoLeftHoldUntil = 0;
-      }
       return;
     }
     if (match(bindings.jump)) {
@@ -491,11 +482,9 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     const match = (b) => b.type === type && b.code === code;
     if (match(bindings.left) || (type === 'key' && code === 'ArrowLeft')) {
       input.left = false;
-      if (type === 'piano') input.pianoLeftHoldUntil = 0;
     }
     if (match(bindings.right) || (type === 'key' && code === 'ArrowRight')) {
       input.right = false;
-      if (type === 'piano') input.pianoRightHoldUntil = 0;
     }
     if (match(bindings.jump)) {
       input.jumpHeld = false;
@@ -562,9 +551,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
   let muteControlNotesActive = false;
   installSteeringMutePatch(() => {
     if (!muteControlNotesActive || !isPlaying || isCalibrating) return false;
-    if (input.left || input.right || performance.now() < input.pianoLeftHoldUntil || performance.now() < input.pianoRightHoldUntil) {
-      return true;
-    }
+    if (input.left || input.right) return true;
     const activeKeys = document.querySelectorAll('#keyboard .key.active');
     for (let i = 0; i < activeKeys.length; i++) {
       const noteAttr = (activeKeys[i].dataset.note || activeKeys[i].dataset.key || '').trim().toLowerCase();
@@ -590,6 +577,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     bike.yaw = 0;
     bike.yawRate = 0;
     bike.smoothSteer = 0;
+    bike.steerHoldTime = 0;
     bike.steerAngle = 0;
     bike.leanAngle = 0;
     bike.skidAngle = 0;
@@ -614,6 +602,9 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
     bike.edgeGuardCooldown = 0;
     bike.onBridge = false;
 
+    input.left = false;
+    input.right = false;
+    input.jumpHeld = false;
     input.heldPianoNotes.clear();
     currentGhostFrames = [];
     ghostRecordTimer = 0;
@@ -718,12 +709,24 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       const preset = BIKE_PRESETS[selectedBikeKey];
       const normal = getTerrainNormal(THREE, bike.pos.x, bike.pos.z, tmpNormal);
 
-      // Responsive yet smooth carving steering
-      const rawSteer = ((input.left || now < input.pianoLeftHoldUntil) ? 1 : 0) - ((input.right || now < input.pianoRightHoldUntil) ? 1 : 0);
-      const steerLerpRate = rawSteer !== 0 ? 6.4 : 7.8;
-      bike.smoothSteer += (rawSteer - bike.smoothSteer) * Math.min(1, dt * steerLerpRate);
-      const curvedSteer = Math.sign(bike.smoothSteer) * Math.pow(Math.abs(bike.smoothSteer), 1.25);
-      bike.steerAngle += (curvedSteer * 0.44 - bike.steerAngle) * Math.min(1, dt * 8.5);
+      // Progressive hold-based steering: quick taps give tiny nudges, holding builds up to full carve
+      const rawSteer = (input.left ? 1 : 0) - (input.right ? 1 : 0);
+      if (rawSteer !== 0) {
+        // Reset hold timer immediately if direction reverses
+        if (Math.sign(bike.smoothSteer) !== 0 && Math.sign(bike.smoothSteer) !== rawSteer) {
+          bike.steerHoldTime = 0;
+        }
+        bike.steerHoldTime = Math.min(0.85, bike.steerHoldTime + dt);
+        // Starts at 22% turn authority on tap, ramping smoothly to 100% after ~0.65s of holding
+        const holdGain = 0.22 + 0.78 * Math.pow(bike.steerHoldTime / 0.85, 1.45);
+        const targetSteer = rawSteer * holdGain;
+        bike.smoothSteer += (targetSteer - bike.smoothSteer) * Math.min(1, dt * 8.5);
+      } else {
+        bike.steerHoldTime = 0;
+        // Snap back to straight promptly when key is released
+        bike.smoothSteer += (0 - bike.smoothSteer) * Math.min(1, dt * 14.0);
+      }
+      bike.steerAngle += (bike.smoothSteer * 0.44 - bike.steerAngle) * Math.min(1, dt * 10.0);
 
       const grav = 25.0 * (preset.gravityMult || 1.0);
       bike.vel.y -= grav * dt;
@@ -749,14 +752,14 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
           bike.vel.z += fwdZ * preset.pedalForce * boost * dt;
         }
 
-        const targetTurnRate = curvedSteer * preset.turnSpeed * (0.64 + Math.min(1, horizSpeed / 16) * 0.44);
-        bike.yawRate += (targetTurnRate - bike.yawRate) * Math.min(1, dt * 6.8);
+        const targetTurnRate = bike.smoothSteer * (preset.turnSpeed * 1.18) * (0.64 + Math.min(1, horizSpeed / 16) * 0.44);
+        bike.yawRate += (targetTurnRate - bike.yawRate) * Math.min(1, dt * (rawSteer !== 0 ? 8.5 : 13.0));
         bike.yaw = Math.max(-0.85, Math.min(0.85, bike.yaw + bike.yawRate * dt));
 
         // Berm Slingshot: carving high on banked corners adds exit speed
         const cxAtBike = getTrailCenterX(bike.pos.z);
         const distFromCenter = Math.abs(bike.pos.x - cxAtBike);
-        if (distFromCenter > 2.2 && distFromCenter < 4.5 && Math.abs(curvedSteer) > 0.35 && horizSpeed > 18) {
+        if (distFromCenter > 2.2 && distFromCenter < 4.5 && Math.abs(bike.smoothSteer) > 0.35 && horizSpeed > 18) {
           bike.vel.z -= 5.2 * dt;
         }
 
@@ -769,7 +772,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         const lateralSlip = bike.vel.x * rightX + bike.vel.z * rightZ;
 
         const turnIntensity = Math.abs(bike.yawRate) * Math.max(0, (speedNow - 15) / 24);
-        const lateralGrip = Math.max(3.8, 7.6 - turnIntensity * 1.9);
+        const lateralGrip = Math.max(4.5, 9.2 - turnIntensity * 1.8);
 
         bike.vel.x += (desiredVx - bike.vel.x) * Math.min(1, dt * lateralGrip);
         bike.vel.z += (desiredVz - bike.vel.z) * Math.min(1, dt * lateralGrip);
@@ -835,7 +838,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
         bike.coyoteTimer = Math.max(0, bike.coyoteTimer - dt);
         bike.airTime += dt;
         if (bike.airTime > maxAirtime) maxAirtime = bike.airTime;
-        bike.yawRate += (curvedSteer * 0.9 - bike.yawRate) * Math.min(1, dt * 5.5);
+        bike.yawRate += (bike.smoothSteer * 0.9 - bike.yawRate) * Math.min(1, dt * 6.5);
         bike.yaw = Math.max(-0.85, Math.min(0.85, bike.yaw + bike.yawRate * dt));
         bike.skidIntensity *= Math.max(0, 1 - 6 * dt);
         bike.skidAngle += (0 - bike.skidAngle) * Math.min(1, dt * 6);
@@ -859,7 +862,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
 
       bike.pos.addScaledVector(bike.vel, dt);
 
-      // Soft Mountain-Edge Guardrail & Trail Recovery (guides bike smoothly down the trail)
+      // Soft Mountain-Edge Guardrail & Trail Recovery
       const cx = getTrailCenterX(bike.pos.z);
       const offsetFromTrail = bike.pos.x - cx;
       const maxEdgeOffset = 8.5;
@@ -961,7 +964,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
       }
 
       bike.suspensionComp = Math.max(0, bike.suspensionComp - preset.suspensionStiffness * 0.12 * dt);
-      bike.leanAngle += (curvedSteer * 0.36 - bike.leanAngle) * Math.min(1, dt * 7.2);
+      bike.leanAngle += (bike.smoothSteer * 0.38 - bike.leanAngle) * Math.min(1, dt * 8.5);
       bike.whipAngle += (bike.whipTarget - bike.whipAngle) * Math.min(1, dt * 9);
       const targetWheelie = bike.wheelieActive ? 0.56 : 0;
       bike.wheelieAngle += (targetWheelie - bike.wheelieAngle) * Math.min(1, dt * (bike.wheelieActive ? 7.5 : 10.0));
