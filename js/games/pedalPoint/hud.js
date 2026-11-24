@@ -1,5 +1,5 @@
 // js/games/pedalPoint/hud.js
-import { TRAIL_LENGTH } from './constants.js';
+import { TRAIL_LENGTH, LEVELS } from './constants.js';
 
 export function mountPedalPointHUD(wrapperParent, initH) {
   const containerEl = document.createElement('div');
@@ -209,9 +209,30 @@ export function mountPedalPointHUD(wrapperParent, initH) {
       #pedal-point-3d-container .modal-card {
         background: rgba(18, 32, 29, 0.96);
         border: 1px solid rgba(52, 211, 153, 0.35);
-        border-radius: 16px; padding: 16px 20px;
-        max-width: 530px; width: 100%; text-align: center;
+        border-radius: 16px; padding: 14px 18px;
+        max-width: 540px; width: 100%; text-align: center;
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.55);
+      }
+      #pp-level-tabs {
+        display: flex; gap: 8px; justify-content: center; margin-bottom: 8px;
+      }
+      #pedal-point-3d-container .pp-lvl-btn {
+        flex: 1;
+        padding: 7px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 900;
+        cursor: pointer;
+        border: 2px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.06);
+        color: #cbd5e1;
+        transition: all 0.15s ease;
+      }
+      #pedal-point-3d-container .pp-lvl-btn.selected {
+        border-color: #34d399;
+        background: rgba(16, 185, 129, 0.22);
+        color: #ffffff;
+        box-shadow: 0 0 14px rgba(52, 211, 153, 0.25);
       }
       #pedal-point-3d-container .badge-tag {
         display: inline-block; background: rgba(16, 185, 129, 0.18);
@@ -221,19 +242,19 @@ export function mountPedalPointHUD(wrapperParent, initH) {
         border-radius: 999px; margin-bottom: 4px;
       }
       #pedal-point-3d-container .modal-card h1 {
-        margin: 0 0 4px 0; font-size: 24px; font-weight: 900; color: #ffffff;
+        margin: 0 0 4px 0; font-size: 23px; font-weight: 900; color: #ffffff;
       }
       #pp-modal-subtitle {
-        margin: 0 0 10px 0; font-size: 12px; color: #cbd5e1; line-height: 1.35;
+        margin: 0 0 9px 0; font-size: 11.5px; color: #cbd5e1; line-height: 1.35;
       }
       #pedal-point-3d-container .bike-grid {
         display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
-        margin-bottom: 10px; text-align: left;
+        margin-bottom: 9px; text-align: left;
       }
       #pedal-point-3d-container .bike-opt {
         border: 2px solid rgba(255, 255, 255, 0.12);
         background: rgba(255, 255, 255, 0.05);
-        border-radius: 10px; padding: 8px; cursor: pointer;
+        border-radius: 10px; padding: 7px 8px; cursor: pointer;
       }
       #pedal-point-3d-container .bike-opt.selected {
         border-color: #34d399;
@@ -242,7 +263,7 @@ export function mountPedalPointHUD(wrapperParent, initH) {
       #pedal-point-3d-container .controls-grid {
         display: grid; grid-template-columns: 1fr 1fr; gap: 5px;
         text-align: left; background: rgba(11, 27, 43, 0.65);
-        border-radius: 10px; padding: 8px 12px; margin-bottom: 12px;
+        border-radius: 10px; padding: 7px 12px; margin-bottom: 10px;
         font-size: 11px; color: #e2e8f0;
       }
       #pedal-point-3d-container .controls-grid span b { color: #34d399; }
@@ -337,6 +358,7 @@ export function mountPedalPointHUD(wrapperParent, initH) {
         </div>
       </div>
       <div class="hud-actions">
+        <button type="button" class="hud-btn" id="btn-pp-level-switch" title="Switch Course">🗺️ Lvl 1</button>
         <button type="button" class="hud-btn" id="btn-pp-ghost" title="Toggle Personal Best Ghost Rider">👻 Ghost: ON</button>
         <button type="button" class="hud-btn" id="btn-pp-calibrate" title="Assign Piano or Keyboard Keys">🎹 Keys</button>
         <button type="button" class="hud-btn" id="btn-pp-cam-toggle" title="Toggle Camera">🎥 Chase Cam</button>
@@ -387,11 +409,18 @@ export function mountPedalPointHUD(wrapperParent, initH) {
     <!-- Start / Garage Overlay -->
     <div id="pp-overlay">
       <div class="modal-card">
-        <div class="badge-tag">Wollongong NSW • Illawarra Escarpment</div>
-        <h1>PEDAL POINT 3D</h1>
-        <p id="pp-modal-subtitle">
-          Carve red-dirt singletrack down Mt Kembla! Bunny-hop or <b>Triad Wheelie</b> over fallen logs, ride <b>North-Shore bridges</b>, and <b>pump landings</b> for speed!
-        </p>
+        <div id="pp-level-tabs">
+          <button type="button" class="pp-lvl-btn selected" data-level="escarpment">
+            🚵‍♂️ Level 1: Mt Kembla Escarpment
+          </button>
+          <button type="button" class="pp-lvl-btn" data-level="coastal">
+            ⚡ Level 2: Wollongong Bike Path
+          </button>
+        </div>
+
+        <div class="badge-tag" id="pp-modal-badge">${LEVELS.escarpment.badge}</div>
+        <h1 id="pp-modal-title">${LEVELS.escarpment.title}</h1>
+        <p id="pp-modal-subtitle">${LEVELS.escarpment.subtitle}</p>
 
         <div class="bike-grid" id="pp-bike-grid">
           <div class="bike-opt selected" data-bike="enduro">
@@ -470,6 +499,11 @@ export function mountPedalPointHUD(wrapperParent, initH) {
     preloadPill: document.getElementById('pp-preload-pill'),
     calloutEl: document.getElementById('pp-callout'),
     overlayEl: document.getElementById('pp-overlay'),
+    modalBadge: document.getElementById('pp-modal-badge'),
+    modalTitle: document.getElementById('pp-modal-title'),
+    modalSubtitle: document.getElementById('pp-modal-subtitle'),
+    levelBtns: document.querySelectorAll('#pp-level-tabs .pp-lvl-btn'),
+    btnLevelSwitch: document.getElementById('btn-pp-level-switch'),
     btnCamToggle: document.getElementById('btn-pp-cam-toggle'),
     btnGhostToggle: document.getElementById('btn-pp-ghost'),
     btnPlay: document.getElementById('btn-pp-play'),
@@ -505,6 +539,23 @@ export function mountPedalPointHUD(wrapperParent, initH) {
     calloutTimeout = setTimeout(() => els.calloutEl.classList.remove('show'), 1450);
   }
 
+  function setLevelUI(levelKey) {
+    const lvl = LEVELS[levelKey] || LEVELS.escarpment;
+    els.levelBtns.forEach(btn => {
+      btn.classList.toggle('selected', btn.dataset.level === lvl.id);
+    });
+    if (els.modalBadge) els.modalBadge.textContent = lvl.badge;
+    if (els.modalTitle) els.modalTitle.textContent = lvl.title;
+    if (els.modalSubtitle) els.modalSubtitle.innerHTML = lvl.subtitle;
+    if (els.valRem) els.valRem.textContent = `${lvl.length}m`;
+    if (els.btnLevelSwitch) {
+      els.btnLevelSwitch.textContent = lvl.id === 'coastal' ? '⚡ Lvl 2' : '🗺️ Lvl 1';
+    }
+    if (els.btnPlay) {
+      els.btnPlay.textContent = lvl.id === 'coastal' ? 'Start Coastal Sprint ⚡' : 'Drop In 🚵‍♂️';
+    }
+  }
+
   function updateControlsLabels(bindings) {
     const lblLeft = document.getElementById('pp-lbl-left');
     const lblRight = document.getElementById('pp-lbl-right');
@@ -537,6 +588,7 @@ export function mountPedalPointHUD(wrapperParent, initH) {
   return {
     els,
     showCallout,
+    setLevelUI,
     updateControlsLabels,
     updateEqVisuals
   };
