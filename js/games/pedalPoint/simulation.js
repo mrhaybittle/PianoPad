@@ -785,7 +785,7 @@ export function createPedalPointSession(THREE, bridge, autoStart, callbacks) {
           bike.vel.x *= s;
           bike.vel.z *= s;
         }
-        if (bike.vel.z > -11.0) bike.vel.z -= 12.0 * dt;
+      if (bike.vel.z > -14.0) bike.vel.z = Math.min(-14.0, bike.vel.z - 18.0 * dt);
         bike.whipTarget = 0;
 
         if (bike.wheelieActive) {
