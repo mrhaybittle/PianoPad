@@ -252,6 +252,7 @@ export const DAILY_CHALLENGES = [
         icon: '🐉',
         title: 'Through the Fire & Fingers',
         description: 'Score 80%+ on "Through the Fire & Flames - Piano Intro" at 100%+ speed.',
+        song: 'Through the Fire & Flames - Piano Intro',
         tier: 'Gold',
         target: 1,
         unit: 'song'
@@ -263,6 +264,7 @@ export const DAILY_CHALLENGES = [
         icon: '🐝',
         title: 'Flight of the Speedster',
         description: 'Complete "Flight of the Bumblebee" at 110%+ speed with 85%+ accuracy.',
+        song: 'Flight of the Bumblebee',
         tier: 'Gold',
         target: 1,
         unit: 'song'
@@ -274,6 +276,7 @@ export const DAILY_CHALLENGES = [
         icon: '🕶️',
         title: 'The Impossible Mission',
         description: 'Toggle Sheet Music: OFF and score 85%+ on "Mission: Impossible Theme" at 100%+ speed.',
+        song: 'Mission: Impossible Theme',
         tier: 'Gold',
         target: 1,
         unit: 'song'
@@ -285,6 +288,7 @@ export const DAILY_CHALLENGES = [
         icon: '🤘',
         title: 'Master of the Keys',
         description: 'Score 90%+ on "Master of Puppets (recorded by JC)" at 100%+ speed.',
+        song: 'Master of Puppets (recorded by JC)',
         tier: 'Gold',
         target: 1,
         unit: 'song'
@@ -296,6 +300,7 @@ export const DAILY_CHALLENGES = [
         icon: '💀',
         title: 'Megalomaniac',
         description: 'Finish "Megalovania (from Undertale)" with 0 Missed notes at 100%+ speed.',
+        song: 'Megalovania (from Undertale)',
         tier: 'Gold',
         target: 1,
         unit: 'song'
@@ -307,6 +312,7 @@ export const DAILY_CHALLENGES = [
         icon: '🌪️',
         title: 'Darude Sandstorm Sprint',
         description: 'Score 85%+ on "Sandstorm - by Darude" at 115%+ speed.',
+        song: 'Sandstorm - by Darude',
         tier: 'Gold',
         target: 1,
         unit: 'song'
@@ -318,6 +324,7 @@ export const DAILY_CHALLENGES = [
         icon: '🌙',
         title: 'Moonlight Virtuoso',
         description: 'Score 85%+ on "Moonlight Sonata" at 100%+ speed.',
+        song: 'Moonlight Sonata',
         tier: 'Gold',
         target: 1,
         unit: 'song'
@@ -329,6 +336,7 @@ export const DAILY_CHALLENGES = [
         icon: '⛈️',
         title: 'Struck by Lightning',
         description: 'Score 85%+ on "Thunderstruck Guitar Intro" at 100%+ speed.',
+        song: 'Thunderstruck Guitar Intro',
         tier: 'Gold',
         target: 1,
         unit: 'song'
@@ -340,6 +348,7 @@ export const DAILY_CHALLENGES = [
         icon: '🌊',
         title: 'River of 800 Notes',
         description: 'Complete "River Flows in You - Yiruma" with 80%+ accuracy at 100%+ speed.',
+        song: 'River Flows in You - Yiruma',
         tier: 'Gold',
         target: 1,
         unit: 'song'
@@ -368,6 +377,7 @@ export const DAILY_CHALLENGES = [
         icon: '🧙',
         title: 'Sorcerer’s Final Exam',
         description: 'Toggle Sheet Music: OFF and score 85%+ on "The Sorcerer\'s Apprentice" at 100%+ speed.',
+        song: "The Sorcerer's Apprentice",
         tier: 'Gold',
         target: 1,
         unit: 'song'
@@ -379,6 +389,7 @@ export const DAILY_CHALLENGES = [
         icon: '🧛',
         title: 'Phantom of the Organ',
         description: 'Finish "Toccata and Fugue in D minor, BWV 565" with 0 Missed notes at 100%+ speed.',
+        song: 'Toccata and Fugue in D minor, BWV 565',
         tier: 'Gold',
         target: 1,
         unit: 'song'
@@ -390,6 +401,7 @@ export const DAILY_CHALLENGES = [
         icon: '👟',
         title: 'The Thousand-Mile Sprint',
         description: 'Score 85%+ on "Thousand Miles - by Vanessa Carlton" at 110%+ speed.',
+        song: 'Thousand Miles - by Vanessa Carlton',
         tier: 'Gold',
         target: 1,
         unit: 'song'
@@ -401,6 +413,7 @@ export const DAILY_CHALLENGES = [
         icon: '🏄',
         title: 'Wipeout Wave Rider',
         description: 'Complete "Wipeout" at 115%+ speed with 80%+ accuracy.',
+        song: 'Wipeout',
         tier: 'Gold',
         target: 1,
         unit: 'song'
@@ -412,6 +425,7 @@ export const DAILY_CHALLENGES = [
         icon: '🕺',
         title: 'Never Gonna Give Up',
         description: 'Score 90%+ accuracy 3 times in a row on "Never Gonna Give You Up" at 100%+ speed.',
+        song: 'Never Gonna Give You Up',
         tier: 'Silver',
         target: 3,
         unit: 'in a row'
@@ -423,6 +437,7 @@ export const DAILY_CHALLENGES = [
         icon: '☕',
         title: 'Barista Double-Shot',
         description: 'Complete "Espresso" at 140%+ speed with 90%+ accuracy.',
+        song: 'Espresso',
         tier: 'Silver',
         target: 1,
         unit: 'song'
@@ -434,6 +449,7 @@ export const DAILY_CHALLENGES = [
         icon: '🪑',
         title: 'Chair-Stacking Finale',
         description: 'Score 95%+ accuracy on "Stand Up (Put Your Chair Away Or There You\'ll Stay)" at 100%+ speed.',
+        song: "Stand Up (Put Your Chair Away Or There You'll Stay)",
         tier: 'Silver',
         target: 1,
         unit: 'song'
@@ -874,6 +890,20 @@ function getTodaysChallenge() {
     return DAILY_CHALLENGES[idx];
 }
 
+function ensureDailyMetaShape() {
+    if (!dailyState.meta || typeof dailyState.meta !== 'object') {
+        dailyState.meta = {};
+    }
+    if (!Array.isArray(dailyState.meta.masteredSongs)) dailyState.meta.masteredSongs = [];
+    if (!Array.isArray(dailyState.meta.mediumMasteredSongs)) dailyState.meta.mediumMasteredSongs = [];
+    if (!Array.isArray(dailyState.meta.themesUsed)) dailyState.meta.themesUsed = [];
+    if (!Array.isArray(dailyState.meta.instrumentsUsed)) dailyState.meta.instrumentsUsed = [];
+    if (typeof dailyState.meta.lastSongTitle !== 'string') dailyState.meta.lastSongTitle = '';
+    if (typeof dailyState.meta.consecutive85 !== 'number') dailyState.meta.consecutive85 = 0;
+    if (typeof dailyState.meta.startedSlowLoop !== 'boolean') dailyState.meta.startedSlowLoop = false;
+    if (typeof dailyState.meta.stepCompletedSong !== 'string') dailyState.meta.stepCompletedSong = '';
+}
+
 function refreshDailyState() {
     const key = getStorageKey();
 
@@ -883,7 +913,7 @@ function refreshDailyState() {
             const parsed = JSON.parse(saved);
             if (parsed) {
                 dailyState = parsed;
-                // Backfill badge if today's challenge was completed before badge tracking was added
+                ensureDailyMetaShape();
                 if (dailyState.completed) {
                     const ch = DAILY_CHALLENGES.find(c => c.id === dailyState.challengeId);
                     if (ch) awardPermanentBadge(ch);
@@ -930,6 +960,139 @@ function saveDailyState() {
     } catch (e) {
         console.warn('Could not save daily challenge storage:', e);
     }
+}
+
+// ============================================================================
+// SONG LAUNCHER (CLOSES MODAL, SELECTS SONG, ENABLES GAME MODE & PLAYS)
+// ============================================================================
+function normalizeTitle(str) {
+    return String(str || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+export function launchSongInGameMode(songTitle) {
+    if (!songTitle) return;
+    const targetClean = songTitle.trim();
+    const targetNorm = normalizeTitle(targetClean);
+
+    // 1. Accept the active challenge automatically so progress tracks & shows in the pill
+    refreshDailyState();
+    if (!dailyState.accepted) {
+        dailyState.accepted = true;
+        saveDailyState();
+    }
+
+    // 2. Close the Daily Challenge modal
+    const modal = document.getElementById('daily-challenge-modal');
+    if (modal) {
+        modal.classList.remove('open');
+    }
+    updateDailyHudPill();
+
+    // 3. If main.js provided a direct bridge function, use it first
+    if (bridge) {
+        if (typeof bridge.startSongInGameMode === 'function') {
+            bridge.startSongInGameMode(targetClean);
+            return;
+        }
+        if (typeof bridge.playSongInGameMode === 'function') {
+            bridge.playSongInGameMode(targetClean);
+            return;
+        }
+        if (typeof bridge.selectSongAndStartGame === 'function') {
+            bridge.selectSongAndStartGame(targetClean);
+            return;
+        }
+    }
+
+    // 4. Otherwise, select the song via PianoPad's DOM controls
+    let songFound = false;
+
+    // 4a. Check <select> elements (e.g. #song-select / #songSelect)
+    const selects = Array.from(document.querySelectorAll('select'));
+    for (const sel of selects) {
+        const match = Array.from(sel.options).find(opt => {
+            const optText = normalizeTitle(opt.textContent);
+            const optVal = normalizeTitle(opt.value);
+            return optText === targetNorm || optVal === targetNorm || optText.startsWith(targetNorm);
+        });
+        if (match) {
+            sel.value = match.value;
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+            songFound = true;
+            break;
+        }
+    }
+
+    // 4b. Fallback: check clickable song cards/items in a song library list
+    if (!songFound) {
+        const candidates = Array.from(document.querySelectorAll('[data-song], [data-title], .song-item, .song-card, .song-btn'));
+        const card = candidates.find(el => {
+            const attrTitle = normalizeTitle(el.getAttribute('data-song') || el.getAttribute('data-title'));
+            const textTitle = normalizeTitle(el.textContent);
+            return attrTitle === targetNorm || textTitle === targetNorm;
+        });
+        if (card) {
+            card.click();
+            songFound = true;
+        }
+    }
+
+    // 5. Switch PianoPad into Game Mode and trigger Play
+    setTimeout(() => {
+        // Ensure Game Mode is enabled
+        const gameToggle =
+            document.getElementById('game-mode') ||
+            document.getElementById('gameMode') ||
+            document.getElementById('game-mode-toggle') ||
+            document.getElementById('btn-game-mode') ||
+            document.getElementById('game-btn');
+
+        if (gameToggle) {
+            if (gameToggle.type === 'checkbox') {
+                if (!gameToggle.checked) {
+                    gameToggle.checked = true;
+                    gameToggle.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            } else if (!gameToggle.classList.contains('active') && !gameToggle.classList.contains('on')) {
+                gameToggle.click();
+            }
+        } else {
+            // Search by button/label text if no standard ID matched
+            const allBtns = Array.from(document.querySelectorAll('button, label'));
+            const gmBtn = allBtns.find(el => /game\s*mode/i.test(el.textContent || ''));
+            if (gmBtn) {
+                const input = gmBtn.tagName === 'LABEL' ? document.getElementById(gmBtn.getAttribute('for')) : null;
+                if (input && input.type === 'checkbox') {
+                    if (!input.checked) {
+                        input.checked = true;
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                } else if (!gmBtn.classList.contains('active') && !/on/i.test(gmBtn.textContent || '')) {
+                    gmBtn.click();
+                }
+            }
+        }
+
+        // Trigger Play if not already playing
+        setTimeout(() => {
+            const playBtn =
+                document.getElementById('play-btn') ||
+                document.getElementById('btn-play') ||
+                document.getElementById('start-btn') ||
+                Array.from(document.querySelectorAll('button')).find(b => /^(▶\s*)?play(\s*song)?$/i.test((b.textContent || '').trim()));
+
+            if (playBtn && !playBtn.disabled) {
+                playBtn.click();
+            }
+
+            const statusEl = document.getElementById('status');
+            if (statusEl) {
+                statusEl.textContent = songFound
+                    ? `🎮 Playing "${targetClean}" in Game Mode!`
+                    : `🎮 Select "${targetClean}" from the song menu to play in Game Mode!`;
+            }
+        }, 120);
+    }, 80);
 }
 
 // ============================================================================
@@ -1007,6 +1170,62 @@ function ensureDailyChallengeUI() {
                 background: #052e16;
                 border-color: #22c55e;
                 color: #4ade80;
+            }
+
+            /* Clickable Song Chips inside Modal & Challenge Picker */
+            #dc-songs-required {
+                display: none;
+                margin: 0 0 12px 0;
+                text-align: center;
+            }
+            .dc-songs-label {
+                font-size: 0.75rem;
+                font-weight: 700;
+                color: #94a3b8;
+                margin-bottom: 6px;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+            }
+            .dc-song-pills-wrap {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 6px;
+            }
+            .dc-song-pills-wrap-left {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 5px;
+                margin-top: 7px;
+            }
+            .dc-song-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                background: rgba(56, 189, 248, 0.14);
+                border: 1px solid #38bdf8;
+                color: #7dd3fc;
+                font-size: 0.76rem;
+                font-weight: 700;
+                padding: 4px 10px;
+                border-radius: 999px;
+                cursor: pointer;
+                transition: all 0.15s ease;
+            }
+            .dc-song-btn:hover {
+                background: #0284c7;
+                color: #ffffff;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(2, 132, 199, 0.45);
+            }
+            .dc-song-btn.song-done {
+                background: rgba(34, 197, 94, 0.18);
+                border-color: #22c55e;
+                color: #86efac;
+            }
+            .dc-song-btn.song-done:hover {
+                background: #16a34a;
+                color: #ffffff;
             }
 
             /* Bottom-Bar Permanent Badge Tray */
@@ -1119,12 +1338,6 @@ function ensureDailyChallengeUI() {
                 color: #94a3b8;
                 line-height: 1.3;
             }
-            .dc-song-list {
-                margin-top: 6px;
-                font-size: 0.75rem;
-                color: #38bdf8;
-                font-style: italic;
-            }
 
             /* Trophy Case Grid */
             #dc-trophy-grid {
@@ -1169,7 +1382,7 @@ function ensureDailyChallengeUI() {
                     <div id="dc-tier-pill" class="dc-tier-badge dc-tier-Gold">DAILY MERIT AWARD CHALLENGE</div>
                     <h2 id="dc-title" style="margin: 0 0 8px 0; font-size: 1.45rem; color: #ffffff;">Today's Challenge</h2>
                     <p id="dc-desc" style="font-size: 0.95rem; color: #cbd5e1; line-height: 1.45; margin: 0 0 12px 0;"></p>
-                    <p id="dc-songs-required" style="font-size: 0.8rem; color: #38bdf8; font-style: italic; margin: -4px 0 12px 0; display: none;"></p>
+                    <div id="dc-songs-required"></div>
 
                     <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px;">
                         <div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:700; color:#94a3b8;">
@@ -1191,7 +1404,7 @@ function ensureDailyChallengeUI() {
                         <button type="button" id="btn-dc-accept" class="btn-success" style="padding: 9px 20px; font-size: 0.92rem; font-weight: 800;">
                             Accept Challenge!
                         </button>
-                        <button type="button" id="btn-dc-choose" class="btn-primary" style="display: none; padding: 9px 14px; font-size: 0.85rem;">
+                        <button type="button" id="btn-dc-choose" class="btn-secondary" style="display: none; padding: 9px 14px; font-size: 0.85rem; background: #2563eb; border-color: #3b82f6; color: #ffffff;">
                             Choose Another Challenge
                         </button>
                         <button type="button" id="btn-dc-trophies" class="btn-secondary" style="padding: 9px 14px; font-size: 0.85rem; border-color: #facc15; color: #facc15;">
@@ -1367,6 +1580,13 @@ export function openTrophyCaseModal() {
     document.getElementById('daily-challenge-modal').classList.add('open');
 }
 
+// Helper to get all selectable song titles for any challenge (single boss or setlist)
+function getChallengeSongOptions(ch) {
+    if (Array.isArray(ch.songs) && ch.songs.length > 0) return ch.songs;
+    if (typeof ch.song === 'string' && ch.song.trim()) return [ch.song.trim()];
+    return [];
+}
+
 // Builds the list of available challenges for the student to select manually
 function populateChallengeList() {
     const container = document.getElementById('dc-list-container');
@@ -1374,9 +1594,9 @@ function populateChallengeList() {
 
     const earnedIds = new Set(getEarnedBadges().map(b => b.id));
 
-    const general = DAILY_CHALLENGES.filter(c => !c.songs && !c.id.startsWith('boss_'));
-    const singleSong = DAILY_CHALLENGES.filter(c => c.id.startsWith('boss_') && !c.songs);
-    const setlists = DAILY_CHALLENGES.filter(c => c.songs);
+    const general = DAILY_CHALLENGES.filter(c => !c.songs && !c.song);
+    const singleSong = DAILY_CHALLENGES.filter(c => Boolean(c.song) && !c.songs);
+    const setlists = DAILY_CHALLENGES.filter(c => Array.isArray(c.songs));
 
     const addSection = (title, arr) => {
         if (arr.length === 0) return;
@@ -1398,21 +1618,39 @@ function populateChallengeList() {
                 ? `<span style="color:#4ade80; font-size:0.72rem; font-weight:700; margin-left:6px;">✅ Earned</span>`
                 : '';
 
-            let songsHtml = '';
-            if (ch.songs && ch.songs.length > 0) {
-                songsHtml = `<div class="dc-song-list">Songs to choose from: ${ch.songs.join(', ')}</div>`;
-            }
-
             item.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
                     <h4>${ch.icon || '🎯'} ${ch.title}${earnedTag}</h4>
                     <span class="dc-tier-badge dc-tier-${ch.tier || 'Silver'}" style="margin:0; font-size:0.6rem; padding:2px 8px; flex-shrink:0;">${ch.tier || 'Silver'}</span>
                 </div>
                 <p>${ch.description}</p>
-                ${songsHtml}
             `;
+
+            // Render clickable song pills directly on the challenge card
+            const songOpts = getChallengeSongOptions(ch);
+            if (songOpts.length > 0) {
+                const pillsWrap = document.createElement('div');
+                pillsWrap.className = 'dc-song-pills-wrap-left';
+
+                songOpts.forEach(songTitle => {
+                    const songBtn = document.createElement('button');
+                    songBtn.type = 'button';
+                    songBtn.className = 'dc-song-btn';
+                    songBtn.title = `Select this challenge and play "${songTitle}" in Game Mode`;
+                    songBtn.textContent = `🎮 ${songTitle}`;
+                    songBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        selectNewChallenge(ch.id, false);
+                        launchSongInGameMode(songTitle);
+                    });
+                    pillsWrap.appendChild(songBtn);
+                });
+
+                item.appendChild(pillsWrap);
+            }
+
             item.addEventListener('click', () => {
-                selectNewChallenge(ch.id);
+                selectNewChallenge(ch.id, true);
             });
             container.appendChild(item);
         });
@@ -1424,7 +1662,7 @@ function populateChallengeList() {
 }
 
 // Handles switching the active challenge to a user-selected one
-function selectNewChallenge(challengeId) {
+function selectNewChallenge(challengeId, reopenModal = true) {
     dailyState = {
         dateKey: getTodayDateKey(),
         challengeId: challengeId,
@@ -1454,7 +1692,9 @@ function selectNewChallenge(challengeId) {
         statusEl.textContent = `🎯 New Merit Award Challenge Selected: ${ch.title}`;
     }
 
-    openDailyChallengeModal(true);
+    if (reopenModal) {
+        openDailyChallengeModal(true);
+    }
     updateDailyHudPill();
 }
 
@@ -1488,10 +1728,40 @@ export function openDailyChallengeModal(isManualView = false) {
     document.getElementById('dc-title').textContent = ch.title;
     document.getElementById('dc-desc').textContent = ch.description;
 
-    // Show eligible songs whenever the student views an active setlist challenge
+    // Render clickable song buttons inside the active challenge pop-up
     const reqSongsEl = document.getElementById('dc-songs-required');
-    if (ch.songs && ch.songs.length > 0) {
-        reqSongsEl.textContent = `Songs to choose from: ${ch.songs.join(', ')}`;
+    reqSongsEl.innerHTML = '';
+    const songOpts = getChallengeSongOptions(ch);
+
+    if (songOpts.length > 0) {
+        const completedNormSet = new Set(
+            (dailyState.meta?.masteredSongs || []).map(s => normalizeTitle(s))
+        );
+
+        const label = document.createElement('div');
+        label.className = 'dc-songs-label';
+        label.textContent = songOpts.length === 1
+            ? 'Click below to play this song in Game Mode:'
+            : 'Click any song below to play in Game Mode:';
+        reqSongsEl.appendChild(label);
+
+        const wrap = document.createElement('div');
+        wrap.className = 'dc-song-pills-wrap';
+
+        songOpts.forEach(songTitle => {
+            const isSongDone = dailyState.completed || completedNormSet.has(normalizeTitle(songTitle));
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `dc-song-btn ${isSongDone ? 'song-done' : ''}`;
+            btn.title = `Close popup and play "${songTitle}" in Game Mode`;
+            btn.textContent = `${isSongDone ? '✅' : '🎮'} ${songTitle}`;
+            btn.addEventListener('click', () => {
+                launchSongInGameMode(songTitle);
+            });
+            wrap.appendChild(btn);
+        });
+
+        reqSongsEl.appendChild(wrap);
         reqSongsEl.style.display = 'block';
     } else {
         reqSongsEl.style.display = 'none';
@@ -1567,6 +1837,11 @@ function playChallengeFanfare() {
 function checkAndTriggerCompletion(challenge) {
     if (!dailyState || dailyState.completed) return;
 
+    // Ensure the bottom HUD pill switches out of unaccepted state as soon as progress starts
+    if (dailyState.progress > 0 && !dailyState.accepted) {
+        dailyState.accepted = true;
+    }
+
     if (dailyState.progress >= challenge.target) {
         dailyState.progress = challenge.target;
         dailyState.completed = true;
@@ -1634,22 +1909,33 @@ export function notifyDailySongComplete({
 
     const ch = getTodaysChallenge();
     const cleanTitle = (songTitle || '').trim();
+    const normTitle = normalizeTitle(cleanTitle);
     const diffLower = (difficulty || '').toLowerCase().trim();
 
+    // Parse numeric values safely even if passed as strings like "92%" or "100%"
+    const numAccuracy = parseFloat(String(accuracy ?? 0).replace('%', '')) || 0;
+    const numSpeed = parseFloat(String(speed ?? 100).replace('%', '')) || 0;
+    const numMiss = Number(miss ?? 0);
+
     // Handle Multi-Song Setlist Challenges
-    if (Array.isArray(ch.songs)) {
-        const reqAcc = ch.minAccuracy || 85;
-        const reqSpeed = ch.minSpeed || 100;
+    if (Array.isArray(ch.songs) && ch.songs.length > 0) {
+        const reqAcc = ch.minAccuracy ?? 85;
+        const reqSpeed = ch.minSpeed ?? 100;
         const reqNoSheet = Boolean(ch.requireNoSheet);
 
+        const matchedSong = ch.songs.find(s => normalizeTitle(s) === normTitle);
+
         if (
-            ch.songs.includes(cleanTitle) &&
-            accuracy >= reqAcc &&
-            speed >= reqSpeed &&
+            matchedSong &&
+            numAccuracy >= reqAcc &&
+            numSpeed >= reqSpeed &&
             (!reqNoSheet || !showSheetMusic)
         ) {
-            if (!dailyState.meta.masteredSongs.includes(cleanTitle)) {
-                dailyState.meta.masteredSongs.push(cleanTitle);
+            const alreadyCounted = dailyState.meta.masteredSongs.some(
+                s => normalizeTitle(s) === normTitle
+            );
+            if (!alreadyCounted) {
+                dailyState.meta.masteredSongs.push(matchedSong);
             }
             dailyState.progress = dailyState.meta.masteredSongs.length;
         }
@@ -1660,41 +1946,41 @@ export function notifyDailySongComplete({
                 dailyState.progress += 1;
                 break;
             case 'master_5_90':
-                if (accuracy >= 90 && speed >= 100 && cleanTitle) {
-                    if (!dailyState.meta.masteredSongs.includes(cleanTitle)) {
+                if (numAccuracy >= 90 && numSpeed >= 100 && cleanTitle) {
+                    if (!dailyState.meta.masteredSongs.some(s => normalizeTitle(s) === normTitle)) {
                         dailyState.meta.masteredSongs.push(cleanTitle);
                     }
                     dailyState.progress = dailyState.meta.masteredSongs.length;
                 }
                 break;
             case 'perfect_100':
-                if (accuracy >= 100 && speed >= 100) {
+                if (numAccuracy >= 100 && numSpeed >= 100) {
                     dailyState.progress = 1;
                 }
                 break;
             case 'zero_misses_med_hard':
-                if ((diffLower === 'medium' || diffLower === 'hard') && miss === 0 && speed >= 100) {
+                if ((diffLower === 'medium' || diffLower === 'hard') && numMiss === 0 && numSpeed >= 100) {
                     dailyState.progress = 1;
                 }
                 break;
             case 'hard_song_85':
-                if (diffLower === 'hard' && accuracy >= 85 && speed >= 100) {
+                if (diffLower === 'hard' && numAccuracy >= 85 && numSpeed >= 100) {
                     dailyState.progress = 1;
                 }
                 break;
             case 'turbo_130':
-                if (speed >= 130 && accuracy >= 85) {
+                if (numSpeed >= 130 && numAccuracy >= 85) {
                     dailyState.progress = 1;
                 }
                 break;
             case 'hyper_easy_160':
-                if (diffLower === 'easy' && speed >= 160 && accuracy >= 80) {
+                if (diffLower === 'easy' && numSpeed >= 160 && numAccuracy >= 80) {
                     dailyState.progress = 1;
                 }
                 break;
             case 'hat_trick_85':
-                if (accuracy >= 85 && speed >= 100 && cleanTitle) {
-                    if (dailyState.meta.lastSongTitle === cleanTitle) {
+                if (numAccuracy >= 85 && numSpeed >= 100 && cleanTitle) {
+                    if (normalizeTitle(dailyState.meta.lastSongTitle) === normTitle) {
                         dailyState.meta.consecutive85 += 1;
                     } else {
                         dailyState.meta.lastSongTitle = cleanTitle;
@@ -1710,7 +1996,7 @@ export function notifyDailySongComplete({
                 dailyState.progress += Number(perfect || 0);
                 break;
             case 'waterfall_only_90':
-                if (!showSheetMusic && (diffLower === 'medium' || diffLower === 'hard') && accuracy >= 90 && speed >= 100) {
+                if (!showSheetMusic && (diffLower === 'medium' || diffLower === 'hard') && numAccuracy >= 90 && numSpeed >= 100) {
                     dailyState.progress = 1;
                 }
                 break;
@@ -1727,13 +2013,18 @@ export function notifyDailySongComplete({
                 dailyState.progress = dailyState.meta.instrumentsUsed.length;
                 break;
             case 'step_to_game_80':
-                if (dailyState.meta.stepCompletedSong && dailyState.meta.stepCompletedSong === cleanTitle && accuracy >= 80 && speed >= 100) {
+                if (
+                    dailyState.meta.stepCompletedSong &&
+                    normalizeTitle(dailyState.meta.stepCompletedSong) === normTitle &&
+                    numAccuracy >= 80 &&
+                    numSpeed >= 100
+                ) {
                     dailyState.progress = 1;
                 }
                 break;
             case 'master_3_medium':
-                if (diffLower === 'medium' && accuracy >= 85 && speed >= 100 && cleanTitle) {
-                    if (!dailyState.meta.mediumMasteredSongs.includes(cleanTitle)) {
+                if (diffLower === 'medium' && numAccuracy >= 85 && numSpeed >= 100 && cleanTitle) {
+                    if (!dailyState.meta.mediumMasteredSongs.some(s => normalizeTitle(s) === normTitle)) {
                         dailyState.meta.mediumMasteredSongs.push(cleanTitle);
                     }
                     dailyState.progress = dailyState.meta.mediumMasteredSongs.length;
@@ -1742,47 +2033,47 @@ export function notifyDailySongComplete({
 
             // Single-song boss checks
             case 'boss_fire_flames':
-                if (cleanTitle === 'Through the Fire & Flames - Piano Intro' && accuracy >= 80 && speed >= 100) dailyState.progress = 1;
+                if (normTitle === normalizeTitle('Through the Fire & Flames - Piano Intro') && numAccuracy >= 80 && numSpeed >= 100) dailyState.progress = 1;
                 break;
             case 'boss_bumblebee':
-                if (cleanTitle === 'Flight of the Bumblebee' && accuracy >= 85 && speed >= 110) dailyState.progress = 1;
+                if (normTitle === normalizeTitle('Flight of the Bumblebee') && numAccuracy >= 85 && numSpeed >= 110) dailyState.progress = 1;
                 break;
             case 'boss_mission_impossible':
-                if (cleanTitle === 'Mission: Impossible Theme' && !showSheetMusic && accuracy >= 85 && speed >= 100) dailyState.progress = 1;
+                if (normTitle === normalizeTitle('Mission: Impossible Theme') && !showSheetMusic && numAccuracy >= 85 && numSpeed >= 100) dailyState.progress = 1;
                 break;
             case 'boss_master_puppets':
-                if (cleanTitle === 'Master of Puppets (recorded by JC)' && accuracy >= 90 && speed >= 100) dailyState.progress = 1;
+                if (normTitle === normalizeTitle('Master of Puppets (recorded by JC)') && numAccuracy >= 90 && numSpeed >= 100) dailyState.progress = 1;
                 break;
             case 'boss_megalovania':
-                if (cleanTitle === 'Megalovania (from Undertale)' && miss === 0 && speed >= 100) dailyState.progress = 1;
+                if (normTitle === normalizeTitle('Megalovania (from Undertale)') && numMiss === 0 && numSpeed >= 100) dailyState.progress = 1;
                 break;
             case 'boss_sandstorm':
-                if (cleanTitle === 'Sandstorm - by Darude' && accuracy >= 85 && speed >= 115) dailyState.progress = 1;
+                if (normTitle === normalizeTitle('Sandstorm - by Darude') && numAccuracy >= 85 && numSpeed >= 115) dailyState.progress = 1;
                 break;
             case 'boss_moonlight':
-                if (cleanTitle === 'Moonlight Sonata' && accuracy >= 85 && speed >= 100) dailyState.progress = 1;
+                if (normTitle === normalizeTitle('Moonlight Sonata') && numAccuracy >= 85 && numSpeed >= 100) dailyState.progress = 1;
                 break;
             case 'boss_thunderstruck':
-                if (cleanTitle === 'Thunderstruck Guitar Intro' && accuracy >= 85 && speed >= 100) dailyState.progress = 1;
+                if (normTitle === normalizeTitle('Thunderstruck Guitar Intro') && numAccuracy >= 85 && numSpeed >= 100) dailyState.progress = 1;
                 break;
             case 'boss_river_flows':
-                if (cleanTitle === 'River Flows in You - Yiruma' && accuracy >= 80 && speed >= 100) dailyState.progress = 1;
+                if (normTitle === normalizeTitle('River Flows in You - Yiruma') && numAccuracy >= 80 && numSpeed >= 100) dailyState.progress = 1;
                 break;
             case 'boss_sorcerer':
-                if (cleanTitle === "The Sorcerer's Apprentice" && !showSheetMusic && accuracy >= 85 && speed >= 100) dailyState.progress = 1;
+                if (normTitle === normalizeTitle("The Sorcerer's Apprentice") && !showSheetMusic && numAccuracy >= 85 && numSpeed >= 100) dailyState.progress = 1;
                 break;
             case 'boss_toccata':
-                if (cleanTitle === 'Toccata and Fugue in D minor, BWV 565' && miss === 0 && speed >= 100) dailyState.progress = 1;
+                if (normTitle === normalizeTitle('Toccata and Fugue in D minor, BWV 565') && numMiss === 0 && numSpeed >= 100) dailyState.progress = 1;
                 break;
             case 'boss_thousand_miles':
-                if (cleanTitle === 'Thousand Miles - by Vanessa Carlton' && accuracy >= 85 && speed >= 110) dailyState.progress = 1;
+                if (normTitle === normalizeTitle('Thousand Miles - by Vanessa Carlton') && numAccuracy >= 85 && numSpeed >= 110) dailyState.progress = 1;
                 break;
             case 'boss_wipeout':
-                if (cleanTitle === 'Wipeout' && accuracy >= 80 && speed >= 115) dailyState.progress = 1;
+                if (normTitle === normalizeTitle('Wipeout') && numAccuracy >= 80 && numSpeed >= 115) dailyState.progress = 1;
                 break;
             case 'boss_rickroll':
-                if (cleanTitle === 'Never Gonna Give You Up' && accuracy >= 90 && speed >= 100) {
-                    if (dailyState.meta.lastSongTitle === cleanTitle) {
+                if (normTitle === normalizeTitle('Never Gonna Give You Up') && numAccuracy >= 90 && numSpeed >= 100) {
+                    if (normalizeTitle(dailyState.meta.lastSongTitle) === normTitle) {
                         dailyState.meta.consecutive85 += 1;
                     } else {
                         dailyState.meta.lastSongTitle = cleanTitle;
@@ -1794,10 +2085,10 @@ export function notifyDailySongComplete({
                 }
                 break;
             case 'boss_espresso':
-                if (cleanTitle === 'Espresso' && accuracy >= 90 && speed >= 140) dailyState.progress = 1;
+                if (normTitle === normalizeTitle('Espresso') && numAccuracy >= 90 && numSpeed >= 140) dailyState.progress = 1;
                 break;
             case 'boss_stand_up':
-                if (cleanTitle === "Stand Up (Put Your Chair Away Or There You'll Stay)" && accuracy >= 95 && speed >= 100) dailyState.progress = 1;
+                if (normTitle === normalizeTitle("Stand Up (Put Your Chair Away Or There You'll Stay)") && numAccuracy >= 95 && numSpeed >= 100) dailyState.progress = 1;
                 break;
         }
     }
