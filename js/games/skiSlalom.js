@@ -152,10 +152,9 @@ class AlpineAudio {
     if (this.ctx.state === 'suspended') this.ctx.resume();
     const now = this.ctx.currentTime;
 
-    // Short celebratory brass/synth fanfare chord flourish
     const notes = isTriad
-      ? [523.25, 659.25, 783.99, 1046.50, 1318.51] // C5 - E5 - G5 - C6 - E6
-      : [523.25, 659.25, 783.99, 1046.50];         // C5 - E5 - G5 - C6
+      ? [523.25, 659.25, 783.99, 1046.50, 1318.51]
+      : [523.25, 659.25, 783.99, 1046.50];
 
     notes.forEach((freq, idx) => {
       const start = now + idx * 0.055;
@@ -424,17 +423,33 @@ export async function startSkiSlalom(bridge, autoStart = false) {
 
   const wrapperParent = document.getElementById('visualizer-wrapper');
   const waterfall = document.getElementById('waterfall-canvas');
-  const initW = (waterfall && waterfall.width) || 1232;
-  const initH = (waterfall && waterfall.height) || 380;
+  const wrapperRect = wrapperParent ? wrapperParent.getBoundingClientRect() : null;
+  const initW = Math.max(
+    1,
+    Math.floor(
+      (wrapperParent && wrapperParent.clientWidth) ||
+      (wrapperRect && wrapperRect.width) ||
+      (waterfall && waterfall.width) ||
+      1232
+    )
+  );
+  const initH = Math.max(
+    1,
+    Math.floor(
+      (wrapperParent && wrapperParent.clientHeight) ||
+      (wrapperRect && wrapperRect.height) ||
+      (waterfall && waterfall.height) ||
+      380
+    )
+  );
 
   containerEl = document.createElement('div');
   containerEl.id = 'ski-slalom-3d-container';
   containerEl.style.cssText = `
     position: absolute;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100%;
-    height: ${initH}px;
+    height: 100%;
     z-index: 25;
     overflow: hidden;
     background: #0f172a;
@@ -766,8 +781,12 @@ export async function startSkiSlalom(bridge, autoStart = false) {
     </div>
   `;
 
-  wrapperParent.style.position = 'relative';
-  wrapperParent.appendChild(containerEl);
+  if (wrapperParent) {
+    wrapperParent.style.position = 'relative';
+    wrapperParent.appendChild(containerEl);
+  } else {
+    document.body.appendChild(containerEl);
+  }
 
   const audio = new AlpineAudio();
 
@@ -784,6 +803,9 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.domElement.style.display = 'block';
+  renderer.domElement.style.width = '100%';
+  renderer.domElement.style.height = '100%';
   containerEl.insertBefore(renderer.domElement, containerEl.firstChild);
 
   const hemiLight = new THREE.HemisphereLight(0xf8fafc, 0xf1f5f9, 0.92);
@@ -2568,13 +2590,15 @@ export async function startSkiSlalom(bridge, autoStart = false) {
   }
 
   const onResize = () => {
-    if (!containerEl || !renderer) return;
-    const w = containerEl.clientWidth || initW;
-    const h = containerEl.clientHeight || initH;
+    if (!containerEl || !renderer || !wrapperParent) return;
+    const rect = wrapperParent.getBoundingClientRect();
+    const w = Math.max(1, Math.floor(wrapperParent.clientWidth || rect.width || initW));
+    const h = Math.max(1, Math.floor(wrapperParent.clientHeight || rect.height || initH));
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
   };
+  onResize();
   window.addEventListener('resize', onResize);
 
   activeController = {
@@ -2607,3 +2631,4 @@ export async function startSkiSlalom(bridge, autoStart = false) {
 
   animFrameId = requestAnimationFrame(animate);
 }
+```[cite: 2]
