@@ -12,6 +12,7 @@ export const ncState = {
     isTeacher: false,
     mapZoom: 1.0,
     flatMode: false, // Toggle between 3D Block (false) and Flat Floor Paint (true)
+    quitButtonRect: null,
 
     localPlayer: {
         id: 'local',
@@ -32,7 +33,7 @@ export const ncState = {
         noteCoins: 150,
         masteredSongs: [],
         selectedSlot: 0,
-        inventory: [1, 2, 3, null, null, null, null, null, null, null, null, null, null]
+        inventory: [1, 2, 3, null, null, null, null, null, null, null, null, null, null, null]
     },
 
     remotePlayers: {},
@@ -45,8 +46,12 @@ export const ncState = {
         height: CHUNK_HEIGHT
     },
 
+    activeExplosions: [],
     targetBlock: { hit: false },
     keysHeld: new Set(),
     toastMessage: null,
     bridge: null
 };
+
+
+Reply with **next** when you're ready for `economy.js`.
