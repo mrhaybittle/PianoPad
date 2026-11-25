@@ -2631,4 +2631,3 @@ export async function startSkiSlalom(bridge, autoStart = false) {
 
   animFrameId = requestAnimationFrame(animate);
 }
-```[cite: 2]
