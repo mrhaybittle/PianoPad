@@ -45,8 +45,8 @@ function drawPixelPlayer(ctx, state, x, y, team, noteLetter, playerObj, opts = {
   const sprite = getPixelSprite(team, noteLetter, pose, hasBall, facing);
 
   const scaleMult = isDive ? 1.28 : 1.0;
-  const drawW = Math.round(sprite.width * pixelScale * scaleMult);
-  const drawH = Math.round(sprite.height * pixelScale * scaleMult);
+  const drawW = Math.max(20, Math.round(sprite.width * pixelScale * scaleMult));
+  const drawH = Math.max(28, Math.round(sprite.height * pixelScale * scaleMult));
   const footY = y + drawH * (isDive ? 0.34 : 0.42);
 
   if (showYellowRing && !isDive) {
@@ -379,8 +379,8 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
     ctx.translate((Math.random() * 2 - 1) * mag, (Math.random() * 2 - 1) * mag);
   }
 
-  const w = rect.width;
-  const h = rect.height;
+  const w = Math.max(200, rect.width);
+  const h = Math.max(160, rect.height);
 
   if (state.playState === 'conversionKick' && state.conversion.active) {
     drawConversionView(ctx, state, w, h, timeSec);
@@ -393,8 +393,8 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
 
   const padX = Math.max(20, w * 0.08);
   const padY = Math.max(14, h * 0.03);
-  const fieldW = w - padX * 2;
-  const fieldH = h - padY * 2;
+  const fieldW = Math.max(100, w - padX * 2);
+  const fieldH = Math.max(100, h - padY * 2);
 
   const stripes = 10;
   const stripeH = fieldH / stripes;
@@ -477,7 +477,7 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
     ctx.fillText(LANE_NOTES[idx], lx - 4, padY + fieldH * 0.95);
   });
 
-  const pixelScale = Math.max(1.15, Math.min(1.65, h / 285));
+  const pixelScale = Math.max(1.2, Math.min(1.65, h / 285));
   const ballInFlight = state.passState.active || state.kickBall.active;
 
   const renderList = [];
@@ -517,7 +517,7 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
   for (const item of renderList) {
     const px = padX + fieldW * item.p.x;
     const py = padY + fieldH * item.p.y;
-    drawPixelPlayer(ctx, px, py, item.team, LANE_NOTES[item.idx], item.p, {
+    drawPixelPlayer(ctx, state, px, py, item.team, LANE_NOTES[item.idx], item.p, {
       pixelScale,
       hasBall: item.hasBall,
       showYellowRing: item.showYellowRing,
