@@ -371,7 +371,18 @@ function repeatSongGameMode() {
     playSong();
 }
 
-document.getElementById('btn-game-try-again').addEventListener('click', () => {
+function invokeMiniGameLauncher(fnNames) {
+    for (const name of fnNames) {
+        const fn = window[name];
+        if (typeof fn === 'function') {
+            fn();
+            return true;
+        }
+    }
+    return false;
+}
+
+function restartCurrentGameOrSong() {
     if (koState.isClassKnockout) {
         gameResultsModal.classList.remove('open');
         stopBattlePolling();
@@ -380,49 +391,56 @@ document.getElementById('btn-game-try-again').addEventListener('click', () => {
         return;
     }
 
-    // Clean the title just in case there are trailing spaces
-    const title = currentSongTitle.trim();
+    const title = (currentSongTitle || '').trim();
+    const titleLower = title.toLowerCase();
 
-    if (title === "Mystery Note" && window.startMysteryNote) { gameResultsModal.classList.remove('open'); stopBattlePolling(); window.startMysteryNote(); }
-    else if (title === "Simon Taps" && window.startSimonTaps) { gameResultsModal.classList.remove('open'); stopBattlePolling(); window.startSimonTaps(); }
-    else if (title === "Drop Dodge" && window.startDropDodge) { gameResultsModal.classList.remove('open'); stopBattlePolling(); window.startDropDodge(); }
-    else if (title === "Combo Strike" && window.startComboStrike) { gameResultsModal.classList.remove('open'); stopBattlePolling(); window.startComboStrike(); }
-    else if (title === "Finger Sprint" && window.openSprintModeSelector) { gameResultsModal.classList.remove('open'); stopBattlePolling(); window.openSprintModeSelector(); }
-    else if (title === "Rhythm Echo" && window.launchRhythmEcho) { gameResultsModal.classList.remove('open'); stopBattlePolling(); window.launchRhythmEcho(); }
-    else if ((title === "Note Name Sniper" || title === "Note Sniper") && window.launchNoteSniper) { gameResultsModal.classList.remove('open'); stopBattlePolling(); window.launchNoteSniper(); }
-    else if (title === "Flappy Pitch" && window.launchFlappyPitch) { gameResultsModal.classList.remove('open'); stopBattlePolling(); window.launchFlappyPitch(); }
-    else if (title === "Gridiron Groove" && window.launchGridironGroove) { gameResultsModal.classList.remove('open'); stopBattlePolling(); window.launchGridironGroove(); }
-    else if (title === "Sharp Shooter" && window.launchSharpShooter) { gameResultsModal.classList.remove('open'); stopBattlePolling(); window.launchSharpShooter(); }
-    else if (title === "ClefHook" || title === "Clef Hook") {
+    const miniGameLaunchers = [
+        { match: titleLower === 'mystery note', fns: ['startMysteryNote', 'launchMysteryNote'] },
+        { match: titleLower === 'simon taps', fns: ['startSimonTaps', 'launchSimonTaps'] },
+        { match: titleLower === 'drop dodge', fns: ['startDropDodge', 'launchDropDodge'] },
+        { match: titleLower === 'combo strike' || titleLower === 'two-note combo', fns: ['startComboStrike', 'launchComboStrike'] },
+        { match: titleLower.includes('finger sprint'), fns: ['openSprintModeSelector', 'startFingerSprint', 'launchFingerSprint', 'initSinglePlayerSprint'] },
+        { match: titleLower === 'rhythm echo', fns: ['launchRhythmEcho', 'startRhythmEcho'] },
+        { match: titleLower === 'note name sniper' || titleLower === 'note sniper', fns: ['launchNoteSniper', 'startNoteSniper'] },
+        { match: titleLower === 'flappy pitch', fns: ['launchFlappyPitch', 'startFlappyPitch'] },
+        { match: titleLower === 'gridiron groove', fns: ['launchGridironGroove', 'startGridironGroove'] },
+        { match: titleLower === 'sharp shooter', fns: ['launchSharpShooter', 'startSharpShooter'] },
+        { match: titleLower === 'clefhook' || titleLower === 'clef hook', fns: ['startClefHook', 'launchClefHook'] },
+        { match: titleLower.includes('ski slalom'), fns: ['launchSkiSlalom', 'startSkiSlalom', 'launch3DSkiSlalom', 'start3DSkiSlalom'] },
+        { match: titleLower === 'staff surfers' || titleLower === 'scale surfers', fns: ['launchStaffSurfers', 'startStaffSurfers', 'launchScaleSurfers', 'startScaleSurfers'] }
+    ];
+
+    const matched = miniGameLaunchers.find(entry => entry.match);
+    if (matched) {
         gameResultsModal.classList.remove('open');
         stopBattlePolling();
-        if (window.startClefHook) window.startClefHook();
-        else if (window.launchClefHook) window.launchClefHook();
-        else repeatSongGameMode();
+        if (invokeMiniGameLauncher(matched.fns)) {
+            return;
+        }
+        if (typeof window.replayLastCustomMiniGame === 'function') {
+            window.replayLastCustomMiniGame();
+            return;
+        }
+        // Keep the player in mini-game / arcade context rather than launching a song
+        if (arcadeState.activeMiniGame) {
+            arcadeState.activeMiniGame = null;
+        }
+        openArcadeHub();
+        document.getElementById('status').textContent = `Could not restart "${title}" automatically — select it from Mini-Games.`;
+        return;
     }
-    else if (title === "3D Ski Slalom" || title === "Ski Slalom") {
-        gameResultsModal.classList.remove('open');
-        stopBattlePolling();
-        if (window.launchSkiSlalom) window.launchSkiSlalom();
-        else if (window.startSkiSlalom) window.startSkiSlalom();
-        else repeatSongGameMode();
-    }
-    else if (title === "Staff Surfers" || title === "Scale Surfers") {
-        gameResultsModal.classList.remove('open');
-        stopBattlePolling();
-        if (window.launchStaffSurfers) window.launchStaffSurfers();
-        else if (window.startStaffSurfers) window.startStaffSurfers();
-        else repeatSongGameMode();
-    }
-    else if (typeof window.replayLastCustomMiniGame === 'function') {
+
+    if (typeof window.replayLastCustomMiniGame === 'function') {
         gameResultsModal.classList.remove('open');
         stopBattlePolling();
         window.replayLastCustomMiniGame();
+        return;
     }
-    else {
-        repeatSongGameMode();
-    }
-});
+
+    repeatSongGameMode();
+}
+
+document.getElementById('btn-game-try-again').addEventListener('click', restartCurrentGameOrSong);
 
 function sanitizeName(str) {
     const parts = str.trim().split(/\s+/);
@@ -639,7 +657,7 @@ function processCalibrationNote(rawMidi) {
         if (lowCKey) lowCKey.classList.add('blue-highlight');
 
         calibStep = 2;
-        document.getElementById('calib-instructions').innerHTML = 'Recognized Lowest C! Step 2: Now press the <span style="color: #22c55e; font-weight: 800;">HIGHEST</span> \'C\' key on your external MIDI Keyboard...';
+        document.getElementById('calib-instructions').innerHTML = 'Recognized Lowest C! Step 2: Now press the <span style="color: #22c55e; font-weight: 800;">HIGHEST</span> 'C' key on your external MIDI Keyboard...';
     } else if (calibStep === 2) {
         calibHighestRawMIDI = rawMidi;
 
@@ -707,7 +725,7 @@ function handleQuickRestartMidiMessage(event) {
     if (command === 144 && velocity > 0) {
         const playAgainBtn = document.getElementById('btn-game-try-again');
         if (playAgainBtn && playAgainBtn.style.display !== 'none') {
-            repeatSongGameMode();
+            restartCurrentGameOrSong();
         }
     }
 }
@@ -1566,7 +1584,7 @@ const keyLayout = [
     { note: 'e3', type: 'white', label: 'E', hint: 'I' },
     { note: 'f3', type: 'white', label: 'F', hint: 'O' }, { note: 'f#3', type: 'black', label: 'F#', hint: '0' },
     { note: 'g3', type: 'white', label: 'G', hint: 'P' }, { note: 'g#3', type: 'black', label: 'G#' },
-    { note: 'a3', type: 'white', label: 'A', hint: 'A' }, { note: 'a#3', type: 'black', label: 'A#' },
+    { note: 'a3', type: 'white', label: 'A' }, { note: 'a#3', type: 'black', label: 'A#' },
     { note: 'b3', type: 'white', label: 'B' },
     { note: 'c4', type: 'white', label: 'C' }, { note: 'c#4', type: 'black', label: 'C#' },
     { note: 'd4', type: 'white', label: 'D' }, { note: 'd#4', type: 'black', label: 'D#' },
@@ -1652,7 +1670,7 @@ function playManualNote(noteStr) {
     if (gameResultsModal && gameResultsModal.classList.contains('open')) {
         const playAgainBtn = document.getElementById('btn-game-try-again');
         if (playAgainBtn && playAgainBtn.style.display !== 'none') {
-            repeatSongGameMode();
+            restartCurrentGameOrSong();
             return;
         }
     }
@@ -3066,7 +3084,8 @@ Object.assign(window, {
     closeUnlockModal,
     skipCalibration,
     cancelCalibration,
-    repeatSongGameMode
+    repeatSongGameMode,
+    restartCurrentGameOrSong
 });
 
 if (document.readyState === 'loading') {
