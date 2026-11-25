@@ -75,31 +75,27 @@ function drawPixelPlayer(ctx, state, x, y, team, noteLetter, playerObj, opts = {
   ctx.restore();
 }
 
-// Draws an NRL H-style goal post at (cx, lineY) with proximity visibility (0..1)
 function drawNrlGoalPost(ctx, cx, lineY, visibility, isTopEnd) {
   if (visibility <= 0.02) return;
 
   const spanHalf = 46;
-  const postHeight = (44 + visibility * 26);
+  const postHeight = 44 + visibility * 26;
   const crossbarY = isTopEnd ? lineY - postHeight * 0.44 : lineY + postHeight * 0.44;
   const topY = isTopEnd ? lineY - postHeight : lineY + postHeight;
 
   ctx.save();
   ctx.globalAlpha = Math.min(1, visibility * 1.15);
 
-  // Ground shadow
   ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
   ctx.beginPath();
   ctx.ellipse(cx, lineY + (isTopEnd ? 3 : -3), spanHalf + 8, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Base padding sleeves on the try line
   [-spanHalf, spanHalf].forEach((px) => {
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(cx + px - 4, lineY - 5, 8, 10);
   });
 
-  // Tall white uprights
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 4;
   ctx.lineCap = 'round';
@@ -108,12 +104,10 @@ function drawNrlGoalPost(ctx, cx, lineY, visibility, isTopEnd) {
   ctx.lineTo(cx - spanHalf, topY);
   ctx.moveTo(cx + spanHalf, lineY);
   ctx.lineTo(cx + spanHalf, topY);
-  // Horizontal crossbar forming the classic NRL 'H'
   ctx.moveTo(cx - spanHalf, crossbarY);
   ctx.lineTo(cx + spanHalf, crossbarY);
   ctx.stroke();
 
-  // Subtle dark edge outline for contrast on bright white/grass
   ctx.strokeStyle = 'rgba(15, 23, 42, 0.45)';
   ctx.lineWidth = 1;
   ctx.strokeRect(cx - spanHalf - 2, Math.min(lineY, topY), spanHalf * 2 + 4, Math.abs(topY - lineY));
@@ -205,7 +199,6 @@ function drawTryCelebrationOverlay(ctx, state, w, h) {
   ctx.restore();
 }
 
-// 3D Conversion Kick Perspective View + Fast-Moving Horizontal Timing Slider
 function drawConversionView(ctx, state, w, h, timeSec) {
   const conv = state.conversion;
   const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.52);
@@ -230,7 +223,6 @@ function drawConversionView(ctx, state, w, h, timeSec) {
     return { sx, sy, scale };
   };
 
-  // Try line & touchlines in perspective
   const tlLeft = project3D(-16, 0, 24);
   const tlRight = project3D(16, 0, 24);
   const nearLeft = project3D(-16, 0, -24);
@@ -245,7 +237,6 @@ function drawConversionView(ctx, state, w, h, timeSec) {
   ctx.lineTo(nearRight.sx, nearRight.sy);
   ctx.stroke();
 
-  // NRL H-shaped Goal Posts on the try line (z = 24)
   const postHalfW = 3.0;
   const crossbarH = 3.0;
   const topPostH = 11.5;
@@ -269,12 +260,10 @@ function drawConversionView(ctx, state, w, h, timeSec) {
   ctx.lineTo(rCross.sx, rCross.sy);
   ctx.stroke();
 
-  // Kicker standing ready behind the ball on the tee
   const team = conv.isHomeKick ? state.homeTeam : state.awayTeam;
   const kickerProj = project3D(conv.teeX * 6, 0, -18);
   const kickerSprite = getPixelSprite(team, conv.kickerNote || 'E', 'idle', false, conv.isHomeKick ? 'back' : 'front');
-  const kScale = Math.max(1.2, Math.min(2.4, kScaleRaw(kickerProj.scale)));
-  function kScaleRaw(s) { return s * 0.085; }
+  const kScale = Math.max(1.2, Math.min(2.4, kickerProj.scale * 0.085));
   const kw = Math.round(kickerSprite.width * kScale);
   const kh = Math.round(kickerSprite.height * kScale);
   ctx.save();
@@ -282,8 +271,21 @@ function drawConversionView(ctx, state, w, h, timeSec) {
   ctx.drawImage(kickerSprite, Math.round(kickerProj.sx - kw / 2), Math.round(kickerProj.sy - kh * 0.72), kw, kh);
   ctx.restore();
 
-  // 3D Ball on tee or flying toward the posts
   const bProj = project3D(conv.ballX, conv.ballY, conv.ballZ);
+
+  if (!conv.kicked) {
+    const aimEndProj = project3D(conv.ballX + conv.aimOffset * 5.2, 1.2, 24);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(250, 204, 21, 0.65)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.moveTo(bProj.sx, bProj.sy);
+    ctx.lineTo(aimEndProj.sx, aimEndProj.sy);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   ctx.save();
   ctx.translate(bProj.sx, bProj.sy);
   ctx.rotate(conv.kicked ? timeSec * 12 : 0);
@@ -296,7 +298,6 @@ function drawConversionView(ctx, state, w, h, timeSec) {
   ctx.stroke();
   ctx.restore();
 
-  // Fast-moving horizontal conversion timing slider bar
   const barW = Math.min(w * 0.66, 440);
   const barH = 26;
   const barX = (w - barW) * 0.5;
@@ -311,13 +312,11 @@ function drawConversionView(ctx, state, w, h, timeSec) {
   ctx.fill();
   ctx.stroke();
 
-  // Green center conversion zone (middle 22% of bar)
   const zoneW = barW * 0.22;
   const zoneX = barX + (barW - zoneW) * 0.5;
   ctx.fillStyle = 'rgba(34, 197, 94, 0.45)';
   ctx.fillRect(zoneX, barY + 2, zoneW, barH - 4);
 
-  // Center line tick
   ctx.strokeStyle = '#4ade80';
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -325,7 +324,14 @@ function drawConversionView(ctx, state, w, h, timeSec) {
   ctx.lineTo(barX + barW * 0.5, barY + barH);
   ctx.stroke();
 
-  // Fast-moving slider cursor (`conv.sliderPos` in [-1, 1])
+  const aimSweetX = barX + ((1 - conv.aimOffset * 0.7) * 0.5) * barW;
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(aimSweetX, barY - 6);
+  ctx.lineTo(aimSweetX, barY + barH + 6);
+  ctx.stroke();
+
   const cursorNorm = (conv.sliderPos + 1) * 0.5;
   const cursorX = barX + cursorNorm * barW;
   ctx.fillStyle = '#facc15';
@@ -336,7 +342,6 @@ function drawConversionView(ctx, state, w, h, timeSec) {
   ctx.fill();
   ctx.stroke();
 
-  // Prompt text above slider
   ctx.font = 'italic 800 15px "Chakra Petch", sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#fef08a';
@@ -345,7 +350,7 @@ function drawConversionView(ctx, state, w, h, timeSec) {
   const promptMsg = conv.kicked
     ? (conv.resultText || 'KICKED!')
     : conv.isHomeKick
-    ? 'CONVERSION KICK (+2 PTS) — PLAY ANY MIDI KEY IN THE MIDDLE!'
+    ? 'CONVERSION (+2) — LEFT/RIGHT AIM • ANY MIDI KEY TO KICK!'
     : `${state.awayTeam.name.toUpperCase()} CONVERTING...`;
   ctx.strokeText(promptMsg, w * 0.5, barY - 12);
   ctx.fillText(promptMsg, w * 0.5, barY - 12);
@@ -377,7 +382,6 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
   const w = rect.width;
   const h = rect.height;
 
-  // 3D Conversion Kick screen
   if (state.playState === 'conversionKick' && state.conversion.active) {
     drawConversionView(ctx, state, w, h, timeSec);
     ctx.restore();
@@ -416,7 +420,6 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
     ctx.stroke();
   }
 
-  // NRL H-style Goal Posts at BOTH ends when players get close to the try lines!
   const allPlayers = [...state.homePlayers, ...state.awayPlayers];
   let closestTopDist = Infinity;
   let closestBotDist = Infinity;
@@ -585,4 +588,3 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
 
   ctx.restore();
 }
-
