@@ -394,5 +394,3 @@ export function updatePlayerPhysics(dt) {
     ncState.targetBlock = raycastVoxel(8.0);
 }
 
-
-Reply with **next** when you're ready for `render3d.js`.
