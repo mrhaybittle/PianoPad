@@ -3,12 +3,15 @@ import { initAudio, audioCtx } from './audio.js';
 import { APPS_SCRIPT_URL } from './config.js';
 
 // ============================================================================
-// DAILY MERIT AWARD CHALLENGE LIST (55 TOTAL)
+// CHALLENGE LIST (75 TOTAL: 55 EXISTING + 20 EASY TROPHY CABINET CHALLENGES)
 // Edit numbers, icons, descriptions, or delete any challenge object below.
+// Note: Single-song challenges and challenges with `trophyOnly: true` are
+// labeled as Trophy Challenges (not Merit Awards) and do not log Merit Award
+// rows to the Google Sheet.
 // ============================================================================
 export const DAILY_CHALLENGES = [
     // ------------------------------------------------------------------------
-    // GENERAL SKILL & EXPLORATION CHALLENGES (1 - 21)
+    // GENERAL SKILL & EXPLORATION CHALLENGES (MERIT AWARDS: 1 - 21)
     // ------------------------------------------------------------------------
 
     // 1. Play any song in Game Mode 20 times in a single day.
@@ -243,7 +246,7 @@ export const DAILY_CHALLENGES = [
     },
 
     // ------------------------------------------------------------------------
-    // SINGLE-SONG BOSS & ENDURANCE CHALLENGES (22 - 38)
+    // SINGLE-SONG BOSS & ENDURANCE CHALLENGES (TROPHY CABINET: 22 - 38)
     // ------------------------------------------------------------------------
 
     // 22. Score 80%+ on the ultra-fast "Through the Fire & Flames - Piano Intro" (Hard).
@@ -255,7 +258,8 @@ export const DAILY_CHALLENGES = [
         song: 'Through the Fire & Flames - Piano Intro',
         tier: 'Gold',
         target: 1,
-        unit: 'song'
+        unit: 'song',
+        trophyOnly: true
     },
 
     // 23. Complete "Flight of the Bumblebee" (Hard) at 110%+ speed with 85%+ accuracy.
@@ -267,7 +271,8 @@ export const DAILY_CHALLENGES = [
         song: 'Flight of the Bumblebee',
         tier: 'Gold',
         target: 1,
-        unit: 'song'
+        unit: 'song',
+        trophyOnly: true
     },
 
     // 24. Play "Mission: Impossible Theme" (Hard) with Sheet Music turned OFF and score 85%+.
@@ -279,7 +284,8 @@ export const DAILY_CHALLENGES = [
         song: 'Mission: Impossible Theme',
         tier: 'Gold',
         target: 1,
-        unit: 'song'
+        unit: 'song',
+        trophyOnly: true
     },
 
     // 25. Score 90%+ on the 112-note thrash metal riff "Master of Puppets (recorded by JC)" (Hard).
@@ -291,7 +297,8 @@ export const DAILY_CHALLENGES = [
         song: 'Master of Puppets (recorded by JC)',
         tier: 'Gold',
         target: 1,
-        unit: 'song'
+        unit: 'song',
+        trophyOnly: true
     },
 
     // 26. Finish "Megalovania (from Undertale)" (Hard) with 0 Missed notes at 100%+ speed.
@@ -303,7 +310,8 @@ export const DAILY_CHALLENGES = [
         song: 'Megalovania (from Undertale)',
         tier: 'Gold',
         target: 1,
-        unit: 'song'
+        unit: 'song',
+        trophyOnly: true
     },
 
     // 27. Score 85%+ on "Sandstorm - by Darude" (Hard) at 115%+ speed.
@@ -315,7 +323,8 @@ export const DAILY_CHALLENGES = [
         song: 'Sandstorm - by Darude',
         tier: 'Gold',
         target: 1,
-        unit: 'song'
+        unit: 'song',
+        trophyOnly: true
     },
 
     // 28. Complete the 1,145-note endurance marathon "Moonlight Sonata" (Hard) with 85%+ accuracy.
@@ -327,7 +336,8 @@ export const DAILY_CHALLENGES = [
         song: 'Moonlight Sonata',
         tier: 'Gold',
         target: 1,
-        unit: 'song'
+        unit: 'song',
+        trophyOnly: true
     },
 
     // 29. Score 85%+ on the 193-note rapid alternation piece "Thunderstruck Guitar Intro" (Hard).
@@ -339,7 +349,8 @@ export const DAILY_CHALLENGES = [
         song: 'Thunderstruck Guitar Intro',
         tier: 'Gold',
         target: 1,
-        unit: 'song'
+        unit: 'song',
+        trophyOnly: true
     },
 
     // 30. Complete the 800-note contemporary classical piece "River Flows in You - Yiruma" (Hard) with 80%+ accuracy.
@@ -351,7 +362,8 @@ export const DAILY_CHALLENGES = [
         song: 'River Flows in You - Yiruma',
         tier: 'Gold',
         target: 1,
-        unit: 'song'
+        unit: 'song',
+        trophyOnly: true
     },
 
     // 31. Score 85%+ on both "secretly Hard" nursery rhymes: Old MacDonald Had A Farm & The Wheels On the Bus.
@@ -380,7 +392,8 @@ export const DAILY_CHALLENGES = [
         song: "The Sorcerer's Apprentice",
         tier: 'Gold',
         target: 1,
-        unit: 'song'
+        unit: 'song',
+        trophyOnly: true
     },
 
     // 33. Finish Bach's "Toccata and Fugue in D minor, BWV 565" (Hard) with 0 Missed notes at 100%+ speed.
@@ -392,7 +405,8 @@ export const DAILY_CHALLENGES = [
         song: 'Toccata and Fugue in D minor, BWV 565',
         tier: 'Gold',
         target: 1,
-        unit: 'song'
+        unit: 'song',
+        trophyOnly: true
     },
 
     // 34. Score 85%+ on "Thousand Miles - by Vanessa Carlton" (Hard) at 110%+ speed.
@@ -404,7 +418,8 @@ export const DAILY_CHALLENGES = [
         song: 'Thousand Miles - by Vanessa Carlton',
         tier: 'Gold',
         target: 1,
-        unit: 'song'
+        unit: 'song',
+        trophyOnly: true
     },
 
     // 35. Complete the 92-note surf rock classic "Wipeout" (Hard) at 115%+ speed with 80%+ accuracy.
@@ -416,7 +431,8 @@ export const DAILY_CHALLENGES = [
         song: 'Wipeout',
         tier: 'Gold',
         target: 1,
-        unit: 'song'
+        unit: 'song',
+        trophyOnly: true
     },
 
     // 36. Score 90%+ accuracy 3 times in a row on "Never Gonna Give You Up" (Medium) at 100%+ speed.
@@ -428,7 +444,8 @@ export const DAILY_CHALLENGES = [
         song: 'Never Gonna Give You Up',
         tier: 'Silver',
         target: 3,
-        unit: 'in a row'
+        unit: 'in a row',
+        trophyOnly: true
     },
 
     // 37. Complete "Espresso" (Medium) at a caffeinated 140%+ speed with 90%+ accuracy.
@@ -440,7 +457,8 @@ export const DAILY_CHALLENGES = [
         song: 'Espresso',
         tier: 'Silver',
         target: 1,
-        unit: 'song'
+        unit: 'song',
+        trophyOnly: true
     },
 
     // 38. Score 95%+ accuracy on the classroom pack-up song "Stand Up (Put Your Chair Away Or There You'll Stay)" (Medium).
@@ -452,11 +470,12 @@ export const DAILY_CHALLENGES = [
         song: "Stand Up (Put Your Chair Away Or There You'll Stay)",
         tier: 'Silver',
         target: 1,
-        unit: 'song'
+        unit: 'song',
+        trophyOnly: true
     },
 
     // ------------------------------------------------------------------------
-    // MULTI-SONG SETLIST CHALLENGES (39 - 55)
+    // MULTI-SONG SETLIST CHALLENGES (MERIT AWARDS: 39 - 55)
     // ------------------------------------------------------------------------
 
     // 39. Score 85%+ on any 2 Classical setlist pieces at 100%+ speed.
@@ -802,8 +821,393 @@ export const DAILY_CHALLENGES = [
         ],
         minAccuracy: 85,
         minSpeed: 100
+    },
+
+    // ------------------------------------------------------------------------
+    // 10 SINGLE-SONG EASY TROPHY CHALLENGES (TROPHY CABINET ONLY: 56 - 65)
+    // ------------------------------------------------------------------------
+
+    // 56. Score 100% accuracy on "McDonald's Theme" (Easy) at 100%+ speed.
+    {
+        id: 'easy_song_mcdonalds',
+        icon: '🍟',
+        title: "I'm Lovin' It",
+        description: 'Score 100% accuracy on "McDonald\'s Theme" at 100%+ speed.',
+        song: "McDonald's Theme",
+        minAccuracy: 100,
+        minSpeed: 100,
+        tier: 'Bronze',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 57. Score 100% accuracy on "ERC Bell" (Easy) at 100%+ speed.
+    {
+        id: 'easy_song_erc_bell',
+        icon: '🔔',
+        title: 'Saved by the Bell',
+        description: 'Score 100% accuracy on "ERC Bell" at 100%+ speed.',
+        song: 'ERC Bell',
+        minAccuracy: 100,
+        minSpeed: 100,
+        tier: 'Bronze',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 58. Score 90%+ accuracy on "Nokia Theme" (Easy) at 100%+ speed.
+    {
+        id: 'easy_song_nokia',
+        icon: '📱',
+        title: 'Retro Ringtone',
+        description: 'Score 90%+ accuracy on "Nokia Theme" at 100%+ speed.',
+        song: 'Nokia Theme',
+        minAccuracy: 90,
+        minSpeed: 100,
+        tier: 'Bronze',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 59. Score 95%+ accuracy on "We Will Rock You - Queen" (Easy) at 100%+ speed.
+    {
+        id: 'easy_song_we_will_rock_you',
+        icon: '👏',
+        title: 'Stadium Stomp',
+        description: 'Score 95%+ accuracy on "We Will Rock You - Queen" at 100%+ speed.',
+        song: 'We Will Rock You - Queen',
+        minAccuracy: 95,
+        minSpeed: 100,
+        tier: 'Bronze',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 60. Score 85%+ accuracy on "Enter Sandman" (Easy) at 100%+ speed.
+    {
+        id: 'easy_song_enter_sandman',
+        icon: '🎸',
+        title: 'Sandman Riff',
+        description: 'Score 85%+ accuracy on "Enter Sandman" at 100%+ speed.',
+        song: 'Enter Sandman',
+        minAccuracy: 85,
+        minSpeed: 100,
+        tier: 'Bronze',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 61. Score 85%+ accuracy on "Geometry Dash" (Easy) at 100%+ speed.
+    {
+        id: 'easy_song_geometry_dash',
+        icon: '🟦',
+        title: 'Square Jumper',
+        description: 'Score 85%+ accuracy on "Geometry Dash" at 100%+ speed.',
+        song: 'Geometry Dash',
+        minAccuracy: 85,
+        minSpeed: 100,
+        tier: 'Bronze',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 62. Score 90%+ accuracy on "Tokyo Drift" (Easy) at 100%+ speed.
+    {
+        id: 'easy_song_tokyo_drift',
+        icon: '🏎️',
+        title: 'Drift King',
+        description: 'Score 90%+ accuracy on "Tokyo Drift" at 100%+ speed.',
+        song: 'Tokyo Drift',
+        minAccuracy: 90,
+        minSpeed: 100,
+        tier: 'Bronze',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 63. Score 85%+ accuracy on "Uptown Funk" (Easy) at 100%+ speed.
+    {
+        id: 'easy_song_uptown_funk',
+        icon: '🕺',
+        title: 'Funky Keys',
+        description: 'Score 85%+ accuracy on "Uptown Funk" at 100%+ speed.',
+        song: 'Uptown Funk',
+        minAccuracy: 85,
+        minSpeed: 100,
+        tier: 'Bronze',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 64. Score 85%+ accuracy on "The Kid - Year 8 Music" (Easy) at 100%+ speed.
+    {
+        id: 'easy_song_the_kid',
+        icon: '🎓',
+        title: 'The Year 8 Classic',
+        description: 'Score 85%+ accuracy on "The Kid - Year 8 Music" at 100%+ speed.',
+        song: 'The Kid - Year 8 Music',
+        minAccuracy: 85,
+        minSpeed: 100,
+        tier: 'Bronze',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 65. Score 85%+ accuracy on "In The Hall Of The Mountain King" (Easy) at 100%+ speed.
+    {
+        id: 'easy_song_mountain_king',
+        icon: '🏔️',
+        title: 'Mountain Climber',
+        description: 'Score 85%+ accuracy on "In The Hall Of The Mountain King" at 100%+ speed.',
+        song: 'In The Hall Of The Mountain King',
+        minAccuracy: 85,
+        minSpeed: 100,
+        tier: 'Bronze',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // ------------------------------------------------------------------------
+    // 10 MULTI-SONG EASY SETLIST TROPHY CHALLENGES (TROPHY CABINET ONLY: 66 - 75)
+    // ------------------------------------------------------------------------
+
+    // 66. Score 85%+ on any 2 Easy Michael Jackson tracks at 100%+ speed.
+    {
+        id: 'easy_setlist_king_of_pop',
+        icon: '🧤',
+        title: 'King of Pop Starter',
+        description: 'Score 85%+ on any 2 King of Pop Starter songs (100%+ speed).',
+        tier: 'Bronze',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'Bad - Michael Jackson',
+            'Beat It',
+            'Billie Jean - Michael Jackson'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100,
+        trophyOnly: true
+    },
+
+    // 67. Score 85%+ on any 2 Easy Hip-Hop tracks at 100%+ speed.
+    {
+        id: 'easy_setlist_hip_hop',
+        icon: '🎤',
+        title: 'Hip-Hop Starter Pack',
+        description: 'Score 85%+ on any 2 Hip-Hop Starter songs (100%+ speed).',
+        tier: 'Bronze',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'California Love - 2Pac',
+            "Gangsta's Paradise (Right Hand)",
+            'In da Club - 50c',
+            'Still Dre.',
+            'Without Me',
+            'Houdini - Eminem (Abracadabra)'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100,
+        trophyOnly: true
+    },
+
+    // 68. Score 85%+ on any 2 Easy Rock riffs at 100%+ speed.
+    {
+        id: 'easy_setlist_rock_riffs',
+        icon: '🤘',
+        title: 'Rock Riff Rookies',
+        description: 'Score 85%+ on any 2 Rock Riff Rookie songs (100%+ speed).',
+        tier: 'Bronze',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            '7 Nation Army (riff)',
+            'Californication',
+            'Highway To Hell - ACDC (Simplified)',
+            'Smells Like Teen Spirit',
+            'Wild Thing',
+            'You Really Got Me'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100,
+        trophyOnly: true
+    },
+
+    // 69. Score 85%+ on any 2 Easy Cartoon & Kids TV themes at 100%+ speed.
+    {
+        id: 'easy_setlist_kids_tv',
+        icon: '📺',
+        title: 'Cartoon & Kids TV',
+        description: 'Score 85%+ on any 2 Cartoon & Kids TV songs (100%+ speed).',
+        tier: 'Bronze',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'Bluey Theme',
+            'Peppa Pig Theme',
+            'Mister Maker TV Theme',
+            'All Star - from Shrek',
+            'Life is a Highway (from the Movie Cars)'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100,
+        trophyOnly: true
+    },
+
+    // 70. Score 85%+ on any 2 Easy School Days tracks at 100%+ speed.
+    {
+        id: 'easy_setlist_school_days',
+        icon: '🏫',
+        title: 'School Days Pack',
+        description: 'Score 85%+ on any 2 School Days songs (100%+ speed).',
+        tier: 'Bronze',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'ERC Bell',
+            'Naplan Theme',
+            'Tidy Up the Keys',
+            'The Kid - Year 8 Music'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100,
+        trophyOnly: true
+    },
+
+    // 71. Score 85%+ on any 2 Easy Action & Adventure themes at 100%+ speed.
+    {
+        id: 'easy_setlist_action',
+        icon: '🎬',
+        title: 'Action & Adventure',
+        description: 'Score 85%+ on any 2 Action & Adventure songs (100%+ speed).',
+        tier: 'Bronze',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'Dangerzone',
+            'Eye of the Tiger - from Rocky',
+            'Interstellar Theme',
+            'Percy Jackson Theme',
+            'Peter Gunn Theme',
+            'Bad Boys Theme'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100,
+        trophyOnly: true
+    },
+
+    // 72. Score 85%+ on any 2 Easy Animal Kingdom tracks at 100%+ speed.
+    {
+        id: 'easy_setlist_animals',
+        icon: '🐾',
+        title: 'Animal Kingdom',
+        description: 'Score 85%+ on any 2 Animal Kingdom songs (100%+ speed).',
+        tier: 'Bronze',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'Baby Shark',
+            'Carnival of the Animals (The Elephant)',
+            "Cat's Theme",
+            "Duck's Theme",
+            "Wolf's Theme",
+            'What Does The Fox Say'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100,
+        trophyOnly: true
+    },
+
+    // 73. Score 85%+ on any 2 Easy Classical Miniature tracks at 100%+ speed.
+    {
+        id: 'easy_setlist_classical',
+        icon: '🎻',
+        title: 'Classical Miniatures',
+        description: 'Score 85%+ on any 2 Classical Miniature songs (100%+ speed).',
+        tier: 'Bronze',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            "Fingal's Cave",
+            'Fur Elise-short',
+            'In The Hall Of The Mountain King',
+            'Carnival of the Animals (The Elephant)'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100,
+        trophyOnly: true
+    },
+
+    // 74. Score 85%+ on any 2 Easy Dance Floor Starter tracks at 100%+ speed.
+    {
+        id: 'easy_setlist_dance',
+        icon: '🪩',
+        title: 'Dance Floor Starter',
+        description: 'Score 85%+ on any 2 Dance Floor Starter songs (100%+ speed).',
+        tier: 'Bronze',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'Bang Bang',
+            "Don't You Worry Child",
+            'Get Lucky',
+            "Let's Groove",
+            "Superfreak / You Can't Touch This",
+            'You Spin Me Right Round'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100,
+        trophyOnly: true
+    },
+
+    // 75. Score 85%+ on any 2 Easy Pop & Indie Singalong tracks at 100%+ speed.
+    {
+        id: 'easy_setlist_pop_indie',
+        icon: '🌟',
+        title: 'Pop & Indie Singalong',
+        description: 'Score 85%+ on any 2 Pop & Indie Singalong songs (100%+ speed).',
+        tier: 'Bronze',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'Back to Friends - Sombr',
+            'Call Me Maybe',
+            'Counting Stars',
+            'Demons',
+            'Riptide',
+            'Shape of You - Ed Sheeran'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100,
+        trophyOnly: true
     }
 ];
+
+// ============================================================================
+// CHALLENGE CLASSIFICATION HELPERS
+// ============================================================================
+function isSingleSongChallenge(ch) {
+    return Boolean(ch && ch.song && !Array.isArray(ch.songs));
+}
+
+// Single-song challenges and Easy trophyOnly challenges are NOT labeled as Merit Awards
+function isMeritAwardChallenge(ch) {
+    if (!ch) return false;
+    if (ch.trophyOnly) return false;
+    if (isSingleSongChallenge(ch)) return false;
+    return true;
+}
 
 // ============================================================================
 // INTERNAL STATE & STORAGE (DAILY PROGRESS + PERMANENT BYOD BADGES)
@@ -874,20 +1278,25 @@ function awardPermanentBadge(challenge) {
     renderBadgeTray();
 }
 
+// Default daily rotation picks only from Merit Award challenges
+function getDefaultDailyChallenge() {
+    const pool = DAILY_CHALLENGES.filter(isMeritAwardChallenge);
+    const activePool = pool.length > 0 ? pool : DAILY_CHALLENGES;
+    const dateKey = getTodayDateKey();
+    let hash = 0;
+    for (let i = 0; i < dateKey.length; i++) {
+        hash = (hash * 31 + dateKey.charCodeAt(i)) >>> 0;
+    }
+    return activePool[hash % activePool.length];
+}
+
 // Retrieves the active challenge for today (or the user's manually selected challenge)
 function getTodaysChallenge() {
     if (dailyState && dailyState.challengeId) {
         const found = DAILY_CHALLENGES.find(c => c.id === dailyState.challengeId);
         if (found) return found;
     }
-
-    const dateKey = getTodayDateKey();
-    let hash = 0;
-    for (let i = 0; i < dateKey.length; i++) {
-        hash = (hash * 31 + dateKey.charCodeAt(i)) >>> 0;
-    }
-    const idx = hash % DAILY_CHALLENGES.length;
-    return DAILY_CHALLENGES[idx];
+    return getDefaultDailyChallenge();
 }
 
 function ensureDailyMetaShape() {
@@ -925,12 +1334,7 @@ function refreshDailyState() {
         console.warn('Could not read daily challenge storage:', e);
     }
 
-    const dateKey = getTodayDateKey();
-    let hash = 0;
-    for (let i = 0; i < dateKey.length; i++) {
-        hash = (hash * 31 + dateKey.charCodeAt(i)) >>> 0;
-    }
-    const defaultChallenge = DAILY_CHALLENGES[hash % DAILY_CHALLENGES.length];
+    const defaultChallenge = getDefaultDailyChallenge();
 
     dailyState = {
         dateKey: getTodayDateKey(),
@@ -969,43 +1373,35 @@ function normalizeTitle(str) {
     return String(str || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-function doesOptionMatchSong(opt, targetNorm) {
-    const optText = normalizeTitle(opt.textContent);
-    const optVal = normalizeTitle(opt.value);
-    const optLabel = normalizeTitle(opt.label);
-
-    if (!optText && !optVal && !optLabel) return false;
-    return (
-        optText === targetNorm ||
-        optVal === targetNorm ||
-        optLabel === targetNorm ||
-        optText.startsWith(targetNorm + ' ') ||
-        optText.startsWith(targetNorm + ' -') ||
-        optText.startsWith(targetNorm + ' (') ||
-        optVal.startsWith(targetNorm + ' ') ||
-        optVal.startsWith(targetNorm + ' -') ||
-        optVal.startsWith(targetNorm + ' (')
-    );
+function stripLeadingSymbols(str) {
+    // Strips leading emojis, difficulty dots (🟢🟠🔴), bullets, and spaces
+    return normalizeTitle(str).replace(/^[^a-z0-9]+/i, '');
 }
 
-function getCurrentlySelectedSongText() {
-    const selects = Array.from(document.querySelectorAll('select'));
-    for (const sel of selects) {
-        if (sel.options && sel.options.length > 5 && sel.selectedIndex >= 0) {
-            const chosen = sel.options[sel.selectedIndex];
-            if (chosen) return normalizeTitle(chosen.textContent || chosen.value);
-        }
-    }
-    return '';
+function doesOptionMatchSong(opt, targetNorm) {
+    const cleanText = stripLeadingSymbols(opt.textContent);
+    const cleanVal = stripLeadingSymbols(opt.value);
+    const cleanLabel = stripLeadingSymbols(opt.label);
+
+    if (!cleanText && !cleanVal && !cleanLabel) return false;
+    return (
+        cleanText === targetNorm ||
+        cleanVal === targetNorm ||
+        cleanLabel === targetNorm ||
+        cleanText.startsWith(targetNorm + ' ') ||
+        cleanText.startsWith(targetNorm + ' -') ||
+        cleanText.startsWith(targetNorm + ' (') ||
+        cleanText.includes(targetNorm)
+    );
 }
 
 function ensureGameModeEnabled() {
     const gameToggle =
+        document.getElementById('btn-game') ||
         document.getElementById('game-mode') ||
         document.getElementById('gameMode') ||
         document.getElementById('game-mode-toggle') ||
-        document.getElementById('btn-game-mode') ||
-        document.getElementById('game-btn');
+        document.getElementById('btn-game-mode');
 
     if (gameToggle) {
         if (gameToggle.type === 'checkbox') {
@@ -1018,65 +1414,15 @@ function ensureGameModeEnabled() {
         }
         const labelText = (gameToggle.textContent || '').trim();
         const isAlreadyOn =
+            gameToggle.classList.contains('btn-game-active') ||
             gameToggle.classList.contains('active') ||
             gameToggle.classList.contains('on') ||
-            gameToggle.getAttribute('aria-pressed') === 'true' ||
             /\bon\b/i.test(labelText);
 
         if (!isAlreadyOn) {
             gameToggle.click();
         }
-        return;
     }
-
-    const allBtns = Array.from(document.querySelectorAll('button, label, [role="button"]'));
-    const gmBtn = allBtns.find(el => /game\s*mode/i.test(el.textContent || ''));
-    if (gmBtn) {
-        const forId = gmBtn.getAttribute('for');
-        const input = forId ? document.getElementById(forId) : gmBtn.querySelector('input[type="checkbox"]');
-        if (input && input.type === 'checkbox') {
-            if (!input.checked) {
-                input.checked = true;
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-                input.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-        } else {
-            const txt = (gmBtn.textContent || '').trim();
-            const isOn =
-                gmBtn.classList.contains('active') ||
-                gmBtn.classList.contains('on') ||
-                gmBtn.getAttribute('aria-pressed') === 'true' ||
-                /\bon\b/i.test(txt);
-            if (!isOn) {
-                gmBtn.click();
-            }
-        }
-    }
-}
-
-function findAndClickPlayButton(targetClean) {
-    const playBtn =
-        document.getElementById('play-btn') ||
-        document.getElementById('btn-play') ||
-        document.getElementById('start-btn') ||
-        Array.from(document.querySelectorAll('button')).find(b => {
-            const t = (b.textContent || '').trim();
-            return /^(▶\s*)?play(\s*song)?$/i.test(t) || /^start(\s*game)?$/i.test(t);
-        });
-
-    if (!playBtn || playBtn.disabled) return false;
-
-    const btnText = (playBtn.textContent || '').trim();
-    if (/^(■|⏹|stop|pause)/i.test(btnText) || playBtn.classList.contains('playing')) {
-        return true;
-    }
-
-    playBtn.click();
-    const statusEl = document.getElementById('status');
-    if (statusEl) {
-        statusEl.textContent = `🎮 Playing "${targetClean}" in Game Mode!`;
-    }
-    return true;
 }
 
 export function launchSongInGameMode(songTitle) {
@@ -1098,7 +1444,7 @@ export function launchSongInGameMode(songTitle) {
     }
     updateDailyHudPill();
 
-    // 3. If main.js provided a direct bridge function, use it first
+    // 3. Preferred path: use main.js bridge directly (100% bulletproof)
     if (bridge) {
         for (const fnName of ['startSongInGameMode', 'playSongInGameMode', 'selectSongAndStartGame', 'loadSong']) {
             if (typeof bridge[fnName] === 'function') {
@@ -1108,10 +1454,8 @@ export function launchSongInGameMode(songTitle) {
         }
     }
 
-    // 4. Select the matching song in PianoPad's <select> dropdowns (or song list elements)
-    let matchedSelect = null;
+    // 4. DOM fallback: select matching option in #song-select (stripping leading emojis)
     let songFound = false;
-
     const selects = Array.from(document.querySelectorAll('select'));
     for (const sel of selects) {
         const matchIdx = Array.from(sel.options).findIndex(opt => doesOptionMatchSong(opt, targetNorm));
@@ -1120,60 +1464,20 @@ export function launchSongInGameMode(songTitle) {
             matchedOpt.selected = true;
             sel.selectedIndex = matchIdx;
             sel.value = matchedOpt.value;
-
-            sel.dispatchEvent(new Event('input', { bubbles: true }));
+            ensureGameModeEnabled();
             sel.dispatchEvent(new Event('change', { bubbles: true }));
-
-            matchedSelect = sel;
             songFound = true;
             break;
         }
     }
 
     if (!songFound) {
-        const candidates = Array.from(document.querySelectorAll('[data-song], [data-title], .song-item, .song-card, .song-btn'));
-        const card = candidates.find(el => {
-            const attrTitle = normalizeTitle(el.getAttribute('data-song') || el.getAttribute('data-title'));
-            const textTitle = normalizeTitle(el.textContent);
-            return attrTitle === targetNorm || textTitle === targetNorm;
-        });
-        if (card) {
-            card.click();
-            songFound = true;
+        console.warn('[DailyChallenge] Could not find song in DOM:', targetClean);
+        const statusEl = document.getElementById('status');
+        if (statusEl) {
+            statusEl.textContent = `🎯 Select "${targetClean}" from the song menu and press Play!`;
         }
     }
-
-    // 5. Switch to Game Mode
-    ensureGameModeEnabled();
-
-    // 6. Wait briefly for song selection/loading to settle, then start playback
-    let attempts = 0;
-    const maxAttempts = 12;
-
-    const tryStart = () => {
-        attempts += 1;
-
-        if (matchedSelect && getCurrentlySelectedSongText() !== normalizeTitle(matchedSelect.options[matchedSelect.selectedIndex]?.textContent || matchedSelect.value)) {
-            const reIdx = Array.from(matchedSelect.options).findIndex(opt => doesOptionMatchSong(opt, targetNorm));
-            if (reIdx >= 0) {
-                matchedSelect.selectedIndex = reIdx;
-                matchedSelect.value = matchedSelect.options[reIdx].value;
-                matchedSelect.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-        }
-
-        const started = findAndClickPlayButton(targetClean);
-        if (!started && attempts < maxAttempts) {
-            setTimeout(tryStart, 50);
-        } else if (!songFound) {
-            const statusEl = document.getElementById('status');
-            if (statusEl) {
-                statusEl.textContent = `🎮 Select "${targetClean}" from the song menu to play in Game Mode!`;
-            }
-        }
-    };
-
-    setTimeout(tryStart, 60);
 }
 
 // ============================================================================
@@ -1473,7 +1777,7 @@ function ensureDailyChallengeUI() {
                         <div class="dc-progress-track">
                             <div class="dc-progress-fill" id="dc-progress-fill" style="width: 0%;"></div>
                         </div>
-                        <div style="font-size: 0.75rem; color: #facc15; font-weight: 700; margin-top: 6px;">
+                        <div id="dc-reward-text" style="font-size: 0.75rem; color: #facc15; font-weight: 700; margin-top: 6px;">
                             🎁 Reward: Permanent Merit Badge, 5 Bonus Instruments & Leaderboard Log!
                         </div>
                     </div>
@@ -1503,7 +1807,7 @@ function ensureDailyChallengeUI() {
                 </div>
 
                 <div id="dc-trophy-view">
-                    <h3 id="dc-trophy-heading" style="margin: 0 0 4px 0; color: #facc15; font-size: 1.2rem; text-align: center;">🏅 Merit Badge Trophy Case</h3>
+                    <h3 id="dc-trophy-heading" style="margin: 0 0 4px 0; color: #facc15; font-size: 1.2rem; text-align: center;">🏅 Trophy Cabinet</h3>
                     <p style="margin: 0 0 10px 0; font-size: 0.78rem; color: #94a3b8;">Badges stay saved permanently on your device.</p>
                     <div id="dc-trophy-grid"></div>
                     <button type="button" id="btn-dc-trophy-back" class="btn-secondary" style="margin-top: 12px; padding: 8px;">
@@ -1528,7 +1832,10 @@ function ensureDailyChallengeUI() {
             const statusEl = document.getElementById('status');
             if (statusEl) {
                 const ch = getTodaysChallenge();
-                statusEl.textContent = `🎯 Daily Merit Award Challenge Accepted: ${ch.title} (${dailyState.progress}/${ch.target} ${ch.unit})`;
+                const prefix = isMeritAwardChallenge(ch)
+                    ? '🎯 Daily Merit Award Challenge Accepted'
+                    : '🏅 Trophy Challenge Accepted';
+                statusEl.textContent = `${prefix}: ${ch.title} (${dailyState.progress}/${ch.target} ${ch.unit})`;
             }
         });
 
@@ -1559,7 +1866,7 @@ function ensureDailyChallengeUI() {
         const pill = document.createElement('button');
         pill.type = 'button';
         pill.id = 'daily-challenge-hud-pill';
-        pill.title = "Click to view Today's Daily Merit Award Challenge";
+        pill.title = "Click to view Today's Challenge & Trophy Cabinet";
         pill.addEventListener('click', () => openDailyChallengeModal(true));
         footerRight.prepend(pill);
     }
@@ -1610,7 +1917,7 @@ function renderBadgeTray() {
         more.style.fontWeight = '800';
         more.style.color = '#facc15';
         more.textContent = `+${earned.length - maxVisible}`;
-        more.setAttribute('data-tooltip', `${earned.length} Total Merit Badges Earned!\nClick to view your Trophy Case.`);
+        more.setAttribute('data-tooltip', `${earned.length} Total Badges Earned!\nClick to view your Trophy Case.`);
         more.addEventListener('click', () => openTrophyCaseModal());
         tray.appendChild(more);
     }
@@ -1629,7 +1936,7 @@ export function openTrophyCaseModal() {
     const earnedMap = new Map(earned.map(b => [b.id, b]));
 
     document.getElementById('dc-trophy-heading').textContent =
-        `🏅 Merit Badge Trophy Case (${earned.length} / ${DAILY_CHALLENGES.length})`;
+        `🏅 Trophy Cabinet (${earned.length} / ${DAILY_CHALLENGES.length})`;
 
     const grid = document.getElementById('dc-trophy-grid');
     grid.innerHTML = '';
@@ -1658,7 +1965,7 @@ export function openTrophyCaseModal() {
     document.getElementById('daily-challenge-modal').classList.add('open');
 }
 
-// Helper to get all selectable song titles for any challenge (single boss or setlist)
+// Helper to get all selectable song titles for any challenge (single song or setlist)
 function getChallengeSongOptions(ch) {
     if (Array.isArray(ch.songs) && ch.songs.length > 0) return ch.songs;
     if (typeof ch.song === 'string' && ch.song.trim()) return [ch.song.trim()];
@@ -1672,9 +1979,11 @@ function populateChallengeList() {
 
     const earnedIds = new Set(getEarnedBadges().map(b => b.id));
 
-    const general = DAILY_CHALLENGES.filter(c => !c.songs && !c.song);
-    const singleSong = DAILY_CHALLENGES.filter(c => Boolean(c.song) && !c.songs);
-    const setlists = DAILY_CHALLENGES.filter(c => Array.isArray(c.songs));
+    const easySingle = DAILY_CHALLENGES.filter(c => c.id.startsWith('easy_song_'));
+    const easySetlists = DAILY_CHALLENGES.filter(c => c.id.startsWith('easy_setlist_'));
+    const generalMerit = DAILY_CHALLENGES.filter(c => isMeritAwardChallenge(c) && !Array.isArray(c.songs));
+    const setlistMerit = DAILY_CHALLENGES.filter(c => isMeritAwardChallenge(c) && Array.isArray(c.songs));
+    const bossSingle = DAILY_CHALLENGES.filter(c => isSingleSongChallenge(c) && !c.id.startsWith('easy_song_'));
 
     const addSection = (title, arr) => {
         if (arr.length === 0) return;
@@ -1733,9 +2042,11 @@ function populateChallengeList() {
         });
     };
 
-    addSection('General Skills & Exploration', general);
-    addSection('Single-Song Bosses', singleSong);
-    addSection('Themed Setlists', setlists);
+    addSection('Easy Single-Song Challenges (Trophy Cabinet)', easySingle);
+    addSection('Easy Setlist Challenges (Trophy Cabinet)', easySetlists);
+    addSection('General Skills & Exploration (Merit Awards)', generalMerit);
+    addSection('Themed Setlists (Merit Awards)', setlistMerit);
+    addSection('Single-Song Bosses (Trophy Cabinet)', bossSingle);
 }
 
 // Handles switching the active challenge to a user-selected one
@@ -1766,7 +2077,10 @@ function selectNewChallenge(challengeId, reopenModal = true) {
     const ch = getTodaysChallenge();
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = `🎯 New Merit Award Challenge Selected: ${ch.title}`;
+        const prefix = isMeritAwardChallenge(ch)
+            ? '🎯 New Merit Award Challenge Selected'
+            : '🏅 New Trophy Challenge Selected';
+        statusEl.textContent = `${prefix}: ${ch.title}`;
     }
 
     if (reopenModal) {
@@ -1795,12 +2109,23 @@ export function openDailyChallengeModal(isManualView = false) {
     document.getElementById('dc-trophy-view').style.display = 'none';
 
     const ch = getTodaysChallenge();
+    const isMerit = isMeritAwardChallenge(ch);
     const pct = Math.min(100, Math.round((dailyState.progress / Math.max(1, ch.target)) * 100));
 
     document.getElementById('dc-icon').textContent = dailyState.completed ? '🏆' : (ch.icon || '🎯');
+
     const tierPill = document.getElementById('dc-tier-pill');
     tierPill.className = `dc-tier-badge dc-tier-${ch.tier || 'Gold'}`;
-    tierPill.textContent = `${ch.tier ? ch.tier + ' • ' : ''}Daily Merit Award Challenge`;
+    tierPill.textContent = isMerit
+        ? `${ch.tier ? ch.tier + ' • ' : ''}Daily Merit Award Challenge`
+        : `${ch.tier ? ch.tier + ' • ' : ''}Trophy Challenge`;
+
+    const rewardEl = document.getElementById('dc-reward-text');
+    if (rewardEl) {
+        rewardEl.textContent = isMerit
+            ? '🎁 Reward: Permanent Merit Badge, 5 Bonus Instruments & Leaderboard Log!'
+            : '🏅 Reward: Permanent Trophy Cabinet Badge & 5 Bonus Instruments!';
+    }
 
     document.getElementById('dc-title').textContent = ch.title;
     document.getElementById('dc-desc').textContent = ch.description;
@@ -1878,16 +2203,17 @@ function updateDailyHudPill() {
 
     refreshDailyState();
     const ch = getTodaysChallenge();
+    const isMerit = isMeritAwardChallenge(ch);
 
     if (dailyState.completed) {
         pill.classList.add('dc-done');
-        pill.textContent = `✅ Merit Award Complete!`;
+        pill.textContent = isMerit ? `✅ Merit Award Complete!` : `✅ Trophy Earned!`;
     } else if (dailyState.accepted) {
         pill.classList.remove('dc-done');
         pill.textContent = `${ch.icon || '🎯'} ${ch.title}: ${dailyState.progress}/${ch.target}`;
     } else {
         pill.classList.remove('dc-done');
-        pill.textContent = `🎯 Daily Merit Award`;
+        pill.textContent = isMerit ? `🎯 Daily Merit Award` : `🏅 Trophy Challenge`;
     }
 }
 
@@ -1926,9 +2252,11 @@ function checkAndTriggerCompletion(challenge) {
         updateDailyHudPill();
         playChallengeFanfare();
 
+        const isMerit = isMeritAwardChallenge(challenge);
+
         if (bridge) {
             if (typeof bridge.unlockBonusSounds === 'function') {
-                bridge.unlockBonusSounds(`Daily Challenge "${challenge.title}" completed!`);
+                bridge.unlockBonusSounds(`Challenge "${challenge.title}" completed!`);
             }
             if (typeof bridge.spawnConfetti === 'function') {
                 const canvas = document.getElementById('waterfall-canvas');
@@ -1937,20 +2265,25 @@ function checkAndTriggerCompletion(challenge) {
                 bridge.spawnConfetti(cx, cy, '#facc15');
             }
             if (typeof bridge.showFlashingStatus === 'function') {
-                bridge.showFlashingStatus(`🏆 DAILY MERIT AWARD CHALLENGE COMPLETE: "${challenge.title}"! Badge Earned, Logged to Leaderboard & 5 Bonus Instruments Unlocked!`, 7000);
+                const msg = isMerit
+                    ? `🏆 DAILY MERIT AWARD CHALLENGE COMPLETE: "${challenge.title}"! Badge Earned, Logged to Leaderboard & 5 Bonus Instruments Unlocked!`
+                    : `🏅 TROPHY CHALLENGE COMPLETE: "${challenge.title}"! Added to Your Trophy Cabinet & 5 Bonus Instruments Unlocked!`;
+                bridge.showFlashingStatus(msg, 7000);
             }
 
-            // Log completion directly to the Leaderboard Google Sheet
-            const state = bridge.getState ? bridge.getState() : {};
-            const studentName = (typeof bridge.ensureStudentName === 'function' ? bridge.ensureStudentName() : state.sessionStudentName)
-                || localStorage.getItem('pianopad_name')
-                || 'Student';
-            const studentClass = state.currentStudentClass || localStorage.getItem('pianopad_class') || state.currentRoom || '';
-            const entryTitle = `🎯 Merit Award: ${challenge.title}`;
+            // Only log Merit Award completions to the Leaderboard Google Sheet
+            if (isMerit) {
+                const state = bridge.getState ? bridge.getState() : {};
+                const studentName = (typeof bridge.ensureStudentName === 'function' ? bridge.ensureStudentName() : state.sessionStudentName)
+                    || localStorage.getItem('pianopad_name')
+                    || 'Student';
+                const studentClass = state.currentStudentClass || localStorage.getItem('pianopad_class') || state.currentRoom || '';
+                const entryTitle = `🎯 Merit Award: ${challenge.title}`;
 
-            if (APPS_SCRIPT_URL && typeof bridge.sendJSONP === 'function') {
-                const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(studentName)}&title=${encodeURIComponent(entryTitle)}&score=100&tempo=${encodeURIComponent('100%')}&class=${encodeURIComponent(studentClass)}&studentClass=${encodeURIComponent(studentClass)}&t=${Date.now()}`;
-                bridge.sendJSONP(url);
+                if (APPS_SCRIPT_URL && typeof bridge.sendJSONP === 'function') {
+                    const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(studentName)}&title=${encodeURIComponent(entryTitle)}&score=100&tempo=${encodeURIComponent('100%')}&class=${encodeURIComponent(studentClass)}&studentClass=${encodeURIComponent(studentClass)}&t=${Date.now()}`;
+                    bridge.sendJSONP(url);
+                }
             }
 
             setTimeout(() => {
@@ -1991,7 +2324,7 @@ export function notifyDailySongComplete({
     const numSpeed = parseFloat(String(speed ?? 100).replace('%', '')) || 0;
     const numMiss = Number(miss ?? 0);
 
-    // Handle Multi-Song Setlist Challenges (including boss_deceptively_hard)
+    // Handle Multi-Song Setlist Challenges (including Easy Setlists & boss_deceptively_hard)
     if (Array.isArray(ch.songs) && ch.songs.length > 0) {
         const reqAcc = ch.minAccuracy ?? 85;
         const reqSpeed = ch.minSpeed ?? 100;
@@ -2012,6 +2345,14 @@ export function notifyDailySongComplete({
                 dailyState.meta.masteredSongs.push(matchedSong);
             }
             dailyState.progress = dailyState.meta.masteredSongs.length;
+        }
+    }
+    // Handle Easy Single-Song Trophy Challenges (driven by ch.song + minAccuracy + minSpeed)
+    else if (ch.id.startsWith('easy_song_') && ch.song) {
+        const reqAcc = ch.minAccuracy ?? 85;
+        const reqSpeed = ch.minSpeed ?? 100;
+        if (normTitle === normalizeTitle(ch.song) && numAccuracy >= reqAcc && numSpeed >= reqSpeed) {
+            dailyState.progress = 1;
         }
     } else {
         switch (ch.id) {
