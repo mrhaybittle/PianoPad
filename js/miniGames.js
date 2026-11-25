@@ -110,15 +110,16 @@ function injectNewArcadeButtons() {
         gridironBtn.innerHTML = `<span style="font-size:1.5rem;">🏈</span><strong>Gridiron Groove</strong><small>Retro Bowl note passing</small>`;
         btnContainer.appendChild(gridironBtn);
     }
+
     if (!document.getElementById('btn-arcade-erc-rugby')) {
-    const rugbyBtn = document.createElement('button');
-    rugbyBtn.type = 'button';
-    rugbyBtn.id = 'btn-arcade-erc-rugby';
-    rugbyBtn.className = 'arcade-card-btn';
-    rugbyBtn.onclick = () => launchErcRugby();
-    rugbyBtn.innerHTML = `<span style="font-size:1.5rem;">🏉</span><strong>ERC Rugby</strong><small>C–G lanes, tries &amp; kicks</small>`;
-    btnContainer.appendChild(rugbyBtn);
-}
+        const rugbyBtn = document.createElement('button');
+        rugbyBtn.type = 'button';
+        rugbyBtn.id = 'btn-arcade-erc-rugby';
+        rugbyBtn.className = 'arcade-card-btn';
+        rugbyBtn.onclick = () => launchErcRugby();
+        rugbyBtn.innerHTML = `<span style="font-size:1.5rem;">🏉</span><strong>ERC Rugby</strong><small>C–G lanes, tries &amp; kicks</small>`;
+        btnContainer.appendChild(rugbyBtn);
+    }
 
     if (!document.getElementById('btn-arcade-clef-hook')) {
         const clefHookBtn = document.createElement('button');
@@ -287,13 +288,13 @@ export function exitActiveMiniGame() {
 
     const gridironPopup = document.getElementById('gridiron-groove-popup');
     if (gridironPopup) gridironPopup.style.display = 'none';
-    
+
     const surfersPopup = document.getElementById('scale-surfers-popup');
     if (surfersPopup) surfersPopup.style.display = 'none';
-    
+
     const clefHookPopup = document.getElementById('clef-hook-popup');
     if (clefHookPopup) clefHookPopup.style.display = 'none';
-    
+
     const sharpPopup = document.getElementById('sharp-shooter-popup');
     if (sharpPopup) sharpPopup.style.display = 'none';
 
@@ -304,24 +305,24 @@ export function exitActiveMiniGame() {
     bridge.setIsPlaying(false);
     arcadeState.raceActive = false;
     stopBattlePolling();
-    
+
     const runnerTrack = document.getElementById('runner-track');
     if (runnerTrack) {
         runnerTrack.style.display = 'none';
         runnerTrack.innerHTML = '';
     }
-    
+
     const canvas = document.getElementById('waterfall-canvas');
     if (canvas) {
         canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
     }
-    
+
     document.querySelectorAll('.key').forEach(k => {
         k.classList.remove('active');
         k.style.backgroundColor = '';
         k.style.boxShadow = '';
     });
-    
+
     document.getElementById('status').textContent = 'Arcade Mini-Game stopped. Select another game or return Home.';
 }
 
@@ -375,10 +376,10 @@ export function handleMiniGameNoteInput(noteStr) {
         return true;
     }
     if (mode === 'ercRugby') {
-    handleErcRugbyInput(noteStr, gameBridgeHelper);
-    return true;
-}
-    
+        handleErcRugbyInput(noteStr, gameBridgeHelper);
+        return true;
+    }
+
     if (mode === 'drop') {
         const { noteTimeline, playbackStartTime, accumulatedPauseMs, gameStats, keyPosMap } = bridge.getState();
         const canvas = document.getElementById('waterfall-canvas');
@@ -1427,10 +1428,11 @@ Object.assign(window, {
     startRockBall: (b) => {
         document.getElementById('game-results-modal')?.classList.remove('open');
         startRockBall(b || gameBridgeHelper);
-    }
+    },
     launchErcRugby,
-startErcRugby: (b) => {
-    document.getElementById('game-results-modal')?.classList.remove('open');
-    startErcRugby(b || gameBridgeHelper);
-},
+    startErcRugby: (b) => {
+        document.getElementById('game-results-modal')?.classList.remove('open');
+        startErcRugby(b || gameBridgeHelper);
+    }
 });
+```[cite: 1]
