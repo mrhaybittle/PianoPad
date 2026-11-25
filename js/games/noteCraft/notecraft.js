@@ -49,6 +49,19 @@ let contextMenuHandler = null;
 let resizeHandler = null;
 let activeSessionToken = 0;
 
+function isPointInsideRect(px, py, rect) {
+    if (!rect) return false;
+    return px >= rect.x && px <= rect.x + rect.w && py >= rect.y && py <= rect.y + rect.h;
+}
+
+function quitNoteCraft() {
+    if (!ncState.active) return;
+    if (document.pointerLockElement) {
+        document.exitPointerLock?.();
+    }
+    stopNoteCraft(true);
+}
+
 function showNoteCraftSplash(container) {
     const existing = document.getElementById('notecraft-splash');
     if (existing) existing.remove();
@@ -110,7 +123,7 @@ function handlePlaceBlockAction() {
         return;
     }
     if (res.changes && res.changes.length > 0) {
-        res.changes.forEach(c => { if(c) syncBlockChange(c); });
+        res.changes.forEach(c => { if (c) syncBlockChange(c); });
         if (!isTeacherBuilder()) saveStudentWallet(ncState.localPlayer.name);
     }
 }
@@ -118,7 +131,7 @@ function handlePlaceBlockAction() {
 function handleBreakBlockAction() {
     const res = breakTargetBlock();
     if (res && res.changes) {
-        res.changes.forEach(c => { if(c) syncBlockChange(c); });
+        res.changes.forEach(c => { if (c) syncBlockChange(c); });
     }
 }
 
@@ -128,8 +141,8 @@ function handleUndoAction() {
         showNoteCraftToast('Nothing left to undo!', '#94a3b8', 1600);
         return;
     }
-    undone.changes.forEach(c => { if(c) syncBlockChange(c); });
-    
+    undone.changes.forEach(c => { if (c) syncBlockChange(c); });
+
     if (undone.refundedCost > 0 && !isTeacherBuilder()) {
         saveStudentWallet(ncState.localPlayer.name);
         showNoteCraftToast(`↩️ Undid prefab (+${undone.refundedCost} NoteCoins refunded)`, '#facc15', 1800);
@@ -143,6 +156,13 @@ function attachInputListeners(containerEl) {
 
     keyDownHandler = (e) => {
         if (!ncState.active) return;
+
+        // Quit NoteCraft via [X] or [Shift + Escape]
+        if (e.code === 'KeyX' || (e.code === 'Escape' && e.shiftKey)) {
+            e.preventDefault();
+            quitNoteCraft();
+            return;
+        }
 
         // Staff Override Shortcut (Ctrl/Cmd + Shift + U)
         if (e.code === 'KeyU' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
@@ -216,6 +236,22 @@ function attachInputListeners(containerEl) {
         if (!ncState.active) return;
         const canvas = document.getElementById('notecraft-canvas');
         if (!canvas || e.target !== canvas) return;
+
+        // Check if student clicked the HUD Quit button
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0 && ncState.quitButtonRect) {
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const hx = (e.clientX - rect.left) * scaleX;
+            const hy = (e.clientY - rect.top) * scaleY;
+            if (e.button === 0 && isPointInsideRect(hx, hy, ncState.quitButtonRect)) {
+                e.preventDefault();
+                e.stopPropagation();
+                quitNoteCraft();
+                return;
+            }
+        }
+
         if (document.pointerLockElement !== canvas) { canvas.requestPointerLock?.(); return; }
         // Left-Click builds, Right-Click breaks
         if (e.button === 0) handlePlaceBlockAction();
@@ -272,32 +308,32 @@ export function handleNoteCraftInput(event) {
 
     if (event.type === 'note' || event.type === 'noteOn') {
         const noteName = String(event.noteName || event.note || '').toUpperCase();
-        
-        const exactMap = { 
-            'C4':0, 'C#4':8, 'DB4':8,
-            'D4':1, 'D#4':9, 'EB4':9,
-            'E4':2, 
-            'F4':3, 'F#4':10, 'GB4':10,
-            'G4':4, 'G#4':11, 'AB4':11,
-            'A4':5, 'A#4':12, 'BB4':12,
-            'B4':6, 'C5':7 
+
+        const exactMap = {
+            'C4': 0, 'C#4': 8, 'DB4': 8,
+            'D4': 1, 'D#4': 9, 'EB4': 9,
+            'E4': 2,
+            'F4': 3, 'F#4': 10, 'GB4': 10,
+            'G4': 4, 'G#4': 11, 'AB4': 11,
+            'A4': 5, 'A#4': 12, 'BB4': 12,
+            'B4': 6, 'C5': 7
         };
-        
+
         let slotIdx = exactMap[noteName];
-        
+
         if (slotIdx === undefined) {
             const letter = noteName.replace(/[^A-G#]/g, '');
             const octave = noteName.match(/\d+/) ? parseInt(noteName.match(/\d+/)[0]) : 4;
-            
-            const baseMap = { 
-                'C':0, 'C#':8, 'D':1, 'D#':9, 'E':2, 
-                'F':3, 'F#':10, 'G':4, 'G#':11, 'A':5, 'A#':12, 'B':6 
+
+            const baseMap = {
+                'C': 0, 'C#': 8, 'D': 1, 'D#': 9, 'E': 2,
+                'F': 3, 'F#': 10, 'G': 4, 'G#': 11, 'A': 5, 'A#': 12, 'B': 6
             };
-            
+
             if (letter === 'C' && octave > 4) slotIdx = 7;
             else slotIdx = baseMap[letter];
         }
-        
+
         if (slotIdx !== undefined && ncState.localPlayer.inventory[slotIdx] !== undefined) {
             ncState.localPlayer.selectedSlot = slotIdx;
             return;
@@ -361,9 +397,10 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
     ncState.worldId = worldId;
     ncState.world.undoStack = [];
     ncState.flatMode = false;
-    
+    ncState.quitButtonRect = null;
+
     ncState.isTeacher = Boolean(
-        (bridge && (bridge.isTeacher || bridge.isHost || bridge.mode === 'host')) || 
+        (bridge && (bridge.isTeacher || bridge.isHost || bridge.mode === 'host')) ||
         localStorage.getItem('pianopad_is_teacher') === 'true' ||
         localStorage.getItem('isHost') === 'true'
     );
@@ -410,9 +447,9 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
         lp.isFlying = true;
         lp.flightTimer = 3600;
         updateInventory();
-        showNoteCraftToast('👑 Teacher Creative Mode: Left-Click Build • [T] Flat/Block • [K] Clear Ghosts', '#4ade80', 4200);
+        showNoteCraftToast('👑 Teacher Creative Mode: Left-Click Build • [T] Flat/Block • [X] Quit', '#4ade80', 4200);
     } else {
-        showNoteCraftToast('Left-Click to Build • Right-Click to Break • [T] Toggle Flat/Block', '#38bdf8', 3600);
+        showNoteCraftToast('Left-Click Build • Right-Click Break • [T] Mode • [X] or QUIT to Exit', '#38bdf8', 3600);
     }
 
     ncState.lastFrameTime = performance.now();
@@ -426,7 +463,7 @@ export function stopNoteCraft(notifyBridge = true) {
     if (document.pointerLockElement) document.exitPointerLock?.();
     detachInputListeners();
     disconnectNoteCraftNetwork();
-    disposeAvatarSprites();
+    disposeAvatarSprites(getThreeScene());
     disposeHud();
     disposeRender3D();
 
