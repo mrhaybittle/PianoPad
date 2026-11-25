@@ -1435,4 +1435,4 @@ Object.assign(window, {
         startErcRugby(b || gameBridgeHelper);
     }
 });
-```[cite: 1]
+
