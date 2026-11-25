@@ -391,6 +391,4 @@ export function disposeHud() {
     hudCanvas = null;
     hudCtx = null;
 }
-```[cite: 1, 2, 3, 4, 5, 10]
 
-Reply with **next** when you're ready for `sprites.js`.
