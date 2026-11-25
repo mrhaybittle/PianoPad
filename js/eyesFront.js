@@ -1,11 +1,18 @@
 // js/eyesFront.js
 import { initAudio, audioCtx } from './audio.js';
 
+const CLASSROOMS = ['G1', 'G2', 'G3'];
+
 let activeRoomCode = null;
 let isHostUser = false;
 let currentlyFrozen = false;
 let unsubscribeFreeze = null;
 let disconnectHook = null;
+
+function normalizeClassroom(code) {
+    const upper = String(code || '').trim().toUpperCase();
+    return CLASSROOMS.includes(upper) ? upper : 'G1';
+}
 
 function playAttentionChime() {
     try {
@@ -167,13 +174,10 @@ function applyFreezeState(frozen, message = 'Eyes on Teacher') {
 }
 
 export async function openEyesFrontPrompt(roomCodeOverride = null) {
-    const targetRoom = String(roomCodeOverride || activeRoomCode || 'Outside').trim();
-    if (!activeRoomCode || activeRoomCode !== targetRoom || !isHostUser) {
-        await initEyesFront(targetRoom, { isHost: true });
-    }
-
     // Prevent duplicate modals if ")" is pressed while already open
     if (document.getElementById('eyes-front-prompt-modal')) return;
+
+    let selectedClassroom = normalizeClassroom(roomCodeOverride || activeRoomCode);
 
     const modal = document.createElement('div');
     modal.id = 'eyes-front-prompt-modal';
@@ -199,10 +203,38 @@ export async function openEyesFrontPrompt(roomCodeOverride = null) {
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
             color: #ffffff;
         ">
-            <div style="font-size: 18px; font-weight: 900; color: #facc15; margin-bottom: 6px;">
-                👀 Broadcast to Room: ${targetRoom}
+            <div id="eyes-front-modal-title" style="font-size: 18px; font-weight: 900; color: #facc15; margin-bottom: 10px;">
+                👀 Broadcast to Classroom: ${selectedClassroom}
             </div>
-            <div style="font-size: 13px; color: #94a3b8; margin-bottom: 14px;">
+            <div style="font-size: 12px; font-weight: 700; color: #cbd5e1; margin-bottom: 6px;">
+                Select Classroom:
+            </div>
+            <div id="eyes-front-classroom-group" role="group" aria-label="Target Classroom" style="
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+                margin-bottom: 14px;
+            ">
+                ${CLASSROOMS.map((room) => `
+                    <button
+                        type="button"
+                        class="eyes-front-room-btn"
+                        data-room="${room}"
+                        style="
+                            padding: 9px 12px;
+                            border-radius: 8px;
+                            border: 2px solid #334155;
+                            background: #1e293b;
+                            color: #e2e8f0;
+                            font-weight: 800;
+                            font-size: 14px;
+                            cursor: pointer;
+                            transition: all 0.12s ease;
+                        "
+                    >${room}</button>
+                `).join('')}
+            </div>
+            <div style="font-size: 13px; color: #94a3b8; margin-bottom: 10px;">
                 Press Enter to send default, or start typing to replace it:
             </div>
             <input id="eyes-front-msg-input" type="text" value="Eyes on Teacher" style="
@@ -243,9 +275,34 @@ export async function openEyesFrontPrompt(roomCodeOverride = null) {
 
     document.body.appendChild(modal);
 
+    const titleEl = document.getElementById('eyes-front-modal-title');
+    const roomButtons = Array.from(modal.querySelectorAll('.eyes-front-room-btn'));
     const input = document.getElementById('eyes-front-msg-input');
     const cancelBtn = document.getElementById('eyes-front-cancel-btn');
     const sendBtn = document.getElementById('eyes-front-send-btn');
+
+    const syncClassroomUI = () => {
+        if (titleEl) {
+            titleEl.textContent = `👀 Broadcast to Classroom: ${selectedClassroom}`;
+        }
+        roomButtons.forEach((btn) => {
+            const isSelected = btn.dataset.room === selectedClassroom;
+            btn.style.background = isSelected ? '#facc15' : '#1e293b';
+            btn.style.color = isSelected ? '#0f172a' : '#e2e8f0';
+            btn.style.borderColor = isSelected ? '#facc15' : '#334155';
+            btn.setAttribute('aria-pressed', String(isSelected));
+        });
+    };
+
+    roomButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            selectedClassroom = normalizeClassroom(btn.dataset.room);
+            syncClassroomUI();
+            input.focus();
+        });
+    });
+
+    syncClassroomUI();
 
     let isDefaultText = true;
 
@@ -255,7 +312,13 @@ export async function openEyesFrontPrompt(roomCodeOverride = null) {
 
     const submitMessage = async () => {
         const finalMsg = input.value.trim() || 'Eyes on Teacher';
+        const targetRoom = selectedClassroom;
         closeModal();
+
+        if (!activeRoomCode || activeRoomCode !== targetRoom || !isHostUser) {
+            await initEyesFront(targetRoom, { isHost: true });
+        }
+
         await setEyesFront(true, finalMsg);
     };
 
