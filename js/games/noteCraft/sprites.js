@@ -106,6 +106,3 @@ export function disposeAvatarSprites(scene) {
     }
     avatarMeshes.clear();
 }
-
-
-Reply with **next** when you're ready for the final file (`notecraft.js`).
