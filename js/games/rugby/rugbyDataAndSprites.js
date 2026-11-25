@@ -367,4 +367,4 @@ export function getPixelSprite(team, noteLetter, pose, hasBall, facing = 'back')
   spriteCache.set(key, off);
   return off;
 }
-```[cite: 15, 16]
+
