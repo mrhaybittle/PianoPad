@@ -43,14 +43,6 @@ const NOTE_TO_INDEX = { C: 0, D: 1, E: 2, F: 3, G: 4 };
 // ============================================================================
 // PIXEL-ART SPRITE ENGINE — Replicating Positioning (5)..(9) with Note Jerseys
 // ============================================================================
-// Palette Legend:
-// '.' transparent | 'K' black outline (#09090b) | 'H' dark hair (#1c1917)
-// 'S' skin (#e8a87c) | 's' shaded skin (#c98257)
-// '1' team primary | '2' team secondary hoop/trim
-// 'N' dark shorts (#111827) | 'n' shorts highlight (#334155) | 'W' white trim (#f8fafc)
-// 'B' boot grey (#475569) | 'b' boot highlight (#94a3b8)
-// 'G' ball green stripe (#15803d) | 'w' ball white (#f1f5f9)
-
 const PIXEL_FONT_5X7 = {
   C: [
     '1111',
@@ -99,9 +91,7 @@ const PIXEL_FONT_5X7 = {
   ]
 };
 
-// Upper body (rows 0..22, width 26) — shared back-view head & hooped jersey
 function buildUpperBodyRows(pose, hasBall) {
-  // Head & neck (rows 0..9)
   const head = [
     '.........KKKKKKKK.........',
     '........KHHHHHHHHK........',
@@ -115,8 +105,6 @@ function buildUpperBodyRows(pose, hasBall) {
     '.......KK22222222KK.......'
   ];
 
-  // Pose-specific arms + optional tucked rugby ball (white w/ green stripe)
-  // Ball on right side for idle, runLeft, straightL; ball on left side for runRight, straightR
   const ballRight = pose === 'idle' || pose === 'runLeft' || pose === 'straightL';
 
   let torso;
@@ -151,7 +139,6 @@ function buildUpperBodyRows(pose, hasBall) {
       ];
     }
   } else {
-    // Ball tucked under left arm (mirror of Positioning 6 & 9)
     if (hasBall) {
       torso = [
         '.....KK111111111111KK.....',
@@ -186,10 +173,8 @@ function buildUpperBodyRows(pose, hasBall) {
   return [...head, ...torso];
 }
 
-// Lower body (shorts, thighs, hooped socks, boots & cleats) for all 5 exact poses!
 function buildLowerBodyRows(pose) {
   if (pose === 'idle') {
-    // Positioning (7): Standing / paused — symmetrical legs, outward boots with 4 cleats each
     return [
       '....KWNNNNNNNNNNNNNNNK....',
       '....KWNNNNNNNNNNNNNNNK....',
@@ -210,8 +195,6 @@ function buildLowerBodyRows(pose) {
   }
 
   if (pose === 'straightL') {
-    // Positioning (8): Running straight — BOTH legs straight vertical!
-    // Left leg FULL length with 2 studs; Right leg SHORTER (bent/lifted) with 2 studs!
     return [
       '....KWNNNNNNNNNNNNNNNK....',
       '....KWNNNNNNNNNNNNNNNK....',
@@ -232,8 +215,6 @@ function buildLowerBodyRows(pose) {
   }
 
   if (pose === 'straightR') {
-    // Positioning (9): Running straight — BOTH legs straight vertical!
-    // Left leg SHORTER (bent/lifted) with 2 studs; Right leg FULL length with 2 studs!
     return [
       '....KWNNNNNNNNNNNNNNNK....',
       '....KWNNNNNNNNNNNNNNNK....',
@@ -254,7 +235,6 @@ function buildLowerBodyRows(pose) {
   }
 
   if (pose === 'runLeft') {
-    // Positioning (5): Running laterally LEFT — left boot planted left with cleats, right leg trailing angled right
     return [
       '....KWNNNNNNNNNNNNNNNK....',
       '....KWNNNNNNNNNNNNNNNK....',
@@ -274,7 +254,6 @@ function buildLowerBodyRows(pose) {
     ];
   }
 
-  // pose === 'runRight' — Positioning (6): Running laterally RIGHT — mirror of runLeft!
   return [
     '....KWNNNNNNNNNNNNNNNK....',
     '....KWNNNNNNNNNNNNNNNK....',
@@ -294,7 +273,6 @@ function buildLowerBodyRows(pose) {
   ];
 }
 
-// Cache pre-rendered crisp pixel-art sprites per (teamId, noteLetter, pose, hasBall)
 const spriteCache = new Map();
 
 function getPixelSprite(team, noteLetter, pose, hasBall) {
@@ -302,17 +280,14 @@ function getPixelSprite(team, noteLetter, pose, hasBall) {
   if (spriteCache.has(key)) return spriteCache.get(key);
 
   const rows = [...buildUpperBodyRows(pose, hasBall), ...buildLowerBodyRows(pose)];
-  const h = rows.length; // 36 rows
-  const w = rows[0].length; // 26 cols
-
-  // Convert string rows into mutable 2D char grid so we can stamp the pixel Note + black outline on the jersey back!
+  const h = rows.length;
+  const w = rows[0].length;
   const grid = rows.map((r) => r.split(''));
 
   const glyph = PIXEL_FONT_5X7[noteLetter] || PIXEL_FONT_5X7.C;
   const startRow = 12;
-  const startCol = 11; // Centered on the 26-wide back of jersey
+  const startCol = 11;
 
-  // First pass: 1px black outline around note glyph
   for (let r = 0; r < glyph.length; r++) {
     for (let c = 0; c < glyph[r].length; c++) {
       if (glyph[r][c] === '1') {
@@ -328,7 +303,6 @@ function getPixelSprite(team, noteLetter, pose, hasBall) {
       }
     }
   }
-  // Second pass: bright white note pixels
   for (let r = 0; r < glyph.length; r++) {
     for (let c = 0; c < glyph[r].length; c++) {
       if (glyph[r][c] === '1') {
@@ -736,7 +710,7 @@ export function startErcRugby(bridge, autoStart = false) {
           </div>
         </div>
 
-        <!-- Assignable MIDI Controls: Move Left, Move Right, Run Surge, Bomb Kick, Grubber Kick -->
+        <!-- Assignable MIDI Controls -->
         <div class="erc-panel" style="margin-top:8px;">
           <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:6px;">
             <span class="font-sports" style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#fde047;">
@@ -748,35 +722,30 @@ export function startErcRugby(bridge, autoStart = false) {
           </div>
 
           <div class="erc-bind-grid-5">
-            <!-- MOVE LEFT -->
             <div style="background:#0f172a; border:1px solid rgba(167,139,250,0.35); border-radius:9px; padding:6px; text-align:center;">
               <div class="font-sports" style="font-size:11px; font-weight:800; color:#c4b5fd;">⬅ MOVE LEFT</div>
               <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Offense &amp; Defense</div>
               <button type="button" data-bind-action="moveLeft" class="erc-key-btn sports-btn" style="background:rgba(139,92,246,0.22); border:1px solid rgba(167,139,250,0.6); color:#ede9fe;">🎹 F#1 / A</button>
             </div>
 
-            <!-- MOVE RIGHT -->
             <div style="background:#0f172a; border:1px solid rgba(167,139,250,0.35); border-radius:9px; padding:6px; text-align:center;">
               <div class="font-sports" style="font-size:11px; font-weight:800; color:#c4b5fd;">MOVE RIGHT ➡</div>
               <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Offense &amp; Defense</div>
               <button type="button" data-bind-action="moveRight" class="erc-key-btn sports-btn" style="background:rgba(139,92,246,0.22); border:1px solid rgba(167,139,250,0.6); color:#ede9fe;">🎹 G#1 / D</button>
             </div>
 
-            <!-- RUN SURGE -->
             <div style="background:#0f172a; border:1px solid rgba(52,211,153,0.35); border-radius:9px; padding:6px; text-align:center;">
               <div class="font-sports" style="font-size:11px; font-weight:800; color:#6ee7b7;">⚡ RUN / TACKLE</div>
               <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Sprint / Press Up</div>
               <button type="button" data-bind-action="surge" class="erc-key-btn sports-btn" style="background:rgba(16,185,129,0.2); border:1px solid rgba(52,211,153,0.6); color:#d1fae5;">🎹 A1 / W</button>
             </div>
 
-            <!-- BOMB KICK -->
             <div style="background:#0f172a; border:1px solid rgba(251,191,36,0.35); border-radius:9px; padding:6px; text-align:center;">
               <div class="font-sports" style="font-size:11px; font-weight:800; color:#fcd34d;">🏉 BOMB KICK</div>
               <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">High spiral</div>
               <button type="button" data-bind-action="bomb" class="erc-key-btn sports-btn" style="background:rgba(245,158,11,0.2); border:1px solid rgba(251,191,36,0.6); color:#fef3c7;">🎹 B1 / B</button>
             </div>
 
-            <!-- GRUBBER KICK -->
             <div style="background:#0f172a; border:1px solid rgba(56,189,248,0.35); border-radius:9px; padding:6px; text-align:center;">
               <div class="font-sports" style="font-size:11px; font-weight:800; color:#7dd3fc;">💨 GRUBBER</div>
               <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Low skid kick</div>
@@ -830,10 +799,8 @@ export function startErcRugby(bridge, autoStart = false) {
   };
 
   const state = {
-    phase: 'menu', // 'menu' | 'playing' | 'gameover'
-    // possession: 'home' (user attacks up-field) | 'away' (AI attacks down-field, user defends & switches with C-G!)
+    phase: 'menu',
     possession: 'home',
-    // 'waitingForPlay' | 'running' | 'retreating' | 'turnoverPause'
     playState: 'waitingForPlay',
     tackleCount: 0,
     maxTackles: 6,
@@ -855,7 +822,6 @@ export function startErcRugby(bridge, autoStart = false) {
     actionBinds: Object.assign({}, defaultBinds, savedBinds || {}),
     listeningAction: null,
 
-    // Held movement input (supports both held MIDI notes + momentary tap nudge + keyboard hold)
     moveInput: {
       leftHeld: false,
       rightHeld: false,
@@ -863,14 +829,14 @@ export function startErcRugby(bridge, autoStart = false) {
       rightTapTimer: 0
     },
 
-    // Home team (5 players, C..G) & Away team (5 players, C..G)
     homePlayers: [],
     awayPlayers: [],
-    carrierIndex: 2,          // Index 0..4 of ball-carrier on the attacking side
-    selectedDefenderIdx: 2,   // Index 0..4 of user-controlled defender when Away has the ball (yellow ring!)
+    carrierIndex: 2,
+    selectedDefenderIdx: 2,
     surgeTimer: 0,
     aiPlayTimer: 0,
-    aiPassCooldown: 1.2,
+    aiPassCooldown: 0.65,
+    aiLastPassFrom: -1,
 
     passState: {
       active: false,
@@ -1143,7 +1109,6 @@ export function startErcRugby(bridge, autoStart = false) {
     containerEl.querySelector('#erc-leg-grubber').textContent = state.actionBinds.grubber.label;
   }
 
-  // Dynamic echelon alignment behind whichever player has the ball (~10% overrun chance in offense)
   function rollSupportAlignment(playerObj, idx, carrierIdx, allowOverrun = true) {
     if (idx === carrierIdx) {
       playerObj.overrun = false;
@@ -1160,7 +1125,6 @@ export function startErcRugby(bridge, autoStart = false) {
     playerObj.nextRollTimer = 1.6 + Math.random() * 1.8;
   }
 
-  // AttackDirection: -1 when Home attacks UP toward y=0.12; +1 when Away attacks DOWN toward y=0.88
   function getDesiredSupportPos(playerObj, idx, carrier, attackDir) {
     if (idx === state.carrierIndex) {
       return { x: playerObj.x, y: playerObj.y };
@@ -1171,10 +1135,8 @@ export function startErcRugby(bridge, autoStart = false) {
 
     let desiredY;
     if (playerObj.overrun) {
-      // Overrun means ahead of the ball-carrier in the direction of attack!
       desiredY = carrier.y + attackDir * playerObj.overrunLead;
     } else {
-      // Behind the ball-carrier in staggered backline depth
       desiredY = carrier.y - attackDir * Math.max(0.025, echelonDepth);
     }
     desiredY = Math.min(0.93, Math.max(0.13, desiredY));
@@ -1213,11 +1175,11 @@ export function startErcRugby(bridge, autoStart = false) {
     state.kickBall.active = false;
     state.kickBall.z = 0;
     state.playState = 'waitingForPlay';
-    state.aiPlayTimer = 0.75;
-    state.aiPassCooldown = 1.25;
+    state.aiPlayTimer = 0.70;
+    state.aiPassCooldown = 0.45;
+    state.aiLastPassFrom = -1;
 
     const attackDir = possession === 'home' ? -1 : 1;
-    // 10m onside line in front of the mark in the direction of attack
     const onsideY = Math.min(0.86, Math.max(0.14, startY + attackDir * 0.145));
     state.tacklePause.markY = startY;
     state.tacklePause.onsideY = onsideY;
@@ -1231,11 +1193,9 @@ export function startErcRugby(bridge, autoStart = false) {
         rollSupportAlignment(hp, i, carrierIdx, false);
         state.homePlayers.push(hp);
 
-        // ALL 5 defenders form a clean flat line 10m back onside!
         const ap = makePlayerEntity(i, LANES[i], onsideY);
         state.awayPlayers.push(ap);
       } else {
-        // Away has the ball attacking down-field; Home defends 10m back onside!
         const ap = makePlayerEntity(i, LANES[i], startY);
         rollSupportAlignment(ap, i, carrierIdx, false);
         state.awayPlayers.push(ap);
@@ -1269,6 +1229,72 @@ export function startErcRugby(bridge, autoStart = false) {
     });
   }
 
+  // Smart AI Passing Engine: evaluates open lanes & defender pressure so the Away team passes realistically!
+  function tryTriggerAiPass(forceDummyHalfPass = false) {
+    if (state.possession !== 'away' || state.passState.active || state.kickBall.active) return false;
+
+    const fromIdx = state.carrierIndex;
+    const passer = state.awayPlayers[fromIdx];
+
+    // Candidate receivers: adjacent backline runners (1 lane away) or a cut-out pass (2 lanes away)
+    const candidates = [0, 1, 2, 3, 4].filter((idx) => {
+      if (idx === fromIdx) return false;
+      const laneDist = Math.abs(idx - fromIdx);
+      if (laneDist > 2) return false;
+      // Avoid immediately throwing back to the exact player who just passed unless forced
+      if (!forceDummyHalfPass && idx === state.aiLastPassFrom && Math.random() < 0.75) return false;
+
+      // Ensure AI passes backwards/flat (Away attacks +Y downward, so onside receiver has y <= passer.y + 0.004)
+      const rec = state.awayPlayers[idx];
+      return rec.y <= passer.y + 0.004;
+    });
+
+    if (candidates.length === 0) return false;
+
+    // Score each candidate receiver by how much open space they have away from Home defenders!
+    let bestIdx = candidates[0];
+    let bestScore = -Infinity;
+
+    for (const idx of candidates) {
+      const rec = state.awayPlayers[idx];
+      let minDefDist = Infinity;
+      for (const def of state.homePlayers) {
+        const d = Math.hypot(def.x - rec.x, (def.y - rec.y) * 1.15);
+        if (d < minDefDist) minDefDist = d;
+      }
+      const laneDistPenalty = Math.abs(idx - fromIdx) === 2 ? 0.025 : 0;
+      const score = minDefDist - laneDistPenalty + (Math.random() - 0.5) * 0.04;
+      if (score > bestScore) {
+        bestScore = score;
+        bestIdx = idx;
+      }
+    }
+
+    const receiver = state.awayPlayers[bestIdx];
+    const laneDist = Math.abs(bestIdx - fromIdx);
+
+    playPassSound();
+    state.aiLastPassFrom = fromIdx;
+    state.passState.active = true;
+    state.passState.fromIdx = fromIdx;
+    state.passState.toIdx = bestIdx;
+    state.passState.startX = passer.x;
+    state.passState.startY = passer.y;
+    state.passState.x = passer.x;
+    state.passState.y = passer.y;
+    state.passState.progress = 0;
+    state.passState.duration = 0.15 + laneDist * 0.055;
+    state.passState.isForwardPass = false;
+
+    addCallout(
+      `${LANE_NOTES[fromIdx]} → ${LANE_NOTES[bestIdx]}`,
+      (passer.x + receiver.x) * 0.5,
+      Math.max(0.16, Math.min(passer.y, receiver.y) - 0.025),
+      '#fda4af'
+    );
+    return true;
+  }
+
   function triggerHandover(reasonText, nextPossession, nextStartY, color = '#fb7185') {
     playRefWhistle();
     state.passState.active = false;
@@ -1284,7 +1310,6 @@ export function startErcRugby(bridge, autoStart = false) {
     syncHudAndLegend();
   }
 
-  // Tackle handler: ALL 5 defending players MUST retreat 10m back onside and form a flat line!
   function beginTackleAndRetreat() {
     const attackers = state.possession === 'home' ? state.homePlayers : state.awayPlayers;
     const carrier = attackers[state.carrierIndex];
@@ -1300,7 +1325,6 @@ export function startErcRugby(bridge, autoStart = false) {
 
     const attackDir = state.possession === 'home' ? -1 : 1;
 
-    // 6th Tackle Handover — possession switches between Offense and Defense!
     if (state.tackleCount >= state.maxTackles) {
       const nextPos = state.possession === 'home' ? 'away' : 'home';
       const clampedY = Math.min(0.78, Math.max(0.22, carrier.y));
@@ -1316,10 +1340,8 @@ export function startErcRugby(bridge, autoStart = false) {
     state.playState = 'retreating';
     state.tacklePause.timer = 0;
     state.tacklePause.markY = carrier.y;
-    // 10m onside line in front of the tackle mark
     state.tacklePause.onsideY = Math.min(0.87, Math.max(0.13, carrier.y + attackDir * 0.14));
 
-    // Re-roll support echelon behind the ball-carrier (~10% overrun chance when Home attacks)
     attackers.forEach((att, idx) => {
       rollSupportAlignment(att, idx, state.carrierIndex, state.possession === 'home');
     });
@@ -1342,9 +1364,6 @@ export function startErcRugby(bridge, autoStart = false) {
     return true;
   }
 
-  // Pressing C, D, E, F, G:
-  // - In OFFENSE ('home'): passes the ball to that lane's runner (or scoots if already holding it)
-  // - In DEFENSE ('away'): switches your yellow selection circle to that defender (`C..G`)!
   function handleNoteCDEFG(targetIdx) {
     if (state.phase !== 'playing') return;
 
@@ -1357,7 +1376,6 @@ export function startErcRugby(bridge, autoStart = false) {
       return;
     }
 
-    // Offense ('home'): Pass or scoot!
     if (state.playState === 'retreating' || state.playState === 'turnoverPause') {
       const c = state.homePlayers[state.carrierIndex];
       addCallout('WAIT FOR DEFENSE TO GET ONSIDE!', c.x, c.y - 0.04, '#fcd34d');
@@ -1379,7 +1397,6 @@ export function startErcRugby(bridge, autoStart = false) {
     releasePlayTheBall();
     playPassSound();
 
-    // Forward pass check: smaller Y = closer to opponent's try-line!
     const thrownForward = receiver.y < passer.y - 0.006;
     const laneDist = Math.abs(targetIdx - fromIdx);
 
@@ -1404,7 +1421,6 @@ export function startErcRugby(bridge, autoStart = false) {
       c.vy = -0.23;
       addCallout('RUN SURGE!', c.x, c.y - 0.04, '#6ee7b7');
     } else {
-      // In defense: burst your selected yellow-ring defender up toward the ball-carrier (only when play is live!)
       if (state.playState !== 'running') {
         const d = state.homePlayers[state.selectedDefenderIdx];
         addCallout('STAY ONSIDE UNTIL PLAYED!', d.x, d.y + 0.05, '#fcd34d');
@@ -1458,7 +1474,6 @@ export function startErcRugby(bridge, autoStart = false) {
     }
   }
 
-  // Incoming MIDI / PianoPad note down
   function onPianoNoteDown(noteStr) {
     const clean = (noteStr || '').trim().toLowerCase();
     if (!clean) return;
@@ -1467,7 +1482,6 @@ export function startErcRugby(bridge, autoStart = false) {
     if (freq) playTone(freq, 0.22, 0.8);
     if (bridgeRef) bridgeRef.highlightKey(noteStr, 200, '#fde047');
 
-    // 1. Setup Menu MIDI listener for Move Left, Move Right, Run, Bomb, Grubber!
     if (state.listeningAction) {
       const action = state.listeningAction;
       const existingKey = state.actionBinds[action].key || '';
@@ -1489,7 +1503,6 @@ export function startErcRugby(bridge, autoStart = false) {
 
     if (state.phase !== 'playing') return;
 
-    // 2. Check assignable MIDI action keys FIRST (Move Left, Move Right, Run, Bomb, Grubber)
     if (state.actionBinds.moveLeft.midi === clean) {
       if (state.possession === 'home') releasePlayTheBall();
       state.moveInput.leftHeld = true;
@@ -1517,7 +1530,6 @@ export function startErcRugby(bridge, autoStart = false) {
       return;
     }
 
-    // 3. Natural C, D, E, F, G notes -> Pass in Offense OR Switch Defender in Defense!
     const m = clean.toUpperCase().match(/^([A-G])(#?)/);
     if (!m || m[2] === '#') return;
     const letter = m[1];
@@ -1645,7 +1657,6 @@ export function startErcRugby(bridge, autoStart = false) {
     const attackDir = state.possession === 'home' ? -1 : 1;
     const carrier = attackers[state.carrierIndex];
 
-    // Steer direction from Left / Right MIDI or keyboard controls (-1..+1)
     let userSteerX = 0;
     if (state.moveInput.leftHeld || state.moveInput.leftTapTimer > 0) userSteerX -= 1;
     if (state.moveInput.rightHeld || state.moveInput.rightTapTimer > 0) userSteerX += 1;
@@ -1666,7 +1677,6 @@ export function startErcRugby(bridge, autoStart = false) {
         att.y += (desired.y - att.y) * Math.min(1, dt * 5.5);
       }
 
-      // ALL 5 defending players jog back to `targetOnsideY` and form a straight horizontal line!
       let allOnside = true;
       for (let i = 0; i < 5; i++) {
         const d = defenders[i];
@@ -1688,6 +1698,8 @@ export function startErcRugby(bridge, autoStart = false) {
         }
         state.playState = 'waitingForPlay';
         state.aiPlayTimer = 0.65;
+        state.aiPassCooldown = 0.35;
+        state.aiLastPassFrom = -1;
         addCallout(
           state.possession === 'home' ? 'ONSIDE! PASS (C–G) OR RUN' : 'DEFENSE SET! SWITCH WITH C–G',
           carrier.x,
@@ -1699,7 +1711,7 @@ export function startErcRugby(bridge, autoStart = false) {
     }
 
     // =========================================================================
-    // PHASE B: SET & WAITING AT PLAY-THE-BALL (Idle Sprite Pose!)
+    // PHASE B: SET & WAITING AT PLAY-THE-BALL
     // =========================================================================
     if (state.playState === 'waitingForPlay') {
       for (let i = 0; i < 5; i++) {
@@ -1710,17 +1722,22 @@ export function startErcRugby(bridge, autoStart = false) {
         att.y += (desired.y - att.y) * Math.min(1, dt * 4.5);
       }
 
-      // In Defense, let user pre-position their selected defender laterally along the 10m line
       if (state.possession === 'away' && userSteerX !== 0) {
         const selDef = state.homePlayers[state.selectedDefenderIdx];
         selDef.x = Math.min(0.92, Math.max(0.08, selDef.x + userSteerX * 0.22 * dt));
       }
 
-      // If AI has possession ('away'), AI plays the ball after a short pause
       if (state.possession === 'away') {
         state.aiPlayTimer -= dt;
         if (state.aiPlayTimer <= 0) {
           releasePlayTheBall();
+          // 78% of the time, the opponent immediately passes out of dummy-half to a first receiver!
+          if (Math.random() < 0.78) {
+            tryTriggerAiPass(true);
+            state.aiPassCooldown = 0.65 + Math.random() * 0.45;
+          } else {
+            state.aiPassCooldown = 0.45 + Math.random() * 0.40;
+          }
         }
       }
 
@@ -1731,7 +1748,6 @@ export function startErcRugby(bridge, autoStart = false) {
     // =========================================================================
     // PHASE C: LIVE RUGBY LEAGUE PLAY (Offense OR Defense)
     // =========================================================================
-    // 1. Update airborne pass
     if (state.passState.active) {
       state.passState.progress += dt / state.passState.duration;
       const receiver = attackers[state.passState.toIdx];
@@ -1765,9 +1781,8 @@ export function startErcRugby(bridge, autoStart = false) {
 
     const activeCarrier = attackers[state.carrierIndex];
 
-    // 2. Move Attacking Ball-Carrier + Support Backline
+    // 2. Move Attacking Ball-Carrier + Active AI Backline Passing
     if (state.possession === 'home') {
-      // User controls ball-carrier with Left/Right MIDI keys + Run Surge
       const baseUpSpeed = state.passState.active ? -0.07 : state.surgeTimer > 0 ? -0.21 : -0.115;
       activeCarrier.vy += (baseUpSpeed - activeCarrier.vy) * Math.min(1, dt * 8);
       activeCarrier.y += activeCarrier.vy * dt;
@@ -1776,34 +1791,33 @@ export function startErcRugby(bridge, autoStart = false) {
         activeCarrier.x = Math.min(0.91, Math.max(0.09, activeCarrier.x + userSteerX * 0.24 * dt));
       }
     } else {
-      // AI ('away') attacks down-field (+Y), passing occasionally across its backline!
+      // Opponent ('away') attacks down-field (+Y) and actively passes across its backline!
       state.aiPassCooldown -= dt;
-      if (!state.passState.active && state.aiPassCooldown <= 0 && Math.random() < 0.55) {
-        state.aiPassCooldown = 1.4 + Math.random() * 1.2;
-        const neighborOpts = [state.carrierIndex - 1, state.carrierIndex + 1].filter((idx) => idx >= 0 && idx <= 4);
-        const nextIdx = neighborOpts[Math.floor(Math.random() * neighborOpts.length)];
-        if (nextIdx !== undefined) {
-          playPassSound();
-          state.passState.active = true;
-          state.passState.fromIdx = state.carrierIndex;
-          state.passState.toIdx = nextIdx;
-          state.passState.startX = activeCarrier.x;
-          state.passState.startY = activeCarrier.y;
-          state.passState.x = activeCarrier.x;
-          state.passState.y = activeCarrier.y;
-          state.passState.progress = 0;
-          state.passState.duration = 0.20;
-          state.passState.isForwardPass = false;
+
+      if (!state.passState.active) {
+        // Measure closest Home defender to see if the AI ball-carrier is about to get tackled
+        let nearestDefDist = Infinity;
+        for (const def of state.homePlayers) {
+          const d = Math.hypot(def.x - activeCarrier.x, def.y - activeCarrier.y);
+          if (d < nearestDefDist) nearestDefDist = d;
         }
-      } else if (state.aiPassCooldown <= 0) {
-        state.aiPassCooldown = 1.1;
+
+        const underTacklePressure = nearestDefDist < 0.115 && state.aiPassCooldown <= 0.22;
+        const scheduledShiftReady = state.aiPassCooldown <= 0;
+
+        if ((underTacklePressure && Math.random() < 0.85) || (scheduledShiftReady && Math.random() < 0.82)) {
+          const passed = tryTriggerAiPass(false);
+          state.aiPassCooldown = passed ? (0.60 + Math.random() * 0.45) : 0.35;
+        } else if (scheduledShiftReady) {
+          state.aiPassCooldown = 0.45 + Math.random() * 0.35;
+        }
       }
 
-      const aiDownSpeed = state.passState.active ? 0.06 : 0.11;
+      const aiDownSpeed = state.passState.active ? 0.055 : 0.112;
       activeCarrier.y += aiDownSpeed * dt;
-      // Subtle AI weave away from closest defender
+
       const selDef = state.homePlayers[state.selectedDefenderIdx];
-      const weave = Math.abs(selDef.x - activeCarrier.x) < 0.12 ? Math.sign(activeCarrier.x - selDef.x || 1) * 0.06 : 0;
+      const weave = Math.abs(selDef.x - activeCarrier.x) < 0.13 ? Math.sign(activeCarrier.x - selDef.x || 1) * 0.065 : 0;
       activeCarrier.x = Math.min(0.90, Math.max(0.10, activeCarrier.x + weave * dt));
     }
 
@@ -1825,12 +1839,12 @@ export function startErcRugby(bridge, autoStart = false) {
         }
       } else {
         const desired = getDesiredSupportPos(att, i, activeCarrier, attackDir);
-        att.x += (desired.x - att.x) * Math.min(1, dt * 3.4);
-        att.y += (desired.y - att.y) * Math.min(1, dt * 3.8);
+        att.x += (desired.x - att.x) * Math.min(1, dt * 3.8);
+        att.y += (desired.y - att.y) * Math.min(1, dt * 4.4);
       }
     }
 
-    // 3. Check Try Scored!
+    // 3. Check Try Scored
     if (!state.passState.active && !state.kickBall.active) {
       if (state.possession === 'home' && activeCarrier.y <= 0.12) {
         state.homeScore += 4;
@@ -1919,7 +1933,6 @@ export function startErcRugby(bridge, autoStart = false) {
       const d = defenders[i];
 
       if (state.possession === 'away' && i === state.selectedDefenderIdx) {
-        // User-controlled defender (with yellow ring underneath!)
         const upRush = state.surgeTimer > 0 ? -0.22 : -0.095;
         d.y = Math.max(0.12, d.y + upRush * dt);
         if (userSteerX !== 0) {
@@ -1950,14 +1963,8 @@ export function startErcRugby(bridge, autoStart = false) {
     recordPlayerVelocities(dt);
   }
 
-  // Selects which of your 5 pixel-art poses to render based on player velocity & game state:
-  // - Stationary / Paused / Waiting -> 'idle' (Positioning 7)
-  // - Moving Left -> 'runLeft' (Positioning 5)
-  // - Moving Right -> 'runRight' (Positioning 6)
-  // - Moving Straight -> alternates 'straightL' (Positioning 8) & 'straightR' (Positioning 9)!
   function selectSpritePose(playerObj) {
     if (state.playState === 'waitingForPlay' || state.playState === 'turnoverPause') {
-      // Allow lateral shuffle pose if user is actively sliding their defender before the play
       if (Math.abs(playerObj.animSpeedX) > 0.04) {
         return playerObj.animSpeedX < 0 ? 'runLeft' : 'runRight';
       }
@@ -1998,18 +2005,15 @@ export function startErcRugby(bridge, autoStart = false) {
     const drawH = Math.round(sprite.height * pixelScale);
     const footY = y + drawH * 0.42;
 
-    // Yellow circle underneath the active ball-carrier (offense) OR selected defender (defense)!
     if (showYellowRing) {
       drawYellowSelectionCircle(ctx, x, footY, pixelScale * 0.8);
     } else {
-      // Subtle ground shadow under other players
       ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
       ctx.beginPath();
       ctx.ellipse(x, footY, 11 * pixelScale * 0.75, 4.5 * pixelScale * 0.75, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Dashed amber ring if an offensive teammate has overrun ahead of the ball-carrier (Forward Pass risk!)
     if (isOverrun && !hasBall) {
       ctx.save();
       ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
@@ -2060,7 +2064,6 @@ export function startErcRugby(bridge, autoStart = false) {
     const fieldW = w - padX * 2;
     const fieldH = h - padY * 2;
 
-    // 10 horizontal turf stripes
     const stripes = 10;
     const stripeH = fieldH / stripes;
     for (let i = 0; i < stripes; i++) {
@@ -2068,7 +2071,6 @@ export function startErcRugby(bridge, autoStart = false) {
       ctx.fillRect(padX, padY + i * stripeH, fieldW, stripeH + 1);
     }
 
-    // Pitch boundary & try/yardage lines
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.lineWidth = 2.5;
     ctx.strokeRect(padX, padY, fieldW, fieldH);
@@ -2084,7 +2086,6 @@ export function startErcRugby(bridge, autoStart = false) {
       ctx.stroke();
     }
 
-    // Visual 10m Onside Line while ALL 5 defenders retreat & hold
     if (state.playState === 'retreating' || state.playState === 'waitingForPlay') {
       const onsideLineY = padY + fieldH * state.tacklePause.onsideY;
       ctx.save();
@@ -2098,7 +2099,6 @@ export function startErcRugby(bridge, autoStart = false) {
       ctx.restore();
     }
 
-    // Subtle pass-plane guide through the ball-carrier in offense
     if (state.possession === 'home' && state.homePlayers[state.carrierIndex] && !state.kickBall.active) {
       const c = state.homePlayers[state.carrierIndex];
       const planeY = padY + fieldH * c.y;
@@ -2113,7 +2113,6 @@ export function startErcRugby(bridge, autoStart = false) {
       ctx.restore();
     }
 
-    // Vertical C, D, E, F, G lane guides
     ctx.font = '700 11px "Chakra Petch", sans-serif';
     const activeRingIdx = state.possession === 'home' ? state.carrierIndex : state.selectedDefenderIdx;
     LANES.forEach((fx, idx) => {
@@ -2133,7 +2132,6 @@ export function startErcRugby(bridge, autoStart = false) {
     const pixelScale = Math.max(1.15, Math.min(1.65, h / 285));
     const ballInFlight = state.passState.active || state.kickBall.active;
 
-    // Sort all 10 players by Y so closer players naturally overlap behind/in-front
     const renderList = [];
     for (let i = 0; i < state.awayPlayers.length; i++) {
       renderList.push({
@@ -2186,8 +2184,6 @@ export function startErcRugby(bridge, autoStart = false) {
       }
     }
 
-    // Draw airborne white-and-green-striped Rugby League ball ONLY during a pass or kick
-    // (when held, the pixel-art sprite tucks the ball directly under the player's arm!)
     if (state.passState.active || state.kickBall.active) {
       let bx = padX + fieldW * 0.5;
       let by = padY + fieldH * 0.5;
@@ -2211,7 +2207,6 @@ export function startErcRugby(bridge, autoStart = false) {
       ctx.fill();
       ctx.stroke();
 
-      // Green stripe across the ball matching Positioning (5)..(9)
       ctx.strokeStyle = '#15803d';
       ctx.lineWidth = 2.2;
       ctx.beginPath();
@@ -2221,7 +2216,6 @@ export function startErcRugby(bridge, autoStart = false) {
       ctx.restore();
     }
 
-    // Floating callouts
     for (const c of state.callouts) {
       ctx.save();
       ctx.globalAlpha = Math.max(0, c.life);
@@ -2240,7 +2234,6 @@ export function startErcRugby(bridge, autoStart = false) {
     ctx.restore();
   }
 
-  // Wire UI Events
   teamSelectEl.addEventListener('change', (e) => {
     const picked = TEAMS.find((t) => t.id === e.target.value) || TEAMS[0];
     state.homeTeam = picked;
@@ -2291,7 +2284,7 @@ export function startErcRugby(bridge, autoStart = false) {
         return;
       }
       if (PIANOPAD_QWERTY.has(keyLower)) {
-        return; // Let PianoPad route QWERTY piano keys into `onPianoNoteDown` as MIDI note strings!
+        return;
       }
       const keyLabel = e.key === 'ArrowLeft' ? '←' : e.key === 'ArrowRight' ? '→' : keyUpper;
       if ((keyUpper.length === 1 && /\S/.test(keyUpper)) || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
