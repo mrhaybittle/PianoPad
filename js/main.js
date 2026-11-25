@@ -2742,7 +2742,39 @@ function initApp() {
         sendJSONP,
         unlockBonusSounds,
         spawnConfetti,
-        showFlashingStatus
+        showFlashingStatus,
+        startSongInGameMode: (songTitle) => {
+            const target = String(songTitle || '').trim().toLowerCase();
+            const found = songList.find(s => (s.title || '').trim().toLowerCase() === target);
+            if (!found) {
+                document.getElementById('status').textContent = `Could not find "${songTitle}" in the song list.`;
+                return;
+            }
+
+            const parsed = parsePianoPad(found.code);
+            if (parsed.length === 0) return;
+
+            currentSongTitle = found.title;
+            currentSong = autoTransposeSong(parsed);
+            if (songSelect) songSelect.value = found.code;
+
+            // Ensure Step Mode is OFF and Game Mode is ON
+            if (isStepMode) {
+                isStepMode = false;
+                btnStep.textContent = 'Step Mode: OFF';
+                btnStep.classList.remove('btn-step-active');
+                btnStep.classList.add('btn-step');
+            }
+            if (!isGameMode) {
+                isGameMode = true;
+                btnGame.textContent = 'Game Mode: ON';
+                btnGame.classList.remove('btn-secondary');
+                btnGame.classList.add('btn-game-active');
+            }
+
+            updateRosterSong();
+            playSong();
+        }
     });
 
     initMiniGamesBridge({
