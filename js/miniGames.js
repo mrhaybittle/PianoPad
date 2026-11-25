@@ -1428,4 +1428,9 @@ Object.assign(window, {
         document.getElementById('game-results-modal')?.classList.remove('open');
         startRockBall(b || gameBridgeHelper);
     }
+    launchErcRugby,
+startErcRugby: (b) => {
+    document.getElementById('game-results-modal')?.classList.remove('open');
+    startErcRugby(b || gameBridgeHelper);
+},
 });
