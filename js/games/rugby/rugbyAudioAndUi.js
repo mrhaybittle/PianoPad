@@ -302,7 +302,7 @@ export function buildRugbyMarkup() {
               ERC Sports Rugby — Team &amp; MIDI Setup
             </div>
             <div style="font-size:11px; color:#cbd5e1;">
-              <b>C, D, E, F, G</b> pass in Offense &amp; switch defenders in Defense. Play any MIDI key on the 3D conversion slider when the marker hits center!
+              <b>C, D, E, F, G</b> pass in Offense &amp; switch defenders in Defense. Aim with <b>Left / Right</b> &amp; play any MIDI key on the 3D conversion slider!
             </div>
           </div>
           <div class="erc-logo-badge">
