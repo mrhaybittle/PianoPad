@@ -5,7 +5,7 @@ import campusPreset from './campusPreset.js';
 
 export function isTeacherBuilder() {
     return Boolean(
-        ncState.isTeacher || 
+        ncState.isTeacher ||
         localStorage.getItem('pianopad_is_teacher') === 'true' ||
         localStorage.getItem('isHost') === 'true'
     );
@@ -40,7 +40,8 @@ export function updateInventory() {
     const allBlocks = [
         BLOCKS.DIRT, BLOCKS.GRASS, BLOCKS.STONE, BLOCKS.LEAVES,
         BLOCKS.WOOD, BLOCKS.BRICK, BLOCKS.GLASS, BLOCKS.NOTE_BLOCK,
-        BLOCKS.PATH, BLOCKS.WATER, BLOCKS.TREE, BLOCKS.ROCK, BLOCKS.DRAGON
+        BLOCKS.PATH, BLOCKS.WATER, BLOCKS.TREE, BLOCKS.ROCK, BLOCKS.DRAGON,
+        BLOCKS.TNT
     ];
 
     ncState.localPlayer.inventory = allBlocks.map(blockId => {
@@ -56,3 +57,6 @@ export function updateInventory() {
         }
     }
 }
+
+
+Reply with **next** when you're ready for `engine.js`.
