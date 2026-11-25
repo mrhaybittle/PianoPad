@@ -4,8 +4,11 @@ import { ncState } from './state.js';
 import { isTeacherBuilder } from './economy.js';
 import campusPreset from './campusPreset.js';
 
-export const WORLD_HALF_X = 128; 
-export const WORLD_HALF_Z = 96;  
+export const WORLD_HALF_X = 128;
+export const WORLD_HALF_Z = 96;
+
+const EXPLOSION_RADIUS = 3;
+const EXPLOSION_FUSE_MS = 5000;
 
 export const CAMPUS_ZONES = [
     { name: 'Centenary Innovation Centre', minX: 4,   maxX: 44,  minZ: 12,  maxZ: 40,  color: '#facc15' },
@@ -142,11 +145,73 @@ export function breakTargetBlock() {
     return { changes: [change], cost: 0 };
 }
 
-// Resolve logical block ID to renderable material ID (Path -> Dirt, Water -> Glass)
+// Resolve logical block ID to renderable material ID (Path -> Dirt, Water -> Glass, TNT -> Brick/Stone)
 function resolveTerrainBlockId(blockId) {
     if (blockId === BLOCKS.PATH) return BLOCKS.DIRT;
     if (blockId === BLOCKS.WATER) return BLOCKS.GLASS;
+    if (blockId === BLOCKS.TNT) return BLOCKS.BRICK;
     return blockId;
+}
+
+function scheduleTntFuse(x, y, z) {
+    if (!Array.isArray(ncState.activeExplosions)) ncState.activeExplosions = [];
+    const now = performance.now();
+    ncState.activeExplosions.push({
+        id: `tnt_${x}_${y}_${z}_${now}_${Math.random().toString(36).slice(2, 6)}`,
+        x,
+        y,
+        z,
+        placedAt: now,
+        explodeAt: now + EXPLOSION_FUSE_MS
+    });
+}
+
+function detonateExplosion(exp) {
+    const changes = [];
+    const radiusSq = EXPLOSION_RADIUS * EXPLOSION_RADIUS;
+
+    // Clear TNT block itself if above floor
+    if (exp.y > 1 && getBlockAt(exp.x, exp.y, exp.z) !== BLOCKS.AIR) {
+        const selfClear = setBlockAt(exp.x, exp.y, exp.z, BLOCKS.AIR);
+        if (selfClear) changes.push(selfClear);
+    }
+
+    for (let dx = -EXPLOSION_RADIUS; dx <= EXPLOSION_RADIUS; dx++) {
+        for (let dy = -EXPLOSION_RADIUS; dy <= EXPLOSION_RADIUS; dy++) {
+            for (let dz = -EXPLOSION_RADIUS; dz <= EXPLOSION_RADIUS; dz++) {
+                if (dx * dx + dy * dy + dz * dz > radiusSq) continue;
+
+                const bx = exp.x + dx;
+                const by = exp.y + dy;
+                const bz = exp.z + dz;
+
+                if (by <= 1) continue; // Keep campus ground intact
+                if (getBlockAt(bx, by, bz) === BLOCKS.AIR) continue;
+
+                const cleared = setBlockAt(bx, by, bz, BLOCKS.AIR);
+                if (cleared) changes.push(cleared);
+            }
+        }
+    }
+
+    return changes;
+}
+
+export function updateExplosions(now, onBlockChanged) {
+    if (!Array.isArray(ncState.activeExplosions) || ncState.activeExplosions.length === 0) return;
+
+    const remaining = [];
+    for (const exp of ncState.activeExplosions) {
+        if (now >= exp.explodeAt) {
+            const changes = detonateExplosion(exp);
+            if (typeof onBlockChanged === 'function') {
+                changes.forEach(c => { if (c) onBlockChanged(c); });
+            }
+        } else {
+            remaining.push(exp);
+        }
+    }
+    ncState.activeExplosions = remaining;
 }
 
 export function placeSelectedBlock() {
@@ -164,7 +229,7 @@ export function placeSelectedBlock() {
     let px = target.x + target.normal.x;
     let py = target.y + target.normal.y;
     let pz = target.z + target.normal.z;
-    
+
     let generatedChanges = [];
     let recordedUndo = [];
 
@@ -183,55 +248,56 @@ export function placeSelectedBlock() {
     // 1. VOXEL PREFABS (Tree, Rock, Dragon)
     if (isPrefab) {
         if (py < 2) py = 2;
-        
+
         if (blockId === BLOCKS.TREE) {
-            for(let i=0; i<4; i++) addBlock(px, py+i, pz, BLOCKS.WOOD);
-            for(let x=-2; x<=2; x++) {
-                for(let z=-2; z<=2; z++) {
-                    if (Math.abs(x)===2 && Math.abs(z)===2) continue;
-                    addBlock(px+x, py+3, pz+z, BLOCKS.LEAVES);
-                    addBlock(px+x, py+4, pz+z, BLOCKS.LEAVES);
+            for (let i = 0; i < 4; i++) addBlock(px, py + i, pz, BLOCKS.WOOD);
+            for (let x = -2; x <= 2; x++) {
+                for (let z = -2; z <= 2; z++) {
+                    if (Math.abs(x) === 2 && Math.abs(z) === 2) continue;
+                    addBlock(px + x, py + 3, pz + z, BLOCKS.LEAVES);
+                    addBlock(px + x, py + 4, pz + z, BLOCKS.LEAVES);
                 }
             }
-            for(let x=-1; x<=1; x++)
-                for(let z=-1; z<=1; z++)
-                    if (Math.abs(x)!==1 || Math.abs(z)!==1) addBlock(px+x, py+5, pz+z, BLOCKS.LEAVES);
-            addBlock(px, py+6, pz, BLOCKS.LEAVES);
-        } 
+            for (let x = -1; x <= 1; x++)
+                for (let z = -1; z <= 1; z++)
+                    if (Math.abs(x) !== 1 || Math.abs(z) !== 1) addBlock(px + x, py + 5, pz + z, BLOCKS.LEAVES);
+            addBlock(px, py + 6, pz, BLOCKS.LEAVES);
+        }
         else if (blockId === BLOCKS.ROCK) {
             addBlock(px, py, pz, BLOCKS.STONE);
-            addBlock(px+1, py, pz, BLOCKS.STONE);
-            addBlock(px, py, pz+1, BLOCKS.STONE);
-            addBlock(px, py+1, pz, BLOCKS.STONE);
-        } 
+            addBlock(px + 1, py, pz, BLOCKS.STONE);
+            addBlock(px, py, pz + 1, BLOCKS.STONE);
+            addBlock(px, py + 1, pz, BLOCKS.STONE);
+        }
         else if (blockId === BLOCKS.DRAGON) {
             addBlock(px, py, pz, BLOCKS.WOOD);
-            addBlock(px+1, py, pz, BLOCKS.WOOD);
-            addBlock(px-1, py, pz, BLOCKS.WOOD);
-            addBlock(px-2, py, pz, BLOCKS.DIRT);
-            addBlock(px-3, py, pz, BLOCKS.DIRT);
-            addBlock(px+2, py, pz, BLOCKS.DIRT);
-            addBlock(px+2, py+1, pz, BLOCKS.LEAVES);
-            addBlock(px+1, py, pz+1, BLOCKS.DIRT); 
-            addBlock(px+1, py, pz-1, BLOCKS.DIRT);
-            addBlock(px-1, py, pz+1, BLOCKS.DIRT);
-            addBlock(px-1, py, pz-1, BLOCKS.DIRT);
+            addBlock(px + 1, py, pz, BLOCKS.WOOD);
+            addBlock(px - 1, py, pz, BLOCKS.WOOD);
+            addBlock(px - 2, py, pz, BLOCKS.DIRT);
+            addBlock(px - 3, py, pz, BLOCKS.DIRT);
+            addBlock(px + 2, py, pz, BLOCKS.DIRT);
+            addBlock(px + 2, py + 1, pz, BLOCKS.LEAVES);
+            addBlock(px + 1, py, pz + 1, BLOCKS.DIRT);
+            addBlock(px + 1, py, pz - 1, BLOCKS.DIRT);
+            addBlock(px - 1, py, pz + 1, BLOCKS.DIRT);
+            addBlock(px - 1, py, pz - 1, BLOCKS.DIRT);
         }
-    } 
+    }
     // 2. FLAT FLOOR MODE (Applies to EVERY terrain type when ncState.flatMode is ON)
     else if (ncState.flatMode) {
         const renderId = resolveTerrainBlockId(blockId);
-        // Replace the targeted block in-place (flush with floor if y===1, or replaces existing surface block)
         addBlock(target.x, target.y, target.z, renderId);
+        if (blockId === BLOCKS.TNT) scheduleTntFuse(target.x, target.y, target.z);
     }
     // 3. STANDARD 3D BLOCK MODE (Applies to EVERY terrain type when ncState.flatMode is OFF)
     else {
         const playerMinY = Math.floor(lp.y);
         const playerMaxY = Math.floor(lp.y + PLAYER_EYE_HEIGHT);
         if (px === Math.floor(lp.x) && pz === Math.floor(lp.z) && py >= playerMinY && py <= playerMaxY) return null;
-        
+
         const renderId = resolveTerrainBlockId(blockId);
         addBlock(px, py, pz, renderId);
+        if (blockId === BLOCKS.TNT) scheduleTntFuse(px, py, pz);
     }
 
     if (generatedChanges.length > 0) {
@@ -327,3 +393,6 @@ export function updatePlayerPhysics(dt) {
 
     ncState.targetBlock = raycastVoxel(8.0);
 }
+
+
+Reply with **next** when you're ready for `render3d.js`.
