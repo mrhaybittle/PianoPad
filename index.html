@@ -299,6 +299,52 @@
             justify-content: space-between;
             align-items: center;
         }
+/* Completed Challenges Panel inside Student Stats Dashboard */
+.stats-challenges-panel {
+    margin-bottom: 22px;
+}
+.dash-challenges-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.dash-challenge-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(30, 27, 75, 0.85);
+    border: 1px solid rgba(250, 204, 21, 0.4);
+    border-radius: 10px;
+    padding: 7px 12px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #f8fafc;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.dash-challenge-chip:hover {
+    transform: translateY(-2px);
+    border-color: #facc15;
+}
+.dash-challenge-chip.tier-Gold {
+    border-color: rgba(250, 204, 21, 0.75);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(30, 27, 75, 0.9));
+}
+.dash-challenge-chip.tier-Silver {
+    border-color: rgba(203, 213, 225, 0.65);
+}
+.dash-challenge-chip.tier-Bronze {
+    border-color: rgba(245, 158, 11, 0.55);
+}
+.dash-challenge-icon {
+    font-size: 1.2rem;
+    line-height: 1;
+}
+.dash-challenges-empty {
+    font-size: 0.84rem;
+    color: #94a3b8;
+    font-style: italic;
+}
+        
         .stats-footer {
             display: flex;
             justify-content: space-between;
@@ -465,6 +511,13 @@
                         <ul class="highlight-list" id="dash-highlights-list"></ul>
                     </div>
                 </div>
+            </div>
+            <div class="stats-panel stats-challenges-panel">
+                <div class="stats-panel-title">
+                    <span>🏅 Completed Challenges</span>
+                    <span id="dash-challenges-count" style="font-size: 0.78rem; color: #facc15; font-weight: 700;">0 Earned</span>
+                </div>
+                <div class="dash-challenges-grid" id="dash-completed-challenges"></div>
             </div>
 
             <div class="stats-footer">
@@ -669,6 +722,9 @@
                     const songRaw = cleanSongTitle(row.song || row.title || row.songName || row.game || "");
                     if (!playerRaw || !songRaw) return;
 
+                    const isChallengeLog = /^(?:merit award|trophy):/i.test(songRaw);
+                    if (isChallengeLog) return;
+
                     const pKey = cleanName(playerRaw);
                     const sKey = songRaw.toLowerCase();
                     const acc = parseFloat(row.accuracy ?? row.acc ?? row.percentage ?? 0) || 0;
@@ -859,7 +915,13 @@
             } else {
                 goalTip.innerHTML = `🌟 <strong>Crushing it, ${firstName}!</strong> You're ahead of the school average — try a <strong>Hard</strong> or <strong>Expert</strong> song next!`;
             }
+} else {
+                goalTip.innerHTML = `🌟 <strong>Crushing it, ${firstName}!</strong> You're ahead of the school average — try a <strong>Hard</strong> or <strong>Expert</strong> song next!`;
+            }
 
+            // <-- PASTE THE STEP 4 JAVASCRIPT BLOCK RIGHT HERE -->
+
+            const dashModal = document.getElementById("student-stats-modal");
             const dashModal = document.getElementById("student-stats-modal");
             dashModal.style.display = "flex";
             dashModal.classList.add("open");
