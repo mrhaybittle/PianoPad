@@ -1,7 +1,7 @@
 import { initAudio, audioCtx, playTone, playErrorClackSound } from './audio.js';
 import { autoTransposeSong, parsePianoPad, getNoteFrequency } from './musicTheory.js';
 import { arcadeState } from './miniGames.js';
-import { startNoteCraft } from './games/noteCraft/notecraft.js';
+import { startNoteCraft, stopNoteCraft } from './games/noteCraft/notecraft.js';
 import { startLaserTag } from './games/laserTag.js';
 
 export const ER_HOUSES = {
@@ -38,6 +38,7 @@ export const koState = {
 let knockoutUnsubscribe = null;
 let knockoutLastRoundStarted = 0;
 let knockoutLastRoundFinished = 0;
+let knockoutNotecraftLaunchedRound = 0;
 let knockoutFinaleShown = false;
 let knockoutDataCache = null;
 let knockoutLiveSyncTimer = null;
@@ -107,6 +108,24 @@ const KO_HYPE_EMOTES = [
     "😏 RIZZ", "🤫🧏‍♂️ MEWING", "🍳 YOU'RE COOKED", "🧢 NO CAP", "🗿 SIGMA",
     "🌽 ONLY IN OHIO", "🚽 SKIBIDI"
 ];
+
+function cleanupNoteCraftFromKnockout() {
+    if (arcadeState && arcadeState.activeMiniGame === 'noteCraft') {
+        arcadeState.activeMiniGame = null;
+    }
+    stopNoteCraft(false);
+}
+
+function launchNoteCraftForKnockout() {
+    document.getElementById('knockout-modal')?.classList.remove('open');
+    document.getElementById('game-results-modal')?.classList.remove('open');
+    document.getElementById('arcade-hub')?.classList.remove('open');
+    const tugHud = document.getElementById('tug-of-war-hud');
+    if (tugHud) tugHud.style.display = 'none';
+
+    arcadeState.activeMiniGame = 'noteCraft';
+    startNoteCraft(bridge, 'school_campus_main');
+}
 
 export function initKnockoutBridge(deps) {
     bridge = deps;
@@ -1138,6 +1157,7 @@ export async function openTeacherKnockoutSetup() {
     bridge.setIsSongBattle(false);
     knockoutLastRoundStarted = 0;
     knockoutLastRoundFinished = 0;
+    knockoutNotecraftLaunchedRound = 0;
     knockoutFinaleShown = false;
     koState.knockoutRoomCode = '' + Math.floor(100 + Math.random() * 900);
 
@@ -1199,6 +1219,7 @@ export async function joinClassKnockoutStudent(studentName, roomCode) {
     koState.knockoutRoomCode = roomCode;
     knockoutLastRoundStarted = 0;
     knockoutLastRoundFinished = 0;
+    knockoutNotecraftLaunchedRound = 0;
     knockoutFinaleShown = false;
     bridge.setStudentName(studentName);
 
@@ -1656,14 +1677,7 @@ function handleKnockoutHostUpdate(data) {
                     </div>
                 `;
                 document.getElementById('btn-host-enter-notecraft').addEventListener('click', () => {
-                    document.getElementById('knockout-modal')?.classList.remove('open');
-                    document.getElementById('game-results-modal')?.classList.remove('open');
-                    document.getElementById('arcade-hub')?.classList.remove('open');
-                    const tugHud = document.getElementById('tug-of-war-hud');
-                    if (tugHud) tugHud.style.display = 'none';
-
-                    arcadeState.activeMiniGame = 'noteCraft';
-                    startNoteCraft(bridge, 'school_campus_main');
+                    launchNoteCraftForKnockout();
                 });
             }
             return;
@@ -2100,6 +2114,24 @@ function handleKnockoutStudentUpdate(data) {
         updateTugOfWarHUD(myLiveAcc, oppLiveAcc);
     }
 
+    if (data.status === 'playing' && mode === 'notecraft' && knockoutNotecraftLaunchedRound !== data.round) {
+        knockoutNotecraftLaunchedRound = data.round;
+        knockoutLastRoundStarted = data.round;
+        launchNoteCraftForKnockout();
+        return;
+    }
+
+    if (data.status === 'playing' && mode === 'notecraft' && arcadeState.activeMiniGame !== 'noteCraft') {
+        document.getElementById('ko-student-status').textContent = `🏫 NoteCraft Round ${data.round} in progress — You exited the 3D world.`;
+        document.getElementById('ko-student-pairing-box').innerHTML = `
+            <button type="button" class="btn-success" style="padding:8px 16px; font-weight:800;" onclick="reenterKnockoutNoteCraft()">
+                🚶 Re-Enter NoteCraft Campus
+            </button>
+        `;
+        document.getElementById('knockout-modal')?.classList.add('open');
+        return;
+    }
+
     if (data.status === 'playing' && knockoutLastRoundStarted !== data.round) {
         knockoutLastRoundStarted = data.round;
 
@@ -2125,14 +2157,7 @@ function handleKnockoutStudentUpdate(data) {
         }
 
         if (mode === 'notecraft') {
-            document.getElementById('knockout-modal').classList.remove('open');
-            document.getElementById('game-results-modal').classList.remove('open');
-            document.getElementById('arcade-hub').classList.remove('open');
-            const tugHud = document.getElementById('tug-of-war-hud');
-            if (tugHud) tugHud.style.display = 'none';
-
-            arcadeState.activeMiniGame = 'noteCraft';
-            startNoteCraft(bridge, 'school_campus_main');
+            launchNoteCraftForKnockout();
             return;
         }
 
@@ -2269,6 +2294,7 @@ function handleKnockoutStudentUpdate(data) {
         if (tugHud) tugHud.style.display = 'none';
         
         hideNameThatTuneModal();
+        cleanupNoteCraftFromKnockout();
         if (window.exitActiveMiniGame) window.exitActiveMiniGame();
         
         resetKnockoutRoundEffects();
@@ -2292,6 +2318,7 @@ function handleKnockoutStudentUpdate(data) {
         if (tugHud) tugHud.style.display = 'none';
         
         hideNameThatTuneModal();
+        cleanupNoteCraftFromKnockout();
         if (window.exitActiveMiniGame) window.exitActiveMiniGame();
 
         if (!knockoutFinaleShown) {
@@ -2315,6 +2342,11 @@ function handleKnockoutStudentUpdate(data) {
             bridge.showGrandFinale(standings, false, finaleTitle);
         }
     }
+}
+
+export function reenterKnockoutNoteCraft() {
+    if (!koState.isClassKnockout) return;
+    launchNoteCraftForKnockout();
 }
 
 export function syncKnockoutLiveScore() {
@@ -2450,6 +2482,7 @@ function renderKnockoutPostRoundComparison(me, res, myPlaceText) {
 export function leaveClassKnockout() {
     clearKnockoutAutoNextTimer();
     hideNameThatTuneModal();
+    cleanupNoteCraftFromKnockout();
     if (window.exitActiveMiniGame) window.exitActiveMiniGame();
     if (knockoutUnsubscribe) {
         knockoutUnsubscribe();
@@ -2460,6 +2493,7 @@ export function leaveClassKnockout() {
     bridge.setIsSongBattle(false);
     koState.knockoutRoomCode = "";
     knockoutDataCache = null;
+    knockoutNotecraftLaunchedRound = 0;
     knockoutFinaleShown = false;
     resetKnockoutRoundEffects();
     const tugHud = document.getElementById('tug-of-war-hud');
@@ -2476,4 +2510,5 @@ window.kickKnockoutPlayer = kickKnockoutPlayer;
 window.selectKnockoutTeam = selectKnockoutTeam;
 window.dealKnockoutEmoteDeck = dealKnockoutEmoteDeck;
 window.sendKnockoutQuickEmote = sendKnockoutQuickEmote;
+window.reenterKnockoutNoteCraft = reenterKnockoutNoteCraft;
 window.leaveClassKnockout = leaveClassKnockout;
