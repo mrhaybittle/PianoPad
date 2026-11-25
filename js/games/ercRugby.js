@@ -1440,4 +1440,4 @@ export function startErcRugby(bridge, autoStart = false) {
   }
   animFrameId = requestAnimationFrame(frame);
 }
-```[cite: 39, 40, 41, 42]
+
