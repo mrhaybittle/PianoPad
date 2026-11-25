@@ -8,23 +8,23 @@ let bridgeRef = null;
 let activeController = null;
 
 const TEAMS = [
+  { id: 'canterbury-bulldogs', name: 'Canterbury-Bankstown Bulldogs', primary: '#1d4ed8', secondary: '#ffffff', chant: 'Fire up, Doggies!' },
   { id: 'brisbane-broncos', name: 'Brisbane Broncos', primary: '#6b1d2f', secondary: '#fbbf24', chant: 'Buck up, Broncos!' },
   { id: 'canberra-raiders', name: 'Canberra Raiders', primary: '#65a30d', secondary: '#1e3a8a', chant: 'We are the Raiders!' },
-  { id: 'canterbury-bulldogs', name: 'Canterbury-Bankstown Bulldogs', primary: '#1d4ed8', secondary: '#ffffff', chant: 'Fire up, Doggies!' },
-  { id: 'cronulla-sharks', name: 'Cronulla-Sutherland Sharks', primary: '#0284c7', secondary: '#111827', chant: 'Up, up Cronulla!' },
+  { id: 'cronulla-sharks', name: 'Cronulla-Sutherland Sharks', primary: '#0284c7', secondary: '#ffffff', chant: 'Up, up Cronulla!' },
   { id: 'dolphins', name: 'Dolphins', primary: '#dc2626', secondary: '#fde047', chant: 'Phins up!' },
   { id: 'gold-coast-titans', name: 'Gold Coast Titans', primary: '#0369a1', secondary: '#facc15', chant: 'Titans roar!' },
   { id: 'manly-sea-eagles', name: 'Manly Warringah Sea Eagles', primary: '#7f1d1d', secondary: '#ffffff', chant: 'Manly! Manly!' },
   { id: 'melbourne-storm', name: 'Melbourne Storm', primary: '#312e81', secondary: '#facc15', chant: 'Storm warning!' },
   { id: 'newcastle-knights', name: 'Newcastle Knights', primary: '#1e3a8a', secondary: '#dc2626', chant: 'Go the Knights!' },
   { id: 'nz-warriors', name: 'New Zealand Warriors', primary: '#111827', secondary: '#16a34a', chant: 'New Zealand Warriors!' },
-  { id: 'nq-cowboys', name: 'North Queensland Cowboys', primary: '#0f172a', secondary: '#facc15', chant: 'Cowboys country!' },
+  { id: 'nq-cowboys', name: 'North Queensland Cowboys', primary: '#1e3a8a', secondary: '#facc15', chant: 'Cowboys country!' },
   { id: 'parramatta-eels', name: 'Parramatta Eels', primary: '#1d4ed8', secondary: '#facc15', chant: 'Parra! Parra!' },
   { id: 'penrith-panthers', name: 'Penrith Panthers', primary: '#18181b', secondary: '#f43f5e', chant: 'Let’s go Panthers!' },
   { id: 'souths-rabbitohs', name: 'South Sydney Rabbitohs', primary: '#15803d', secondary: '#dc2626', chant: 'Glory, glory to South Sydney!' },
   { id: 'st-george-illawarra-dragons', name: 'St. George Illawarra Dragons', primary: '#b91c1c', secondary: '#ffffff', chant: 'Up the Dragons!' },
   { id: 'sydney-roosters', name: 'Sydney Roosters', primary: '#1e3a8a', secondary: '#dc2626', chant: 'Easts to win!' },
-  { id: 'wests-tigers', name: 'Wests Tigers', primary: '#ea580c', secondary: '#18181b', chant: 'Tigers charge!' },
+  { id: 'wests-tigers', name: 'Wests Tigers', primary: '#ea580c', secondary: '#ffffff', chant: 'Tigers charge!' },
   { id: 'perth-bears', name: 'Perth Bears', primary: '#dc2626', secondary: '#111827', chant: 'Bears on the prowl!' }
 ];
 
@@ -39,6 +39,337 @@ const PIANO_FREQS = {
 const LANES = [0.16, 0.33, 0.5, 0.67, 0.84];
 const LANE_NOTES = ['C', 'D', 'E', 'F', 'G'];
 const NOTE_TO_INDEX = { C: 0, D: 1, E: 2, F: 3, G: 4 };
+
+// ============================================================================
+// PIXEL-ART SPRITE ENGINE — Replicating Positioning (5)..(9) with Note Jerseys
+// ============================================================================
+// Palette Legend:
+// '.' transparent | 'K' black outline (#09090b) | 'H' dark hair (#1c1917)
+// 'S' skin (#e8a87c) | 's' shaded skin (#c98257)
+// '1' team primary | '2' team secondary hoop/trim
+// 'N' dark shorts (#111827) | 'n' shorts highlight (#334155) | 'W' white trim (#f8fafc)
+// 'B' boot grey (#475569) | 'b' boot highlight (#94a3b8)
+// 'G' ball green stripe (#15803d) | 'w' ball white (#f1f5f9)
+
+const PIXEL_FONT_5X7 = {
+  C: [
+    '1111',
+    '1..1',
+    '1...',
+    '1...',
+    '1...',
+    '1..1',
+    '1111'
+  ],
+  D: [
+    '111.',
+    '1..1',
+    '1..1',
+    '1..1',
+    '1..1',
+    '1..1',
+    '111.'
+  ],
+  E: [
+    '1111',
+    '1...',
+    '1...',
+    '111.',
+    '1...',
+    '1...',
+    '1111'
+  ],
+  F: [
+    '1111',
+    '1...',
+    '1...',
+    '111.',
+    '1...',
+    '1...',
+    '1...'
+  ],
+  G: [
+    '1111',
+    '1...',
+    '1...',
+    '1.11',
+    '1..1',
+    '1..1',
+    '1111'
+  ]
+};
+
+// Upper body (rows 0..22, width 26) — shared back-view head & hooped jersey
+function buildUpperBodyRows(pose, hasBall) {
+  // Head & neck (rows 0..9)
+  const head = [
+    '.........KKKKKKKK.........',
+    '........KHHHHHHHHK........',
+    '.......KHHHHHHHHHHK.......',
+    '.......KHHHHHHHHHHK.......',
+    '......KSKHHHHHHHHKSK......',
+    '......KSKHHHHHHHHKSK......',
+    '.......KKHHHHHHHHKK.......',
+    '........KSSSSSSSSK........',
+    '........KKKKKKKKKK........',
+    '.......KK22222222KK.......'
+  ];
+
+  // Pose-specific arms + optional tucked rugby ball (white w/ green stripe)
+  // Ball on right side for idle, runLeft, straightL; ball on left side for runRight, straightR
+  const ballRight = pose === 'idle' || pose === 'runLeft' || pose === 'straightL';
+
+  let torso;
+  if (ballRight) {
+    if (hasBall) {
+      torso = [
+        '.....KK111111111111KK.....',
+        '....K1122222222222211K....',
+        '...K112211111111112211K...',
+        '..KK221111111111111122KK..',
+        '.KSSK1112222222222111KSSK.',
+        '.KSSK111222222222211KKKKK.',
+        '.KSSK11111111111111KwwGSSK',
+        '.KssK11122222222221KwwGSSK',
+        '..KKK11122222222221KwwwKK.',
+        '....K11111111111111KGGwK..',
+        '....KKKKKKKKKKKKKKKKKKKK..'
+      ];
+    } else {
+      torso = [
+        '.....KK111111111111KK.....',
+        '....K1122222222222211K....',
+        '...K112211111111112211K...',
+        '..KK221111111111111122KK..',
+        '.KSSK1112222222222111KSSK.',
+        '.KSSK1112222222222111KSSK.',
+        '.KSSK1111111111111111KssK.',
+        '.KssK1112222222222111KKK..',
+        '..KKK1112222222222111K....',
+        '....K1111111111111111K....',
+        '....KKKKKKKKKKKKKKKKKK....'
+      ];
+    }
+  } else {
+    // Ball tucked under left arm (mirror of Positioning 6 & 9)
+    if (hasBall) {
+      torso = [
+        '.....KK111111111111KK.....',
+        '....K1122222222222211K....',
+        '...K112211111111112211K...',
+        '..KK221111111111111122KK..',
+        '.KSSK1112222222222111KSSK.',
+        '.KKKKK112222222222111KSSK.',
+        'KSSGwwK11111111111111KSSK.',
+        'KSSGwwK12222222222111KssK.',
+        '.KKwwwK12222222222111KKK..',
+        '..KwGGK11111111111111K....',
+        '..KKKKKKKKKKKKKKKKKKKK....'
+      ];
+    } else {
+      torso = [
+        '.....KK111111111111KK.....',
+        '....K1122222222222211K....',
+        '...K112211111111112211K...',
+        '..KK221111111111111122KK..',
+        '.KSSK1112222222222111KSSK.',
+        '.KSSK1112222222222111KSSK.',
+        '.KssK1111111111111111KSSK.',
+        '..KKK1112222222222111KssK.',
+        '....K1112222222222111KKK..',
+        '....K1111111111111111K....',
+        '....KKKKKKKKKKKKKKKKKK....'
+      ];
+    }
+  }
+
+  return [...head, ...torso];
+}
+
+// Lower body (shorts, thighs, hooped socks, boots & cleats) for all 5 exact poses!
+function buildLowerBodyRows(pose) {
+  if (pose === 'idle') {
+    // Positioning (7): Standing / paused — symmetrical legs, outward boots with 4 cleats each
+    return [
+      '....KWNNNNNNNNNNNNNNNK....',
+      '....KWNNNNNNNNNNNNNNNK....',
+      '....KWNNNNNNKKNNNNNNNK....',
+      '....KKKKKKKK..KKKKKKKK....',
+      '....KSSSSK......KSSSSK....',
+      '....KSSSSK......KSSSSK....',
+      '....KssssK......KssssK....',
+      '....KWWWWK......KWWWWK....',
+      '....K1111K......K1111K....',
+      '....KNNNNK......KNNNNK....',
+      '....KNNNNK......KNNNNK....',
+      '..KKBBbBBK......KBBbBBKK..',
+      '.KBBBBBBBK......KBBBBBBBK.',
+      '.KKKKKKKKK......KKKKKKKKK.',
+      '..K.K.K.K........K.K.K.K..'
+    ];
+  }
+
+  if (pose === 'straightL') {
+    // Positioning (8): Running straight — BOTH legs straight vertical!
+    // Left leg FULL length with 2 studs; Right leg SHORTER (bent/lifted) with 2 studs!
+    return [
+      '....KWNNNNNNNNNNNNNNNK....',
+      '....KWNNNNNNNNNNNNNNNK....',
+      '....KWNNNNNNKKNNNNNNNK....',
+      '....KKKKKKKK..KKKKKKKK....',
+      '....KSSSSK......KSSSSK....',
+      '....KSSSSK......KssssK....',
+      '....KssssK......KWWWWK....',
+      '....KWWWWK......K1111K....',
+      '....K1111K......KNNNNK....',
+      '....KNNNNK......KBBbBK....',
+      '....KNNNNK......KBBBBK....',
+      '....KBBbBK......KKKKKK....',
+      '....KBBBBK.......K..K.....',
+      '....KKKKKK................',
+      '.....K..K.................'
+    ];
+  }
+
+  if (pose === 'straightR') {
+    // Positioning (9): Running straight — BOTH legs straight vertical!
+    // Left leg SHORTER (bent/lifted) with 2 studs; Right leg FULL length with 2 studs!
+    return [
+      '....KWNNNNNNNNNNNNNNNK....',
+      '....KWNNNNNNNNNNNNNNNK....',
+      '....KWNNNNNNKKNNNNNNNK....',
+      '....KKKKKKKK..KKKKKKKK....',
+      '....KSSSSK......KSSSSK....',
+      '....KssssK......KSSSSK....',
+      '....KWWWWK......KssssK....',
+      '....K1111K......KWWWWK....',
+      '....KNNNNK......K1111K....',
+      '....KBBbBK......KNNNNK....',
+      '....KBBBBK......KNNNNK....',
+      '....KKKKKK......KBBbBK....',
+      '.....K..K.......KBBBBK....',
+      '................KKKKKK....',
+      '.................K..K.....'
+    ];
+  }
+
+  if (pose === 'runLeft') {
+    // Positioning (5): Running laterally LEFT — left boot planted left with cleats, right leg trailing angled right
+    return [
+      '....KWNNNNNNNNNNNNNNNK....',
+      '....KWNNNNNNNNNNNNNNNK....',
+      '....KWNNNNNNKKNNNNNNNK....',
+      '....KKKKKKKK..KKKKKKKK....',
+      '....KSSSSK.....KSSSSK.....',
+      '....KSSSSK......KSSSSK....',
+      '....KssssK.......KsssKK...',
+      '....KWWWWK........KWW11K..',
+      '....K1111K.........K1NNK..',
+      '....KNNNNK..........KNNBK.',
+      '....KNNNNK..........KBBBK.',
+      '..KKBBbBBK..........KbBBK.',
+      '.KBBBBBBBK...........KKKK.',
+      '.KKKKKKKKK................',
+      '..K.K.K.K.................'
+    ];
+  }
+
+  // pose === 'runRight' — Positioning (6): Running laterally RIGHT — mirror of runLeft!
+  return [
+    '....KWNNNNNNNNNNNNNNNK....',
+    '....KWNNNNNNNNNNNNNNNK....',
+    '....KWNNNNNNKKNNNNNNNK....',
+    '....KKKKKKKK..KKKKKKKK....',
+    '.....KSSSSK.....KSSSSK....',
+    '....KSSSSK......KSSSSK....',
+    '...KKsssK.......KssssK....',
+    '..K11WWK........KWWWWK....',
+    '..KNN1K.........K1111K....',
+    '.KBNNK..........KNNNNK....',
+    '.KBBBK..........KNNNNK....',
+    '.KBBbK..........KBBbBBKK..',
+    '.KKKK...........KBBBBBBBK.',
+    '................KKKKKKKKK.',
+    '.................K.K.K.K..'
+  ];
+}
+
+// Cache pre-rendered crisp pixel-art sprites per (teamId, noteLetter, pose, hasBall)
+const spriteCache = new Map();
+
+function getPixelSprite(team, noteLetter, pose, hasBall) {
+  const key = `${team.id}|${noteLetter}|${pose}|${hasBall ? 1 : 0}`;
+  if (spriteCache.has(key)) return spriteCache.get(key);
+
+  const rows = [...buildUpperBodyRows(pose, hasBall), ...buildLowerBodyRows(pose)];
+  const h = rows.length; // 36 rows
+  const w = rows[0].length; // 26 cols
+
+  // Convert string rows into mutable 2D char grid so we can stamp the pixel Note + black outline on the jersey back!
+  const grid = rows.map((r) => r.split(''));
+
+  const glyph = PIXEL_FONT_5X7[noteLetter] || PIXEL_FONT_5X7.C;
+  const startRow = 12;
+  const startCol = 11; // Centered on the 26-wide back of jersey
+
+  // First pass: 1px black outline around note glyph
+  for (let r = 0; r < glyph.length; r++) {
+    for (let c = 0; c < glyph[r].length; c++) {
+      if (glyph[r][c] === '1') {
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            const rr = startRow + r + dr;
+            const cc = startCol + c + dc;
+            if (grid[rr] && grid[rr][cc]) {
+              grid[rr][cc] = 'K';
+            }
+          }
+        }
+      }
+    }
+  }
+  // Second pass: bright white note pixels
+  for (let r = 0; r < glyph.length; r++) {
+    for (let c = 0; c < glyph[r].length; c++) {
+      if (glyph[r][c] === '1') {
+        grid[startRow + r][startCol + c] = 'W';
+      }
+    }
+  }
+
+  const palette = {
+    K: '#09090b',
+    H: '#1c1917',
+    S: '#eba87c',
+    s: '#c98257',
+    '1': team.primary,
+    '2': team.secondary,
+    N: '#111827',
+    n: '#334155',
+    W: '#ffffff',
+    B: '#475569',
+    b: '#94a3b8',
+    G: '#15803d',
+    w: '#f8fafc'
+  };
+
+  const off = document.createElement('canvas');
+  off.width = w;
+  off.height = h;
+  const octx = off.getContext('2d');
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const ch = grid[y][x];
+      if (ch === '.' || !palette[ch]) continue;
+      octx.fillStyle = palette[ch];
+      octx.fillRect(x, y, 1, 1);
+    }
+  }
+
+  spriteCache.set(key, off);
+  return off;
+}
 
 function ensureSportsFonts() {
   if (document.getElementById('erc-sports-fonts')) return;
@@ -91,7 +422,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
   const statusEl = document.getElementById('status');
   if (statusEl) {
-    statusEl.textContent = '🏉 ERC Sports Rugby Ready! Assign MIDI notes or keys, then pass across C–G!';
+    statusEl.textContent = '🏉 ERC Sports Rugby Ready! Choose MIDI keys for Move Left/Right, Run, Bomb & Grubber!';
   }
 
   const wrapperParent = document.getElementById('visualizer-wrapper');
@@ -155,7 +486,7 @@ export function startErcRugby(bridge, autoStart = false) {
         background: linear-gradient(180deg, #090d16 0%, #162033 22%, #1e2b45 50%, #162033 78%, #090d16 100%);
         box-shadow: inset 0 8px 14px rgba(0, 0, 0, 0.85), inset 0 -8px 14px rgba(0, 0, 0, 0.85), 0 0 0 2px rgba(251, 191, 36, 0.35);
         position: relative;
-        height: 64px;
+        height: 58px;
         border-radius: 10px;
         display: flex;
         flex-direction: column;
@@ -169,6 +500,7 @@ export function startErcRugby(bridge, autoStart = false) {
         display: block;
         width: 100%;
         height: 100%;
+        image-rendering: pixelated;
       }
       #erc-gameplay-hud {
         position: absolute;
@@ -194,33 +526,34 @@ export function startErcRugby(bridge, autoStart = false) {
       }
       #erc-key-legend {
         position: absolute;
-        bottom: 10px;
-        left: 12px;
+        bottom: 8px;
+        left: 10px;
         z-index: 20;
         display: none;
         pointer-events: none;
         border-radius: 10px;
-        background: rgba(2, 6, 23, 0.86);
+        background: rgba(2, 6, 23, 0.88);
         border: 1px solid rgba(255, 255, 255, 0.15);
         backdrop-filter: blur(8px);
-        padding: 7px 11px;
-        font-size: 11px;
+        padding: 6px 10px;
+        font-size: 10.5px;
+        max-width: calc(100% - 210px);
       }
       #erc-piano-strip {
         position: absolute;
-        bottom: 10px;
-        right: 12px;
+        bottom: 8px;
+        right: 10px;
         z-index: 20;
         display: none;
         border-radius: 10px;
         background: rgba(2, 6, 23, 0.9);
         border: 1px solid rgba(255, 255, 255, 0.15);
-        padding: 6px;
-        gap: 5px;
+        padding: 5px;
+        gap: 4px;
       }
       #erc-piano-strip .piano-key-btn {
-        width: 32px;
-        height: 42px;
+        width: 30px;
+        height: 38px;
         border-radius: 6px;
         background: #ffffff;
         color: #020617;
@@ -236,7 +569,7 @@ export function startErcRugby(bridge, autoStart = false) {
         transition: transform 90ms ease, background-color 90ms ease;
       }
       #erc-piano-strip .piano-key-btn.active-note {
-        background: #67e8f9;
+        background: #fde047;
         transform: scale(0.94);
       }
       #erc-start-modal {
@@ -246,62 +579,55 @@ export function startErcRugby(bridge, autoStart = false) {
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 10px;
-        background: rgba(2, 6, 23, 0.84);
+        padding: 8px;
+        background: rgba(2, 6, 23, 0.86);
         backdrop-filter: blur(8px);
         overflow-y: auto;
       }
       .erc-modal-card {
         width: 100%;
-        max-width: 780px;
-        max-height: 96%;
+        max-width: 850px;
+        max-height: 97%;
         overflow-y: auto;
         border-radius: 16px;
-        background: rgba(15, 23, 42, 0.96);
+        background: rgba(15, 23, 42, 0.97);
         border: 1px solid rgba(255, 255, 255, 0.16);
         box-shadow: 0 20px 45px rgba(0, 0, 0, 0.65);
-        padding: 14px 18px;
+        padding: 12px 16px;
       }
       .erc-setup-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 10px;
-        margin-top: 10px;
+        margin-top: 8px;
       }
-      .erc-controls-row {
+      .erc-bind-grid-5 {
         display: grid;
-        grid-template-columns: 1fr 1.55fr;
-        gap: 10px;
-        margin-top: 10px;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 7px;
+        margin-top: 6px;
       }
-      @media (max-width: 680px) {
-        .erc-setup-grid, .erc-controls-row {
-          grid-template-columns: 1fr;
-        }
+      @media (max-width: 720px) {
+        .erc-setup-grid { grid-template-columns: 1fr; }
+        .erc-bind-grid-5 { grid-template-columns: repeat(2, 1fr); }
       }
       .erc-panel {
         border-radius: 12px;
         background: rgba(2, 6, 23, 0.75);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 10px 12px;
-      }
-      .erc-bind-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
-        margin-top: 6px;
+        padding: 9px 11px;
       }
       .erc-key-btn {
         width: 100%;
-        border-radius: 8px;
-        padding: 7px 6px;
+        border-radius: 7px;
+        padding: 6px 5px;
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         font-weight: 800;
-        font-size: 11px;
+        font-size: 10.5px;
       }
       .erc-key-btn.listening {
         outline: 2px solid #fcd34d;
-        background: rgba(251, 191, 36, 0.25) !important;
+        background: rgba(251, 191, 36, 0.28) !important;
       }
     </style>
 
@@ -324,7 +650,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
         <div style="display:flex; flex-direction:column; align-items:center; padding:0 8px; border-left:1px solid rgba(255,255,255,0.15); border-right:1px solid rgba(255,255,255,0.15);">
           <span id="erc-hud-clock" class="font-sports" style="font-size:12px; font-weight:800; color:#fcd34d; letter-spacing:0.06em;">02:00</span>
-          <span id="erc-hud-tackle-count" style="font-size:9px; font-weight:800; text-transform:uppercase; color:#94a3b8; letter-spacing:0.08em;">TACKLE 0/5</span>
+          <span id="erc-hud-possession" style="font-size:9px; font-weight:800; text-transform:uppercase; color:#fde047; letter-spacing:0.06em;">ATTACK • T 0/5</span>
         </div>
 
         <div style="text-align:left;">
@@ -336,11 +662,13 @@ export function startErcRugby(bridge, autoStart = false) {
 
     <!-- Bottom-left key legend -->
     <div id="erc-key-legend">
-      <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
-        <span><b style="color:#94a3b8; font-size:10px; text-transform:uppercase;">Pass (C–G):</b> <span style="padding:2px 5px; border-radius:4px; background:rgba(255,255,255,0.1); color:#a5f3fc; font-family:monospace; font-weight:800;">C D E F G</span></span>
-        <span><b style="color:#6ee7b7; font-size:10px; text-transform:uppercase;">Run:</b> <span id="erc-leg-surge" style="padding:2px 5px; border-radius:4px; background:rgba(16,185,129,0.2); border:1px solid rgba(52,211,153,0.45); color:#a7f3d0; font-family:monospace; font-weight:800;">🎹 A1 / W</span></span>
-        <span><b style="color:#fcd34d; font-size:10px; text-transform:uppercase;">Bomb:</b> <span id="erc-leg-bomb" style="padding:2px 5px; border-radius:4px; background:rgba(245,158,11,0.2); border:1px solid rgba(251,191,36,0.45); color:#fde68a; font-family:monospace; font-weight:800;">🎹 B1 / B</span></span>
-        <span><b style="color:#7dd3fc; font-size:10px; text-transform:uppercase;">Grubber:</b> <span id="erc-leg-grubber" style="padding:2px 5px; border-radius:4px; background:rgba(14,165,233,0.2); border:1px solid rgba(56,189,248,0.45); color:#bae6fd; font-family:monospace; font-weight:800;">🎹 C2 / N</span></span>
+      <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
+        <span><b style="color:#fde047;">Pass/Switch:</b> <span style="padding:1px 5px; border-radius:4px; background:rgba(255,255,255,0.12); color:#fef08a; font-family:monospace; font-weight:800;">C D E F G</span></span>
+        <span><b style="color:#c4b5fd;">Left:</b> <span id="erc-leg-left" style="font-family:monospace; font-weight:800; color:#ddd6fe;">🎹 F#1 / A</span></span>
+        <span><b style="color:#c4b5fd;">Right:</b> <span id="erc-leg-right" style="font-family:monospace; font-weight:800; color:#ddd6fe;">🎹 G#1 / D</span></span>
+        <span><b style="color:#6ee7b7;">Run:</b> <span id="erc-leg-surge" style="font-family:monospace; font-weight:800; color:#a7f3d0;">🎹 A1 / W</span></span>
+        <span><b style="color:#fcd34d;">Bomb:</b> <span id="erc-leg-bomb" style="font-family:monospace; font-weight:800; color:#fde68a;">🎹 B1 / B</span></span>
+        <span><b style="color:#7dd3fc;">Grubber:</b> <span id="erc-leg-grubber" style="font-family:monospace; font-weight:800; color:#bae6fd;">🎹 C2 / N</span></span>
       </div>
     </div>
 
@@ -356,13 +684,13 @@ export function startErcRugby(bridge, autoStart = false) {
     <!-- Starting Menu Modal -->
     <div id="erc-start-modal">
       <div class="erc-modal-card">
-        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1);">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding-bottom:7px; border-bottom:1px solid rgba(255,255,255,0.1);">
           <div>
-            <div class="font-sports" style="font-style:italic; font-weight:800; font-size:20px; color:#ffffff; text-transform:uppercase;">
-              Match Setup &amp; MIDI Controls
+            <div class="font-sports" style="font-style:italic; font-weight:800; font-size:19px; color:#ffffff; text-transform:uppercase;">
+              ERC Sports Rugby — Team &amp; MIDI Setup
             </div>
             <div style="font-size:11px; color:#cbd5e1;">
-              Pass across your 5-player backline with <b>C–G</b> (watch out for flat runners — no forward passes!) &amp; bind MIDI notes to Run, Bomb, and Grubber.
+              <b>C, D, E, F, G</b> pass the ball in Offense &amp; switch your yellow-ring defender in Defense. Assign your <b>Move Left / Right</b>, <b>Run</b> &amp; <b>Kick</b> MIDI notes below!
             </div>
           </div>
           <div class="erc-logo-badge">
@@ -376,84 +704,94 @@ export function startErcRugby(bridge, autoStart = false) {
         <div class="erc-setup-grid">
           <!-- Player Team Picker -->
           <div class="erc-panel">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
               <label for="erc-team-select" class="font-sports" style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#67e8f9;">Your Team (Home)</label>
-              <span style="font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; background:rgba(6,182,212,0.2); color:#a5f3fc; border:1px solid rgba(34,211,238,0.3);">HOME</span>
+              <span style="font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; background:rgba(6,182,212,0.2); color:#a5f3fc; border:1px solid rgba(34,211,238,0.3);">C D E F G JERSEYS</span>
             </div>
-            <select id="erc-team-select" style="width:100%; border-radius:8px; background:#1e293b; border:1px solid rgba(255,255,255,0.2); padding:7px 10px; font-size:13px; font-weight:700; color:#ffffff; cursor:pointer;"></select>
-            <div style="margin-top:8px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:7px 9px; display:flex; align-items:center; gap:9px;">
-              <div id="erc-player-swatch" style="width:32px; height:32px; border-radius:7px; border:1px solid rgba(255,255,255,0.35); flex-shrink:0;"></div>
+            <select id="erc-team-select" style="width:100%; border-radius:8px; background:#1e293b; border:1px solid rgba(255,255,255,0.2); padding:6px 10px; font-size:13px; font-weight:700; color:#ffffff; cursor:pointer;"></select>
+            <div style="margin-top:6px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:6px 9px; display:flex; align-items:center; gap:9px;">
+              <div id="erc-player-swatch" style="width:28px; height:28px; border-radius:6px; border:1px solid rgba(255,255,255,0.35); flex-shrink:0;"></div>
               <div style="min-width:0;">
-                <div id="erc-player-title" class="font-sports" style="font-weight:800; font-size:13px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
-                <div id="erc-player-chant" style="font-size:11px; color:#cbd5e1;"></div>
+                <div id="erc-player-title" class="font-sports" style="font-weight:800; font-size:12.5px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                <div id="erc-player-chant" style="font-size:10.5px; color:#cbd5e1;"></div>
               </div>
             </div>
           </div>
 
           <!-- Pokie Opponent Reel -->
           <div class="erc-panel" style="border-color:rgba(251,191,36,0.28);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
               <span class="font-sports" style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#fcd34d;">Computer Opponent (Pokie Reel)</span>
               <span id="erc-reel-badge" style="font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; background:rgba(245,158,11,0.2); color:#fde68a; border:1px solid rgba(251,191,36,0.35);">LOCKED</span>
             </div>
             <div class="pokie-window">
-              <div style="pointer-events:none; position:absolute; left:0; right:0; top:50%; transform:translateY(-50%); height:32px; border-top:1px solid rgba(252,211,77,0.35); border-bottom:1px solid rgba(252,211,77,0.35); background:rgba(251,191,36,0.05);"></div>
-              <div id="erc-pokie-name" class="font-sports" style="position:relative; z-index:2; font-style:italic; font-weight:800; font-size:16px; color:#ffffff; text-transform:uppercase;">SPINNING...</div>
-              <div id="erc-pokie-sub" style="position:relative; z-index:2; font-size:11px; color:#fde68a; margin-top:2px;">Randomising opponent...</div>
+              <div style="pointer-events:none; position:absolute; left:0; right:0; top:50%; transform:translateY(-50%); height:30px; border-top:1px solid rgba(252,211,77,0.35); border-bottom:1px solid rgba(252,211,77,0.35); background:rgba(251,191,36,0.05);"></div>
+              <div id="erc-pokie-name" class="font-sports" style="position:relative; z-index:2; font-style:italic; font-weight:800; font-size:15px; color:#ffffff; text-transform:uppercase;">SPINNING...</div>
+              <div id="erc-pokie-sub" style="position:relative; z-index:2; font-size:10.5px; color:#fde68a; margin-top:1px;">Randomising opponent...</div>
             </div>
-            <div style="margin-top:7px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
               <span style="font-size:10px; color:#94a3b8;">Spins when team changes</span>
-              <button type="button" id="erc-respin-btn" class="sports-btn font-sports" style="border:none; border-radius:7px; background:#f59e0b; color:#020617; font-weight:800; font-size:11px; text-transform:uppercase; padding:5px 10px;">Re-Spin Reel</button>
+              <button type="button" id="erc-respin-btn" class="sports-btn font-sports" style="border:none; border-radius:7px; background:#f59e0b; color:#020617; font-weight:800; font-size:10.5px; text-transform:uppercase; padding:4px 10px;">Re-Spin Reel</button>
             </div>
           </div>
         </div>
 
-        <div class="erc-controls-row">
-          <div class="erc-panel">
-            <div class="font-sports" style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#67e8f9; margin-bottom:4px;">Backline Pass Notes (C1–G1)</div>
-            <div style="font-size:11px; color:#cbd5e1; line-height:1.35;">
-              Play <b style="color:#fff;">C, D, E, F, G</b> on your MIDI piano to <b>pass the ball</b> to that lane's runner! Support runners drop into depth behind the ball-carrier (don't pass to an amber overrun player or it's a <b>Forward Pass</b>!).
+        <!-- Assignable MIDI Controls: Move Left, Move Right, Run Surge, Bomb Kick, Grubber Kick -->
+        <div class="erc-panel" style="margin-top:8px;">
+          <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:6px;">
+            <span class="font-sports" style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#fde047;">
+              🎹 Assign MIDI Piano Keys (Offense &amp; Defense Controls)
+            </span>
+            <span style="font-size:10.5px; color:#cbd5e1;">
+              Fixed Jersey Pass / Switch Notes: <b style="color:#fef08a;">C, D, E, F, G</b> • Click any slot below &amp; play a MIDI note!
+            </span>
+          </div>
+
+          <div class="erc-bind-grid-5">
+            <!-- MOVE LEFT -->
+            <div style="background:#0f172a; border:1px solid rgba(167,139,250,0.35); border-radius:9px; padding:6px; text-align:center;">
+              <div class="font-sports" style="font-size:11px; font-weight:800; color:#c4b5fd;">⬅ MOVE LEFT</div>
+              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Offense &amp; Defense</div>
+              <button type="button" data-bind-action="moveLeft" class="erc-key-btn sports-btn" style="background:rgba(139,92,246,0.22); border:1px solid rgba(167,139,250,0.6); color:#ede9fe;">🎹 F#1 / A</button>
             </div>
-            <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:5px; margin-top:8px;">
-              <div class="font-sports" style="background:#fff; color:#020617; font-weight:800; text-align:center; padding:5px 0; border-radius:6px; font-size:12px;">C</div>
-              <div class="font-sports" style="background:#fff; color:#020617; font-weight:800; text-align:center; padding:5px 0; border-radius:6px; font-size:12px;">D</div>
-              <div class="font-sports" style="background:#fff; color:#020617; font-weight:800; text-align:center; padding:5px 0; border-radius:6px; font-size:12px;">E</div>
-              <div class="font-sports" style="background:#fff; color:#020617; font-weight:800; text-align:center; padding:5px 0; border-radius:6px; font-size:12px;">F</div>
-              <div class="font-sports" style="background:#fff; color:#020617; font-weight:800; text-align:center; padding:5px 0; border-radius:6px; font-size:12px;">G</div>
+
+            <!-- MOVE RIGHT -->
+            <div style="background:#0f172a; border:1px solid rgba(167,139,250,0.35); border-radius:9px; padding:6px; text-align:center;">
+              <div class="font-sports" style="font-size:11px; font-weight:800; color:#c4b5fd;">MOVE RIGHT ➡</div>
+              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Offense &amp; Defense</div>
+              <button type="button" data-bind-action="moveRight" class="erc-key-btn sports-btn" style="background:rgba(139,92,246,0.22); border:1px solid rgba(167,139,250,0.6); color:#ede9fe;">🎹 G#1 / D</button>
+            </div>
+
+            <!-- RUN SURGE -->
+            <div style="background:#0f172a; border:1px solid rgba(52,211,153,0.35); border-radius:9px; padding:6px; text-align:center;">
+              <div class="font-sports" style="font-size:11px; font-weight:800; color:#6ee7b7;">⚡ RUN / TACKLE</div>
+              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Sprint / Press Up</div>
+              <button type="button" data-bind-action="surge" class="erc-key-btn sports-btn" style="background:rgba(16,185,129,0.2); border:1px solid rgba(52,211,153,0.6); color:#d1fae5;">🎹 A1 / W</button>
+            </div>
+
+            <!-- BOMB KICK -->
+            <div style="background:#0f172a; border:1px solid rgba(251,191,36,0.35); border-radius:9px; padding:6px; text-align:center;">
+              <div class="font-sports" style="font-size:11px; font-weight:800; color:#fcd34d;">🏉 BOMB KICK</div>
+              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">High spiral</div>
+              <button type="button" data-bind-action="bomb" class="erc-key-btn sports-btn" style="background:rgba(245,158,11,0.2); border:1px solid rgba(251,191,36,0.6); color:#fef3c7;">🎹 B1 / B</button>
+            </div>
+
+            <!-- GRUBBER KICK -->
+            <div style="background:#0f172a; border:1px solid rgba(56,189,248,0.35); border-radius:9px; padding:6px; text-align:center;">
+              <div class="font-sports" style="font-size:11px; font-weight:800; color:#7dd3fc;">💨 GRUBBER</div>
+              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Low skid kick</div>
+              <button type="button" data-bind-action="grubber" class="erc-key-btn sports-btn" style="background:rgba(14,165,233,0.2); border:1px solid rgba(56,189,248,0.6); color:#e0f2fe;">🎹 C2 / N</button>
             </div>
           </div>
 
-          <div class="erc-panel">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span class="font-sports" style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#6ee7b7;">Assign MIDI Notes or Keys (Run, Bomb, Grubber)</span>
-              <span style="font-size:10px; color:#fcd34d; font-weight:700;">Click &amp; play a MIDI note!</span>
-            </div>
-            <div class="erc-bind-grid">
-              <div style="background:#0f172a; border:1px solid rgba(52,211,153,0.28); border-radius:9px; padding:7px; text-align:center;">
-                <div class="font-sports" style="font-size:11px; font-weight:800; color:#6ee7b7;">RUN SURGE</div>
-                <div style="font-size:10px; color:#94a3b8; margin:2px 0 6px;">Hit up / Sprint</div>
-                <button type="button" data-bind-action="surge" class="erc-key-btn sports-btn" style="background:rgba(16,185,129,0.2); border:1px solid rgba(52,211,153,0.6); color:#d1fae5;">🎹 A1 / W</button>
-              </div>
-              <div style="background:#0f172a; border:1px solid rgba(251,191,36,0.28); border-radius:9px; padding:7px; text-align:center;">
-                <div class="font-sports" style="font-size:11px; font-weight:800; color:#fcd34d;">BOMB KICK</div>
-                <div style="font-size:10px; color:#94a3b8; margin:2px 0 6px;">High contestable</div>
-                <button type="button" data-bind-action="bomb" class="erc-key-btn sports-btn" style="background:rgba(245,158,11,0.2); border:1px solid rgba(251,191,36,0.6); color:#fef3c7;">🎹 B1 / B</button>
-              </div>
-              <div style="background:#0f172a; border:1px solid rgba(56,189,248,0.28); border-radius:9px; padding:7px; text-align:center;">
-                <div class="font-sports" style="font-size:11px; font-weight:800; color:#7dd3fc;">GRUBBER</div>
-                <div style="font-size:10px; color:#94a3b8; margin:2px 0 6px;">Low skid kick</div>
-                <button type="button" data-bind-action="grubber" class="erc-key-btn sports-btn" style="background:rgba(14,165,233,0.2); border:1px solid rgba(56,189,248,0.6); color:#e0f2fe;">🎹 C2 / N</button>
-              </div>
-            </div>
-            <div id="erc-keybind-notice" style="margin-top:5px; font-size:11px; color:#fcd34d; min-height:14px;">
-              Tip: Click any action button above, then press a MIDI piano key (e.g. A1, B1, C2, F#1) or computer key.
-            </div>
+          <div id="erc-keybind-notice" style="margin-top:5px; font-size:11px; color:#fcd34d; min-height:14px;">
+            Click any control button above, then press any MIDI piano key (e.g. F#1, G#1, A1, B1, C2, D2) or computer key!
           </div>
         </div>
 
-        <div style="margin-top:10px; padding-top:9px; border-top:1px solid rgba(255,255,255,0.1); display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px;">
+        <div style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1); display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px;">
           <div id="erc-matchup-summary" style="font-size:12px; color:#cbd5e1; font-weight:600;">Ready for kick-off.</div>
-          <button type="button" id="erc-start-match-btn" class="sports-btn font-sports" style="border:none; border-radius:10px; background:linear-gradient(90deg, #dc2626, #ef4444, #2563eb); color:#ffffff; font-style:italic; font-weight:800; font-size:15px; text-transform:uppercase; letter-spacing:0.06em; padding:9px 24px;">
+          <button type="button" id="erc-start-match-btn" class="sports-btn font-sports" style="border:none; border-radius:10px; background:linear-gradient(90deg, #dc2626, #ef4444, #2563eb); color:#ffffff; font-style:italic; font-weight:800; font-size:15px; text-transform:uppercase; letter-spacing:0.06em; padding:8px 24px;">
             Kick Off Match
           </button>
         </div>
@@ -477,18 +815,25 @@ export function startErcRugby(bridge, autoStart = false) {
 
   const savedBinds = (() => {
     try {
-      return JSON.parse(localStorage.getItem('erc_rugby_midi_binds_v2') || 'null');
+      return JSON.parse(localStorage.getItem('erc_rugby_midi_binds_v3') || 'null');
     } catch (e) {
       return null;
     }
   })();
 
+  const defaultBinds = {
+    moveLeft:  { midi: 'f#1', key: 'A', label: '🎹 F#1 / A' },
+    moveRight: { midi: 'g#1', key: 'D', label: '🎹 G#1 / D' },
+    surge:     { midi: 'a1',  key: 'W', label: '🎹 A1 / W' },
+    bomb:      { midi: 'b1',  key: 'B', label: '🎹 B1 / B' },
+    grubber:   { midi: 'c2',  key: 'N', label: '🎹 C2 / N' }
+  };
+
   const state = {
     phase: 'menu', // 'menu' | 'playing' | 'gameover'
-    // 'waitingForPlay' (defense set 10m back + marker square, waiting for dummy-half pass/run)
-    // 'running' (live phase play)
-    // 'retreating' (post-tackle pause while defense retires 10m onside)
-    // 'turnoverPause' (brief whistle pause on forward pass / 6th tackle handover)
+    // possession: 'home' (user attacks up-field) | 'away' (AI attacks down-field, user defends & switches with C-G!)
+    possession: 'home',
+    // 'waitingForPlay' | 'running' | 'retreating' | 'turnoverPause'
     playState: 'waitingForPlay',
     tackleCount: 0,
     maxTackles: 6,
@@ -507,41 +852,44 @@ export function startErcRugby(bridge, autoStart = false) {
       targetId: TEAMS[1].id
     },
 
-    // Supports BOTH MIDI note bindings (e.g. 'a1', 'b1', 'c2') AND fallback computer keys ('W', 'B', 'N')
-    actionBinds: savedBinds || {
-      surge: { midi: 'a1', key: 'W', label: '🎹 A1 / W' },
-      bomb: { midi: 'b1', key: 'B', label: '🎹 B1 / B' },
-      grubber: { midi: 'c2', key: 'N', label: '🎹 C2 / N' }
-    },
+    actionBinds: Object.assign({}, defaultBinds, savedBinds || {}),
     listeningAction: null,
 
-    // 5 distinct attacking players across lanes C(0), D(1), E(2), F(3), G(4)
-    attackers: [],
-    carrierIndex: 2, // Player in possession (yellow/gold jersey highlight when holding ball)
-    surgeTimer: 0,
+    // Held movement input (supports both held MIDI notes + momentary tap nudge + keyboard hold)
+    moveInput: {
+      leftHeld: false,
+      rightHeld: false,
+      leftTapTimer: 0,
+      rightTapTimer: 0
+    },
 
-    // Live pass flight state (ball passed through the air between lane runners!)
+    // Home team (5 players, C..G) & Away team (5 players, C..G)
+    homePlayers: [],
+    awayPlayers: [],
+    carrierIndex: 2,          // Index 0..4 of ball-carrier on the attacking side
+    selectedDefenderIdx: 2,   // Index 0..4 of user-controlled defender when Away has the ball (yellow ring!)
+    surgeTimer: 0,
+    aiPlayTimer: 0,
+    aiPassCooldown: 1.2,
+
     passState: {
       active: false,
       fromIdx: 2,
       toIdx: 2,
       startX: 0.5,
-      startY: 0.84,
+      startY: 0.82,
       x: 0.5,
-      y: 0.84,
+      y: 0.82,
       progress: 0,
       duration: 0.22,
       isForwardPass: false
     },
 
-    // Kick flight state (Bomb / Grubber)
     kickBall: {
       active: false,
       kind: null,
-      kickerIdx: 2,
-      kickerStartY: 0.84,
       x: 0.5,
-      y: 0.84,
+      y: 0.82,
       z: 0,
       vx: 0,
       vy: 0,
@@ -549,30 +897,29 @@ export function startErcRugby(bridge, autoStart = false) {
       bounceCount: 0
     },
 
-    defenders: [],
     callouts: [],
 
     tacklePause: {
       timer: 0,
-      retreatDuration: 1.1,
-      markX: 0.5,
-      markY: 0.84,
-      onsideY: 0.68,
-      markerIdx: 2
+      retreatDuration: 1.15,
+      markY: 0.82,
+      onsideY: 0.68
     },
 
     turnoverTimer: 0,
+    nextPossession: 'home',
+    nextStartY: 0.82,
 
     screenShake: {
       timer: 0,
-      duration: 0.34,
-      intensity: 14
+      duration: 0.32,
+      intensity: 13
     }
   };
 
   function saveActionBinds() {
     try {
-      localStorage.setItem('erc_rugby_midi_binds_v2', JSON.stringify(state.actionBinds));
+      localStorage.setItem('erc_rugby_midi_binds_v3', JSON.stringify(state.actionBinds));
     } catch (e) {}
   }
 
@@ -592,8 +939,8 @@ export function startErcRugby(bridge, autoStart = false) {
       const osc = c.createOscillator();
       const gain = c.createGain();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(240, now);
-      osc.frequency.exponentialRampToValueAtTime(360, now + 0.09);
+      osc.frequency.setValueAtTime(250, now);
+      osc.frequency.exponentialRampToValueAtTime(380, now + 0.09);
       gain.gain.setValueAtTime(0.18, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
       osc.connect(gain);
@@ -614,33 +961,33 @@ export function startErcRugby(bridge, autoStart = false) {
       osc1.type = 'sine';
       osc2.type = 'sine';
       osc1.frequency.setValueAtTime(2750, now);
-      osc2.frequency.setValueAtTime(2815, now); // Classic pea-whistle trill beat
+      osc2.frequency.setValueAtTime(2815, now);
       gain.gain.setValueAtTime(0.22, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
       osc1.connect(gain);
       osc2.connect(gain);
       gain.connect(c.destination);
       osc1.start(now);
       osc2.start(now);
-      osc1.stop(now + 0.4);
-      osc2.stop(now + 0.4);
+      osc1.stop(now + 0.38);
+      osc2.stop(now + 0.38);
     } catch (e) {}
   }
 
   function playKickSound(kind) {
     try {
-      const ctxAudio = getAudioCtx();
-      if (!ctxAudio) return;
-      const now = ctxAudio.currentTime;
-      const osc = ctxAudio.createOscillator();
-      const gain = ctxAudio.createGain();
+      const c = getAudioCtx();
+      if (!c) return;
+      const now = c.currentTime;
+      const osc = c.createOscillator();
+      const gain = c.createGain();
       osc.type = 'sine';
       osc.frequency.setValueAtTime(kind === 'bomb' ? 190 : 145, now);
       osc.frequency.exponentialRampToValueAtTime(kind === 'bomb' ? 75 : 52, now + 0.2);
       gain.gain.setValueAtTime(0.32, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.21);
       osc.connect(gain);
-      gain.connect(ctxAudio.destination);
+      gain.connect(c.destination);
       osc.start(now);
       osc.stop(now + 0.22);
     } catch (e) {}
@@ -648,43 +995,40 @@ export function startErcRugby(bridge, autoStart = false) {
 
   function playTackleHitSound() {
     try {
-      const ctxAudio = getAudioCtx();
-      if (!ctxAudio) return;
-      const now = ctxAudio.currentTime;
+      const c = getAudioCtx();
+      if (!c) return;
+      const now = c.currentTime;
 
-      const subOsc = ctxAudio.createOscillator();
-      const subGain = ctxAudio.createGain();
+      const subOsc = c.createOscillator();
+      const subGain = c.createGain();
       subOsc.type = 'sawtooth';
       subOsc.frequency.setValueAtTime(165, now);
-      subOsc.frequency.exponentialRampToValueAtTime(36, now + 0.26);
-      subGain.gain.setValueAtTime(0.5, now);
-      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      subOsc.frequency.exponentialRampToValueAtTime(36, now + 0.25);
+      subGain.gain.setValueAtTime(0.48, now);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.27);
       subOsc.connect(subGain);
-      subGain.connect(ctxAudio.destination);
+      subGain.connect(c.destination);
       subOsc.start(now);
-      subOsc.stop(now + 0.29);
+      subOsc.stop(now + 0.28);
 
-      const bufferSize = Math.floor(ctxAudio.sampleRate * 0.18);
-      const noiseBuffer = ctxAudio.createBuffer(1, bufferSize, ctxAudio.sampleRate);
+      const bufferSize = Math.floor(c.sampleRate * 0.16);
+      const noiseBuffer = c.createBuffer(1, bufferSize, c.sampleRate);
       const data = noiseBuffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
         data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.35));
       }
-      const noise = ctxAudio.createBufferSource();
+      const noise = c.createBufferSource();
       noise.buffer = noiseBuffer;
-
-      const filter = ctxAudio.createBiquadFilter();
+      const filter = c.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(950, now);
-      filter.frequency.exponentialRampToValueAtTime(180, now + 0.18);
-
-      const noiseGain = ctxAudio.createGain();
-      noiseGain.gain.setValueAtTime(0.55, now);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-
+      filter.frequency.setValueAtTime(920, now);
+      filter.frequency.exponentialRampToValueAtTime(180, now + 0.16);
+      const noiseGain = c.createGain();
+      noiseGain.gain.setValueAtTime(0.5, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
       noise.connect(filter);
       filter.connect(noiseGain);
-      noiseGain.connect(ctxAudio.destination);
+      noiseGain.connect(c.destination);
       noise.start(now);
     } catch (e) {}
   }
@@ -713,7 +1057,7 @@ export function startErcRugby(bridge, autoStart = false) {
     containerEl.querySelector('#erc-player-title').textContent = team.name;
     containerEl.querySelector('#erc-player-chant').textContent = team.chant;
     containerEl.querySelector('#erc-matchup-summary').textContent =
-      `${team.name} vs ${state.awayTeam.name} • Pass: C D E F G`;
+      `${team.name} vs ${state.awayTeam.name} • Jerseys: C D E F G`;
   }
 
   function startPokieSpin() {
@@ -722,7 +1066,7 @@ export function startErcRugby(bridge, autoStart = false) {
     const chosen = candidates[Math.floor(Math.random() * candidates.length)] || TEAMS[1];
     state.pokie.spinning = true;
     state.pokie.timer = 0;
-    state.pokie.duration = 1.25;
+    state.pokie.duration = 1.2;
     state.pokie.tickAccum = 0;
     state.pokie.targetId = chosen.id;
     const badge = containerEl.querySelector('#erc-reel-badge');
@@ -735,7 +1079,6 @@ export function startErcRugby(bridge, autoStart = false) {
     if (!state.pokie.spinning || !containerEl) return;
     state.pokie.timer += dt;
     state.pokie.tickAccum += dt;
-
     const progress = Math.min(1, state.pokie.timer / state.pokie.duration);
     const interval = 0.05 + progress * 0.15;
 
@@ -780,239 +1123,266 @@ export function startErcRugby(bridge, autoStart = false) {
     containerEl.querySelector('#erc-hud-away-name').textContent = state.awayTeam.name;
     containerEl.querySelector('#erc-hud-home-score').textContent = String(state.homeScore);
     containerEl.querySelector('#erc-hud-away-score').textContent = String(state.awayScore);
-    containerEl.querySelector('#erc-hud-tackle-count').textContent =
-      `TACKLE ${state.tackleCount}/${state.maxTackles - 1}`;
+
+    const posEl = containerEl.querySelector('#erc-hud-possession');
+    posEl.textContent =
+      state.possession === 'home'
+        ? `ATTACK • T ${state.tackleCount}/${state.maxTackles - 1}`
+        : `DEFENSE • T ${state.tackleCount}/${state.maxTackles - 1}`;
+    posEl.style.color = state.possession === 'home' ? '#fde047' : '#fda4af';
 
     const mins = Math.floor(Math.max(0, state.matchTime) / 60);
     const secs = Math.floor(Math.max(0, state.matchTime) % 60);
     containerEl.querySelector('#erc-hud-clock').textContent =
       `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 
+    containerEl.querySelector('#erc-leg-left').textContent = state.actionBinds.moveLeft.label;
+    containerEl.querySelector('#erc-leg-right').textContent = state.actionBinds.moveRight.label;
     containerEl.querySelector('#erc-leg-surge').textContent = state.actionBinds.surge.label;
     containerEl.querySelector('#erc-leg-bomb').textContent = state.actionBinds.bomb.label;
     containerEl.querySelector('#erc-leg-grubber').textContent = state.actionBinds.grubber.label;
   }
 
-  // Compute organic echelon depth for player `idx` relative to `carrierIdx`
-  // Mirrors your 5 reference images: players further from the ball-carrier drop progressively deeper behind,
-  // with natural variation and a ~10% chance of a runner creeping slightly ahead (offside/flat forward-pass risk!).
-  function rollSupportAlignment(attacker, idx, carrierIdx) {
+  // Dynamic echelon alignment behind whichever player has the ball (~10% overrun chance in offense)
+  function rollSupportAlignment(playerObj, idx, carrierIdx, allowOverrun = true) {
     if (idx === carrierIdx) {
-      attacker.overrun = false;
-      attacker.depthJitter = 0;
-      attacker.lateralJitter = 0;
+      playerObj.overrun = false;
+      playerObj.depthJitter = 0;
+      playerObj.lateralJitter = 0;
       return;
     }
     const dist = Math.abs(idx - carrierIdx);
-    // ~10% chance for a support player (especially adjacent inside/outside runner) to overrun ahead of the ball!
-    const willOverrun = Math.random() < 0.10;
-    attacker.overrun = willOverrun;
-    if (willOverrun) {
-      // Runs 2.5% to 4.8% ahead of the ball-carrier (passing to them = FORWARD PASS!)
-      attacker.overrunLead = 0.026 + Math.random() * 0.022;
-    } else {
-      attacker.overrunLead = 0;
-    }
-    // Natural imperfection in depth & width so the line looks organic, not robotic
-    attacker.depthJitter = (Math.random() - 0.35) * 0.018 * dist;
-    attacker.lateralJitter = (Math.random() - 0.5) * 0.022;
-    attacker.nextRollTimer = 1.6 + Math.random() * 1.9;
+    const willOverrun = allowOverrun && Math.random() < 0.10;
+    playerObj.overrun = willOverrun;
+    playerObj.overrunLead = willOverrun ? 0.028 + Math.random() * 0.022 : 0;
+    playerObj.depthJitter = (Math.random() - 0.35) * 0.016 * dist;
+    playerObj.lateralJitter = (Math.random() - 0.5) * 0.018;
+    playerObj.nextRollTimer = 1.6 + Math.random() * 1.8;
   }
 
-  function getDesiredSupportPos(attacker, idx, carrier) {
-    const baseLaneX = LANES[idx];
+  // AttackDirection: -1 when Home attacks UP toward y=0.12; +1 when Away attacks DOWN toward y=0.88
+  function getDesiredSupportPos(playerObj, idx, carrier, attackDir) {
     if (idx === state.carrierIndex) {
-      return { x: attacker.x, y: attacker.y };
+      return { x: playerObj.x, y: playerObj.y };
     }
     const laneSteps = Math.abs(idx - state.carrierIndex);
-    // Progressive diagonal echelon step (~0.046 per lane away from ball-carrier, matching your 5 diagrams)
-    const echelonDepth = laneSteps * 0.046 + attacker.depthJitter;
-    const desiredX = Math.min(0.91, Math.max(0.09, baseLaneX + attacker.lateralJitter));
+    const echelonDepth = laneSteps * 0.046 + playerObj.depthJitter;
+    const desiredX = Math.min(0.91, Math.max(0.09, LANES[idx] + playerObj.lateralJitter));
 
     let desiredY;
-    if (attacker.overrun) {
-      desiredY = Math.max(0.13, carrier.y - attacker.overrunLead);
+    if (playerObj.overrun) {
+      // Overrun means ahead of the ball-carrier in the direction of attack!
+      desiredY = carrier.y + attackDir * playerObj.overrunLead;
     } else {
-      desiredY = Math.min(0.95, Math.max(carrier.y + 0.024, carrier.y + echelonDepth));
+      // Behind the ball-carrier in staggered backline depth
+      desiredY = carrier.y - attackDir * Math.max(0.025, echelonDepth);
     }
+    desiredY = Math.min(0.93, Math.max(0.13, desiredY));
     return { x: desiredX, y: desiredY };
   }
 
-  function assignDefenderRoles() {
-    // 1 Marker stands square at the ruck; 1-2 line defenders press harder at the ball-carrier
-    const markerIdx = state.tacklePause.markerIdx;
-    const candidates = [0, 1, 2, 3, 4].filter((i) => i !== markerIdx);
-    const chaserA = candidates[Math.floor(Math.random() * candidates.length)];
-    state.defenders.forEach((d, idx) => {
-      if (idx === markerIdx) {
-        d.role = 'marker';
-      } else if (idx === chaserA) {
-        d.role = 'chaser';
-      } else {
-        d.role = 'line';
-      }
-    });
+  function makePlayerEntity(i, x, y) {
+    return {
+      laneIndex: i,
+      baseX: LANES[i],
+      x,
+      y,
+      prevX: x,
+      prevY: y,
+      vx: 0,
+      vy: 0,
+      animSpeedX: 0,
+      animSpeedY: 0,
+      strideTimer: i * 0.18,
+      overrun: false,
+      overrunLead: 0,
+      depthJitter: 0,
+      lateralJitter: 0,
+      nextRollTimer: 1.6 + Math.random() * 1.5,
+      role: 'line'
+    };
   }
 
-  function spawnFormations(startY = 0.82, initialCarrierIdx = 2) {
-    state.carrierIndex = initialCarrierIdx;
-    const onsideY = Math.max(0.14, startY - 0.15);
-    state.tacklePause.markX = LANES[initialCarrierIdx];
-    state.tacklePause.markY = startY;
-    state.tacklePause.onsideY = onsideY;
-    state.tacklePause.markerIdx = initialCarrierIdx;
-
-    state.attackers = [];
-    for (let i = 0; i < 5; i++) {
-      const att = {
-        laneIndex: i,
-        baseX: LANES[i],
-        x: LANES[i],
-        y: startY,
-        vy: 0,
-        stridePhase: i * 1.15,
-        overrun: false,
-        overrunLead: 0,
-        depthJitter: 0,
-        lateralJitter: 0,
-        nextRollTimer: 1.5 + Math.random() * 1.8,
-        flashTimer: 0
-      };
-      rollSupportAlignment(att, i, initialCarrierIdx);
-      // Force all 4 support players cleanly onside at the start of a set
-      att.overrun = false;
-      state.attackers.push(att);
-    }
-
-    // Position non-carriers in echelon behind the initial ball-carrier
-    const carrier = state.attackers[initialCarrierIdx];
-    for (let i = 0; i < 5; i++) {
-      if (i !== initialCarrierIdx) {
-        const pos = getDesiredSupportPos(state.attackers[i], i, carrier);
-        state.attackers[i].x = pos.x;
-        state.attackers[i].y = pos.y;
-      }
-    }
-
-    // 5 Defenders: 1 Marker opposite the play-the-ball + 4 retired 10m back onside
-    state.defenders = [];
-    for (let i = 0; i < 5; i++) {
-      const isMarker = i === initialCarrierIdx;
-      state.defenders.push({
-        x: LANES[i],
-        y: isMarker ? Math.max(0.14, startY - 0.042) : onsideY,
-        baseX: LANES[i],
-        phase: Math.random() * Math.PI * 2,
-        stridePhase: Math.random() * Math.PI * 2,
-        role: isMarker ? 'marker' : 'line'
-      });
-    }
-  }
-
-  function resetSetOfSix(startY = 0.82, carrierIdx = 2) {
+  function setupSetOfSix(possession, startY, carrierIdx = 2) {
+    state.possession = possession;
+    state.carrierIndex = carrierIdx;
+    state.selectedDefenderIdx = carrierIdx;
+    state.tackleCount = 0;
     state.surgeTimer = 0;
     state.passState.active = false;
     state.kickBall.active = false;
     state.kickBall.z = 0;
-    state.tackleCount = 0;
     state.playState = 'waitingForPlay';
-    spawnFormations(startY, carrierIdx);
+    state.aiPlayTimer = 0.75;
+    state.aiPassCooldown = 1.25;
+
+    const attackDir = possession === 'home' ? -1 : 1;
+    // 10m onside line in front of the mark in the direction of attack
+    const onsideY = Math.min(0.86, Math.max(0.14, startY + attackDir * 0.145));
+    state.tacklePause.markY = startY;
+    state.tacklePause.onsideY = onsideY;
+
+    state.homePlayers = [];
+    state.awayPlayers = [];
+
+    for (let i = 0; i < 5; i++) {
+      if (possession === 'home') {
+        const hp = makePlayerEntity(i, LANES[i], startY);
+        rollSupportAlignment(hp, i, carrierIdx, false);
+        state.homePlayers.push(hp);
+
+        // ALL 5 defenders form a clean flat line 10m back onside!
+        const ap = makePlayerEntity(i, LANES[i], onsideY);
+        state.awayPlayers.push(ap);
+      } else {
+        // Away has the ball attacking down-field; Home defends 10m back onside!
+        const ap = makePlayerEntity(i, LANES[i], startY);
+        rollSupportAlignment(ap, i, carrierIdx, false);
+        state.awayPlayers.push(ap);
+
+        const hp = makePlayerEntity(i, LANES[i], onsideY);
+        state.homePlayers.push(hp);
+      }
+    }
+
+    const attackers = possession === 'home' ? state.homePlayers : state.awayPlayers;
+    const carrier = attackers[carrierIdx];
+    for (let i = 0; i < 5; i++) {
+      if (i !== carrierIdx) {
+        const pos = getDesiredSupportPos(attackers[i], i, carrier, attackDir);
+        attackers[i].x = pos.x;
+        attackers[i].y = pos.y;
+        attackers[i].prevX = pos.x;
+        attackers[i].prevY = pos.y;
+      }
+    }
+
     syncHudAndLegend();
   }
 
-  function triggerTurnover(reasonText, color = '#fb7185') {
+  function assignAiDefenderChasers() {
+    const defenders = state.possession === 'home' ? state.awayPlayers : state.homePlayers;
+    const chaserA = Math.floor(Math.random() * 5);
+    const chaserB = (chaserA + 2) % 5;
+    defenders.forEach((d, idx) => {
+      d.role = idx === chaserA || idx === chaserB ? 'chaser' : 'line';
+    });
+  }
+
+  function triggerHandover(reasonText, nextPossession, nextStartY, color = '#fb7185') {
     playRefWhistle();
-    playErrorClackSound();
     state.passState.active = false;
     state.kickBall.active = false;
-    state.awayScore += 2;
-    if (bridgeRef && bridgeRef.getState().gameStats) {
-      bridgeRef.getState().gameStats.miss += 1;
-    }
-    const carrier = state.attackers[state.carrierIndex] || { x: 0.5, y: 0.5 };
-    addCallout(reasonText, carrier.x, Math.max(0.2, carrier.y - 0.05), color);
-    syncHudAndLegend();
-
     state.playState = 'turnoverPause';
     state.turnoverTimer = 1.25;
+    state.nextPossession = nextPossession;
+    state.nextStartY = nextStartY;
+
+    const attackers = state.possession === 'home' ? state.homePlayers : state.awayPlayers;
+    const c = attackers[state.carrierIndex] || { x: 0.5, y: 0.5 };
+    addCallout(reasonText, c.x, Math.min(0.82, Math.max(0.18, c.y)), color);
+    syncHudAndLegend();
   }
 
-  // Triggered when a defender tackles the current ball-carrier
-  function beginTackleAndRetreat(tacklerIdx) {
-    const carrier = state.attackers[state.carrierIndex];
+  // Tackle handler: ALL 5 defending players MUST retreat 10m back onside and form a flat line!
+  function beginTackleAndRetreat() {
+    const attackers = state.possession === 'home' ? state.homePlayers : state.awayPlayers;
+    const carrier = attackers[state.carrierIndex];
+
     state.tackleCount += 1;
     state.surgeTimer = 0;
     carrier.vy = 0;
+    carrier.vx = 0;
 
     state.screenShake.timer = state.screenShake.duration;
-    state.screenShake.intensity = 15;
+    state.screenShake.intensity = 14;
     playTackleHitSound();
 
-    // Rugby League 6-tackle rule: handover after completion of 6th tackle!
+    const attackDir = state.possession === 'home' ? -1 : 1;
+
+    // 6th Tackle Handover — possession switches between Offense and Defense!
     if (state.tackleCount >= state.maxTackles) {
-      triggerTurnover(`6TH TACKLE HANDOVER! ${state.awayTeam.name} +2`, '#fb7185');
+      const nextPos = state.possession === 'home' ? 'away' : 'home';
+      const clampedY = Math.min(0.78, Math.max(0.22, carrier.y));
+      triggerHandover(
+        nextPos === 'away' ? '6TH TACKLE HANDOVER! DEFEND NOW!' : 'TURNOVER WON! YOUR BALL!',
+        nextPos,
+        clampedY,
+        nextPos === 'away' ? '#fb7185' : '#4ade80'
+      );
       return;
     }
 
     state.playState = 'retreating';
     state.tacklePause.timer = 0;
-    state.tacklePause.markX = carrier.x;
     state.tacklePause.markY = carrier.y;
-    state.tacklePause.onsideY = Math.max(0.13, carrier.y - 0.145);
-    state.tacklePause.markerIdx = tacklerIdx;
+    // 10m onside line in front of the tackle mark
+    state.tacklePause.onsideY = Math.min(0.87, Math.max(0.13, carrier.y + attackDir * 0.14));
 
-    // Re-roll support alignments for the upcoming play-the-ball (10% overrun chance on next phase)
-    state.attackers.forEach((att, idx) => {
-      rollSupportAlignment(att, idx, state.carrierIndex);
+    // Re-roll support echelon behind the ball-carrier (~10% overrun chance when Home attacks)
+    attackers.forEach((att, idx) => {
+      rollSupportAlignment(att, idx, state.carrierIndex, state.possession === 'home');
     });
 
     syncHudAndLegend();
-    addCallout(`TACKLE ${state.tackleCount}! DEFENSE RETREAT 10m`, carrier.x, carrier.y - 0.05, '#fda4af');
+    addCallout(
+      `TACKLE ${state.tackleCount}! ALL 5 DEFENDERS BACK 10m`,
+      carrier.x,
+      Math.min(0.85, Math.max(0.16, carrier.y - 0.04)),
+      '#fde047'
+    );
   }
 
-  // Releases the defense once the ball is passed from dummy-half or the carrier runs off the mark
   function releasePlayTheBall() {
     if (state.playState === 'retreating' || state.playState === 'turnoverPause') return false;
     if (state.playState === 'waitingForPlay') {
       state.playState = 'running';
-      assignDefenderRoles();
+      assignAiDefenderChasers();
     }
     return true;
   }
 
-  // Pass the ball from current ball-carrier to target lane player `targetIdx`
-  function passBallToLane(targetIdx) {
+  // Pressing C, D, E, F, G:
+  // - In OFFENSE ('home'): passes the ball to that lane's runner (or scoots if already holding it)
+  // - In DEFENSE ('away'): switches your yellow selection circle to that defender (`C..G`)!
+  function handleNoteCDEFG(targetIdx) {
     if (state.phase !== 'playing') return;
+
+    if (state.possession === 'away') {
+      state.selectedDefenderIdx = targetIdx;
+      const def = state.homePlayers[targetIdx];
+      if (def) {
+        addCallout(`DEFENDER ${LANE_NOTES[targetIdx]}`, def.x, def.y + 0.05, '#fde047');
+      }
+      return;
+    }
+
+    // Offense ('home'): Pass or scoot!
     if (state.playState === 'retreating' || state.playState === 'turnoverPause') {
-      const c = state.attackers[state.carrierIndex];
-      addCallout('WAIT FOR PLAY-THE-BALL!', c.x, c.y - 0.04, '#fcd34d');
+      const c = state.homePlayers[state.carrierIndex];
+      addCallout('WAIT FOR DEFENSE TO GET ONSIDE!', c.x, c.y - 0.04, '#fcd34d');
       return;
     }
     if (state.passState.active || state.kickBall.active) return;
 
     const fromIdx = state.carrierIndex;
-    const passer = state.attackers[fromIdx];
+    const passer = state.homePlayers[fromIdx];
 
-    // If pressing the note of the player who ALREADY has the ball: dummy-half / ball-carrier runs!
     if (targetIdx === fromIdx) {
       releasePlayTheBall();
-      passer.flashTimer = 0.22;
-      passer.vy = Math.min(passer.vy, -0.165);
-      addCallout(`${LANE_NOTES[targetIdx]} SCOOTS!`, passer.x, passer.y - 0.04, '#bae6fd');
+      passer.vy = -0.16;
+      addCallout(`${LANE_NOTES[targetIdx]} RUNS!`, passer.x, passer.y - 0.04, '#bae6fd');
       return;
     }
 
-    const receiver = state.attackers[targetIdx];
-
-    // Release play-the-ball as the pass leaves hands (per NRL rules, defense can move once passed)
+    const receiver = state.homePlayers[targetIdx];
     releasePlayTheBall();
     playPassSound();
 
-    // Check Rugby League Forward Pass Law:
-    // Smaller Y = closer to opponent's dead-ball line. If receiver is ahead of passer by > 0.006, it's forward!
+    // Forward pass check: smaller Y = closer to opponent's try-line!
     const thrownForward = receiver.y < passer.y - 0.006;
-
     const laneDist = Math.abs(targetIdx - fromIdx);
+
     state.passState.active = true;
     state.passState.fromIdx = fromIdx;
     state.passState.toIdx = targetIdx;
@@ -1021,68 +1391,61 @@ export function startErcRugby(bridge, autoStart = false) {
     state.passState.x = passer.x;
     state.passState.y = passer.y;
     state.passState.progress = 0;
-    state.passState.duration = 0.14 + laneDist * 0.055;
+    state.passState.duration = 0.14 + laneDist * 0.05;
     state.passState.isForwardPass = thrownForward;
-
-    addCallout(
-      `PASS ${LANE_NOTES[fromIdx]} → ${LANE_NOTES[targetIdx]}`,
-      (passer.x + receiver.x) * 0.5,
-      Math.min(passer.y, receiver.y) - 0.035,
-      thrownForward ? '#fb7185' : '#bae6fd'
-    );
   }
 
-  function surgeForward() {
+  function triggerSurgeOrTackleBurst() {
     if (state.phase !== 'playing') return;
-    if (!releasePlayTheBall()) {
-      const c = state.attackers[state.carrierIndex];
-      addCallout('HOLD! DEFENSE GETTING ONSIDE...', c.x, c.y - 0.04, '#fcd34d');
-      return;
+    if (state.possession === 'home') {
+      if (!releasePlayTheBall()) return;
+      state.surgeTimer = 0.6;
+      const c = state.homePlayers[state.carrierIndex];
+      c.vy = -0.23;
+      addCallout('RUN SURGE!', c.x, c.y - 0.04, '#6ee7b7');
+    } else {
+      // In defense: burst your selected yellow-ring defender up toward the ball-carrier (only when play is live!)
+      if (state.playState !== 'running') {
+        const d = state.homePlayers[state.selectedDefenderIdx];
+        addCallout('STAY ONSIDE UNTIL PLAYED!', d.x, d.y + 0.05, '#fcd34d');
+        return;
+      }
+      state.surgeTimer = 0.45;
+      const d = state.homePlayers[state.selectedDefenderIdx];
+      addCallout(`${LANE_NOTES[state.selectedDefenderIdx]} RUSHES UP!`, d.x, d.y - 0.03, '#6ee7b7');
     }
-    const carrier = state.attackers[state.carrierIndex];
-    state.surgeTimer = 0.65;
-    carrier.vy = -0.25;
-    carrier.flashTimer = 0.25;
-    addCallout('HIT IT UP!', carrier.x, carrier.y - 0.04, '#6ee7b7');
   }
 
   function launchKick(kind) {
-    if (state.phase !== 'playing' || state.kickBall.active || state.passState.active) return;
+    if (state.phase !== 'playing' || state.possession !== 'home') return;
+    if (state.kickBall.active || state.passState.active) return;
     if (!releasePlayTheBall()) return;
 
-    const kicker = state.attackers[state.carrierIndex];
+    const kicker = state.homePlayers[state.carrierIndex];
     playKickSound(kind);
 
     state.kickBall.active = true;
     state.kickBall.kind = kind;
-    state.kickBall.kickerIdx = state.carrierIndex;
-    state.kickBall.kickerStartY = kicker.y;
     state.kickBall.x = kicker.x;
     state.kickBall.y = kicker.y - 0.03;
     state.kickBall.bounceCount = 0;
 
-    // Put onside chasers in motion behind the kicker
-    state.attackers.forEach((att, idx) => {
-      if (idx !== state.carrierIndex && att.y < kicker.y) {
-        // Offside chaser at kick time! Mark them offside unless kicker runs them onside
-        att.offsideOnKick = true;
-      } else {
-        att.offsideOnKick = false;
-      }
+    state.homePlayers.forEach((att, idx) => {
+      att.offsideOnKick = idx !== state.carrierIndex && att.y < kicker.y;
     });
 
     if (kind === 'bomb') {
       state.kickBall.vy = -0.33;
-      state.kickBall.vx = (Math.random() - 0.5) * 0.12;
+      state.kickBall.vx = (Math.random() - 0.5) * 0.11;
       state.kickBall.z = 0.05;
       state.kickBall.vz = 0.48;
-      addCallout('HIGH BOMB!', kicker.x, kicker.y - 0.05, '#fcd34d');
+      addCallout('BOMB KICK!', kicker.x, kicker.y - 0.05, '#fcd34d');
     } else {
       state.kickBall.vy = -0.42;
       state.kickBall.vx = (Math.random() - 0.5) * 0.07;
       state.kickBall.z = 0.01;
       state.kickBall.vz = 0.08;
-      addCallout('GRUBBER KICK!', kicker.x, kicker.y - 0.05, '#7dd3fc');
+      addCallout('GRUBBER!', kicker.x, kicker.y - 0.05, '#7dd3fc');
     }
   }
 
@@ -1095,16 +1458,16 @@ export function startErcRugby(bridge, autoStart = false) {
     }
   }
 
-  // Handles incoming MIDI / PianoPad notes for BOTH menu keybinding AND in-game passing/actions
+  // Incoming MIDI / PianoPad note down
   function onPianoNoteDown(noteStr) {
     const clean = (noteStr || '').trim().toLowerCase();
     if (!clean) return;
 
     const freq = getNoteFrequency(clean);
-    if (freq) playTone(freq, 0.24, 0.85);
-    if (bridgeRef) bridgeRef.highlightKey(noteStr, 200, '#38bdf8');
+    if (freq) playTone(freq, 0.22, 0.8);
+    if (bridgeRef) bridgeRef.highlightKey(noteStr, 200, '#fde047');
 
-    // 1. If the user is assigning a MIDI note in the Setup Menu: capture this MIDI note!
+    // 1. Setup Menu MIDI listener for Move Left, Move Right, Run, Bomb, Grubber!
     if (state.listeningAction) {
       const action = state.listeningAction;
       const existingKey = state.actionBinds[action].key || '';
@@ -1126,9 +1489,23 @@ export function startErcRugby(bridge, autoStart = false) {
 
     if (state.phase !== 'playing') return;
 
-    // 2. Check if this exact MIDI note (e.g. 'a1', 'b1', 'c2', 'f#1') is bound to Run, Bomb, or Grubber!
+    // 2. Check assignable MIDI action keys FIRST (Move Left, Move Right, Run, Bomb, Grubber)
+    if (state.actionBinds.moveLeft.midi === clean) {
+      if (state.possession === 'home') releasePlayTheBall();
+      state.moveInput.leftHeld = true;
+      state.moveInput.leftTapTimer = 0.22;
+      state.moveInput.rightTapTimer = 0;
+      return;
+    }
+    if (state.actionBinds.moveRight.midi === clean) {
+      if (state.possession === 'home') releasePlayTheBall();
+      state.moveInput.rightHeld = true;
+      state.moveInput.rightTapTimer = 0.22;
+      state.moveInput.leftTapTimer = 0;
+      return;
+    }
     if (state.actionBinds.surge.midi === clean) {
-      surgeForward();
+      triggerSurgeOrTackleBurst();
       return;
     }
     if (state.actionBinds.bomb.midi === clean) {
@@ -1140,13 +1517,24 @@ export function startErcRugby(bridge, autoStart = false) {
       return;
     }
 
-    // 3. Otherwise check natural C, D, E, F, G notes to PASS the ball to that lane's runner
+    // 3. Natural C, D, E, F, G notes -> Pass in Offense OR Switch Defender in Defense!
     const m = clean.toUpperCase().match(/^([A-G])(#?)/);
-    if (!m || m[2] === '#') return; // Ignore sharps unless bound to an action
+    if (!m || m[2] === '#') return;
     const letter = m[1];
     if (NOTE_TO_INDEX[letter] !== undefined) {
       highlightStripButton(letter);
-      passBallToLane(NOTE_TO_INDEX[letter]);
+      handleNoteCDEFG(NOTE_TO_INDEX[letter]);
+    }
+  }
+
+  function onPianoNoteUp(noteStr) {
+    const clean = (noteStr || '').trim().toLowerCase();
+    if (!clean) return;
+    if (state.actionBinds.moveLeft.midi === clean) {
+      state.moveInput.leftHeld = false;
+    }
+    if (state.actionBinds.moveRight.midi === clean) {
+      state.moveInput.rightHeld = false;
     }
   }
 
@@ -1159,14 +1547,14 @@ export function startErcRugby(bridge, autoStart = false) {
     state.awayScore = 0;
     state.matchTime = 120;
     state.phase = 'playing';
-    resetSetOfSix(0.82, 2);
+    setupSetOfSix('home', 0.82, 2);
 
     startModalEl.style.display = 'none';
     hudEl.style.display = 'flex';
     legendEl.style.display = 'block';
     pianoStripEl.style.display = 'flex';
     syncHudAndLegend();
-    addCallout('KICK OFF! PASS WITH C–G OR HIT IT UP!', 0.5, 0.74, '#fef08a');
+    addCallout('KICK OFF! PASS WITH C–G OR STEER LEFT/RIGHT!', 0.5, 0.74, '#fef08a');
   }
 
   function finishMatch() {
@@ -1195,14 +1583,37 @@ export function startErcRugby(bridge, autoStart = false) {
     );
   }
 
+  function recordPlayerVelocities(dt) {
+    const all = [...state.homePlayers, ...state.awayPlayers];
+    for (const p of all) {
+      const dx = (p.x - p.prevX) / Math.max(0.001, dt);
+      const dy = (p.y - p.prevY) / Math.max(0.001, dt);
+      p.animSpeedX += (dx - p.animSpeedX) * Math.min(1, dt * 14);
+      p.animSpeedY += (dy - p.animSpeedY) * Math.min(1, dt * 14);
+      p.prevX = p.x;
+      p.prevY = p.y;
+
+      const totalSpeed = Math.hypot(p.animSpeedX, p.animSpeedY);
+      if (totalSpeed > 0.018 && state.playState !== 'waitingForPlay' && state.playState !== 'turnoverPause') {
+        p.strideTimer += dt * (4.2 + totalSpeed * 22);
+      }
+    }
+  }
+
   function updateSimulation(dt) {
     if (state.phase !== 'playing') return;
 
     if (state.screenShake.timer > 0) {
       state.screenShake.timer = Math.max(0, state.screenShake.timer - dt);
     }
-    for (const att of state.attackers) {
-      if (att.flashTimer > 0) att.flashTimer = Math.max(0, att.flashTimer - dt);
+    if (state.moveInput.leftTapTimer > 0) {
+      state.moveInput.leftTapTimer = Math.max(0, state.moveInput.leftTapTimer - dt);
+    }
+    if (state.moveInput.rightTapTimer > 0) {
+      state.moveInput.rightTapTimer = Math.max(0, state.moveInput.rightTapTimer - dt);
+    }
+    if (state.surgeTimer > 0) {
+      state.surgeTimer = Math.max(0, state.surgeTimer - dt);
     }
 
     state.matchTime -= dt;
@@ -1216,28 +1627,31 @@ export function startErcRugby(bridge, autoStart = false) {
 
     for (let i = state.callouts.length - 1; i >= 0; i--) {
       state.callouts[i].life -= dt * 1.05;
-      state.callouts[i].y -= dt * 0.045;
-      if (state.callouts[i].life <= 0) {
-        state.callouts.splice(i, 1);
-      }
+      state.callouts[i].y -= dt * 0.04;
+      if (state.callouts[i].life <= 0) state.callouts.splice(i, 1);
     }
 
-    // Brief whistle stoppage after Forward Pass or 6th Tackle Handover
     if (state.playState === 'turnoverPause') {
       state.turnoverTimer -= dt;
+      recordPlayerVelocities(dt);
       if (state.turnoverTimer <= 0) {
-        resetSetOfSix(0.84, 2);
-        addCallout('NEW SET! DEFENSE ONSIDE 10m', 0.5, 0.76, '#fde047');
+        setupSetOfSix(state.nextPossession, state.nextStartY, 2);
       }
       return;
     }
 
-    const carrier = state.attackers[state.carrierIndex];
+    const attackers = state.possession === 'home' ? state.homePlayers : state.awayPlayers;
+    const defenders = state.possession === 'home' ? state.awayPlayers : state.homePlayers;
+    const attackDir = state.possession === 'home' ? -1 : 1;
+    const carrier = attackers[state.carrierIndex];
+
+    // Steer direction from Left / Right MIDI or keyboard controls (-1..+1)
+    let userSteerX = 0;
+    if (state.moveInput.leftHeld || state.moveInput.leftTapTimer > 0) userSteerX -= 1;
+    if (state.moveInput.rightHeld || state.moveInput.rightTapTimer > 0) userSteerX += 1;
 
     // =========================================================================
-    // PHASE A: POST-TACKLE RETREAT — Marker stands square at the play-the-ball,
-    // remaining 4 defenders retire 10m back onside, and support runners drop
-    // back into staggered echelon alignment behind the tackled ball-carrier!
+    // PHASE A: POST-TACKLE RETREAT — ALL 5 DEFENDERS RETREAT 10m & FORM A LINE!
     // =========================================================================
     if (state.playState === 'retreating') {
       state.tacklePause.timer += dt;
@@ -1246,65 +1660,81 @@ export function startErcRugby(bridge, autoStart = false) {
       carrier.y = state.tacklePause.markY;
       for (let i = 0; i < 5; i++) {
         if (i === state.carrierIndex) continue;
-        const att = state.attackers[i];
-        const desired = getDesiredSupportPos(att, i, carrier);
+        const att = attackers[i];
+        const desired = getDesiredSupportPos(att, i, carrier, attackDir);
         att.x += (desired.x - att.x) * Math.min(1, dt * 5.5);
         att.y += (desired.y - att.y) * Math.min(1, dt * 5.5);
-        att.stridePhase += dt * 9;
       }
 
+      // ALL 5 defending players jog back to `targetOnsideY` and form a straight horizontal line!
       let allOnside = true;
-      for (let i = 0; i < state.defenders.length; i++) {
-        const d = state.defenders[i];
-        const isMarker = i === state.tacklePause.markerIdx;
-        const targetX = isMarker ? state.tacklePause.markX : LANES[i];
-        const targetY = isMarker ? Math.max(0.13, state.tacklePause.markY - 0.042) : targetOnsideY;
+      for (let i = 0; i < 5; i++) {
+        const d = defenders[i];
+        const laneX = LANES[i];
+        d.x += (laneX - d.x) * Math.min(1, dt * 6.5);
+        d.y += (targetOnsideY - d.y) * Math.min(1, dt * 7.0);
 
-        d.x += (targetX - d.x) * Math.min(1, dt * 6.5);
-        d.y += (targetY - d.y) * Math.min(1, dt * 7.0);
-        d.stridePhase += dt * 15;
-
-        if (Math.abs(d.y - targetY) > 0.012 || Math.abs(d.x - targetX) > 0.015) {
+        if (Math.abs(d.y - targetOnsideY) > 0.010 || Math.abs(d.x - laneX) > 0.014) {
           allOnside = false;
         }
       }
 
-      if (state.tacklePause.timer >= state.tacklePause.retreatDuration || allOnside) {
+      recordPlayerVelocities(dt);
+
+      if (state.tacklePause.timer >= state.tacklePause.retreatDuration && allOnside) {
+        for (let i = 0; i < 5; i++) {
+          defenders[i].x = LANES[i];
+          defenders[i].y = targetOnsideY;
+        }
         state.playState = 'waitingForPlay';
-        addCallout('SET! PASS (C–G) OR RUN', carrier.x, carrier.y - 0.045, '#fde047');
+        state.aiPlayTimer = 0.65;
+        addCallout(
+          state.possession === 'home' ? 'ONSIDE! PASS (C–G) OR RUN' : 'DEFENSE SET! SWITCH WITH C–G',
+          carrier.x,
+          Math.min(0.85, Math.max(0.16, carrier.y - 0.04)),
+          '#fde047'
+        );
       }
       return;
     }
 
     // =========================================================================
-    // PHASE B: WAITING AT PLAY-THE-BALL — Defense is locked 10m back onside
-    // (plus 1 square Marker) and CANNOT move until you pass or run!
+    // PHASE B: SET & WAITING AT PLAY-THE-BALL (Idle Sprite Pose!)
     // =========================================================================
     if (state.playState === 'waitingForPlay') {
-      for (const d of state.defenders) {
-        d.stridePhase += dt * 3.2;
-      }
       for (let i = 0; i < 5; i++) {
         if (i === state.carrierIndex) continue;
-        const att = state.attackers[i];
-        const desired = getDesiredSupportPos(att, i, carrier);
+        const att = attackers[i];
+        const desired = getDesiredSupportPos(att, i, carrier, attackDir);
         att.x += (desired.x - att.x) * Math.min(1, dt * 4.5);
         att.y += (desired.y - att.y) * Math.min(1, dt * 4.5);
       }
+
+      // In Defense, let user pre-position their selected defender laterally along the 10m line
+      if (state.possession === 'away' && userSteerX !== 0) {
+        const selDef = state.homePlayers[state.selectedDefenderIdx];
+        selDef.x = Math.min(0.92, Math.max(0.08, selDef.x + userSteerX * 0.22 * dt));
+      }
+
+      // If AI has possession ('away'), AI plays the ball after a short pause
+      if (state.possession === 'away') {
+        state.aiPlayTimer -= dt;
+        if (state.aiPlayTimer <= 0) {
+          releasePlayTheBall();
+        }
+      }
+
+      recordPlayerVelocities(dt);
       return;
     }
 
     // =========================================================================
-    // PHASE C: LIVE RUGBY LEAGUE OPEN PLAY
+    // PHASE C: LIVE RUGBY LEAGUE PLAY (Offense OR Defense)
     // =========================================================================
-    if (state.surgeTimer > 0) {
-      state.surgeTimer = Math.max(0, state.surgeTimer - dt);
-    }
-
-    // 1. Update airborne PASS between backline players
+    // 1. Update airborne pass
     if (state.passState.active) {
       state.passState.progress += dt / state.passState.duration;
-      const receiver = state.attackers[state.passState.toIdx];
+      const receiver = attackers[state.passState.toIdx];
       const t = Math.min(1, state.passState.progress);
 
       state.passState.x = state.passState.startX + (receiver.x - state.passState.startX) * t;
@@ -1312,85 +1742,117 @@ export function startErcRugby(bridge, autoStart = false) {
 
       if (t >= 1) {
         state.passState.active = false;
-        // Re-check if ball travelled forward toward opponent's dead-ball line
-        const landedForward = state.passState.isForwardPass || receiver.y < state.passState.startY - 0.008;
+        const landedForward =
+          state.possession === 'home' &&
+          (state.passState.isForwardPass || receiver.y < state.passState.startY - 0.008);
+
         if (landedForward) {
-          state.carrierIndex = state.passState.toIdx;
-          triggerTurnover('FORWARD PASS! SCRUM / TURNOVER +2', '#fb7185');
+          playErrorClackSound();
+          triggerHandover('FORWARD PASS! HANDOVER TO OPPONENT', 'away', Math.max(0.24, receiver.y), '#fb7185');
+          recordPlayerVelocities(dt);
           return;
         }
 
-        // Clean backwards/flat catch! Receiver becomes the new yellow-highlighted ball-carrier
         state.carrierIndex = state.passState.toIdx;
-        receiver.flashTimer = 0.25;
-        receiver.vy = Math.min(receiver.vy, -0.155);
-        if (bridgeRef && bridgeRef.getState().gameStats) {
+        if (state.possession === 'home' && bridgeRef && bridgeRef.getState().gameStats) {
           bridgeRef.getState().gameStats.perfect += 1;
         }
-
-        // Other 4 players now adjust their target echelon relative to the NEW ball-carrier!
-        state.attackers.forEach((att, idx) => {
-          rollSupportAlignment(att, idx, state.carrierIndex);
+        attackers.forEach((att, idx) => {
+          rollSupportAlignment(att, idx, state.carrierIndex, state.possession === 'home');
         });
       }
     }
 
-    // 2. Move current ball-carrier up-field & support runners into dynamic staggered depth
-    const activeCarrier = state.attackers[state.carrierIndex];
-    const targetCarrierVy = state.passState.active
-      ? -0.075
-      : state.surgeTimer > 0
-      ? -0.23
-      : -0.12;
+    const activeCarrier = attackers[state.carrierIndex];
 
-    activeCarrier.vy += (targetCarrierVy - activeCarrier.vy) * Math.min(1, dt * 8);
-    activeCarrier.y += activeCarrier.vy * dt;
-    activeCarrier.x += (LANES[state.carrierIndex] - activeCarrier.x) * Math.min(1, dt * 3.5);
-    const runRate = state.surgeTimer > 0 ? 22 : 14;
-    activeCarrier.stridePhase += dt * runRate;
+    // 2. Move Attacking Ball-Carrier + Support Backline
+    if (state.possession === 'home') {
+      // User controls ball-carrier with Left/Right MIDI keys + Run Surge
+      const baseUpSpeed = state.passState.active ? -0.07 : state.surgeTimer > 0 ? -0.21 : -0.115;
+      activeCarrier.vy += (baseUpSpeed - activeCarrier.vy) * Math.min(1, dt * 8);
+      activeCarrier.y += activeCarrier.vy * dt;
 
-    // Support runners drop back or push up organically (with ~10% overrun chance)
+      if (userSteerX !== 0) {
+        activeCarrier.x = Math.min(0.91, Math.max(0.09, activeCarrier.x + userSteerX * 0.24 * dt));
+      }
+    } else {
+      // AI ('away') attacks down-field (+Y), passing occasionally across its backline!
+      state.aiPassCooldown -= dt;
+      if (!state.passState.active && state.aiPassCooldown <= 0 && Math.random() < 0.55) {
+        state.aiPassCooldown = 1.4 + Math.random() * 1.2;
+        const neighborOpts = [state.carrierIndex - 1, state.carrierIndex + 1].filter((idx) => idx >= 0 && idx <= 4);
+        const nextIdx = neighborOpts[Math.floor(Math.random() * neighborOpts.length)];
+        if (nextIdx !== undefined) {
+          playPassSound();
+          state.passState.active = true;
+          state.passState.fromIdx = state.carrierIndex;
+          state.passState.toIdx = nextIdx;
+          state.passState.startX = activeCarrier.x;
+          state.passState.startY = activeCarrier.y;
+          state.passState.x = activeCarrier.x;
+          state.passState.y = activeCarrier.y;
+          state.passState.progress = 0;
+          state.passState.duration = 0.20;
+          state.passState.isForwardPass = false;
+        }
+      } else if (state.aiPassCooldown <= 0) {
+        state.aiPassCooldown = 1.1;
+      }
+
+      const aiDownSpeed = state.passState.active ? 0.06 : 0.11;
+      activeCarrier.y += aiDownSpeed * dt;
+      // Subtle AI weave away from closest defender
+      const selDef = state.homePlayers[state.selectedDefenderIdx];
+      const weave = Math.abs(selDef.x - activeCarrier.x) < 0.12 ? Math.sign(activeCarrier.x - selDef.x || 1) * 0.06 : 0;
+      activeCarrier.x = Math.min(0.90, Math.max(0.10, activeCarrier.x + weave * dt));
+    }
+
+    // Support backline adjusts organically into staggered depth behind the ball-carrier
     for (let i = 0; i < 5; i++) {
       if (i === state.carrierIndex) continue;
-      const att = state.attackers[i];
+      const att = attackers[i];
 
       att.nextRollTimer -= dt;
       if (att.nextRollTimer <= 0 && !state.passState.active && !state.kickBall.active) {
-        rollSupportAlignment(att, i, state.carrierIndex);
+        rollSupportAlignment(att, i, state.carrierIndex, state.possession === 'home');
       }
 
-      if (state.kickBall.active) {
-        // Onside kick chasers sprint up-field after the kick!
+      if (state.possession === 'home' && state.kickBall.active) {
         if (!att.offsideOnKick) {
-          att.y -= 0.19 * dt;
-          att.stridePhase += dt * 18;
-        } else {
-          // Offside player holds back until kicker runs them onside (10m rule)
-          if (activeCarrier.y <= att.y) att.offsideOnKick = false;
-          att.stridePhase += dt * 6;
+          att.y -= 0.18 * dt;
+        } else if (activeCarrier.y <= att.y) {
+          att.offsideOnKick = false;
         }
       } else {
-        const desired = getDesiredSupportPos(att, i, activeCarrier);
-        // Smooth organic running back into depth (not instant snapping!)
-        att.x += (desired.x - att.x) * Math.min(1, dt * 3.2);
+        const desired = getDesiredSupportPos(att, i, activeCarrier, attackDir);
+        att.x += (desired.x - att.x) * Math.min(1, dt * 3.4);
         att.y += (desired.y - att.y) * Math.min(1, dt * 3.8);
-        att.stridePhase += dt * (runRate * 0.92);
       }
     }
 
-    // 3. Try scored when ball-carrier crosses opponent's goal line (top try-line)
-    if (!state.passState.active && !state.kickBall.active && activeCarrier.y <= 0.12) {
-      state.homeScore += 4;
-      if (bridgeRef && bridgeRef.getState().gameStats) {
-        bridgeRef.getState().gameStats.perfect += 4;
+    // 3. Check Try Scored!
+    if (!state.passState.active && !state.kickBall.active) {
+      if (state.possession === 'home' && activeCarrier.y <= 0.12) {
+        state.homeScore += 4;
+        if (bridgeRef && bridgeRef.getState().gameStats) {
+          bridgeRef.getState().gameStats.perfect += 4;
+        }
+        addCallout(`TRY BY ${LANE_NOTES[state.carrierIndex]}! +4`, activeCarrier.x, 0.16, '#4ade80');
+        setupSetOfSix('home', 0.82, 2);
+        recordPlayerVelocities(dt);
+        return;
       }
-      addCallout(`TRY BY ${LANE_NOTES[state.carrierIndex]}! +4`, activeCarrier.x, 0.16, '#4ade80');
-      syncHudAndLegend();
-      resetSetOfSix(0.84, 2);
-      return;
+      if (state.possession === 'away' && activeCarrier.y >= 0.88) {
+        state.awayScore += 4;
+        playErrorClackSound();
+        addCallout(`${state.awayTeam.name} SCORE! +4`, activeCarrier.x, 0.82, '#fb7185');
+        setupSetOfSix('home', 0.82, 2);
+        recordPlayerVelocities(dt);
+        return;
+      }
     }
 
-    // 4. Kicked ball physics (Bomb / Grubber) — nearest onside attacker can regather!
+    // 4. Kick Flight & Regather (Home offense)
     if (state.kickBall.active) {
       state.kickBall.x += state.kickBall.vx * dt;
       state.kickBall.y += state.kickBall.vy * dt;
@@ -1407,35 +1869,32 @@ export function startErcRugby(bridge, autoStart = false) {
         state.kickBall.vy *= Math.pow(0.45, dt);
       }
 
-      // Check if an onside attacker regathers the low/bouncing kick
       if (state.kickBall.z < 0.08 && (state.kickBall.bounceCount >= 1 || state.kickBall.kind === 'grubber')) {
         for (let i = 0; i < 5; i++) {
-          const att = state.attackers[i];
+          const att = state.homePlayers[i];
           if (att.offsideOnKick) continue;
           if (Math.hypot(att.x - state.kickBall.x, att.y - state.kickBall.y) < 0.055) {
             state.carrierIndex = i;
             state.kickBall.active = false;
-            state.tackleCount = 0; // Six-again / regathered kick!
-            att.flashTimer = 0.3;
-            addCallout(`${LANE_NOTES[i]} REGATHERS KICK!`, att.x, att.y - 0.05, '#fde047');
+            state.tackleCount = 0;
+            addCallout(`${LANE_NOTES[i]} REGATHERS! SIX AGAIN!`, att.x, att.y - 0.05, '#fde047');
             break;
           }
         }
       }
 
-      // If bomb bounces twice or grubber stops without an attacker nearby, closest lane runner contests it
-      if (state.kickBall.active && (state.kickBall.bounceCount >= 2 || (state.kickBall.kind === 'grubber' && Math.abs(state.kickBall.vy) < 0.14))) {
+      if (state.kickBall.active && (state.kickBall.bounceCount >= 2 || (state.kickBall.kind === 'grubber' && Math.abs(state.kickBall.vy) < 0.13))) {
         let bestIdx = state.carrierIndex;
         let bestDist = Infinity;
         for (let i = 0; i < 5; i++) {
-          if (state.attackers[i].offsideOnKick) continue;
-          const d = Math.abs(LANES[i] - state.kickBall.x);
+          if (state.homePlayers[i].offsideOnKick) continue;
+          const d = Math.abs(state.homePlayers[i].x - state.kickBall.x);
           if (d < bestDist) {
             bestDist = d;
             bestIdx = i;
           }
         }
-        const catcher = state.attackers[bestIdx];
+        const catcher = state.homePlayers[bestIdx];
         catcher.x = Math.min(0.88, Math.max(0.12, state.kickBall.x));
         catcher.y = Math.min(0.88, Math.max(0.12, state.kickBall.y));
         state.carrierIndex = bestIdx;
@@ -1445,152 +1904,126 @@ export function startErcRugby(bridge, autoStart = false) {
 
       if (state.kickBall.active && state.kickBall.y <= 0.11) {
         state.homeScore += 4;
-        if (bridgeRef && bridgeRef.getState().gameStats) {
-          bridgeRef.getState().gameStats.perfect += 4;
-        }
         addCallout('KICK CHASE TRY! +4', state.kickBall.x, 0.16, '#4ade80');
         state.kickBall.active = false;
-        syncHudAndLegend();
-        resetSetOfSix(0.84, 2);
+        setupSetOfSix('home', 0.82, 2);
+        recordPlayerVelocities(dt);
         return;
       }
     }
 
-    // 5. Defensive Line Speed & Tackling (per RL rules: only the ball-carrier may be tackled!)
-    state.tacklePause.onsideY = Math.min(activeCarrier.y - 0.015, state.tacklePause.onsideY + 0.062 * dt);
-    const advancingLineY = Math.max(0.13, state.tacklePause.onsideY);
+    // 5. Defensive Line Movement & Tackles
+    state.tacklePause.onsideY += -attackDir * 0.055 * dt;
 
-    for (let i = 0; i < state.defenders.length; i++) {
-      const d = state.defenders[i];
-      d.phase += dt * 2.0;
-      d.stridePhase += dt * 14;
+    for (let i = 0; i < 5; i++) {
+      const d = defenders[i];
 
-      if (d.role === 'chaser' || d.role === 'marker') {
+      if (state.possession === 'away' && i === state.selectedDefenderIdx) {
+        // User-controlled defender (with yellow ring underneath!)
+        const upRush = state.surgeTimer > 0 ? -0.22 : -0.095;
+        d.y = Math.max(0.12, d.y + upRush * dt);
+        if (userSteerX !== 0) {
+          d.x = Math.min(0.92, Math.max(0.08, d.x + userSteerX * 0.26 * dt));
+        }
+      } else if (d.role === 'chaser') {
         const toX = activeCarrier.x - d.x;
         const toY = activeCarrier.y - d.y;
-        const distToCarrier = Math.max(0.001, Math.hypot(toX, toY));
-        const chaseSpeed = d.role === 'marker' ? 0.105 : 0.128;
-        d.x += (toX / distToCarrier) * chaseSpeed * dt;
-        d.y += (toY / distToCarrier) * chaseSpeed * dt;
+        const dist = Math.max(0.001, Math.hypot(toX, toY));
+        d.x += (toX / dist) * 0.118 * dt;
+        d.y += (toY / dist) * 0.122 * dt;
       } else {
-        // Defensive line slides across toward the ball while moving up in a flat line
         const slideShift = (activeCarrier.x - 0.5) * 0.16;
-        const targetX = Math.min(0.91, Math.max(0.09, d.baseX + slideShift + Math.sin(d.phase) * 0.014));
-        // Defenders directly opposite the ball-carrier step up to shut the gate
-        const oppCarrier = i === state.carrierIndex;
-        const targetY = oppCarrier ? activeCarrier.y - 0.01 : advancingLineY;
-        d.x += (targetX - d.x) * Math.min(1, dt * 4.2);
-        d.y += (targetY - d.y) * Math.min(1, dt * 3.8);
+        const targetX = Math.min(0.91, Math.max(0.09, LANES[i] + slideShift));
+        d.x += (targetX - d.x) * Math.min(1, dt * 4.0);
+        d.y += (state.tacklePause.onsideY - d.y) * Math.min(1, dt * 3.6);
       }
 
-      // Only tackle when the ball is in hands (not mid-pass or mid-kick)
       if (!state.passState.active && !state.kickBall.active) {
-        const dist = Math.hypot(d.x - activeCarrier.x, d.y - activeCarrier.y);
-        if (dist < 0.036) {
-          beginTackleAndRetreat(i);
+        if (Math.hypot(d.x - activeCarrier.x, d.y - activeCarrier.y) < 0.042) {
+          beginTackleAndRetreat();
+          recordPlayerVelocities(dt);
           return;
         }
       }
     }
+
+    recordPlayerVelocities(dt);
   }
 
-  // Draws running player sprites — with golden ball-carrier jersey option matching your reference diagrams!
-  function drawRunningPlayer(ctx, x, y, team, stridePhase, opts = {}) {
-    const {
-      scale = 1,
-      isCarrier = false,
-      isHighlighted = false,
-      isSurging = false,
-      isOverrun = false,
-      laneLabel = ''
-    } = opts;
+  // Selects which of your 5 pixel-art poses to render based on player velocity & game state:
+  // - Stationary / Paused / Waiting -> 'idle' (Positioning 7)
+  // - Moving Left -> 'runLeft' (Positioning 5)
+  // - Moving Right -> 'runRight' (Positioning 6)
+  // - Moving Straight -> alternates 'straightL' (Positioning 8) & 'straightR' (Positioning 9)!
+  function selectSpritePose(playerObj) {
+    if (state.playState === 'waitingForPlay' || state.playState === 'turnoverPause') {
+      // Allow lateral shuffle pose if user is actively sliding their defender before the play
+      if (Math.abs(playerObj.animSpeedX) > 0.04) {
+        return playerObj.animSpeedX < 0 ? 'runLeft' : 'runRight';
+      }
+      return 'idle';
+    }
 
-    const wave = Math.sin(stridePhase);
-    const leftLegLen = (wave >= 0 ? 13 : 6) * scale;
-    const rightLegLen = (wave < 0 ? 13 : 6) * scale;
-    const leftSwingX = wave * 4.5 * scale;
-    const rightSwingX = -wave * 4.5 * scale;
-    const bobY = -Math.abs(wave) * 2.5 * scale;
+    const sx = playerObj.animSpeedX;
+    const sy = playerObj.animSpeedY;
+    const speed = Math.hypot(sx, sy);
 
+    if (speed < 0.022) {
+      return 'idle';
+    }
+    if (Math.abs(sx) > 0.045 && Math.abs(sx) > Math.abs(sy) * 0.55) {
+      return sx < 0 ? 'runLeft' : 'runRight';
+    }
+    return Math.floor(playerObj.strideTimer) % 2 === 0 ? 'straightL' : 'straightR';
+  }
+
+  function drawYellowSelectionCircle(ctx, x, footY, scale) {
     ctx.save();
-    ctx.translate(x, y + bobY);
+    ctx.fillStyle = 'rgba(250, 204, 21, 0.28)';
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = Math.max(2, 2.5 * scale);
+    ctx.beginPath();
+    ctx.ellipse(x, footY, 17 * scale, 7 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
 
-    // Subtle warning ring if this support runner has overrun ahead of the ball-carrier (Forward Pass risk!)
-    if (isOverrun && !isCarrier) {
-      ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)';
-      ctx.lineWidth = 1.8 * scale;
+  function drawPixelPlayer(ctx, x, y, team, noteLetter, playerObj, opts = {}) {
+    const { pixelScale = 1.5, hasBall = false, showYellowRing = false, isOverrun = false } = opts;
+    const pose = selectSpritePose(playerObj);
+    const sprite = getPixelSprite(team, noteLetter, pose, hasBall);
+
+    const drawW = Math.round(sprite.width * pixelScale);
+    const drawH = Math.round(sprite.height * pixelScale);
+    const footY = y + drawH * 0.42;
+
+    // Yellow circle underneath the active ball-carrier (offense) OR selected defender (defense)!
+    if (showYellowRing) {
+      drawYellowSelectionCircle(ctx, x, footY, pixelScale * 0.8);
+    } else {
+      // Subtle ground shadow under other players
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
+      ctx.beginPath();
+      ctx.ellipse(x, footY, 11 * pixelScale * 0.75, 4.5 * pixelScale * 0.75, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Dashed amber ring if an offensive teammate has overrun ahead of the ball-carrier (Forward Pass risk!)
+    if (isOverrun && !hasBall) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+      ctx.lineWidth = 1.8;
       ctx.setLineDash([4, 3]);
       ctx.beginPath();
-      ctx.ellipse(0, 11 * scale - bobY, 16 * scale, 7 * scale, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, footY, 15 * pixelScale * 0.78, 6 * pixelScale * 0.78, 0, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.restore();
     }
 
-    // Ground shadow
-    ctx.fillStyle = isCarrier ? 'rgba(250, 204, 21, 0.28)' : 'rgba(0, 0, 0, 0.36)';
-    ctx.beginPath();
-    ctx.ellipse(0, 12 * scale - bobY, 13 * scale, 5.5 * scale, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.lineCap = 'round';
-
-    // Alternating long & short running legs
-    ctx.strokeStyle = isCarrier ? '#fde68a' : team.secondary;
-    ctx.lineWidth = 4.2 * scale;
-    ctx.beginPath();
-    ctx.moveTo(-4.5 * scale, 3 * scale);
-    ctx.lineTo(-4.5 * scale + leftSwingX, 3 * scale + leftLegLen);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(4.5 * scale, 3 * scale);
-    ctx.lineTo(4.5 * scale + rightSwingX, 3 * scale + rightLegLen);
-    ctx.stroke();
-
-    // Jersey torso: warm gold highlight on the active ball-carrier (matching your reference diagrams!)
-    const jerseyFill = isCarrier ? '#eab308' : team.primary;
-    const jerseyTrim = isHighlighted ? '#67e8f9' : isCarrier ? '#fef08a' : team.secondary;
-
-    ctx.fillStyle = jerseyFill;
-    ctx.strokeStyle = jerseyTrim;
-    ctx.lineWidth = (isSurging || isCarrier ? 3.2 : 2.2) * scale;
-    ctx.beginPath();
-    if (ctx.roundRect) {
-      ctx.roundRect(-9 * scale, -8 * scale, 18 * scale, 13 * scale, 4 * scale);
-    } else {
-      ctx.rect(-9 * scale, -8 * scale, 18 * scale, 13 * scale);
-    }
-    ctx.fill();
-    ctx.stroke();
-
-    // Pumping arms
-    ctx.strokeStyle = jerseyFill;
-    ctx.lineWidth = 3.4 * scale;
-    ctx.beginPath();
-    ctx.moveTo(-9 * scale, -5 * scale);
-    ctx.lineTo(-12 * scale - rightSwingX * 0.6, 2 * scale);
-    ctx.moveTo(9 * scale, -5 * scale);
-    ctx.lineTo(12 * scale - leftSwingX * 0.6, 2 * scale);
-    ctx.stroke();
-
-    // Note badge on back of jersey for attackers (C, D, E, F, G) so you always see who to pass to!
-    if (laneLabel) {
-      ctx.fillStyle = isCarrier ? '#0f172a' : '#ffffff';
-      ctx.font = `800 ${Math.round(9 * scale)}px "Chakra Petch", sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(laneLabel, 0, -1.2 * scale);
-    }
-
-    // Head
-    ctx.fillStyle = '#f1c27d';
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 1.6 * scale;
-    ctx.beginPath();
-    ctx.arc(0, -12 * scale, 5.2 * scale, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(sprite, Math.round(x - drawW / 2), Math.round(y - drawH / 2), drawW, drawH);
     ctx.restore();
   }
 
@@ -1635,28 +2068,27 @@ export function startErcRugby(bridge, autoStart = false) {
       ctx.fillRect(padX, padY + i * stripeH, fieldW, stripeH + 1);
     }
 
-    // Pitch boundary
+    // Pitch boundary & try/yardage lines
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.lineWidth = 2.5;
     ctx.strokeRect(padX, padY, fieldW, fieldH);
 
-    // Try lines & yardage lines
     const lineFracY = [0.12, 0.3, 0.5, 0.7, 0.88];
     ctx.lineWidth = 1.5;
     for (const fy of lineFracY) {
       const ly = padY + fieldH * fy;
-      ctx.strokeStyle = fy === 0.12 || fy === 0.88 ? 'rgba(255,255,255,0.75)' : 'rgba(255, 255, 255, 0.32)';
+      ctx.strokeStyle = fy === 0.12 || fy === 0.88 ? 'rgba(255,255,255,0.78)' : 'rgba(255, 255, 255, 0.30)';
       ctx.beginPath();
       ctx.moveTo(padX, ly);
       ctx.lineTo(padX + fieldW, ly);
       ctx.stroke();
     }
 
-    // Visual 10m onside line while defense retreats or waits onside
+    // Visual 10m Onside Line while ALL 5 defenders retreat & hold
     if (state.playState === 'retreating' || state.playState === 'waitingForPlay') {
       const onsideLineY = padY + fieldH * state.tacklePause.onsideY;
       ctx.save();
-      ctx.strokeStyle = state.playState === 'retreating' ? 'rgba(251, 191, 36, 0.85)' : 'rgba(74, 222, 128, 0.8)';
+      ctx.strokeStyle = state.playState === 'retreating' ? 'rgba(251, 191, 36, 0.88)' : 'rgba(74, 222, 128, 0.82)';
       ctx.lineWidth = 2;
       ctx.setLineDash([8, 6]);
       ctx.beginPath();
@@ -1666,12 +2098,12 @@ export function startErcRugby(bridge, autoStart = false) {
       ctx.restore();
     }
 
-    // Subtle horizontal pass-plane guide through the ball-carrier so you can spot forward-pass overrun risk!
-    if (state.attackers.length === 5 && !state.kickBall.active) {
-      const carrier = state.attackers[state.carrierIndex];
-      const planeY = padY + fieldH * carrier.y;
+    // Subtle pass-plane guide through the ball-carrier in offense
+    if (state.possession === 'home' && state.homePlayers[state.carrierIndex] && !state.kickBall.active) {
+      const c = state.homePlayers[state.carrierIndex];
+      const planeY = padY + fieldH * c.y;
       ctx.save();
-      ctx.strokeStyle = 'rgba(250, 204, 21, 0.22)';
+      ctx.strokeStyle = 'rgba(250, 204, 21, 0.20)';
       ctx.lineWidth = 1.2;
       ctx.setLineDash([4, 6]);
       ctx.beginPath();
@@ -1683,9 +2115,10 @@ export function startErcRugby(bridge, autoStart = false) {
 
     // Vertical C, D, E, F, G lane guides
     ctx.font = '700 11px "Chakra Petch", sans-serif';
+    const activeRingIdx = state.possession === 'home' ? state.carrierIndex : state.selectedDefenderIdx;
     LANES.forEach((fx, idx) => {
       const lx = padX + fieldW * fx;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.11)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
       ctx.setLineDash([6, 8]);
       ctx.beginPath();
       ctx.moveTo(lx, padY + fieldH * 0.12);
@@ -1693,79 +2126,100 @@ export function startErcRugby(bridge, autoStart = false) {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      ctx.fillStyle = idx === state.carrierIndex ? '#fde047' : 'rgba(255, 255, 255, 0.48)';
-      ctx.fillText(LANE_NOTES[idx], lx - 4, padY + fieldH * 0.94);
+      ctx.fillStyle = idx === activeRingIdx ? '#fde047' : 'rgba(255, 255, 255, 0.48)';
+      ctx.fillText(LANE_NOTES[idx], lx - 4, padY + fieldH * 0.95);
     });
 
-    const scaleFactor = Math.max(0.78, Math.min(1.05, h / 430));
+    const pixelScale = Math.max(1.15, Math.min(1.65, h / 285));
+    const ballInFlight = state.passState.active || state.kickBall.active;
 
-    // 5 Defenders (Away team)
-    for (const d of state.defenders) {
-      const dx = padX + fieldW * d.x;
-      const dy = padY + fieldH * d.y;
-      drawRunningPlayer(ctx, dx, dy, state.awayTeam, d.stridePhase, { scale: 0.96 * scaleFactor });
+    // Sort all 10 players by Y so closer players naturally overlap behind/in-front
+    const renderList = [];
+    for (let i = 0; i < state.awayPlayers.length; i++) {
+      renderList.push({
+        side: 'away',
+        idx: i,
+        p: state.awayPlayers[i],
+        team: state.awayTeam,
+        hasBall: state.possession === 'away' && i === state.carrierIndex && !ballInFlight,
+        showYellowRing: false,
+        isOverrun: false
+      });
+    }
+    for (let i = 0; i < state.homePlayers.length; i++) {
+      const hp = state.homePlayers[i];
+      const homeHasBall = state.possession === 'home' && i === state.carrierIndex && !ballInFlight;
+      const showRing =
+        (state.possession === 'home' && i === state.carrierIndex && !state.kickBall.active) ||
+        (state.possession === 'away' && i === state.selectedDefenderIdx);
+
+      renderList.push({
+        side: 'home',
+        idx: i,
+        p: hp,
+        team: state.homeTeam,
+        hasBall: homeHasBall,
+        showYellowRing: showRing,
+        isOverrun: state.possession === 'home' && hp.overrun && !state.kickBall.active
+      });
     }
 
-    // 5 Attacking Backline Players (Home team — active ball-carrier gets yellow/gold jersey highlight)
-    for (let i = 0; i < state.attackers.length; i++) {
-      const att = state.attackers[i];
-      const ax = padX + fieldW * att.x;
-      const ay = padY + fieldH * att.y;
-      const isCarrier = i === state.carrierIndex && !state.passState.active && !state.kickBall.active;
+    renderList.sort((a, b) => a.p.y - b.p.y);
 
-      drawRunningPlayer(ctx, ax, ay, state.homeTeam, att.stridePhase, {
-        scale: (isCarrier ? 1.05 : 0.96) * scaleFactor,
-        isCarrier,
-        isHighlighted: att.flashTimer > 0,
-        isSurging: isCarrier && state.surgeTimer > 0,
-        isOverrun: att.overrun,
-        laneLabel: LANE_NOTES[i]
+    for (const item of renderList) {
+      const px = padX + fieldW * item.p.x;
+      const py = padY + fieldH * item.p.y;
+      drawPixelPlayer(ctx, px, py, item.team, LANE_NOTES[item.idx], item.p, {
+        pixelScale,
+        hasBall: item.hasBall,
+        showYellowRing: item.showYellowRing,
+        isOverrun: item.isOverrun
       });
 
-      if (att.overrun && !isCarrier && !state.kickBall.active) {
+      if (item.isOverrun) {
         ctx.save();
         ctx.font = '700 9px "Chakra Petch", sans-serif';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#fcd34d';
-        ctx.fillText('FLAT!', ax, ay - 21 * scaleFactor);
+        ctx.fillText('FLAT!', px, py - 22 * pixelScale);
         ctx.restore();
       }
     }
 
-    // Rugby ball (mid-pass spiral, airborne/skidding kick, at play-the-ball ruck, or carried in hands)
-    let bx = padX + fieldW * 0.5;
-    let by = padY + fieldH * 0.84;
-    let ballSpin = 0.35;
+    // Draw airborne white-and-green-striped Rugby League ball ONLY during a pass or kick
+    // (when held, the pixel-art sprite tucks the ball directly under the player's arm!)
+    if (state.passState.active || state.kickBall.active) {
+      let bx = padX + fieldW * 0.5;
+      let by = padY + fieldH * 0.5;
+      if (state.passState.active) {
+        const arcLift = Math.sin(state.passState.progress * Math.PI) * 14 * pixelScale;
+        bx = padX + fieldW * state.passState.x;
+        by = padY + fieldH * state.passState.y - 6 * pixelScale - arcLift;
+      } else {
+        bx = padX + fieldW * state.kickBall.x;
+        by = padY + fieldH * state.kickBall.y - state.kickBall.z * 95;
+      }
 
-    if (state.passState.active) {
-      const arcLift = Math.sin(state.passState.progress * Math.PI) * 14 * scaleFactor;
-      bx = padX + fieldW * state.passState.x;
-      by = padY + fieldH * state.passState.y - 8 * scaleFactor - arcLift;
-      ballSpin = 11;
-    } else if (state.kickBall.active) {
-      bx = padX + fieldW * state.kickBall.x;
-      by = padY + fieldH * state.kickBall.y - state.kickBall.z * 95;
-      ballSpin = 9;
-    } else if (state.attackers[state.carrierIndex]) {
-      const c = state.attackers[state.carrierIndex];
-      bx = padX + fieldW * c.x + 8 * scaleFactor;
-      by =
-        state.playState === 'retreating' || state.playState === 'waitingForPlay'
-          ? padY + fieldH * c.y + 6 * scaleFactor
-          : padY + fieldH * c.y - 3 * scaleFactor;
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.rotate(timeSec * 10);
+      ctx.fillStyle = '#f8fafc';
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 5.2 * pixelScale * 0.75, 8.2 * pixelScale * 0.75, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Green stripe across the ball matching Positioning (5)..(9)
+      ctx.strokeStyle = '#15803d';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(-4 * pixelScale * 0.75, 0);
+      ctx.lineTo(4 * pixelScale * 0.75, 0);
+      ctx.stroke();
+      ctx.restore();
     }
-
-    ctx.save();
-    ctx.translate(bx, by);
-    ctx.rotate(timeSec * ballSpin);
-    ctx.fillStyle = '#92400e';
-    ctx.strokeStyle = '#fef3c7';
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 5.2 * scaleFactor, 8.2 * scaleFactor, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
 
     // Floating callouts
     for (const c of state.callouts) {
@@ -1774,7 +2228,7 @@ export function startErcRugby(bridge, autoStart = false) {
       ctx.font = 'italic 700 14px "Chakra Petch", sans-serif';
       ctx.textAlign = 'center';
       ctx.fillStyle = c.color;
-      ctx.strokeStyle = 'rgba(2, 6, 23, 0.88)';
+      ctx.strokeStyle = 'rgba(2, 6, 23, 0.9)';
       ctx.lineWidth = 3;
       const cx = padX + fieldW * c.x;
       const cy = padY + fieldH * c.y;
@@ -1801,7 +2255,7 @@ export function startErcRugby(bridge, autoStart = false) {
       const action = btn.getAttribute('data-bind-action');
       state.listeningAction = action;
       containerEl.querySelector('#erc-keybind-notice').textContent =
-        `🎹 Listening for ${action.toUpperCase()}... play ANY MIDI piano key (e.g. A1, B1, C2, F#1) or press a computer key (Esc to cancel).`;
+        `🎹 Listening for ${action.toUpperCase()}... play ANY MIDI piano key (e.g. F#1, G#1, A1, B1, C2) or press a computer key (Esc to cancel).`;
       refreshKeybindButtons();
       btn.blur();
     });
@@ -1811,14 +2265,13 @@ export function startErcRugby(bridge, autoStart = false) {
     btn.addEventListener('click', () => {
       const note = btn.getAttribute('data-note');
       highlightStripButton(note);
-      if (PIANO_FREQS[note]) playTone(PIANO_FREQS[note], 0.24, 0.85);
-      passBallToLane(NOTE_TO_INDEX[note]);
+      if (PIANO_FREQS[note]) playTone(PIANO_FREQS[note], 0.22, 0.8);
+      handleNoteCDEFG(NOTE_TO_INDEX[note]);
     });
   });
 
   containerEl.querySelector('#erc-start-match-btn').addEventListener('click', startMatch);
 
-  // Computer keyboard fallback handler (skips PianoPad's QWERTY piano keys during rebinding so MIDI/non-piano keys work cleanly)
   const PIANOPAD_QWERTY = new Set([
     'z','s','x','d','c','v','g','b','h','n','j','m',',','l','.',
     '1','q','w','3','e','4','r','5','t','y','7','u','8','i','o','0','p'
@@ -1837,34 +2290,47 @@ export function startErcRugby(bridge, autoStart = false) {
         refreshKeybindButtons();
         return;
       }
-      // If user presses a PianoPad QWERTY piano shortcut, let PianoPad turn it into a MIDI note for `onPianoNoteDown`!
       if (PIANOPAD_QWERTY.has(keyLower)) {
-        return;
+        return; // Let PianoPad route QWERTY piano keys into `onPianoNoteDown` as MIDI note strings!
       }
-      if (keyUpper.length === 1 && /\S/.test(keyUpper)) {
+      const keyLabel = e.key === 'ArrowLeft' ? '←' : e.key === 'ArrowRight' ? '→' : keyUpper;
+      if ((keyUpper.length === 1 && /\S/.test(keyUpper)) || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         e.preventDefault();
         e.stopPropagation();
         const action = state.listeningAction;
         const existingMidi = state.actionBinds[action].midi;
         state.actionBinds[action] = {
           midi: existingMidi,
-          key: keyUpper,
-          label: existingMidi ? `🎹 ${existingMidi.toUpperCase()} / ${keyUpper}` : `KEY: ${keyUpper}`
+          key: keyLabel,
+          label: existingMidi ? `🎹 ${existingMidi.toUpperCase()} / ${keyLabel}` : `KEY: ${keyLabel}`
         };
         state.listeningAction = null;
         saveActionBinds();
         containerEl.querySelector('#erc-keybind-notice').textContent =
-          `✅ ${action.toUpperCase()} bound to key "${keyUpper}".`;
+          `✅ ${action.toUpperCase()} bound to "${keyLabel}".`;
         refreshKeybindButtons();
       }
       return;
     }
 
-    if (state.phase !== 'playing' || e.repeat) return;
+    if (state.phase !== 'playing') return;
+
+    if (e.key === 'ArrowLeft' || keyUpper === (state.actionBinds.moveLeft.key || '').toUpperCase()) {
+      if (state.possession === 'home') releasePlayTheBall();
+      state.moveInput.leftHeld = true;
+      return;
+    }
+    if (e.key === 'ArrowRight' || keyUpper === (state.actionBinds.moveRight.key || '').toUpperCase()) {
+      if (state.possession === 'home') releasePlayTheBall();
+      state.moveInput.rightHeld = true;
+      return;
+    }
+
+    if (e.repeat) return;
 
     if (keyUpper && keyUpper === (state.actionBinds.surge.key || '').toUpperCase()) {
       e.preventDefault();
-      surgeForward();
+      triggerSurgeOrTackleBurst();
       return;
     }
     if (keyUpper && keyUpper === (state.actionBinds.bomb.key || '').toUpperCase()) {
@@ -1878,26 +2344,37 @@ export function startErcRugby(bridge, autoStart = false) {
       return;
     }
 
-    // Direct C, D, E, F, G computer keys if pressed outside PianoPad's MIDI/QWERTY mapper
     if (!PIANOPAD_QWERTY.has(keyLower) && NOTE_TO_INDEX[keyUpper] !== undefined) {
       highlightStripButton(keyUpper);
-      if (PIANO_FREQS[keyUpper]) playTone(PIANO_FREQS[keyUpper], 0.24, 0.85);
-      passBallToLane(NOTE_TO_INDEX[keyUpper]);
+      if (PIANO_FREQS[keyUpper]) playTone(PIANO_FREQS[keyUpper], 0.22, 0.8);
+      handleNoteCDEFG(NOTE_TO_INDEX[keyUpper]);
+    }
+  };
+
+  const onKeyUp = (e) => {
+    const keyUpper = (e.key || '').toUpperCase();
+    if (e.key === 'ArrowLeft' || keyUpper === (state.actionBinds.moveLeft.key || '').toUpperCase()) {
+      state.moveInput.leftHeld = false;
+    }
+    if (e.key === 'ArrowRight' || keyUpper === (state.actionBinds.moveRight.key || '').toUpperCase()) {
+      state.moveInput.rightHeld = false;
     }
   };
 
   window.addEventListener('keydown', onKeyDown, { capture: true });
+  window.addEventListener('keyup', onKeyUp, { capture: true });
 
   initTeamSelectors();
   refreshKeybindButtons();
-  resetSetOfSix(0.82, 2);
+  setupSetOfSix('home', 0.82, 2);
   startPokieSpin();
 
   activeController = {
     onPianoNoteDown,
-    onPianoNoteUp: () => {},
+    onPianoNoteUp,
     cleanup: () => {
       window.removeEventListener('keydown', onKeyDown, { capture: true });
+      window.removeEventListener('keyup', onKeyUp, { capture: true });
     }
   };
 
