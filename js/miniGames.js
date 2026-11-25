@@ -12,6 +12,7 @@ import { startSharpShooter, handleSharpShooterInput, handleSharpShooterRelease, 
 import { startSkiSlalom, handleSkiSlalomInput, handleSkiSlalomRelease, stopSkiSlalom } from './games/skiSlalom.js';
 import { startPedalPoint, handlePedalPointInput, handlePedalPointRelease, stopPedalPoint } from './games/pedalPoint.js';
 import { startRockBall, handleRockBallInput, handleRockBallRelease, stopRockBall } from './games/rockBall.js';
+import { startErcRugby, handleErcRugbyInput, stopErcRugby } from './games/ercRugby.js';
 
 export const arcadeState = {
     activeMiniGame: null,
@@ -109,6 +110,15 @@ function injectNewArcadeButtons() {
         gridironBtn.innerHTML = `<span style="font-size:1.5rem;">🏈</span><strong>Gridiron Groove</strong><small>Retro Bowl note passing</small>`;
         btnContainer.appendChild(gridironBtn);
     }
+    if (!document.getElementById('btn-arcade-erc-rugby')) {
+    const rugbyBtn = document.createElement('button');
+    rugbyBtn.type = 'button';
+    rugbyBtn.id = 'btn-arcade-erc-rugby';
+    rugbyBtn.className = 'arcade-card-btn';
+    rugbyBtn.onclick = () => launchErcRugby();
+    rugbyBtn.innerHTML = `<span style="font-size:1.5rem;">🏉</span><strong>ERC Rugby</strong><small>C–G lanes, tries &amp; kicks</small>`;
+    btnContainer.appendChild(rugbyBtn);
+}
 
     if (!document.getElementById('btn-arcade-clef-hook')) {
         const clefHookBtn = document.createElement('button');
@@ -179,6 +189,7 @@ function resolveReplayHandler(title, explicitReplayFn) {
     if (normalized === '3d ski slalom' || normalized === 'ski slalom') return () => launchSkiSlalom();
     if (normalized === 'pedal point') return () => launchPedalPoint();
     if (normalized === 'rockball') return () => launchRockBall();
+    if (normalized === 'erc sports rugby' || normalized === 'erc rugby') return () => launchErcRugby();
     return null;
 }
 
@@ -272,6 +283,7 @@ export function exitActiveMiniGame() {
     stopSkiSlalom();
     stopPedalPoint();
     stopRockBall();
+    stopErcRugby();
 
     const gridironPopup = document.getElementById('gridiron-groove-popup');
     if (gridironPopup) gridironPopup.style.display = 'none';
@@ -362,6 +374,10 @@ export function handleMiniGameNoteInput(noteStr) {
         handleRockBallInput(noteStr, gameBridgeHelper);
         return true;
     }
+    if (mode === 'ercRugby') {
+    handleErcRugbyInput(noteStr, gameBridgeHelper);
+    return true;
+}
     
     if (mode === 'drop') {
         const { noteTimeline, playbackStartTime, accumulatedPauseMs, gameStats, keyPosMap } = bridge.getState();
@@ -1342,6 +1358,11 @@ export function launchPedalPoint() {
 export function launchRockBall() {
     document.getElementById('game-results-modal')?.classList.remove('open');
     startRockBall(gameBridgeHelper);
+}
+
+export function launchErcRugby() {
+    document.getElementById('game-results-modal')?.classList.remove('open');
+    startErcRugby(gameBridgeHelper);
 }
 
 Object.assign(window, {
