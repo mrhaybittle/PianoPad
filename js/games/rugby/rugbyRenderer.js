@@ -585,4 +585,4 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
 
   ctx.restore();
 }
-```[cite: 15, 16]
+
