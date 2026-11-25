@@ -2827,3 +2827,6 @@ export function notifyDailyRecording(noteCount) {
         checkAndTriggerCompletion(ch);
     }
 }
+// Expose challenge catalog and earned badges for the opening stats dashboard
+window.DAILY_CHALLENGES = DAILY_CHALLENGES;
+window.getEarnedBadges = getEarnedBadges;
