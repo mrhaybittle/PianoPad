@@ -25,6 +25,9 @@ let isGameMode = true;
 let currentTheme = 'default';
 let bonusSoundsUnlocked = false;
 
+let lastResultsSource = 'song';
+let modalRestartGraceUntil = 0;
+
 let localStudentId = "stu_" + Math.random().toString(36).substr(2, 9);
 let localTabSwitches = 0;
 let tabSwitchAwayTimestamp = null; 
@@ -326,12 +329,19 @@ function updateRosterSong() {
     updateMonitorWidget();
 }
 
-document.getElementById('btn-open-arcade').addEventListener('click', openArcadeHub);
+document.getElementById('btn-open-arcade').addEventListener('click', () => {
+    lastResultsSource = 'minigame';
+    openArcadeHub();
+});
 document.getElementById('btn-home-screen').addEventListener('click', () => {
+    lastResultsSource = 'song';
     stopEyesFront();
     returnToPlayerHome();
 });
-document.getElementById('btn-stop-arcade').addEventListener('click', exitActiveMiniGame);
+document.getElementById('btn-stop-arcade').addEventListener('click', () => {
+    lastResultsSource = 'song';
+    exitActiveMiniGame();
+});
 document.getElementById('btn-song-battle').addEventListener('click', openSongBattleSelector);
 document.getElementById('btn-mic-toggle').addEventListener('click', toggleMicrophoneListening);
 
@@ -348,12 +358,15 @@ document.getElementById('btn-game-arcade-menu').addEventListener('click', () => 
     gameResultsModal.classList.remove('open');
     stopBattlePolling();
     if (koState.isClassKnockout) leaveClassKnockout();
+    lastResultsSource = 'minigame';
     openArcadeHub();
 });
 
 function repeatSongGameMode() {
     gameResultsModal.classList.remove('open');
     stopBattlePolling();
+    arcadeState.isSongBattle = false;
+    lastResultsSource = 'song';
 
     if (isStepMode) {
         isStepMode = false;
@@ -367,6 +380,13 @@ function repeatSongGameMode() {
         btnGame.textContent = 'Game Mode: ON';
         btnGame.classList.remove('btn-secondary');
         btnGame.classList.add('btn-game-active');
+    }
+
+    if ((!currentSong || currentSong.length === 0) && songSelect && songSelect.value) {
+        const parsed = parsePianoPad(songSelect.value);
+        if (parsed.length > 0) {
+            currentSong = autoTransposeSong(parsed);
+        }
     }
 
     playSong();
@@ -383,6 +403,14 @@ function invokeMiniGameLauncher(fnNames) {
     return false;
 }
 
+function isArcadeViewOpen() {
+    const arcadeBar = document.getElementById('arcade-controls-bar');
+    if (arcadeBar && getComputedStyle(arcadeBar).display !== 'none') return true;
+    const mainBar = document.getElementById('main-controls-bar');
+    if (mainBar && getComputedStyle(mainBar).display === 'none') return true;
+    return false;
+}
+
 function restartCurrentGameOrSong() {
     if (koState.isClassKnockout) {
         gameResultsModal.classList.remove('open');
@@ -392,55 +420,88 @@ function restartCurrentGameOrSong() {
         return;
     }
 
-    const title = (currentSongTitle || '').trim();
-    const titleLower = title.toLowerCase();
+    const inMiniGameContext =
+        lastResultsSource === 'minigame' ||
+        Boolean(arcadeState.activeMiniGame) ||
+        (isArcadeViewOpen() && !arcadeState.isSongBattle);
 
-    const miniGameLaunchers = [
-        { match: titleLower === 'mystery note', fns: ['startMysteryNote', 'launchMysteryNote'] },
-        { match: titleLower === 'simon taps', fns: ['startSimonTaps', 'launchSimonTaps'] },
-        { match: titleLower === 'drop dodge', fns: ['startDropDodge', 'launchDropDodge'] },
-        { match: titleLower === 'combo strike' || titleLower === 'two-note combo', fns: ['startComboStrike', 'launchComboStrike'] },
-        { match: titleLower.includes('finger sprint'), fns: ['openSprintModeSelector', 'startFingerSprint', 'launchFingerSprint', 'initSinglePlayerSprint'] },
-        { match: titleLower === 'rhythm echo', fns: ['launchRhythmEcho', 'startRhythmEcho'] },
-        { match: titleLower === 'note name sniper' || titleLower === 'note sniper', fns: ['launchNoteSniper', 'startNoteSniper'] },
-        { match: titleLower === 'flappy pitch', fns: ['launchFlappyPitch', 'startFlappyPitch'] },
-        { match: titleLower === 'gridiron groove', fns: ['launchGridironGroove', 'startGridironGroove'] },
-        { match: titleLower === 'sharp shooter', fns: ['launchSharpShooter', 'startSharpShooter'] },
-        { match: titleLower === 'clefhook' || titleLower === 'clef hook', fns: ['startClefHook', 'launchClefHook'] },
-        { match: titleLower.includes('ski slalom'), fns: ['launchSkiSlalom', 'startSkiSlalom', 'launch3DSkiSlalom', 'start3DSkiSlalom'] },
-        { match: titleLower === 'staff surfers' || titleLower === 'scale surfers', fns: ['launchStaffSurfers', 'startStaffSurfers', 'launchScaleSurfers', 'startScaleSurfers'] }
-    ];
+    if (inMiniGameContext) {
+        const title = (currentSongTitle || '').trim();
+        const titleLower = title.toLowerCase();
 
-    const matched = miniGameLaunchers.find(entry => entry.match);
-    if (matched) {
-        gameResultsModal.classList.remove('open');
-        stopBattlePolling();
-        if (invokeMiniGameLauncher(matched.fns)) {
+        const miniGameLaunchers = [
+            { match: titleLower === 'mystery note', fns: ['startMysteryNote', 'launchMysteryNote'] },
+            { match: titleLower === 'simon taps', fns: ['startSimonTaps', 'launchSimonTaps'] },
+            { match: titleLower === 'drop dodge', fns: ['startDropDodge', 'launchDropDodge'] },
+            { match: titleLower === 'combo strike' || titleLower === 'two-note combo', fns: ['startComboStrike', 'launchComboStrike'] },
+            { match: titleLower.includes('finger sprint'), fns: ['openSprintModeSelector', 'startFingerSprint', 'launchFingerSprint', 'initSinglePlayerSprint'] },
+            { match: titleLower === 'rhythm echo', fns: ['launchRhythmEcho', 'startRhythmEcho'] },
+            { match: titleLower === 'note name sniper' || titleLower === 'note sniper', fns: ['launchNoteSniper', 'startNoteSniper'] },
+            { match: titleLower === 'flappy pitch', fns: ['launchFlappyPitch', 'startFlappyPitch'] },
+            { match: titleLower === 'gridiron groove', fns: ['launchGridironGroove', 'startGridironGroove'] },
+            { match: titleLower === 'sharp shooter', fns: ['launchSharpShooter', 'startSharpShooter'] },
+            { match: titleLower === 'clefhook' || titleLower === 'clef hook', fns: ['startClefHook', 'launchClefHook'] },
+            { match: titleLower.includes('ski slalom'), fns: ['launchSkiSlalom', 'startSkiSlalom', 'launch3DSkiSlalom', 'start3DSkiSlalom'] },
+            { match: titleLower === 'staff surfers' || titleLower === 'scale surfers', fns: ['launchStaffSurfers', 'startStaffSurfers', 'launchScaleSurfers', 'startScaleSurfers'] }
+        ];
+
+        const matched = miniGameLaunchers.find(entry => entry.match);
+        if (matched) {
+            gameResultsModal.classList.remove('open');
+            stopBattlePolling();
+            if (invokeMiniGameLauncher(matched.fns)) {
+                return;
+            }
+            if (typeof window.replayLastCustomMiniGame === 'function' && window.replayLastCustomMiniGame() !== false) {
+                return;
+            }
+            if (arcadeState.activeMiniGame) {
+                arcadeState.activeMiniGame = null;
+            }
+            openArcadeHub();
+            document.getElementById('status').textContent = `Could not restart "${title}" automatically — select it from Mini-Games.`;
             return;
         }
+
         if (typeof window.replayLastCustomMiniGame === 'function') {
-            window.replayLastCustomMiniGame();
-            return;
+            gameResultsModal.classList.remove('open');
+            stopBattlePolling();
+            const replayed = window.replayLastCustomMiniGame();
+            if (replayed !== false) {
+                return;
+            }
         }
-        if (arcadeState.activeMiniGame) {
-            arcadeState.activeMiniGame = null;
-        }
-        openArcadeHub();
-        document.getElementById('status').textContent = `Could not restart "${title}" automatically — select it from Mini-Games.`;
-        return;
-    }
-
-    if (typeof window.replayLastCustomMiniGame === 'function') {
-        gameResultsModal.classList.remove('open');
-        stopBattlePolling();
-        window.replayLastCustomMiniGame();
-        return;
     }
 
     repeatSongGameMode();
 }
 
-document.getElementById('btn-game-try-again').addEventListener('click', restartCurrentGameOrSong);
+function tryModalQuickRestart() {
+    if (!gameResultsModal || !gameResultsModal.classList.contains('open')) return false;
+
+    modalRestartGraceUntil = performance.now() + 300;
+
+    const playAgainBtn = document.getElementById('btn-game-try-again');
+    const battleAgainBtn = document.getElementById('btn-battle-again');
+
+    if (playAgainBtn && getComputedStyle(playAgainBtn).display !== 'none') {
+        restartCurrentGameOrSong();
+        return true;
+    }
+
+    if (battleAgainBtn && getComputedStyle(battleAgainBtn).display !== 'none') {
+        battleAgainBtn.click();
+        return true;
+    }
+
+    restartCurrentGameOrSong();
+    return true;
+}
+
+document.getElementById('btn-game-try-again').addEventListener('click', () => {
+    modalRestartGraceUntil = performance.now() + 300;
+    restartCurrentGameOrSong();
+});
 
 function sanitizeName(str) {
     const parts = str.trim().split(/\s+/);
@@ -712,32 +773,14 @@ function initMIDIHardware() {
     }
 }
 
-function handleQuickRestartMidiMessage(event) {
-    const resultsModal = document.getElementById('game-results-modal');
-    if (!resultsModal || !resultsModal.classList.contains('open')) return;
-
-    const status = event.data[0];
-    const command = status & 0xF0;
-    const velocity = event.data.length > 2 ? event.data[2] : 0;
-
-    if (command === 144 && velocity > 0) {
-        const playAgainBtn = document.getElementById('btn-game-try-again');
-        if (playAgainBtn && playAgainBtn.style.display !== 'none') {
-            restartCurrentGameOrSong();
-        }
-    }
-}
-
 function onMIDISuccess(midiAccess) {
     const inputs = midiAccess.inputs.values();
     for (let input of inputs) {
         input.onmidimessage = handleMIDIMessage;
-        input.addEventListener('midimessage', handleQuickRestartMidiMessage);
     }
     midiAccess.onstatechange = (e) => {
         if (e.port.type === 'input' && e.port.state === 'connected') {
             e.port.onmidimessage = handleMIDIMessage;
-            e.port.addEventListener('midimessage', handleQuickRestartMidiMessage);
         }
     };
 }
@@ -747,10 +790,10 @@ function onMIDIFailure() {
 }
 
 function handleMIDIMessage(event) {
+    if (isEyesFrontFrozen()) return;
+
     const status = event.data[0];
     const channel = status & 0x0F;
-    if (channel === 9) return;
-
     const command = status & 0xF0;
     const rawNoteNumber = event.data[1];
     const velocity = event.data.length > 2 ? event.data[2] : 0;
@@ -758,14 +801,32 @@ function handleMIDIMessage(event) {
     if (command === 144 && velocity > 0) {
         if (isCalibrating) {
             processCalibrationNote(rawNoteNumber);
-        } else {
-            const correctedNoteNumber = rawNoteNumber + midiOctaveOffset;
-            const noteStr = midiNoteToName(correctedNoteNumber);
-            if (noteStr) {
-                playManualNote(noteStr);
-            }
+            return;
+        }
+
+        // Pressing ANY MIDI note while the Game Results modal is open closes it and replays immediately
+        if (tryModalQuickRestart()) {
+            initAudio();
+            const previewNote = midiNoteToName(rawNoteNumber + midiOctaveOffset);
+            const freq = previewNote ? getNoteFrequency(previewNote) : null;
+            if (freq) playTone(freq, 0.25, 0.6);
+            return;
+        }
+
+        // Ignore trailing chord notes / key bounces pressed while dismissing the modal
+        if (performance.now() < modalRestartGraceUntil) {
+            return;
+        }
+
+        if (channel === 9) return;
+
+        const correctedNoteNumber = rawNoteNumber + midiOctaveOffset;
+        const noteStr = midiNoteToName(correctedNoteNumber);
+        if (noteStr) {
+            playManualNote(noteStr);
         }
     } else if (command === 128 || (command === 144 && velocity === 0)) {
+        if (channel === 9) return;
         if (!isCalibrating) {
             const correctedNoteNumber = rawNoteNumber + midiOctaveOffset;
             const noteStr = midiNoteToName(correctedNoteNumber);
@@ -1665,12 +1726,13 @@ function playManualNote(noteStr) {
         playTone(freq, 0.4, 1.0);
     }
 
-    if (gameResultsModal && gameResultsModal.classList.contains('open')) {
-        const playAgainBtn = document.getElementById('btn-game-try-again');
-        if (playAgainBtn && playAgainBtn.style.display !== 'none') {
-            restartCurrentGameOrSong();
-            return;
-        }
+    if (tryModalQuickRestart()) {
+        return;
+    }
+
+    if (performance.now() < modalRestartGraceUntil) {
+        highlightKey(noteStr);
+        return;
     }
 
     if (handleMiniGameNoteInput(noteStr)) {
@@ -1934,6 +1996,7 @@ songSelect.addEventListener('change', (e) => {
     if (opt) currentSongTitle = opt.text;
     const parsed = parsePianoPad(code);
     if (parsed.length > 0) {
+        lastResultsSource = 'song';
         currentSong = autoTransposeSong(parsed);
         updateRosterSong();
         playSong();
@@ -1966,10 +2029,17 @@ function stopSong() {
 
 function playSong() {
     initAudio();
+    if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+    }
     stopSong();
     if (currentSong.length === 0) {
         document.getElementById('status').textContent = 'No song loaded. Select a song or import one.';
         return;
+    }
+
+    if (!arcadeState.activeMiniGame) {
+        lastResultsSource = arcadeState.isSongBattle ? 'battle' : 'song';
     }
 
     updateKeyPositions();
@@ -2346,15 +2416,18 @@ function renderLoop(now) {
                 submitKnockoutRoundFinish();
                 return;
             } else if (arcadeState.isSongBattle) {
+                lastResultsSource = 'battle';
                 markSongBattleLocalFinished();
                 return;
-            } else if (isGameMode) {
-                showGameResultsPopUp();
-                return;
             } else if (arcadeState.activeMiniGame) {
+                lastResultsSource = 'minigame';
                 currentSongTitle = arcadeState.activeMiniGame === 'drop' ? "Drop Dodge" : "Combo Strike";
                 showGameResultsPopUp();
                 arcadeState.activeMiniGame = null;
+                return;
+            } else if (isGameMode) {
+                lastResultsSource = 'song';
+                showGameResultsPopUp();
                 return;
             }
 
@@ -2383,7 +2456,10 @@ document.getElementById('btn-import').addEventListener('click', () => {
 document.getElementById('btn-cancel').addEventListener('click', () => modal.classList.remove('open'));
 document.getElementById('btn-export-close').addEventListener('click', () => exportModal.classList.remove('open'));
 
-document.getElementById('btn-play').addEventListener('click', playSong);
+document.getElementById('btn-play').addEventListener('click', () => {
+    lastResultsSource = 'song';
+    playSong();
+});
 document.getElementById('btn-stop').addEventListener('click', stopSong);
 
 document.getElementById('btn-load-play').addEventListener('click', () => {
@@ -2391,6 +2467,7 @@ document.getElementById('btn-load-play').addEventListener('click', () => {
     const code = importTextarea.value;
     const parsed = parsePianoPad(code);
     if (parsed.length > 0) {
+        lastResultsSource = 'song';
         currentSongTitle = 'Custom Imported Song';
         currentSong = autoTransposeSong(parsed);
         songSelect.value = '';
@@ -2803,6 +2880,7 @@ function initApp() {
             const parsed = parsePianoPad(found.code);
             if (parsed.length === 0) return;
 
+            lastResultsSource = 'song';
             currentSongTitle = found.title;
             currentSong = autoTransposeSong(parsed);
             if (songSelect) songSelect.value = found.code;
@@ -2859,7 +2937,10 @@ function initApp() {
         postScoreToLeaderboard,
         postBattleToSpreadsheet,
         loadStudentTickerStats,
-        showGameResultsPopUp,
+        showGameResultsPopUp: () => {
+            lastResultsSource = arcadeState.isSongBattle ? 'battle' : 'minigame';
+            showGameResultsPopUp();
+        },
         showGrandFinale,
         unlockBonusSounds,
         initSwissTournamentUI,
@@ -2873,6 +2954,7 @@ function initApp() {
             }
         },
         prepareSongBattleStart: () => {
+            lastResultsSource = 'battle';
             isStepMode = false;
             btnStep.textContent = 'Step Mode';
             btnStep.classList.remove('btn-step-active');
@@ -2882,6 +2964,7 @@ function initApp() {
             btnGame.classList.add('btn-game-active');
         },
         startGeneratedTimelineSong: (songArr, statusMsg) => {
+            lastResultsSource = 'minigame';
             currentSong = songArr;
             buildTimeline();
             isPlaying = true;
