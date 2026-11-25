@@ -20,7 +20,8 @@ export const BLOCKS = {
     WATER: 10,    // Edits Floor
     TREE: 11,     // Voxel Prefab
     ROCK: 12,     // Voxel Prefab
-    DRAGON: 13    // Voxel Prefab
+    DRAGON: 13,   // Voxel Prefab
+    TNT: 14       // 5s Fuse Exploding Block (Available to all students)
 };
 
 export const BLOCK_COSTS = {
@@ -36,7 +37,8 @@ export const BLOCK_COSTS = {
     [BLOCKS.WATER]: 5,
     [BLOCKS.TREE]: 25,
     [BLOCKS.ROCK]: 20,
-    [BLOCKS.DRAGON]: 50
+    [BLOCKS.DRAGON]: 50,
+    [BLOCKS.TNT]: 15
 };
 
 export const COIN_REWARDS = {
@@ -59,5 +61,6 @@ export const UNLOCK_THRESHOLDS = {
     [BLOCKS.WATER]: 10,
     [BLOCKS.TREE]: 11,
     [BLOCKS.ROCK]: 12,
-    [BLOCKS.DRAGON]: 13
+    [BLOCKS.DRAGON]: 13,
+    [BLOCKS.TNT]: 0
 };
