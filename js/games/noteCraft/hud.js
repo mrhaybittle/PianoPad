@@ -23,7 +23,8 @@ const BLOCK_META = {
     [BLOCKS.WATER]:      { label: 'Water',  swatch: '#3b82f6', accent: '#2563eb', hotkey: '@' },
     [BLOCKS.TREE]:       { label: 'Tree',   swatch: '#22c55e', accent: '#14532d', hotkey: '$' },
     [BLOCKS.ROCK]:       { label: 'Rock',   swatch: '#64748b', accent: '#334155', hotkey: '%' },
-    [BLOCKS.DRAGON]:     { label: 'Dragon', swatch: '#d97706', accent: '#92400e', hotkey: '^' }
+    [BLOCKS.DRAGON]:     { label: 'Dragon', swatch: '#d97706', accent: '#92400e', hotkey: '^' },
+    [BLOCKS.TNT]:        { label: 'TNT',    swatch: '#ef4444', accent: '#fef08a', hotkey: '9' }
 };
 
 export function initHud(containerEl) {
@@ -122,7 +123,6 @@ function drawSatelliteMinimap(ctx, H) {
 
     if (mapImgLoaded && mapImg) ctx.drawImage(mapImg, 0, 0, mapW, mapH);
 
-    // Draw campus preset building footprints on GPS minimap
     for (const b of campusPreset.buildings) {
         ctx.fillStyle = b.storeys === 2 ? 'rgba(248, 250, 252, 0.45)' : 'rgba(203, 213, 225, 0.35)';
         ctx.strokeStyle = b.storeys === 2 ? 'rgba(250, 204, 21, 0.85)' : 'rgba(148, 163, 184, 0.8)';
@@ -192,7 +192,6 @@ function drawBuildModeToggleSwitch(ctx, W, H) {
     const sx = (W - swW) / 2;
     const sy = H - 104;
 
-    // Outer pill container
     ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
     ctx.strokeStyle = isFlat ? '#38bdf8' : '#facc15';
     ctx.lineWidth = 2;
@@ -201,7 +200,6 @@ function drawBuildModeToggleSwitch(ctx, W, H) {
     ctx.fill();
     ctx.stroke();
 
-    // Active sliding pill highlight
     const halfW = (swW - 8) / 2;
     const pillX = isFlat ? (sx + halfW + 4) : (sx + 4);
     ctx.fillStyle = isFlat ? '#0284c7' : '#ca8a04';
@@ -209,17 +207,14 @@ function drawBuildModeToggleSwitch(ctx, W, H) {
     ctx.roundRect(pillX, sy + 4, halfW, swH - 8, 13);
     ctx.fill();
 
-    // Left Option: 3D BLOCK
     ctx.fillStyle = !isFlat ? '#ffffff' : '#94a3b8';
     ctx.font = '900 10.5px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('🧱 3D BLOCK', sx + 4 + halfW / 2, sy + 20);
 
-    // Right Option: FLAT FLOOR
     ctx.fillStyle = isFlat ? '#ffffff' : '#94a3b8';
     ctx.fillText('🟫 FLAT FLOOR', sx + halfW + 4 + halfW / 2, sy + 20);
 
-    // Shortcut hint badge directly above switch
     ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
     ctx.beginPath();
     ctx.roundRect(W / 2 - 96, sy - 18, 192, 15, 6);
@@ -317,8 +312,8 @@ export function renderHudFrame(now) {
     drawSatelliteMinimap(ctx, H);
     drawBuildModeToggleSwitch(ctx, W, H);
 
-    // 13 Slots Hotbar
-    const slots = 13;
+    // Hotbar slots
+    const slots = lp.inventory.length || 14;
     const slotW = 46;
     const slotH = 50;
     const gap = 4;
@@ -396,3 +391,6 @@ export function disposeHud() {
     hudCanvas = null;
     hudCtx = null;
 }
+```[cite: 1, 2, 3, 4, 5, 10]
+
+Reply with **next** when you're ready for `sprites.js`.
