@@ -58,5 +58,3 @@ export function updateInventory() {
     }
 }
 
-
-Reply with **next** when you're ready for `engine.js`.
