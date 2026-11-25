@@ -629,7 +629,6 @@ export const DAILY_CHALLENGES = [
 // ============================================================================
 let bridge = null;
 let dailyState = null;
-let isChoosingNewChallenge = false;
 
 export function initDailyChallengeBridge(deps) {
     bridge = deps;
@@ -849,6 +848,12 @@ function ensureDailyChallengeUI() {
                 color: #94a3b8;
                 line-height: 1.3;
             }
+            .dc-song-list {
+                margin-top: 6px;
+                font-size: 0.75rem;
+                color: #38bdf8;
+                font-style: italic;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -864,6 +869,7 @@ function ensureDailyChallengeUI() {
                     <div id="dc-tier-pill" class="dc-tier-badge dc-tier-Gold">DAILY MERIT AWARD CHALLENGE</div>
                     <h2 id="dc-title" style="margin: 0 0 8px 0; font-size: 1.45rem; color: #ffffff;">Today's Challenge</h2>
                     <p id="dc-desc" style="font-size: 0.95rem; color: #cbd5e1; line-height: 1.45; margin: 0 0 12px 0;"></p>
+                    <p id="dc-songs-required" style="font-size: 0.8rem; color: #38bdf8; font-style: italic; margin: -6px 0 12px 0; display: none;"></p>
 
                     <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px;">
                         <div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:700; color:#94a3b8;">
@@ -968,12 +974,20 @@ function populateChallengeList() {
         arr.forEach(ch => {
             const item = document.createElement('div');
             item.className = 'dc-list-item';
+            
+            // Generate list of required songs if it's a setlist challenge
+            let songsHtml = '';
+            if (ch.songs && ch.songs.length > 0) {
+                songsHtml = `<div class="dc-song-list">Songs: ${ch.songs.join(', ')}</div>`;
+            }
+
             item.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                     <h4>${ch.title}</h4>
                     <span class="dc-tier-badge dc-tier-${ch.tier || 'Silver'}" style="margin:0; font-size:0.6rem; padding:2px 8px;">${ch.tier || 'Silver'}</span>
                 </div>
                 <p>${ch.description}</p>
+                ${songsHtml}
             `;
             item.addEventListener('click', () => {
                 selectNewChallenge(ch.id);
@@ -1050,6 +1064,16 @@ export function openDailyChallengeModal(isManualView = false) {
 
     document.getElementById('dc-title').textContent = ch.title;
     document.getElementById('dc-desc').textContent = ch.description;
+    
+    // Display required songs if it's a setlist challenge
+    const reqSongsEl = document.getElementById('dc-songs-required');
+    if (ch.songs && ch.songs.length > 0) {
+        reqSongsEl.textContent = `Songs to choose from: ${ch.songs.join(', ')}`;
+        reqSongsEl.style.display = 'block';
+    } else {
+        reqSongsEl.style.display = 'none';
+    }
+
     document.getElementById('dc-progress-label').textContent = dailyState.completed
         ? `COMPLETED! (${ch.target}/${ch.target} ${ch.unit})`
         : `${dailyState.progress} / ${ch.target} ${ch.unit}`;
@@ -1059,19 +1083,20 @@ export function openDailyChallengeModal(isManualView = false) {
     const skipBtn = document.getElementById('btn-dc-skip');
     const chooseBtn = document.getElementById('btn-dc-choose');
 
+    // Show "Choose Another Challenge" button regardless of completion or acceptance status
+    // so students can always change their goal.
+    chooseBtn.style.display = 'inline-flex';
+
     if (dailyState.completed) {
         // Upon completion, offer the ability to pick a new challenge
         acceptBtn.textContent = 'Awesome!';
         skipBtn.style.display = 'none';
-        chooseBtn.style.display = 'inline-flex';
     } else if (dailyState.accepted || isManualView) {
         acceptBtn.textContent = dailyState.accepted ? 'Keep Going!' : 'Accept Challenge!';
         skipBtn.style.display = dailyState.accepted ? 'none' : 'inline-flex';
-        chooseBtn.style.display = dailyState.accepted ? 'inline-flex' : 'none';
     } else {
         acceptBtn.textContent = 'Accept Challenge!';
         skipBtn.style.display = 'inline-flex';
-        chooseBtn.style.display = 'none';
     }
 
     document.getElementById('daily-challenge-modal').classList.add('open');
@@ -1210,7 +1235,9 @@ export function notifyDailySongComplete({
     // Handle standalone and boss challenges
     else {
         switch (ch.id) {
-            // Basic completion checks
+            // --------------------------------------------------------
+            // GENERAL SKILL CHECKS
+            // --------------------------------------------------------
             case 'play_game_20':
                 dailyState.progress += 1;
                 break;
