@@ -87,27 +87,48 @@ export function playConversionKickSound(madeGoal) {
   } catch (e) {}
 }
 
-export function playRefWhistle() {
+// Authentic rugby league referee pea-whistle (high-frequency trill + air/resonator harmonics)
+export function playRefWhistle(style = 'short') {
   try {
     const c = getCtx();
     if (!c) return;
     const now = c.currentTime;
-    const osc1 = c.createOscillator();
-    const osc2 = c.createOscillator();
-    const gain = c.createGain();
-    osc1.type = 'sine';
-    osc2.type = 'sine';
-    osc1.frequency.setValueAtTime(2750, now);
-    osc2.frequency.setValueAtTime(2815, now);
-    gain.gain.setValueAtTime(0.22, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(c.destination);
-    osc1.start(now);
-    osc2.start(now);
-    osc1.stop(now + 0.38);
-    osc2.stop(now + 0.38);
+    const totalDur = style === 'long' ? 0.62 : 0.34;
+
+    const oscA = c.createOscillator();
+    const oscB = c.createOscillator();
+    const trillLfo = c.createOscillator();
+    const trillDepth = c.createGain();
+    const masterGain = c.createGain();
+
+    oscA.type = 'sine';
+    oscB.type = 'triangle';
+    oscA.frequency.setValueAtTime(2840, now);
+    oscB.frequency.setValueAtTime(2915, now);
+
+    // Pea-whistle rapid amplitude/pitch warble (~36 Hz)
+    trillLfo.type = 'sine';
+    trillLfo.frequency.setValueAtTime(36, now);
+    trillDepth.gain.setValueAtTime(0.14, now);
+
+    masterGain.gain.setValueAtTime(0.001, now);
+    masterGain.gain.linearRampToValueAtTime(0.34, now + 0.015);
+    masterGain.gain.setValueAtTime(0.32, now + totalDur - 0.08);
+    masterGain.gain.exponentialRampToValueAtTime(0.001, now + totalDur);
+
+    trillLfo.connect(trillDepth);
+    trillDepth.connect(masterGain.gain);
+
+    oscA.connect(masterGain);
+    oscB.connect(masterGain);
+    masterGain.connect(c.destination);
+
+    trillLfo.start(now);
+    oscA.start(now);
+    oscB.start(now);
+    trillLfo.stop(now + totalDur + 0.02);
+    oscA.stop(now + totalDur + 0.02);
+    oscB.stop(now + totalDur + 0.02);
   } catch (e) {}
 }
 
@@ -302,7 +323,7 @@ export function buildRugbyMarkup() {
               ERC Sports Rugby — Team &amp; MIDI Setup
             </div>
             <div style="font-size:11px; color:#cbd5e1;">
-              <b>C, D, E, F, G</b> pass in Offense &amp; switch defenders in Defense. Aim with <b>Left / Right</b> &amp; play any MIDI key on the 3D conversion slider!
+              <b>C, D, E, F, G</b> pass in Offense &amp; switch defenders in Defense (switch fast when ball shifts or they break through!).
             </div>
           </div>
           <div class="erc-logo-badge">
