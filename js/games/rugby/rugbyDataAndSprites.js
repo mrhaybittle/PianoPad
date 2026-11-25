@@ -228,7 +228,6 @@ function buildLowerBodyRows(pose, facing = 'back') {
   ];
 }
 
-// Player Try Dive (back of dark-haired head, NO face shown, hooped jersey w/ note, white shorts, grounding ball)
 function buildDiveBackRows() {
   return [
     '..............................KKKKKK........',
@@ -254,7 +253,6 @@ function buildDiveBackRows() {
   ];
 }
 
-// Computer Try Dive (visible face w/ hair, brow, eye, gritted teeth, hooped jersey w/ note, white shorts, pressing ball)
 function buildDiveFrontRows() {
   return [
     '......KKKK....................KKKKKK........',
@@ -367,4 +365,3 @@ export function getPixelSprite(team, noteLetter, pose, hasBall, facing = 'back')
   spriteCache.set(key, off);
   return off;
 }
-
