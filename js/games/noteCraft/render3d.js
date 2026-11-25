@@ -14,7 +14,9 @@ let campusBlueprintMesh = null;
 let cicOutlineMesh = null;
 
 const sharedGeo = new THREE.BoxGeometry(1, 1, 1);
+const fuseGeo = new THREE.BoxGeometry(1.06, 1.06, 1.06);
 const materialCache = new Map();
+const fuseMeshMap = new Map();
 
 function createProceduralBlockTexture(type) {
     const canvas = document.createElement('canvas');
@@ -120,9 +122,52 @@ function getBlockMaterial(blockId) {
     return mat;
 }
 
+function clearFuseMeshes() {
+    for (const entry of fuseMeshMap.values()) {
+        if (scene) scene.remove(entry.mesh);
+        entry.mat.dispose();
+    }
+    fuseMeshMap.clear();
+}
+
+function updateFuseAnimations(now = performance.now()) {
+    if (!scene) return;
+    const explosions = Array.isArray(ncState.activeExplosions) ? ncState.activeExplosions : [];
+    const activeIds = new Set(explosions.map(exp => exp.id));
+
+    for (const [id, entry] of fuseMeshMap.entries()) {
+        if (!activeIds.has(id)) {
+            scene.remove(entry.mesh);
+            entry.mat.dispose();
+            fuseMeshMap.delete(id);
+        }
+    }
+
+    for (const exp of explosions) {
+        let entry = fuseMeshMap.get(exp.id);
+        if (!entry) {
+            const mat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+            const mesh = new THREE.Mesh(fuseGeo, mat);
+            mesh.position.set(exp.x + 0.5, exp.y + 0.5, exp.z + 0.5);
+            scene.add(mesh);
+            entry = { mesh, mat };
+            fuseMeshMap.set(exp.id, entry);
+        }
+
+        const duration = Math.max(1, (exp.explodeAt || (exp.placedAt + 5000)) - (exp.placedAt || now));
+        const progress = Math.min(1, Math.max(0, (now - (exp.placedAt || now)) / duration));
+        const freq = 0.012 + progress * 0.05;
+        const wave = 0.5 + 0.5 * Math.sin(now * freq);
+
+        const scale = 1.0 + wave * (0.08 + progress * 0.14);
+        entry.mesh.scale.set(scale, scale, scale);
+        entry.mat.color.setHex(wave > 0.55 ? 0xfef08a : 0xef4444);
+    }
+}
+
 function buildCampusGroundBlueprint() {
-    const worldW = WORLD_HALF_X * 2; // 128 blocks
-    const worldD = WORLD_HALF_Z * 2; // 96 blocks
+    const worldW = WORLD_HALF_X * 2;
+    const worldD = WORLD_HALF_Z * 2;
     const loader = new THREE.TextureLoader();
 
     loader.load(
@@ -143,7 +188,6 @@ function buildCampusGroundBlueprint() {
         }
     );
 
-    // Gold perimeter outline for the "Centenary Innovation Centre" (x: 2..22, z: 6..20)
     const cicGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(20, 0.25, 14));
     const cicMat = new THREE.LineBasicMaterial({ color: 0xfacc15 });
     cicOutlineMesh = new THREE.LineSegments(cicGeo, cicMat);
@@ -201,7 +245,7 @@ export function rebuildWorldMeshes() {
 
     // Base terrain floor (y = 1)
     for (let x = -WORLD_HALF_X; x < WORLD_HALF_X; x++) {
-    for (let z = -WORLD_HALF_Z; z < WORLD_HALF_Z; z++) {
+        for (let z = -WORLD_HALF_Z; z < WORLD_HALF_Z; z++) {
             const key = `${x}_1_${z}`;
             const blockId = Object.prototype.hasOwnProperty.call(ncState.world.deltas, key)
                 ? ncState.world.deltas[key]
@@ -246,7 +290,7 @@ export function rebuildWorldMeshes() {
         instMesh.instanceMatrix.needsUpdate = true;
         voxelGroup.add(instMesh);
     }
-    
+
     for (const anchor of campusPreset.getCampusLabelAnchors()) {
         const canvas = document.createElement('canvas');
         canvas.width = 256;
@@ -271,12 +315,14 @@ export function rebuildWorldMeshes() {
     ncState.world.dirty = false;
 }
 
-export function render3DFrame() {
+export function render3DFrame(now = performance.now()) {
     if (!renderer || !scene || !camera) return;
 
     if (ncState.world.dirty) {
         rebuildWorldMeshes();
     }
+
+    updateFuseAnimations(now);
 
     const lp = ncState.localPlayer;
     camera.position.set(lp.x, lp.y + PLAYER_EYE_HEIGHT, lp.z);
@@ -308,6 +354,7 @@ export function getThreeScene() {
 }
 
 export function disposeRender3D() {
+    clearFuseMeshes();
     if (campusBlueprintMesh) {
         if (campusBlueprintMesh.material?.map) campusBlueprintMesh.material.map.dispose();
         campusBlueprintMesh.material?.dispose();
@@ -331,3 +378,6 @@ export function disposeRender3D() {
     voxelGroup = null;
     highlightMesh = null;
 }
+
+
+Reply with **next** when you're ready for `hud.js`.
