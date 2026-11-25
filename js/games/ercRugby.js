@@ -61,7 +61,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
   const statusEl = document.getElementById('status');
   if (statusEl) {
-    statusEl.textContent = '🏉 ERC Sports Rugby Ready! Switch defenders fast when the opposition passes!';
+    statusEl.textContent = '🏉 ERC Sports Rugby Ready! Play the closest defender note (C–G) fast when they move!';
   }
 
   const wrapperParent = document.getElementById('visualizer-wrapper');
@@ -131,16 +131,18 @@ export function startErcRugby(bridge, autoStart = false) {
     selectedDefenderIdx: 2,
     surgeTimer: 0,
     aiPlayTimer: 0,
-    aiPassCooldown: 0.65,
+    aiPassCooldown: 1.55,
     aiLastPassFrom: -1,
+    aiWeaveDir: 1,
+    aiWeaveTimer: 0.85,
+    aiLastTrackedLane: 2,
 
-    // Defensive reaction challenge: when Away passes to a wing/lane, user must quickly
-    // switch (`C..G`) to the defender guarding that lane before the window expires!
     defSwitchChallenge: {
       active: false,
       targetLane: 2,
+      requiredDefIdx: 2,
       timer: 0,
-      windowSec: 0.62,
+      windowSec: 0.68,
       failedBreak: false
     },
 
@@ -184,19 +186,53 @@ export function startErcRugby(bridge, autoStart = false) {
     state.callouts.push({ text, x, y, color, life: 1.2 });
   }
 
-  function getClosestDefenderIdxToLane(laneIdx) {
+  function getClosestDefenderIdxToCarrier() {
     const carrier = state.awayPlayers[state.carrierIndex];
-    if (!carrier) return laneIdx;
-    let bestIdx = laneIdx;
+    if (!carrier || state.homePlayers.length === 0) return state.selectedDefenderIdx;
+    let bestIdx = 0;
     let bestDist = Infinity;
     for (let i = 0; i < state.homePlayers.length; i++) {
-      const d = Math.abs(state.homePlayers[i].x - carrier.x);
+      const d = Math.hypot(state.homePlayers[i].x - carrier.x, (state.homePlayers[i].y - carrier.y) * 0.75);
       if (d < bestDist) {
         bestDist = d;
         bestIdx = i;
       }
     }
     return bestIdx;
+  }
+
+  function getNearestLaneToX(xVal) {
+    let bestLane = 2;
+    let bestDiff = Infinity;
+    for (let i = 0; i < LANES.length; i++) {
+      const diff = Math.abs(LANES[i] - xVal);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        bestLane = i;
+      }
+    }
+    return bestLane;
+  }
+
+  function armDefenderReactionWindow(carrierObj, reasonPrefix = '') {
+    const laneIdx = getNearestLaneToX(carrierObj.x);
+    const closestDef = getClosestDefenderIdxToCarrier();
+    state.defSwitchChallenge.active = true;
+    state.defSwitchChallenge.targetLane = laneIdx;
+    state.defSwitchChallenge.requiredDefIdx = closestDef;
+    state.defSwitchChallenge.timer = 0;
+    state.defSwitchChallenge.windowSec = laneIdx === 0 || laneIdx === 4 ? 0.62 : 0.74;
+    state.defSwitchChallenge.failedBreak = false;
+    state.aiLastTrackedLane = laneIdx;
+
+    if (reasonPrefix) {
+      addCallout(
+        `${reasonPrefix} PRESS ${LANE_NOTES[closestDef]} FAST!`,
+        carrierObj.x,
+        Math.min(0.82, Math.max(0.16, carrierObj.y - 0.03)),
+        '#fde047'
+      );
+    }
   }
 
   function initTeamSelectors() {
@@ -425,7 +461,7 @@ export function startErcRugby(bridge, autoStart = false) {
       vx: 0, vy: 0, animSpeedX: 0, animSpeedY: 0,
       strideTimer: i * 0.18, overrun: false, overrunLead: 0,
       depthJitter: 0, lateralJitter: 0, nextRollTimer: 1.6 + Math.random() * 1.5,
-      role: 'line', isScorer: false, missedTackleTimer: 0
+      role: 'line', isScorer: false, missedTackleTimer: 0, pursuitTimer: 0
     };
   }
 
@@ -442,9 +478,12 @@ export function startErcRugby(bridge, autoStart = false) {
     state.conversion.active = false;
     state.defSwitchChallenge.active = false;
     state.defSwitchChallenge.failedBreak = false;
+    state.aiWeaveDir = Math.random() < 0.5 ? -1 : 1;
+    state.aiWeaveTimer = 0.8 + Math.random() * 0.6;
+    state.aiLastTrackedLane = carrierIdx;
     state.playState = 'waitingForPlay';
     state.aiPlayTimer = 0.70;
-    state.aiPassCooldown = 0.55;
+    state.aiPassCooldown = 1.55 + Math.random() * 0.85;
     state.aiLastPassFrom = -1;
 
     const attackDir = possession === 'home' ? -1 : 1;
@@ -497,7 +536,7 @@ export function startErcRugby(bridge, autoStart = false) {
       if (idx === fromIdx) return false;
       const laneDist = Math.abs(idx - fromIdx);
       if (laneDist > 2) return false;
-      if (!forceDummyHalfPass && idx === state.aiLastPassFrom && Math.random() < 0.75) return false;
+      if (!forceDummyHalfPass && idx === state.aiLastPassFrom && Math.random() < 0.8) return false;
       return state.awayPlayers[idx].y <= passer.y + 0.004;
     });
 
@@ -530,20 +569,11 @@ export function startErcRugby(bridge, autoStart = false) {
     state.passState.duration = 0.16 + laneDist * 0.06;
     state.passState.isForwardPass = false;
 
-    // Start defensive switch reaction window: player must switch quickly (`C..G`) to the closest defender!
-    const closestDef = getClosestDefenderIdxToLane(bestIdx);
-    const isEdgeWing = bestIdx === 0 || bestIdx === 4;
-    state.defSwitchChallenge.active = true;
-    state.defSwitchChallenge.targetLane = bestIdx;
-    state.defSwitchChallenge.timer = 0;
-    state.defSwitchChallenge.windowSec = isEdgeWing ? 0.58 : 0.72;
-    state.defSwitchChallenge.failedBreak = false;
-
     addCallout(
-      `PASS ${LANE_NOTES[fromIdx]} → ${LANE_NOTES[bestIdx]}! SWITCH ${LANE_NOTES[closestDef]}!`,
+      `PASS ${LANE_NOTES[fromIdx]} → ${LANE_NOTES[bestIdx]}!`,
       (passer.x + receiver.x) * 0.5,
       Math.max(0.16, Math.min(passer.y, receiver.y) - 0.025),
-      '#fde047'
+      '#fda4af'
     );
     return true;
   }
@@ -616,6 +646,9 @@ export function startErcRugby(bridge, autoStart = false) {
     if (state.playState === 'waitingForPlay') {
       state.playState = 'running';
       assignAiDefenderChasers();
+      if (state.possession === 'away' && state.awayPlayers[state.carrierIndex]) {
+        armDefenderReactionWindow(state.awayPlayers[state.carrierIndex], 'PLAY ON!');
+      }
     }
     return true;
   }
@@ -629,16 +662,13 @@ export function startErcRugby(bridge, autoStart = false) {
       state.selectedDefenderIdx = targetIdx;
       const def = state.homePlayers[targetIdx];
       if (def) {
-        if (state.defSwitchChallenge.active) {
-          const idealDef = getClosestDefenderIdxToLane(state.defSwitchChallenge.targetLane);
-          if (targetIdx === idealDef || Math.abs(targetIdx - idealDef) <= 1) {
-            state.defSwitchChallenge.active = false;
-            addCallout(`GREAT SWITCH ${LANE_NOTES[targetIdx]}! TACKLE!`, def.x, def.y + 0.05, '#4ade80');
-          } else {
-            addCallout(`DEFENDER ${LANE_NOTES[targetIdx]} (CLOSEST: ${LANE_NOTES[idealDef]})`, def.x, def.y + 0.05, '#fde047');
-          }
+        const closestDef = getClosestDefenderIdxToCarrier();
+        if (targetIdx === closestDef || !state.defSwitchChallenge.active) {
+          state.defSwitchChallenge.active = false;
+          def.pursuitTimer = 0.85;
+          addCallout(`${LANE_NOTES[targetIdx]} CHARGES AT BALL!`, def.x, def.y + 0.05, '#4ade80');
         } else {
-          addCallout(`DEFENDER ${LANE_NOTES[targetIdx]}`, def.x, def.y + 0.05, '#fde047');
+          addCallout(`CLOSEST IS ${LANE_NOTES[closestDef]}!`, def.x, def.y + 0.05, '#fde047');
         }
       }
       return;
@@ -697,7 +727,8 @@ export function startErcRugby(bridge, autoStart = false) {
       }
       state.surgeTimer = 0.65;
       const d = state.homePlayers[state.selectedDefenderIdx];
-      addCallout(`⚡ ${LANE_NOTES[state.selectedDefenderIdx]} SPRINT HIT!`, d.x, d.y - 0.03, '#6ee7b7');
+      d.pursuitTimer = Math.max(d.pursuitTimer, 0.75);
+      addCallout(`⚡ ${LANE_NOTES[state.selectedDefenderIdx]} SPRINT TACKLE!`, d.x, d.y - 0.03, '#6ee7b7');
     }
   }
 
@@ -871,6 +902,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
     for (const hp of state.homePlayers) {
       if (hp.missedTackleTimer > 0) hp.missedTackleTimer = Math.max(0, hp.missedTackleTimer - dt);
+      if (hp.pursuitTimer > 0) hp.pursuitTimer = Math.max(0, hp.pursuitTimer - dt);
     }
 
     for (let i = state.callouts.length - 1; i >= 0; i--) {
@@ -972,7 +1004,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
       if (state.tacklePause.timer >= state.tacklePause.retreatDuration && allOnside) {
         for (let i = 0; i < 5; i++) { defenders[i].x = LANES[i]; defenders[i].y = targetOnsideY; }
-        state.playState = 'waitingForPlay'; state.aiPlayTimer = 0.65; state.aiPassCooldown = 0.45; state.aiLastPassFrom = -1;
+        state.playState = 'waitingForPlay'; state.aiPlayTimer = 0.65; state.aiPassCooldown = 1.5; state.aiLastPassFrom = -1;
         addCallout(
           state.possession === 'home' ? 'ONSIDE! PASS (C–G) OR RUN' : 'DEFENSE SET! SWITCH WITH C–G',
           carrier.x, Math.min(0.85, Math.max(0.16, carrier.y - 0.04)), '#fde047'
@@ -999,8 +1031,12 @@ export function startErcRugby(bridge, autoStart = false) {
         state.aiPlayTimer -= dt;
         if (state.aiPlayTimer <= 0) {
           releasePlayTheBall();
-          if (Math.random() < 0.78) { tryTriggerAiPass(true); state.aiPassCooldown = 0.65 + Math.random() * 0.45; }
-          else { state.aiPassCooldown = 0.45 + Math.random() * 0.40; }
+          if (Math.random() < 0.30) {
+            tryTriggerAiPass(true);
+            state.aiPassCooldown = 1.65 + Math.random() * 0.9;
+          } else {
+            state.aiPassCooldown = 1.45 + Math.random() * 0.85;
+          }
         }
       }
 
@@ -1029,40 +1065,14 @@ export function startErcRugby(bridge, autoStart = false) {
         state.carrierIndex = state.passState.toIdx;
         if (state.possession === 'home' && bridgeRef && bridgeRef.getState().gameStats) bridgeRef.getState().gameStats.perfect += 1;
         attackers.forEach((att, idx) => rollSupportAlignment(att, idx, state.carrierIndex, state.possession === 'home'));
+
+        if (state.possession === 'away') {
+          armDefenderReactionWindow(attackers[state.carrierIndex], 'CAUGHT!');
+        }
       }
     }
 
     const activeCarrier = attackers[state.carrierIndex];
-
-    // Check if the player failed to switch quickly enough after an opposition pass!
-    if (state.possession === 'away' && state.defSwitchChallenge.active) {
-      state.defSwitchChallenge.timer += dt;
-      const idealDefIdx = getClosestDefenderIdxToLane(state.defSwitchChallenge.targetLane);
-      if (
-        state.selectedDefenderIdx === idealDefIdx ||
-        Math.abs(state.selectedDefenderIdx - idealDefIdx) <= 1
-      ) {
-        // Player switched in time!
-        state.defSwitchChallenge.active = false;
-      } else if (state.defSwitchChallenge.timer >= state.defSwitchChallenge.windowSec) {
-        // Too slow switching to the closest defender -> defender overruns/misses the tackle & AI breaks through!
-        state.defSwitchChallenge.active = false;
-        state.defSwitchChallenge.failedBreak = true;
-        const slowDef = state.homePlayers[state.selectedDefenderIdx];
-        if (slowDef) {
-          slowDef.missedTackleTimer = 0.85;
-          // Defender lunges past/behind the runner instead of making the tackle
-          slowDef.y = Math.min(0.92, activeCarrier.y + 0.055);
-        }
-        playErrorClackSound();
-        addCallout(
-          `TOO SLOW! PLAY ${LANE_NOTES[idealDefIdx]} FASTER! LINE BREAK!`,
-          activeCarrier.x,
-          Math.min(0.82, Math.max(0.18, activeCarrier.y - 0.03)),
-          '#fb7185'
-        );
-      }
-    }
 
     if (state.possession === 'home') {
       const isSurging = state.surgeTimer > 0;
@@ -1082,29 +1092,65 @@ export function startErcRugby(bridge, autoStart = false) {
           const d = Math.hypot(def.x - activeCarrier.x, def.y - activeCarrier.y);
           if (d < nearestDefDist) nearestDefDist = d;
         }
-        const underTacklePressure = nearestDefDist < 0.115 && state.aiPassCooldown <= 0.22;
+        const underTacklePressure = nearestDefDist < 0.085 && state.aiPassCooldown <= 0.15;
         const scheduledShiftReady = state.aiPassCooldown <= 0;
 
-        if ((underTacklePressure && Math.random() < 0.85) || (scheduledShiftReady && Math.random() < 0.82)) {
+        if ((underTacklePressure && Math.random() < 0.45) || (scheduledShiftReady && Math.random() < 0.36)) {
           const passed = tryTriggerAiPass(false);
-          state.aiPassCooldown = passed ? (0.65 + Math.random() * 0.45) : 0.35;
+          state.aiPassCooldown = passed ? (1.7 + Math.random() * 1.0) : (1.1 + Math.random() * 0.7);
         } else if (scheduledShiftReady) {
-          state.aiPassCooldown = 0.45 + Math.random() * 0.35;
+          state.aiPassCooldown = 1.2 + Math.random() * 0.8;
         }
       }
 
-      // If the player was too slow switching defenders, the AI runner bursts past with a clean line break!
-      const breakSpeedMult = state.defSwitchChallenge.failedBreak ? 1.55 : 1.0;
-      const aiDownSpeed = (state.passState.active ? 0.055 : 0.115) * breakSpeedMult;
+      const breakSpeedMult = state.defSwitchChallenge.failedBreak ? 1.6 : 1.0;
+      const aiDownSpeed = (state.passState.active ? 0.055 : 0.118) * breakSpeedMult;
       activeCarrier.y += aiDownSpeed * dt;
 
-      // Cut toward the open side away from the user's selected defender
-      const selDef = state.homePlayers[state.selectedDefenderIdx];
-      const cutDir = activeCarrier.x < selDef.x ? -1 : 1;
-      const edgeLimit = cutDir < 0 ? 0.10 : 0.90;
-      const cutSpeed = state.defSwitchChallenge.failedBreak ? 0.14 : 0.075;
-      if (Math.abs(activeCarrier.x - edgeLimit) > 0.02) {
-        activeCarrier.x = Math.min(0.90, Math.max(0.10, activeCarrier.x + cutDir * cutSpeed * dt));
+      state.aiWeaveTimer -= dt;
+      if (state.aiWeaveTimer <= 0) {
+        state.aiWeaveTimer = 0.65 + Math.random() * 0.75;
+        const selDef = state.homePlayers[state.selectedDefenderIdx];
+        if (selDef && Math.abs(selDef.x - activeCarrier.x) < 0.16) {
+          state.aiWeaveDir = activeCarrier.x < selDef.x ? -1 : 1;
+        } else {
+          state.aiWeaveDir = [-1, 0, 1][Math.floor(Math.random() * 3)];
+        }
+      }
+
+      if (activeCarrier.x <= 0.10) state.aiWeaveDir = 1;
+      else if (activeCarrier.x >= 0.90) state.aiWeaveDir = -1;
+
+      const weaveSpeed = state.defSwitchChallenge.failedBreak ? 0.19 : 0.135;
+      activeCarrier.x = Math.min(0.90, Math.max(0.10, activeCarrier.x + state.aiWeaveDir * weaveSpeed * dt));
+
+      const curLane = getNearestLaneToX(activeCarrier.x);
+      if (!state.passState.active && !state.defSwitchChallenge.active && curLane !== state.aiLastTrackedLane) {
+        armDefenderReactionWindow(activeCarrier, '');
+      }
+    }
+
+    if (state.possession === 'away' && state.defSwitchChallenge.active) {
+      state.defSwitchChallenge.timer += dt;
+      const idealDefIdx = getClosestDefenderIdxToCarrier();
+      if (state.selectedDefenderIdx === idealDefIdx) {
+        state.defSwitchChallenge.active = false;
+        state.homePlayers[idealDefIdx].pursuitTimer = 0.85;
+      } else if (state.defSwitchChallenge.timer >= state.defSwitchChallenge.windowSec) {
+        state.defSwitchChallenge.active = false;
+        state.defSwitchChallenge.failedBreak = true;
+        const slowDef = state.homePlayers[state.selectedDefenderIdx];
+        if (slowDef) {
+          slowDef.missedTackleTimer = 0.85;
+          slowDef.y = Math.min(0.92, activeCarrier.y + 0.055);
+        }
+        playErrorClackSound();
+        addCallout(
+          `TOO SLOW! HIT ${LANE_NOTES[idealDefIdx]}! BREAK THROUGH!`,
+          activeCarrier.x,
+          Math.min(0.82, Math.max(0.18, activeCarrier.y - 0.03)),
+          '#fb7185'
+        );
       }
     }
 
@@ -1196,41 +1242,46 @@ export function startErcRugby(bridge, autoStart = false) {
     for (let i = 0; i < 5; i++) {
       const d = defenders[i];
 
-      // If this defender just missed/overran a tackle due to slow switching, recover behind the runner
       if (state.possession === 'away' && d.missedTackleTimer > 0) {
         d.y = Math.min(0.92, d.y + 0.14 * dt);
         continue;
       }
 
-      if (state.possession === 'away' && i === state.selectedDefenderIdx) {
+      if (state.possession === 'away' && d.pursuitTimer > 0) {
+        const toX = activeCarrier.x - d.x;
+        const toY = activeCarrier.y - d.y;
+        const dist = Math.max(0.001, Math.hypot(toX, toY));
+        const chargeSpeed = state.surgeTimer > 0 ? 0.34 : 0.24;
+        d.x = Math.min(0.92, Math.max(0.08, d.x + (toX / dist) * chargeSpeed * dt));
+        d.y = Math.min(0.92, Math.max(0.12, d.y + (toY / dist) * chargeSpeed * dt));
+      } else if (state.possession === 'away' && i === state.selectedDefenderIdx) {
         const isDefSurging = state.surgeTimer > 0;
-        d.y = Math.max(0.12, d.y + (isDefSurging ? -0.35 : -0.105) * dt);
+        d.y = Math.max(0.12, d.y + (isDefSurging ? -0.32 : -0.095) * dt);
         if (userSteerX !== 0) {
           d.x = Math.min(0.92, Math.max(0.08, d.x + userSteerX * (isDefSurging ? 0.36 : 0.27) * dt));
         }
       } else if (d.role === 'chaser') {
         const toX = activeCarrier.x - d.x; const toY = activeCarrier.y - d.y;
         const dist = Math.max(0.001, Math.hypot(toX, toY));
-        d.x += (toX / dist) * 0.112 * dt; d.y += (toY / dist) * 0.115 * dt;
+        d.x += (toX / dist) * 0.105 * dt; d.y += (toY / dist) * 0.108 * dt;
       } else {
-        const slideShift = (activeCarrier.x - 0.5) * 0.15;
+        const slideShift = (activeCarrier.x - 0.5) * 0.14;
         const targetX = Math.min(0.91, Math.max(0.09, LANES[i] + slideShift));
-        d.x += (targetX - d.x) * Math.min(1, dt * 3.8);
-        d.y += (state.tacklePause.onsideY - d.y) * Math.min(1, dt * 3.5);
+        d.x += (targetX - d.x) * Math.min(1, dt * 3.6);
+        d.y += (state.tacklePause.onsideY - d.y) * Math.min(1, dt * 3.4);
       }
 
       if (!state.passState.active && !state.kickBall.active) {
         const hitDist = Math.hypot(d.x - activeCarrier.x, d.y - activeCarrier.y);
-        // Require tighter contact (0.033) and punish if the user hasn't switched to the closest defender yet
-        if (hitDist < 0.033) {
+        const tackleRadius = state.possession === 'away' && d.pursuitTimer > 0 ? 0.044 : 0.032;
+        if (hitDist < tackleRadius) {
           if (state.possession === 'away' && state.defSwitchChallenge.active) {
-            const idealIdx = getClosestDefenderIdxToLane(state.defSwitchChallenge.targetLane);
-            if (state.selectedDefenderIdx !== idealIdx && Math.abs(state.selectedDefenderIdx - idealIdx) > 1) {
-              // Missed tackle — defender fends/slips off!
+            const idealIdx = getClosestDefenderIdxToCarrier();
+            if (state.selectedDefenderIdx !== idealIdx) {
               d.missedTackleTimer = 0.75;
               d.y = Math.min(0.92, activeCarrier.y + 0.05);
               playErrorClackSound();
-              addCallout(`SLIPPED TACKLE! HIT ${LANE_NOTES[idealDefIdx]}!`, activeCarrier.x, activeCarrier.y - 0.03, '#fb7185');
+              addCallout(`SLIPPED! PLAY ${LANE_NOTES[idealIdx]}!`, activeCarrier.x, activeCarrier.y - 0.03, '#fb7185');
               continue;
             }
           }
@@ -1389,3 +1440,4 @@ export function startErcRugby(bridge, autoStart = false) {
   }
   animFrameId = requestAnimationFrame(frame);
 }
+```[cite: 39, 40, 41, 42]
