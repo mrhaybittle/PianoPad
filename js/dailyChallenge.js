@@ -3,11 +3,11 @@ import { initAudio, audioCtx } from './audio.js';
 import { APPS_SCRIPT_URL } from './config.js';
 
 // ============================================================================
-// CHALLENGE LIST (75 TOTAL: 55 EXISTING + 20 EASY TROPHY CABINET CHALLENGES)
+// CHALLENGE LIST (83 TOTAL)
 // Edit numbers, icons, descriptions, or delete any challenge object below.
 // Note: Single-song challenges and challenges with `trophyOnly: true` are
-// labeled as Trophy Challenges (not Merit Awards) and do not log Merit Award
-// rows to the Google Sheet.
+// labeled as Trophy Challenges in PianoPad (not Merit Awards), while ALL
+// completed challenges are logged to the Google Sheet.
 // ============================================================================
 export const DAILY_CHALLENGES = [
     // ------------------------------------------------------------------------
@@ -243,6 +243,102 @@ export const DAILY_CHALLENGES = [
         tier: 'Silver',
         target: 3,
         unit: 'songs'
+    },
+
+    // ------------------------------------------------------------------------
+    // HOME PRACTICE CHALLENGES (OUTSIDE SCHOOL HOURS: 2:05 PM - 8:00 AM / WEEKENDS)
+    // ------------------------------------------------------------------------
+
+    // H1. Complete any song with over 85% accuracy at home (outside school hours or on a weekend).
+    {
+        id: 'home_song_85',
+        icon: '🏠',
+        title: 'Home Practice Hero',
+        description: 'Score 85%+ on any song at home (between 2:05pm–8:00am or on a weekend).',
+        tier: 'Silver',
+        target: 1,
+        unit: 'song'
+    },
+
+    // H2. Complete 3 different songs with over 85% accuracy at home.
+    {
+        id: 'home_trio_85',
+        icon: '🏡',
+        title: 'Home Practice Trio',
+        description: 'Score 85%+ on 3 different songs at home (outside school hours or on a weekend).',
+        tier: 'Gold',
+        target: 3,
+        unit: 'songs'
+    },
+
+    // H3. Record a Game Mode song at home on 3 consecutive days.
+    {
+        id: 'home_streak_3',
+        icon: '📅',
+        title: '3-Day Home Streak',
+        description: 'Record a Game Mode song at home (2:05pm–8:00am or weekend) for 3 consecutive days.',
+        tier: 'Silver',
+        target: 3,
+        unit: 'days'
+    },
+
+    // H4. Record a Game Mode song at home on 5 consecutive days.
+    {
+        id: 'home_streak_5',
+        icon: '🔥',
+        title: '5-Day Home Streak',
+        description: 'Record a Game Mode song at home (2:05pm–8:00am or weekend) for 5 consecutive days.',
+        tier: 'Gold',
+        target: 5,
+        unit: 'days'
+    },
+
+    // ------------------------------------------------------------------------
+    // IMPROVEMENT & GROWTH CHALLENGES (MERIT AWARDS)
+    // ------------------------------------------------------------------------
+
+    // I1. Record 20 Game Mode scores on the exact same song in one day.
+    {
+        id: 'improve_20_one_song',
+        icon: '🔁',
+        title: '20-Run Dedication',
+        description: 'Record 20 Game Mode scores on the same song today to earn a Merit Award.',
+        tier: 'Gold',
+        target: 20,
+        unit: 'runs'
+    },
+
+    // I2. Improve your accuracy by at least +15% on the same song within one session.
+    {
+        id: 'improve_gain_15',
+        icon: '📈',
+        title: 'Accuracy Climber (+15%)',
+        description: 'Improve your accuracy by at least 15% on the same song within one session.',
+        tier: 'Silver',
+        target: 15,
+        unit: '% gain'
+    },
+
+    // I3. Improve your accuracy by at least +25% on the same song within one session.
+    {
+        id: 'improve_gain_25',
+        icon: '🚀',
+        title: 'Breakthrough Session (+25%)',
+        description: 'Improve your accuracy by at least 25% on the same song within one session.',
+        tier: 'Gold',
+        target: 25,
+        unit: '% gain'
+    },
+
+    // I4. Beat your previous accuracy score 3 times in a row on the same song in one session.
+    {
+        id: 'improve_climb_3',
+        icon: '🪜',
+        title: 'Upward Trajectory (3x)',
+        description: 'Beat your previous accuracy score 3 times in a row on the same song in one session.',
+        tier: 'Silver',
+        target: 3,
+        unit: 'improvements'
     },
 
     // ------------------------------------------------------------------------
@@ -1195,13 +1291,13 @@ export const DAILY_CHALLENGES = [
 ];
 
 // ============================================================================
-// CHALLENGE CLASSIFICATION HELPERS
+// CHALLENGE CLASSIFICATION & TIME HELPERS
 // ============================================================================
 function isSingleSongChallenge(ch) {
     return Boolean(ch && ch.song && !Array.isArray(ch.songs));
 }
 
-// Single-song challenges and Easy trophyOnly challenges are NOT labeled as Merit Awards
+// Single-song challenges and Easy trophyOnly challenges are NOT labeled as Merit Awards in PianoPad
 function isMeritAwardChallenge(ch) {
     if (!ch) return false;
     if (ch.trophyOnly) return false;
@@ -1209,8 +1305,16 @@ function isMeritAwardChallenge(ch) {
     return true;
 }
 
+// Returns true outside school hours (2:05pm - 8:00am weekdays, or any time on Saturday/Sunday)
+function isOutsideSchoolHours() {
+    const now = new Date();
+    const day = now.getDay(); // 0 = Sun, 6 = Sat
+    const timeMins = now.getHours() * 60 + now.getMinutes();
+    return (day === 0 || day === 6) || (timeMins < 8 * 60) || (timeMins >= 14 * 60 + 5);
+}
+
 // ============================================================================
-// INTERNAL STATE & STORAGE (DAILY PROGRESS + PERMANENT BYOD BADGES)
+// INTERNAL STATE & STORAGE (DAILY PROGRESS + PERMANENT BADGES + HOME STREAK)
 // ============================================================================
 let bridge = null;
 let dailyState = null;
@@ -1223,12 +1327,21 @@ export function initDailyChallengeBridge(deps) {
     renderBadgeTray();
 }
 
-function getTodayDateKey() {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
+function getDateKeyFromDate(dObj) {
+    const y = dObj.getFullYear();
+    const m = String(dObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dObj.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
+}
+
+function getTodayDateKey() {
+    return getDateKeyFromDate(new Date());
+}
+
+function getYesterdayDateKey() {
+    const now = new Date();
+    const yest = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    return getDateKeyFromDate(yest);
 }
 
 function getUserSlug() {
@@ -1246,6 +1359,45 @@ function getStorageKey() {
 // Permanent BYOD badge key (never resets across days)
 function getBadgeStorageKey() {
     return `pianopad_badges_${getUserSlug()}`;
+}
+
+// Permanent Home Practice consecutive-days key
+function getHomeStreakStorageKey() {
+    return `pianopad_home_streak_${getUserSlug()}`;
+}
+
+function getHomeStreakData() {
+    try {
+        const raw = localStorage.getItem(getHomeStreakStorageKey());
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed.streak === 'number') return parsed;
+        }
+    } catch (e) {}
+    return { lastDateKey: '', streak: 0 };
+}
+
+function recordHomePracticeDay() {
+    const today = getTodayDateKey();
+    const yesterday = getYesterdayDateKey();
+    const data = getHomeStreakData();
+
+    if (data.lastDateKey === today) {
+        return data.streak;
+    } else if (data.lastDateKey === yesterday) {
+        data.streak += 1;
+        data.lastDateKey = today;
+    } else {
+        data.streak = 1;
+        data.lastDateKey = today;
+    }
+
+    try {
+        localStorage.setItem(getHomeStreakStorageKey(), JSON.stringify(data));
+    } catch (e) {
+        console.warn('Could not save home streak:', e);
+    }
+    return data.streak;
 }
 
 export function getEarnedBadges() {
@@ -1299,18 +1451,34 @@ function getTodaysChallenge() {
     return getDefaultDailyChallenge();
 }
 
+function createFreshMeta() {
+    return {
+        masteredSongs: [],
+        mediumMasteredSongs: [],
+        themesUsed: [],
+        instrumentsUsed: [],
+        lastSongTitle: '',
+        consecutive85: 0,
+        startedSlowLoop: false,
+        stepCompletedSong: '',
+        songPlayCounts: {},
+        songFirstAccuracy: {},
+        songLastAccuracy: {},
+        songImproveStreak: {}
+    };
+}
+
 function ensureDailyMetaShape() {
     if (!dailyState.meta || typeof dailyState.meta !== 'object') {
-        dailyState.meta = {};
+        dailyState.meta = createFreshMeta();
+        return;
     }
-    if (!Array.isArray(dailyState.meta.masteredSongs)) dailyState.meta.masteredSongs = [];
-    if (!Array.isArray(dailyState.meta.mediumMasteredSongs)) dailyState.meta.mediumMasteredSongs = [];
-    if (!Array.isArray(dailyState.meta.themesUsed)) dailyState.meta.themesUsed = [];
-    if (!Array.isArray(dailyState.meta.instrumentsUsed)) dailyState.meta.instrumentsUsed = [];
-    if (typeof dailyState.meta.lastSongTitle !== 'string') dailyState.meta.lastSongTitle = '';
-    if (typeof dailyState.meta.consecutive85 !== 'number') dailyState.meta.consecutive85 = 0;
-    if (typeof dailyState.meta.startedSlowLoop !== 'boolean') dailyState.meta.startedSlowLoop = false;
-    if (typeof dailyState.meta.stepCompletedSong !== 'string') dailyState.meta.stepCompletedSong = '';
+    const defaults = createFreshMeta();
+    Object.keys(defaults).forEach(k => {
+        if (dailyState.meta[k] === undefined || dailyState.meta[k] === null) {
+            dailyState.meta[k] = defaults[k];
+        }
+    });
 }
 
 function refreshDailyState() {
@@ -1342,16 +1510,7 @@ function refreshDailyState() {
         accepted: false,
         progress: 0,
         completed: false,
-        meta: {
-            masteredSongs: [],
-            mediumMasteredSongs: [],
-            themesUsed: [],
-            instrumentsUsed: [],
-            lastSongTitle: '',
-            consecutive85: 0,
-            startedSlowLoop: false,
-            stepCompletedSong: ''
-        }
+        meta: createFreshMeta()
     };
     saveDailyState();
     return dailyState;
@@ -1374,7 +1533,6 @@ function normalizeTitle(str) {
 }
 
 function stripLeadingSymbols(str) {
-    // Strips leading emojis, difficulty dots (🟢🟠🔴), bullets, and spaces
     return normalizeTitle(str).replace(/^[^a-z0-9]+/i, '');
 }
 
@@ -1430,21 +1588,19 @@ export function launchSongInGameMode(songTitle) {
     const targetClean = songTitle.trim();
     const targetNorm = normalizeTitle(targetClean);
 
-    // 1. Accept the active challenge automatically so progress tracks & shows in the pill
     refreshDailyState();
     if (!dailyState.accepted) {
         dailyState.accepted = true;
         saveDailyState();
     }
 
-    // 2. Close the Daily Challenge modal
     const modal = document.getElementById('daily-challenge-modal');
     if (modal) {
         modal.classList.remove('open');
     }
     updateDailyHudPill();
 
-    // 3. Preferred path: use main.js bridge directly (100% bulletproof)
+    // Preferred path: use main.js bridge directly
     if (bridge) {
         for (const fnName of ['startSongInGameMode', 'playSongInGameMode', 'selectSongAndStartGame', 'loadSong']) {
             if (typeof bridge[fnName] === 'function') {
@@ -1454,7 +1610,7 @@ export function launchSongInGameMode(songTitle) {
         }
     }
 
-    // 4. DOM fallback: select matching option in #song-select (stripping leading emojis)
+    // DOM fallback: select matching option in #song-select (stripping leading emojis)
     let songFound = false;
     const selects = Array.from(document.querySelectorAll('select'));
     for (const sel of selects) {
@@ -1981,7 +2137,11 @@ function populateChallengeList() {
 
     const easySingle = DAILY_CHALLENGES.filter(c => c.id.startsWith('easy_song_'));
     const easySetlists = DAILY_CHALLENGES.filter(c => c.id.startsWith('easy_setlist_'));
-    const generalMerit = DAILY_CHALLENGES.filter(c => isMeritAwardChallenge(c) && !Array.isArray(c.songs));
+    const homeChallenges = DAILY_CHALLENGES.filter(c => c.id.startsWith('home_'));
+    const improvementChallenges = DAILY_CHALLENGES.filter(c => c.id.startsWith('improve_'));
+    const generalMerit = DAILY_CHALLENGES.filter(
+        c => isMeritAwardChallenge(c) && !Array.isArray(c.songs) && !c.id.startsWith('home_') && !c.id.startsWith('improve_')
+    );
     const setlistMerit = DAILY_CHALLENGES.filter(c => isMeritAwardChallenge(c) && Array.isArray(c.songs));
     const bossSingle = DAILY_CHALLENGES.filter(c => isSingleSongChallenge(c) && !c.id.startsWith('easy_song_'));
 
@@ -2042,6 +2202,8 @@ function populateChallengeList() {
         });
     };
 
+    addSection('Home Practice Challenges (Merit Awards)', homeChallenges);
+    addSection('Improvement & Growth Challenges (Merit Awards)', improvementChallenges);
     addSection('Easy Single-Song Challenges (Trophy Cabinet)', easySingle);
     addSection('Easy Setlist Challenges (Trophy Cabinet)', easySetlists);
     addSection('General Skills & Exploration (Merit Awards)', generalMerit);
@@ -2051,22 +2213,19 @@ function populateChallengeList() {
 
 // Handles switching the active challenge to a user-selected one
 function selectNewChallenge(challengeId, reopenModal = true) {
+    const chosen = DAILY_CHALLENGES.find(c => c.id === challengeId);
+    const initialProgress =
+        (challengeId === 'home_streak_3' || challengeId === 'home_streak_5')
+            ? Math.min(chosen ? chosen.target : 0, getHomeStreakData().streak)
+            : 0;
+
     dailyState = {
         dateKey: getTodayDateKey(),
         challengeId: challengeId,
         accepted: true,
-        progress: 0,
+        progress: initialProgress,
         completed: false,
-        meta: {
-            masteredSongs: [],
-            mediumMasteredSongs: [],
-            themesUsed: [],
-            instrumentsUsed: [],
-            lastSongTitle: '',
-            consecutive85: 0,
-            startedSlowLoop: false,
-            stepCompletedSong: ''
-        }
+        meta: createFreshMeta()
     };
     saveDailyState();
 
@@ -2124,7 +2283,7 @@ export function openDailyChallengeModal(isManualView = false) {
     if (rewardEl) {
         rewardEl.textContent = isMerit
             ? '🎁 Reward: Permanent Merit Badge, 5 Bonus Instruments & Leaderboard Log!'
-            : '🏅 Reward: Permanent Trophy Cabinet Badge & 5 Bonus Instruments!';
+            : '🏅 Reward: Permanent Trophy Cabinet Badge, 5 Bonus Instruments & Leaderboard Log!';
     }
 
     document.getElementById('dc-title').textContent = ch.title;
@@ -2267,23 +2426,23 @@ function checkAndTriggerCompletion(challenge) {
             if (typeof bridge.showFlashingStatus === 'function') {
                 const msg = isMerit
                     ? `🏆 DAILY MERIT AWARD CHALLENGE COMPLETE: "${challenge.title}"! Badge Earned, Logged to Leaderboard & 5 Bonus Instruments Unlocked!`
-                    : `🏅 TROPHY CHALLENGE COMPLETE: "${challenge.title}"! Added to Your Trophy Cabinet & 5 Bonus Instruments Unlocked!`;
+                    : `🏅 TROPHY CHALLENGE COMPLETE: "${challenge.title}"! Added to Your Trophy Cabinet, Logged to Leaderboard & 5 Bonus Instruments Unlocked!`;
                 bridge.showFlashingStatus(msg, 7000);
             }
 
-            // Only log Merit Award completions to the Leaderboard Google Sheet
-            if (isMerit) {
-                const state = bridge.getState ? bridge.getState() : {};
-                const studentName = (typeof bridge.ensureStudentName === 'function' ? bridge.ensureStudentName() : state.sessionStudentName)
-                    || localStorage.getItem('pianopad_name')
-                    || 'Student';
-                const studentClass = state.currentStudentClass || localStorage.getItem('pianopad_class') || state.currentRoom || '';
-                const entryTitle = `🎯 Merit Award: ${challenge.title}`;
+            // Log ALL completed challenges to the Leaderboard Google Sheet
+            const state = bridge.getState ? bridge.getState() : {};
+            const studentName = (typeof bridge.ensureStudentName === 'function' ? bridge.ensureStudentName() : state.sessionStudentName)
+                || localStorage.getItem('pianopad_name')
+                || 'Student';
+            const studentClass = state.currentStudentClass || localStorage.getItem('pianopad_class') || state.currentRoom || '';
+            const entryTitle = isMerit
+                ? `🎯 Merit Award: ${challenge.title}`
+                : `🏅 Trophy: ${challenge.title}`;
 
-                if (APPS_SCRIPT_URL && typeof bridge.sendJSONP === 'function') {
-                    const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(studentName)}&title=${encodeURIComponent(entryTitle)}&score=100&tempo=${encodeURIComponent('100%')}&class=${encodeURIComponent(studentClass)}&studentClass=${encodeURIComponent(studentClass)}&t=${Date.now()}`;
-                    bridge.sendJSONP(url);
-                }
+            if (APPS_SCRIPT_URL && typeof bridge.sendJSONP === 'function') {
+                const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(studentName)}&title=${encodeURIComponent(entryTitle)}&score=100&tempo=${encodeURIComponent('100%')}&class=${encodeURIComponent(studentClass)}&studentClass=${encodeURIComponent(studentClass)}&t=${Date.now()}`;
+                bridge.sendJSONP(url);
             }
 
             setTimeout(() => {
@@ -2313,7 +2472,6 @@ export function notifyDailySongComplete({
     showSheetMusic
 }) {
     refreshDailyState();
-    if (dailyState.completed) return;
 
     const ch = getTodaysChallenge();
     const cleanTitle = (songTitle || '').trim();
@@ -2323,6 +2481,35 @@ export function notifyDailySongComplete({
     const numAccuracy = parseFloat(String(accuracy ?? 0).replace('%', '')) || 0;
     const numSpeed = parseFloat(String(speed ?? 100).replace('%', '')) || 0;
     const numMiss = Number(miss ?? 0);
+
+    // Always record home practice streak days when playing outside school hours
+    const atHomeNow = isOutsideSchoolHours();
+    let currentHomeStreak = getHomeStreakData().streak;
+    if (atHomeNow) {
+        currentHomeStreak = recordHomePracticeDay();
+    }
+
+    // Track per-song play counts & accuracy growth for Improvement challenges
+    if (normTitle) {
+        dailyState.meta.songPlayCounts[normTitle] = (dailyState.meta.songPlayCounts[normTitle] || 0) + 1;
+
+        if (dailyState.meta.songFirstAccuracy[normTitle] === undefined) {
+            dailyState.meta.songFirstAccuracy[normTitle] = numAccuracy;
+            dailyState.meta.songLastAccuracy[normTitle] = numAccuracy;
+            dailyState.meta.songImproveStreak[normTitle] = 0;
+        } else {
+            const prevAcc = dailyState.meta.songLastAccuracy[normTitle];
+            if (numAccuracy > prevAcc) {
+                dailyState.meta.songImproveStreak[normTitle] = (dailyState.meta.songImproveStreak[normTitle] || 0) + 1;
+            } else {
+                dailyState.meta.songImproveStreak[normTitle] = 0;
+            }
+            dailyState.meta.songLastAccuracy[normTitle] = numAccuracy;
+        }
+        saveDailyState();
+    }
+
+    if (dailyState.completed) return;
 
     // Handle Multi-Song Setlist Challenges (including Easy Setlists & boss_deceptively_hard)
     if (Array.isArray(ch.songs) && ch.songs.length > 0) {
@@ -2356,7 +2543,63 @@ export function notifyDailySongComplete({
         }
     } else {
         switch (ch.id) {
-            // General skill checks
+            // --------------------------------------------------------
+            // HOME PRACTICE CHALLENGES
+            // --------------------------------------------------------
+            case 'home_song_85':
+                if (atHomeNow && numAccuracy >= 85 && numSpeed >= 100) {
+                    dailyState.progress = 1;
+                }
+                break;
+
+            case 'home_trio_85':
+                if (atHomeNow && numAccuracy >= 85 && numSpeed >= 100 && cleanTitle) {
+                    if (!dailyState.meta.masteredSongs.some(s => normalizeTitle(s) === normTitle)) {
+                        dailyState.meta.masteredSongs.push(cleanTitle);
+                    }
+                    dailyState.progress = dailyState.meta.masteredSongs.length;
+                }
+                break;
+
+            case 'home_streak_3':
+            case 'home_streak_5':
+                if (atHomeNow && currentHomeStreak > dailyState.progress) {
+                    dailyState.progress = currentHomeStreak;
+                }
+                break;
+
+            // --------------------------------------------------------
+            // IMPROVEMENT & GROWTH CHALLENGES
+            // --------------------------------------------------------
+            case 'improve_20_one_song':
+                if (normTitle) {
+                    const countForSong = dailyState.meta.songPlayCounts[normTitle] || 0;
+                    dailyState.progress = Math.max(dailyState.progress, countForSong);
+                }
+                break;
+
+            case 'improve_gain_15':
+            case 'improve_gain_25':
+                if (normTitle && dailyState.meta.songFirstAccuracy[normTitle] !== undefined) {
+                    const gain = Math.floor(numAccuracy - dailyState.meta.songFirstAccuracy[normTitle]);
+                    if (gain > dailyState.progress) {
+                        dailyState.progress = gain;
+                    }
+                }
+                break;
+
+            case 'improve_climb_3':
+                if (normTitle) {
+                    const streak = dailyState.meta.songImproveStreak[normTitle] || 0;
+                    if (streak > dailyState.progress) {
+                        dailyState.progress = streak;
+                    }
+                }
+                break;
+
+            // --------------------------------------------------------
+            // GENERAL SKILL CHECKS
+            // --------------------------------------------------------
             case 'play_game_20':
                 dailyState.progress += 1;
                 break;
@@ -2446,7 +2689,9 @@ export function notifyDailySongComplete({
                 }
                 break;
 
-            // Single-song boss checks
+            // --------------------------------------------------------
+            // SINGLE-SONG BOSS CHECKS
+            // --------------------------------------------------------
             case 'boss_fire_flames':
                 if (normTitle === normalizeTitle('Through the Fire & Flames - Piano Intro') && numAccuracy >= 80 && numSpeed >= 100) dailyState.progress = 1;
                 break;
