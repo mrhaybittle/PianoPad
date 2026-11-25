@@ -446,4 +446,4 @@ export function stopEyesFront() {
     const teacherPill = document.getElementById('eyes-front-teacher-pill');
     if (teacherPill) teacherPill.remove();
 }
-```[cite: 2]
+
