@@ -12,7 +12,7 @@ import { startSharpShooter, handleSharpShooterInput, handleSharpShooterRelease, 
 import { startSkiSlalom, handleSkiSlalomInput, handleSkiSlalomRelease, stopSkiSlalom } from './games/skiSlalom.js';
 import { startPedalPoint, handlePedalPointInput, handlePedalPointRelease, stopPedalPoint } from './games/pedalPoint.js';
 import { startRockBall, handleRockBallInput, handleRockBallRelease, stopRockBall } from './games/rockBall.js';
-import { startErcRugby, handleErcRugbyInput, stopErcRugby } from './games/ercRugby.js';
+import { startErcRugby, handleErcRugbyInput, handleErcRugbyRelease, stopErcRugby } from './games/ercRugby.js';
 
 export const arcadeState = {
     activeMiniGame: null,
@@ -449,6 +449,10 @@ export function handleMiniGameNoteRelease(noteStr) {
     }
     if (arcadeState.activeMiniGame === 'rockBall') {
         handleRockBallRelease(noteStr);
+        return true;
+    }
+    if (arcadeState.activeMiniGame === 'ercRugby') {
+        handleErcRugbyRelease(noteStr);
         return true;
     }
     return false;
