@@ -969,6 +969,116 @@ function normalizeTitle(str) {
     return String(str || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+function doesOptionMatchSong(opt, targetNorm) {
+    const optText = normalizeTitle(opt.textContent);
+    const optVal = normalizeTitle(opt.value);
+    const optLabel = normalizeTitle(opt.label);
+
+    if (!optText && !optVal && !optLabel) return false;
+    return (
+        optText === targetNorm ||
+        optVal === targetNorm ||
+        optLabel === targetNorm ||
+        optText.startsWith(targetNorm + ' ') ||
+        optText.startsWith(targetNorm + ' -') ||
+        optText.startsWith(targetNorm + ' (') ||
+        optVal.startsWith(targetNorm + ' ') ||
+        optVal.startsWith(targetNorm + ' -') ||
+        optVal.startsWith(targetNorm + ' (')
+    );
+}
+
+function getCurrentlySelectedSongText() {
+    const selects = Array.from(document.querySelectorAll('select'));
+    for (const sel of selects) {
+        if (sel.options && sel.options.length > 5 && sel.selectedIndex >= 0) {
+            const chosen = sel.options[sel.selectedIndex];
+            if (chosen) return normalizeTitle(chosen.textContent || chosen.value);
+        }
+    }
+    return '';
+}
+
+function ensureGameModeEnabled() {
+    const gameToggle =
+        document.getElementById('game-mode') ||
+        document.getElementById('gameMode') ||
+        document.getElementById('game-mode-toggle') ||
+        document.getElementById('btn-game-mode') ||
+        document.getElementById('game-btn');
+
+    if (gameToggle) {
+        if (gameToggle.type === 'checkbox') {
+            if (!gameToggle.checked) {
+                gameToggle.checked = true;
+                gameToggle.dispatchEvent(new Event('input', { bubbles: true }));
+                gameToggle.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            return;
+        }
+        const labelText = (gameToggle.textContent || '').trim();
+        const isAlreadyOn =
+            gameToggle.classList.contains('active') ||
+            gameToggle.classList.contains('on') ||
+            gameToggle.getAttribute('aria-pressed') === 'true' ||
+            /\bon\b/i.test(labelText);
+
+        if (!isAlreadyOn) {
+            gameToggle.click();
+        }
+        return;
+    }
+
+    const allBtns = Array.from(document.querySelectorAll('button, label, [role="button"]'));
+    const gmBtn = allBtns.find(el => /game\s*mode/i.test(el.textContent || ''));
+    if (gmBtn) {
+        const forId = gmBtn.getAttribute('for');
+        const input = forId ? document.getElementById(forId) : gmBtn.querySelector('input[type="checkbox"]');
+        if (input && input.type === 'checkbox') {
+            if (!input.checked) {
+                input.checked = true;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        } else {
+            const txt = (gmBtn.textContent || '').trim();
+            const isOn =
+                gmBtn.classList.contains('active') ||
+                gmBtn.classList.contains('on') ||
+                gmBtn.getAttribute('aria-pressed') === 'true' ||
+                /\bon\b/i.test(txt);
+            if (!isOn) {
+                gmBtn.click();
+            }
+        }
+    }
+}
+
+function findAndClickPlayButton(targetClean) {
+    const playBtn =
+        document.getElementById('play-btn') ||
+        document.getElementById('btn-play') ||
+        document.getElementById('start-btn') ||
+        Array.from(document.querySelectorAll('button')).find(b => {
+            const t = (b.textContent || '').trim();
+            return /^(▶\s*)?play(\s*song)?$/i.test(t) || /^start(\s*game)?$/i.test(t);
+        });
+
+    if (!playBtn || playBtn.disabled) return false;
+
+    const btnText = (playBtn.textContent || '').trim();
+    if (/^(■|⏹|stop|pause)/i.test(btnText) || playBtn.classList.contains('playing')) {
+        return true;
+    }
+
+    playBtn.click();
+    const statusEl = document.getElementById('status');
+    if (statusEl) {
+        statusEl.textContent = `🎮 Playing "${targetClean}" in Game Mode!`;
+    }
+    return true;
+}
+
 export function launchSongInGameMode(songTitle) {
     if (!songTitle) return;
     const targetClean = songTitle.trim();
@@ -990,40 +1100,36 @@ export function launchSongInGameMode(songTitle) {
 
     // 3. If main.js provided a direct bridge function, use it first
     if (bridge) {
-        if (typeof bridge.startSongInGameMode === 'function') {
-            bridge.startSongInGameMode(targetClean);
-            return;
-        }
-        if (typeof bridge.playSongInGameMode === 'function') {
-            bridge.playSongInGameMode(targetClean);
-            return;
-        }
-        if (typeof bridge.selectSongAndStartGame === 'function') {
-            bridge.selectSongAndStartGame(targetClean);
-            return;
+        for (const fnName of ['startSongInGameMode', 'playSongInGameMode', 'selectSongAndStartGame', 'loadSong']) {
+            if (typeof bridge[fnName] === 'function') {
+                bridge[fnName](targetClean);
+                return;
+            }
         }
     }
 
-    // 4. Otherwise, select the song via PianoPad's DOM controls
+    // 4. Select the matching song in PianoPad's <select> dropdowns (or song list elements)
+    let matchedSelect = null;
     let songFound = false;
 
-    // 4a. Check <select> elements (e.g. #song-select / #songSelect)
     const selects = Array.from(document.querySelectorAll('select'));
     for (const sel of selects) {
-        const match = Array.from(sel.options).find(opt => {
-            const optText = normalizeTitle(opt.textContent);
-            const optVal = normalizeTitle(opt.value);
-            return optText === targetNorm || optVal === targetNorm || optText.startsWith(targetNorm);
-        });
-        if (match) {
-            sel.value = match.value;
+        const matchIdx = Array.from(sel.options).findIndex(opt => doesOptionMatchSong(opt, targetNorm));
+        if (matchIdx >= 0) {
+            const matchedOpt = sel.options[matchIdx];
+            matchedOpt.selected = true;
+            sel.selectedIndex = matchIdx;
+            sel.value = matchedOpt.value;
+
+            sel.dispatchEvent(new Event('input', { bubbles: true }));
             sel.dispatchEvent(new Event('change', { bubbles: true }));
+
+            matchedSelect = sel;
             songFound = true;
             break;
         }
     }
 
-    // 4b. Fallback: check clickable song cards/items in a song library list
     if (!songFound) {
         const candidates = Array.from(document.querySelectorAll('[data-song], [data-title], .song-item, .song-card, .song-btn'));
         const card = candidates.find(el => {
@@ -1037,62 +1143,37 @@ export function launchSongInGameMode(songTitle) {
         }
     }
 
-    // 5. Switch PianoPad into Game Mode and trigger Play
-    setTimeout(() => {
-        // Ensure Game Mode is enabled
-        const gameToggle =
-            document.getElementById('game-mode') ||
-            document.getElementById('gameMode') ||
-            document.getElementById('game-mode-toggle') ||
-            document.getElementById('btn-game-mode') ||
-            document.getElementById('game-btn');
+    // 5. Switch to Game Mode
+    ensureGameModeEnabled();
 
-        if (gameToggle) {
-            if (gameToggle.type === 'checkbox') {
-                if (!gameToggle.checked) {
-                    gameToggle.checked = true;
-                    gameToggle.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-            } else if (!gameToggle.classList.contains('active') && !gameToggle.classList.contains('on')) {
-                gameToggle.click();
-            }
-        } else {
-            // Search by button/label text if no standard ID matched
-            const allBtns = Array.from(document.querySelectorAll('button, label'));
-            const gmBtn = allBtns.find(el => /game\s*mode/i.test(el.textContent || ''));
-            if (gmBtn) {
-                const input = gmBtn.tagName === 'LABEL' ? document.getElementById(gmBtn.getAttribute('for')) : null;
-                if (input && input.type === 'checkbox') {
-                    if (!input.checked) {
-                        input.checked = true;
-                        input.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
-                } else if (!gmBtn.classList.contains('active') && !/on/i.test(gmBtn.textContent || '')) {
-                    gmBtn.click();
-                }
+    // 6. Wait briefly for song selection/loading to settle, then start playback
+    let attempts = 0;
+    const maxAttempts = 12;
+
+    const tryStart = () => {
+        attempts += 1;
+
+        if (matchedSelect && getCurrentlySelectedSongText() !== normalizeTitle(matchedSelect.options[matchedSelect.selectedIndex]?.textContent || matchedSelect.value)) {
+            const reIdx = Array.from(matchedSelect.options).findIndex(opt => doesOptionMatchSong(opt, targetNorm));
+            if (reIdx >= 0) {
+                matchedSelect.selectedIndex = reIdx;
+                matchedSelect.value = matchedSelect.options[reIdx].value;
+                matchedSelect.dispatchEvent(new Event('change', { bubbles: true }));
             }
         }
 
-        // Trigger Play if not already playing
-        setTimeout(() => {
-            const playBtn =
-                document.getElementById('play-btn') ||
-                document.getElementById('btn-play') ||
-                document.getElementById('start-btn') ||
-                Array.from(document.querySelectorAll('button')).find(b => /^(▶\s*)?play(\s*song)?$/i.test((b.textContent || '').trim()));
-
-            if (playBtn && !playBtn.disabled) {
-                playBtn.click();
-            }
-
+        const started = findAndClickPlayButton(targetClean);
+        if (!started && attempts < maxAttempts) {
+            setTimeout(tryStart, 50);
+        } else if (!songFound) {
             const statusEl = document.getElementById('status');
             if (statusEl) {
-                statusEl.textContent = songFound
-                    ? `🎮 Playing "${targetClean}" in Game Mode!`
-                    : `🎮 Select "${targetClean}" from the song menu to play in Game Mode!`;
+                statusEl.textContent = `🎮 Select "${targetClean}" from the song menu to play in Game Mode!`;
             }
-        }, 120);
-    }, 80);
+        }
+    };
+
+    setTimeout(tryStart, 60);
 }
 
 // ============================================================================
@@ -1284,7 +1365,7 @@ function ensureDailyChallengeUI() {
                 opacity: 1;
             }
 
-            /* Challenge Selection List */
+            /* Challenge Selection List & Trophy Case */
             #dc-selection-list, #dc-trophy-view {
                 display: none;
                 flex-direction: column;
@@ -1506,7 +1587,6 @@ function renderBadgeTray() {
     const earned = getEarnedBadges();
     tray.innerHTML = '';
 
-    // Show up to 8 most recent badges inline so the footer stays tidy
     const maxVisible = 8;
     const visibleBadges = earned.slice(-maxVisible);
 
@@ -1523,7 +1603,6 @@ function renderBadgeTray() {
         tray.appendChild(chip);
     });
 
-    // Overflow "+N" chip when student has earned more than 8 badges
     if (earned.length > maxVisible) {
         const more = document.createElement('div');
         more.className = 'dc-badge-chip dc-badge-Gold';
@@ -1555,7 +1634,6 @@ export function openTrophyCaseModal() {
     const grid = document.getElementById('dc-trophy-grid');
     grid.innerHTML = '';
 
-    // Show earned badges first, followed by locked challenges
     const sorted = [
         ...DAILY_CHALLENGES.filter(c => earnedMap.has(c.id)),
         ...DAILY_CHALLENGES.filter(c => !earnedMap.has(c.id))
@@ -1626,7 +1704,6 @@ function populateChallengeList() {
                 <p>${ch.description}</p>
             `;
 
-            // Render clickable song pills directly on the challenge card
             const songOpts = getChallengeSongOptions(ch);
             if (songOpts.length > 0) {
                 const pillsWrap = document.createElement('div');
@@ -1837,7 +1914,6 @@ function playChallengeFanfare() {
 function checkAndTriggerCompletion(challenge) {
     if (!dailyState || dailyState.completed) return;
 
-    // Ensure the bottom HUD pill switches out of unaccepted state as soon as progress starts
     if (dailyState.progress > 0 && !dailyState.accepted) {
         dailyState.accepted = true;
     }
@@ -1877,7 +1953,6 @@ function checkAndTriggerCompletion(challenge) {
                 bridge.sendJSONP(url);
             }
 
-            // Re-open modal briefly after completion so student can pick another challenge
             setTimeout(() => {
                 openDailyChallengeModal(true);
             }, 1500);
@@ -1912,12 +1987,11 @@ export function notifyDailySongComplete({
     const normTitle = normalizeTitle(cleanTitle);
     const diffLower = (difficulty || '').toLowerCase().trim();
 
-    // Parse numeric values safely even if passed as strings like "92%" or "100%"
     const numAccuracy = parseFloat(String(accuracy ?? 0).replace('%', '')) || 0;
     const numSpeed = parseFloat(String(speed ?? 100).replace('%', '')) || 0;
     const numMiss = Number(miss ?? 0);
 
-    // Handle Multi-Song Setlist Challenges
+    // Handle Multi-Song Setlist Challenges (including boss_deceptively_hard)
     if (Array.isArray(ch.songs) && ch.songs.length > 0) {
         const reqAcc = ch.minAccuracy ?? 85;
         const reqSpeed = ch.minSpeed ?? 100;
