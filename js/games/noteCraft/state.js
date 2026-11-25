@@ -53,5 +53,3 @@ export const ncState = {
     bridge: null
 };
 
-
-Reply with **next** when you're ready for `economy.js`.
