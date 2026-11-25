@@ -108,7 +108,6 @@ export function startErcRugby(bridge, autoStart = false) {
   const state = {
     phase: 'menu',
     possession: 'home',
-    // 'waitingForPlay' | 'running' | 'retreating' | 'turnoverPause' | 'tryCelebration' | 'conversionKick'
     playState: 'waitingForPlay',
     tackleCount: 0,
     maxTackles: 6,
@@ -119,17 +118,11 @@ export function startErcRugby(bridge, autoStart = false) {
     matchTime: 120,
 
     pokie: {
-      spinning: false,
-      timer: 0,
-      duration: 1.25,
-      tickAccum: 0,
-      index: 1,
-      targetId: TEAMS[1].id
+      spinning: false, timer: 0, duration: 1.25, tickAccum: 0, index: 1, targetId: TEAMS[1].id
     },
 
     actionBinds: Object.assign({}, defaultBinds, savedBinds || {}),
     listeningAction: null,
-
     moveInput: { leftHeld: false, rightHeld: false, leftTapTimer: 0, rightTapTimer: 0 },
 
     homePlayers: [],
@@ -158,22 +151,9 @@ export function startErcRugby(bridge, autoStart = false) {
     },
 
     conversion: {
-      active: false,
-      isHomeKick: true,
-      kickerNote: 'E',
-      teeX: 0,
-      sliderPos: 0,
-      sliderDir: 1,
-      sliderSpeed: 3.1,
-      kicked: false,
-      kickTimer: 0,
-      ballX: 0,
-      ballY: 0.4,
-      ballZ: -16,
-      ballVx: 0,
-      ballVy: 0,
-      ballVz: 0,
-      resultText: ''
+      active: false, isHomeKick: true, kickerNote: 'E', teeX: 0, aimOffset: 0,
+      sliderPos: 0, sliderDir: 1, sliderSpeed: 3.2, kicked: false, kickTimer: 0,
+      ballX: 0, ballY: 0.4, ballZ: -16, ballVx: 0, ballVy: 0, ballVz: 0, resultText: ''
     },
 
     callouts: [],
@@ -306,6 +286,7 @@ export function startErcRugby(bridge, autoStart = false) {
     state.conversion.isHomeKick = isHomeKick;
     state.conversion.kickerNote = scorerNote || 'E';
     state.conversion.teeX = (scorerLaneX - 0.5) * 1.4;
+    state.conversion.aimOffset = 0;
     state.conversion.sliderPos = -0.9;
     state.conversion.sliderDir = 1;
     state.conversion.sliderSpeed = isHomeKick ? 3.2 : 2.8;
@@ -326,8 +307,10 @@ export function startErcRugby(bridge, autoStart = false) {
     conv.kicked = true;
     conv.kickTimer = 0;
 
-    // Center bullseye is within [-0.22, +0.22]
-    const onTarget = Math.abs(conv.sliderPos) <= 0.22;
+    const effectiveAim = conv.sliderPos * 0.75 + conv.aimOffset * 1.35;
+    const targetPostX = conv.ballX + effectiveAim * 4.4;
+    const onTarget = Math.abs(targetPostX) <= 2.65;
+
     playConversionKickSound(onTarget);
 
     if (onTarget) {
@@ -340,13 +323,13 @@ export function startErcRugby(bridge, autoStart = false) {
         state.awayScore += 2;
       }
       conv.resultText = 'CONVERSION GOAL! +2 PTS!';
-      conv.ballVx = -conv.sliderPos * 2.2;
+      conv.ballVx = (targetPostX - conv.ballX) * 0.95;
       conv.ballVy = 6.2;
       conv.ballVz = 38;
       syncHudAndLegend();
     } else {
-      conv.resultText = conv.sliderPos < 0 ? 'WIDE LEFT! NO GOAL' : 'WIDE RIGHT! NO GOAL';
-      conv.ballVx = conv.sliderPos < 0 ? -12 : 12;
+      conv.resultText = targetPostX < 0 ? 'WIDE LEFT! NO GOAL' : 'WIDE RIGHT! NO GOAL';
+      conv.ballVx = (targetPostX - conv.ballX) * 0.95;
       conv.ballVy = 3.5;
       conv.ballVz = 24;
     }
@@ -355,9 +338,7 @@ export function startErcRugby(bridge, autoStart = false) {
   function triggerTryCelebration(scoringSide, scorerLabel = '', scorerIdx = 2) {
     const team = scoringSide === 'home' ? state.homeTeam : state.awayTeam;
     const roster = scoringSide === 'home' ? state.homePlayers : state.awayPlayers;
-    roster.forEach((p, idx) => {
-      p.isScorer = idx === scorerIdx;
-    });
+    roster.forEach((p, idx) => { p.isScorer = idx === scorerIdx; });
 
     state.playState = 'tryCelebration';
     state.passState.active = false;
@@ -373,14 +354,10 @@ export function startErcRugby(bridge, autoStart = false) {
 
     const colors = ['#ef4444', '#ffffff', '#facc15', team.primary, team.secondary, '#38bdf8'];
     state.tryCelebration.confetti = Array.from({ length: 95 }, (_, i) => ({
-      x: Math.random(),
-      y: -0.05 - Math.random() * 0.35,
-      vx: (Math.random() - 0.5) * 0.35,
-      vy: 0.28 + Math.random() * 0.42,
-      size: 5 + Math.random() * 7,
-      rot: Math.random() * Math.PI * 2,
-      vrot: (Math.random() - 0.5) * 10,
-      color: colors[i % colors.length]
+      x: Math.random(), y: -0.05 - Math.random() * 0.35,
+      vx: (Math.random() - 0.5) * 0.35, vy: 0.28 + Math.random() * 0.42,
+      size: 5 + Math.random() * 7, rot: Math.random() * Math.PI * 2,
+      vrot: (Math.random() - 0.5) * 10, color: colors[i % colors.length]
     }));
 
     state.screenShake.timer = 0.38;
@@ -391,9 +368,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
   function rollSupportAlignment(playerObj, idx, carrierIdx, allowOverrun = true) {
     if (idx === carrierIdx) {
-      playerObj.overrun = false;
-      playerObj.depthJitter = 0;
-      playerObj.lateralJitter = 0;
+      playerObj.overrun = false; playerObj.depthJitter = 0; playerObj.lateralJitter = 0;
       return;
     }
     const dist = Math.abs(idx - carrierIdx);
@@ -471,10 +446,8 @@ export function startErcRugby(bridge, autoStart = false) {
     for (let i = 0; i < 5; i++) {
       if (i !== carrierIdx) {
         const pos = getDesiredSupportPos(attackers[i], i, carrier, attackDir);
-        attackers[i].x = pos.x;
-        attackers[i].y = pos.y;
-        attackers[i].prevX = pos.x;
-        attackers[i].prevY = pos.y;
+        attackers[i].x = pos.x; attackers[i].y = pos.y;
+        attackers[i].prevX = pos.x; attackers[i].prevY = pos.y;
       }
     }
     syncHudAndLegend();
@@ -484,9 +457,7 @@ export function startErcRugby(bridge, autoStart = false) {
     const defenders = state.possession === 'home' ? state.awayPlayers : state.homePlayers;
     const chaserA = Math.floor(Math.random() * 5);
     const chaserB = (chaserA + 2) % 5;
-    defenders.forEach((d, idx) => {
-      d.role = idx === chaserA || idx === chaserB ? 'chaser' : 'line';
-    });
+    defenders.forEach((d, idx) => { d.role = idx === chaserA || idx === chaserB ? 'chaser' : 'line'; });
   }
 
   function tryTriggerAiPass(forceDummyHalfPass = false) {
@@ -514,10 +485,7 @@ export function startErcRugby(bridge, autoStart = false) {
         if (d < minDefDist) minDefDist = d;
       }
       const score = minDefDist - (Math.abs(idx - fromIdx) === 2 ? 0.025 : 0) + (Math.random() - 0.5) * 0.04;
-      if (score > bestScore) {
-        bestScore = score;
-        bestIdx = idx;
-      }
+      if (score > bestScore) { bestScore = score; bestIdx = idx; }
     }
 
     const receiver = state.awayPlayers[bestIdx];
@@ -528,10 +496,8 @@ export function startErcRugby(bridge, autoStart = false) {
     state.passState.active = true;
     state.passState.fromIdx = fromIdx;
     state.passState.toIdx = bestIdx;
-    state.passState.startX = passer.x;
-    state.passState.startY = passer.y;
-    state.passState.x = passer.x;
-    state.passState.y = passer.y;
+    state.passState.startX = passer.x; state.passState.startY = passer.y;
+    state.passState.x = passer.x; state.passState.y = passer.y;
     state.passState.progress = 0;
     state.passState.duration = 0.15 + laneDist * 0.055;
     state.passState.isForwardPass = false;
@@ -566,8 +532,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
     state.tackleCount += 1;
     state.surgeTimer = 0;
-    carrier.vy = 0;
-    carrier.vx = 0;
+    carrier.vy = 0; carrier.vx = 0;
 
     state.screenShake.timer = state.screenShake.duration;
     state.screenShake.intensity = 14;
@@ -580,9 +545,7 @@ export function startErcRugby(bridge, autoStart = false) {
       const clampedY = Math.min(0.78, Math.max(0.22, carrier.y));
       triggerHandover(
         nextPos === 'away' ? '6TH TACKLE HANDOVER! DEFEND NOW!' : 'TURNOVER WON! YOUR BALL!',
-        nextPos,
-        clampedY,
-        nextPos === 'away' ? '#fb7185' : '#4ade80'
+        nextPos, clampedY, nextPos === 'away' ? '#fb7185' : '#4ade80'
       );
       return;
     }
@@ -596,9 +559,7 @@ export function startErcRugby(bridge, autoStart = false) {
     syncHudAndLegend();
     addCallout(
       `TACKLE ${state.tackleCount}! ALL 5 DEFENDERS BACK 10m`,
-      carrier.x,
-      Math.min(0.85, Math.max(0.16, carrier.y - 0.04)),
-      '#fde047'
+      carrier.x, Math.min(0.85, Math.max(0.16, carrier.y - 0.04)), '#fde047'
     );
   }
 
@@ -620,10 +581,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
   function handleNoteCDEFG(targetIdx) {
     if (state.phase !== 'playing') return;
-    if (state.playState === 'conversionKick') {
-      submitConversionStrike();
-      return;
-    }
+    if (state.playState === 'conversionKick') { submitConversionStrike(); return; }
     if (state.playState === 'tryCelebration') return;
 
     if (state.possession === 'away') {
@@ -660,10 +618,8 @@ export function startErcRugby(bridge, autoStart = false) {
     state.passState.active = true;
     state.passState.fromIdx = fromIdx;
     state.passState.toIdx = targetIdx;
-    state.passState.startX = passer.x;
-    state.passState.startY = passer.y;
-    state.passState.x = passer.x;
-    state.passState.y = passer.y;
+    state.passState.startX = passer.x; state.passState.startY = passer.y;
+    state.passState.x = passer.x; state.passState.y = passer.y;
     state.passState.progress = 0;
     state.passState.duration = 0.14 + laneDist * 0.05;
     state.passState.isForwardPass = thrownForward;
@@ -671,10 +627,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
   function triggerSurgeOrTackleBurst() {
     if (state.phase !== 'playing') return;
-    if (state.playState === 'conversionKick') {
-      submitConversionStrike();
-      return;
-    }
+    if (state.playState === 'conversionKick') { submitConversionStrike(); return; }
     if (state.playState === 'tryCelebration') return;
 
     if (state.possession === 'home') {
@@ -697,10 +650,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
   function launchKick(kind) {
     if (state.phase !== 'playing' || state.possession !== 'home') return;
-    if (state.playState === 'conversionKick') {
-      submitConversionStrike();
-      return;
-    }
+    if (state.playState === 'conversionKick') { submitConversionStrike(); return; }
     if (state.playState === 'tryCelebration' || state.kickBall.active || state.passState.active) return;
     if (!releasePlayTheBall()) return;
 
@@ -709,25 +659,18 @@ export function startErcRugby(bridge, autoStart = false) {
 
     state.kickBall.active = true;
     state.kickBall.kind = kind;
-    state.kickBall.x = kicker.x;
-    state.kickBall.y = kicker.y - 0.03;
+    state.kickBall.x = kicker.x; state.kickBall.y = kicker.y - 0.03;
     state.kickBall.bounceCount = 0;
 
-    state.homePlayers.forEach((att, idx) => {
-      att.offsideOnKick = idx !== state.carrierIndex && att.y < kicker.y;
-    });
+    state.homePlayers.forEach((att, idx) => { att.offsideOnKick = idx !== state.carrierIndex && att.y < kicker.y; });
 
     if (kind === 'bomb') {
-      state.kickBall.vy = -0.33;
-      state.kickBall.vx = (Math.random() - 0.5) * 0.11;
-      state.kickBall.z = 0.05;
-      state.kickBall.vz = 0.48;
+      state.kickBall.vy = -0.33; state.kickBall.vx = (Math.random() - 0.5) * 0.11;
+      state.kickBall.z = 0.05; state.kickBall.vz = 0.48;
       addCallout('BOMB KICK!', kicker.x, kicker.y - 0.05, '#fcd34d');
     } else {
-      state.kickBall.vy = -0.42;
-      state.kickBall.vx = (Math.random() - 0.5) * 0.07;
-      state.kickBall.z = 0.01;
-      state.kickBall.vz = 0.08;
+      state.kickBall.vy = -0.42; state.kickBall.vx = (Math.random() - 0.5) * 0.07;
+      state.kickBall.z = 0.01; state.kickBall.vz = 0.08;
       addCallout('GRUBBER!', kicker.x, kicker.y - 0.05, '#7dd3fc');
     }
   }
@@ -754,8 +697,7 @@ export function startErcRugby(bridge, autoStart = false) {
       const existingKey = state.actionBinds[action].key || '';
       const upperNote = clean.toUpperCase();
       state.actionBinds[action] = {
-        midi: clean,
-        key: existingKey,
+        midi: clean, key: existingKey,
         label: existingKey ? `🎹 ${upperNote} / ${existingKey}` : `🎹 ${upperNote}`
       };
       state.listeningAction = null;
@@ -770,8 +712,13 @@ export function startErcRugby(bridge, autoStart = false) {
 
     if (state.phase !== 'playing') return;
 
-    // Any MIDI key played during the 3D conversion slider strikes the conversion kick!
     if (state.playState === 'conversionKick') {
+      if (state.actionBinds.moveLeft.midi === clean) {
+        state.moveInput.leftHeld = true; state.moveInput.leftTapTimer = 0.22; return;
+      }
+      if (state.actionBinds.moveRight.midi === clean) {
+        state.moveInput.rightHeld = true; state.moveInput.rightTapTimer = 0.22; return;
+      }
       submitConversionStrike();
       return;
     }
@@ -780,30 +727,17 @@ export function startErcRugby(bridge, autoStart = false) {
 
     if (state.actionBinds.moveLeft.midi === clean) {
       if (state.possession === 'home') releasePlayTheBall();
-      state.moveInput.leftHeld = true;
-      state.moveInput.leftTapTimer = 0.22;
-      state.moveInput.rightTapTimer = 0;
+      state.moveInput.leftHeld = true; state.moveInput.leftTapTimer = 0.22; state.moveInput.rightTapTimer = 0;
       return;
     }
     if (state.actionBinds.moveRight.midi === clean) {
       if (state.possession === 'home') releasePlayTheBall();
-      state.moveInput.rightHeld = true;
-      state.moveInput.rightTapTimer = 0.22;
-      state.moveInput.leftTapTimer = 0;
+      state.moveInput.rightHeld = true; state.moveInput.rightTapTimer = 0.22; state.moveInput.leftTapTimer = 0;
       return;
     }
-    if (state.actionBinds.surge.midi === clean) {
-      triggerSurgeOrTackleBurst();
-      return;
-    }
-    if (state.actionBinds.bomb.midi === clean) {
-      launchKick('bomb');
-      return;
-    }
-    if (state.actionBinds.grubber.midi === clean) {
-      launchKick('grubber');
-      return;
-    }
+    if (state.actionBinds.surge.midi === clean) { triggerSurgeOrTackleBurst(); return; }
+    if (state.actionBinds.bomb.midi === clean) { launchKick('bomb'); return; }
+    if (state.actionBinds.grubber.midi === clean) { launchKick('grubber'); return; }
 
     const m = clean.toUpperCase().match(/^([A-G])(#?)/);
     if (!m || m[2] === '#') return;
@@ -826,16 +760,11 @@ export function startErcRugby(bridge, autoStart = false) {
       state.pokie.spinning = false;
       state.awayTeam = TEAMS.find((t) => t.id === state.pokie.targetId) || TEAMS[1];
     }
-    state.homeScore = 0;
-    state.awayScore = 0;
-    state.matchTime = 120;
-    state.phase = 'playing';
+    state.homeScore = 0; state.awayScore = 0; state.matchTime = 120; state.phase = 'playing';
     setupSetOfSix('home', 0.82, 2);
 
     startModalEl.style.display = 'none';
-    hudEl.style.display = 'flex';
-    legendEl.style.display = 'block';
-    pianoStripEl.style.display = 'flex';
+    hudEl.style.display = 'flex'; legendEl.style.display = 'block'; pianoStripEl.style.display = 'flex';
     syncHudAndLegend();
     addCallout('KICK OFF! PASS WITH C–G OR STEER LEFT/RIGHT!', 0.5, 0.74, '#fef08a');
   }
@@ -858,12 +787,7 @@ export function startErcRugby(bridge, autoStart = false) {
     const finalPoints = Math.max(0, state.homeScore * 100 - state.awayScore * 25);
 
     stopErcRugby();
-    bridgeRef.finishCustomMiniGame(
-      'ERC Sports Rugby',
-      finalPoints,
-      summaryHtml,
-      () => startErcRugby(bridgeRef, true)
-    );
+    bridgeRef.finishCustomMiniGame('ERC Sports Rugby', finalPoints, summaryHtml, () => startErcRugby(bridgeRef, true));
   }
 
   function recordPlayerVelocities(dt) {
@@ -873,16 +797,10 @@ export function startErcRugby(bridge, autoStart = false) {
       const dy = (p.y - p.prevY) / Math.max(0.001, dt);
       p.animSpeedX += (dx - p.animSpeedX) * Math.min(1, dt * 14);
       p.animSpeedY += (dy - p.animSpeedY) * Math.min(1, dt * 14);
-      p.prevX = p.x;
-      p.prevY = p.y;
+      p.prevX = p.x; p.prevY = p.y;
 
       const totalSpeed = Math.hypot(p.animSpeedX, p.animSpeedY);
-      if (
-        totalSpeed > 0.018 &&
-        state.playState !== 'waitingForPlay' &&
-        state.playState !== 'turnoverPause' &&
-        state.playState !== 'tryCelebration'
-      ) {
+      if (totalSpeed > 0.018 && state.playState !== 'waitingForPlay' && state.playState !== 'turnoverPause' && state.playState !== 'tryCelebration') {
         p.strideTimer += dt * (4.8 + totalSpeed * 28);
       }
     }
@@ -902,13 +820,10 @@ export function startErcRugby(bridge, autoStart = false) {
       if (state.callouts[i].life <= 0) state.callouts.splice(i, 1);
     }
 
-    // Try celebration -> transitions to 3D Conversion Kick!
     if (state.playState === 'tryCelebration' && state.tryCelebration.active) {
       state.tryCelebration.timer += dt;
       for (const p of state.tryCelebration.confetti) {
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-        p.rot += p.vrot * dt;
+        p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vrot * dt;
       }
       if (state.tryCelebration.timer >= state.tryCelebration.duration) {
         state.tryCelebration.active = false;
@@ -920,27 +835,27 @@ export function startErcRugby(bridge, autoStart = false) {
       return;
     }
 
-    // 3D Conversion Kick fast-moving slider loop
     if (state.playState === 'conversionKick' && state.conversion.active) {
       const conv = state.conversion;
+      let aimSteer = 0;
+      if (state.moveInput.leftHeld || state.moveInput.leftTapTimer > 0) aimSteer -= 1;
+      if (state.moveInput.rightHeld || state.moveInput.rightTapTimer > 0) aimSteer += 1;
+
       if (!conv.kicked) {
-        conv.sliderPos += conv.sliderDir * conv.sliderSpeed * dt;
-        if (conv.sliderPos >= 1) {
-          conv.sliderPos = 1;
-          conv.sliderDir = -1;
-        } else if (conv.sliderPos <= -1) {
-          conv.sliderPos = -1;
-          conv.sliderDir = 1;
+        if (aimSteer !== 0) {
+          conv.aimOffset = Math.max(-0.65, Math.min(0.65, conv.aimOffset + aimSteer * 1.15 * dt));
         }
-        // AI takes conversion kick automatically if opponent scored
+        conv.sliderPos += conv.sliderDir * conv.sliderSpeed * dt;
+        if (conv.sliderPos >= 1) { conv.sliderPos = 1; conv.sliderDir = -1; }
+        else if (conv.sliderPos <= -1) { conv.sliderPos = -1; conv.sliderDir = 1; }
+
         if (!conv.isHomeKick && Math.abs(conv.sliderPos) < 0.14 && Math.random() < dt * 9) {
+          conv.aimOffset = -conv.teeX * 0.45;
           submitConversionStrike();
         }
       } else {
         conv.kickTimer += dt;
-        conv.ballX += conv.ballVx * dt;
-        conv.ballY += conv.ballVy * dt;
-        conv.ballZ += conv.ballVz * dt;
+        conv.ballX += conv.ballVx * dt; conv.ballY += conv.ballVy * dt; conv.ballZ += conv.ballVz * dt;
         conv.ballVy -= 4.5 * dt;
 
         if (conv.kickTimer >= 1.35) {
@@ -954,16 +869,12 @@ export function startErcRugby(bridge, autoStart = false) {
 
     state.matchTime -= dt;
     if (state.matchTime <= 0) {
-      state.matchTime = 0;
-      syncHudAndLegend();
-      finishMatch();
-      return;
+      state.matchTime = 0; syncHudAndLegend(); finishMatch(); return;
     }
     syncHudAndLegend();
 
     if (state.playState === 'turnoverPause') {
-      state.turnoverTimer -= dt;
-      recordPlayerVelocities(dt);
+      state.turnoverTimer -= dt; recordPlayerVelocities(dt);
       if (state.turnoverTimer <= 0) setupSetOfSix(state.nextPossession, state.nextStartY, 2);
       return;
     }
@@ -992,8 +903,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
       let allOnside = true;
       for (let i = 0; i < 5; i++) {
-        const d = defenders[i];
-        const laneX = LANES[i];
+        const d = defenders[i]; const laneX = LANES[i];
         d.x += (laneX - d.x) * Math.min(1, dt * 6.5);
         d.y += (targetOnsideY - d.y) * Math.min(1, dt * 7.0);
         if (Math.abs(d.y - targetOnsideY) > 0.010 || Math.abs(d.x - laneX) > 0.014) allOnside = false;
@@ -1002,14 +912,8 @@ export function startErcRugby(bridge, autoStart = false) {
       recordPlayerVelocities(dt);
 
       if (state.tacklePause.timer >= state.tacklePause.retreatDuration && allOnside) {
-        for (let i = 0; i < 5; i++) {
-          defenders[i].x = LANES[i];
-          defenders[i].y = targetOnsideY;
-        }
-        state.playState = 'waitingForPlay';
-        state.aiPlayTimer = 0.65;
-        state.aiPassCooldown = 0.35;
-        state.aiLastPassFrom = -1;
+        for (let i = 0; i < 5; i++) { defenders[i].x = LANES[i]; defenders[i].y = targetOnsideY; }
+        state.playState = 'waitingForPlay'; state.aiPlayTimer = 0.65; state.aiPassCooldown = 0.35; state.aiLastPassFrom = -1;
         addCallout(
           state.possession === 'home' ? 'ONSIDE! PASS (C–G) OR RUN' : 'DEFENSE SET! SWITCH WITH C–G',
           carrier.x, Math.min(0.85, Math.max(0.16, carrier.y - 0.04)), '#fde047'
@@ -1036,12 +940,8 @@ export function startErcRugby(bridge, autoStart = false) {
         state.aiPlayTimer -= dt;
         if (state.aiPlayTimer <= 0) {
           releasePlayTheBall();
-          if (Math.random() < 0.78) {
-            tryTriggerAiPass(true);
-            state.aiPassCooldown = 0.65 + Math.random() * 0.45;
-          } else {
-            state.aiPassCooldown = 0.45 + Math.random() * 0.40;
-          }
+          if (Math.random() < 0.78) { tryTriggerAiPass(true); state.aiPassCooldown = 0.65 + Math.random() * 0.45; }
+          else { state.aiPassCooldown = 0.45 + Math.random() * 0.40; }
         }
       }
 
@@ -1059,21 +959,16 @@ export function startErcRugby(bridge, autoStart = false) {
 
       if (t >= 1) {
         state.passState.active = false;
-        const landedForward =
-          state.possession === 'home' &&
-          (state.passState.isForwardPass || receiver.y < state.passState.startY - 0.008);
+        const landedForward = state.possession === 'home' && (state.passState.isForwardPass || receiver.y < state.passState.startY - 0.008);
 
         if (landedForward) {
           playErrorClackSound();
           triggerHandover('FORWARD PASS! HANDOVER TO OPPONENT', 'away', Math.max(0.24, receiver.y), '#fb7185');
-          recordPlayerVelocities(dt);
-          return;
+          recordPlayerVelocities(dt); return;
         }
 
         state.carrierIndex = state.passState.toIdx;
-        if (state.possession === 'home' && bridgeRef && bridgeRef.getState().gameStats) {
-          bridgeRef.getState().gameStats.perfect += 1;
-        }
+        if (state.possession === 'home' && bridgeRef && bridgeRef.getState().gameStats) bridgeRef.getState().gameStats.perfect += 1;
         attackers.forEach((att, idx) => rollSupportAlignment(att, idx, state.carrierIndex, state.possession === 'home'));
       }
     }
@@ -1144,29 +1039,23 @@ export function startErcRugby(bridge, autoStart = false) {
           bridgeRef.spawnConfetti(rect.width * 0.5, rect.height * 0.35, '#ef4444');
         }
         triggerTryCelebration('home', LANE_NOTES[state.carrierIndex], state.carrierIndex);
-        recordPlayerVelocities(dt);
-        return;
+        recordPlayerVelocities(dt); return;
       }
       if (state.possession === 'away' && activeCarrier.y >= 0.88) {
         state.awayScore += 4;
         playErrorClackSound();
         triggerTryCelebration('away', LANE_NOTES[state.carrierIndex], state.carrierIndex);
-        recordPlayerVelocities(dt);
-        return;
+        recordPlayerVelocities(dt); return;
       }
     }
 
     if (state.kickBall.active) {
-      state.kickBall.x += state.kickBall.vx * dt;
-      state.kickBall.y += state.kickBall.vy * dt;
+      state.kickBall.x += state.kickBall.vx * dt; state.kickBall.y += state.kickBall.vy * dt;
 
       if (state.kickBall.kind === 'bomb') {
-        state.kickBall.vz -= 1.05 * dt;
-        state.kickBall.z += state.kickBall.vz * dt;
+        state.kickBall.vz -= 1.05 * dt; state.kickBall.z += state.kickBall.vz * dt;
         if (state.kickBall.z <= 0) {
-          state.kickBall.z = 0;
-          state.kickBall.vz = Math.abs(state.kickBall.vz) * 0.42;
-          state.kickBall.bounceCount += 1;
+          state.kickBall.z = 0; state.kickBall.vz = Math.abs(state.kickBall.vz) * 0.42; state.kickBall.bounceCount += 1;
         }
       } else {
         state.kickBall.vy *= Math.pow(0.45, dt);
@@ -1177,18 +1066,14 @@ export function startErcRugby(bridge, autoStart = false) {
           const att = state.homePlayers[i];
           if (att.offsideOnKick) continue;
           if (Math.hypot(att.x - state.kickBall.x, att.y - state.kickBall.y) < 0.055) {
-            state.carrierIndex = i;
-            state.kickBall.active = false;
-            state.tackleCount = 0;
-            addCallout(`${LANE_NOTES[i]} REGATHERS! SIX AGAIN!`, att.x, att.y - 0.05, '#fde047');
-            break;
+            state.carrierIndex = i; state.kickBall.active = false; state.tackleCount = 0;
+            addCallout(`${LANE_NOTES[i]} REGATHERS! SIX AGAIN!`, att.x, att.y - 0.05, '#fde047'); break;
           }
         }
       }
 
       if (state.kickBall.active && (state.kickBall.bounceCount >= 2 || (state.kickBall.kind === 'grubber' && Math.abs(state.kickBall.vy) < 0.13))) {
-        let bestIdx = state.carrierIndex;
-        let bestDist = Infinity;
+        let bestIdx = state.carrierIndex; let bestDist = Infinity;
         for (let i = 0; i < 5; i++) {
           if (state.homePlayers[i].offsideOnKick) continue;
           const d = Math.abs(state.homePlayers[i].x - state.kickBall.x);
@@ -1197,8 +1082,7 @@ export function startErcRugby(bridge, autoStart = false) {
         const catcher = state.homePlayers[bestIdx];
         catcher.x = Math.min(0.88, Math.max(0.12, state.kickBall.x));
         catcher.y = Math.min(0.88, Math.max(0.12, state.kickBall.y));
-        state.carrierIndex = bestIdx;
-        state.kickBall.active = false;
+        state.carrierIndex = bestIdx; state.kickBall.active = false;
         addCallout(`${LANE_NOTES[bestIdx]} TAKES THE KICK!`, catcher.x, catcher.y - 0.05, '#7dd3fc');
       }
 
@@ -1207,8 +1091,7 @@ export function startErcRugby(bridge, autoStart = false) {
         if (bridgeRef && bridgeRef.getState().gameStats) bridgeRef.getState().gameStats.perfect += 4;
         state.kickBall.active = false;
         triggerTryCelebration('home', 'KICK CHASE', state.carrierIndex);
-        recordPlayerVelocities(dt);
-        return;
+        recordPlayerVelocities(dt); return;
       }
     }
 
@@ -1216,21 +1099,16 @@ export function startErcRugby(bridge, autoStart = false) {
 
     for (let i = 0; i < 5; i++) {
       const d = defenders[i];
-
       if (state.possession === 'away' && i === state.selectedDefenderIdx) {
         const isDefSurging = state.surgeTimer > 0;
-        const upRush = isDefSurging ? -0.35 : -0.105;
-        d.y = Math.max(0.12, d.y + upRush * dt);
+        d.y = Math.max(0.12, d.y + (isDefSurging ? -0.35 : -0.105) * dt);
         if (userSteerX !== 0) {
-          const defLatSpeed = isDefSurging ? 0.36 : 0.27;
-          d.x = Math.min(0.92, Math.max(0.08, d.x + userSteerX * defLatSpeed * dt));
+          d.x = Math.min(0.92, Math.max(0.08, d.x + userSteerX * (isDefSurging ? 0.36 : 0.27) * dt));
         }
       } else if (d.role === 'chaser') {
-        const toX = activeCarrier.x - d.x;
-        const toY = activeCarrier.y - d.y;
+        const toX = activeCarrier.x - d.x; const toY = activeCarrier.y - d.y;
         const dist = Math.max(0.001, Math.hypot(toX, toY));
-        d.x += (toX / dist) * 0.118 * dt;
-        d.y += (toY / dist) * 0.122 * dt;
+        d.x += (toX / dist) * 0.118 * dt; d.y += (toY / dist) * 0.122 * dt;
       } else {
         const slideShift = (activeCarrier.x - 0.5) * 0.16;
         const targetX = Math.min(0.91, Math.max(0.09, LANES[i] + slideShift));
@@ -1240,9 +1118,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
       if (!state.passState.active && !state.kickBall.active) {
         if (Math.hypot(d.x - activeCarrier.x, d.y - activeCarrier.y) < 0.042) {
-          beginTackleAndRetreat();
-          recordPlayerVelocities(dt);
-          return;
+          beginTackleAndRetreat(); recordPlayerVelocities(dt); return;
         }
       }
     }
@@ -1252,20 +1128,17 @@ export function startErcRugby(bridge, autoStart = false) {
 
   teamSelectEl.addEventListener('change', (e) => {
     state.homeTeam = TEAMS.find((t) => t.id === e.target.value) || TEAMS[0];
-    updatePlayerTeamPreview();
-    startPokieSpin();
+    updatePlayerTeamPreview(); startPokieSpin();
   });
 
   containerEl.querySelector('#erc-respin-btn').addEventListener('click', startPokieSpin);
 
   containerEl.querySelectorAll('.erc-key-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const action = btn.getAttribute('data-bind-action');
-      state.listeningAction = action;
+      state.listeningAction = btn.getAttribute('data-bind-action');
       containerEl.querySelector('#erc-keybind-notice').textContent =
-        `🎹 Listening for ${action.toUpperCase()}... play ANY MIDI piano key (e.g. F#1, G#1, A1, B1, C2) or press a computer key (Esc to cancel).`;
-      refreshKeybindButtons();
-      btn.blur();
+        `🎹 Listening for ${state.listeningAction.toUpperCase()}... play ANY MIDI piano key or press a computer key (Esc to cancel).`;
+      refreshKeybindButtons(); btn.blur();
     });
   });
 
@@ -1291,29 +1164,22 @@ export function startErcRugby(bridge, autoStart = false) {
 
     if (state.listeningAction) {
       if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        state.listeningAction = null;
+        e.preventDefault(); e.stopPropagation(); state.listeningAction = null;
         containerEl.querySelector('#erc-keybind-notice').textContent = 'Binding cancelled.';
-        refreshKeybindButtons();
-        return;
+        refreshKeybindButtons(); return;
       }
       if (PIANOPAD_QWERTY.has(keyLower)) return;
       const keyLabel = e.key === 'ArrowLeft' ? '←' : e.key === 'ArrowRight' ? '→' : keyUpper;
       if ((keyUpper.length === 1 && /\S/.test(keyUpper)) || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault(); e.stopPropagation();
         const action = state.listeningAction;
         const existingMidi = state.actionBinds[action].midi;
         state.actionBinds[action] = {
-          midi: existingMidi,
-          key: keyLabel,
+          midi: existingMidi, key: keyLabel,
           label: existingMidi ? `🎹 ${existingMidi.toUpperCase()} / ${keyLabel}` : `KEY: ${keyLabel}`
         };
-        state.listeningAction = null;
-        saveActionBinds();
-        containerEl.querySelector('#erc-keybind-notice').textContent =
-          `✅ ${action.toUpperCase()} bound to "${keyLabel}".`;
+        state.listeningAction = null; saveActionBinds();
+        containerEl.querySelector('#erc-keybind-notice').textContent = `✅ ${action.toUpperCase()} bound to "${keyLabel}".`;
         refreshKeybindButtons();
       }
       return;
@@ -1322,9 +1188,14 @@ export function startErcRugby(bridge, autoStart = false) {
     if (state.phase !== 'playing') return;
 
     if (state.playState === 'conversionKick') {
+      if (e.key === 'ArrowLeft' || keyUpper === (state.actionBinds.moveLeft.key || '').toUpperCase()) {
+        e.preventDefault(); state.moveInput.leftHeld = true; return;
+      }
+      if (e.key === 'ArrowRight' || keyUpper === (state.actionBinds.moveRight.key || '').toUpperCase()) {
+        e.preventDefault(); state.moveInput.rightHeld = true; return;
+      }
       if (e.code === 'Space' || e.key === 'Enter' || NOTE_TO_INDEX[keyUpper] !== undefined) {
-        e.preventDefault();
-        submitConversionStrike();
+        e.preventDefault(); submitConversionStrike();
       }
       return;
     }
@@ -1333,31 +1204,23 @@ export function startErcRugby(bridge, autoStart = false) {
 
     if (e.key === 'ArrowLeft' || keyUpper === (state.actionBinds.moveLeft.key || '').toUpperCase()) {
       if (state.possession === 'home') releasePlayTheBall();
-      state.moveInput.leftHeld = true;
-      return;
+      state.moveInput.leftHeld = true; return;
     }
     if (e.key === 'ArrowRight' || keyUpper === (state.actionBinds.moveRight.key || '').toUpperCase()) {
       if (state.possession === 'home') releasePlayTheBall();
-      state.moveInput.rightHeld = true;
-      return;
+      state.moveInput.rightHeld = true; return;
     }
 
     if (e.repeat) return;
 
     if (keyUpper && keyUpper === (state.actionBinds.surge.key || '').toUpperCase()) {
-      e.preventDefault();
-      triggerSurgeOrTackleBurst();
-      return;
+      e.preventDefault(); triggerSurgeOrTackleBurst(); return;
     }
     if (keyUpper && keyUpper === (state.actionBinds.bomb.key || '').toUpperCase()) {
-      e.preventDefault();
-      launchKick('bomb');
-      return;
+      e.preventDefault(); launchKick('bomb'); return;
     }
     if (keyUpper && keyUpper === (state.actionBinds.grubber.key || '').toUpperCase()) {
-      e.preventDefault();
-      launchKick('grubber');
-      return;
+      e.preventDefault(); launchKick('grubber'); return;
     }
 
     if (!PIANOPAD_QWERTY.has(keyLower) && NOTE_TO_INDEX[keyUpper] !== undefined) {
