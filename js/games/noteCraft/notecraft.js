@@ -1,12 +1,13 @@
 // js/games/noteCraft/notecraft.js
-import { BLOCKS, BLOCK_COSTS } from './constants.js';
+import { BLOCKS } from './constants.js';
 import { ncState } from './state.js';
 import {
     breakTargetBlock,
     placeSelectedBlock,
     setBlockAt,
     undoLastAction,
-    updatePlayerPhysics
+    updatePlayerPhysics,
+    updateExplosions
 } from './engine.js';
 import {
     initRender3D,
@@ -123,6 +124,14 @@ function handlePlaceBlockAction() {
         return;
     }
     if (res.changes && res.changes.length > 0) {
+        if (res.changes.some(c => c && c.blockId === BLOCKS.BRICK)) {
+            const hasActiveTnt = (ncState.activeExplosions || []).some(
+                exp => res.changes.some(c => c.x === exp.x && c.y === exp.y && c.z === exp.z)
+            );
+            if (hasActiveTnt) {
+                showNoteCraftToast('💣 TNT armed! 5s fuse before 3-block blast!', '#ef4444', 2200);
+            }
+        }
         res.changes.forEach(c => { if (c) syncBlockChange(c); });
         if (!isTeacherBuilder()) saveStudentWallet(ncState.localPlayer.name);
     }
@@ -192,7 +201,7 @@ function attachInputListeners(containerEl) {
             return;
         }
 
-        // Keyboard Numbers + Shift overrides for special prefabs
+        // Keyboard Numbers + Shift overrides for special prefabs & TNT
         if (e.code === 'Digit1') { e.preventDefault(); ncState.localPlayer.selectedSlot = e.shiftKey ? 8 : 0; return; }
         if (e.code === 'Digit2') { e.preventDefault(); ncState.localPlayer.selectedSlot = e.shiftKey ? 9 : 1; return; }
         if (e.code === 'Digit3') { e.preventDefault(); ncState.localPlayer.selectedSlot = 2; return; }
@@ -201,6 +210,7 @@ function attachInputListeners(containerEl) {
         if (e.code === 'Digit6') { e.preventDefault(); ncState.localPlayer.selectedSlot = e.shiftKey ? 12 : 5; return; }
         if (e.code === 'Digit7') { e.preventDefault(); ncState.localPlayer.selectedSlot = 6; return; }
         if (e.code === 'Digit8') { e.preventDefault(); ncState.localPlayer.selectedSlot = 7; return; }
+        if (e.code === 'Digit9') { e.preventDefault(); ncState.localPlayer.selectedSlot = 13; return; }
 
         if (e.code === 'KeyZ') { e.preventDefault(); handleUndoAction(); return; }
         if (e.code === 'KeyE') { e.preventDefault(); handlePlaceBlockAction(); return; }
@@ -382,8 +392,11 @@ function gameLoop(now, sessionToken) {
     const dt = Math.min(0.05, Math.max(0.001, (now - (ncState.lastFrameTime || now)) / 1000));
     ncState.lastFrameTime = now;
     updatePlayerPhysics(dt);
+    updateExplosions(now, (change) => {
+        if (change) syncBlockChange(change);
+    });
     updateAvatarSprites(getThreeScene(), dt);
-    render3DFrame();
+    render3DFrame(now);
     renderHudFrame(now);
     ncState.animFrameId = requestAnimationFrame((t) => gameLoop(t, sessionToken));
 }
@@ -396,6 +409,7 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
     ncState.bridge = bridge || null;
     ncState.worldId = worldId;
     ncState.world.undoStack = [];
+    ncState.activeExplosions = [];
     ncState.flatMode = false;
     ncState.quitButtonRect = null;
 
@@ -416,8 +430,16 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
     wrapper.style.position = 'relative';
     wrapper.style.minHeight = '380px';
 
-    const playerName = (bridge && bridge.playerName) || localStorage.getItem('pianopad_player_name') || 'Builder';
-    const playerAvatar = (bridge && bridge.playerAvatar) || localStorage.getItem('pianopad_player_avatar') || '🏃';
+    const playerName =
+        (bridge && (bridge.playerName || bridge.sessionStudentName)) ||
+        localStorage.getItem('pianopad_player_name') ||
+        localStorage.getItem('pianopad_name') ||
+        'Builder';
+    const playerAvatar =
+        (bridge && (bridge.playerAvatar || bridge.sessionStudentAvatar)) ||
+        localStorage.getItem('pianopad_player_avatar') ||
+        localStorage.getItem('pianopad_avatar') ||
+        '🏃';
     let playerId = (bridge && bridge.playerId) || localStorage.getItem('pianopad_notecraft_pid');
     if (!playerId) {
         playerId = `stu_${Math.random().toString(36).slice(2, 10)}`;
@@ -432,6 +454,7 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
     lp.yaw = 0; lp.pitch = -0.15;
     lp.velocity = { x: 0, y: 0, z: 0 };
 
+    updateInventory();
     initRender3D(wrapper);
     initHud(wrapper);
     initAvatarSprites(getThreeScene());
@@ -449,7 +472,7 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
         updateInventory();
         showNoteCraftToast('👑 Teacher Creative Mode: Left-Click Build • [T] Flat/Block • [X] Quit', '#4ade80', 4200);
     } else {
-        showNoteCraftToast('Left-Click Build • Right-Click Break • [T] Mode • [X] or QUIT to Exit', '#38bdf8', 3600);
+        showNoteCraftToast('Left-Click Build • Right-Click Break • [9] TNT • [X] or QUIT to Exit', '#38bdf8', 3600);
     }
 
     ncState.lastFrameTime = performance.now();
@@ -459,6 +482,7 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
 export function stopNoteCraft(notifyBridge = true) {
     activeSessionToken++;
     ncState.active = false;
+    ncState.activeExplosions = [];
     if (ncState.animFrameId !== null) { cancelAnimationFrame(ncState.animFrameId); ncState.animFrameId = null; }
     if (document.pointerLockElement) document.exitPointerLock?.();
     detachInputListeners();
@@ -487,3 +511,6 @@ export function awardNoteCraftSongReward(songTitle, difficulty, accuracy, tempoP
         showNoteCraftToast(`🏆 +${earned} NoteCoins earned for ${songTitle}!`, '#facc15', 3400);
     }
 }
+
+
+That completes all 8 NoteCraft files—students can quit via the HUD **Quit** button or `[X]`, see classmate names and PianoPad avatars in 3D, and place a 5-second fusing TNT block that animates and clears blocks within a 3-block radius[cite: 2, 4, 5, 7, 8, 9].
