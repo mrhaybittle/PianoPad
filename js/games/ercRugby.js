@@ -41,7 +41,7 @@ const LANE_NOTES = ['C', 'D', 'E', 'F', 'G'];
 const NOTE_TO_INDEX = { C: 0, D: 1, E: 2, F: 3, G: 4 };
 
 // ============================================================================
-// PIXEL-ART SPRITE ENGINE — Replicating Positioning (5)..(9) with Note Jerseys
+// PIXEL-ART SPRITE ENGINE — Back-Facing (Home) & Front-Facing w/ Faces (Away)
 // ============================================================================
 const PIXEL_FONT_5X7 = {
   C: [
@@ -91,7 +91,8 @@ const PIXEL_FONT_5X7 = {
   ]
 };
 
-function buildUpperBodyRows(pose, hasBall) {
+// BACK-FACING upper body (Home team running up the pitch — back of hair, ears, back jersey)
+function buildBackUpperBodyRows(pose, hasBall) {
   const head = [
     '.........KKKKKKKK.........',
     '........KHHHHHHHHK........',
@@ -173,7 +174,94 @@ function buildUpperBodyRows(pose, hasBall) {
   return [...head, ...torso];
 }
 
-function buildLowerBodyRows(pose) {
+// FRONT-FACING upper body (Opposing team facing down the pitch — hairline, face, eyes, mouth, V-neck collar & front jersey!)
+function buildFrontUpperBodyRows(pose, hasBall) {
+  // 'E' = dark eye/brow pixel, 'W' = eye glint / white collar, 'M' = mouth/chin shadow
+  const head = [
+    '.........KKKKKKKK.........',
+    '........KHHHHHHHHK........',
+    '.......KHHHHHHHHHHK.......',
+    '.......KHHSSSSSSHHK.......',
+    '......KSKSEWSSWESKSK......',
+    '......KSKSSSSSSSSKSK......',
+    '.......KKSSSMMSSSSKK......',
+    '........KssssssssK........',
+    '........KKKKKKKKKK........',
+    '.......KK222SS222KK.......'
+  ];
+
+  const ballRight = pose === 'idle' || pose === 'runLeft' || pose === 'straightL';
+
+  let torso;
+  if (ballRight) {
+    if (hasBall) {
+      torso = [
+        '.....KK11122SS22111KK.....',
+        '....K1122222222222211K....',
+        '...K112211112211112211K...',
+        '..KK221111111111111122KK..',
+        '.KSSK1112222222222111KSSK.',
+        '.KSSK111222222222211KKKKK.',
+        '.KSSK11111111111111KwwGSSK',
+        '.KSSK11122222222221KwwGSSK',
+        '..KKK11122222222221KwwwKK.',
+        '....K11111111111111KGGwK..',
+        '....KKKKKKKKKKKKKKKKKKKK..'
+      ];
+    } else {
+      torso = [
+        '.....KK11122SS22111KK.....',
+        '....K1122222222222211K....',
+        '...K112211112211112211K...',
+        '..KK221111111111111122KK..',
+        '.KSSK1112222222222111KSSK.',
+        '.KSSK1112222222222111KSSK.',
+        '.KSSK1111111111111111KSSK.',
+        '.KssK1112222222222111KKK..',
+        '..KKK1112222222222111K....',
+        '....K1111111111111111K....',
+        '....KKKKKKKKKKKKKKKKKK....'
+      ];
+    }
+  } else {
+    if (hasBall) {
+      torso = [
+        '.....KK11122SS22111KK.....',
+        '....K1122222222222211K....',
+        '...K112211112211112211K...',
+        '..KK221111111111111122KK..',
+        '.KSSK1112222222222111KSSK.',
+        '.KKKKK112222222222111KSSK.',
+        'KSSGwwK11111111111111KSSK.',
+        'KSSGwwK12222222222111KSSK.',
+        '.KKwwwK12222222222111KKK..',
+        '..KwGGK11111111111111K....',
+        '..KKKKKKKKKKKKKKKKKKKK....'
+      ];
+    } else {
+      torso = [
+        '.....KK11122SS22111KK.....',
+        '....K1122222222222211K....',
+        '...K112211112211112211K...',
+        '..KK221111111111111122KK..',
+        '.KSSK1112222222222111KSSK.',
+        '.KSSK1112222222222111KSSK.',
+        '.KSSK1111111111111111KSSK.',
+        '..KKK1112222222222111KssK.',
+        '....K1112222222222111KKK..',
+        '....K1111111111111111K....',
+        '....KKKKKKKKKKKKKKKKKK....'
+      ];
+    }
+  }
+
+  return [...head, ...torso];
+}
+
+// Lower body (shorts, knees/thighs, hooped socks, boots & cleats) for both back & front views
+function buildLowerBodyRows(pose, facing = 'back') {
+  const isFront = facing === 'front';
+
   if (pose === 'idle') {
     return [
       '....KWNNNNNNNNNNNNNNNK....',
@@ -181,16 +269,16 @@ function buildLowerBodyRows(pose) {
       '....KWNNNNNNKKNNNNNNNK....',
       '....KKKKKKKK..KKKKKKKK....',
       '....KSSSSK......KSSSSK....',
-      '....KSSSSK......KSSSSK....',
+      isFront ? '....KSssSK......KSssSK....' : '....KSSSSK......KSSSSK....',
       '....KssssK......KssssK....',
       '....KWWWWK......KWWWWK....',
       '....K1111K......K1111K....',
       '....KNNNNK......KNNNNK....',
       '....KNNNNK......KNNNNK....',
-      '..KKBBbBBK......KBBbBBKK..',
-      '.KBBBBBBBK......KBBBBBBBK.',
-      '.KKKKKKKKK......KKKKKKKKK.',
-      '..K.K.K.K........K.K.K.K..'
+      isFront ? '...KBBbbBK......KBbbBBK...' : '..KKBBbBBK......KBBbBBKK..',
+      isFront ? '...KBBBBBK......KBBBBBK...' : '.KBBBBBBBK......KBBBBBBBK.',
+      isFront ? '...KKKKKKK......KKKKKKK...' : '.KKKKKKKKK......KKKKKKKKK.',
+      isFront ? '....K.K.K........K.K.K....' : '..K.K.K.K........K.K.K.K..'
     ];
   }
 
@@ -201,13 +289,13 @@ function buildLowerBodyRows(pose) {
       '....KWNNNNNNKKNNNNNNNK....',
       '....KKKKKKKK..KKKKKKKK....',
       '....KSSSSK......KSSSSK....',
-      '....KSSSSK......KssssK....',
+      isFront ? '....KSssSK......KssssK....' : '....KSSSSK......KssssK....',
       '....KssssK......KWWWWK....',
       '....KWWWWK......K1111K....',
       '....K1111K......KNNNNK....',
       '....KNNNNK......KBBbBK....',
       '....KNNNNK......KBBBBK....',
-      '....KBBbBK......KKKKKK....',
+      isFront ? '....KbbBBK......KKKKKK....' : '....KBBbBK......KKKKKK....',
       '....KBBBBK.......K..K.....',
       '....KKKKKK................',
       '.....K..K.................'
@@ -221,13 +309,13 @@ function buildLowerBodyRows(pose) {
       '....KWNNNNNNKKNNNNNNNK....',
       '....KKKKKKKK..KKKKKKKK....',
       '....KSSSSK......KSSSSK....',
-      '....KssssK......KSSSSK....',
+      isFront ? '....KssssK......KSssSK....' : '....KssssK......KSSSSK....',
       '....KWWWWK......KssssK....',
       '....K1111K......KWWWWK....',
       '....KNNNNK......K1111K....',
       '....KBBbBK......KNNNNK....',
       '....KBBBBK......KNNNNK....',
-      '....KKKKKK......KBBbBK....',
+      isFront ? '....KKKKKK......KbbBBK....' : '....KKKKKK......KBBbBK....',
       '.....K..K.......KBBBBK....',
       '................KKKKKK....',
       '.................K..K.....'
@@ -241,7 +329,7 @@ function buildLowerBodyRows(pose) {
       '....KWNNNNNNKKNNNNNNNK....',
       '....KKKKKKKK..KKKKKKKK....',
       '....KSSSSK.....KSSSSK.....',
-      '....KSSSSK......KSSSSK....',
+      '....KSssSK......KSSSSK....',
       '....KssssK.......KsssKK...',
       '....KWWWWK........KWW11K..',
       '....K1111K.........K1NNK..',
@@ -254,13 +342,14 @@ function buildLowerBodyRows(pose) {
     ];
   }
 
+  // pose === 'runRight'
   return [
     '....KWNNNNNNNNNNNNNNNK....',
     '....KWNNNNNNNNNNNNNNNK....',
     '....KWNNNNNNKKNNNNNNNK....',
     '....KKKKKKKK..KKKKKKKK....',
     '.....KSSSSK.....KSSSSK....',
-    '....KSSSSK......KSSSSK....',
+    '....KSSSSK......KSssSK....',
     '...KKsssK.......KssssK....',
     '..K11WWK........KWWWWK....',
     '..KNN1K.........K1111K....',
@@ -275,17 +364,22 @@ function buildLowerBodyRows(pose) {
 
 const spriteCache = new Map();
 
-function getPixelSprite(team, noteLetter, pose, hasBall) {
-  const key = `${team.id}|${noteLetter}|${pose}|${hasBall ? 1 : 0}`;
+function getPixelSprite(team, noteLetter, pose, hasBall, facing = 'back') {
+  const key = `${team.id}|${noteLetter}|${pose}|${hasBall ? 1 : 0}|${facing}`;
   if (spriteCache.has(key)) return spriteCache.get(key);
 
-  const rows = [...buildUpperBodyRows(pose, hasBall), ...buildLowerBodyRows(pose)];
+  const upper = facing === 'front'
+    ? buildFrontUpperBodyRows(pose, hasBall)
+    : buildBackUpperBodyRows(pose, hasBall);
+  const lower = buildLowerBodyRows(pose, facing);
+
+  const rows = [...upper, ...lower];
   const h = rows.length;
   const w = rows[0].length;
   const grid = rows.map((r) => r.split(''));
 
   const glyph = PIXEL_FONT_5X7[noteLetter] || PIXEL_FONT_5X7.C;
-  const startRow = 12;
+  const startRow = facing === 'front' ? 13 : 12;
   const startCol = 11;
 
   for (let r = 0; r < glyph.length; r++) {
@@ -314,6 +408,8 @@ function getPixelSprite(team, noteLetter, pose, hasBall) {
   const palette = {
     K: '#09090b',
     H: '#1c1917',
+    E: '#09090b',
+    M: '#9a5b3c',
     S: '#eba87c',
     s: '#c98257',
     '1': team.primary,
@@ -735,8 +831,8 @@ export function startErcRugby(bridge, autoStart = false) {
             </div>
 
             <div style="background:#0f172a; border:1px solid rgba(52,211,153,0.35); border-radius:9px; padding:6px; text-align:center;">
-              <div class="font-sports" style="font-size:11px; font-weight:800; color:#6ee7b7;">⚡ RUN / TACKLE</div>
-              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Sprint / Press Up</div>
+              <div class="font-sports" style="font-size:11px; font-weight:800; color:#6ee7b7;">⚡ TURBO RUN</div>
+              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Fast Sprint Burst</div>
               <button type="button" data-bind-action="surge" class="erc-key-btn sports-btn" style="background:rgba(16,185,129,0.2); border:1px solid rgba(52,211,153,0.6); color:#d1fae5;">🎹 A1 / W</button>
             </div>
 
@@ -801,6 +897,7 @@ export function startErcRugby(bridge, autoStart = false) {
   const state = {
     phase: 'menu',
     possession: 'home',
+    // 'waitingForPlay' | 'running' | 'retreating' | 'turnoverPause' | 'tryCelebration'
     playState: 'waitingForPlay',
     tackleCount: 0,
     maxTackles: 6,
@@ -863,6 +960,17 @@ export function startErcRugby(bridge, autoStart = false) {
       bounceCount: 0
     },
 
+    // Large animated TRY celebration state
+    tryCelebration: {
+      active: false,
+      timer: 0,
+      duration: 2.25,
+      scoringSide: 'home',
+      scorerLabel: 'E',
+      teamName: '',
+      confetti: []
+    },
+
     callouts: [],
 
     tacklePause: {
@@ -913,6 +1021,41 @@ export function startErcRugby(bridge, autoStart = false) {
       gain.connect(c.destination);
       osc.start(now);
       osc.stop(now + 0.11);
+    } catch (e) {}
+  }
+
+  function playTryFanfare(isHomeTry) {
+    try {
+      const c = getAudioCtx();
+      if (!c) return;
+      const now = c.currentTime;
+      const notes = isHomeTry
+        ? [523.25, 659.25, 783.99, 1046.50]
+        : [392.00, 349.23, 311.13, 261.63];
+
+      notes.forEach((freq, idx) => {
+        const start = now + idx * 0.09;
+        const dur = idx === notes.length - 1 ? 0.55 : 0.22;
+        const osc = c.createOscillator();
+        const osc2 = c.createOscillator();
+        const gain = c.createGain();
+        osc.type = 'sawtooth';
+        osc2.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, start);
+        osc2.frequency.setValueAtTime(freq * 0.5, start);
+
+        gain.gain.setValueAtTime(0.001, start);
+        gain.gain.linearRampToValueAtTime(0.22, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+
+        osc.connect(gain);
+        osc2.connect(gain);
+        gain.connect(c.destination);
+        osc.start(start);
+        osc2.start(start);
+        osc.stop(start + dur + 0.02);
+        osc2.stop(start + dur + 0.02);
+      });
     } catch (e) {}
   }
 
@@ -1001,6 +1144,43 @@ export function startErcRugby(bridge, autoStart = false) {
 
   function addCallout(text, x, y, color = '#fef08a') {
     state.callouts.push({ text, x, y, color, life: 1.2 });
+  }
+
+  function triggerTryCelebration(scoringSide, scorerLabel = '') {
+    const team = scoringSide === 'home' ? state.homeTeam : state.awayTeam;
+    state.playState = 'tryCelebration';
+    state.passState.active = false;
+    state.kickBall.active = false;
+    state.surgeTimer = 0;
+
+    state.tryCelebration.active = true;
+    state.tryCelebration.timer = 0;
+    state.tryCelebration.duration = 2.25;
+    state.tryCelebration.scoringSide = scoringSide;
+    state.tryCelebration.scorerLabel = scorerLabel;
+    state.tryCelebration.teamName = team.name;
+
+    // Spawn stadium celebration confetti across the screen
+    const colors = ['#ef4444', '#ffffff', '#facc15', team.primary, team.secondary, '#38bdf8'];
+    const particles = [];
+    for (let i = 0; i < 95; i++) {
+      particles.push({
+        x: Math.random(),
+        y: -0.05 - Math.random() * 0.35,
+        vx: (Math.random() - 0.5) * 0.35,
+        vy: 0.28 + Math.random() * 0.42,
+        size: 5 + Math.random() * 7,
+        rot: Math.random() * Math.PI * 2,
+        vrot: (Math.random() - 0.5) * 10,
+        color: colors[i % colors.length]
+      });
+    }
+    state.tryCelebration.confetti = particles;
+
+    state.screenShake.timer = 0.38;
+    state.screenShake.intensity = 16;
+    playTryFanfare(scoringSide === 'home');
+    syncHudAndLegend();
   }
 
   function initTeamSelectors() {
@@ -1174,6 +1354,7 @@ export function startErcRugby(bridge, autoStart = false) {
     state.passState.active = false;
     state.kickBall.active = false;
     state.kickBall.z = 0;
+    state.tryCelebration.active = false;
     state.playState = 'waitingForPlay';
     state.aiPlayTimer = 0.70;
     state.aiPassCooldown = 0.45;
@@ -1229,29 +1410,24 @@ export function startErcRugby(bridge, autoStart = false) {
     });
   }
 
-  // Smart AI Passing Engine: evaluates open lanes & defender pressure so the Away team passes realistically!
   function tryTriggerAiPass(forceDummyHalfPass = false) {
     if (state.possession !== 'away' || state.passState.active || state.kickBall.active) return false;
 
     const fromIdx = state.carrierIndex;
     const passer = state.awayPlayers[fromIdx];
 
-    // Candidate receivers: adjacent backline runners (1 lane away) or a cut-out pass (2 lanes away)
     const candidates = [0, 1, 2, 3, 4].filter((idx) => {
       if (idx === fromIdx) return false;
       const laneDist = Math.abs(idx - fromIdx);
       if (laneDist > 2) return false;
-      // Avoid immediately throwing back to the exact player who just passed unless forced
       if (!forceDummyHalfPass && idx === state.aiLastPassFrom && Math.random() < 0.75) return false;
 
-      // Ensure AI passes backwards/flat (Away attacks +Y downward, so onside receiver has y <= passer.y + 0.004)
       const rec = state.awayPlayers[idx];
       return rec.y <= passer.y + 0.004;
     });
 
     if (candidates.length === 0) return false;
 
-    // Score each candidate receiver by how much open space they have away from Home defenders!
     let bestIdx = candidates[0];
     let bestScore = -Infinity;
 
@@ -1356,7 +1532,13 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   function releasePlayTheBall() {
-    if (state.playState === 'retreating' || state.playState === 'turnoverPause') return false;
+    if (
+      state.playState === 'retreating' ||
+      state.playState === 'turnoverPause' ||
+      state.playState === 'tryCelebration'
+    ) {
+      return false;
+    }
     if (state.playState === 'waitingForPlay') {
       state.playState = 'running';
       assignAiDefenderChasers();
@@ -1365,7 +1547,7 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   function handleNoteCDEFG(targetIdx) {
-    if (state.phase !== 'playing') return;
+    if (state.phase !== 'playing' || state.playState === 'tryCelebration') return;
 
     if (state.possession === 'away') {
       state.selectedDefenderIdx = targetIdx;
@@ -1388,8 +1570,8 @@ export function startErcRugby(bridge, autoStart = false) {
 
     if (targetIdx === fromIdx) {
       releasePlayTheBall();
-      passer.vy = -0.16;
-      addCallout(`${LANE_NOTES[targetIdx]} RUNS!`, passer.x, passer.y - 0.04, '#bae6fd');
+      passer.vy = -0.22;
+      addCallout(`${LANE_NOTES[targetIdx]} SCOOTS!`, passer.x, passer.y - 0.04, '#bae6fd');
       return;
     }
 
@@ -1412,28 +1594,29 @@ export function startErcRugby(bridge, autoStart = false) {
     state.passState.isForwardPass = thrownForward;
   }
 
+  // Upgraded Turbo Run Surge — noticeably faster sprint burst in both Offense & Defense!
   function triggerSurgeOrTackleBurst() {
-    if (state.phase !== 'playing') return;
+    if (state.phase !== 'playing' || state.playState === 'tryCelebration') return;
     if (state.possession === 'home') {
       if (!releasePlayTheBall()) return;
-      state.surgeTimer = 0.6;
+      state.surgeTimer = 0.85;
       const c = state.homePlayers[state.carrierIndex];
-      c.vy = -0.23;
-      addCallout('RUN SURGE!', c.x, c.y - 0.04, '#6ee7b7');
+      c.vy = -0.38;
+      addCallout('⚡ TURBO SPRINT!', c.x, c.y - 0.04, '#6ee7b7');
     } else {
       if (state.playState !== 'running') {
         const d = state.homePlayers[state.selectedDefenderIdx];
         addCallout('STAY ONSIDE UNTIL PLAYED!', d.x, d.y + 0.05, '#fcd34d');
         return;
       }
-      state.surgeTimer = 0.45;
+      state.surgeTimer = 0.65;
       const d = state.homePlayers[state.selectedDefenderIdx];
-      addCallout(`${LANE_NOTES[state.selectedDefenderIdx]} RUSHES UP!`, d.x, d.y - 0.03, '#6ee7b7');
+      addCallout(`⚡ ${LANE_NOTES[state.selectedDefenderIdx]} SPRINT HIT!`, d.x, d.y - 0.03, '#6ee7b7');
     }
   }
 
   function launchKick(kind) {
-    if (state.phase !== 'playing' || state.possession !== 'home') return;
+    if (state.phase !== 'playing' || state.possession !== 'home' || state.playState === 'tryCelebration') return;
     if (state.kickBall.active || state.passState.active) return;
     if (!releasePlayTheBall()) return;
 
@@ -1501,7 +1684,7 @@ export function startErcRugby(bridge, autoStart = false) {
       return;
     }
 
-    if (state.phase !== 'playing') return;
+    if (state.phase !== 'playing' || state.playState === 'tryCelebration') return;
 
     if (state.actionBinds.moveLeft.midi === clean) {
       if (state.possession === 'home') releasePlayTheBall();
@@ -1606,8 +1789,13 @@ export function startErcRugby(bridge, autoStart = false) {
       p.prevY = p.y;
 
       const totalSpeed = Math.hypot(p.animSpeedX, p.animSpeedY);
-      if (totalSpeed > 0.018 && state.playState !== 'waitingForPlay' && state.playState !== 'turnoverPause') {
-        p.strideTimer += dt * (4.2 + totalSpeed * 22);
+      if (
+        totalSpeed > 0.018 &&
+        state.playState !== 'waitingForPlay' &&
+        state.playState !== 'turnoverPause' &&
+        state.playState !== 'tryCelebration'
+      ) {
+        p.strideTimer += dt * (4.8 + totalSpeed * 28);
       }
     }
   }
@@ -1628,6 +1816,38 @@ export function startErcRugby(bridge, autoStart = false) {
       state.surgeTimer = Math.max(0, state.surgeTimer - dt);
     }
 
+    for (let i = state.callouts.length - 1; i >= 0; i--) {
+      state.callouts[i].life -= dt * 1.05;
+      state.callouts[i].y -= dt * 0.04;
+      if (state.callouts[i].life <= 0) state.callouts.splice(i, 1);
+    }
+
+    // =========================================================================
+    // TRY CELEBRATION STATE — Pause match clock, animate confetti & celebration!
+    // =========================================================================
+    if (state.playState === 'tryCelebration' && state.tryCelebration.active) {
+      state.tryCelebration.timer += dt;
+
+      for (const p of state.tryCelebration.confetti) {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.rot += p.vrot * dt;
+      }
+
+      // Scoring team players bounce/jump in celebration!
+      const scorers = state.tryCelebration.scoringSide === 'home' ? state.homePlayers : state.awayPlayers;
+      scorers.forEach((pl, idx) => {
+        pl.strideTimer += dt * 16;
+        pl.y += Math.sin(state.tryCelebration.timer * 18 + idx) * 0.035 * dt;
+      });
+
+      if (state.tryCelebration.timer >= state.tryCelebration.duration) {
+        state.tryCelebration.active = false;
+        setupSetOfSix('home', 0.82, 2);
+      }
+      return;
+    }
+
     state.matchTime -= dt;
     if (state.matchTime <= 0) {
       state.matchTime = 0;
@@ -1636,12 +1856,6 @@ export function startErcRugby(bridge, autoStart = false) {
       return;
     }
     syncHudAndLegend();
-
-    for (let i = state.callouts.length - 1; i >= 0; i--) {
-      state.callouts[i].life -= dt * 1.05;
-      state.callouts[i].y -= dt * 0.04;
-      if (state.callouts[i].life <= 0) state.callouts.splice(i, 1);
-    }
 
     if (state.playState === 'turnoverPause') {
       state.turnoverTimer -= dt;
@@ -1724,14 +1938,13 @@ export function startErcRugby(bridge, autoStart = false) {
 
       if (state.possession === 'away' && userSteerX !== 0) {
         const selDef = state.homePlayers[state.selectedDefenderIdx];
-        selDef.x = Math.min(0.92, Math.max(0.08, selDef.x + userSteerX * 0.22 * dt));
+        selDef.x = Math.min(0.92, Math.max(0.08, selDef.x + userSteerX * 0.26 * dt));
       }
 
       if (state.possession === 'away') {
         state.aiPlayTimer -= dt;
         if (state.aiPlayTimer <= 0) {
           releasePlayTheBall();
-          // 78% of the time, the opponent immediately passes out of dummy-half to a first receiver!
           if (Math.random() < 0.78) {
             tryTriggerAiPass(true);
             state.aiPassCooldown = 0.65 + Math.random() * 0.45;
@@ -1781,21 +1994,21 @@ export function startErcRugby(bridge, autoStart = false) {
 
     const activeCarrier = attackers[state.carrierIndex];
 
-    // 2. Move Attacking Ball-Carrier + Active AI Backline Passing
+    // 2. Move Attacking Ball-Carrier (with faster Turbo Run!) + Active AI Passing
     if (state.possession === 'home') {
-      const baseUpSpeed = state.passState.active ? -0.07 : state.surgeTimer > 0 ? -0.21 : -0.115;
-      activeCarrier.vy += (baseUpSpeed - activeCarrier.vy) * Math.min(1, dt * 8);
+      const isSurging = state.surgeTimer > 0;
+      const baseUpSpeed = state.passState.active ? -0.075 : isSurging ? -0.36 : -0.125;
+      activeCarrier.vy += (baseUpSpeed - activeCarrier.vy) * Math.min(1, dt * 11);
       activeCarrier.y += activeCarrier.vy * dt;
 
       if (userSteerX !== 0) {
-        activeCarrier.x = Math.min(0.91, Math.max(0.09, activeCarrier.x + userSteerX * 0.24 * dt));
+        const lateralSpeed = isSurging ? 0.36 : 0.25;
+        activeCarrier.x = Math.min(0.91, Math.max(0.09, activeCarrier.x + userSteerX * lateralSpeed * dt));
       }
     } else {
-      // Opponent ('away') attacks down-field (+Y) and actively passes across its backline!
       state.aiPassCooldown -= dt;
 
       if (!state.passState.active) {
-        // Measure closest Home defender to see if the AI ball-carrier is about to get tackled
         let nearestDefDist = Infinity;
         for (const def of state.homePlayers) {
           const d = Math.hypot(def.x - activeCarrier.x, def.y - activeCarrier.y);
@@ -1821,7 +2034,8 @@ export function startErcRugby(bridge, autoStart = false) {
       activeCarrier.x = Math.min(0.90, Math.max(0.10, activeCarrier.x + weave * dt));
     }
 
-    // Support backline adjusts organically into staggered depth behind the ball-carrier
+    // Support backline keeps pace with the faster Run Surge
+    const supportCatchup = state.surgeTimer > 0 ? 5.8 : 4.0;
     for (let i = 0; i < 5; i++) {
       if (i === state.carrierIndex) continue;
       const att = attackers[i];
@@ -1833,34 +2047,36 @@ export function startErcRugby(bridge, autoStart = false) {
 
       if (state.possession === 'home' && state.kickBall.active) {
         if (!att.offsideOnKick) {
-          att.y -= 0.18 * dt;
+          att.y -= 0.21 * dt;
         } else if (activeCarrier.y <= att.y) {
           att.offsideOnKick = false;
         }
       } else {
         const desired = getDesiredSupportPos(att, i, activeCarrier, attackDir);
-        att.x += (desired.x - att.x) * Math.min(1, dt * 3.8);
-        att.y += (desired.y - att.y) * Math.min(1, dt * 4.4);
+        att.x += (desired.x - att.x) * Math.min(1, dt * supportCatchup);
+        att.y += (desired.y - att.y) * Math.min(1, dt * (supportCatchup + 0.6));
       }
     }
 
-    // 3. Check Try Scored
+    // 3. Check Try Scored -> Launch Huge Red TRY! Celebration!
     if (!state.passState.active && !state.kickBall.active) {
       if (state.possession === 'home' && activeCarrier.y <= 0.12) {
         state.homeScore += 4;
         if (bridgeRef && bridgeRef.getState().gameStats) {
           bridgeRef.getState().gameStats.perfect += 4;
         }
-        addCallout(`TRY BY ${LANE_NOTES[state.carrierIndex]}! +4`, activeCarrier.x, 0.16, '#4ade80');
-        setupSetOfSix('home', 0.82, 2);
+        if (bridgeRef && bridgeRef.spawnConfetti) {
+          const rect = canvas.getBoundingClientRect();
+          bridgeRef.spawnConfetti(rect.width * 0.5, rect.height * 0.35, '#ef4444');
+        }
+        triggerTryCelebration('home', LANE_NOTES[state.carrierIndex]);
         recordPlayerVelocities(dt);
         return;
       }
       if (state.possession === 'away' && activeCarrier.y >= 0.88) {
         state.awayScore += 4;
         playErrorClackSound();
-        addCallout(`${state.awayTeam.name} SCORE! +4`, activeCarrier.x, 0.82, '#fb7185');
-        setupSetOfSix('home', 0.82, 2);
+        triggerTryCelebration('away', LANE_NOTES[state.carrierIndex]);
         recordPlayerVelocities(dt);
         return;
       }
@@ -1918,25 +2134,29 @@ export function startErcRugby(bridge, autoStart = false) {
 
       if (state.kickBall.active && state.kickBall.y <= 0.11) {
         state.homeScore += 4;
-        addCallout('KICK CHASE TRY! +4', state.kickBall.x, 0.16, '#4ade80');
+        if (bridgeRef && bridgeRef.getState().gameStats) {
+          bridgeRef.getState().gameStats.perfect += 4;
+        }
         state.kickBall.active = false;
-        setupSetOfSix('home', 0.82, 2);
+        triggerTryCelebration('home', 'KICK CHASE');
         recordPlayerVelocities(dt);
         return;
       }
     }
 
-    // 5. Defensive Line Movement & Tackles
+    // 5. Defensive Line Movement & Faster User Tackle Sprint
     state.tacklePause.onsideY += -attackDir * 0.055 * dt;
 
     for (let i = 0; i < 5; i++) {
       const d = defenders[i];
 
       if (state.possession === 'away' && i === state.selectedDefenderIdx) {
-        const upRush = state.surgeTimer > 0 ? -0.22 : -0.095;
+        const isDefSurging = state.surgeTimer > 0;
+        const upRush = isDefSurging ? -0.35 : -0.105;
         d.y = Math.max(0.12, d.y + upRush * dt);
         if (userSteerX !== 0) {
-          d.x = Math.min(0.92, Math.max(0.08, d.x + userSteerX * 0.26 * dt));
+          const defLatSpeed = isDefSurging ? 0.36 : 0.27;
+          d.x = Math.min(0.92, Math.max(0.08, d.x + userSteerX * defLatSpeed * dt));
         }
       } else if (d.role === 'chaser') {
         const toX = activeCarrier.x - d.x;
@@ -1964,6 +2184,9 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   function selectSpritePose(playerObj) {
+    if (state.playState === 'tryCelebration') {
+      return Math.floor(playerObj.strideTimer) % 2 === 0 ? 'straightL' : 'straightR';
+    }
     if (state.playState === 'waitingForPlay' || state.playState === 'turnoverPause') {
       if (Math.abs(playerObj.animSpeedX) > 0.04) {
         return playerObj.animSpeedX < 0 ? 'runLeft' : 'runRight';
@@ -1997,9 +2220,16 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   function drawPixelPlayer(ctx, x, y, team, noteLetter, playerObj, opts = {}) {
-    const { pixelScale = 1.5, hasBall = false, showYellowRing = false, isOverrun = false } = opts;
+    const {
+      pixelScale = 1.5,
+      hasBall = false,
+      showYellowRing = false,
+      isOverrun = false,
+      facing = 'back'
+    } = opts;
+
     const pose = selectSpritePose(playerObj);
-    const sprite = getPixelSprite(team, noteLetter, pose, hasBall);
+    const sprite = getPixelSprite(team, noteLetter, pose, hasBall, facing);
 
     const drawW = Math.round(sprite.width * pixelScale);
     const drawH = Math.round(sprite.height * pixelScale);
@@ -2028,6 +2258,102 @@ export function startErcRugby(bridge, autoStart = false) {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(sprite, Math.round(x - drawW / 2), Math.round(y - drawH / 2), drawW, drawH);
+    ctx.restore();
+  }
+
+  // Draws massive animated RED "TRY!" broadcast celebration across the full screen
+  function drawTryCelebrationOverlay(ctx, w, h) {
+    const cel = state.tryCelebration;
+    const t = cel.timer;
+    const progress = Math.min(1, t / cel.duration);
+
+    // Subtle dark stadium spotlight vignette + red flash pulse
+    const flashAlpha = Math.max(0, 0.38 - t * 0.9);
+    if (flashAlpha > 0) {
+      ctx.fillStyle = `rgba(239, 68, 68, ${flashAlpha})`;
+      ctx.fillRect(0, 0, w, h);
+    }
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.42)';
+    ctx.fillRect(0, 0, w, h);
+
+    // Falling confetti streamers
+    for (const p of cel.confetti) {
+      ctx.save();
+      ctx.translate(p.x * w, p.y * h);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size * 0.5, -p.size * 0.28, p.size, p.size * 0.56);
+      ctx.restore();
+    }
+
+    // Slam-in elastic bounce + pulsing heartbeat scale for huge RED "TRY!" text
+    let popScale = 1;
+    if (t < 0.22) {
+      const k = t / 0.22;
+      popScale = 0.25 + k * 1.08;
+    } else if (t < 0.36) {
+      const k = (t - 0.22) / 0.14;
+      popScale = 1.33 - k * 0.33;
+    } else {
+      popScale = 1.0 + Math.sin(t * 14) * 0.055;
+    }
+
+    const fadeOut = progress > 0.86 ? Math.max(0, (1 - progress) / 0.14) : 1;
+    const fontSize = Math.round(Math.min(w * 0.24, h * 0.40));
+
+    ctx.save();
+    ctx.globalAlpha = fadeOut;
+    ctx.translate(w * 0.5, h * 0.47);
+    ctx.scale(popScale, popScale);
+    ctx.rotate(-0.045);
+
+    // Angled broadcast speed-stripe behind TRY!
+    const barW = Math.min(w * 0.82, fontSize * 3.1);
+    const barH = fontSize * 0.92;
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.86)';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.rect(-barW * 0.5, -barH * 0.52, barW, barH);
+    ctx.fill();
+    ctx.stroke();
+
+    // Giant RED "TRY!" text with bold white & black arcade drop-shadow
+    ctx.font = `italic 900 ${fontSize}px "Chakra Petch", Impact, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Deep shadow
+    ctx.fillStyle = '#09090b';
+    ctx.fillText('TRY!', 7, 8);
+
+    // Crisp white outer stroke
+    ctx.lineWidth = Math.max(6, Math.round(fontSize * 0.09));
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineJoin = 'round';
+    ctx.strokeText('TRY!', 0, 0);
+
+    // Vibrant red gradient fill
+    const redGrad = ctx.createLinearGradient(0, -fontSize * 0.45, 0, fontSize * 0.45);
+    redGrad.addColorStop(0, '#ff4d4d');
+    redGrad.addColorStop(0.5, '#ef4444');
+    redGrad.addColorStop(1, '#991b1b');
+    ctx.fillStyle = redGrad;
+    ctx.fillText('TRY!', 0, 0);
+
+    // Scorer / Team sub-banner
+    const subSize = Math.max(13, Math.round(fontSize * 0.19));
+    ctx.font = `800 ${subSize}px "Chakra Petch", sans-serif`;
+    ctx.fillStyle = '#fde047';
+    ctx.strokeStyle = '#020617';
+    ctx.lineWidth = 4;
+    const subLabel =
+      cel.scoringSide === 'home'
+        ? `${cel.teamName.toUpperCase()} • PLAYER ${cel.scorerLabel} (+4 PTS)`
+        : `${cel.teamName.toUpperCase()} SCORE (+4 PTS)`;
+    ctx.strokeText(subLabel, 0, barH * 0.66);
+    ctx.fillText(subLabel, 0, barH * 0.66);
+
     ctx.restore();
   }
 
@@ -2132,10 +2458,13 @@ export function startErcRugby(bridge, autoStart = false) {
     const pixelScale = Math.max(1.15, Math.min(1.65, h / 285));
     const ballInFlight = state.passState.active || state.kickBall.active;
 
+    // Away players render with `facing: 'front'` (showing faces + front of jersey);
+    // Home players render with `facing: 'back'` (showing back of head + back of jersey)
     const renderList = [];
     for (let i = 0; i < state.awayPlayers.length; i++) {
       renderList.push({
         side: 'away',
+        facing: 'front',
         idx: i,
         p: state.awayPlayers[i],
         team: state.awayTeam,
@@ -2153,6 +2482,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
       renderList.push({
         side: 'home',
+        facing: 'back',
         idx: i,
         p: hp,
         team: state.homeTeam,
@@ -2171,7 +2501,8 @@ export function startErcRugby(bridge, autoStart = false) {
         pixelScale,
         hasBall: item.hasBall,
         showYellowRing: item.showYellowRing,
-        isOverrun: item.isOverrun
+        isOverrun: item.isOverrun,
+        facing: item.facing
       });
 
       if (item.isOverrun) {
@@ -2229,6 +2560,11 @@ export function startErcRugby(bridge, autoStart = false) {
       ctx.strokeText(c.text, cx, cy);
       ctx.fillText(c.text, cx, cy);
       ctx.restore();
+    }
+
+    // Huge animated red TRY! celebration overlay
+    if (state.playState === 'tryCelebration' && state.tryCelebration.active) {
+      drawTryCelebrationOverlay(ctx, w, h);
     }
 
     ctx.restore();
@@ -2306,7 +2642,7 @@ export function startErcRugby(bridge, autoStart = false) {
       return;
     }
 
-    if (state.phase !== 'playing') return;
+    if (state.phase !== 'playing' || state.playState === 'tryCelebration') return;
 
     if (e.key === 'ArrowLeft' || keyUpper === (state.actionBinds.moveLeft.key || '').toUpperCase()) {
       if (state.possession === 'home') releasePlayTheBall();
