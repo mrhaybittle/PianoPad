@@ -511,6 +511,3 @@ export function awardNoteCraftSongReward(songTitle, difficulty, accuracy, tempoP
         showNoteCraftToast(`🏆 +${earned} NoteCoins earned for ${songTitle}!`, '#facc15', 3400);
     }
 }
-
-
-That completes all 8 NoteCraft files—students can quit via the HUD **Quit** button or `[X]`, see classmate names and PianoPad avatars in 3D, and place a 5-second fusing TNT block that animates and clears blocks within a 3-block radius[cite: 2, 4, 5, 7, 8, 9].
