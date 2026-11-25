@@ -378,6 +378,3 @@ export function disposeRender3D() {
     voxelGroup = null;
     highlightMesh = null;
 }
-
-
-Reply with **next** when you're ready for `hud.js`.
