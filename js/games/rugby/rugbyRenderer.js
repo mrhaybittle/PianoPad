@@ -38,8 +38,35 @@ function drawYellowSelectionCircle(ctx, x, footY, scale) {
   ctx.restore();
 }
 
-function drawPixelPlayer(ctx, state, x, y, team, noteLetter, playerObj, opts = {}) {
-  const { pixelScale = 1.5, hasBall = false, showYellowRing = false, isOverrun = false, facing = 'back' } = opts;
+function drawRedCarrierCircle(ctx, x, footY, scale, timeSec = 0) {
+  const pulse = 1 + Math.sin(timeSec * 10) * 0.08;
+  ctx.save();
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.30)';
+  ctx.strokeStyle = '#ef4444';
+  ctx.lineWidth = Math.max(2.5, 3 * scale);
+  ctx.beginPath();
+  ctx.ellipse(x, footY, 18 * scale * pulse, 7.5 * scale * pulse, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(254, 202, 202, 0.75)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.ellipse(x, footY, 12 * scale * pulse, 4.8 * scale * pulse, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawPixelPlayer(ctx, state, x, y, team, noteLetter, playerObj, opts = {}, timeSec = 0) {
+  const {
+    pixelScale = 1.5,
+    hasBall = false,
+    showYellowRing = false,
+    showRedRing = false,
+    isOverrun = false,
+    facing = 'back'
+  } = opts;
+
   const pose = selectSpritePose(state, playerObj);
   const isDive = pose === 'diveBack' || pose === 'diveFront';
   const sprite = getPixelSprite(team, noteLetter, pose, hasBall, facing);
@@ -49,7 +76,9 @@ function drawPixelPlayer(ctx, state, x, y, team, noteLetter, playerObj, opts = {
   const drawH = Math.max(28, Math.round(sprite.height * pixelScale * scaleMult));
   const footY = y + drawH * (isDive ? 0.34 : 0.42);
 
-  if (showYellowRing && !isDive) {
+  if (showRedRing && !isDive) {
+    drawRedCarrierCircle(ctx, x, footY, pixelScale * 0.82, timeSec);
+  } else if (showYellowRing && !isDive) {
     drawYellowSelectionCircle(ctx, x, footY, pixelScale * 0.8);
   } else {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
@@ -482,14 +511,16 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
 
   const renderList = [];
   for (let i = 0; i < state.awayPlayers.length; i++) {
+    const awayHasBall = state.possession === 'away' && i === state.carrierIndex && !ballInFlight;
     renderList.push({
       side: 'away',
       facing: 'front',
       idx: i,
       p: state.awayPlayers[i],
       team: state.awayTeam,
-      hasBall: state.possession === 'away' && i === state.carrierIndex && !ballInFlight,
+      hasBall: awayHasBall,
       showYellowRing: false,
+      showRedRing: awayHasBall && state.playState !== 'tryCelebration',
       isOverrun: false
     });
   }
@@ -508,6 +539,7 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
       team: state.homeTeam,
       hasBall: homeHasBall,
       showYellowRing: showRing,
+      showRedRing: false,
       isOverrun: state.possession === 'home' && hp.overrun && !state.kickBall.active
     });
   }
@@ -517,13 +549,24 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
   for (const item of renderList) {
     const px = padX + fieldW * item.p.x;
     const py = padY + fieldH * item.p.y;
-    drawPixelPlayer(ctx, state, px, py, item.team, LANE_NOTES[item.idx], item.p, {
-      pixelScale,
-      hasBall: item.hasBall,
-      showYellowRing: item.showYellowRing,
-      isOverrun: item.isOverrun,
-      facing: item.facing
-    });
+    drawPixelPlayer(
+      ctx,
+      state,
+      px,
+      py,
+      item.team,
+      LANE_NOTES[item.idx],
+      item.p,
+      {
+        pixelScale,
+        hasBall: item.hasBall,
+        showYellowRing: item.showYellowRing,
+        showRedRing: item.showRedRing,
+        isOverrun: item.isOverrun,
+        facing: item.facing
+      },
+      timeSec
+    );
 
     if (item.isOverrun) {
       ctx.save();
