@@ -55,6 +55,9 @@ export function updateAvatarSprites(scene) {
 
     // Add or update active classmates
     for (const [pid, pData] of Object.entries(ncState.remotePlayers || {})) {
+        const cleanName = String(pData.name || 'Builder').slice(0, 14);
+        const cleanAvatar = pData.avatar || '🏃';
+
         let entry = avatarMeshes.get(pid);
         if (!entry) {
             const group = new THREE.Group();
@@ -65,7 +68,7 @@ export function updateAvatarSprites(scene) {
             group.add(bodyMesh);
 
             const spriteMat = new THREE.SpriteMaterial({
-                map: createAvatarBadgeTexture(pData.name, pData.avatar),
+                map: createAvatarBadgeTexture(cleanName, cleanAvatar),
                 transparent: true
             });
             const sprite = new THREE.Sprite(spriteMat);
@@ -74,8 +77,14 @@ export function updateAvatarSprites(scene) {
             group.add(sprite);
 
             scene.add(group);
-            entry = { group, bodyGeo, bodyMat, spriteMat };
+            entry = { group, bodyGeo, bodyMat, spriteMat, name: cleanName, avatar: cleanAvatar };
             avatarMeshes.set(pid, entry);
+        } else if (entry.name !== cleanName || entry.avatar !== cleanAvatar) {
+            entry.spriteMat.map?.dispose();
+            entry.spriteMat.map = createAvatarBadgeTexture(cleanName, cleanAvatar);
+            entry.spriteMat.needsUpdate = true;
+            entry.name = cleanName;
+            entry.avatar = cleanAvatar;
         }
 
         entry.group.position.set(
@@ -97,3 +106,6 @@ export function disposeAvatarSprites(scene) {
     }
     avatarMeshes.clear();
 }
+
+
+Reply with **next** when you're ready for the final file (`notecraft.js`).
