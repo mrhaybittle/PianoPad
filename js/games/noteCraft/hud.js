@@ -72,6 +72,28 @@ function getCurrentBuildingOrZone(x, z) {
     return getCurrentCampusZone(x, z);
 }
 
+function drawQuitButton(ctx, W) {
+    const btnW = 86;
+    const btnH = 34;
+    const bx = W - btnW - 12;
+    const by = 78;
+
+    ncState.quitButtonRect = { x: bx, y: by, w: btnW, h: btnH };
+
+    ctx.fillStyle = 'rgba(127, 29, 29, 0.94)';
+    ctx.strokeStyle = '#f87171';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(bx, by, btnW, btnH, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🚪 QUIT [X]', bx + btnW / 2, by + 21);
+}
+
 function drawSatelliteMinimap(ctx, H) {
     const mapW = 136;
     const mapH = 102;
@@ -94,7 +116,7 @@ function drawSatelliteMinimap(ctx, H) {
 
     ctx.translate(mx + mapW / 2, my + mapH / 2);
     ctx.scale(zoom, zoom);
-    
+
     if (zoom === 1.0) ctx.translate(-mapW / 2, -mapH / 2);
     else ctx.translate(-px, -pz);
 
@@ -146,7 +168,7 @@ function drawSatelliteMinimap(ctx, H) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    
+
     ctx.restore();
 
     ctx.strokeStyle = '#38bdf8';
@@ -273,7 +295,9 @@ export function renderHudFrame(now) {
 
     ctx.fillStyle = '#e2e8f0';
     ctx.font = 'bold 10px sans-serif';
-    ctx.fillText('🔄 [T] Flat/Block Mode • 🎹 Black Keys: Prefabs • 🔍 [-/+] Zoom', W - 22, 62);
+    ctx.fillText('🔄 [T] Flat/Block Mode • 🚪 [X] Quit • 🔍 [-/+] Zoom', W - 22, 62);
+
+    drawQuitButton(ctx, W);
 
     if (ncState.toastMessage && now < ncState.toastMessage.expiresAt) {
         const msg = ncState.toastMessage;
@@ -367,6 +391,7 @@ export function renderHudFrame(now) {
 }
 
 export function disposeHud() {
+    ncState.quitButtonRect = null;
     if (hudCanvas && hudCanvas.parentNode) hudCanvas.parentNode.removeChild(hudCanvas);
     hudCanvas = null;
     hudCtx = null;
