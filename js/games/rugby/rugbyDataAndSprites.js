@@ -34,7 +34,7 @@ export const TEAMS = [
 export const WOLFHUND_FACES = {
   // Lane C: Bald smiling teacher
   C: {
-    title: 'Coach C (Bald)',
+    title: 'Haybittle',
     grid: [
       '..KKKKKKKK..',
       '.KBBBBBBBBK.',
@@ -52,7 +52,7 @@ export const WOLFHUND_FACES = {
   },
   // Lane D: Teacher with glasses
   D: {
-    title: 'Coach D (Specs)',
+    title: 'Bono',
     grid: [
       '...KKKKKKKK..',
       '..KHHHHHHHHK.',
@@ -70,7 +70,7 @@ export const WOLFHUND_FACES = {
   },
   // Lane E: Spiky silver-grey haired teacher
   E: {
-    title: 'Coach E (Spiky)',
+    title: 'Tognetti',
     grid: [
       '.K.K.KKKK.K.K',
       'KHHHHHHHHHHHHK',
@@ -88,7 +88,7 @@ export const WOLFHUND_FACES = {
   },
   // Lane F: Fictitious player with a MULLET haircut (short top/front, long flowing back/sides)
   F: {
-    title: 'Fletcher (Mullet)',
+    title: 'Mullet',
     grid: [
       '...KKKKKKKK..',
       '..KHHHHHHHHK.',
@@ -106,7 +106,7 @@ export const WOLFHUND_FACES = {
   },
   // Lane G: Fictitious player with a full BEARD
   G: {
-    title: 'Garrick (Beard)',
+    title: 'Beardo',
     grid: [
       '...KKKKKKKK..',
       '..KHHHHHHHHK.',
