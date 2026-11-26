@@ -154,7 +154,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
     kickBall: {
       active: false, kind: null, x: 0.5, y: 0.82, z: 0,
-      vx: 0, vy: 0, vz: 0, bounceCount: 0
+      vx: 0, vy: 0, vz: 0, bounceCount: 0, defenderFavored: true
     },
 
     tryCelebration: {
@@ -778,16 +778,18 @@ export function startErcRugby(bridge, autoStart = false) {
     state.kickBall.kind = kind;
     state.kickBall.x = kicker.x; state.kickBall.y = kicker.y - 0.03;
     state.kickBall.bounceCount = 0;
+    // Defenders naturally field most kicks (~78% defender-favored)
+    state.kickBall.defenderFavored = Math.random() < 0.78;
 
     state.homePlayers.forEach((att, idx) => { att.offsideOnKick = idx !== state.carrierIndex && att.y < kicker.y; });
 
     if (kind === 'bomb') {
-      state.kickBall.vy = -0.33; state.kickBall.vx = (Math.random() - 0.5) * 0.11;
-      state.kickBall.z = 0.05; state.kickBall.vz = 0.48;
+      state.kickBall.vy = -0.31; state.kickBall.vx = (Math.random() - 0.5) * 0.10;
+      state.kickBall.z = 0.05; state.kickBall.vz = 0.46;
       addCallout('BOMB KICK!', kicker.x, kicker.y - 0.05, '#fcd34d');
     } else {
-      state.kickBall.vy = -0.42; state.kickBall.vx = (Math.random() - 0.5) * 0.07;
-      state.kickBall.z = 0.01; state.kickBall.vz = 0.08;
+      state.kickBall.vy = -0.38; state.kickBall.vx = (Math.random() - 0.5) * 0.06;
+      state.kickBall.z = 0.01; state.kickBall.vz = 0.07;
       addCallout('GRUBBER!', kicker.x, kicker.y - 0.05, '#7dd3fc');
     }
   }
@@ -1196,8 +1198,12 @@ export function startErcRugby(bridge, autoStart = false) {
         rollSupportAlignment(att, i, state.carrierIndex, state.possession === 'home');
       }
       if (state.possession === 'home' && state.kickBall.active) {
-        if (!att.offsideOnKick) att.y -= 0.21 * dt;
-        else if (activeCarrier.y <= att.y) att.offsideOnKick = false;
+        // Natural chase speed without jumping or teleporting
+        if (!att.offsideOnKick) {
+          att.y = Math.max(0.13, att.y - 0.13 * dt);
+        } else if (activeCarrier.y <= att.y) {
+          att.offsideOnKick = false;
+        }
       } else {
         const desired = getDesiredSupportPos(att, i, activeCarrier, attackDir);
         att.x += (desired.x - att.x) * Math.min(1, dt * supportCatchup);
@@ -1225,48 +1231,78 @@ export function startErcRugby(bridge, autoStart = false) {
     }
 
     if (state.kickBall.active) {
-      state.kickBall.x += state.kickBall.vx * dt; state.kickBall.y += state.kickBall.vy * dt;
+      state.kickBall.x = Math.min(0.92, Math.max(0.08, state.kickBall.x + state.kickBall.vx * dt));
+      state.kickBall.y = Math.min(0.90, Math.max(0.11, state.kickBall.y + state.kickBall.vy * dt));
 
       if (state.kickBall.kind === 'bomb') {
-        state.kickBall.vz -= 1.05 * dt; state.kickBall.z += state.kickBall.vz * dt;
+        state.kickBall.vz -= 1.05 * dt;
+        state.kickBall.z += state.kickBall.vz * dt;
         if (state.kickBall.z <= 0) {
-          state.kickBall.z = 0; state.kickBall.vz = Math.abs(state.kickBall.vz) * 0.42; state.kickBall.bounceCount += 1;
+          state.kickBall.z = 0;
+          state.kickBall.vz = Math.abs(state.kickBall.vz) * 0.42;
+          state.kickBall.bounceCount += 1;
         }
       } else {
-        state.kickBall.vy *= Math.pow(0.45, dt);
+        state.kickBall.vy *= Math.pow(0.55, dt);
       }
 
-      if (state.kickBall.z < 0.08 && (state.kickBall.bounceCount >= 1 || state.kickBall.kind === 'grubber')) {
+      // Defenders naturally run toward the kick landing area to field the ball
+      for (let i = 0; i < state.awayPlayers.length; i++) {
+        const def = state.awayPlayers[i];
+        const laneTargetX = LANES[i];
+        const pullX = state.kickBall.defenderFavored
+          ? (state.kickBall.x - def.x) * 2.2
+          : (laneTargetX - def.x) * 2.0;
+        const pullY = state.kickBall.defenderFavored
+          ? (state.kickBall.y - def.y) * 1.9
+          : 0.08;
+        def.x = Math.min(0.91, Math.max(0.09, def.x + pullX * dt));
+        def.y = Math.min(0.88, Math.max(0.14, def.y + pullY * dt));
+      }
+
+      // Onside attacking chasers can only regather if they naturally run close enough to the ball
+      if (state.kickBall.z < 0.07) {
         for (let i = 0; i < 5; i++) {
           const att = state.homePlayers[i];
           if (att.offsideOnKick) continue;
-          if (Math.hypot(att.x - state.kickBall.x, att.y - state.kickBall.y) < 0.055) {
-            state.carrierIndex = i; state.kickBall.active = false; state.tackleCount = 0;
-            addCallout(`${LANE_NOTES[i]} REGATHERS! SIX AGAIN!`, att.x, att.y - 0.05, '#fde047'); break;
+          if (Math.hypot(att.x - state.kickBall.x, att.y - state.kickBall.y) < 0.036) {
+            state.carrierIndex = i;
+            state.kickBall.active = false;
+            state.tackleCount = 0;
+            addCallout(`${LANE_NOTES[i]} REGATHERS! SIX AGAIN!`, att.x, att.y - 0.05, '#fde047');
+            break;
           }
         }
       }
 
-      if (state.kickBall.active && (state.kickBall.bounceCount >= 2 || (state.kickBall.kind === 'grubber' && Math.abs(state.kickBall.vy) < 0.13))) {
-        let bestIdx = state.carrierIndex; let bestDist = Infinity;
-        for (let i = 0; i < 5; i++) {
-          if (state.homePlayers[i].offsideOnKick) continue;
-          const d = Math.abs(state.homePlayers[i].x - state.kickBall.x);
-          if (d < bestDist) { bestDist = d; bestIdx = i; }
-        }
-        const catcher = state.homePlayers[bestIdx];
-        catcher.x = Math.min(0.88, Math.max(0.12, state.kickBall.x));
-        catcher.y = Math.min(0.88, Math.max(0.12, state.kickBall.y));
-        state.carrierIndex = bestIdx; state.kickBall.active = false;
-        addCallout(`${LANE_NOTES[bestIdx]} TAKES THE KICK!`, catcher.x, catcher.y - 0.05, '#7dd3fc');
-      }
+      // When the kick settles or bounces twice, the defending team naturally fields it most of the time
+      const kickSettled =
+        state.kickBall.bounceCount >= 2 ||
+        (state.kickBall.kind === 'grubber' && Math.abs(state.kickBall.vy) < 0.11) ||
+        state.kickBall.y <= 0.13;
 
-      if (state.kickBall.active && state.kickBall.y <= 0.11) {
-        state.homeScore += 4;
-        if (bridgeRef && bridgeRef.getState().gameStats) bridgeRef.getState().gameStats.perfect += 4;
+      if (state.kickBall.active && kickSettled) {
+        let bestDefIdx = 2;
+        let bestDefDist = Infinity;
+        for (let i = 0; i < state.awayPlayers.length; i++) {
+          const d = Math.hypot(state.awayPlayers[i].x - state.kickBall.x, state.awayPlayers[i].y - state.kickBall.y);
+          if (d < bestDefDist) {
+            bestDefDist = d;
+            bestDefIdx = i;
+          }
+        }
+        const fielder = state.awayPlayers[bestDefIdx];
+        const fieldingY = Math.min(0.76, Math.max(0.20, fielder ? fielder.y : state.kickBall.y));
         state.kickBall.active = false;
-        triggerTryCelebration('home', 'KICK CHASE', state.carrierIndex);
-        recordPlayerVelocities(dt); return;
+        triggerHandover(
+          `DEFENSE FIELDS KICK (${LANE_NOTES[bestDefIdx]})!`,
+          'away',
+          fieldingY,
+          '#fda4af',
+          'short'
+        );
+        recordPlayerVelocities(dt);
+        return;
       }
     }
 
@@ -1473,3 +1509,4 @@ export function startErcRugby(bridge, autoStart = false) {
   }
   animFrameId = requestAnimationFrame(frame);
 }
+```[cite: 36]
