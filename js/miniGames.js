@@ -13,6 +13,7 @@ import { startSkiSlalom, handleSkiSlalomInput, handleSkiSlalomRelease, stopSkiSl
 import { startPedalPoint, handlePedalPointInput, handlePedalPointRelease, stopPedalPoint } from './games/pedalPoint.js';
 import { startRockBall, handleRockBallInput, handleRockBallRelease, stopRockBall } from './games/rockBall.js';
 import { startErcRugby, handleErcRugbyInput, handleErcRugbyRelease, stopErcRugby } from './games/ercRugby.js';
+import { startChordBowl, handleChordBowlInput, handleChordBowlRelease, stopChordBowl } from './games/chordBowl.js';
 
 export const arcadeState = {
     activeMiniGame: null,
@@ -170,6 +171,16 @@ function injectNewArcadeButtons() {
         mtbBtn.innerHTML = `<span style="font-size:1.5rem;">🚵‍♂️</span><strong>Pedal Point</strong><small>3D downhill MTB & melody trails</small>`;
         btnContainer.appendChild(mtbBtn);
     }
+
+    if (!document.getElementById('btn-arcade-chordbowl')) {
+        const bowlBtn = document.createElement('button');
+        bowlBtn.type = 'button';
+        bowlBtn.id = 'btn-arcade-chordbowl';
+        bowlBtn.className = 'arcade-card-btn';
+        bowlBtn.onclick = () => launchChordBowl();
+        bowlBtn.innerHTML = `<span style="font-size:1.5rem;">🎳</span><strong>ChordBowl</strong><small>MIDI pitch aim, hook &amp; pentatonic pins</small>`;
+        btnContainer.appendChild(bowlBtn);
+    }
 }
 
 function resolveReplayHandler(title, explicitReplayFn) {
@@ -191,6 +202,7 @@ function resolveReplayHandler(title, explicitReplayFn) {
     if (normalized === 'pedal point') return () => launchPedalPoint();
     if (normalized === 'rockball') return () => launchRockBall();
     if (normalized === 'erc sports rugby' || normalized === 'erc rugby') return () => launchErcRugby();
+    if (normalized === 'chordbowl') return () => launchChordBowl();
     return null;
 }
 
@@ -285,6 +297,7 @@ export function exitActiveMiniGame() {
     stopPedalPoint();
     stopRockBall();
     stopErcRugby();
+    stopChordBowl();
 
     const gridironPopup = document.getElementById('gridiron-groove-popup');
     if (gridironPopup) gridironPopup.style.display = 'none';
@@ -379,6 +392,10 @@ export function handleMiniGameNoteInput(noteStr) {
         handleErcRugbyInput(noteStr, gameBridgeHelper);
         return true;
     }
+    if (mode === 'chordBowl') {
+        handleChordBowlInput(noteStr, 86);
+        return true;
+    }
 
     if (mode === 'drop') {
         const { noteTimeline, playbackStartTime, accumulatedPauseMs, gameStats, keyPosMap } = bridge.getState();
@@ -453,6 +470,10 @@ export function handleMiniGameNoteRelease(noteStr) {
     }
     if (arcadeState.activeMiniGame === 'ercRugby') {
         handleErcRugbyRelease(noteStr);
+        return true;
+    }
+    if (arcadeState.activeMiniGame === 'chordBowl') {
+        handleChordBowlRelease(noteStr);
         return true;
     }
     return false;
@@ -1370,6 +1391,11 @@ export function launchErcRugby() {
     startErcRugby(gameBridgeHelper);
 }
 
+export function launchChordBowl() {
+    document.getElementById('game-results-modal')?.classList.remove('open');
+    startChordBowl(gameBridgeHelper);
+}
+
 Object.assign(window, {
     startSimonTaps,
     startMysteryNote,
@@ -1437,6 +1463,10 @@ Object.assign(window, {
     startErcRugby: (b) => {
         document.getElementById('game-results-modal')?.classList.remove('open');
         startErcRugby(b || gameBridgeHelper);
+    },
+    launchChordBowl,
+    startChordBowl: (b) => {
+        document.getElementById('game-results-modal')?.classList.remove('open');
+        startChordBowl(b || gameBridgeHelper);
     }
 });
-
