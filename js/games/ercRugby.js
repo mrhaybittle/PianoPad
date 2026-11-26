@@ -2464,3 +2464,4 @@ export function startErcRugby(bridge, autoStart = false) {
     renderRugbyCanvas(canvas, containerEl, state, now / 1000);
   }
   animFrameId = requestAnimationFrame(frame);
+}
