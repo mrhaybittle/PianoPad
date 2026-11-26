@@ -61,7 +61,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
   const statusEl = document.getElementById('status');
   if (statusEl) {
-    statusEl.textContent = '🏉 ERC Sports Rugby Ready! Play the closest defender note (C–G) fast when they move!';
+    statusEl.textContent = '🏉 ERC Sports Rugby Ready! Play MIDI notes to pass (C–G), steer, and kick (Bomb & Grubber)!';
   }
 
   const wrapperParent = document.getElementById('visualizer-wrapper');
@@ -91,17 +91,17 @@ export function startErcRugby(bridge, autoStart = false) {
 
   const savedBinds = (() => {
     try {
-      return JSON.parse(localStorage.getItem('erc_rugby_midi_binds_v3') || 'null');
+      return JSON.parse(localStorage.getItem('erc_rugby_midi_binds_v4') || 'null');
     } catch (e) {
       return null;
     }
   })();
 
   const defaultBinds = {
-    moveLeft:  { midi: 'f#1', key: 'A', label: '🎹 F#1 / A' },
-    moveRight: { midi: 'g#1', key: 'D', label: '🎹 G#1 / D' },
-    bomb:      { midi: 'b1',  key: 'B', label: '🎹 B1 / B' },
-    grubber:   { midi: 'c2',  key: 'N', label: '🎹 C2 / N' }
+    moveLeft:  { midi: 'f#1', label: '🎹 F#1' },
+    moveRight: { midi: 'g#1', label: '🎹 G#1' },
+    bomb:      { midi: 'b1',  label: '🎹 B1' },
+    grubber:   { midi: 'c2',  label: '🎹 C2' }
   };
 
   const state = {
@@ -176,7 +176,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
   function saveActionBinds() {
     try {
-      localStorage.setItem('erc_rugby_midi_binds_v3', JSON.stringify(state.actionBinds));
+      localStorage.setItem('erc_rugby_midi_binds_v4', JSON.stringify(state.actionBinds));
     } catch (e) {}
   }
 
@@ -340,7 +340,7 @@ export function startErcRugby(bridge, autoStart = false) {
       const action = btn.getAttribute('data-bind-action');
       const bind = state.actionBinds[action];
       const listening = state.listeningAction === action;
-      btn.textContent = listening ? 'PLAY MIDI / KEY...' : bind.label;
+      btn.textContent = listening ? 'PLAY MIDI KEY...' : bind.label;
       btn.classList.toggle('listening', listening);
     });
     syncHudAndLegend();
@@ -782,11 +782,10 @@ export function startErcRugby(bridge, autoStart = false) {
 
     if (state.listeningAction) {
       const action = state.listeningAction;
-      const existingKey = state.actionBinds[action].key || '';
       const upperNote = clean.toUpperCase();
       state.actionBinds[action] = {
-        midi: clean, key: existingKey,
-        label: existingKey ? `🎹 ${upperNote} / ${existingKey}` : `🎹 ${upperNote}`
+        midi: clean,
+        label: `🎹 ${upperNote}`
       };
       state.listeningAction = null;
       saveActionBinds();
@@ -854,7 +853,7 @@ export function startErcRugby(bridge, autoStart = false) {
     hudEl.style.display = 'flex'; legendEl.style.display = 'block'; pianoStripEl.style.display = 'flex';
     syncHudAndLegend();
     playRefWhistle('long');
-    addCallout('KICK OFF! PASS WITH C–G OR STEER LEFT/RIGHT!', 0.5, 0.74, '#fef08a');
+    addCallout('KICK OFF! PLAY MIDI C–G TO PASS & BOUND KEYS TO STEER/KICK!', 0.5, 0.74, '#fef08a');
   }
 
   function finishMatch() {
@@ -1335,7 +1334,7 @@ export function startErcRugby(bridge, autoStart = false) {
     btn.addEventListener('click', () => {
       state.listeningAction = btn.getAttribute('data-bind-action');
       containerEl.querySelector('#erc-keybind-notice').textContent =
-        `🎹 Listening for ${state.listeningAction.toUpperCase()}... play ANY MIDI piano key or press a computer key (Esc to cancel).`;
+        `🎹 Listening for ${state.listeningAction.toUpperCase()}... play ANY MIDI piano key (Esc to cancel).`;
       refreshKeybindButtons(); btn.blur();
     });
   });
@@ -1351,89 +1350,26 @@ export function startErcRugby(bridge, autoStart = false) {
 
   containerEl.querySelector('#erc-start-match-btn').addEventListener('click', startMatch);
 
-  const PIANOPAD_QWERTY = new Set([
-    'z','s','x','d','c','v','g','b','h','n','j','m',',','l','.',
-    '1','q','w','3','e','4','r','5','t','y','7','u','8','i','o','0','p'
-  ]);
-
+  // QWERTY keyboard input is intentionally disabled; only Escape (cancel bind) and conversion strike keys are handled here
   const onKeyDown = (e) => {
-    const keyUpper = (e.key || '').toUpperCase();
-    const keyLower = (e.key || '').toLowerCase();
-
-    if (state.listeningAction) {
-      if (e.key === 'Escape') {
-        e.preventDefault(); e.stopPropagation(); state.listeningAction = null;
-        containerEl.querySelector('#erc-keybind-notice').textContent = 'Binding cancelled.';
-        refreshKeybindButtons(); return;
-      }
-      if (PIANOPAD_QWERTY.has(keyLower)) return;
-      const keyLabel = e.key === 'ArrowLeft' ? '←' : e.key === 'ArrowRight' ? '→' : keyUpper;
-      if ((keyUpper.length === 1 && /\S/.test(keyUpper)) || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        e.preventDefault(); e.stopPropagation();
-        const action = state.listeningAction;
-        const existingMidi = state.actionBinds[action].midi;
-        state.actionBinds[action] = {
-          midi: existingMidi, key: keyLabel,
-          label: existingMidi ? `🎹 ${existingMidi.toUpperCase()} / ${keyLabel}` : `KEY: ${keyLabel}`
-        };
-        state.listeningAction = null; saveActionBinds();
-        containerEl.querySelector('#erc-keybind-notice').textContent = `✅ ${action.toUpperCase()} bound to "${keyLabel}".`;
-        refreshKeybindButtons();
-      }
+    if (state.listeningAction && e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      state.listeningAction = null;
+      containerEl.querySelector('#erc-keybind-notice').textContent = 'Binding cancelled.';
+      refreshKeybindButtons();
       return;
     }
 
-    if (state.phase !== 'playing') return;
-
-    if (state.playState === 'conversionKick') {
-      if (e.key === 'ArrowLeft' || keyUpper === (state.actionBinds.moveLeft.key || '').toUpperCase()) {
-        e.preventDefault(); state.moveInput.leftHeld = true; return;
+    if (state.phase === 'playing' && state.playState === 'conversionKick') {
+      if (e.code === 'Space' || e.key === 'Enter') {
+        e.preventDefault();
+        submitConversionStrike();
       }
-      if (e.key === 'ArrowRight' || keyUpper === (state.actionBinds.moveRight.key || '').toUpperCase()) {
-        e.preventDefault(); state.moveInput.rightHeld = true; return;
-      }
-      if (e.code === 'Space' || e.key === 'Enter' || NOTE_TO_INDEX[keyUpper] !== undefined) {
-        e.preventDefault(); submitConversionStrike();
-      }
-      return;
-    }
-
-    if (state.playState === 'tryCelebration') return;
-
-    if (e.key === 'ArrowLeft' || keyUpper === (state.actionBinds.moveLeft.key || '').toUpperCase()) {
-      if (state.possession === 'home') releasePlayTheBall();
-      state.moveInput.leftHeld = true; return;
-    }
-    if (e.key === 'ArrowRight' || keyUpper === (state.actionBinds.moveRight.key || '').toUpperCase()) {
-      if (state.possession === 'home') releasePlayTheBall();
-      state.moveInput.rightHeld = true; return;
-    }
-
-    if (e.repeat) return;
-
-    if (keyUpper && keyUpper === (state.actionBinds.bomb.key || '').toUpperCase()) {
-      e.preventDefault(); launchKick('bomb'); return;
-    }
-    if (keyUpper && keyUpper === (state.actionBinds.grubber.key || '').toUpperCase()) {
-      e.preventDefault(); launchKick('grubber'); return;
-    }
-
-    if (!PIANOPAD_QWERTY.has(keyLower) && NOTE_TO_INDEX[keyUpper] !== undefined) {
-      highlightStripButton(keyUpper);
-      if (PIANO_FREQS[keyUpper]) playTone(PIANO_FREQS[keyUpper], 0.22, 0.8);
-      handleNoteCDEFG(NOTE_TO_INDEX[keyUpper]);
     }
   };
 
-  const onKeyUp = (e) => {
-    const keyUpper = (e.key || '').toUpperCase();
-    if (e.key === 'ArrowLeft' || keyUpper === (state.actionBinds.moveLeft.key || '').toUpperCase()) {
-      state.moveInput.leftHeld = false;
-    }
-    if (e.key === 'ArrowRight' || keyUpper === (state.actionBinds.moveRight.key || '').toUpperCase()) {
-      state.moveInput.rightHeld = false;
-    }
-  };
+  const onKeyUp = () => {};
 
   window.addEventListener('keydown', onKeyDown, { capture: true });
   window.addEventListener('keyup', onKeyUp, { capture: true });
