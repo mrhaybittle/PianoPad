@@ -19,6 +19,15 @@ let containerEl = null;
 let bridgeRef = null;
 let activeController = null;
 
+function normalizeMidiNote(noteStr) {
+  if (noteStr === null || noteStr === undefined) return '';
+  if (typeof noteStr === 'object') {
+    if (noteStr.velocity === 0) return '';
+    return String(noteStr.note || noteStr.midi || noteStr.key || '').trim().toLowerCase();
+  }
+  return String(noteStr).trim().toLowerCase();
+}
+
 export function stopErcRugby() {
   if (animFrameId !== null) {
     cancelAnimationFrame(animFrameId);
@@ -35,6 +44,12 @@ export function stopErcRugby() {
 }
 
 export function handleErcRugbyInput(noteStr, bridge) {
+  if (noteStr && typeof noteStr === 'object' && noteStr.velocity === 0) {
+    if (activeController && activeController.onPianoNoteUp) {
+      activeController.onPianoNoteUp(noteStr.note || noteStr.midi || noteStr.key);
+    }
+    return;
+  }
   if (activeController && activeController.onPianoNoteDown) {
     activeController.onPianoNoteDown(noteStr, bridge);
   }
@@ -152,6 +167,7 @@ export function startErcRugby(bridge, autoStart = false) {
       kickingSide: 'home',
       receiverSide: 'away',
       holdMidi: null,
+      aimStartedAt: 0,
       power: 0.5,
       powerDir: 1,
       powerSpeed: 1.55,
@@ -231,6 +247,12 @@ export function startErcRugby(bridge, autoStart = false) {
     screenShake: { timer: 0, duration: 0.32, intensity: 13 }
   };
 
+  function saveActionBinds() {
+    try {
+      localStorage.setItem('erc_rugby_midi_binds_v5', JSON.stringify(state.actionBinds));
+    } catch (e) {}
+  }
+
   function resetAllBallFlightFlags() {
     state.passState.active = false;
     state.passState.progress = 0;
@@ -245,6 +267,7 @@ export function startErcRugby(bridge, autoStart = false) {
     state.kick3D.active = false;
     state.kick3D.aiming = false;
     state.kick3D.holdMidi = null;
+    state.kick3D.aimStartedAt = 0;
     state.kick3D.flightProgress = 0;
     state.kick3D.flightElapsed = 0;
     state.kick3D.z = 0;
@@ -439,7 +462,7 @@ export function startErcRugby(bridge, autoStart = false) {
     }
 
     if (inp.type === 'noteDown' && inp.note) {
-      const clean = String(inp.note).trim().toLowerCase();
+      const clean = normalizeMidiNote(inp.note);
       if (state.playState === 'kickoff3D' && state.kick3D.kickingSide === 'away' && !state.kick3D.aiming) {
         start3DKickAimOrCharge('kickoff', clean);
         return;
@@ -455,6 +478,7 @@ export function startErcRugby(bridge, autoStart = false) {
             state.kick3D.kickingSide = 'away';
             state.kick3D.receiverSide = 'home';
             state.kick3D.holdMidi = clean;
+            state.kick3D.aimStartedAt = performance.now();
             state.kick3D.power = 0.25;
             state.kick3D.powerDir = 1;
             state.kick3D.aimCurve = 0;
@@ -850,6 +874,7 @@ export function startErcRugby(bridge, autoStart = false) {
     state.kick3D.kickingSide = kickerSide;
     state.kick3D.receiverSide = receiverSide;
     state.kick3D.holdMidi = null;
+    state.kick3D.aimStartedAt = performance.now();
     state.kick3D.power = 0.45;
     state.kick3D.powerDir = 1;
     state.kick3D.powerSpeed = 1.55;
@@ -887,7 +912,8 @@ export function startErcRugby(bridge, autoStart = false) {
     if (state.playState === 'kickoff3D') {
       if (!state.kick3D.active || state.kick3D.kickingSide !== 'home') return;
       state.kick3D.aiming = true;
-      state.kick3D.holdMidi = midiKey;
+      state.kick3D.holdMidi = normalizeMidiNote(midiKey);
+      state.kick3D.aimStartedAt = performance.now();
       state.kick3D.power = 0.25;
       state.kick3D.powerDir = 1;
       return;
@@ -902,7 +928,8 @@ export function startErcRugby(bridge, autoStart = false) {
     state.kick3D.kind = kind;
     state.kick3D.kickingSide = 'home';
     state.kick3D.receiverSide = 'away';
-    state.kick3D.holdMidi = midiKey;
+    state.kick3D.holdMidi = normalizeMidiNote(midiKey);
+    state.kick3D.aimStartedAt = performance.now();
     state.kick3D.power = 0.22;
     state.kick3D.powerDir = 1;
     state.kick3D.powerSpeed = kind === 'chip' ? 1.85 : 1.55;
@@ -921,7 +948,7 @@ export function startErcRugby(bridge, autoStart = false) {
     });
 
     const labelMap = { bomb: '3D BOMB AIM', grubber: '3D GRUBBER AIM', chip: '3D CHIP KICK AIM' };
-    addCallout(`${labelMap[kind] || '3D KICK'} — STEER & RELEASE KEY!`, kicker.x, kicker.y - 0.05, '#fde047');
+    addCallout(`${labelMap[kind] || '3D KICK'} — RELEASE KEY TO STRIKE!`, kicker.x, kicker.y - 0.05, '#fde047');
   }
 
   function release3DKickStrike() {
@@ -929,6 +956,7 @@ export function startErcRugby(bridge, autoStart = false) {
     if (!k3.active || !k3.aiming) return;
     k3.aiming = false;
     k3.holdMidi = null;
+    k3.aimStartedAt = 0;
 
     const dirSign = k3.kickingSide === 'home' ? -1 : 1;
     const p = Math.max(0.15, Math.min(1.0, k3.power));
@@ -1506,7 +1534,12 @@ export function startErcRugby(bridge, autoStart = false) {
     }
     if (state.phase !== 'playing' || state.possession !== 'home') return;
     if (state.playState === 'conversionKick') { submitConversionStrike(); return; }
-    if (state.playState === 'tryCelebration' || state.kickBall.active || state.kick3D.active || state.passState.active) return;
+    if (state.playState === 'tryCelebration') return;
+    if (state.kick3D.active && state.kick3D.aiming) {
+      release3DKickStrike();
+      return;
+    }
+    if (state.kickBall.active || state.kick3D.active || state.passState.active) return;
     start3DKickAimOrCharge(kind, midiKey);
   }
 
@@ -1520,15 +1553,16 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   function isKickBindMidi(clean) {
+    const normalized = normalizeMidiNote(clean);
     return (
-      state.actionBinds.bomb?.midi === clean ||
-      state.actionBinds.grubber?.midi === clean ||
-      state.actionBinds.chipKick?.midi === clean
+      normalizeMidiNote(state.actionBinds.bomb?.midi) === normalized ||
+      normalizeMidiNote(state.actionBinds.grubber?.midi) === normalized ||
+      normalizeMidiNote(state.actionBinds.chipKick?.midi) === normalized
     );
   }
 
   function onPianoNoteDown(noteStr) {
-    const clean = (noteStr || '').trim().toLowerCase();
+    const clean = normalizeMidiNote(noteStr);
     if (!clean) return;
 
     const freq = getNoteFrequency(clean);
@@ -1553,25 +1587,25 @@ export function startErcRugby(bridge, autoStart = false) {
     }
 
     if (state.multiplayer.mode === 'join') {
-      if (state.actionBinds.moveLeft.midi === clean) {
+      if (normalizeMidiNote(state.actionBinds.moveLeft.midi) === clean) {
         state.moveInput.leftHeld = true;
         sendGuestInputToHost({ type: 'steer', dir: 'leftDown' });
         return;
       }
-      if (state.actionBinds.moveRight.midi === clean) {
+      if (normalizeMidiNote(state.actionBinds.moveRight.midi) === clean) {
         state.moveInput.rightHeld = true;
         sendGuestInputToHost({ type: 'steer', dir: 'rightDown' });
         return;
       }
-      if (state.actionBinds.bomb?.midi === clean) {
+      if (normalizeMidiNote(state.actionBinds.bomb?.midi) === clean) {
         sendGuestInputToHost({ type: 'noteDown', note: clean, kickKind: 'bomb' });
         return;
       }
-      if (state.actionBinds.grubber?.midi === clean) {
+      if (normalizeMidiNote(state.actionBinds.grubber?.midi) === clean) {
         sendGuestInputToHost({ type: 'noteDown', note: clean, kickKind: 'grubber' });
         return;
       }
-      if (state.actionBinds.chipKick?.midi === clean) {
+      if (normalizeMidiNote(state.actionBinds.chipKick?.midi) === clean) {
         sendGuestInputToHost({ type: 'noteDown', note: clean, kickKind: 'chip' });
         return;
       }
@@ -1586,10 +1620,10 @@ export function startErcRugby(bridge, autoStart = false) {
     if (state.phase !== 'playing') return;
 
     if (state.playState === 'conversionKick') {
-      if (state.actionBinds.moveLeft.midi === clean) {
+      if (normalizeMidiNote(state.actionBinds.moveLeft.midi) === clean) {
         state.moveInput.leftHeld = true; state.moveInput.leftTapTimer = 0.22; return;
       }
-      if (state.actionBinds.moveRight.midi === clean) {
+      if (normalizeMidiNote(state.actionBinds.moveRight.midi) === clean) {
         state.moveInput.rightHeld = true; state.moveInput.rightTapTimer = 0.22; return;
       }
       submitConversionStrike();
@@ -1598,27 +1632,31 @@ export function startErcRugby(bridge, autoStart = false) {
 
     if (state.playState === 'tryCelebration') return;
 
-    if (state.actionBinds.moveLeft.midi === clean) {
+    if (normalizeMidiNote(state.actionBinds.moveLeft.midi) === clean) {
       if (state.possession === 'home' && state.playState !== 'kickoff3D') releasePlayTheBall();
       state.moveInput.leftHeld = true; state.moveInput.leftTapTimer = 0.22; state.moveInput.rightTapTimer = 0;
       return;
     }
-    if (state.actionBinds.moveRight.midi === clean) {
+    if (normalizeMidiNote(state.actionBinds.moveRight.midi) === clean) {
       if (state.possession === 'home' && state.playState !== 'kickoff3D') releasePlayTheBall();
       state.moveInput.rightHeld = true; state.moveInput.rightTapTimer = 0.22; state.moveInput.leftTapTimer = 0;
       return;
     }
 
     if (state.playState === 'kickoff3D') {
-      if (state.kick3D.kickingSide === 'home' && !state.kick3D.aiming) {
-        start3DKickAimOrCharge('kickoff', clean);
+      if (state.kick3D.kickingSide === 'home') {
+        if (!state.kick3D.aiming) {
+          start3DKickAimOrCharge('kickoff', clean);
+        } else if (performance.now() - (state.kick3D.aimStartedAt || 0) > 120) {
+          release3DKickStrike();
+        }
       }
       return;
     }
 
-    if (state.actionBinds.bomb?.midi === clean) { launchKick('bomb', clean); return; }
-    if (state.actionBinds.grubber?.midi === clean) { launchKick('grubber', clean); return; }
-    if (state.actionBinds.chipKick?.midi === clean) { launchKick('chip', clean); return; }
+    if (normalizeMidiNote(state.actionBinds.bomb?.midi) === clean) { launchKick('bomb', clean); return; }
+    if (normalizeMidiNote(state.actionBinds.grubber?.midi) === clean) { launchKick('grubber', clean); return; }
+    if (normalizeMidiNote(state.actionBinds.chipKick?.midi) === clean) { launchKick('chip', clean); return; }
 
     const m = clean.toUpperCase().match(/^([A-G])(#?)/);
     if (!m || m[2] === '#') return;
@@ -1630,15 +1668,15 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   function onPianoNoteUp(noteStr) {
-    const clean = (noteStr || '').trim().toLowerCase();
+    const clean = normalizeMidiNote(noteStr);
     if (!clean) return;
 
     if (state.multiplayer.mode === 'join') {
-      if (state.actionBinds.moveLeft.midi === clean) {
+      if (normalizeMidiNote(state.actionBinds.moveLeft.midi) === clean) {
         state.moveInput.leftHeld = false;
         sendGuestInputToHost({ type: 'steer', dir: 'leftUp' });
       }
-      if (state.actionBinds.moveRight.midi === clean) {
+      if (normalizeMidiNote(state.actionBinds.moveRight.midi) === clean) {
         state.moveInput.rightHeld = false;
         sendGuestInputToHost({ type: 'steer', dir: 'rightUp' });
       }
@@ -1648,11 +1686,12 @@ export function startErcRugby(bridge, autoStart = false) {
       return;
     }
 
-    if (state.actionBinds.moveLeft.midi === clean) state.moveInput.leftHeld = false;
-    if (state.actionBinds.moveRight.midi === clean) state.moveInput.rightHeld = false;
+    if (normalizeMidiNote(state.actionBinds.moveLeft.midi) === clean) state.moveInput.leftHeld = false;
+    if (normalizeMidiNote(state.actionBinds.moveRight.midi) === clean) state.moveInput.rightHeld = false;
 
     if (state.kick3D.active && state.kick3D.aiming) {
-      if (!state.kick3D.holdMidi || state.kick3D.holdMidi === clean || isKickBindMidi(clean)) {
+      const heldKey = normalizeMidiNote(state.kick3D.holdMidi);
+      if (!heldKey || heldKey === clean || isKickBindMidi(clean) || state.kick3D.kind === 'kickoff') {
         release3DKickStrike();
       }
     }
@@ -1660,6 +1699,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
   async function startMatch() {
     if (state.multiplayer.mode === 'join') return;
+    state.listeningAction = null;
     if (state.pokie.spinning) {
       state.pokie.spinning = false;
       state.awayTeam = TEAMS.find((t) => t.id === state.pokie.targetId) || TEAMS[1];
@@ -2304,11 +2344,21 @@ export function startErcRugby(bridge, autoStart = false) {
 
   containerEl.querySelectorAll('.piano-key-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
+      if (state.kick3D.active && state.kick3D.aiming) {
+        release3DKickStrike();
+        return;
+      }
       const note = btn.getAttribute('data-note');
       highlightStripButton(note);
       if (PIANO_FREQS[note]) playTone(PIANO_FREQS[note], 0.22, 0.8);
       handleNoteCDEFG(NOTE_TO_INDEX[note]);
     });
+  });
+
+  canvas?.addEventListener('pointerdown', () => {
+    if (state.kick3D.active && state.kick3D.aiming && state.kick3D.kickingSide === 'home') {
+      release3DKickStrike();
+    }
   });
 
   containerEl.querySelector('#erc-start-match-btn').addEventListener('click', startMatch);
