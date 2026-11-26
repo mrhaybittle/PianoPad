@@ -2248,7 +2248,7 @@ export function startErcRugby(bridge, autoStart = false) {
       }
     }
 
-    state.tacklePause.onsideY += -attackDir * 0.095 * dt;
+    state.tacklePause.onsideY += -attackDir * 0.072 * dt;
 
     for (let i = 0; i < 5; i++) {
       const d = defenders[i];
