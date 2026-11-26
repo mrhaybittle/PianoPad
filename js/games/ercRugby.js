@@ -105,6 +105,10 @@ export function startErcRugby(bridge, autoStart = false) {
     chipKick:  { midi: 'd2',  label: '🎹 D2' }
   };
 
+  const sessionInfo = bridgeRef && bridgeRef.getState ? bridgeRef.getState() : {};
+  const localPlayerId = sessionInfo.localStudentId || ('rugby_' + Math.random().toString(36).slice(2, 8));
+  const localPlayerName = sessionInfo.sessionStudentName || window.pianoPadUser?.generatedName || 'Player';
+
   const state = {
     phase: 'menu',
     possession: 'home',
@@ -116,6 +120,18 @@ export function startErcRugby(bridge, autoStart = false) {
     homeScore: 0,
     awayScore: 0,
     matchTime: 120,
+
+    multiplayer: {
+      mode: 'solo', // 'solo' | 'host' | 'join'
+      role: 'home', // 'home' (P1) | 'away' (P2)
+      roomCode: '',
+      connected: false,
+      guestJoined: false,
+      hostStarted: false,
+      unsubscribe: null,
+      lastSnapshotPush: 0,
+      lastProcessedInputSeq: 0
+    },
 
     coinToss: {
       active: false,
@@ -132,7 +148,6 @@ export function startErcRugby(bridge, autoStart = false) {
     kick3D: {
       active: false,
       aiming: false,
-      inFlight: false,
       kind: 'kickoff', // 'kickoff' | 'bomb' | 'grubber' | 'chip'
       kickingSide: 'home',
       receiverSide: 'away',
@@ -140,7 +155,7 @@ export function startErcRugby(bridge, autoStart = false) {
       power: 0.5,
       powerDir: 1,
       powerSpeed: 1.55,
-      aimCurve: 0, // -1 (left curve) to +1 (right curve)
+      aimCurve: 0,
       startX: 0.5,
       startY: 0.84,
       x: 0.5,
@@ -214,10 +229,455 @@ export function startErcRugby(bridge, autoStart = false) {
     screenShake: { timer: 0, duration: 0.32, intensity: 13 }
   };
 
-  function saveActionBinds() {
+  function getRugbyRoomRef(roomCode) {
+    if (!window.firebaseDb || !window.firebaseRef || !roomCode) return null;
+    return window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${roomCode}/rugby`);
+  }
+
+  function detachMultiplayerRoom() {
+    if (state.multiplayer.unsubscribe) {
+      try { state.multiplayer.unsubscribe(); } catch (e) {}
+      state.multiplayer.unsubscribe = null;
+    }
+    state.multiplayer.connected = false;
+    state.multiplayer.guestJoined = false;
+    state.multiplayer.hostStarted = false;
+    state.multiplayer.lastProcessedInputSeq = 0;
+  }
+
+  function updateMultiplayerUi() {
+    if (!containerEl) return;
+    const mp = state.multiplayer;
+    const soloBtn = containerEl.querySelector('#erc-mp-solo-btn');
+    const hostBtn = containerEl.querySelector('#erc-mp-host-btn');
+    const joinBtn = containerEl.querySelector('#erc-mp-join-btn');
+    const codeInput = containerEl.querySelector('#erc-mp-code-input');
+    const statusEl = containerEl.querySelector('#erc-mp-status');
+    const teamLabel = containerEl.querySelector('#erc-team-select-label');
+    const oppTitle = containerEl.querySelector('#erc-opponent-panel-title');
+    const oppHint = containerEl.querySelector('#erc-opponent-reel-hint');
+    const respinBtn = containerEl.querySelector('#erc-respin-btn');
+
+    soloBtn?.classList.toggle('active-mp', mp.mode === 'solo');
+    hostBtn?.classList.toggle('active-mp', mp.mode === 'host');
+    joinBtn?.classList.toggle('active-mp', mp.mode === 'join');
+
+    if (codeInput && mp.roomCode) {
+      codeInput.value = mp.roomCode;
+    }
+
+    if (mp.mode === 'solo') {
+      if (teamLabel) teamLabel.textContent = 'Your Team (Home)';
+      if (oppTitle) oppTitle.textContent = 'Computer Opponent (Pokie Reel)';
+      if (oppHint) oppHint.textContent = 'Spins when team changes';
+      if (respinBtn) respinBtn.style.display = 'inline-block';
+      if (statusEl) statusEl.textContent = 'Mode: 1P vs Computer';
+    } else if (mp.mode === 'host') {
+      if (teamLabel) teamLabel.textContent = 'Player 1 Team (Home — You)';
+      if (oppTitle) oppTitle.textContent = 'Player 2 Team (Away — Guest)';
+      if (oppHint) oppHint.textContent = mp.guestJoined ? 'Guest picked their team' : 'Waiting for P2 to join...';
+      if (respinBtn) respinBtn.style.display = 'none';
+      if (statusEl) {
+        statusEl.textContent = mp.connected
+          ? `Host Room ${mp.roomCode} • ${mp.guestJoined ? 'P2 Linked!' : 'Share code with P2'}`
+          : `Ready to create Room ${mp.roomCode || '---'}`;
+      }
+    } else {
+      if (teamLabel) teamLabel.textContent = 'Player 2 Team (Away — You)';
+      if (oppTitle) oppTitle.textContent = 'Player 1 Team (Home — Host)';
+      if (oppHint) oppHint.textContent = 'Synced from Host';
+      if (respinBtn) respinBtn.style.display = 'none';
+      if (statusEl) {
+        statusEl.textContent = mp.connected
+          ? `Joined Room ${mp.roomCode} as Player 2 (Away)`
+          : 'Enter Host code & click Link';
+      }
+    }
+  }
+
+  function syncTeamSelectionToUi() {
+    if (!containerEl || !teamSelectEl) return;
+    const myTeam = state.multiplayer.role === 'away' ? state.awayTeam : state.homeTeam;
+    teamSelectEl.value = myTeam.id;
+    containerEl.querySelector('#erc-player-swatch').style.background =
+      `linear-gradient(135deg, ${myTeam.primary} 55%, ${myTeam.secondary} 55%)`;
+    containerEl.querySelector('#erc-player-title').textContent = myTeam.name;
+    containerEl.querySelector('#erc-player-chant').textContent = myTeam.chant;
+
+    const oppTeam = state.multiplayer.role === 'away' ? state.homeTeam : state.awayTeam;
+    containerEl.querySelector('#erc-pokie-name').textContent = oppTeam.name;
+    containerEl.querySelector('#erc-pokie-sub').textContent = oppTeam.chant;
+    containerEl.querySelector('#erc-matchup-summary').textContent =
+      `${state.homeTeam.name} (Home) vs ${state.awayTeam.name} (Away) • Jerseys: C D E F G`;
+
+    const squadEl = containerEl.querySelector('#erc-wolfhound-squad');
+    const facesRowEl = containerEl.querySelector('#erc-wolfhound-faces');
+    if (squadEl && facesRowEl) {
+      if (myTeam.isWolfHounds) {
+        squadEl.style.display = 'block';
+        facesRowEl.innerHTML = '';
+        LANE_NOTES.forEach((note) => {
+          const meta = WOLFHUND_FACES[note] || { title: note };
+          const card = document.createElement('div');
+          card.className = 'wolfhound-face-card';
+
+          const faceCanvas = getWolfhoundFaceCanvas(note, myTeam);
+          const displayCanvas = document.createElement('canvas');
+          displayCanvas.width = faceCanvas.width;
+          displayCanvas.height = faceCanvas.height;
+          const dctx = displayCanvas.getContext('2d');
+          dctx.imageSmoothingEnabled = false;
+          dctx.drawImage(faceCanvas, 0, 0);
+
+          const noteTag = document.createElement('span');
+          noteTag.className = 'font-sports';
+          noteTag.style.cssText = 'font-size:9.5px; font-weight:800; color:#fde047; line-height:1;';
+          noteTag.textContent = `${note} • ${meta.title.split(' ')[0]}`;
+
+          card.appendChild(displayCanvas);
+          card.appendChild(noteTag);
+          facesRowEl.appendChild(card);
+        });
+      } else {
+        squadEl.style.display = 'none';
+      }
+    }
+  }
+
+  async function sendGuestInputToHost(inputPayload) {
+    const mp = state.multiplayer;
+    if (mp.mode !== 'join' || !mp.connected || !mp.roomCode) return;
+    const roomRef = getRugbyRoomRef(mp.roomCode);
+    if (!roomRef) return;
+    const seq = Date.now() + Math.floor(Math.random() * 100);
     try {
-      localStorage.setItem('erc_rugby_midi_binds_v5', JSON.stringify(state.actionBinds));
+      if (window.firebaseUpdate) {
+        await window.firebaseUpdate(roomRef, {
+          guestInput: {
+            seq,
+            fromId: localPlayerId,
+            ...inputPayload
+          }
+        });
+      } else if (window.firebaseSet) {
+        await window.firebaseSet(
+          window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${mp.roomCode}/rugby/guestInput`),
+          { seq, fromId: localPlayerId, ...inputPayload }
+        );
+      }
     } catch (e) {}
+  }
+
+  function applyGuestInputOnHost(inp) {
+    if (!inp || !inp.seq || inp.seq <= state.multiplayer.lastProcessedInputSeq) return;
+    state.multiplayer.lastProcessedInputSeq = inp.seq;
+
+    if (inp.type === 'teamSelect' && inp.teamId) {
+      const picked = TEAMS.find((t) => t.id === inp.teamId);
+      if (picked) {
+        state.awayTeam = picked;
+        syncTeamSelectionToUi();
+        syncHudAndLegend();
+      }
+      return;
+    }
+
+    if (inp.type === 'coinChoice' && (inp.choice === 'heads' || inp.choice === 'tails')) {
+      state.coinToss.choice = inp.choice;
+      updateCoinTossUi();
+      return;
+    }
+
+    if (inp.type === 'tossProceed' && state.coinToss.resolved) {
+      beginKickoffSequence();
+      return;
+    }
+
+    if (inp.type === 'steer') {
+      if (inp.dir === 'leftDown') {
+        state.moveInput.leftHeld = true;
+        state.moveInput.leftTapTimer = 0.22;
+      } else if (inp.dir === 'leftUp') {
+        state.moveInput.leftHeld = false;
+      } else if (inp.dir === 'rightDown') {
+        state.moveInput.rightHeld = true;
+        state.moveInput.rightTapTimer = 0.22;
+      } else if (inp.dir === 'rightUp') {
+        state.moveInput.rightHeld = false;
+      }
+      return;
+    }
+
+    if (inp.type === 'noteDown' && inp.note) {
+      const clean = String(inp.note).trim().toLowerCase();
+      if (state.playState === 'kickoff3D' && state.kick3D.kickingSide === 'away' && !state.kick3D.aiming) {
+        start3DKickAimOrCharge('kickoff', clean);
+        return;
+      }
+      if (state.possession === 'away' && !state.kick3D.active && !state.kickBall.active && !state.passState.active) {
+        if (inp.kickKind) {
+          releasePlayTheBall();
+          const kicker = state.awayPlayers[state.carrierIndex];
+          if (kicker) {
+            state.kick3D.active = true;
+            state.kick3D.aiming = true;
+            state.kick3D.kind = inp.kickKind;
+            state.kick3D.kickingSide = 'away';
+            state.kick3D.receiverSide = 'home';
+            state.kick3D.holdMidi = clean;
+            state.kick3D.power = 0.25;
+            state.kick3D.powerDir = 1;
+            state.kick3D.aimCurve = 0;
+            state.kick3D.startX = kicker.x;
+            state.kick3D.startY = kicker.y;
+            state.kick3D.x = kicker.x;
+            state.kick3D.y = kicker.y;
+            state.kick3D.z = 0.03;
+            state.kick3D.flightProgress = 0;
+          }
+          return;
+        }
+        const m = clean.toUpperCase().match(/^([A-G])(#?)/);
+        if (m && m[2] !== '#' && NOTE_TO_INDEX[m[1]] !== undefined) {
+          const targetIdx = NOTE_TO_INDEX[m[1]];
+          releasePlayTheBall();
+          const passer = state.awayPlayers[state.carrierIndex];
+          if (targetIdx === state.carrierIndex && passer) {
+            passer.vy = 0.22;
+          } else if (passer) {
+            const receiver = state.awayPlayers[targetIdx];
+            playPassSound();
+            state.passState.active = true;
+            state.passState.fromIdx = state.carrierIndex;
+            state.passState.toIdx = targetIdx;
+            state.passState.startX = passer.x;
+            state.passState.startY = passer.y;
+            state.passState.x = passer.x;
+            state.passState.y = passer.y;
+            state.passState.progress = 0;
+            state.passState.duration = 0.14 + Math.abs(targetIdx - state.carrierIndex) * 0.05;
+            state.passState.isForwardPass = receiver.y > passer.y + 0.006;
+          }
+        }
+      }
+      return;
+    }
+
+    if (inp.type === 'noteUp') {
+      if (state.kick3D.active && state.kick3D.aiming && state.kick3D.kickingSide === 'away') {
+        release3DKickStrike();
+      }
+    }
+  }
+
+  function serializeCompactPlayers(arr) {
+    return (arr || []).map((p) => ({
+      x: Number((p.x || 0.5).toFixed(3)),
+      y: Number((p.y || 0.5).toFixed(3)),
+      vx: Number((p.vx || 0).toFixed(3)),
+      vy: Number((p.vy || 0).toFixed(3)),
+      animSpeedX: Number((p.animSpeedX || 0).toFixed(3)),
+      animSpeedY: Number((p.animSpeedY || 0).toFixed(3)),
+      strideTimer: Number((p.strideTimer || 0).toFixed(2)),
+      overrun: Boolean(p.overrun),
+      isScorer: Boolean(p.isScorer)
+    }));
+  }
+
+  async function pushHostSnapshot(force = false) {
+    const mp = state.multiplayer;
+    if (mp.mode !== 'host' || !mp.connected || !mp.roomCode) return;
+    const now = performance.now();
+    if (!force && now - mp.lastSnapshotPush < 65) return;
+    mp.lastSnapshotPush = now;
+
+    const roomRef = getRugbyRoomRef(mp.roomCode);
+    if (!roomRef) return;
+
+    const snapshot = {
+      phase: state.phase,
+      playState: state.playState,
+      possession: state.possession,
+      tackleCount: state.tackleCount,
+      homeTeamId: state.homeTeam.id,
+      awayTeamId: state.awayTeam.id,
+      homeScore: state.homeScore,
+      awayScore: state.awayScore,
+      matchTime: Number(state.matchTime.toFixed(1)),
+      carrierIndex: state.carrierIndex,
+      selectedDefenderIdx: state.selectedDefenderIdx,
+      homePlayers: serializeCompactPlayers(state.homePlayers),
+      awayPlayers: serializeCompactPlayers(state.awayPlayers),
+      passState: { ...state.passState },
+      kick3D: { ...state.kick3D, holdMidi: null },
+      coinToss: { ...state.coinToss },
+      tacklePause: { ...state.tacklePause },
+      callouts: state.callouts.slice(-4),
+      updatedAt: Date.now()
+    };
+
+    try {
+      if (window.firebaseUpdate) {
+        await window.firebaseUpdate(roomRef, { snapshot });
+      }
+    } catch (e) {}
+  }
+
+  function applyHostSnapshotOnGuest(snap) {
+    if (!snap || state.multiplayer.mode !== 'join') return;
+    if (snap.homeTeamId) {
+      state.homeTeam = TEAMS.find((t) => t.id === snap.homeTeamId) || state.homeTeam;
+    }
+    if (snap.awayTeamId) {
+      state.awayTeam = TEAMS.find((t) => t.id === snap.awayTeamId) || state.awayTeam;
+    }
+
+    state.phase = snap.phase || state.phase;
+    state.playState = snap.playState || state.playState;
+    state.possession = snap.possession || state.possession;
+    state.tackleCount = snap.tackleCount ?? state.tackleCount;
+    state.homeScore = snap.homeScore ?? state.homeScore;
+    state.awayScore = snap.awayScore ?? state.awayScore;
+    if (typeof snap.matchTime === 'number') state.matchTime = snap.matchTime;
+    if (typeof snap.carrierIndex === 'number') state.carrierIndex = snap.carrierIndex;
+    if (typeof snap.selectedDefenderIdx === 'number') state.selectedDefenderIdx = snap.selectedDefenderIdx;
+
+    if (Array.isArray(snap.homePlayers) && snap.homePlayers.length === 5) {
+      state.homePlayers = snap.homePlayers.map((p, i) => Object.assign(makePlayerEntity(i, p.x, p.y), p));
+    }
+    if (Array.isArray(snap.awayPlayers) && snap.awayPlayers.length === 5) {
+      state.awayPlayers = snap.awayPlayers.map((p, i) => Object.assign(makePlayerEntity(i, p.x, p.y), p));
+    }
+    if (snap.passState) state.passState = Object.assign({}, state.passState, snap.passState);
+    if (snap.kick3D) state.kick3D = Object.assign({}, state.kick3D, snap.kick3D);
+    if (snap.coinToss) state.coinToss = Object.assign({}, state.coinToss, snap.coinToss);
+    if (snap.tacklePause) state.tacklePause = Object.assign({}, state.tacklePause, snap.tacklePause);
+    if (Array.isArray(snap.callouts)) state.callouts = snap.callouts;
+
+    if (state.phase === 'coinToss' || state.phase === 'playing') {
+      if (startModalEl) startModalEl.style.display = 'none';
+      if (hudEl) hudEl.style.display = 'flex';
+      if (legendEl) legendEl.style.display = 'block';
+      if (pianoStripEl) pianoStripEl.style.display = 'flex';
+      updateCoinTossUi();
+    }
+
+    syncTeamSelectionToUi();
+    syncHudAndLegend();
+  }
+
+  async function linkMultiplayerRoom(mode) {
+    if (!window.firebaseDb || !window.firebaseRef || !window.firebaseSet) {
+      if (containerEl) {
+        containerEl.querySelector('#erc-mp-status').textContent = 'Firebase not ready yet — try again in a moment.';
+      }
+      return;
+    }
+
+    const codeInput = containerEl?.querySelector('#erc-mp-code-input');
+    const rawCode = (codeInput?.value || '').trim().toUpperCase();
+
+    if (mode === 'solo') {
+      detachMultiplayerRoom();
+      state.multiplayer.mode = 'solo';
+      state.multiplayer.role = 'home';
+      state.multiplayer.roomCode = '';
+      updateMultiplayerUi();
+      syncTeamSelectionToUi();
+      return;
+    }
+
+    detachMultiplayerRoom();
+
+    if (mode === 'host') {
+      const code = rawCode || String(Math.floor(100 + Math.random() * 900));
+      state.multiplayer.mode = 'host';
+      state.multiplayer.role = 'home';
+      state.multiplayer.roomCode = code;
+      if (codeInput) codeInput.value = code;
+
+      const roomRef = getRugbyRoomRef(code);
+      await window.firebaseSet(roomRef, {
+        roomCode: code,
+        hostId: localPlayerId,
+        hostName: localPlayerName,
+        homeTeamId: state.homeTeam.id,
+        awayTeamId: state.awayTeam.id,
+        guestJoined: false,
+        started: false,
+        guestInput: null,
+        snapshot: null,
+        updatedAt: Date.now()
+      });
+      if (window.firebaseOnDisconnect) {
+        window.firebaseOnDisconnect(roomRef).remove();
+      }
+
+      if (window.firebaseOnValue) {
+        state.multiplayer.unsubscribe = window.firebaseOnValue(roomRef, (snap) => {
+          const val = snap.val();
+          if (!val) return;
+          state.multiplayer.connected = true;
+          state.multiplayer.guestJoined = Boolean(val.guestJoined);
+          if (val.awayTeamId) {
+            state.awayTeam = TEAMS.find((t) => t.id === val.awayTeamId) || state.awayTeam;
+          }
+          if (val.guestInput) {
+            applyGuestInputOnHost(val.guestInput);
+          }
+          updateMultiplayerUi();
+          syncTeamSelectionToUi();
+        });
+      }
+
+      state.multiplayer.connected = true;
+      updateMultiplayerUi();
+      syncTeamSelectionToUi();
+      return;
+    }
+
+    if (mode === 'join') {
+      if (!rawCode) {
+        if (containerEl) {
+          containerEl.querySelector('#erc-mp-status').textContent = 'Enter a 3–6 character Room Code first.';
+        }
+        return;
+      }
+      state.multiplayer.mode = 'join';
+      state.multiplayer.role = 'away';
+      state.multiplayer.roomCode = rawCode;
+
+      const roomRef = getRugbyRoomRef(rawCode);
+      if (window.firebaseUpdate) {
+        await window.firebaseUpdate(roomRef, {
+          guestJoined: true,
+          guestId: localPlayerId,
+          guestName: localPlayerName,
+          awayTeamId: state.awayTeam.id
+        });
+      }
+
+      if (window.firebaseOnValue) {
+        state.multiplayer.unsubscribe = window.firebaseOnValue(roomRef, (snap) => {
+          const val = snap.val();
+          if (!val) return;
+          state.multiplayer.connected = true;
+          state.multiplayer.hostStarted = Boolean(val.started);
+          if (val.homeTeamId) {
+            state.homeTeam = TEAMS.find((t) => t.id === val.homeTeamId) || state.homeTeam;
+          }
+          if (val.snapshot) {
+            applyHostSnapshotOnGuest(val.snapshot);
+          }
+          updateMultiplayerUi();
+          syncTeamSelectionToUi();
+        });
+      }
+
+      state.multiplayer.connected = true;
+      updateMultiplayerUi();
+      syncTeamSelectionToUi();
+    }
   }
 
   function addCallout(text, x, y, color = '#fef08a') {
@@ -236,13 +696,13 @@ export function startErcRugby(bridge, autoStart = false) {
 
     if (statusText) {
       if (!state.coinToss.active && !state.coinToss.resolved) {
-        statusText.textContent = `You chose ${state.coinToss.choice.toUpperCase()}. Flipping coin...`;
+        statusText.textContent = `Called ${state.coinToss.choice.toUpperCase()}. Flipping coin...`;
       } else if (state.coinToss.active) {
-        statusText.textContent = `Coin spinning in the air... You called ${state.coinToss.choice.toUpperCase()}!`;
+        statusText.textContent = `Coin spinning in the air... Called ${state.coinToss.choice.toUpperCase()}!`;
       } else if (state.coinToss.resolved) {
         statusText.textContent = state.coinToss.playerWon
-          ? `WON TOSS (${state.coinToss.outcome.toUpperCase()})! ${state.awayTeam.name} kicks off — YOU RECEIVE & ATTACK!`
-          : `LOST TOSS (${state.coinToss.outcome.toUpperCase()})! YOU KICK OFF — ${state.awayTeam.name} RECEIVES & ATTACKS!`;
+          ? `WON TOSS (${state.coinToss.outcome.toUpperCase()})! ${state.awayTeam.name} kicks off — Home/P1 receives!`
+          : `LOST TOSS (${state.coinToss.outcome.toUpperCase()})! Home/P1 kicks off — ${state.awayTeam.name} receives!`;
       }
     }
 
@@ -253,8 +713,12 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   function setCoinChoice(choice) {
-    state.coinToss.choice = choice === 'tails' ? 'tails' : 'heads';
+    const normalized = choice === 'tails' ? 'tails' : 'heads';
+    state.coinToss.choice = normalized;
     updateCoinTossUi();
+    if (state.multiplayer.mode === 'join') {
+      sendGuestInputToHost({ type: 'coinChoice', choice: normalized });
+    }
   }
 
   function triggerCoinFlip() {
@@ -296,12 +760,13 @@ export function startErcRugby(bridge, autoStart = false) {
     updateCoinTossUi();
     addCallout(
       won
-        ? `${landed.toUpperCase()}! YOU WON TOSS — RECEIVE KICKOFF!`
-        : `${landed.toUpperCase()}! LOST TOSS — KICK OFF TO ${state.awayTeam.name.toUpperCase()}!`,
+        ? `${landed.toUpperCase()}! TOSS WON — RECEIVE KICKOFF!`
+        : `${landed.toUpperCase()}! TOSS LOST — KICK OFF!`,
       0.5,
       0.48,
       won ? '#4ade80' : '#fda4af'
     );
+    pushHostSnapshot(true);
   }
 
   function beginKickoffSequence() {
@@ -332,7 +797,6 @@ export function startErcRugby(bridge, autoStart = false) {
     const kickerObj = kickerSide === 'home' ? state.homePlayers[2] : state.awayPlayers[2];
     state.kick3D.active = true;
     state.kick3D.aiming = true;
-    state.kick3D.inFlight = false;
     state.kick3D.kind = 'kickoff';
     state.kick3D.kickingSide = kickerSide;
     state.kick3D.receiverSide = receiverSide;
@@ -363,6 +827,7 @@ export function startErcRugby(bridge, autoStart = false) {
     } else {
       addCallout(`${state.awayTeam.name.toUpperCase()} AIMING KICKOFF — GET READY TO RECEIVE!`, 0.5, 0.45, '#67e8f9');
     }
+    pushHostSnapshot(true);
   }
 
   function start3DKickAimOrCharge(kind, midiKey = null) {
@@ -370,7 +835,7 @@ export function startErcRugby(bridge, autoStart = false) {
     if (state.playState === 'tryCelebration' || state.playState === 'conversionKick' || state.playState === 'turnoverPause') return;
 
     if (state.playState === 'kickoff3D') {
-      if (!state.kick3D.active || state.kick3D.kickingSide !== 'home' || state.kick3D.inFlight) return;
+      if (!state.kick3D.active || state.kick3D.kickingSide !== 'home') return;
       state.kick3D.aiming = true;
       state.kick3D.holdMidi = midiKey;
       state.kick3D.power = 0.25;
@@ -384,8 +849,7 @@ export function startErcRugby(bridge, autoStart = false) {
     const kicker = state.homePlayers[state.carrierIndex];
     state.kick3D.active = true;
     state.kick3D.aiming = true;
-    state.kick3D.inFlight = false;
-    state.kick3D.kind = kind; // 'bomb' | 'grubber' | 'chip'
+    state.kick3D.kind = kind;
     state.kick3D.kickingSide = 'home';
     state.kick3D.receiverSide = 'away';
     state.kick3D.holdMidi = midiKey;
@@ -414,7 +878,6 @@ export function startErcRugby(bridge, autoStart = false) {
     if (!k3.active || !k3.aiming) return;
     k3.aiming = false;
     k3.holdMidi = null;
-    k3.inFlight = true;
 
     const dirSign = k3.kickingSide === 'home' ? -1 : 1;
     const p = Math.max(0.15, Math.min(1.0, k3.power));
@@ -519,55 +982,11 @@ export function startErcRugby(bridge, autoStart = false) {
       teamSelectEl.appendChild(opt);
     });
     teamSelectEl.value = state.homeTeam.id;
-    updatePlayerTeamPreview();
-  }
-
-  function updatePlayerTeamPreview() {
-    if (!containerEl) return;
-    const team = state.homeTeam;
-    containerEl.querySelector('#erc-player-swatch').style.background =
-      `linear-gradient(135deg, ${team.primary} 55%, ${team.secondary} 55%)`;
-    containerEl.querySelector('#erc-player-title').textContent = team.name;
-    containerEl.querySelector('#erc-player-chant').textContent = team.chant;
-    containerEl.querySelector('#erc-matchup-summary').textContent =
-      `${team.name} vs ${state.awayTeam.name} • Jerseys: C D E F G`;
-
-    const squadEl = containerEl.querySelector('#erc-wolfhound-squad');
-    const facesRowEl = containerEl.querySelector('#erc-wolfhound-faces');
-    if (squadEl && facesRowEl) {
-      if (team.isWolfHounds) {
-        squadEl.style.display = 'block';
-        facesRowEl.innerHTML = '';
-        LANE_NOTES.forEach((note) => {
-          const meta = WOLFHUND_FACES[note] || { title: note };
-          const card = document.createElement('div');
-          card.className = 'wolfhound-face-card';
-
-          const faceCanvas = getWolfhoundFaceCanvas(note, team);
-          const displayCanvas = document.createElement('canvas');
-          displayCanvas.width = faceCanvas.width;
-          displayCanvas.height = faceCanvas.height;
-          const dctx = displayCanvas.getContext('2d');
-          dctx.imageSmoothingEnabled = false;
-          dctx.drawImage(faceCanvas, 0, 0);
-
-          const noteTag = document.createElement('span');
-          noteTag.className = 'font-sports';
-          noteTag.style.cssText = 'font-size:9.5px; font-weight:800; color:#fde047; line-height:1;';
-          noteTag.textContent = `${note} • ${meta.title.split(' ')[0]}`;
-
-          card.appendChild(displayCanvas);
-          card.appendChild(noteTag);
-          facesRowEl.appendChild(card);
-        });
-      } else {
-        squadEl.style.display = 'none';
-      }
-    }
+    syncTeamSelectionToUi();
   }
 
   function startPokieSpin() {
-    if (!containerEl) return;
+    if (!containerEl || state.multiplayer.mode !== 'solo') return;
     const candidates = TEAMS.filter((t) => t.id !== state.homeTeam.id);
     const chosen = candidates[Math.floor(Math.random() * candidates.length)] || TEAMS[1];
     state.pokie.spinning = true;
@@ -606,7 +1025,7 @@ export function startErcRugby(bridge, autoStart = false) {
       badge.textContent = 'LOCKED';
       badge.style.background = 'rgba(16, 185, 129, 0.2)';
       badge.style.color = '#a7f3d0';
-      updatePlayerTeamPreview();
+      syncTeamSelectionToUi();
       syncHudAndLegend();
     }
   }
@@ -716,7 +1135,6 @@ export function startErcRugby(bridge, autoStart = false) {
     state.kickBall.active = false;
     state.kick3D.active = false;
     state.kick3D.aiming = false;
-    state.kick3D.inFlight = false;
     state.defSwitchChallenge.active = false;
 
     state.tryCelebration.active = true;
@@ -787,7 +1205,6 @@ export function startErcRugby(bridge, autoStart = false) {
     state.kickBall.z = 0;
     state.kick3D.active = false;
     state.kick3D.aiming = false;
-    state.kick3D.inFlight = false;
     state.kick3D.holdMidi = null;
     state.tryCelebration.active = false;
     state.conversion.active = false;
@@ -843,6 +1260,7 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   function tryTriggerAiPass(forceDummyHalfPass = false) {
+    if (state.multiplayer.mode === 'host' && state.multiplayer.guestJoined) return false;
     if (state.possession !== 'away' || state.passState.active || state.kickBall.active || state.kick3D.active) return false;
     const fromIdx = state.carrierIndex;
     const passer = state.awayPlayers[fromIdx];
@@ -899,7 +1317,6 @@ export function startErcRugby(bridge, autoStart = false) {
     state.kickBall.active = false;
     state.kick3D.active = false;
     state.kick3D.aiming = false;
-    state.kick3D.inFlight = false;
     state.defSwitchChallenge.active = false;
     state.playState = 'turnoverPause';
     state.turnoverTimer = 1.25;
@@ -972,6 +1389,11 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   function handleNoteCDEFG(targetIdx) {
+    if (state.multiplayer.mode === 'join') {
+      sendGuestInputToHost({ type: 'noteDown', note: LANE_NOTES[targetIdx] });
+      return;
+    }
+
     if (state.phase === 'coinToss' && !state.coinToss.resolved && !state.coinToss.active) {
       setCoinChoice(targetIdx % 2 === 0 ? 'heads' : 'tails');
       return;
@@ -1031,6 +1453,10 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   function launchKick(kind, midiKey = null) {
+    if (state.multiplayer.mode === 'join') {
+      sendGuestInputToHost({ type: 'noteDown', note: midiKey || kind, kickKind: kind });
+      return;
+    }
     if (state.phase !== 'playing' || state.possession !== 'home') return;
     if (state.playState === 'conversionKick') { submitConversionStrike(); return; }
     if (state.playState === 'tryCelebration' || state.kickBall.active || state.kick3D.active || state.passState.active) return;
@@ -1079,6 +1505,37 @@ export function startErcRugby(bridge, autoStart = false) {
       return;
     }
 
+    if (state.multiplayer.mode === 'join') {
+      if (state.actionBinds.moveLeft.midi === clean) {
+        state.moveInput.leftHeld = true;
+        sendGuestInputToHost({ type: 'steer', dir: 'leftDown' });
+        return;
+      }
+      if (state.actionBinds.moveRight.midi === clean) {
+        state.moveInput.rightHeld = true;
+        sendGuestInputToHost({ type: 'steer', dir: 'rightDown' });
+        return;
+      }
+      if (state.actionBinds.bomb?.midi === clean) {
+        sendGuestInputToHost({ type: 'noteDown', note: clean, kickKind: 'bomb' });
+        return;
+      }
+      if (state.actionBinds.grubber?.midi === clean) {
+        sendGuestInputToHost({ type: 'noteDown', note: clean, kickKind: 'grubber' });
+        return;
+      }
+      if (state.actionBinds.chipKick?.midi === clean) {
+        sendGuestInputToHost({ type: 'noteDown', note: clean, kickKind: 'chip' });
+        return;
+      }
+      const m = clean.toUpperCase().match(/^([A-G])(#?)/);
+      if (m && m[2] !== '#' && NOTE_TO_INDEX[m[1]] !== undefined) {
+        highlightStripButton(m[1]);
+        sendGuestInputToHost({ type: 'noteDown', note: clean });
+      }
+      return;
+    }
+
     if (state.phase !== 'playing') return;
 
     if (state.playState === 'conversionKick') {
@@ -1106,7 +1563,7 @@ export function startErcRugby(bridge, autoStart = false) {
     }
 
     if (state.playState === 'kickoff3D') {
-      if (state.kick3D.kickingSide === 'home' && !state.kick3D.aiming && !state.kick3D.inFlight) {
+      if (state.kick3D.kickingSide === 'home' && !state.kick3D.aiming) {
         start3DKickAimOrCharge('kickoff', clean);
       }
       return;
@@ -1127,17 +1584,35 @@ export function startErcRugby(bridge, autoStart = false) {
 
   function onPianoNoteUp(noteStr) {
     const clean = (noteStr || '').trim().toLowerCase();
-    if (state.actionBinds.moveLeft?.midi === clean) state.moveInput.leftHeld = false;
-    if (state.actionBinds.moveRight?.midi === clean) state.moveInput.rightHeld = false;
+    if (!clean) return;
+
+    if (state.multiplayer.mode === 'join') {
+      if (state.actionBinds.moveLeft.midi === clean) {
+        state.moveInput.leftHeld = false;
+        sendGuestInputToHost({ type: 'steer', dir: 'leftUp' });
+      }
+      if (state.actionBinds.moveRight.midi === clean) {
+        state.moveInput.rightHeld = false;
+        sendGuestInputToHost({ type: 'steer', dir: 'rightUp' });
+      }
+      if (isKickBindMidi(clean)) {
+        sendGuestInputToHost({ type: 'noteUp', note: clean });
+      }
+      return;
+    }
+
+    if (state.actionBinds.moveLeft.midi === clean) state.moveInput.leftHeld = false;
+    if (state.actionBinds.moveRight.midi === clean) state.moveInput.rightHeld = false;
 
     if (state.kick3D.active && state.kick3D.aiming) {
-      if (!clean || !state.kick3D.holdMidi || state.kick3D.holdMidi === clean || isKickBindMidi(clean)) {
+      if (!state.kick3D.holdMidi || state.kick3D.holdMidi === clean || isKickBindMidi(clean)) {
         release3DKickStrike();
       }
     }
   }
 
-  function startMatch() {
+  async function startMatch() {
+    if (state.multiplayer.mode === 'join') return;
     if (state.pokie.spinning) {
       state.pokie.spinning = false;
       state.awayTeam = TEAMS.find((t) => t.id === state.pokie.targetId) || TEAMS[1];
@@ -1145,6 +1620,17 @@ export function startErcRugby(bridge, autoStart = false) {
     state.homeScore = 0;
     state.awayScore = 0;
     state.matchTime = 120;
+
+    if (state.multiplayer.mode === 'host' && state.multiplayer.connected && state.multiplayer.roomCode && window.firebaseUpdate) {
+      try {
+        await window.firebaseUpdate(getRugbyRoomRef(state.multiplayer.roomCode), {
+          started: true,
+          homeTeamId: state.homeTeam.id,
+          awayTeamId: state.awayTeam.id
+        });
+      } catch (e) {}
+    }
+
     triggerCoinFlip();
   }
 
@@ -1152,6 +1638,9 @@ export function startErcRugby(bridge, autoStart = false) {
     if (state.phase === 'gameover') return;
     state.phase = 'gameover';
     playRefWhistle('long');
+
+    const myScore = state.multiplayer.role === 'away' ? state.awayScore : state.homeScore;
+    const oppScore = state.multiplayer.role === 'away' ? state.homeScore : state.awayScore;
 
     const outcome =
       state.homeScore > state.awayScore
@@ -1164,7 +1653,7 @@ export function startErcRugby(bridge, autoStart = false) {
       `<strong>${outcome}</strong><br>` +
       `<span style="color:#67e8f9;">${state.homeTeam.name}</span> <b>${state.homeScore}</b> – <b>${state.awayScore}</b> <span style="color:#fda4af;">${state.awayTeam.name}</span>`;
 
-    const finalPoints = Math.max(0, state.homeScore * 100 - state.awayScore * 25);
+    const finalPoints = Math.max(0, myScore * 100 - oppScore * 25);
 
     stopErcRugby();
     bridgeRef.finishCustomMiniGame('ERC Sports Rugby', finalPoints, summaryHtml, () => startErcRugby(bridgeRef, true));
@@ -1194,6 +1683,13 @@ export function startErcRugby(bridge, autoStart = false) {
       if (k3.kickingSide === 'home') {
         if (userSteerX !== 0) {
           k3.aimCurve = Math.max(-1, Math.min(1, k3.aimCurve + userSteerX * 1.45 * dt));
+        }
+        k3.power += k3.powerDir * k3.powerSpeed * dt;
+        if (k3.power >= 1) { k3.power = 1; k3.powerDir = -1; }
+        else if (k3.power <= 0.12) { k3.power = 0.12; k3.powerDir = 1; }
+      } else if (state.multiplayer.mode === 'host' && state.multiplayer.guestJoined) {
+        if (userSteerX !== 0) {
+          k3.aimCurve = Math.max(-1, Math.min(1, k3.aimCurve - userSteerX * 1.45 * dt));
         }
         k3.power += k3.powerDir * k3.powerSpeed * dt;
         if (k3.power >= 1) { k3.power = 1; k3.powerDir = -1; }
@@ -1231,7 +1727,6 @@ export function startErcRugby(bridge, autoStart = false) {
         if (att.offsideOnKick) continue;
         if (Math.hypot(att.x - k3.x, att.y - k3.y) < 0.038) {
           k3.active = false;
-          k3.inFlight = false;
           state.carrierIndex = i;
           state.tackleCount = 0;
           state.playState = 'running';
@@ -1255,7 +1750,6 @@ export function startErcRugby(bridge, autoStart = false) {
       const nextPos = k3.receiverSide;
 
       k3.active = false;
-      k3.inFlight = false;
       setupSetOfSix(nextPos, catchY, bestIdx);
       state.playState = 'running';
       assignAiDefenderChasers();
@@ -1271,6 +1765,10 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   function updateSimulation(dt) {
+    if (state.multiplayer.mode === 'join') {
+      return;
+    }
+
     if (state.phase === 'coinToss') {
       if (state.coinToss.active) {
         state.coinToss.flipTimer += dt;
@@ -1278,6 +1776,7 @@ export function startErcRugby(bridge, autoStart = false) {
           resolveCoinFlip();
         }
       }
+      pushHostSnapshot(false);
       return;
     }
 
@@ -1310,6 +1809,7 @@ export function startErcRugby(bridge, autoStart = false) {
         const scorerObj = isHomeTry ? state.homePlayers[state.carrierIndex] : state.awayPlayers[state.carrierIndex];
         startConversionKick(isHomeTry, scorerNote, scorerObj ? scorerObj.x : 0.5);
       }
+      pushHostSnapshot(false);
       return;
     }
 
@@ -1342,6 +1842,7 @@ export function startErcRugby(bridge, autoStart = false) {
           addCallout('DROP-OUT / NEW SET!', 0.5, 0.76, '#fde047');
         }
       }
+      pushHostSnapshot(false);
       return;
     }
 
@@ -1357,12 +1858,14 @@ export function startErcRugby(bridge, autoStart = false) {
 
     if (state.kick3D.active) {
       step3DKickSimulation(dt, userSteerX);
+      pushHostSnapshot(false);
       return;
     }
 
     if (state.playState === 'turnoverPause') {
       state.turnoverTimer -= dt; recordPlayerVelocities(dt);
       if (state.turnoverTimer <= 0) setupSetOfSix(state.nextPossession, state.nextStartY, 2);
+      pushHostSnapshot(false);
       return;
     }
 
@@ -1370,6 +1873,7 @@ export function startErcRugby(bridge, autoStart = false) {
     const defenders = state.possession === 'home' ? state.awayPlayers : state.homePlayers;
     const attackDir = state.possession === 'home' ? -1 : 1;
     const carrier = attackers[state.carrierIndex];
+    const p2HumanActive = state.multiplayer.mode === 'host' && state.multiplayer.guestJoined;
 
     if (state.playState === 'retreating') {
       state.tacklePause.timer += dt;
@@ -1402,6 +1906,7 @@ export function startErcRugby(bridge, autoStart = false) {
           carrier.x, Math.min(0.85, Math.max(0.16, carrier.y - 0.04)), '#fde047'
         );
       }
+      pushHostSnapshot(false);
       return;
     }
 
@@ -1419,7 +1924,7 @@ export function startErcRugby(bridge, autoStart = false) {
         selDef.x = Math.min(0.92, Math.max(0.08, selDef.x + userSteerX * 0.26 * dt));
       }
 
-      if (state.possession === 'away') {
+      if (state.possession === 'away' && !p2HumanActive) {
         state.aiPlayTimer -= dt;
         if (state.aiPlayTimer <= 0) {
           releasePlayTheBall();
@@ -1433,6 +1938,7 @@ export function startErcRugby(bridge, autoStart = false) {
       }
 
       recordPlayerVelocities(dt);
+      pushHostSnapshot(false);
       return;
     }
 
@@ -1451,14 +1957,16 @@ export function startErcRugby(bridge, autoStart = false) {
         if (landedForward) {
           playErrorClackSound();
           triggerHandover('FORWARD PASS! HANDOVER TO OPPONENT', 'away', Math.max(0.24, receiver.y), '#fb7185', 'long');
-          recordPlayerVelocities(dt); return;
+          recordPlayerVelocities(dt);
+          pushHostSnapshot(true);
+          return;
         }
 
         state.carrierIndex = state.passState.toIdx;
         if (state.possession === 'home' && bridgeRef && bridgeRef.getState().gameStats) bridgeRef.getState().gameStats.perfect += 1;
         attackers.forEach((att, idx) => rollSupportAlignment(att, idx, state.carrierIndex, state.possession === 'home'));
 
-        if (state.possession === 'away') {
+        if (state.possession === 'away' && !p2HumanActive) {
           armDefenderReactionWindow(attackers[state.carrierIndex], 'CAUGHT!');
         }
       }
@@ -1473,6 +1981,12 @@ export function startErcRugby(bridge, autoStart = false) {
 
       if (userSteerX !== 0) {
         activeCarrier.x = Math.min(0.91, Math.max(0.09, activeCarrier.x + userSteerX * 0.25 * dt));
+      }
+    } else if (p2HumanActive) {
+      const p2DownSpeed = state.passState.active ? 0.065 : 0.125;
+      activeCarrier.y = Math.min(0.90, activeCarrier.y + p2DownSpeed * dt);
+      if (userSteerX !== 0) {
+        activeCarrier.x = Math.min(0.91, Math.max(0.09, activeCarrier.x - userSteerX * 0.25 * dt));
       }
     } else {
       state.aiPassCooldown -= dt;
@@ -1520,7 +2034,7 @@ export function startErcRugby(bridge, autoStart = false) {
       }
     }
 
-    if (state.possession === 'away' && state.defSwitchChallenge.active) {
+    if (state.possession === 'away' && !p2HumanActive && state.defSwitchChallenge.active) {
       state.defSwitchChallenge.timer += dt;
       const idealDefIdx = getClosestDefenderIdxToCarrier();
       if (state.selectedDefenderIdx === idealDefIdx) {
@@ -1574,13 +2088,17 @@ export function startErcRugby(bridge, autoStart = false) {
           bridgeRef.spawnConfetti(rect.width * 0.5, rect.height * 0.35, '#ef4444');
         }
         triggerTryCelebration('home', LANE_NOTES[state.carrierIndex], state.carrierIndex);
-        recordPlayerVelocities(dt); return;
+        recordPlayerVelocities(dt);
+        pushHostSnapshot(true);
+        return;
       }
       if (state.possession === 'away' && activeCarrier.y >= 0.88) {
         state.awayScore += 4;
-        playErrorClackSound();
+        if (!p2HumanActive) playErrorClackSound();
         triggerTryCelebration('away', LANE_NOTES[state.carrierIndex], state.carrierIndex);
-        recordPlayerVelocities(dt); return;
+        recordPlayerVelocities(dt);
+        pushHostSnapshot(true);
+        return;
       }
     }
 
@@ -1589,12 +2107,12 @@ export function startErcRugby(bridge, autoStart = false) {
     for (let i = 0; i < 5; i++) {
       const d = defenders[i];
 
-      if (state.possession === 'away' && d.missedTackleTimer > 0) {
+      if (state.possession === 'away' && !p2HumanActive && d.missedTackleTimer > 0) {
         d.y = Math.min(0.92, d.y + 0.14 * dt);
         continue;
       }
 
-      if (state.possession === 'away' && d.pursuitTimer > 0) {
+      if (state.possession === 'away' && !p2HumanActive && d.pursuitTimer > 0) {
         const toX = activeCarrier.x - d.x;
         const toY = activeCarrier.y - d.y;
         const dist = Math.max(0.001, Math.hypot(toX, toY));
@@ -1621,7 +2139,7 @@ export function startErcRugby(bridge, autoStart = false) {
         const hitDist = Math.hypot(d.x - activeCarrier.x, d.y - activeCarrier.y);
         const tackleRadius = state.possession === 'away' && d.pursuitTimer > 0 ? 0.044 : 0.032;
         if (hitDist < tackleRadius) {
-          if (state.possession === 'away' && state.defSwitchChallenge.active) {
+          if (state.possession === 'away' && !p2HumanActive && state.defSwitchChallenge.active) {
             const idealIdx = getClosestDefenderIdxToCarrier();
             if (state.selectedDefenderIdx !== idealIdx) {
               d.missedTackleTimer = 0.75;
@@ -1633,17 +2151,60 @@ export function startErcRugby(bridge, autoStart = false) {
           }
           beginTackleAndRetreat();
           recordPlayerVelocities(dt);
+          pushHostSnapshot(true);
           return;
         }
       }
     }
 
     recordPlayerVelocities(dt);
+    pushHostSnapshot(false);
   }
 
-  teamSelectEl.addEventListener('change', (e) => {
-    state.homeTeam = TEAMS.find((t) => t.id === e.target.value) || TEAMS[0];
-    updatePlayerTeamPreview(); startPokieSpin();
+  teamSelectEl.addEventListener('change', async (e) => {
+    const picked = TEAMS.find((t) => t.id === e.target.value) || TEAMS[0];
+    if (state.multiplayer.mode === 'join') {
+      state.awayTeam = picked;
+      syncTeamSelectionToUi();
+      await sendGuestInputToHost({ type: 'teamSelect', teamId: picked.id });
+      if (state.multiplayer.connected && state.multiplayer.roomCode && window.firebaseUpdate) {
+        try {
+          await window.firebaseUpdate(getRugbyRoomRef(state.multiplayer.roomCode), { awayTeamId: picked.id });
+        } catch (err) {}
+      }
+      return;
+    }
+
+    state.homeTeam = picked;
+    syncTeamSelectionToUi();
+    if (state.multiplayer.mode === 'host' && state.multiplayer.connected && state.multiplayer.roomCode && window.firebaseUpdate) {
+      try {
+        await window.firebaseUpdate(getRugbyRoomRef(state.multiplayer.roomCode), { homeTeamId: picked.id });
+      } catch (err) {}
+    } else {
+      startPokieSpin();
+    }
+  });
+
+  containerEl.querySelector('#erc-mp-solo-btn')?.addEventListener('click', () => linkMultiplayerRoom('solo'));
+  containerEl.querySelector('#erc-mp-host-btn')?.addEventListener('click', () => {
+    const codeInput = containerEl.querySelector('#erc-mp-code-input');
+    if (codeInput && !codeInput.value.trim()) {
+      codeInput.value = String(Math.floor(100 + Math.random() * 900));
+    }
+    state.multiplayer.mode = 'host';
+    state.multiplayer.role = 'home';
+    updateMultiplayerUi();
+  });
+  containerEl.querySelector('#erc-mp-join-btn')?.addEventListener('click', () => {
+    state.multiplayer.mode = 'join';
+    state.multiplayer.role = 'away';
+    updateMultiplayerUi();
+    containerEl.querySelector('#erc-mp-code-input')?.focus();
+  });
+  containerEl.querySelector('#erc-mp-connect-btn')?.addEventListener('click', () => {
+    const targetMode = state.multiplayer.mode === 'join' ? 'join' : 'host';
+    linkMultiplayerRoom(targetMode);
   });
 
   containerEl.querySelector('#erc-respin-btn')?.addEventListener('click', startPokieSpin);
@@ -1651,7 +2212,12 @@ export function startErcRugby(bridge, autoStart = false) {
   containerEl.querySelector('#erc-toss-heads-btn')?.addEventListener('click', () => setCoinChoice('heads'));
   containerEl.querySelector('#erc-toss-tails-btn')?.addEventListener('click', () => setCoinChoice('tails'));
   containerEl.querySelector('#erc-toss-proceed-btn')?.addEventListener('click', () => {
-    if (state.coinToss.resolved) beginKickoffSequence();
+    if (!state.coinToss.resolved) return;
+    if (state.multiplayer.mode === 'join') {
+      sendGuestInputToHost({ type: 'tossProceed' });
+    } else {
+      beginKickoffSequence();
+    }
   });
 
   containerEl.querySelectorAll('.erc-key-btn').forEach((btn) => {
@@ -1674,7 +2240,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
   containerEl.querySelector('#erc-start-match-btn').addEventListener('click', startMatch);
 
-  // QWERTY keyboard input is intentionally disabled except Escape (cancel bind), conversion strike keys, and Space release while aiming a 3D kick
+  // QWERTY keyboard input is intentionally disabled; only Escape (cancel bind) and conversion strike keys are handled here
   const onKeyDown = (e) => {
     if (state.listeningAction && e.key === 'Escape') {
       e.preventDefault();
@@ -1693,12 +2259,7 @@ export function startErcRugby(bridge, autoStart = false) {
     }
   };
 
-  const onKeyUp = (e) => {
-    if (e.code === 'Space' && state.kick3D.active && state.kick3D.aiming) {
-      e.preventDefault();
-      release3DKickStrike();
-    }
-  };
+  const onKeyUp = () => {};
 
   window.addEventListener('keydown', onKeyDown, { capture: true });
   window.addEventListener('keyup', onKeyUp, { capture: true });
@@ -1706,6 +2267,7 @@ export function startErcRugby(bridge, autoStart = false) {
   initTeamSelectors();
   refreshKeybindButtons();
   updateCoinTossUi();
+  updateMultiplayerUi();
   setupSetOfSix('home', 0.82, 2);
   startPokieSpin();
 
@@ -1713,6 +2275,7 @@ export function startErcRugby(bridge, autoStart = false) {
     onPianoNoteDown,
     onPianoNoteUp,
     cleanup: () => {
+      detachMultiplayerRoom();
       window.removeEventListener('keydown', onKeyDown, { capture: true });
       window.removeEventListener('keyup', onKeyUp, { capture: true });
     }
