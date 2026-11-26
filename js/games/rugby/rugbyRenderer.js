@@ -1,6 +1,19 @@
 // js/games/rugby/rugbyRenderer.js
 import { LANES, LANE_NOTES, getPixelSprite } from './rugbyDataAndSprites.js';
 
+function isAwayPerspective(state) {
+  return Boolean(state && state.multiplayer && state.multiplayer.role === 'away');
+}
+
+function toViewCoords(state, nx, ny) {
+  const cx = Math.min(0.95, Math.max(0.05, nx));
+  const cy = Math.min(0.95, Math.max(0.05, ny));
+  if (isAwayPerspective(state)) {
+    return { vx: 1 - cx, vy: 1 - cy };
+  }
+  return { vx: cx, vy: cy };
+}
+
 function selectSpritePose(state, playerObj) {
   if (state.playState === 'tryCelebration') {
     if (playerObj.isScorer) {
@@ -518,8 +531,10 @@ function draw3DKickTrajectoryAndBall(ctx, state, padX, padY, fieldW, fieldH, pix
   const k3 = state.kick3D;
   if (!k3.active) return;
 
+  const awayView = isAwayPerspective(state);
   const dirSign = k3.kickingSide === 'home' ? -1 : 1;
   const p = Math.max(0.15, Math.min(1.0, k3.power));
+  const curveSign = awayView ? -k3.aimCurve : k3.aimCurve;
 
   if (k3.aiming) {
     let distanceY = 0.42;
@@ -552,14 +567,14 @@ function draw3DKickTrajectoryAndBall(ctx, state, padX, padY, fieldW, fieldH, pix
       const gy = k3.startY + (targetY - k3.startY) * t;
       const zLift = Math.sin(t * Math.PI) * peakZ * 120;
 
-      const sx = padX + fieldW * Math.min(0.93, Math.max(0.07, gx));
-      const syGround = padY + fieldH * Math.min(0.92, Math.max(0.11, gy));
+      const view = toViewCoords(state, gx, gy);
+      const sx = padX + fieldW * Math.min(0.93, Math.max(0.07, view.vx));
+      const syGround = padY + fieldH * Math.min(0.92, Math.max(0.11, view.vy));
       groundPts.push({ x: sx, y: syGround });
       elevatedPts.push({ x: sx, y: syGround - zLift, zLift });
     }
 
     ctx.save();
-    // Ground shadow path
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 5]);
@@ -571,7 +586,6 @@ function draw3DKickTrajectoryAndBall(ctx, state, padX, padY, fieldW, fieldH, pix
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 3D curved flight arc
     const arcGrad = ctx.createLinearGradient(
       elevatedPts[0].x,
       elevatedPts[0].y,
@@ -591,7 +605,6 @@ function draw3DKickTrajectoryAndBall(ctx, state, padX, padY, fieldW, fieldH, pix
     });
     ctx.stroke();
 
-    // Arrowhead at end of curved 3D path
     const tip = elevatedPts[steps];
     const prev = elevatedPts[Math.max(0, steps - 2)];
     const angle = Math.atan2(tip.y - prev.y, tip.x - prev.x);
@@ -612,9 +625,9 @@ function draw3DKickTrajectoryAndBall(ctx, state, padX, padY, fieldW, fieldH, pix
     return;
   }
 
-  // Ball in active 3D flight
-  const gx = padX + fieldW * k3.x;
-  const gyGround = padY + fieldH * k3.y;
+  const ballView = toViewCoords(state, k3.x, k3.y);
+  const gx = padX + fieldW * ballView.vx;
+  const gyGround = padY + fieldH * ballView.vy;
   const zPx = k3.z * 120;
   const ballScale = 1 + k3.z * 0.55;
 
@@ -626,7 +639,7 @@ function draw3DKickTrajectoryAndBall(ctx, state, padX, padY, fieldW, fieldH, pix
 
   ctx.translate(gx, gyGround - zPx);
   ctx.scale(ballScale, ballScale);
-  ctx.rotate(timeSec * 14);
+  ctx.rotate(timeSec * 14 * (curveSign < 0 ? -1 : 1));
   ctx.fillStyle = '#f8fafc';
   ctx.strokeStyle = '#09090b';
   ctx.lineWidth = 1.8;
@@ -645,7 +658,8 @@ function syncDomOverlays(containerEl, state) {
 
   const kickHud = containerEl.querySelector('#erc-kick3d-hud');
   if (kickHud) {
-    const showKickHud = state.phase === 'playing' && state.kick3D.active && state.kick3D.aiming && state.kick3D.kickingSide === 'home';
+    const mySide = state.multiplayer?.role === 'away' ? 'away' : 'home';
+    const showKickHud = state.phase === 'playing' && state.kick3D.active && state.kick3D.aiming && state.kick3D.kickingSide === mySide;
     kickHud.style.display = showKickHud ? 'flex' : 'none';
     if (showKickHud) {
       const pct = Math.round(Math.max(0, Math.min(1, state.kick3D.power)) * 100);
@@ -694,6 +708,7 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
   if (state.phase === 'coinToss') {
     drawCoinTossScene(ctx, state, w, h, timeSec);
     for (const c of state.callouts) {
+      const v = toViewCoords(state, c.x, c.y);
       ctx.save();
       ctx.globalAlpha = Math.max(0, c.life);
       ctx.font = 'italic 700 14px "Chakra Petch", sans-serif';
@@ -701,8 +716,8 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
       ctx.fillStyle = c.color;
       ctx.strokeStyle = 'rgba(2, 6, 23, 0.9)';
       ctx.lineWidth = 3;
-      ctx.strokeText(c.text, w * c.x, h * c.y);
-      ctx.fillText(c.text, w * c.x, h * c.y);
+      ctx.strokeText(c.text, w * v.vx, h * v.vy);
+      ctx.fillText(c.text, w * v.vx, h * v.vy);
       ctx.restore();
     }
     ctx.restore();
@@ -714,6 +729,8 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
     ctx.restore();
     return;
   }
+
+  const awayView = isAwayPerspective(state);
 
   ctx.fillStyle = '#091521';
   ctx.fillRect(0, 0, w, h);
@@ -751,8 +768,9 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
   let closestTopDist = Infinity;
   let closestBotDist = Infinity;
   for (const p of allPlayers) {
-    closestTopDist = Math.min(closestTopDist, Math.abs(p.y - topTryFrac));
-    closestBotDist = Math.min(closestBotDist, Math.abs(botTryFrac - p.y));
+    const v = toViewCoords(state, p.x, p.y);
+    closestTopDist = Math.min(closestTopDist, Math.abs(v.vy - topTryFrac));
+    closestBotDist = Math.min(closestBotDist, Math.abs(botTryFrac - v.vy));
   }
   const topPostVis = Math.max(0, Math.min(1, 1 - (closestTopDist - 0.04) / 0.24));
   const botPostVis = Math.max(0, Math.min(1, 1 - (closestBotDist - 0.04) / 0.24));
@@ -762,7 +780,8 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
   drawNrlGoalPost(ctx, postCenterX, padY + fieldH * botTryFrac, botPostVis, false);
 
   if (state.playState === 'retreating' || state.playState === 'waitingForPlay') {
-    const onsideLineY = padY + fieldH * state.tacklePause.onsideY;
+    const onsideView = toViewCoords(state, 0.5, state.tacklePause.onsideY);
+    const onsideLineY = padY + fieldH * onsideView.vy;
     ctx.save();
     ctx.strokeStyle = state.playState === 'retreating' ? 'rgba(251, 191, 36, 0.88)' : 'rgba(74, 222, 128, 0.82)';
     ctx.lineWidth = 2;
@@ -774,9 +793,12 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
     ctx.restore();
   }
 
-  if (state.possession === 'home' && state.homePlayers[state.carrierIndex] && !state.kickBall.active && !state.kick3D.active && state.playState !== 'tryCelebration') {
-    const c = state.homePlayers[state.carrierIndex];
-    const planeY = padY + fieldH * c.y;
+  const activeSide = awayView ? 'away' : 'home';
+  const activeRoster = awayView ? state.awayPlayers : state.homePlayers;
+  if (state.possession === activeSide && activeRoster[state.carrierIndex] && !state.kickBall.active && !state.kick3D.active && state.playState !== 'tryCelebration') {
+    const c = activeRoster[state.carrierIndex];
+    const cv = toViewCoords(state, c.x, c.y);
+    const planeY = padY + fieldH * cv.vy;
     ctx.save();
     ctx.strokeStyle = 'rgba(250, 204, 21, 0.20)';
     ctx.lineWidth = 1.2;
@@ -789,9 +811,10 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
   }
 
   ctx.font = '700 11px "Chakra Petch", sans-serif';
-  const activeRingIdx = state.possession === 'home' ? state.carrierIndex : state.selectedDefenderIdx;
+  const activeRingIdx = state.possession === activeSide ? state.carrierIndex : state.selectedDefenderIdx;
   LANES.forEach((fx, idx) => {
-    const lx = padX + fieldW * fx;
+    const viewLaneX = awayView ? (1 - fx) : fx;
+    const lx = padX + fieldW * viewLaneX;
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
     ctx.setLineDash([6, 8]);
     ctx.beginPath();
@@ -809,47 +832,53 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
 
   const renderList = [];
   for (let i = 0; i < state.awayPlayers.length; i++) {
+    const ap = state.awayPlayers[i];
+    const v = toViewCoords(state, ap.x, ap.y);
     const awayHasBall = state.possession === 'away' && i === state.carrierIndex && !ballInFlight && !(state.kick3D.active && state.kick3D.kickingSide === 'away');
+    const showYellowAway = awayView && ((state.possession === 'away' && i === state.carrierIndex && !state.kickBall.active && !state.kick3D.active) || (state.possession === 'home' && i === state.selectedDefenderIdx));
     renderList.push({
       side: 'away',
-      facing: 'front',
+      facing: awayView ? 'back' : 'front',
       idx: i,
-      p: state.awayPlayers[i],
+      p: ap,
+      vx: v.vx,
+      vy: v.vy,
       team: state.awayTeam,
       hasBall: awayHasBall,
-      showYellowRing: false,
-      showRedRing: awayHasBall && state.playState !== 'tryCelebration',
-      isOverrun: false
+      showYellowRing: showYellowAway,
+      showRedRing: !awayView && awayHasBall && state.playState !== 'tryCelebration',
+      isOverrun: awayView && state.possession === 'away' && ap.overrun && !state.kickBall.active && !state.kick3D.active
     });
   }
   for (let i = 0; i < state.homePlayers.length; i++) {
     const hp = state.homePlayers[i];
+    const v = toViewCoords(state, hp.x, hp.y);
     const homeHasBall = state.possession === 'home' && i === state.carrierIndex && !ballInFlight && !(state.kick3D.active && state.kick3D.kickingSide === 'home');
-    const showRing =
-      (state.possession === 'home' && i === state.carrierIndex && !state.kickBall.active && !state.kick3D.active) ||
-      (state.possession === 'away' && i === state.selectedDefenderIdx);
+    const showYellowHome = !awayView && ((state.possession === 'home' && i === state.carrierIndex && !state.kickBall.active && !state.kick3D.active) || (state.possession === 'away' && i === state.selectedDefenderIdx));
 
     renderList.push({
       side: 'home',
-      facing: 'back',
+      facing: awayView ? 'front' : 'back',
       idx: i,
       p: hp,
+      vx: v.vx,
+      vy: v.vy,
       team: state.homeTeam,
       hasBall: homeHasBall,
-      showYellowRing: showRing,
-      showRedRing: false,
-      isOverrun: state.possession === 'home' && hp.overrun && !state.kickBall.active && !state.kick3D.active
+      showYellowRing: showYellowHome,
+      showRedRing: awayView && homeHasBall && state.playState !== 'tryCelebration',
+      isOverrun: !awayView && state.possession === 'home' && hp.overrun && !state.kickBall.active && !state.kick3D.active
     });
   }
 
-  renderList.sort((a, b) => a.p.y - b.p.y);
+  renderList.sort((a, b) => a.vy - b.vy);
 
   const minScreenY = padY + fieldH * 0.12;
   const maxScreenY = padY + fieldH * 0.92;
 
   for (const item of renderList) {
-    const px = padX + fieldW * item.p.x;
-    const py = Math.min(maxScreenY, Math.max(minScreenY, padY + fieldH * item.p.y));
+    const px = padX + fieldW * item.vx;
+    const py = Math.min(maxScreenY, Math.max(minScreenY, padY + fieldH * item.vy));
     drawPixelPlayer(
       ctx,
       state,
@@ -885,12 +914,14 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
     let bx = padX + fieldW * 0.5;
     let by = padY + fieldH * 0.5;
     if (state.passState.active) {
+      const pv = toViewCoords(state, state.passState.x, state.passState.y);
       const arcLift = Math.sin(state.passState.progress * Math.PI) * 14 * pixelScale;
-      bx = padX + fieldW * state.passState.x;
-      by = padY + fieldH * state.passState.y - 6 * pixelScale - arcLift;
+      bx = padX + fieldW * pv.vx;
+      by = padY + fieldH * pv.vy - 6 * pixelScale - arcLift;
     } else {
-      bx = padX + fieldW * state.kickBall.x;
-      by = padY + fieldH * state.kickBall.y - state.kickBall.z * 95;
+      const kv = toViewCoords(state, state.kickBall.x, state.kickBall.y);
+      bx = padX + fieldW * kv.vx;
+      by = padY + fieldH * kv.vy - state.kickBall.z * 95;
     }
 
     ctx.save();
@@ -914,6 +945,7 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
   }
 
   for (const c of state.callouts) {
+    const cv = toViewCoords(state, c.x, c.y);
     ctx.save();
     ctx.globalAlpha = Math.max(0, c.life);
     ctx.font = 'italic 700 14px "Chakra Petch", sans-serif';
@@ -921,8 +953,8 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
     ctx.fillStyle = c.color;
     ctx.strokeStyle = 'rgba(2, 6, 23, 0.9)';
     ctx.lineWidth = 3;
-    const cx = padX + fieldW * c.x;
-    const cy = padY + fieldH * c.y;
+    const cx = padX + fieldW * cv.vx;
+    const cy = padY + fieldH * cv.vy;
     ctx.strokeText(c.text, cx, cy);
     ctx.fillText(c.text, cx, cy);
     ctx.restore();
