@@ -622,9 +622,12 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
 
   renderList.sort((a, b) => a.p.y - b.p.y);
 
+  const minScreenY = padY + fieldH * 0.12;
+  const maxScreenY = padY + fieldH * 0.92;
+
   for (const item of renderList) {
     const px = padX + fieldW * item.p.x;
-    const py = padY + fieldH * item.p.y;
+    const py = Math.min(maxScreenY, Math.max(minScreenY, padY + fieldH * item.p.y));
     drawPixelPlayer(
       ctx,
       state,
