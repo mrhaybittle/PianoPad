@@ -1,33 +1,43 @@
 // js/games/chordBowl/chordBowlAssets.js
-// Swappable visual themes, ball weights, pentatonic scales & spare call presets.
+// Swappable 3D lane/pin/ball visual presets, ball weights, pentatonic scales & spare call presets.
 
 export const CHORD_BOWL_THEMES = {
     classicPro: {
-        backdrop: '#090d16',
-        gutter: '#111827',
-        laneTop: '#b47b44',
-        laneBottom: '#e2b47b',
-        arrow: 'rgba(120, 53, 15, 0.55)',
+        skyTop: '#070b14',
+        skyHorizon: '#162238',
+        sideWall: '#0f172a',
+        gutter: '#090d16',
+        laneWoodLight: '#dca86b',
+        laneWoodDark: '#b87d3e',
+        approachWood: '#6b4423',
+        arrow: 'rgba(120, 53, 15, 0.72)',
         foulLine: '#ef4444',
         accent: '#38bdf8',
         pinBody: '#f8fafc',
+        pinShadow: '#cbd5e1',
         pinStripe: '#dc2626',
         pinToppleGlow: '#facc15',
         ballPrimary: '#2563eb',
-        ballHole: '#0f172a'
+        ballSecondary: '#1d4ed8',
+        ballHole: '#090d16'
     },
     neonArcade: {
-        backdrop: '#070614',
-        gutter: '#140c2b',
-        laneTop: '#1e1b4b',
-        laneBottom: '#312e81',
-        arrow: 'rgba(56, 189, 248, 0.45)',
+        skyTop: '#05040f',
+        skyHorizon: '#1e1645',
+        sideWall: '#0e0a24',
+        gutter: '#070514',
+        laneWoodLight: '#312e81',
+        laneWoodDark: '#1e1b4b',
+        approachWood: '#171336',
+        arrow: 'rgba(34, 211, 238, 0.65)',
         foulLine: '#ec4899',
         accent: '#22d3ee',
         pinBody: '#f0fdf4',
+        pinShadow: '#bbf7d0',
         pinStripe: '#a855f7',
         pinToppleGlow: '#22d3ee',
         ballPrimary: '#ec4899',
+        ballSecondary: '#be185d',
         ballHole: '#090614'
     }
 };

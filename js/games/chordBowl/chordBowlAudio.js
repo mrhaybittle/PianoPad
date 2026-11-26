@@ -13,7 +13,6 @@ export function playPinHitTone(noteStr, intensity = 0.6, grooveBoost = false) {
     playTone(freq, 0.34, gain);
 
     if (grooveBoost) {
-        // Fifth shimmer on Groove Boost
         playTone(freq * 1.5, 0.28, gain * 0.45);
     }
 }
