@@ -250,7 +250,7 @@ export function buildRugbyMarkup() {
         background: rgba(15, 23, 42, 0.97); border: 1px solid rgba(255, 255, 255, 0.16); padding: 12px 16px;
       }
       .erc-setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
-      .erc-bind-grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin-top: 6px; }
+      .erc-bind-grid-5 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-top: 6px; }
       @media (max-width: 720px) {
         .erc-setup-grid { grid-template-columns: 1fr; }
         .erc-bind-grid-5 { grid-template-columns: repeat(2, 1fr); }
@@ -329,7 +329,6 @@ export function buildRugbyMarkup() {
         <span><b style="color:#fde047;">Pass/Switch:</b> <span style="padding:1px 5px; border-radius:4px; background:rgba(255,255,255,0.12); color:#fef08a; font-family:monospace; font-weight:800;">C D E F G</span></span>
         <span><b style="color:#c4b5fd;">Left:</b> <span id="erc-leg-left" style="font-family:monospace; font-weight:800; color:#ddd6fe;">🎹 F#1 / A</span></span>
         <span><b style="color:#c4b5fd;">Right:</b> <span id="erc-leg-right" style="font-family:monospace; font-weight:800; color:#ddd6fe;">🎹 G#1 / D</span></span>
-        <span><b style="color:#6ee7b7;">Run:</b> <span id="erc-leg-surge" style="font-family:monospace; font-weight:800; color:#a7f3d0;">🎹 A1 / W</span></span>
         <span><b style="color:#fcd34d;">Bomb:</b> <span id="erc-leg-bomb" style="font-family:monospace; font-weight:800; color:#fde68a;">🎹 B1 / B</span></span>
         <span><b style="color:#7dd3fc;">Grubber:</b> <span id="erc-leg-grubber" style="font-family:monospace; font-weight:800; color:#bae6fd;">🎹 C2 / N</span></span>
       </div>
@@ -425,12 +424,6 @@ export function buildRugbyMarkup() {
               <button type="button" data-bind-action="moveRight" class="erc-key-btn sports-btn" style="background:rgba(139,92,246,0.22); border:1px solid rgba(167,139,250,0.6); color:#ede9fe;">🎹 G#1 / D</button>
             </div>
 
-            <div style="background:#0f172a; border:1px solid rgba(52,211,153,0.35); border-radius:9px; padding:6px; text-align:center;">
-              <div class="font-sports" style="font-size:11px; font-weight:800; color:#6ee7b7;">⚡ TURBO RUN</div>
-              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Fast Sprint Burst</div>
-              <button type="button" data-bind-action="surge" class="erc-key-btn sports-btn" style="background:rgba(16,185,129,0.2); border:1px solid rgba(52,211,153,0.6); color:#d1fae5;">🎹 A1 / W</button>
-            </div>
-
             <div style="background:#0f172a; border:1px solid rgba(251,191,36,0.35); border-radius:9px; padding:6px; text-align:center;">
               <div class="font-sports" style="font-size:11px; font-weight:800; color:#fcd34d;">🏉 BOMB KICK</div>
               <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">High spiral</div>
@@ -445,7 +438,7 @@ export function buildRugbyMarkup() {
           </div>
 
           <div id="erc-keybind-notice" style="margin-top:5px; font-size:11px; color:#fcd34d; min-height:14px;">
-            Click any control button above, then press any MIDI piano key (e.g. F#1, G#1, A1, B1, C2, D2) or computer key!
+            Click any control button above, then press any MIDI piano key (e.g. F#1, G#1, B1, C2, D2) or computer key!
           </div>
         </div>
 
@@ -459,4 +452,3 @@ export function buildRugbyMarkup() {
     </div>
   `;
 }
-
