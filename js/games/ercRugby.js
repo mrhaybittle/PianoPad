@@ -1,7 +1,7 @@
 // js/games/ercRugby.js
 import { initAudio, playTone, playErrorClackSound } from '../audio.js';
 import { getNoteFrequency } from '../musicTheory.js';
-import { TEAMS, PIANO_FREQS, LANES, LANE_NOTES, NOTE_TO_INDEX } from './rugby/rugbyDataAndSprites.js';
+import { TEAMS, WOLFHUND_FACES, PIANO_FREQS, LANES, LANE_NOTES, NOTE_TO_INDEX, getWolfhoundFaceCanvas } from './rugby/rugbyDataAndSprites.js';
 import {
   ensureSportsFonts,
   playPassSound,
@@ -256,6 +256,39 @@ export function startErcRugby(bridge, autoStart = false) {
     containerEl.querySelector('#erc-player-chant').textContent = team.chant;
     containerEl.querySelector('#erc-matchup-summary').textContent =
       `${team.name} vs ${state.awayTeam.name} • Jerseys: C D E F G`;
+
+    const squadEl = containerEl.querySelector('#erc-wolfhound-squad');
+    const facesRowEl = containerEl.querySelector('#erc-wolfhound-faces');
+    if (squadEl && facesRowEl) {
+      if (team.isWolfHounds) {
+        squadEl.style.display = 'block';
+        facesRowEl.innerHTML = '';
+        LANE_NOTES.forEach((note) => {
+          const meta = WOLFHUND_FACES[note] || { title: note };
+          const card = document.createElement('div');
+          card.className = 'wolfhound-face-card';
+
+          const faceCanvas = getWolfhoundFaceCanvas(note, team);
+          const displayCanvas = document.createElement('canvas');
+          displayCanvas.width = faceCanvas.width;
+          displayCanvas.height = faceCanvas.height;
+          const dctx = displayCanvas.getContext('2d');
+          dctx.imageSmoothingEnabled = false;
+          dctx.drawImage(faceCanvas, 0, 0);
+
+          const noteTag = document.createElement('span');
+          noteTag.className = 'font-sports';
+          noteTag.style.cssText = 'font-size:9.5px; font-weight:800; color:#fde047; line-height:1;';
+          noteTag.textContent = `${note} • ${meta.title.split(' ')[0]}`;
+
+          card.appendChild(displayCanvas);
+          card.appendChild(noteTag);
+          facesRowEl.appendChild(card);
+        });
+      } else {
+        squadEl.style.display = 'none';
+      }
+    }
   }
 
   function startPokieSpin() {
@@ -1440,4 +1473,3 @@ export function startErcRugby(bridge, autoStart = false) {
   }
   animFrameId = requestAnimationFrame(frame);
 }
-
