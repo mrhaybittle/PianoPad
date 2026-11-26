@@ -1,6 +1,6 @@
 // js/games/chordBowl.js
-// Main game controller for ChordBowl (10-pin MIDI bowling without character movement).
-// Extra modules live in PianoPad/js/games/chordBowl/
+// 3D perspective 10-pin MIDI bowling game following conventional 10-frame bowling rules.
+// Extra modules live in js/games/chordBowl/.
 
 import { initAudio, playTone } from '../audio.js';
 import { getNoteFrequency } from '../musicTheory.js';
@@ -24,7 +24,7 @@ import {
 const TOTAL_FRAMES = 10;
 const BPM = 108;
 const BEAT_MS = 60000 / BPM;
-const GROOVE_WINDOW_MS = 145; // +/- window around beat for Groove Boost
+const GROOVE_WINDOW_MS = 145;
 
 let bridgeRef = null;
 let rafId = null;
@@ -46,68 +46,68 @@ function createInitialGameState() {
         ballWeight: BALL_WEIGHTS.standard,
 
         frame: 1,
-        rollInFrame: 1, // 1 or 2 (or up to 3 in 10th frame)
-        tenthFrameRolls: [],
+        ballInFrame: 1,     // Ball 1 or Ball 2 (up to Ball 3 in Frame 10)
+        tenthFrameBalls: [],
         frames: Array.from({ length: TOTAL_FRAMES }, (_, idx) => ({
             frameNumber: idx + 1,
-            rolls: [],
+            balls: [],
             score: null,
             isStrike: false,
             isSpare: false
         })),
         totalScore: 0,
 
-        // Phase: 'aiming' | 'rolling' | 'settling' | 'frameOver' | 'gameOver'
+        // 'aiming' | 'rolling' | 'settling' | 'betweenBalls' | 'frameComplete' | 'gameOver'
         phase: 'aiming',
-        settleTimerMs: 0,
-        frameOverTimerMs: 0,
+        phaseTimerMs: 0,
 
-        // Aim & MIDI controls
-        aimNormalized: 0, // -1 (left gutter) to +1 (right gutter)
+        aimNormalized: 0,
         targetKeyNote: 'c2',
         heldNotes: new Set(),
         primaryRollNote: null,
-        pitchBendNorm: 0, // -1 to +1
-        modWheelNorm: 0,  // 0 to 1
-        secondNoteSpin: 0, // -1 (flat/CCW) to +1 (sharp/CW)
+        pitchBendNorm: 0,
+        modWheelNorm: 0,
+        secondNoteSpin: 0,
         pocketLocked: false,
         highlightedSparePin: null,
-        bannerMessage: 'Play a MIDI note to aim & roll (Soft = Hook, Hard = Power)',
+        bannerMessage: 'Ball 1 of 2 — Play a MIDI note to aim & bowl',
 
-        // Rhythm / Groove meter
         beatClockMs: 0,
         groovePulse: 0,
         lastGrooveBoost: false,
 
-        // Ball & Pins
         pins: createTenPins(scaleNotes),
-        pinsAtRollStart: [],
-        chainHitCounter: 0,
         ball: {
             active: false,
             x: 0,
-            y: 0,
+            z: 0,
             vx: 0,
-            vy: 0,
-            radius: 14,
+            vz: 0,
+            radius: 0.062,
+            rollRotation: 0,
             spin: 0,
             hookCurve: 0,
+            carryBonus: 1.0,
+            mass: 1.0,
             trail: [],
             inGutter: false
         },
-        particles: []
+        particles3D: []
     };
 }
 
 export function startChordBowl(bridge) {
     bridgeRef = bridge;
     initAudio();
+
+    // Close the mini-games hub so the 3D lane has full focus
+    const arcadeHub = document.getElementById('arcade-hub');
+    if (arcadeHub) arcadeHub.classList.remove('open');
+
     if (bridgeRef?.resetGameStats) bridgeRef.resetGameStats();
     if (bridgeRef?.setActiveMiniGame) bridgeRef.setActiveMiniGame('chordBowl');
 
     game = createInitialGameState();
-    game.pinsAtRollStart = snapshotPins(game.pins);
-
     attachDirectMidiListeners();
     updateStatusBar();
 
@@ -125,36 +125,38 @@ export function stopChordBowl() {
     game = null;
 }
 
-function snapshotPins(pins) {
-    return pins.map(p => ({ ...p }));
-}
-
 function getCanvasAndContext() {
     const canvas = document.getElementById('waterfall-canvas');
     if (!canvas) return { canvas: null, ctx: null };
     return { canvas, ctx: canvas.getContext('2d') };
 }
 
-function getLaneGeometry(canvas) {
-    const laneWidth = Math.min(canvas.width * 0.56, 420);
-    const gutterWidth = Math.max(20, laneWidth * 0.085);
-    const laneLeft = (canvas.width - laneWidth) / 2;
-    const laneRight = laneLeft + laneWidth;
-    const foulLineY = canvas.height * 0.80;
-    const pinDeckY = canvas.height * 0.22;
+// 3D Perspective Camera & Projection (z: 0 = foul line near camera, z: 1 = pin deck far)
+function getCamera3D(canvas) {
+    const w = canvas.width;
+    const h = canvas.height;
     return {
-        laneLeft,
-        laneRight,
-        laneWidth,
-        gutterWidth,
-        playLeft: laneLeft + gutterWidth,
-        playRight: laneRight - gutterWidth,
-        foulLineY,
-        pinDeckY
+        w,
+        h,
+        horizonY: h * 0.16,
+        foulY: h * 0.90,
+        nearHalfWidth: w * 0.36,
+        farHalfWidth: w * 0.125,
+        centerX: w * 0.5
     };
 }
 
-// --- MIDI DIRECT LISTENERS (Pitch Bend, Mod Wheel, and Note Fallback) ---
+function project3D(xNorm, zNorm, yHeightNorm, cam) {
+    // Perspective factor t: 0 at foul line (z=0), 1 at deck end (z=1)
+    const t = Math.max(0, Math.min(1.12, zNorm));
+    const persp = Math.pow(0.36, t); // shrinks smoothly into depth
+    const halfW = cam.nearHalfWidth + (cam.farHalfWidth - cam.nearHalfWidth) * t;
+    const baseY = cam.foulY + (cam.horizonY - cam.foulY) * t;
+    const screenX = cam.centerX + xNorm * halfW;
+    const screenY = baseY - yHeightNorm * (cam.foulY - cam.horizonY) * 0.42 * persp;
+    return { x: screenX, y: screenY, scale: persp };
+}
+
 function attachDirectMidiListeners() {
     if (midiListenerAttached || !navigator.requestMIDIAccess) return;
     navigator.requestMIDIAccess().then((access) => {
@@ -184,18 +186,16 @@ function onRawMidiMessage(event) {
     const d1 = data[1];
     const d2 = data.length > 2 ? data[2] : 0;
 
-    // Pitch Bend (0xE0): 14-bit value (0..16383, center 8192)
     if (cmd === 0xe0) {
         const bend14 = ((d2 & 0x7f) << 7) | (d1 & 0x7f);
         game.pitchBendNorm = Math.max(-1, Math.min(1, (bend14 - 8192) / 8192));
         if (game.ball.active) {
-            game.ball.spin += game.pitchBendNorm * 0.045;
+            game.ball.spin += game.pitchBendNorm * 0.06;
         } else {
-            game.aimNormalized = Math.max(-1, Math.min(1, game.aimNormalized + game.pitchBendNorm * 0.06));
+            game.aimNormalized = Math.max(-0.88, Math.min(0.88, game.aimNormalized + game.pitchBendNorm * 0.06));
         }
     }
 
-    // Control Change (0xB0): CC 1 = Mod Wheel (oil hook), CC 64 = Sustain (pocket lock)
     if (cmd === 0xb0) {
         if (d1 === 1) {
             game.modWheelNorm = Math.max(0, Math.min(1, d2 / 127));
@@ -207,7 +207,6 @@ function onRawMidiMessage(event) {
     }
 }
 
-// --- BRIDGE INPUT HANDLERS ---
 export function handleChordBowlInput(noteStr, velocity = 84) {
     if (!game) return;
     const normNote = String(noteStr || '').toLowerCase().trim();
@@ -232,9 +231,9 @@ export function handleChordBowlInput(noteStr, velocity = 84) {
     if (game.phase === 'rolling' && game.ball.active && !wasEmpty) {
         const spinDir = getNoteSemitoneIndex(normNote) >= getNoteSemitoneIndex(game.primaryRollNote) ? 1 : -1;
         game.secondNoteSpin = spinDir;
-        game.ball.spin += spinDir * 0.28;
+        game.ball.spin += spinDir * 0.32;
         game.bannerMessage = spinDir > 0
-            ? 'Sharp Note Held: Clockwise Hook Spin!'
+            ? 'Sharp Note Held: Clockwise Hook!'
             : 'Flat Note Held: Counter-Clockwise Spin!';
         updateStatusBar();
         return;
@@ -246,14 +245,14 @@ export function handleChordBowlInput(noteStr, velocity = 84) {
     game.primaryRollNote = normNote;
     game.aimNormalized = computeAimXFromMidiNote(normNote);
     if (game.pocketLocked) {
-        game.aimNormalized *= 0.28;
+        game.aimNormalized *= 0.25;
     }
 
     if (bridgeRef?.highlightKey) {
         bridgeRef.highlightKey(normNote, 260, game.theme.accent);
     }
 
-    launchRoll(velocity);
+    launchBall(velocity);
 }
 
 export function handleChordBowlRelease(noteStr) {
@@ -283,15 +282,12 @@ function evaluateHeldChord(notes) {
     if (span === 12 || span === 24) {
         return { type: 'cycleWeight' };
     }
-
     if (notes.length >= 3 && span >= 6 && span <= 9) {
         return { type: 'pocketLock' };
     }
-
-    if (game.rollInFrame > 1 || game.frame === TOTAL_FRAMES) {
+    if (game.ballInFrame > 1 || game.frame === TOTAL_FRAMES) {
         return { type: 'spareHint' };
     }
-
     return null;
 }
 
@@ -317,7 +313,7 @@ function applyChordCall(result) {
             const sparePreset = SPARE_CALLS[`${targetPinIdx + 1}-pin`];
             const suggestedNote = sparePreset?.keyNote || game.scaleNotes[targetPinIdx % game.scaleNotes.length] || 'c2';
             game.highlightedSparePin = targetPinIdx;
-            game.aimNormalized = pin.nx * 0.85;
+            game.aimNormalized = Math.max(-0.82, Math.min(0.82, pin.x * 0.95));
             game.bannerMessage = `Spare Pick: Aim for Pin #${targetPinIdx + 1} (${suggestedNote.toUpperCase()})`;
             if (bridgeRef?.highlightKey) {
                 bridgeRef.highlightKey(suggestedNote, 600, '#facc15');
@@ -334,33 +330,31 @@ function isOnGrooveBeat() {
     return distFromBeat <= GROOVE_WINDOW_MS;
 }
 
-function launchRoll(rawVelocity = 84) {
-    const { canvas } = getCanvasAndContext();
-    if (!canvas || !game) return;
-
-    const geom = getLaneGeometry(canvas);
+function launchBall(rawVelocity = 84) {
+    if (!game) return;
     const velNorm = Math.max(0.08, Math.min(1, rawVelocity / 127));
 
-    const speedPxPerSec = (340 + velNorm * 520) * game.ballWeight.speedMultiplier;
+    // z speed (0 -> 1 down the 3D lane)
+    const zSpeed = (0.58 + velNorm * 0.78) * game.ballWeight.speedMultiplier;
     const baseHook = ((1 - velNorm) * 0.55 + game.modWheelNorm * 0.65) * game.ballWeight.hookMultiplier;
-
     const grooveBoost = isOnGrooveBeat();
+
     game.lastGrooveBoost = grooveBoost;
     if (grooveBoost) {
         playGrooveBoostSound();
-        spawnBurst(canvas.width / 2, geom.foulLineY, '#facc15', 16);
+        spawnBurst3D(game.aimNormalized, 0.04, '#facc15', 16);
     }
 
-    const startX = geom.playLeft + ((game.aimNormalized + 1) / 2) * (geom.playRight - geom.playLeft);
     const hookSign = game.aimNormalized <= 0 ? 1 : -1;
 
     game.ball = {
         active: true,
-        x: startX,
-        y: geom.foulLineY,
-        vx: -game.aimNormalized * 42,
-        vy: -speedPxPerSec,
-        radius: Math.max(10, Math.round(14 * game.ballWeight.radiusMultiplier)),
+        x: game.aimNormalized,
+        z: 0.02,
+        vx: -game.aimNormalized * 0.08,
+        vz: zSpeed,
+        radius: 0.062 * game.ballWeight.radiusMultiplier,
+        rollRotation: 0,
         spin: hookSign * baseHook * 0.45,
         hookCurve: hookSign * baseHook,
         carryBonus: grooveBoost ? 1.28 : 1.0,
@@ -369,27 +363,27 @@ function launchRoll(rawVelocity = 84) {
         inGutter: false
     };
 
-    game.chainHitCounter = 0;
     game.phase = 'rolling';
     game.bannerMessage = grooveBoost
-        ? 'GROOVE BOOST! Extra pin-carry & rich synth unlocked!'
-        : `Rolling (${Math.round(velNorm * 100)}% power) — hold a 2nd note or Pitch Wheel to curve!`;
+        ? 'GROOVE BOOST! Extra pin-carry & rich synth!'
+        : `Ball ${game.ballInFrame} rolling (${Math.round(velNorm * 100)}% power)`;
     updateStatusBar();
 }
 
-function spawnBurst(x, y, color, count = 10) {
+function spawnBurst3D(xNorm, zNorm, color, count = 10) {
     if (!game) return;
     for (let i = 0; i < count; i++) {
         const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.4;
-        const speed = 40 + Math.random() * 120;
-        game.particles.push({
-            x,
-            y,
+        const speed = 0.25 + Math.random() * 0.65;
+        game.particles3D.push({
+            x: xNorm,
+            z: zNorm,
+            y: 0.04 + Math.random() * 0.06,
             vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
+            vz: Math.sin(angle) * speed,
+            vy: 0.25 + Math.random() * 0.35,
             life: 1,
-            color,
-            size: 3 + Math.random() * 3
+            color
         });
     }
 }
@@ -410,48 +404,52 @@ function loop(nowMs) {
         return;
     }
 
-    const geom = getLaneGeometry(canvas);
+    const cam = getCamera3D(canvas);
 
     if (game.phase === 'rolling') {
-        const events = stepBallAndPins(game.ball, game.pins, geom, dtSec);
+        const events = stepBallAndPins(game.ball, game.pins, dtSec);
         handlePhysicsEvents(events);
-
         if (!game.ball.active) {
             game.phase = 'settling';
-            game.settleTimerMs = 950;
+            game.phaseTimerMs = 900;
         }
     } else if (game.phase === 'settling') {
-        stepBallAndPins(game.ball, game.pins, geom, dtSec);
-        game.settleTimerMs -= dtMs;
-        if (game.settleTimerMs <= 0 || arePinsSettled(game.pins)) {
-            resolveRollOutcome();
+        const events = stepBallAndPins(game.ball, game.pins, dtSec);
+        handlePhysicsEvents(events);
+        game.phaseTimerMs -= dtMs;
+        if (game.phaseTimerMs <= 0 || arePinsSettled(game.pins)) {
+            resolveConventionalBallOutcome();
         }
-    } else if (game.phase === 'frameOver') {
-        game.frameOverTimerMs -= dtMs;
-        if (game.frameOverTimerMs <= 0) {
-            advanceToNextTurn();
+    } else if (game.phase === 'betweenBalls' || game.phase === 'frameComplete') {
+        stepBallAndPins(game.ball, game.pins, dtSec);
+        game.phaseTimerMs -= dtMs;
+        if (game.phaseTimerMs <= 0) {
+            if (game.phase === 'betweenBalls') {
+                prepareBall2();
+            } else {
+                advanceToNextFrame();
+            }
         }
     }
 
-    updateParticles(dtSec);
-    renderScene(ctx, canvas, geom);
+    updateParticles3D(dtSec);
+    render3DScene(ctx, canvas, cam);
 
     rafId = requestAnimationFrame(loop);
 }
 
 function handlePhysicsEvents(events) {
     if (!game || !events || events.length === 0) return;
-
     const chainNotes = [];
+
     for (const ev of events) {
         if (ev.type === 'gutter') {
             playGutterTone();
-            game.bannerMessage = 'Into the gutter! Try Pitch Bend or a softer hook.';
+            game.bannerMessage = 'Gutter ball! Try Pitch Bend or softer hook.';
         } else if (ev.type === 'pinHit') {
-            game.chainHitCounter += 1;
             const note = ev.pin.note || game.scaleNotes[ev.pin.index % game.scaleNotes.length] || 'c2';
             playPinHitTone(note, ev.intensity, game.lastGrooveBoost);
-            spawnBurst(ev.pin.x, ev.pin.y, game.theme.pinToppleGlow, 8);
+            spawnBurst3D(ev.pin.x, ev.pin.z, game.theme.pinToppleGlow, 7);
             if (bridgeRef?.highlightKey) {
                 bridgeRef.highlightKey(note, 220, '#38bdf8');
             }
@@ -461,23 +459,28 @@ function handlePhysicsEvents(events) {
         }
     }
 
-    if (chainNotes.length > 0 && game.chainHitCounter >= 2) {
+    if (chainNotes.length > 0) {
         playChainHarmony(chainNotes, game.lastGrooveBoost);
     }
 }
 
-function updateParticles(dtSec) {
+function updateParticles3D(dtSec) {
     if (!game) return;
-    for (let i = game.particles.length - 1; i >= 0; i--) {
-        const p = game.particles[i];
+    for (let i = game.particles3D.length - 1; i >= 0; i--) {
+        const p = game.particles3D[i];
         p.x += p.vx * dtSec;
+        p.z += p.vz * dtSec;
         p.y += p.vy * dtSec;
+        p.vy -= 1.1 * dtSec;
         p.life -= dtSec * 1.9;
-        if (p.life <= 0) game.particles.splice(i, 1);
+        if (p.life <= 0) game.particles3D.splice(i, 1);
     }
 }
 
-function resolveRollOutcome() {
+// Conventional 10-pin bowling rules:
+// - Frames 1..9: Up to 2 balls per frame; strike on ball 1 ends frame; after ball 2 (or strike), pins refresh for next frame.
+// - Frame 10: Up to 3 balls; pins refresh if all 10 are knocked down on ball 1 or ball 2.
+function resolveConventionalBallOutcome() {
     if (!game) return;
 
     const knockedNow = game.pins.filter(p => p.down && !p.wasDownBeforeRoll).length;
@@ -487,7 +490,6 @@ function resolveRollOutcome() {
 
     const standingCount = countStandingPins(game.pins);
     const frameObj = game.frames[game.frame - 1];
-    frameObj.rolls.push(knockedNow);
 
     if (bridgeRef?.getState) {
         const st = bridgeRef.getState();
@@ -497,47 +499,61 @@ function resolveRollOutcome() {
     }
 
     if (game.frame < TOTAL_FRAMES) {
-        if (game.rollInFrame === 1 && standingCount === 0) {
+        frameObj.balls.push(knockedNow);
+
+        if (game.ballInFrame === 1 && standingCount === 0) {
             frameObj.isStrike = true;
-            game.bannerMessage = `STRIKE in Frame ${game.frame}!`;
+            game.bannerMessage = `STRIKE! Frame ${game.frame} complete — refreshing pins...`;
             playStrikeOrSpareFanfare(true, game.scaleNotes);
             if (bridgeRef?.spawnConfetti) {
                 const { canvas } = getCanvasAndContext();
-                if (canvas) bridgeRef.spawnConfetti(canvas.width / 2, canvas.height * 0.3, '#facc15');
+                if (canvas) bridgeRef.spawnConfetti(canvas.width / 2, canvas.height * 0.35, '#facc15');
             }
-            game.phase = 'frameOver';
-            game.frameOverTimerMs = 1500;
-        } else if (game.rollInFrame === 1 && standingCount > 0) {
-            game.rollInFrame = 2;
-            game.phase = 'aiming';
-            game.bannerMessage = `${knockedNow} down! ${standingCount} left — aim for the spare.`;
+            game.phase = 'frameComplete';
+            game.phaseTimerMs = 1450;
+        } else if (game.ballInFrame === 1 && standingCount > 0) {
+            game.bannerMessage = `Ball 1 knocked ${knockedNow} (${standingCount} standing). Ball 2 coming up...`;
+            game.phase = 'betweenBalls';
+            game.phaseTimerMs = 1100;
         } else {
+            // Ball 2 finished: refresh pins for next frame regardless
             if (standingCount === 0) {
                 frameObj.isSpare = true;
-                game.bannerMessage = `SPARE in Frame ${game.frame}!`;
+                game.bannerMessage = `SPARE! Frame ${game.frame} complete — refreshing pins...`;
                 playStrikeOrSpareFanfare(false, game.scaleNotes);
             } else {
-                game.bannerMessage = `Frame ${game.frame} complete: ${knockedNow} on roll 2.`;
+                game.bannerMessage = `Frame ${game.frame} finished (${knockedNow} on Ball 2) — refreshing pins...`;
             }
-            game.phase = 'frameOver';
-            game.frameOverTimerMs = 1400;
+            game.phase = 'frameComplete';
+            game.phaseTimerMs = 1350;
         }
     } else {
-        game.tenthFrameRolls.push(knockedNow);
+        // 10th Frame
+        frameObj.balls.push(knockedNow);
+        game.tenthFrameBalls.push(knockedNow);
+
+        const totalBallsThrown = game.tenthFrameBalls.length;
+        const firstBall = game.tenthFrameBalls[0] ?? 0;
+        const secondBall = game.tenthFrameBalls[1] ?? 0;
+
         if (standingCount === 0) {
             playStrikeOrSpareFanfare(true, game.scaleNotes);
-            game.pins = createTenPins(game.scaleNotes);
-            game.rollInFrame += 1;
-            if (game.rollInFrame <= 3) {
+            if (totalBallsThrown < 3) {
+                game.pins = createTenPins(game.scaleNotes);
+                game.ballInFrame = totalBallsThrown + 1;
                 game.phase = 'aiming';
-                game.bannerMessage = `10th Frame Bonus Roll (${game.rollInFrame}/3)! Full rack set.`;
+                game.bannerMessage = `10th Frame: Pins refreshed! Ball ${game.ballInFrame} of 3.`;
             } else {
                 finishGame();
             }
-        } else if (game.rollInFrame === 1) {
-            game.rollInFrame = 2;
+        } else if (totalBallsThrown === 1) {
+            game.ballInFrame = 2;
             game.phase = 'aiming';
-            game.bannerMessage = `10th Frame Roll 2/2: ${standingCount} pin(s) standing.`;
+            game.bannerMessage = `10th Frame Ball 2 of 2 (${standingCount} pin(s) standing).`;
+        } else if (totalBallsThrown === 2 && (firstBall === 10 || firstBall + secondBall === 10)) {
+            game.ballInFrame = 3;
+            game.phase = 'aiming';
+            game.bannerMessage = `10th Frame Bonus Ball 3 of 3 (${standingCount} pin(s) standing).`;
         } else {
             finishGame();
         }
@@ -547,38 +563,49 @@ function resolveRollOutcome() {
     updateStatusBar();
 }
 
-function advanceToNextTurn() {
+function prepareBall2() {
+    if (!game) return;
+    game.ballInFrame = 2;
+    game.ball.active = false;
+    game.ball.trail = [];
+    game.phase = 'aiming';
+    game.bannerMessage = `Ball 2 of 2 — ${countStandingPins(game.pins)} pin(s) left. Pick your spare!`;
+    updateStatusBar();
+}
+
+function advanceToNextFrame() {
     if (!game) return;
     if (game.frame >= TOTAL_FRAMES) {
         finishGame();
         return;
     }
 
+    // Refresh full 10-pin rack for the new frame
     game.frame += 1;
-    game.rollInFrame = 1;
+    game.ballInFrame = 1;
     game.pocketLocked = false;
     game.highlightedSparePin = null;
+    game.ball.active = false;
+    game.ball.trail = [];
     game.pins = createTenPins(game.scaleNotes);
-    game.pinsAtRollStart = snapshotPins(game.pins);
     game.phase = 'aiming';
-    game.bannerMessage = `Frame ${game.frame} of ${TOTAL_FRAMES} — Play a MIDI note to roll!`;
+    game.bannerMessage = `Frame ${game.frame}/${TOTAL_FRAMES} — Pins refreshed! Ball 1 of 2.`;
     updateStatusBar();
 }
 
 function recomputeScores() {
     if (!game) return;
     const flatRolls = [];
+
     for (let f = 0; f < TOTAL_FRAMES - 1; f++) {
-        const r = game.frames[f].rolls;
-        if (r.length === 1 && r[0] === 10) {
-            flatRolls.push({ value: 10, isStrike: true, frame: f });
+        const b = game.frames[f].balls;
+        if (b.length === 1 && b[0] === 10) {
+            flatRolls.push(10);
         } else {
-            r.forEach(val => flatRolls.push({ value: val, isStrike: false, frame: f }));
+            b.forEach(v => flatRolls.push(v));
         }
     }
-    game.tenthFrameRolls.forEach(val => {
-        flatRolls.push({ value: val, isStrike: val === 10, frame: TOTAL_FRAMES - 1 });
-    });
+    game.tenthFrameBalls.forEach(v => flatRolls.push(v));
 
     let running = 0;
     let cursor = 0;
@@ -586,20 +613,20 @@ function recomputeScores() {
     for (let f = 0; f < TOTAL_FRAMES; f++) {
         const fr = game.frames[f];
         if (f < TOTAL_FRAMES - 1) {
-            if (fr.rolls.length === 0) {
+            if (fr.balls.length === 0) {
                 fr.score = null;
                 continue;
             }
             if (fr.isStrike) {
-                const n1 = flatRolls[cursor + 1]?.value ?? 0;
-                const n2 = flatRolls[cursor + 2]?.value ?? 0;
+                const n1 = flatRolls[cursor + 1] ?? 0;
+                const n2 = flatRolls[cursor + 2] ?? 0;
                 running += 10 + n1 + n2;
                 fr.score = running;
                 cursor += 1;
-            } else if (fr.rolls.length === 2) {
-                const sumTwo = fr.rolls[0] + fr.rolls[1];
+            } else if (fr.balls.length === 2) {
+                const sumTwo = fr.balls[0] + fr.balls[1];
                 if (sumTwo === 10) {
-                    const bonus = flatRolls[cursor + 2]?.value ?? 0;
+                    const bonus = flatRolls[cursor + 2] ?? 0;
                     running += 10 + bonus;
                 } else {
                     running += sumTwo;
@@ -609,11 +636,8 @@ function recomputeScores() {
             } else {
                 fr.score = null;
             }
-        } else {
-            if (game.tenthFrameRolls.length > 0) {
-                const tenthSum = game.tenthFrameRolls.reduce((a, b) => a + b, 0);
-                fr.score = running + tenthSum;
-            }
+        } else if (game.tenthFrameBalls.length > 0) {
+            fr.score = running + game.tenthFrameBalls.reduce((a, b) => a + b, 0);
         }
     }
 
@@ -637,7 +661,7 @@ function finishGame() {
         bridgeRef.finishCustomMiniGame(
             'ChordBowl',
             finalScore,
-            `Final Bowling Score: <span style="color:#22c55e; font-size:1.35rem; font-weight:900;">${finalScore}</span> / 300`,
+            `Final 10-Frame Score: <span style="color:#22c55e; font-size:1.35rem; font-weight:900;">${finalScore}</span> / 300`,
             () => startChordBowl(bridgeRef)
         );
     }
@@ -646,129 +670,462 @@ function finishGame() {
 function updateStatusBar() {
     const statusEl = document.getElementById('status');
     if (!statusEl || !game) return;
-    statusEl.textContent = `🎳 ChordBowl | Frame ${game.frame}/${TOTAL_FRAMES} | Score: ${game.totalScore} | ${game.bannerMessage}`;
+    statusEl.textContent = `🎳 ChordBowl 3D | Frame ${game.frame}/${TOTAL_FRAMES} (Ball ${game.ballInFrame}) | Score: ${game.totalScore} | ${game.bannerMessage}`;
 }
 
-function renderScene(ctx, canvas, geom) {
+// --- 3D RENDERING (No Bowler/Person; Perspective Lane, Gutters, 3D Pins & 3D Ball) ---
+function render3DScene(ctx, canvas, cam) {
     const { theme } = game;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = theme.backdrop;
+    // Sky / Alley backdrop
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, cam.horizonY + 20);
+    skyGrad.addColorStop(0, theme.skyTop);
+    skyGrad.addColorStop(1, theme.skyHorizon);
+    ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Alley side walls
+    ctx.fillStyle = theme.sideWall;
+    ctx.fillRect(0, cam.horizonY, canvas.width, canvas.height - cam.horizonY);
+
+    // Trapezoid gutters (outer edges)
+    const nearLeft = cam.centerX - cam.nearHalfWidth;
+    const nearRight = cam.centerX + cam.nearHalfWidth;
+    const farLeft = cam.centerX - cam.farHalfWidth;
+    const farRight = cam.centerX + cam.farHalfWidth;
+
+    const gutterFrac = 0.11;
+    const nearPlayL = nearLeft + (nearRight - nearLeft) * gutterFrac;
+    const nearPlayR = nearRight - (nearRight - nearLeft) * gutterFrac;
+    const farPlayL = farLeft + (farRight - farLeft) * gutterFrac;
+    const farPlayR = farRight - (farRight - farLeft) * gutterFrac;
+
+    // Left & right gutters
     ctx.fillStyle = theme.gutter;
-    ctx.fillRect(geom.laneLeft, 0, geom.gutterWidth, canvas.height);
-    ctx.fillRect(geom.laneRight - geom.gutterWidth, 0, geom.gutterWidth, canvas.height);
+    ctx.beginPath();
+    ctx.moveTo(nearLeft, cam.foulY);
+    ctx.lineTo(nearPlayL, cam.foulY);
+    ctx.lineTo(farPlayL, cam.horizonY);
+    ctx.lineTo(farLeft, cam.horizonY);
+    ctx.closePath();
+    ctx.fill();
 
-    const laneGrad = ctx.createLinearGradient(0, geom.pinDeckY, 0, geom.foulLineY + 40);
-    laneGrad.addColorStop(0, theme.laneTop);
-    laneGrad.addColorStop(1, theme.laneBottom);
+    ctx.beginPath();
+    ctx.moveTo(nearPlayR, cam.foulY);
+    ctx.lineTo(nearRight, cam.foulY);
+    ctx.lineTo(farRight, cam.horizonY);
+    ctx.lineTo(farPlayR, cam.horizonY);
+    ctx.closePath();
+    ctx.fill();
+
+    // 3D Lane surface trapezoid with perspective planks
+    const laneGrad = ctx.createLinearGradient(0, cam.horizonY, 0, cam.foulY);
+    laneGrad.addColorStop(0, theme.laneWoodDark);
+    laneGrad.addColorStop(1, theme.laneWoodLight);
     ctx.fillStyle = laneGrad;
-    ctx.fillRect(geom.playLeft, 0, geom.playRight - geom.playLeft, canvas.height);
+    ctx.beginPath();
+    ctx.moveTo(nearPlayL, cam.foulY);
+    ctx.lineTo(nearPlayR, cam.foulY);
+    ctx.lineTo(farPlayR, cam.horizonY);
+    ctx.lineTo(farPlayL, cam.horizonY);
+    ctx.closePath();
+    ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 1;
-    const boards = 9;
-    for (let i = 1; i < boards; i++) {
-        const bx = geom.playLeft + ((geom.playRight - geom.playLeft) * i) / boards;
+    // Perspective wood boards
+    const planks = 10;
+    for (let i = 1; i < planks; i++) {
+        const f = i / planks;
+        const xBottom = nearPlayL + (nearPlayR - nearPlayL) * f;
+        const xTop = farPlayL + (farPlayR - farPlayL) * f;
+        ctx.strokeStyle = i % 2 === 0 ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.14)';
+        ctx.lineWidth = 1.2;
         ctx.beginPath();
-        ctx.moveTo(bx, 0);
-        ctx.lineTo(bx, canvas.height);
+        ctx.moveTo(xBottom, cam.foulY);
+        ctx.lineTo(xTop, cam.horizonY);
         ctx.stroke();
     }
 
+    // Approach range arrows in 3D perspective
     ctx.fillStyle = theme.arrow;
-    const arrowY = geom.pinDeckY + (geom.foulLineY - geom.pinDeckY) * 0.58;
     for (let a = -3; a <= 3; a++) {
-        const ax = (geom.playLeft + geom.playRight) / 2 + a * 22;
-        const tipOffset = (3 - Math.abs(a)) * 5;
+        const xNorm = a * 0.16;
+        const zArrow = 0.42;
+        const p1 = project3D(xNorm, zArrow + 0.045, 0, cam);
+        const p2 = project3D(xNorm - 0.03, zArrow, 0, cam);
+        const p3 = project3D(xNorm + 0.03, zArrow, 0, cam);
         ctx.beginPath();
-        ctx.moveTo(ax, arrowY - 12 - tipOffset);
-        ctx.lineTo(ax - 5, arrowY);
-        ctx.lineTo(ax + 5, arrowY);
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.lineTo(p3.x, p3.y);
         ctx.closePath();
         ctx.fill();
     }
 
+    // Foul line
     ctx.strokeStyle = theme.foulLine;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(geom.laneLeft, geom.foulLineY);
-    ctx.lineTo(geom.laneRight, geom.foulLineY);
+    ctx.moveTo(nearLeft, cam.foulY);
+    ctx.lineTo(nearRight, cam.foulY);
     ctx.stroke();
 
-    drawScoreboard(ctx, game);
-    drawGrooveMeter(ctx, canvas, game);
-
+    // Aiming laser/guide in 3D
     if (game.phase === 'aiming') {
-        const aimX = geom.playLeft + ((game.aimNormalized + 1) / 2) * (geom.playRight - geom.playLeft);
+        const startPt = project3D(game.aimNormalized, 0.02, 0.01, cam);
+        const endPt = project3D(game.aimNormalized * 0.72, 0.88, 0.01, cam);
         ctx.save();
-        ctx.setLineDash([6, 6]);
+        ctx.setLineDash([7, 7]);
         ctx.strokeStyle = game.pocketLocked ? '#22c55e' : theme.accent;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.2;
         ctx.beginPath();
-        ctx.moveTo(aimX, geom.foulLineY);
-        ctx.lineTo(aimX, geom.pinDeckY);
+        ctx.moveTo(startPt.x, startPt.y);
+        ctx.lineTo(endPt.x, endPt.y);
         ctx.stroke();
         ctx.setLineDash([]);
 
         ctx.fillStyle = game.pocketLocked ? '#22c55e' : theme.accent;
         ctx.beginPath();
-        ctx.arc(aimX, geom.foulLineY, 8, 0, Math.PI * 2);
+        ctx.arc(startPt.x, startPt.y, 9, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 11px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(game.targetKeyNote.toUpperCase(), aimX, geom.foulLineY + 20);
+        ctx.fillText(game.targetKeyNote.toUpperCase(), startPt.x, startPt.y + 18);
         ctx.restore();
     }
 
-    drawPins(ctx, game.pins, geom, theme, game.highlightedSparePin);
+    // Depth-sort 3D objects (pins + ball) from farthest (largest z) to nearest (smallest z)
+    const renderables = [];
+    for (const pin of game.pins) {
+        renderables.push({ kind: 'pin', z: pin.z, pin });
+    }
+    if (game.ball.active || game.phase === 'settling' || game.phase === 'aiming') {
+        const b = game.ball.active || game.phase === 'settling'
+            ? game.ball
+            : { ...game.ball, x: game.aimNormalized, z: 0.03, radius: 0.062 * game.ballWeight.radiusMultiplier };
+        renderables.push({ kind: 'ball', z: b.z, ball: b });
+    }
+    renderables.sort((a, b) => b.z - a.z);
 
-    if (game.ball.active || game.phase === 'settling') {
-        drawBall(ctx, game.ball, theme);
+    for (const item of renderables) {
+        if (item.kind === 'pin') {
+            draw3DPin(ctx, item.pin, cam, theme, game.highlightedSparePin);
+        } else {
+            draw3DBall(ctx, item.ball, cam, theme);
+        }
     }
 
-    for (const p of game.particles) {
+    // 3D particles
+    for (const p of game.particles3D) {
+        const pt = project3D(p.x, p.z, p.y, cam);
         ctx.save();
         ctx.globalAlpha = Math.max(0, p.life);
         ctx.fillStyle = p.color;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.arc(pt.x, pt.y, Math.max(2, 5 * pt.scale), 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
     }
+
+    draw3DHUD(ctx, canvas, game);
 }
 
-function drawScoreboard(ctx, state) {
+function draw3DPin(ctx, pin, cam, theme, spareHintIdx) {
+    const base = project3D(pin.x, pin.z, 0, cam);
+    const pinHeight = 46 * base.scale;
+    const pinHalfW = 11.5 * base.scale;
+
+    // Ground shadow
     ctx.save();
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-    ctx.fillRect(12, 12, 235, 76);
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
-    ctx.strokeRect(12, 12, 235, 76);
+    ctx.fillStyle = 'rgba(0,0,0,0.32)';
+    ctx.beginPath();
+    ctx.ellipse(base.x, base.y, pinHalfW * 1.15, Math.max(2, 4.2 * base.scale), 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
 
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 13px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(`Frame ${state.frame}/${TOTAL_FRAMES}  |  Total: ${state.totalScore}`, 22, 32);
+    ctx.save();
+    ctx.translate(base.x, base.y);
 
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = '11px sans-serif';
-    ctx.fillText(`Ball: ${state.ballWeight.label}  |  Hook: ${Math.round(state.modWheelNorm * 100)}%`, 22, 52);
+    if (spareHintIdx === pin.index && !pin.down) {
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, pinHalfW * 1.65, Math.max(4, 6.5 * base.scale), 0, 0, Math.PI * 2);
+        ctx.stroke();
+    }
 
-    ctx.fillStyle = state.pocketLocked ? '#22c55e' : '#cbd5e1';
-    ctx.fillText(
-        state.pocketLocked ? 'Pocket Lock: ACTIVE' : 'Chord: Triad=Lock | Octave=Weight',
-        22,
-        72
-    );
+    // Topple lean in 3D screen space
+    const leanX = pin.tiltDirX * Math.sin(pin.tilt) * pinHeight * 0.9;
+    const uprightFactor = Math.cos(pin.tilt);
+    const tipY = -Math.max(4, pinHeight * Math.max(0.12, uprightFactor)) + Math.sin(pin.tilt) * (pin.tiltDirZ < 0 ? -6 : 6) * base.scale;
+
+    // Pin silhouette (3D shaded bottle profile)
+    const bodyGrad = ctx.createLinearGradient(-pinHalfW, 0, pinHalfW, 0);
+    bodyGrad.addColorStop(0, pin.down ? '#64748b' : theme.pinShadow);
+    bodyGrad.addColorStop(0.45, pin.down ? '#94a3b8' : theme.pinBody);
+    bodyGrad.addColorStop(1, pin.down ? '#475569' : '#cbd5e1');
+
+    ctx.fillStyle = bodyGrad;
+    ctx.beginPath();
+    ctx.moveTo(-pinHalfW * 0.72, 0);
+    ctx.quadraticCurveTo(-pinHalfW * 1.15, tipY * 0.45, -pinHalfW * 0.42 + leanX * 0.65, tipY * 0.72);
+    ctx.lineTo(-pinHalfW * 0.58 + leanX, tipY);
+    ctx.quadraticCurveTo(leanX, tipY - 5 * base.scale, pinHalfW * 0.58 + leanX, tipY);
+    ctx.lineTo(pinHalfW * 0.42 + leanX * 0.65, tipY * 0.72);
+    ctx.quadraticCurveTo(pinHalfW * 1.15, tipY * 0.45, pinHalfW * 0.72, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    // Red neck stripe
+    ctx.strokeStyle = theme.pinStripe;
+    ctx.lineWidth = Math.max(1.5, 3 * base.scale);
+    ctx.beginPath();
+    ctx.moveTo(-pinHalfW * 0.55 + leanX * 0.68, tipY * 0.74);
+    ctx.lineTo(pinHalfW * 0.55 + leanX * 0.68, tipY * 0.74);
+    ctx.stroke();
+
+    // Pentatonic note label on pin
+    if (base.scale > 0.42) {
+        ctx.fillStyle = '#0f172a';
+        ctx.font = `bold ${Math.max(8, Math.round(9 * base.scale))}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((pin.note || '').replace(/\d+$/, '').toUpperCase(), leanX * 0.35, tipY * 0.42);
+    }
+
     ctx.restore();
 }
 
-function drawGrooveMeter(ctx, canvas, state) {
+function draw3DBall(ctx, ball, cam, theme) {
+    // Trail along 3D lane
+    for (let i = 0; i < ball.trail.length; i++) {
+        const pt = project3D(ball.trail[i].x, ball.trail[i].z, 0.02, cam);
+        const ratio = (i + 1) / ball.trail.length;
+        ctx.save();
+        ctx.globalAlpha = ratio * 0.25;
+        ctx.fillStyle = theme.accent;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, Math.max(2, 16 * pt.scale * ratio), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    const rNorm = ball.radius * 0.85;
+    const center = project3D(ball.x, ball.z, rNorm, cam);
+    const ground = project3D(ball.x, ball.z, 0, cam);
+    const radiusPx = Math.max(5, 22 * center.scale);
+
+    // Shadow on lane
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
+    ctx.beginPath();
+    ctx.ellipse(ground.x, ground.y, radiusPx * 1.05, radiusPx * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Shaded 3D sphere
+    ctx.save();
+    const grad = ctx.createRadialGradient(
+        center.x - radiusPx * 0.32,
+        center.y - radiusPx * 0.32,
+        radiusPx * 0.12,
+        center.x,
+        center.y,
+        radiusPx
+    );
+    grad.addColorStop(0, '#93c5fd');
+    grad.addColorStop(0.35, ball.inGutter ? '#475569' : theme.ballPrimary);
+    grad.addColorStop(1, ball.inGutter ? '#1e293b' : theme.ballSecondary);
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, radiusPx, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rotating finger holes
+    const rot = ball.rollRotation;
+    ctx.fillStyle = theme.ballHole;
+    for (let h = 0; h < 3; h++) {
+        const a = rot + h * 2.09;
+        const hx = center.x + Math.cos(a) * radiusPx * 0.34;
+        const hy = center.y + Math.sin(a) * radiusPx * 0.28;
+        ctx.beginPath();
+        ctx.arc(hx, hy, Math.max(1.3, radiusPx * 0.13), 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
+
+// --- CONVENTIONAL 10-FRAME BOWLING SCOREBOARD RENDERER ---
+function formatFrameMarks(frameObj, isTenthFrame, tenthBalls) {
+    if (isTenthFrame) {
+        if (!tenthBalls || tenthBalls.length === 0) return ['', '', ''];
+        const marks = [];
+        let rack = 10;
+        let frameRollInRack = 0;
+
+        for (let i = 0; i < tenthBalls.length; i++) {
+            const pins = tenthBalls[i];
+            frameRollInRack += 1;
+
+            if (pins === 10 && frameRollInRack === 1) {
+                marks.push('X');
+                rack = 10;
+                frameRollInRack = 0;
+            } else if (pins === rack && frameRollInRack === 2) {
+                marks.push('/');
+                rack = 10;
+                frameRollInRack = 0;
+            } else if (pins === 0) {
+                marks.push('-');
+                rack = Math.max(1, rack - pins);
+            } else {
+                marks.push(String(pins));
+                rack = Math.max(1, rack - pins);
+            }
+        }
+        while (marks.length < 3) marks.push('');
+        return marks.slice(0, 3);
+    }
+
+    const balls = frameObj?.balls || [];
+    if (balls.length === 0) return ['', ''];
+    if (frameObj.isStrike) return ['', 'X'];
+    if (balls.length === 1) {
+        return [balls[0] === 0 ? '-' : String(balls[0]), ''];
+    }
+    if (frameObj.isSpare) {
+        const b1 = balls[0] === 0 ? '-' : String(balls[0]);
+        return [b1, '/'];
+    }
+    return [
+        balls[0] === 0 ? '-' : String(balls[0]),
+        balls[1] === 0 ? '-' : String(balls[1])
+    ];
+}
+
+function drawConventionalScoreboard(ctx, canvas, state) {
+    const marginX = 12;
+    const topY = 8;
+    const hudReserveRight = 64;
+    const boardWidth = Math.max(420, canvas.width - marginX * 2 - hudReserveRight);
+    const boardHeight = 62;
+    const headerHeight = 16;
+    const boxWidth = boardWidth / TOTAL_FRAMES;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+    ctx.fillRect(marginX, topY, boardWidth, boardHeight);
+
+    for (let i = 0; i < TOTAL_FRAMES; i++) {
+        const fx = marginX + i * boxWidth;
+        const fr = state.frames[i];
+        const isCurrent = state.frame === i + 1 && state.phase !== 'gameOver';
+
+        if (isCurrent) {
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.14)';
+            ctx.fillRect(fx, topY, boxWidth, boardHeight);
+        }
+
+        // Frame border
+        ctx.strokeStyle = isCurrent ? '#38bdf8' : 'rgba(148, 163, 184, 0.35)';
+        ctx.lineWidth = isCurrent ? 1.8 : 1;
+        ctx.strokeRect(fx, topY, boxWidth, boardHeight);
+
+        // Header row (Frame 1..10)
+        ctx.fillStyle = isCurrent ? '#38bdf8' : '#cbd5e1';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(i + 1), fx + boxWidth / 2, topY + headerHeight / 2);
+
+        // Divider under header
+        ctx.beginPath();
+        ctx.moveTo(fx, topY + headerHeight);
+        ctx.lineTo(fx + boxWidth, topY + headerHeight);
+        ctx.stroke();
+
+        // Roll mark boxes (upper right sub-cells)
+        const isTenth = i === TOTAL_FRAMES - 1;
+        const subCount = isTenth ? 3 : 2;
+        const markBoxW = Math.min(18 * subCount, boxWidth * (isTenth ? 0.72 : 0.56));
+        const markBoxH = 18;
+        const markStartX = fx + boxWidth - markBoxW;
+        const subW = markBoxW / subCount;
+
+        for (let s = 0; s < subCount; s++) {
+            const sx = markStartX + s * subW;
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.28)';
+            ctx.lineWidth = 0.9;
+            ctx.strokeRect(sx, topY + headerHeight, subW, markBoxH);
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(markStartX, topY + headerHeight + markBoxH);
+        ctx.lineTo(fx + boxWidth, topY + headerHeight + markBoxH);
+        ctx.stroke();
+
+        const marks = formatFrameMarks(fr, isTenth, state.tenthFrameBalls);
+        for (let s = 0; s < subCount; s++) {
+            const mark = marks[s];
+            if (!mark) continue;
+            const cx = markStartX + s * subW + subW / 2;
+            const cy = topY + headerHeight + markBoxH / 2;
+            ctx.fillStyle = mark === 'X' ? '#facc15' : mark === '/' ? '#22c55e' : '#f8fafc';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillText(mark, cx, cy + 0.5);
+        }
+
+        // Cumulative frame score in lower area
+        if (fr && fr.score !== null && fr.score !== undefined) {
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = 'bold 13px sans-serif';
+            ctx.fillText(
+                String(fr.score),
+                fx + boxWidth / 2,
+                topY + headerHeight + markBoxH + (boardHeight - headerHeight - markBoxH) / 2
+            );
+        }
+    }
+
+    ctx.restore();
+}
+
+function draw3DHUD(ctx, canvas, state) {
+    // Full conventional 10-frame bowling scorecard along top
+    drawConventionalScoreboard(ctx, canvas, state);
+
+    // Compact ball/hook/chord info badge below scorecard
+    const badgeTop = 78;
+    ctx.save();
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.fillRect(12, badgeTop, 285, 42);
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+    ctx.strokeRect(12, badgeTop, 285, 42);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(
+        `Ball ${state.ballInFrame} • ${state.ballWeight.label} • Hook ${Math.round(state.modWheelNorm * 100)}%`,
+        20,
+        badgeTop + 16
+    );
+
+    ctx.fillStyle = state.pocketLocked ? '#22c55e' : '#cbd5e1';
+    ctx.fillText(
+        state.pocketLocked ? 'Pocket Lock: ACTIVE' : 'Chord: Triad = Pocket Lock | Octave = Ball Weight',
+        20,
+        badgeTop + 32
+    );
+    ctx.restore();
+
+    // Groove meter right side
     const barW = 18;
-    const barH = 150;
+    const barH = 140;
     const x = canvas.width - 42;
     const y = canvas.height * 0.5 - barH / 2;
 
@@ -788,8 +1145,8 @@ function drawGrooveMeter(ctx, canvas, state) {
     const markerY = y + beatPhase * barH;
 
     ctx.fillStyle = 'rgba(34, 197, 94, 0.28)';
-    ctx.fillRect(x, y, barW, 20);
-    ctx.fillRect(x, y + barH - 20, barW, 20);
+    ctx.fillRect(x, y, barW, 18);
+    ctx.fillRect(x, y + barH - 18, barW, 18);
 
     ctx.fillStyle = isOnGrooveBeat() ? '#22c55e' : '#facc15';
     ctx.fillRect(x - 2, markerY - 4, barW + 4, 8);
@@ -800,90 +1157,18 @@ function drawGrooveMeter(ctx, canvas, state) {
     ctx.restore();
 }
 
-function drawPins(ctx, pins, geom, theme, spareHintIdx) {
-    for (const pin of pins) {
-        const px = geom.playLeft + ((pin.nx + 1) / 2) * (geom.playRight - geom.playLeft);
-        const py = geom.pinDeckY + pin.ny * (geom.foulLineY - geom.pinDeckY) * 0.24;
-        pin.x = px;
-        pin.y = py;
-
-        ctx.save();
-        ctx.translate(px, py);
-
-        if (pin.down) {
-            ctx.rotate(pin.fallAngle || 0.7);
-            ctx.globalAlpha = 0.45;
-        } else if (spareHintIdx === pin.index) {
-            ctx.strokeStyle = '#facc15';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.arc(0, 0, 14, 0, Math.PI * 2);
-            ctx.stroke();
-        }
-
-        ctx.fillStyle = pin.down ? '#64748b' : theme.pinBody;
-        ctx.beginPath();
-        ctx.arc(0, 0, 9.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.strokeStyle = theme.pinStripe;
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.arc(0, 0, 5.5, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.fillStyle = pin.down ? '#cbd5e1' : '#0f172a';
-        ctx.font = 'bold 8px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText((pin.note || '').replace(/\d+$/, '').toUpperCase(), 0, 0.5);
-
-        ctx.restore();
-    }
-}
-
-function drawBall(ctx, ball, theme) {
-    for (let i = 0; i < ball.trail.length; i++) {
-        const pt = ball.trail[i];
-        const ratio = (i + 1) / ball.trail.length;
-        ctx.save();
-        ctx.globalAlpha = ratio * 0.28;
-        ctx.fillStyle = theme.ballPrimary;
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, ball.radius * ratio * 0.85, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    }
-
-    ctx.save();
-    ctx.translate(ball.x, ball.y);
-    ctx.fillStyle = ball.inGutter ? '#475569' : theme.ballPrimary;
-    ctx.beginPath();
-    ctx.arc(0, 0, ball.radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    const spinAngle = ball.spin * 1.4;
-    ctx.fillStyle = theme.ballHole;
-    ctx.beginPath();
-    ctx.arc(Math.cos(spinAngle) * 4, Math.sin(spinAngle) * 4, 2.2, 0, Math.PI * 2);
-    ctx.arc(Math.cos(spinAngle + 2.1) * 4, Math.sin(spinAngle + 2.1) * 4, 2.2, 0, Math.PI * 2);
-    ctx.arc(Math.cos(spinAngle + 4.2) * 4, Math.sin(spinAngle + 4.2) * 4, 2.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-}
-
 export function handleChordBowlKeyDown(e) {
     if (!game || game.phase !== 'aiming') return false;
     if (e.key === 'ArrowLeft') {
-        game.aimNormalized = Math.max(-1, game.aimNormalized - 0.12);
+        game.aimNormalized = Math.max(-0.88, game.aimNormalized - 0.1);
         return true;
     }
     if (e.key === 'ArrowRight') {
-        game.aimNormalized = Math.min(1, game.aimNormalized + 0.12);
+        game.aimNormalized = Math.min(0.88, game.aimNormalized + 0.1);
         return true;
     }
     if (e.code === 'Enter') {
-        launchRoll(88);
+        launchBall(88);
         return true;
     }
     return false;
