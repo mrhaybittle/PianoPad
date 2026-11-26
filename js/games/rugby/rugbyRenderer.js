@@ -228,6 +228,77 @@ function drawTryCelebrationOverlay(ctx, state, w, h) {
   ctx.restore();
 }
 
+function drawDigitalTvBroadcastScreen(ctx, state, tvX, tvY, tvW, tvH, timeSec) {
+  ctx.save();
+
+  ctx.fillStyle = '#090d16';
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.rect(tvX, tvY, tvW, tvH);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#334155';
+  ctx.fillRect(tvX + tvW * 0.42, tvY + tvH, tvW * 0.16, 7);
+
+  const innerPad = 6;
+  const sx = tvX + innerPad;
+  const sy = tvY + innerPad;
+  const sw = Math.max(40, tvW - innerPad * 2);
+  const sh = Math.max(30, tvH - innerPad * 2 - 14);
+
+  ctx.fillStyle = '#15803d';
+  ctx.fillRect(sx, sy, sw, sh);
+  ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(sx + 4, sy + 3, sw - 8, sh - 6);
+
+  const huddleCenterX = sx + sw * 0.5;
+  const huddleCenterY = sy + sh * (state.conversion.isHomeKick ? 0.25 : 0.75);
+  const huddleTeam = state.conversion.isHomeKick ? state.homeTeam : state.awayTeam;
+  const oppTeam = state.conversion.isHomeKick ? state.awayTeam : state.homeTeam;
+
+  for (let i = 0; i < 5; i++) {
+    const angle = (i / 5) * Math.PI * 2 + Math.sin(timeSec * 3) * 0.08;
+    const hx = huddleCenterX + Math.cos(angle) * 14;
+    const hy = huddleCenterY + Math.sin(angle) * 7;
+    ctx.fillStyle = huddleTeam.primary;
+    ctx.beginPath();
+    ctx.arc(hx, hy, 4.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = huddleTeam.secondary;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+  }
+
+  for (let j = 0; j < 3; j++) {
+    const ox = sx + sw * (0.34 + j * 0.16);
+    const oy = huddleCenterY + (state.conversion.isHomeKick ? 14 : -14);
+    ctx.fillStyle = oppTeam.primary;
+    ctx.beginPath();
+    ctx.arc(ox, oy, 3.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = '#dc2626';
+  ctx.fillRect(sx + 4, sy + 4, 34, 12);
+  ctx.font = '800 8px "Chakra Petch", sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left';
+  ctx.fillText('LIVE TV', sx + 7, sy + 13);
+
+  const barY = sy + sh + 2;
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(tvX + 2, barY, tvW - 4, 14);
+  ctx.font = '700 8.5px "Chakra Petch", sans-serif';
+  ctx.fillStyle = '#fde047';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${huddleTeam.name.toUpperCase()} HUDDLED AFTER TRY`, tvX + tvW * 0.5, barY + 9.5);
+
+  ctx.restore();
+}
+
 function drawConversionView(ctx, state, w, h, timeSec) {
   const conv = state.conversion;
   const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.52);
@@ -242,6 +313,12 @@ function drawConversionView(ctx, state, w, h, timeSec) {
   grassGrad.addColorStop(1, '#14532d');
   ctx.fillStyle = grassGrad;
   ctx.fillRect(0, horizonY, w, h - horizonY);
+
+  const tvW = Math.min(w * 0.44, 340);
+  const tvH = Math.min(h * 0.34, 155);
+  const tvX = (w - tvW) * 0.5;
+  const tvY = Math.max(10, horizonY - tvH - 12);
+  drawDigitalTvBroadcastScreen(ctx, state, tvX, tvY, tvW, tvH, timeSec);
 
   const project3D = (x3, y3, z3) => {
     const depth = Math.max(6, z3 + 34);
@@ -271,12 +348,11 @@ function drawConversionView(ctx, state, w, h, timeSec) {
   const topPostH = 11.5;
 
   const lBase = project3D(-postHalfW, 0, 24);
-  const lCross = project3D(-postHalfW, crossbarH, 24);
   const lTop = project3D(-postHalfW, topPostH, 24);
-
   const rBase = project3D(postHalfW, 0, 24);
-  const rCross = project3D(postHalfW, crossbarH, 24);
   const rTop = project3D(postHalfW, topPostH, 24);
+  const lCross = project3D(-postHalfW, crossbarH, 24);
+  const rCross = project3D(postHalfW, crossbarH, 24);
 
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 4;
