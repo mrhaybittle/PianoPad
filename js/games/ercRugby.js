@@ -168,7 +168,8 @@ export function startErcRugby(bridge, autoStart = false) {
       flightProgress: 0,
       flightDuration: 1.15,
       bounceCount: 0,
-      aiChargeTimer: 0.85
+      aiChargeTimer: 0.85,
+      flightElapsed: 0
     },
 
     pokie: {
@@ -202,7 +203,8 @@ export function startErcRugby(bridge, autoStart = false) {
     passState: {
       active: false, fromIdx: 2, toIdx: 2,
       startX: 0.5, startY: 0.82, x: 0.5, y: 0.82,
-      progress: 0, duration: 0.22, isForwardPass: false
+      progress: 0, duration: 0.22, isForwardPass: false,
+      elapsed: 0
     },
 
     kickBall: {
@@ -228,6 +230,29 @@ export function startErcRugby(bridge, autoStart = false) {
     nextStartY: 0.82,
     screenShake: { timer: 0, duration: 0.32, intensity: 13 }
   };
+
+  function resetAllBallFlightFlags() {
+    state.passState.active = false;
+    state.passState.progress = 0;
+    state.passState.elapsed = 0;
+
+    state.kickBall.active = false;
+    state.kickBall.z = 0;
+    state.kickBall.vx = 0;
+    state.kickBall.vy = 0;
+    state.kickBall.vz = 0;
+
+    state.kick3D.active = false;
+    state.kick3D.aiming = false;
+    state.kick3D.holdMidi = null;
+    state.kick3D.flightProgress = 0;
+    state.kick3D.flightElapsed = 0;
+    state.kick3D.z = 0;
+    state.kick3D.vx = 0;
+    state.kick3D.vy = 0;
+    state.kick3D.vz = 0;
+    state.kick3D.curveAccelX = 0;
+  }
 
   function getRugbyRoomRef(roomCode) {
     if (!window.firebaseDb || !window.firebaseRef || !roomCode) return null;
@@ -439,6 +464,7 @@ export function startErcRugby(bridge, autoStart = false) {
             state.kick3D.y = kicker.y;
             state.kick3D.z = 0.03;
             state.kick3D.flightProgress = 0;
+            state.kick3D.flightElapsed = 0;
           }
           return;
         }
@@ -460,6 +486,7 @@ export function startErcRugby(bridge, autoStart = false) {
             state.passState.x = passer.x;
             state.passState.y = passer.y;
             state.passState.progress = 0;
+            state.passState.elapsed = 0;
             state.passState.duration = 0.14 + Math.abs(targetIdx - state.carrierIndex) * 0.05;
             state.passState.isForwardPass = receiver.y > passer.y + 0.006;
           }
@@ -748,6 +775,7 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   function triggerCoinFlip() {
+    resetAllBallFlightFlags();
     state.phase = 'coinToss';
     state.playState = 'coinToss';
     state.coinToss.active = true;
@@ -792,6 +820,7 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   function beginKickoffSequence() {
+    resetAllBallFlightFlags();
     const kickerSide = state.coinToss.kickoffBy || 'away';
     const receiverSide = state.coinToss.receiverSide || (kickerSide === 'away' ? 'home' : 'away');
 
@@ -799,8 +828,6 @@ export function startErcRugby(bridge, autoStart = false) {
     state.possession = receiverSide;
     state.playState = 'kickoff3D';
     state.tackleCount = 0;
-    state.passState.active = false;
-    state.kickBall.active = false;
 
     const kickerStartY = kickerSide === 'home' ? 0.84 : 0.16;
     const receiverStartY = receiverSide === 'home' ? 0.62 : 0.38;
@@ -837,6 +864,7 @@ export function startErcRugby(bridge, autoStart = false) {
     state.kick3D.vz = 0;
     state.kick3D.curveAccelX = 0;
     state.kick3D.flightProgress = 0;
+    state.kick3D.flightElapsed = 0;
     state.kick3D.flightDuration = 1.15;
     state.kick3D.bounceCount = 0;
     state.kick3D.aiChargeTimer = 0.85;
@@ -885,6 +913,7 @@ export function startErcRugby(bridge, autoStart = false) {
     state.kick3D.y = kicker.y;
     state.kick3D.z = 0.03;
     state.kick3D.flightProgress = 0;
+    state.kick3D.flightElapsed = 0;
     state.kick3D.bounceCount = 0;
 
     state.homePlayers.forEach((att, idx) => {
@@ -930,12 +959,13 @@ export function startErcRugby(bridge, autoStart = false) {
     const curveLateral = k3.aimCurve * (0.14 + p * 0.18);
     const targetX = Math.min(0.92, Math.max(0.08, k3.startX + curveLateral));
 
-    k3.flightDuration = duration;
+    k3.flightDuration = Math.max(0.25, duration);
     k3.flightProgress = 0;
-    k3.vx = (targetX - k3.startX) / duration;
-    k3.vy = (targetY - k3.startY) / duration;
+    k3.flightElapsed = 0;
+    k3.vx = (targetX - k3.startX) / k3.flightDuration;
+    k3.vy = (targetY - k3.startY) / k3.flightDuration;
     k3.curveAccelX = k3.aimCurve * 0.26 * dirSign;
-    k3.vz = (4 * peakZ) / duration;
+    k3.vz = (4 * peakZ) / k3.flightDuration;
 
     playKickSound(k3.kind === 'grubber' ? 'grubber' : 'bomb');
     addCallout(
@@ -1094,6 +1124,7 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   function startConversionKick(isHomeKick, scorerNote = 'E', scorerLaneX = 0.5) {
+    resetAllBallFlightFlags();
     state.playState = 'conversionKick';
     state.conversion.active = true;
     state.conversion.isHomeKick = isHomeKick;
@@ -1153,11 +1184,8 @@ export function startErcRugby(bridge, autoStart = false) {
     const roster = scoringSide === 'home' ? state.homePlayers : state.awayPlayers;
     roster.forEach((p, idx) => { p.isScorer = idx === scorerIdx; });
 
+    resetAllBallFlightFlags();
     state.playState = 'tryCelebration';
-    state.passState.active = false;
-    state.kickBall.active = false;
-    state.kick3D.active = false;
-    state.kick3D.aiming = false;
     state.defSwitchChallenge.active = false;
 
     state.tryCelebration.active = true;
@@ -1219,16 +1247,11 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   function setupSetOfSix(possession, startY, carrierIdx = 2) {
+    resetAllBallFlightFlags();
     state.possession = possession;
     state.carrierIndex = carrierIdx;
     state.selectedDefenderIdx = carrierIdx;
     state.tackleCount = 0;
-    state.passState.active = false;
-    state.kickBall.active = false;
-    state.kickBall.z = 0;
-    state.kick3D.active = false;
-    state.kick3D.aiming = false;
-    state.kick3D.holdMidi = null;
     state.tryCelebration.active = false;
     state.conversion.active = false;
     state.defSwitchChallenge.active = false;
@@ -1322,6 +1345,7 @@ export function startErcRugby(bridge, autoStart = false) {
     state.passState.startX = passer.x; state.passState.startY = passer.y;
     state.passState.x = passer.x; state.passState.y = passer.y;
     state.passState.progress = 0;
+    state.passState.elapsed = 0;
     state.passState.duration = 0.16 + laneDist * 0.06;
     state.passState.isForwardPass = false;
 
@@ -1336,10 +1360,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
   function triggerHandover(reasonText, nextPossession, nextStartY, color = '#fb7185', whistleStyle = 'long') {
     playRefWhistle(whistleStyle);
-    state.passState.active = false;
-    state.kickBall.active = false;
-    state.kick3D.active = false;
-    state.kick3D.aiming = false;
+    resetAllBallFlightFlags();
     state.defSwitchChallenge.active = false;
     state.playState = 'turnoverPause';
     state.turnoverTimer = 1.25;
@@ -1353,6 +1374,7 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   function beginTackleAndRetreat() {
+    resetAllBallFlightFlags();
     const attackers = state.possession === 'home' ? state.homePlayers : state.awayPlayers;
     const carrier = attackers[state.carrierIndex];
 
@@ -1472,6 +1494,7 @@ export function startErcRugby(bridge, autoStart = false) {
     state.passState.startX = passer.x; state.passState.startY = passer.y;
     state.passState.x = passer.x; state.passState.y = passer.y;
     state.passState.progress = 0;
+    state.passState.elapsed = 0;
     state.passState.duration = 0.14 + laneDist * 0.05;
     state.passState.isForwardPass = thrownForward;
   }
@@ -1733,8 +1756,10 @@ export function startErcRugby(bridge, autoStart = false) {
       return true;
     }
 
-    k3.flightProgress += dt / k3.flightDuration;
-    const t = Math.min(1, k3.flightProgress);
+    const safeDur = Math.max(0.25, k3.flightDuration || 1.15);
+    k3.flightElapsed = (k3.flightElapsed || 0) + dt;
+    k3.flightProgress = Math.min(1, k3.flightElapsed / safeDur);
+    const t = k3.flightProgress;
 
     k3.vx += k3.curveAccelX * dt;
     k3.x = Math.min(0.92, Math.max(0.08, k3.x + k3.vx * dt));
@@ -1753,7 +1778,7 @@ export function startErcRugby(bridge, autoStart = false) {
         const att = state.homePlayers[i];
         if (att.offsideOnKick) continue;
         if (Math.hypot(att.x - k3.x, att.y - k3.y) < 0.038) {
-          k3.active = false;
+          resetAllBallFlightFlags();
           state.carrierIndex = i;
           state.tackleCount = 0;
           state.playState = 'running';
@@ -1765,7 +1790,7 @@ export function startErcRugby(bridge, autoStart = false) {
       }
     }
 
-    if (t >= 1) {
+    if (t >= 1 || k3.flightElapsed >= safeDur + 0.1) {
       let bestIdx = 2;
       let bestDist = Infinity;
       for (let i = 0; i < receiverRoster.length; i++) {
@@ -1776,7 +1801,7 @@ export function startErcRugby(bridge, autoStart = false) {
       const wasKickoff = k3.kind === 'kickoff';
       const nextPos = k3.receiverSide;
 
-      k3.active = false;
+      resetAllBallFlightFlags();
       setupSetOfSix(nextPos, catchY, bestIdx);
       state.playState = 'running';
       assignAiDefenderChasers();
@@ -1971,31 +1996,41 @@ export function startErcRugby(bridge, autoStart = false) {
     }
 
     if (state.passState.active) {
-      state.passState.progress += dt / state.passState.duration;
+      const safePassDur = Math.max(0.08, state.passState.duration || 0.2);
+      state.passState.elapsed = (state.passState.elapsed || 0) + dt;
+      state.passState.progress = Math.min(1, state.passState.elapsed / safePassDur);
       const receiver = attackers[state.passState.toIdx];
-      const t = Math.min(1, state.passState.progress);
+      const t = state.passState.progress;
 
-      state.passState.x = state.passState.startX + (receiver.x - state.passState.startX) * t;
-      state.passState.y = state.passState.startY + (receiver.y - state.passState.startY) * t;
-
-      if (t >= 1) {
+      if (!receiver) {
         state.passState.active = false;
-        const landedForward = state.possession === 'home' && (state.passState.isForwardPass || receiver.y < state.passState.startY - 0.008);
+        state.passState.progress = 0;
+        state.passState.elapsed = 0;
+      } else {
+        state.passState.x = state.passState.startX + (receiver.x - state.passState.startX) * t;
+        state.passState.y = state.passState.startY + (receiver.y - state.passState.startY) * t;
 
-        if (landedForward) {
-          playErrorClackSound();
-          triggerHandover('FORWARD PASS! HANDOVER TO OPPONENT', 'away', Math.max(0.24, receiver.y), '#fb7185', 'long');
-          recordPlayerVelocities(dt);
-          pushHostSnapshot(true);
-          return;
-        }
+        if (t >= 1) {
+          state.passState.active = false;
+          state.passState.progress = 0;
+          state.passState.elapsed = 0;
+          const landedForward = state.possession === 'home' && (state.passState.isForwardPass || receiver.y < state.passState.startY - 0.008);
 
-        state.carrierIndex = state.passState.toIdx;
-        if (state.possession === 'home' && bridgeRef && bridgeRef.getState().gameStats) bridgeRef.getState().gameStats.perfect += 1;
-        attackers.forEach((att, idx) => rollSupportAlignment(att, idx, state.carrierIndex, state.possession === 'home'));
+          if (landedForward) {
+            playErrorClackSound();
+            triggerHandover('FORWARD PASS! HANDOVER TO OPPONENT', 'away', Math.max(0.24, receiver.y), '#fb7185', 'long');
+            recordPlayerVelocities(dt);
+            pushHostSnapshot(true);
+            return;
+          }
 
-        if (state.possession === 'away' && !p2HumanActive) {
-          armDefenderReactionWindow(attackers[state.carrierIndex], 'CAUGHT!');
+          state.carrierIndex = state.passState.toIdx;
+          if (state.possession === 'home' && bridgeRef && bridgeRef.getState().gameStats) bridgeRef.getState().gameStats.perfect += 1;
+          attackers.forEach((att, idx) => rollSupportAlignment(att, idx, state.carrierIndex, state.possession === 'home'));
+
+          if (state.possession === 'away' && !p2HumanActive) {
+            armDefenderReactionWindow(attackers[state.carrierIndex], 'CAUGHT!');
+          }
         }
       }
     }
