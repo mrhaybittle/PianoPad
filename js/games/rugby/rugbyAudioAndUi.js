@@ -460,5 +460,3 @@ export function buildRugbyMarkup() {
   `;
 }
 
-
-Type **next** for File 3 of 3: **`js/games/ercRugby.js`**[cite: 48].
