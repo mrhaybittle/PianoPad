@@ -28,6 +28,48 @@ function normalizeMidiNote(noteStr) {
   return String(noteStr).trim().toLowerCase();
 }
 
+function applyScrumAndBassBranding(rootEl) {
+  if (!rootEl) return;
+  const modalEl = rootEl.querySelector('#erc-start-modal');
+  if (!modalEl) return;
+
+  // Ensure an ERC Sports logo badge is present on the splash screen
+  if (!modalEl.querySelector('#erc-sports-logo-badge')) {
+    const headerAnchor =
+      modalEl.querySelector('h1, h2, .erc-modal-header, .erc-brand-header') ||
+      modalEl.firstElementChild;
+
+    const logoBadge = document.createElement('div');
+    logoBadge.id = 'erc-sports-logo-badge';
+    logoBadge.style.cssText = `
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; margin-bottom: 8px; border-radius: 999px;
+      background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(125, 211, 252, 0.45);
+      font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+      color: #7dd3fc;
+    `;
+    logoBadge.innerHTML = `<span style="color:#fbbf24;">🏉</span><span>ERC SPORTS</span>`;
+
+    if (headerAnchor && headerAnchor.parentNode) {
+      headerAnchor.parentNode.insertBefore(logoBadge, headerAnchor);
+    } else {
+      modalEl.prepend(logoBadge);
+    }
+  }
+
+  // Update the splash screen title to "Scrum & Bass" while keeping ERC Sports branding
+  const titleEl =
+    modalEl.querySelector('#erc-game-title, #erc-splash-title, h1, h2') ||
+    Array.from(modalEl.querySelectorAll('div, span, p')).find((el) => {
+      const txt = (el.textContent || '').trim().toLowerCase();
+      return el.children.length === 0 && (txt.includes('rugby') || txt.includes('erc sports'));
+    });
+
+  if (titleEl && titleEl.id !== 'erc-sports-logo-badge') {
+    titleEl.textContent = 'Scrum & Bass';
+  }
+}
+
 export function stopErcRugby() {
   if (animFrameId !== null) {
     cancelAnimationFrame(animFrameId);
@@ -76,7 +118,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
   const statusEl = document.getElementById('status');
   if (statusEl) {
-    statusEl.textContent = '🏉 ERC Sports Rugby Ready! Play MIDI notes to pass (C–G), steer, and kick (Bomb, Grubber & Chip)!';
+    statusEl.textContent = '🏉 Scrum & Bass (ERC Sports) Ready! Play MIDI notes to pass (C–G), steer, and kick (Bomb, Grubber & Chip)!';
   }
 
   const wrapperParent = document.getElementById('visualizer-wrapper');
@@ -89,6 +131,7 @@ export function startErcRugby(bridge, autoStart = false) {
     user-select: none; -webkit-user-select: none;
   `;
   containerEl.innerHTML = buildRugbyMarkup();
+  applyScrumAndBassBranding(containerEl);
 
   if (wrapperParent) {
     wrapperParent.style.position = 'relative';
@@ -1746,7 +1789,7 @@ export function startErcRugby(bridge, autoStart = false) {
     const finalPoints = Math.max(0, myScore * 100 - oppScore * 25);
 
     stopErcRugby();
-    bridgeRef.finishCustomMiniGame('ERC Sports Rugby', finalPoints, summaryHtml, () => startErcRugby(bridgeRef, true));
+    bridgeRef.finishCustomMiniGame('Scrum & Bass', finalPoints, summaryHtml, () => startErcRugby(bridgeRef, true));
   }
 
   function recordPlayerVelocities(dt) {
@@ -2421,5 +2464,3 @@ export function startErcRugby(bridge, autoStart = false) {
     renderRugbyCanvas(canvas, containerEl, state, now / 1000);
   }
   animFrameId = requestAnimationFrame(frame);
-}
-
