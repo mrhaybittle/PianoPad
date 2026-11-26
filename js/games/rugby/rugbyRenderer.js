@@ -462,8 +462,212 @@ function drawConversionView(ctx, state, w, h, timeSec) {
   ctx.restore();
 }
 
+function drawCoinTossScene(ctx, state, w, h, timeSec) {
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#07162b');
+  grad.addColorStop(0.55, '#14532d');
+  grad.addColorStop(1, '#091521');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  const toss = state.coinToss;
+  const cx = w * 0.5;
+  const cy = h * 0.52;
+  const bounceLift = toss.active ? Math.abs(Math.sin(toss.flipTimer * Math.PI * 3.5)) * 46 : 0;
+  const spinScaleX = toss.active
+    ? Math.max(0.14, Math.abs(Math.cos(timeSec * 15)))
+    : 1;
+  const radius = Math.min(w, h) * 0.13;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + radius + 12, radius * 0.85, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.translate(cx, cy - bounceLift);
+  ctx.scale(spinScaleX, 1);
+
+  const coinGrad = ctx.createRadialGradient(-radius * 0.25, -radius * 0.25, radius * 0.1, 0, 0, radius);
+  coinGrad.addColorStop(0, '#fef08a');
+  coinGrad.addColorStop(0.6, '#eab308');
+  coinGrad.addColorStop(1, '#854d0e');
+
+  ctx.fillStyle = coinGrad;
+  ctx.strokeStyle = '#fef9c3';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  const faceLabel = toss.active
+    ? (Math.floor(timeSec * 12) % 2 === 0 ? 'HEADS' : 'TAILS')
+    : (toss.outcome || toss.choice).toUpperCase();
+
+  ctx.font = `italic 900 ${Math.max(14, Math.round(radius * 0.38))}px "Chakra Petch", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#09090b';
+  ctx.fillText(faceLabel, 0, 0);
+
+  ctx.restore();
+}
+
+function draw3DKickTrajectoryAndBall(ctx, state, padX, padY, fieldW, fieldH, pixelScale, timeSec) {
+  const k3 = state.kick3D;
+  if (!k3.active) return;
+
+  const dirSign = k3.kickingSide === 'home' ? -1 : 1;
+  const p = Math.max(0.15, Math.min(1.0, k3.power));
+
+  if (k3.aiming) {
+    let distanceY = 0.42;
+    let peakZ = 0.42;
+    if (k3.kind === 'kickoff') {
+      distanceY = 0.24 + p * 0.28;
+      peakZ = 0.26 + p * 0.32;
+    } else if (k3.kind === 'bomb') {
+      distanceY = 0.25 + p * 0.36;
+      peakZ = 0.35 + p * 0.48;
+    } else if (k3.kind === 'grubber') {
+      distanceY = 0.16 + p * 0.28;
+      peakZ = 0.04 + p * 0.05;
+    } else if (k3.kind === 'chip') {
+      distanceY = 0.11 + p * 0.18;
+      peakZ = 0.16 + p * 0.16;
+    }
+
+    const targetY = Math.min(0.89, Math.max(0.11, k3.startY + dirSign * distanceY));
+    const curveLateral = k3.aimCurve * (0.14 + p * 0.18);
+    const targetX = Math.min(0.92, Math.max(0.08, k3.startX + curveLateral));
+
+    const steps = 22;
+    const groundPts = [];
+    const elevatedPts = [];
+
+    for (let s = 0; s <= steps; s++) {
+      const t = s / steps;
+      const gx = k3.startX + (targetX - k3.startX) * t + Math.sin(t * Math.PI) * k3.aimCurve * 0.09 * p;
+      const gy = k3.startY + (targetY - k3.startY) * t;
+      const zLift = Math.sin(t * Math.PI) * peakZ * 120;
+
+      const sx = padX + fieldW * Math.min(0.93, Math.max(0.07, gx));
+      const syGround = padY + fieldH * Math.min(0.92, Math.max(0.11, gy));
+      groundPts.push({ x: sx, y: syGround });
+      elevatedPts.push({ x: sx, y: syGround - zLift, zLift });
+    }
+
+    ctx.save();
+    // Ground shadow path
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 5]);
+    ctx.beginPath();
+    groundPts.forEach((pt, idx) => {
+      if (idx === 0) ctx.moveTo(pt.x, pt.y);
+      else ctx.lineTo(pt.x, pt.y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 3D curved flight arc
+    const arcGrad = ctx.createLinearGradient(
+      elevatedPts[0].x,
+      elevatedPts[0].y,
+      elevatedPts[steps].x,
+      elevatedPts[steps].y
+    );
+    arcGrad.addColorStop(0, '#22c55e');
+    arcGrad.addColorStop(0.5, '#facc15');
+    arcGrad.addColorStop(1, '#38bdf8');
+
+    ctx.strokeStyle = arcGrad;
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    elevatedPts.forEach((pt, idx) => {
+      if (idx === 0) ctx.moveTo(pt.x, pt.y);
+      else ctx.lineTo(pt.x, pt.y);
+    });
+    ctx.stroke();
+
+    // Arrowhead at end of curved 3D path
+    const tip = elevatedPts[steps];
+    const prev = elevatedPts[Math.max(0, steps - 2)];
+    const angle = Math.atan2(tip.y - prev.y, tip.x - prev.x);
+    const headLen = 12;
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.strokeStyle = '#09090b';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(tip.x, tip.y);
+    ctx.lineTo(tip.x - headLen * Math.cos(angle - Math.PI / 6), tip.y - headLen * Math.sin(angle - Math.PI / 6));
+    ctx.lineTo(tip.x - headLen * Math.cos(angle + Math.PI / 6), tip.y - headLen * Math.sin(angle + Math.PI / 6));
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.restore();
+    return;
+  }
+
+  // Ball in active 3D flight
+  const gx = padX + fieldW * k3.x;
+  const gyGround = padY + fieldH * k3.y;
+  const zPx = k3.z * 120;
+  const ballScale = 1 + k3.z * 0.55;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
+  ctx.beginPath();
+  ctx.ellipse(gx, gyGround, 6 * pixelScale * 0.75, 3 * pixelScale * 0.75, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.translate(gx, gyGround - zPx);
+  ctx.scale(ballScale, ballScale);
+  ctx.rotate(timeSec * 14);
+  ctx.fillStyle = '#f8fafc';
+  ctx.strokeStyle = '#09090b';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 5.4 * pixelScale * 0.75, 8.5 * pixelScale * 0.75, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function syncDomOverlays(containerEl, state) {
+  const tossBar = containerEl.querySelector('#erc-coin-toss-bar');
+  if (tossBar) {
+    tossBar.style.display = state.phase === 'coinToss' ? 'flex' : 'none';
+  }
+
+  const kickHud = containerEl.querySelector('#erc-kick3d-hud');
+  if (kickHud) {
+    const showKickHud = state.phase === 'playing' && state.kick3D.active && state.kick3D.aiming && state.kick3D.kickingSide === 'home';
+    kickHud.style.display = showKickHud ? 'flex' : 'none';
+    if (showKickHud) {
+      const pct = Math.round(Math.max(0, Math.min(1, state.kick3D.power)) * 100);
+      const fillEl = containerEl.querySelector('#erc-kick3d-power-fill');
+      const pctEl = containerEl.querySelector('#erc-kick3d-power-pct');
+      const curveEl = containerEl.querySelector('#erc-kick3d-curve-label');
+      if (fillEl) fillEl.style.width = `${pct}%`;
+      if (pctEl) pctEl.textContent = `${pct}%`;
+      if (curveEl) {
+        const cVal = state.kick3D.aimCurve;
+        if (Math.abs(cVal) < 0.08) curveEl.textContent = 'CURVE: CENTER';
+        else if (cVal < 0) curveEl.textContent = `CURVE: LEFT ${Math.round(Math.abs(cVal) * 100)}%`;
+        else curveEl.textContent = `CURVE: RIGHT ${Math.round(cVal * 100)}%`;
+      }
+    }
+  }
+}
+
 export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
   if (!canvas || !containerEl) return;
+  syncDomOverlays(containerEl, state);
+
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const rect = canvas.getBoundingClientRect();
   const targetW = Math.max(1, Math.floor(rect.width * dpr));
@@ -486,6 +690,24 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
 
   const w = Math.max(200, rect.width);
   const h = Math.max(160, rect.height);
+
+  if (state.phase === 'coinToss') {
+    drawCoinTossScene(ctx, state, w, h, timeSec);
+    for (const c of state.callouts) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, c.life);
+      ctx.font = 'italic 700 14px "Chakra Petch", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = c.color;
+      ctx.strokeStyle = 'rgba(2, 6, 23, 0.9)';
+      ctx.lineWidth = 3;
+      ctx.strokeText(c.text, w * c.x, h * c.y);
+      ctx.fillText(c.text, w * c.x, h * c.y);
+      ctx.restore();
+    }
+    ctx.restore();
+    return;
+  }
 
   if (state.playState === 'conversionKick' && state.conversion.active) {
     drawConversionView(ctx, state, w, h, timeSec);
@@ -552,7 +774,7 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
     ctx.restore();
   }
 
-  if (state.possession === 'home' && state.homePlayers[state.carrierIndex] && !state.kickBall.active && state.playState !== 'tryCelebration') {
+  if (state.possession === 'home' && state.homePlayers[state.carrierIndex] && !state.kickBall.active && !state.kick3D.active && state.playState !== 'tryCelebration') {
     const c = state.homePlayers[state.carrierIndex];
     const planeY = padY + fieldH * c.y;
     ctx.save();
@@ -583,11 +805,11 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
   });
 
   const pixelScale = Math.max(1.2, Math.min(1.65, h / 285));
-  const ballInFlight = state.passState.active || state.kickBall.active;
+  const ballInFlight = state.passState.active || state.kickBall.active || state.kick3D.active;
 
   const renderList = [];
   for (let i = 0; i < state.awayPlayers.length; i++) {
-    const awayHasBall = state.possession === 'away' && i === state.carrierIndex && !ballInFlight;
+    const awayHasBall = state.possession === 'away' && i === state.carrierIndex && !ballInFlight && !(state.kick3D.active && state.kick3D.kickingSide === 'away');
     renderList.push({
       side: 'away',
       facing: 'front',
@@ -602,9 +824,9 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
   }
   for (let i = 0; i < state.homePlayers.length; i++) {
     const hp = state.homePlayers[i];
-    const homeHasBall = state.possession === 'home' && i === state.carrierIndex && !ballInFlight;
+    const homeHasBall = state.possession === 'home' && i === state.carrierIndex && !ballInFlight && !(state.kick3D.active && state.kick3D.kickingSide === 'home');
     const showRing =
-      (state.possession === 'home' && i === state.carrierIndex && !state.kickBall.active) ||
+      (state.possession === 'home' && i === state.carrierIndex && !state.kickBall.active && !state.kick3D.active) ||
       (state.possession === 'away' && i === state.selectedDefenderIdx);
 
     renderList.push({
@@ -616,7 +838,7 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
       hasBall: homeHasBall,
       showYellowRing: showRing,
       showRedRing: false,
-      isOverrun: state.possession === 'home' && hp.overrun && !state.kickBall.active
+      isOverrun: state.possession === 'home' && hp.overrun && !state.kickBall.active && !state.kick3D.active
     });
   }
 
@@ -656,6 +878,8 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
       ctx.restore();
     }
   }
+
+  draw3DKickTrajectoryAndBall(ctx, state, padX, padY, fieldW, fieldH, pixelScale, timeSec);
 
   if (state.passState.active || state.kickBall.active) {
     let bx = padX + fieldW * 0.5;
