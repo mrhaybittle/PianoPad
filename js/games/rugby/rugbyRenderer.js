@@ -966,6 +966,3 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
 
   ctx.restore();
 }
-
-
-Would you like to check or test anything else in the rugby mini-game?
