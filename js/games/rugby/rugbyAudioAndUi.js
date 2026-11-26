@@ -138,8 +138,8 @@ export function playKickSound(kind) {
     const osc = c.createOscillator();
     const gain = c.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(kind === 'bomb' ? 190 : 145, now);
-    osc.frequency.exponentialRampToValueAtTime(kind === 'bomb' ? 75 : 52, now + 0.2);
+    osc.frequency.setValueAtTime(kind === 'bomb' || kind === 'kickoff' ? 190 : 145, now);
+    osc.frequency.exponentialRampToValueAtTime(kind === 'bomb' || kind === 'kickoff' ? 75 : 52, now + 0.2);
     gain.gain.setValueAtTime(0.32, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.21);
     osc.connect(gain);
@@ -241,6 +241,37 @@ export function buildRugbyMarkup() {
         display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; cursor: pointer;
       }
       #erc-piano-strip .piano-key-btn.active-note { background: #fde047; transform: scale(0.94); }
+      #erc-coin-toss-bar {
+        position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 25;
+        display: none; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px;
+        padding: 8px 14px; border-radius: 12px;
+        background: rgba(2, 6, 23, 0.92); border: 1px solid rgba(250, 204, 21, 0.45);
+        backdrop-filter: blur(8px); max-width: 94%;
+      }
+      .erc-toss-choice-btn {
+        border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 7px;
+        background: rgba(30, 41, 59, 0.9); color: #f8fafc;
+        font-weight: 800; font-size: 11px; padding: 5px 11px; text-transform: uppercase;
+      }
+      .erc-toss-choice-btn.active-choice {
+        background: #f59e0b; color: #020617; border-color: #fde047;
+      }
+      #erc-kick3d-hud {
+        position: absolute; bottom: 56px; left: 50%; transform: translateX(-50%); z-index: 22;
+        display: none; flex-direction: column; align-items: center; gap: 4px; pointer-events: none;
+        padding: 6px 12px; border-radius: 10px;
+        background: rgba(2, 6, 23, 0.9); border: 1px solid rgba(56, 189, 248, 0.45);
+        min-width: 240px;
+      }
+      .erc-power-track {
+        width: 210px; height: 12px; border-radius: 999px;
+        background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255, 255, 255, 0.22);
+        overflow: hidden;
+      }
+      #erc-kick3d-power-fill {
+        height: 100%; width: 45%;
+        background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
+      }
       #erc-start-modal {
         position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center;
         padding: 8px; background: rgba(2, 6, 23, 0.86); backdrop-filter: blur(8px); overflow-y: auto;
@@ -250,7 +281,7 @@ export function buildRugbyMarkup() {
         background: rgba(15, 23, 42, 0.97); border: 1px solid rgba(255, 255, 255, 0.16); padding: 12px 16px;
       }
       .erc-setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
-      .erc-bind-grid-5 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-top: 6px; }
+      .erc-bind-grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 6px; }
       @media (max-width: 720px) {
         .erc-setup-grid { grid-template-columns: 1fr; }
         .erc-bind-grid-5 { grid-template-columns: repeat(2, 1fr); }
@@ -298,6 +329,24 @@ export function buildRugbyMarkup() {
 
     <canvas id="erc-game-canvas"></canvas>
 
+    <div id="erc-coin-toss-bar">
+      <span class="font-sports" style="font-size:11px; font-weight:800; color:#fde047; text-transform:uppercase;">🪙 Coin Toss:</span>
+      <button type="button" id="erc-toss-heads-btn" class="sports-btn erc-toss-choice-btn active-choice">Heads</button>
+      <button type="button" id="erc-toss-tails-btn" class="sports-btn erc-toss-choice-btn">Tails</button>
+      <span id="erc-toss-status" style="font-size:11px; color:#e2e8f0; font-weight:600;">Choose Heads or Tails</span>
+      <button type="button" id="erc-toss-proceed-btn" class="sports-btn font-sports" disabled style="opacity:0.45; border:none; border-radius:7px; background:#22c55e; color:#020617; font-weight:800; font-size:10.5px; text-transform:uppercase; padding:5px 10px;">Proceed to Kickoff</button>
+    </div>
+
+    <div id="erc-kick3d-hud">
+      <div style="display:flex; justify-content:space-between; width:100%; font-size:10.5px; font-weight:800; color:#fde047;">
+        <span>3D KICK POWER: <span id="erc-kick3d-power-pct">45%</span></span>
+        <span id="erc-kick3d-curve-label" style="color:#7dd3fc;">CURVE: CENTER</span>
+      </div>
+      <div class="erc-power-track">
+        <div id="erc-kick3d-power-fill"></div>
+      </div>
+    </div>
+
     <div id="erc-gameplay-hud">
       <div class="erc-logo-badge">
         <div class="erc-logo-inner">
@@ -327,10 +376,11 @@ export function buildRugbyMarkup() {
     <div id="erc-key-legend">
       <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
         <span><b style="color:#fde047;">Pass/Switch (MIDI):</b> <span style="padding:1px 5px; border-radius:4px; background:rgba(255,255,255,0.12); color:#fef08a; font-family:monospace; font-weight:800;">C D E F G</span></span>
-        <span><b style="color:#c4b5fd;">Left:</b> <span id="erc-leg-left" style="font-family:monospace; font-weight:800; color:#ddd6fe;">🎹 F#1</span></span>
-        <span><b style="color:#c4b5fd;">Right:</b> <span id="erc-leg-right" style="font-family:monospace; font-weight:800; color:#ddd6fe;">🎹 G#1</span></span>
+        <span><b style="color:#c4b5fd;">Left/Curve:</b> <span id="erc-leg-left" style="font-family:monospace; font-weight:800; color:#ddd6fe;">🎹 F#1</span></span>
+        <span><b style="color:#c4b5fd;">Right/Curve:</b> <span id="erc-leg-right" style="font-family:monospace; font-weight:800; color:#ddd6fe;">🎹 G#1</span></span>
         <span><b style="color:#fcd34d;">Bomb:</b> <span id="erc-leg-bomb" style="font-family:monospace; font-weight:800; color:#fde68a;">🎹 B1</span></span>
         <span><b style="color:#7dd3fc;">Grubber:</b> <span id="erc-leg-grubber" style="font-family:monospace; font-weight:800; color:#bae6fd;">🎹 C2</span></span>
+        <span><b style="color:#86efac;">Chip:</b> <span id="erc-leg-chip" style="font-family:monospace; font-weight:800; color:#bbf7d0;">🎹 D2</span></span>
       </div>
     </div>
 
@@ -350,7 +400,7 @@ export function buildRugbyMarkup() {
               ERC Sports Rugby — Team &amp; MIDI Setup
             </div>
             <div style="font-size:11px; color:#cbd5e1;">
-              MIDI only (QWERTY disabled): <b>C–G</b> pass/switch, bound MIDI keys steer &amp; kick (<b>Bomb</b> &amp; <b>Grubber</b>).
+              Coin toss before kickoff • Hold &amp; release kick keys to charge power + steer curved 3D flight (<b>Bomb</b>, <b>Grubber</b> &amp; <b>Chip</b>).
             </div>
           </div>
           <div class="erc-logo-badge">
@@ -404,48 +454,54 @@ export function buildRugbyMarkup() {
         <div class="erc-panel" style="margin-top:8px;">
           <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:6px;">
             <span class="font-sports" style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#fde047;">
-              🎹 Assign MIDI Piano Keys (Offense &amp; Defense Controls)
+              🎹 Assign MIDI Piano Keys (Offense, Defense &amp; 3D Kicks)
             </span>
             <span style="font-size:10.5px; color:#cbd5e1;">
-              Pass/Switch: <b style="color:#fef08a;">C, D, E, F, G</b> • Click a button &amp; play a MIDI note!
+              Pass/Switch: <b style="color:#fef08a;">C, D, E, F, G</b> • Hold kick key to charge &amp; release to strike!
             </span>
           </div>
 
           <div class="erc-bind-grid-5">
             <div style="background:#0f172a; border:1px solid rgba(167,139,250,0.35); border-radius:9px; padding:6px; text-align:center;">
               <div class="font-sports" style="font-size:11px; font-weight:800; color:#c4b5fd;">⬅ MOVE LEFT</div>
-              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Offense &amp; Defense</div>
+              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Steer &amp; Curve L</div>
               <button type="button" data-bind-action="moveLeft" class="erc-key-btn sports-btn" style="background:rgba(139,92,246,0.22); border:1px solid rgba(167,139,250,0.6); color:#ede9fe;">🎹 F#1</button>
             </div>
 
             <div style="background:#0f172a; border:1px solid rgba(167,139,250,0.35); border-radius:9px; padding:6px; text-align:center;">
               <div class="font-sports" style="font-size:11px; font-weight:800; color:#c4b5fd;">MOVE RIGHT ➡</div>
-              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Offense &amp; Defense</div>
+              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Steer &amp; Curve R</div>
               <button type="button" data-bind-action="moveRight" class="erc-key-btn sports-btn" style="background:rgba(139,92,246,0.22); border:1px solid rgba(167,139,250,0.6); color:#ede9fe;">🎹 G#1</button>
             </div>
 
             <div style="background:#0f172a; border:1px solid rgba(251,191,36,0.35); border-radius:9px; padding:6px; text-align:center;">
               <div class="font-sports" style="font-size:11px; font-weight:800; color:#fcd34d;">🏉 BOMB KICK</div>
-              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">High spiral</div>
+              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">High 3D spiral</div>
               <button type="button" data-bind-action="bomb" class="erc-key-btn sports-btn" style="background:rgba(245,158,11,0.2); border:1px solid rgba(251,191,36,0.6); color:#fef3c7;">🎹 B1</button>
             </div>
 
             <div style="background:#0f172a; border:1px solid rgba(56,189,248,0.35); border-radius:9px; padding:6px; text-align:center;">
               <div class="font-sports" style="font-size:11px; font-weight:800; color:#7dd3fc;">💨 GRUBBER</div>
-              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Low skid kick</div>
+              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Low 3D skid kick</div>
               <button type="button" data-bind-action="grubber" class="erc-key-btn sports-btn" style="background:rgba(14,165,233,0.2); border:1px solid rgba(56,189,248,0.6); color:#e0f2fe;">🎹 C2</button>
+            </div>
+
+            <div style="background:#0f172a; border:1px solid rgba(74,222,128,0.35); border-radius:9px; padding:6px; text-align:center;">
+              <div class="font-sports" style="font-size:11px; font-weight:800; color:#86efac;">🎯 CHIP KICK</div>
+              <div style="font-size:9.5px; color:#94a3b8; margin:1px 0 5px;">Short 3D loft</div>
+              <button type="button" data-bind-action="chipKick" class="erc-key-btn sports-btn" style="background:rgba(34,197,94,0.2); border:1px solid rgba(74,222,128,0.6); color:#dcfce7;">🎹 D2</button>
             </div>
           </div>
 
           <div id="erc-keybind-notice" style="margin-top:5px; font-size:11px; color:#fcd34d; min-height:14px;">
-            Click any control button above, then press a MIDI piano key (e.g. F#1, G#1, B1, C2) or press Esc to cancel.
+            Click any control button above, then press a MIDI piano key (e.g. F#1, G#1, B1, C2, D2) or press Esc to cancel.
           </div>
         </div>
 
         <div style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1); display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px;">
           <div id="erc-matchup-summary" style="font-size:12px; color:#cbd5e1; font-weight:600;">Ready for kick-off.</div>
           <button type="button" id="erc-start-match-btn" class="sports-btn font-sports" style="border:none; border-radius:10px; background:linear-gradient(90deg, #dc2626, #ef4444, #2563eb); color:#ffffff; font-style:italic; font-weight:800; font-size:15px; text-transform:uppercase; letter-spacing:0.06em; padding:8px 24px;">
-            Kick Off Match
+            Coin Toss &amp; Kick Off
           </button>
         </div>
       </div>
