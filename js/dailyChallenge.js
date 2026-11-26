@@ -3,7 +3,7 @@ import { initAudio, audioCtx } from './audio.js';
 import { APPS_SCRIPT_URL } from './config.js';
 
 // ============================================================================
-// CHALLENGE LIST (83 TOTAL)
+// CHALLENGE LIST (112 TOTAL)
 // Edit numbers, icons, descriptions, or delete any challenge object below.
 // Note: Single-song challenges and challenges with `trophyOnly: true` are
 // labeled as Trophy Challenges in PianoPad (not Merit Awards), while ALL
@@ -1287,6 +1287,452 @@ export const DAILY_CHALLENGES = [
         minAccuracy: 85,
         minSpeed: 100,
         trophyOnly: true
+    },
+
+    // ------------------------------------------------------------------------
+    // 15 NEW SINGLE-SONG CHALLENGES (TROPHY CABINET ONLY: 76 - 90)
+    // ------------------------------------------------------------------------
+
+    // 76. Pirates of the Caribbean
+    {
+        id: 'song_pirates_caribbean',
+        icon: '🏴‍☠️',
+        title: 'Captain of the Keys',
+        description: 'Complete "Pirates of the Caribbean" with 85%+ accuracy at 110%+ speed.',
+        song: 'Pirates of the Caribbean',
+        tier: 'Gold',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 77. Star Wars
+    {
+        id: 'song_star_wars',
+        icon: '⚔️',
+        title: 'Hello there...',
+        description: 'Score 90%+ accuracy on "Star Wars" at 100%+ speed.',
+        song: 'Star Wars',
+        tier: 'Gold',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 78. Imperial March Theme
+    {
+        id: 'song_imperial_march',
+        icon: '🖤',
+        title: 'Dark Side March',
+        description: 'Finish "Imperial March Theme" with 0 Missed notes at 100%+ speed.',
+        song: 'Imperial March Theme',
+        tier: 'Gold',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 79. Harry Potter Theme
+    {
+        id: 'song_harry_potter',
+        icon: '⚡',
+        title: "You're a Wizard Challenge",
+        description: 'Toggle Sheet Music: OFF and score 85%+ on "Harry Potter Theme" at 100%+ speed.',
+        song: 'Harry Potter Theme',
+        tier: 'Gold',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 80. Fur Elise
+    {
+        id: 'song_fur_elise',
+        icon: '🎼',
+        title: "Beethoven's Letter",
+        description: 'Score 90%+ accuracy on "Fur Elise" at 100%+ speed.',
+        song: 'Fur Elise',
+        tier: 'Gold',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 81. Hungarian Dance No. 5
+    {
+        id: 'song_hungarian_dance_5',
+        icon: '💃',
+        title: 'Tempo Switch-Up',
+        description: 'Complete "Hungarian Dance No. 5" at 120%+ speed with 85%+ accuracy.',
+        song: 'Hungarian Dance No. 5',
+        tier: 'Gold',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 82. Sweet Child Of Mine
+    {
+        id: 'song_sweet_child',
+        icon: '🌹',
+        title: 'Guitar Riff Master',
+        description: 'Score 85%+ on "Sweet Child Of Mine" at 100%+ speed.',
+        song: 'Sweet Child Of Mine',
+        tier: 'Gold',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 83. Crazy Train
+    {
+        id: 'song_crazy_train',
+        icon: '🚆',
+        title: 'All Aboard',
+        description: 'Finish "Crazy Train" with 85%+ accuracy at 105%+ speed.',
+        song: 'Crazy Train',
+        tier: 'Gold',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 84. Pink Panther Theme
+    {
+        id: 'song_pink_panther',
+        icon: '🐆',
+        title: 'Sneak Attack',
+        description: 'Complete "Pink Panther Theme" with Sheet Music: OFF and 0 Missed notes at 100%+ speed.',
+        song: 'Pink Panther Theme',
+        tier: 'Gold',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 85. Bluey Theme
+    {
+        id: 'song_bluey_theme',
+        icon: '🐶',
+        title: 'Keepy Uppy Champion',
+        description: 'Score 95%+ accuracy on "Bluey Theme" at 120%+ speed.',
+        song: 'Bluey Theme',
+        tier: 'Silver',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 86. Minecraft - Sweden
+    {
+        id: 'song_minecraft_sweden',
+        icon: '🟩',
+        title: 'Peaceful Overworld',
+        description: 'Score 90%+ accuracy on "Minecraft - Sweden" at 100%+ speed.',
+        song: 'Minecraft - Sweden',
+        tier: 'Silver',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 87. Steve's Lava Chicken - from Minecraft
+    {
+        id: 'song_lava_chicken',
+        icon: '🍗',
+        title: 'Chicken Jockey',
+        description: 'Complete "Steve\'s Lava Chicken - from Minecraft" at 125%+ speed with 85%+ accuracy.',
+        song: "Steve's Lava Chicken - from Minecraft",
+        tier: 'Silver',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 88. Tetris - by (AT)
+    {
+        id: 'song_tetris_at',
+        icon: '🧱',
+        title: 'Build It Challenge',
+        description: 'Score 85%+ on "Tetris - by (AT)" at 115%+ speed.',
+        song: 'Tetris - by (AT)',
+        tier: 'Gold',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 89. Super Mario Theme
+    {
+        id: 'song_super_mario',
+        icon: '🍄',
+        title: "It's a Me Challenge",
+        description: 'Finish "Super Mario Theme" with 90%+ accuracy and 0 Missed notes at 100%+ speed.',
+        song: 'Super Mario Theme',
+        tier: 'Gold',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // 90. Take On Me
+    {
+        id: 'song_take_on_me',
+        icon: '✏️',
+        title: '80s Synth Sprint',
+        description: 'Score 85%+ on "Take On Me" at 110%+ speed.',
+        song: 'Take On Me',
+        tier: 'Silver',
+        target: 1,
+        unit: 'song',
+        trophyOnly: true
+    },
+
+    // ------------------------------------------------------------------------
+    // 14 NEW MULTI-SONG & THEMED CHALLENGES (MERIT AWARDS: 91 - 104)
+    // ------------------------------------------------------------------------
+
+    // 91. Top Gun & Skyfall
+    {
+        id: 'setlist_top_gun_skyfall',
+        icon: '✈️',
+        title: 'Top Gun & Skyfall',
+        description: 'Score 85%+ on both "Top Gun Theme" and "Skyfall" at 100%+ speed.',
+        tier: 'Gold',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'Top Gun Theme',
+            'Skyfall'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100
+    },
+
+    // 92. Highway to Hell & 7 Nation Army
+    {
+        id: 'setlist_highway_7nation',
+        icon: '🔥',
+        title: 'Highway to Hell & 7 Nation Army',
+        description: 'Score 85%+ on both "Highway To Hell - ACDC (Simplified)" and "7 Nation Army (riff)" at 100%+ speed.',
+        tier: 'Silver',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'Highway To Hell - ACDC (Simplified)',
+            '7 Nation Army (riff)'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100
+    },
+
+    // 93. Nirvana & Metallica
+    {
+        id: 'setlist_nirvana_metallica',
+        icon: '⚡',
+        title: 'Nirvana & Metallica',
+        description: 'Score 85%+ on both "Come As You Are - Nirvana" and "Enter Sandman" at 100%+ speed.',
+        tier: 'Silver',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'Come As You Are - Nirvana',
+            'Enter Sandman'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100
+    },
+
+    // 94. West Coast & Club (Still Dre. & In da Club - 50c)
+    {
+        id: 'setlist_west_coast_club',
+        icon: '🎧',
+        title: 'West Coast & Club',
+        description: 'Complete both "Still Dre." and "In da Club - 50c" with 85%+ accuracy at 100%+ speed.',
+        tier: 'Silver',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'Still Dre.',
+            'In da Club - 50c'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100
+    },
+
+    // 95. Road Trip Soundtrack (All Star - from Shrek & Life is a Highway)
+    {
+        id: 'setlist_road_trip',
+        icon: '🛣️',
+        title: 'Road Trip Soundtrack',
+        description: 'Score 85%+ on both "All Star - from Shrek" and "Life is a Highway (from the Movie Cars)" at 100%+ speed.',
+        tier: 'Silver',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'All Star - from Shrek',
+            'Life is a Highway (from the Movie Cars)'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100
+    },
+
+    // 96. Period Change (ERC Bell & Naplan Theme)
+    {
+        id: 'setlist_period_change',
+        icon: '🔔',
+        title: 'Period Change',
+        description: 'Score 90%+ on both "ERC Bell" and "Naplan Theme" at 100%+ speed.',
+        tier: 'Bronze',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'ERC Bell',
+            'Naplan Theme'
+        ],
+        minAccuracy: 90,
+        minSpeed: 100
+    },
+
+    // 97. Eerie Keys (Halloween & Spooky Vibes)
+    {
+        id: 'setlist_eerie_keys',
+        icon: '👻',
+        title: 'Eerie Keys',
+        description: 'Score 85%+ on any 2 spooky/mystery tracks at 100%+ speed.',
+        tier: 'Gold',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'X Files Theme (Illuminati theme)',
+            'Toccata and Fugue in D minor, BWV 565',
+            'In The Hall Of The Mountain King',
+            'Demons'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100
+    },
+
+    // 98. Holiday Double (Feliz Navidad & Last Christmas)
+    {
+        id: 'setlist_holiday_double',
+        icon: '🎄',
+        title: 'Holiday Double',
+        description: 'Score 85%+ on both "Feliz Navidad" and "Last Christmas" at 100%+ speed.',
+        tier: 'Silver',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'Feliz Navidad',
+            'Last Christmas'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100
+    },
+
+    // 99. Dancefloor Energy (Party Anthems)
+    {
+        id: 'setlist_dancefloor_energy',
+        icon: '🪩',
+        title: 'Dancefloor Energy',
+        description: 'Complete any 3 high-energy tracks with 85%+ accuracy at 100%+ speed.',
+        tier: 'Silver',
+        target: 3,
+        unit: 'songs',
+        songs: [
+            'Party Rock Anthem',
+            'Dynamite',
+            'Happy',
+            'I Got A Feeling',
+            'Uptown Funk'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100
+    },
+
+    // 100. Wildlife Encore (Birds & Beasts)
+    {
+        id: 'setlist_wildlife_encore',
+        icon: '🦅',
+        title: 'Wildlife Encore',
+        description: 'Score 85%+ on any 2 animal tracks at 100%+ speed.',
+        tier: 'Silver',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            "Sascha the Bird's Theme",
+            'Three Little Birds',
+            'Carnival of the Animals (The Elephant)',
+            'What Does The Fox Say'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100
+    },
+
+    // 101. Baroque to Classical (Symphony #40 K550 & Fingal's Cave)
+    {
+        id: 'setlist_baroque_classical',
+        icon: '🎼',
+        title: 'Baroque to Classical',
+        description: 'Score 85%+ on both "Symphony #40 K550" and "Fingal\'s Cave" at 100%+ speed.',
+        tier: 'Gold',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'Symphony #40 K550',
+            "Fingal's Cave"
+        ],
+        minAccuracy: 85,
+        minSpeed: 100
+    },
+
+    // 102. Coastal Cruise (Surf & Beach Classics)
+    {
+        id: 'setlist_coastal_cruise',
+        icon: '🏖️',
+        title: 'Coastal Cruise',
+        description: 'Complete any 2 beach/surf tracks with 85%+ accuracy at 100%+ speed.',
+        tier: 'Silver',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'Bombora - The Atlantics',
+            'Wipeout',
+            'California Love - 2Pac',
+            'Riptide'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100
+    },
+
+    // 103. Modern Pop Pair (Clocks - Coldplay & Shape of You - Ed Sheeran)
+    {
+        id: 'setlist_modern_pop_pair',
+        icon: '🎹',
+        title: 'Modern Pop Pair',
+        description: 'Score 85%+ on both "Clocks - Coldplay" and "Shape of You - Ed Sheeran" at 100%+ speed.',
+        tier: 'Silver',
+        target: 2,
+        unit: 'songs',
+        songs: [
+            'Clocks - Coldplay',
+            'Shape of You - Ed Sheeran'
+        ],
+        minAccuracy: 85,
+        minSpeed: 100
+    },
+
+    // 104. Triple Threat Setlist (Any 3 Hard Songs)
+    {
+        id: 'setlist_triple_threat_hard',
+        icon: '🔥',
+        title: 'Triple Threat Setlist',
+        description: 'Score 80%+ on any 3 Hard-difficulty songs from the setlist today at 100%+ speed.',
+        tier: 'Gold',
+        target: 3,
+        unit: 'songs',
+        minAccuracy: 80,
+        minSpeed: 100
     }
 ];
 
@@ -1455,6 +1901,7 @@ function createFreshMeta() {
     return {
         masteredSongs: [],
         mediumMasteredSongs: [],
+        hardMasteredSongs: [],
         themesUsed: [],
         instrumentsUsed: [],
         lastSongTitle: '',
@@ -1600,7 +2047,6 @@ export function launchSongInGameMode(songTitle) {
     }
     updateDailyHudPill();
 
-    // Preferred path: use main.js bridge directly
     if (bridge) {
         for (const fnName of ['startSongInGameMode', 'playSongInGameMode', 'selectSongAndStartGame', 'loadSong']) {
             if (typeof bridge[fnName] === 'function') {
@@ -1610,7 +2056,6 @@ export function launchSongInGameMode(songTitle) {
         }
     }
 
-    // DOM fallback: select matching option in #song-select (stripping leading emojis)
     let songFound = false;
     const selects = Array.from(document.querySelectorAll('select'));
     for (const sel of selects) {
@@ -2143,7 +2588,7 @@ function populateChallengeList() {
         c => isMeritAwardChallenge(c) && !Array.isArray(c.songs) && !c.id.startsWith('home_') && !c.id.startsWith('improve_')
     );
     const setlistMerit = DAILY_CHALLENGES.filter(c => isMeritAwardChallenge(c) && Array.isArray(c.songs));
-    const bossSingle = DAILY_CHALLENGES.filter(c => isSingleSongChallenge(c) && !c.id.startsWith('easy_song_'));
+    const singleTrophies = DAILY_CHALLENGES.filter(c => isSingleSongChallenge(c) && !c.id.startsWith('easy_song_'));
 
     const addSection = (title, arr) => {
         if (arr.length === 0) return;
@@ -2208,7 +2653,7 @@ function populateChallengeList() {
     addSection('Easy Setlist Challenges (Trophy Cabinet)', easySetlists);
     addSection('General Skills & Exploration (Merit Awards)', generalMerit);
     addSection('Themed Setlists (Merit Awards)', setlistMerit);
-    addSection('Single-Song Bosses (Trophy Cabinet)', bossSingle);
+    addSection('Single-Song Challenges & Bosses (Trophy Cabinet)', singleTrophies);
 }
 
 // Handles switching the active challenge to a user-selected one
@@ -2289,7 +2734,6 @@ export function openDailyChallengeModal(isManualView = false) {
     document.getElementById('dc-title').textContent = ch.title;
     document.getElementById('dc-desc').textContent = ch.description;
 
-    // Render clickable song buttons inside the active challenge pop-up
     const reqSongsEl = document.getElementById('dc-songs-required');
     reqSongsEl.innerHTML = '';
     const songOpts = getChallengeSongOptions(ch);
@@ -2430,7 +2874,6 @@ function checkAndTriggerCompletion(challenge) {
                 bridge.showFlashingStatus(msg, 7000);
             }
 
-            // Log ALL completed challenges to the Leaderboard Google Sheet
             const state = bridge.getState ? bridge.getState() : {};
             const studentName = (typeof bridge.ensureStudentName === 'function' ? bridge.ensureStudentName() : state.sessionStudentName)
                 || localStorage.getItem('pianopad_name')
@@ -2482,14 +2925,12 @@ export function notifyDailySongComplete({
     const numSpeed = parseFloat(String(speed ?? 100).replace('%', '')) || 0;
     const numMiss = Number(miss ?? 0);
 
-    // Always record home practice streak days when playing outside school hours
     const atHomeNow = isOutsideSchoolHours();
     let currentHomeStreak = getHomeStreakData().streak;
     if (atHomeNow) {
         currentHomeStreak = recordHomePracticeDay();
     }
 
-    // Track per-song play counts & accuracy growth for Improvement challenges
     if (normTitle) {
         dailyState.meta.songPlayCounts[normTitle] = (dailyState.meta.songPlayCounts[normTitle] || 0) + 1;
 
@@ -2598,8 +3039,16 @@ export function notifyDailySongComplete({
                 break;
 
             // --------------------------------------------------------
-            // GENERAL SKILL CHECKS
+            // GENERAL SKILL & MULTI-SONG HARD CHECKS
             // --------------------------------------------------------
+            case 'setlist_triple_threat_hard':
+                if (diffLower === 'hard' && numAccuracy >= (ch.minAccuracy ?? 80) && numSpeed >= (ch.minSpeed ?? 100) && cleanTitle) {
+                    if (!dailyState.meta.hardMasteredSongs.some(s => normalizeTitle(s) === normTitle)) {
+                        dailyState.meta.hardMasteredSongs.push(cleanTitle);
+                    }
+                    dailyState.progress = dailyState.meta.hardMasteredSongs.length;
+                }
+                break;
             case 'play_game_20':
                 dailyState.progress += 1;
                 break;
@@ -2690,7 +3139,56 @@ export function notifyDailySongComplete({
                 break;
 
             // --------------------------------------------------------
-            // SINGLE-SONG BOSS CHECKS
+            // NEW SINGLE-SONG TROPHY CHECKS (76 - 90)
+            // --------------------------------------------------------
+            case 'song_pirates_caribbean':
+                if (normTitle === normalizeTitle('Pirates of the Caribbean') && numAccuracy >= 85 && numSpeed >= 110) dailyState.progress = 1;
+                break;
+            case 'song_star_wars':
+                if (normTitle === normalizeTitle('Star Wars') && numAccuracy >= 90 && numSpeed >= 100) dailyState.progress = 1;
+                break;
+            case 'song_imperial_march':
+                if (normTitle === normalizeTitle('Imperial March Theme') && numMiss === 0 && numSpeed >= 100) dailyState.progress = 1;
+                break;
+            case 'song_harry_potter':
+                if (normTitle === normalizeTitle('Harry Potter Theme') && !showSheetMusic && numAccuracy >= 85 && numSpeed >= 100) dailyState.progress = 1;
+                break;
+            case 'song_fur_elise':
+                if (normTitle === normalizeTitle('Fur Elise') && numAccuracy >= 90 && numSpeed >= 100) dailyState.progress = 1;
+                break;
+            case 'song_hungarian_dance_5':
+                if (normTitle === normalizeTitle('Hungarian Dance No. 5') && numAccuracy >= 85 && numSpeed >= 120) dailyState.progress = 1;
+                break;
+            case 'song_sweet_child':
+                if (normTitle === normalizeTitle('Sweet Child Of Mine') && numAccuracy >= 85 && numSpeed >= 100) dailyState.progress = 1;
+                break;
+            case 'song_crazy_train':
+                if (normTitle === normalizeTitle('Crazy Train') && numAccuracy >= 85 && numSpeed >= 105) dailyState.progress = 1;
+                break;
+            case 'song_pink_panther':
+                if (normTitle === normalizeTitle('Pink Panther Theme') && !showSheetMusic && numMiss === 0 && numSpeed >= 100) dailyState.progress = 1;
+                break;
+            case 'song_bluey_theme':
+                if (normTitle === normalizeTitle('Bluey Theme') && numAccuracy >= 95 && numSpeed >= 120) dailyState.progress = 1;
+                break;
+            case 'song_minecraft_sweden':
+                if (normTitle === normalizeTitle('Minecraft - Sweden') && numAccuracy >= 90 && numSpeed >= 100) dailyState.progress = 1;
+                break;
+            case 'song_lava_chicken':
+                if (normTitle === normalizeTitle("Steve's Lava Chicken - from Minecraft") && numAccuracy >= 85 && numSpeed >= 125) dailyState.progress = 1;
+                break;
+            case 'song_tetris_at':
+                if (normTitle === normalizeTitle('Tetris - by (AT)') && numAccuracy >= 85 && numSpeed >= 115) dailyState.progress = 1;
+                break;
+            case 'song_super_mario':
+                if (normTitle === normalizeTitle('Super Mario Theme') && numAccuracy >= 90 && numMiss === 0 && numSpeed >= 100) dailyState.progress = 1;
+                break;
+            case 'song_take_on_me':
+                if (normTitle === normalizeTitle('Take On Me') && numAccuracy >= 85 && numSpeed >= 110) dailyState.progress = 1;
+                break;
+
+            // --------------------------------------------------------
+            // EXISTING SINGLE-SONG BOSS CHECKS
             // --------------------------------------------------------
             case 'boss_fire_flames':
                 if (normTitle === normalizeTitle('Through the Fire & Flames - Piano Intro') && numAccuracy >= 80 && numSpeed >= 100) dailyState.progress = 1;
@@ -2827,6 +3325,7 @@ export function notifyDailyRecording(noteCount) {
         checkAndTriggerCompletion(ch);
     }
 }
+
 // Expose challenge catalog and earned badges for the opening stats dashboard
 window.DAILY_CHALLENGES = DAILY_CHALLENGES;
 window.getEarnedBadges = getEarnedBadges;
