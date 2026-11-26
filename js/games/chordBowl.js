@@ -1,9 +1,10 @@
 // js/games/chordBowl.js
 // Main game controller for ChordBowl (10-pin MIDI bowling without character movement).
+// Extra modules live in PianoPad/js/games/chordBowl/
 
 import { initAudio, playTone } from '../audio.js';
 import { getNoteFrequency } from '../musicTheory.js';
-import { CHORD_BOWL_THEMES, BALL_WEIGHTS, PENTATONIC_SCALES, SPARE_CALLS } from './chordBowlAssets.js';
+import { CHORD_BOWL_THEMES, BALL_WEIGHTS, PENTATONIC_SCALES, SPARE_CALLS } from './chordBowl/chordBowlAssets.js';
 import {
     createTenPins,
     stepBallAndPins,
@@ -11,14 +12,14 @@ import {
     countStandingPins,
     getStandingPinIndices,
     computeAimXFromMidiNote
-} from './chordBowlPhysics.js';
+} from './chordBowl/chordBowlPhysics.js';
 import {
     playPinHitTone,
     playChainHarmony,
     playGrooveBoostSound,
     playGutterTone,
     playStrikeOrSpareFanfare
-} from './chordBowlAudio.js';
+} from './chordBowl/chordBowlAudio.js';
 
 const TOTAL_FRAMES = 10;
 const BPM = 108;
@@ -100,9 +101,6 @@ function createInitialGameState() {
 
 export function startChordBowl(bridge) {
     bridgeRef = bridge;
-    if (bridgeRef?.exitActiveMiniGame) {
-        // Avoid recursive stop if already clean
-    }
     initAudio();
     if (bridgeRef?.resetGameStats) bridgeRef.resetGameStats();
     if (bridgeRef?.setActiveMiniGame) bridgeRef.setActiveMiniGame('chordBowl');
@@ -129,10 +127,6 @@ export function stopChordBowl() {
 
 function snapshotPins(pins) {
     return pins.map(p => ({ ...p }));
-}
-
-function restorePins(snapshot) {
-    return snapshot.map(p => ({ ...p }));
 }
 
 function getCanvasAndContext() {
@@ -219,7 +213,6 @@ export function handleChordBowlInput(noteStr, velocity = 84) {
     const normNote = String(noteStr || '').toLowerCase().trim();
     if (!normNote) return;
 
-    // Play reference tone softly if note is in musicTheory
     const freq = getNoteFrequency(normNote);
     if (freq) {
         playTone(freq, 0.22, 0.28);
@@ -228,7 +221,6 @@ export function handleChordBowlInput(noteStr, velocity = 84) {
     const wasEmpty = game.heldNotes.size === 0;
     game.heldNotes.add(normNote);
 
-    // Check chord triggers when 2+ notes are held
     if (game.heldNotes.size >= 2) {
         const chordResult = evaluateHeldChord(Array.from(game.heldNotes));
         if (chordResult) {
@@ -237,7 +229,6 @@ export function handleChordBowlInput(noteStr, velocity = 84) {
         }
     }
 
-    // If ball is already rolling, holding a second note applies sharp (CW) or flat (CCW) spin
     if (game.phase === 'rolling' && game.ball.active && !wasEmpty) {
         const spinDir = getNoteSemitoneIndex(normNote) >= getNoteSemitoneIndex(game.primaryRollNote) ? 1 : -1;
         game.secondNoteSpin = spinDir;
@@ -251,12 +242,11 @@ export function handleChordBowlInput(noteStr, velocity = 84) {
 
     if (game.phase !== 'aiming') return;
 
-    // Map note pitch across keyboard range to lane position (-1 to +1)
     game.targetKeyNote = normNote;
     game.primaryRollNote = normNote;
     game.aimNormalized = computeAimXFromMidiNote(normNote);
     if (game.pocketLocked) {
-        game.aimNormalized *= 0.28; // Snap toward 1-3 pocket
+        game.aimNormalized *= 0.28;
     }
 
     if (bridgeRef?.highlightKey) {
@@ -290,17 +280,14 @@ function evaluateHeldChord(notes) {
     const semis = notes.map(getNoteSemitoneIndex).sort((a, b) => a - b);
     const span = semis[semis.length - 1] - semis[0];
 
-    // Octave jump (12 semitones) -> Cycle ball weight
     if (span === 12 || span === 24) {
         return { type: 'cycleWeight' };
     }
 
-    // Major/minor triad shape (approx 6 to 9 semitones across 3 notes) -> Pocket Lock
     if (notes.length >= 3 && span >= 6 && span <= 9) {
         return { type: 'pocketLock' };
     }
 
-    // Any 2-note interval during spare attempt -> Highlight spare conversion key
     if (game.rollInFrame > 1 || game.frame === TOTAL_FRAMES) {
         return { type: 'spareHint' };
     }
@@ -327,7 +314,8 @@ function applyChordCall(result) {
         if (standing.length > 0) {
             const targetPinIdx = standing[0];
             const pin = game.pins[targetPinIdx];
-            const suggestedNote = game.scaleNotes[targetPinIdx % game.scaleNotes.length] || 'c2';
+            const sparePreset = SPARE_CALLS[`${targetPinIdx + 1}-pin`];
+            const suggestedNote = sparePreset?.keyNote || game.scaleNotes[targetPinIdx % game.scaleNotes.length] || 'c2';
             game.highlightedSparePin = targetPinIdx;
             game.aimNormalized = pin.nx * 0.85;
             game.bannerMessage = `Spare Pick: Aim for Pin #${targetPinIdx + 1} (${suggestedNote.toUpperCase()})`;
@@ -353,7 +341,6 @@ function launchRoll(rawVelocity = 84) {
     const geom = getLaneGeometry(canvas);
     const velNorm = Math.max(0.08, Math.min(1, rawVelocity / 127));
 
-    // Soft notes roll slower with stronger hook; hard notes roll faster with power
     const speedPxPerSec = (340 + velNorm * 520) * game.ballWeight.speedMultiplier;
     const baseHook = ((1 - velNorm) * 0.55 + game.modWheelNorm * 0.65) * game.ballWeight.hookMultiplier;
 
@@ -407,7 +394,6 @@ function spawnBurst(x, y, color, count = 10) {
     }
 }
 
-// --- MAIN LOOP ---
 function loop(nowMs) {
     if (!game) return;
     const dtSec = Math.min(0.05, Math.max(0.001, (nowMs - lastFrameMs) / 1000));
@@ -510,11 +496,9 @@ function resolveRollOutcome() {
         }
     }
 
-    let isStrikeOrSpare = false;
     if (game.frame < TOTAL_FRAMES) {
         if (game.rollInFrame === 1 && standingCount === 0) {
             frameObj.isStrike = true;
-            isStrikeOrSpare = true;
             game.bannerMessage = `STRIKE in Frame ${game.frame}!`;
             playStrikeOrSpareFanfare(true, game.scaleNotes);
             if (bridgeRef?.spawnConfetti) {
@@ -530,7 +514,6 @@ function resolveRollOutcome() {
         } else {
             if (standingCount === 0) {
                 frameObj.isSpare = true;
-                isStrikeOrSpare = true;
                 game.bannerMessage = `SPARE in Frame ${game.frame}!`;
                 playStrikeOrSpareFanfare(false, game.scaleNotes);
             } else {
@@ -540,7 +523,6 @@ function resolveRollOutcome() {
             game.frameOverTimerMs = 1400;
         }
     } else {
-        // 10th Frame rules
         game.tenthFrameRolls.push(knockedNow);
         if (standingCount === 0) {
             playStrikeOrSpareFanfare(true, game.scaleNotes);
@@ -667,28 +649,23 @@ function updateStatusBar() {
     statusEl.textContent = `🎳 ChordBowl | Frame ${game.frame}/${TOTAL_FRAMES} | Score: ${game.totalScore} | ${game.bannerMessage}`;
 }
 
-// --- RENDERING (Lane, Aim Marker, Groove Bar, Ball & Pins Only — No Person) ---
 function renderScene(ctx, canvas, geom) {
     const { theme } = game;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Background surround
     ctx.fillStyle = theme.backdrop;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Gutters
     ctx.fillStyle = theme.gutter;
     ctx.fillRect(geom.laneLeft, 0, geom.gutterWidth, canvas.height);
     ctx.fillRect(geom.laneRight - geom.gutterWidth, 0, geom.gutterWidth, canvas.height);
 
-    // Main wood/synth lane surface
     const laneGrad = ctx.createLinearGradient(0, geom.pinDeckY, 0, geom.foulLineY + 40);
     laneGrad.addColorStop(0, theme.laneTop);
     laneGrad.addColorStop(1, theme.laneBottom);
     ctx.fillStyle = laneGrad;
     ctx.fillRect(geom.playLeft, 0, geom.playRight - geom.playLeft, canvas.height);
 
-    // Subtle lane boards & oil-pattern sheen
     ctx.strokeStyle = 'rgba(255,255,255,0.06)';
     ctx.lineWidth = 1;
     const boards = 9;
@@ -700,7 +677,6 @@ function renderScene(ctx, canvas, geom) {
         ctx.stroke();
     }
 
-    // Approach arrows
     ctx.fillStyle = theme.arrow;
     const arrowY = geom.pinDeckY + (geom.foulLineY - geom.pinDeckY) * 0.58;
     for (let a = -3; a <= 3; a++) {
@@ -714,7 +690,6 @@ function renderScene(ctx, canvas, geom) {
         ctx.fill();
     }
 
-    // Foul line
     ctx.strokeStyle = theme.foulLine;
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -722,13 +697,9 @@ function renderScene(ctx, canvas, geom) {
     ctx.lineTo(geom.laneRight, geom.foulLineY);
     ctx.stroke();
 
-    // Scoreboard strip at top-left
     drawScoreboard(ctx, game);
-
-    // Rhythm-Timed Release Window (Groove Bar) on right side
     drawGrooveMeter(ctx, canvas, game);
 
-    // Aiming guide & live target key marker (when aiming)
     if (game.phase === 'aiming') {
         const aimX = geom.playLeft + ((game.aimNormalized + 1) / 2) * (geom.playRight - geom.playLeft);
         ctx.save();
@@ -741,7 +712,6 @@ function renderScene(ctx, canvas, geom) {
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Target marker at foul line
         ctx.fillStyle = game.pocketLocked ? '#22c55e' : theme.accent;
         ctx.beginPath();
         ctx.arc(aimX, geom.foulLineY, 8, 0, Math.PI * 2);
@@ -754,15 +724,12 @@ function renderScene(ctx, canvas, geom) {
         ctx.restore();
     }
 
-    // Pins
     drawPins(ctx, game.pins, geom, theme, game.highlightedSparePin);
 
-    // Ball & trail
     if (game.ball.active || game.phase === 'settling') {
         drawBall(ctx, game.ball, theme);
     }
 
-    // Particles
     for (const p of game.particles) {
         ctx.save();
         ctx.globalAlpha = Math.max(0, p.life);
@@ -814,11 +781,9 @@ function drawGrooveMeter(ctx, canvas, state) {
     ctx.textAlign = 'center';
     ctx.fillText('BEAT', x + barW / 2, y - 8);
 
-    // Track
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(x, y, barW, barH);
 
-    // Sweet spot zone at top & bottom of beat cycle
     const beatPhase = (state.beatClockMs % BEAT_MS) / BEAT_MS;
     const markerY = y + beatPhase * barH;
 
@@ -826,7 +791,6 @@ function drawGrooveMeter(ctx, canvas, state) {
     ctx.fillRect(x, y, barW, 20);
     ctx.fillRect(x, y + barH - 20, barW, 20);
 
-    // Moving pulse cursor
     ctx.fillStyle = isOnGrooveBeat() ? '#22c55e' : '#facc15';
     ctx.fillRect(x - 2, markerY - 4, barW + 4, 8);
 
@@ -857,20 +821,17 @@ function drawPins(ctx, pins, geom, theme, spareHintIdx) {
             ctx.stroke();
         }
 
-        // Pin body
         ctx.fillStyle = pin.down ? '#64748b' : theme.pinBody;
         ctx.beginPath();
         ctx.arc(0, 0, 9.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Red neck stripe
         ctx.strokeStyle = theme.pinStripe;
         ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.arc(0, 0, 5.5, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Pentatonic note label on pin
         ctx.fillStyle = pin.down ? '#cbd5e1' : '#0f172a';
         ctx.font = 'bold 8px sans-serif';
         ctx.textAlign = 'center';
@@ -882,7 +843,6 @@ function drawPins(ctx, pins, geom, theme, spareHintIdx) {
 }
 
 function drawBall(ctx, ball, theme) {
-    // Trail
     for (let i = 0; i < ball.trail.length; i++) {
         const pt = ball.trail[i];
         const ratio = (i + 1) / ball.trail.length;
@@ -902,7 +862,6 @@ function drawBall(ctx, ball, theme) {
     ctx.arc(0, 0, ball.radius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Finger holes showing spin rotation
     const spinAngle = ball.spin * 1.4;
     ctx.fillStyle = theme.ballHole;
     ctx.beginPath();
