@@ -299,51 +299,51 @@
             justify-content: space-between;
             align-items: center;
         }
-/* Completed Challenges Panel inside Student Stats Dashboard */
-.stats-challenges-panel {
-    margin-bottom: 22px;
-}
-.dash-challenges-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-.dash-challenge-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(30, 27, 75, 0.85);
-    border: 1px solid rgba(250, 204, 21, 0.4);
-    border-radius: 10px;
-    padding: 7px 12px;
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: #f8fafc;
-    transition: transform 0.15s ease, border-color 0.15s ease;
-}
-.dash-challenge-chip:hover {
-    transform: translateY(-2px);
-    border-color: #facc15;
-}
-.dash-challenge-chip.tier-Gold {
-    border-color: rgba(250, 204, 21, 0.75);
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(30, 27, 75, 0.9));
-}
-.dash-challenge-chip.tier-Silver {
-    border-color: rgba(203, 213, 225, 0.65);
-}
-.dash-challenge-chip.tier-Bronze {
-    border-color: rgba(245, 158, 11, 0.55);
-}
-.dash-challenge-icon {
-    font-size: 1.2rem;
-    line-height: 1;
-}
-.dash-challenges-empty {
-    font-size: 0.84rem;
-    color: #94a3b8;
-    font-style: italic;
-}
+        /* Completed Challenges Panel inside Student Stats Dashboard */
+        .stats-challenges-panel {
+            margin-bottom: 22px;
+        }
+        .dash-challenges-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .dash-challenge-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(30, 27, 75, 0.85);
+            border: 1px solid rgba(250, 204, 21, 0.4);
+            border-radius: 10px;
+            padding: 7px 12px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #f8fafc;
+            transition: transform 0.15s ease, border-color 0.15s ease;
+        }
+        .dash-challenge-chip:hover {
+            transform: translateY(-2px);
+            border-color: #facc15;
+        }
+        .dash-challenge-chip.tier-Gold {
+            border-color: rgba(250, 204, 21, 0.75);
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(30, 27, 75, 0.9));
+        }
+        .dash-challenge-chip.tier-Silver {
+            border-color: rgba(203, 213, 225, 0.65);
+        }
+        .dash-challenge-chip.tier-Bronze {
+            border-color: rgba(245, 158, 11, 0.55);
+        }
+        .dash-challenge-icon {
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+        .dash-challenges-empty {
+            font-size: 0.84rem;
+            color: #94a3b8;
+            font-style: italic;
+        }
         
         .stats-footer {
             display: flex;
@@ -711,7 +711,7 @@
                 });
             }
 
-            const arcadeGames = ["scale surfers", "flappy pitch", "gridiron groove", "sharp shooter", "simon taps", "mystery note", "drop dodge", "combo strike", "finger sprint", "3d ski slalom", "pedal point","erc sports rugby league"];
+            const arcadeGames = ["scale surfers", "flappy pitch", "gridiron groove", "sharp shooter", "simon taps", "mystery note", "drop dodge", "combo strike", "finger sprint", "3d ski slalom", "pedal point", "erc sports rugby", "erc sports rugby league"];
 
             const studentMap = {};
             const songBoards = {};
@@ -958,6 +958,26 @@
             window.dispatchEvent(new Event('pianopad-auth-complete'));
         }
 
+        // Launch helper for ERC Sports Rugby from the Mini-Games Arcade Hub
+        window.openErcRugbyFromArcade = function() {
+            if (typeof window.startErcRugby === 'function') {
+                window.startErcRugby();
+                return;
+            }
+            if (typeof window.launchErcRugby === 'function') {
+                window.launchErcRugby();
+                return;
+            }
+            // Fallback if main.js dynamically injected its own Rugby trigger button
+            const cards = document.querySelectorAll('#arcade-hub .game-card');
+            for (const c of cards) {
+                if (c.id !== 'erc-rugby-static-card' && /rugby/i.test(c.textContent || '')) {
+                    c.click();
+                    return;
+                }
+            }
+        };
+
         // Bypass the intermediate Settings modal and open MIDI Calibration directly
         window.addEventListener("DOMContentLoaded", () => {
             const settingsBtn = document.getElementById("btn-settings");
@@ -970,13 +990,39 @@
                     if (startCalibBtn) startCalibBtn.click();
                 }, true);
             }
+
+            // Prevent duplicate Rugby cards if main.js also injects one into .arcade-grid
+            const arcadeGrid = document.querySelector('#arcade-hub .arcade-grid');
+            if (arcadeGrid) {
+                const dedupeRugbyCard = () => {
+                    const staticCard = document.getElementById('erc-rugby-static-card');
+                    if (!staticCard) return;
+                    const otherRugby = Array.from(arcadeGrid.querySelectorAll('.game-card')).find(
+                        el => el.id !== 'erc-rugby-static-card' && /rugby/i.test(el.textContent || '')
+                    );
+                    if (otherRugby) {
+                        staticCard.remove();
+                    }
+                };
+                dedupeRugbyCard();
+                new MutationObserver(dedupeRugbyCard).observe(arcadeGrid, { childList: true });
+            }
         });
     </script>
 
-    <!-- FIREBASE INITIALIZATION FOR ROSTER & CLASS KNOCKOUT -->
+    <!-- FIREBASE INITIALIZATION FOR ROSTER, CLASS KNOCKOUT & LIVE MINI-GAME ROOMS -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getDatabase, ref, set, onDisconnect } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+        import {
+            getDatabase,
+            ref,
+            set,
+            update,
+            get,
+            remove,
+            onValue,
+            onDisconnect
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBAJSw8QFuzMoCXqZY2wmO3Nmy2Fdy6Q4U",
@@ -992,6 +1038,10 @@
             const app = initializeApp(firebaseConfig);
             window.firebaseDb = getDatabase(app, firebaseConfig.databaseURL);
             window.firebaseSet = set;
+            window.firebaseUpdate = update;
+            window.firebaseGet = get;
+            window.firebaseRemove = remove;
+            window.firebaseOnValue = onValue;
             window.firebaseRef = ref;
             window.firebaseOnDisconnect = onDisconnect;
            
@@ -1283,6 +1333,12 @@
                     <p>Challenge Robo-Opponent (🤖) or Host/Join Live Multi-Player Races with custom Room Codes!</p>
                     <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center;">Play Finger Sprint</button>
                 </div>
+
+                <div class="game-card" id="erc-rugby-static-card" onclick="openErcRugbyFromArcade()" style="border-color: rgba(239, 68, 68, 0.55);">
+                    <h3>🏉 ERC Sports Rugby</h3>
+                    <p>Play vs CPU or link 2 Players live via Room Code right on the Rugby splash screen! Coin toss &amp; 3D kicks.</p>
+                    <button type="button" class="btn-arcade" style="margin-top: 6px; justify-content: center; background: linear-gradient(90deg, #dc2626, #2563eb);">Play ERC Rugby (1P / 2P)</button>
+                </div>
             </div>
         </div>
 
@@ -1382,9 +1438,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Bonus Sound Unlock Notification Modal -->
-   
 
     <!-- Countdown Overlay -->
     <div class="countdown-overlay" id="countdown-overlay">
