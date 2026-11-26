@@ -3,7 +3,7 @@ import { initAudio, audioCtx } from './audio.js';
 import { APPS_SCRIPT_URL } from './config.js';
 
 // ============================================================================
-// CHALLENGE LIST (112 TOTAL)
+// CHALLENGE LIST (115 TOTAL)
 // Edit numbers, icons, descriptions, or delete any challenge object below.
 // Note: Single-song challenges and challenges with `trophyOnly: true` are
 // labeled as Trophy Challenges in PianoPad (not Merit Awards), while ALL
@@ -1733,6 +1733,59 @@ export const DAILY_CHALLENGES = [
         unit: 'songs',
         minAccuracy: 80,
         minSpeed: 100
+    },
+
+    // ------------------------------------------------------------------------
+    // NEW SPECIAL MERIT CHALLENGES (105 - 107)
+    // ------------------------------------------------------------------------
+
+    // 105. Son of Poseidon Challenge (Merit Award)
+    {
+        id: 'son_of_poseidon',
+        icon: '🔱',
+        title: 'Son of Poseidon Challenge',
+        description: 'Score over 80% accuracy on "Percy Jackson Theme" at 100%+ speed.',
+        song: 'Percy Jackson Theme',
+        minAccuracy: 80,
+        minSpeed: 100,
+        tier: 'Gold',
+        target: 1,
+        unit: 'song'
+    },
+
+    // 106. Peter & the Wolf Double Merit Award Challenge (Worth 2 Merit Awards)
+    {
+        id: 'peter_and_the_wolf_double',
+        icon: '🐺',
+        title: 'Peter & the Wolf Double Merit',
+        description: 'Score over 85% accuracy at 100%+ speed on Peter\'s Theme PW, Duck\'s Theme, and Butcher\'s Theme (Worth 2 Merit Awards!).',
+        tier: 'Gold',
+        meritPoints: 2,
+        target: 3,
+        unit: 'songs',
+        songs: [
+            "Peter's Theme PW",
+            "Duck's Theme",
+            "Butcher's Theme"
+        ],
+        minAccuracy: 85,
+        minSpeed: 100
+    },
+
+    // 107. Classroom Care Challenge (Merit Award)
+    {
+        id: 'classroom_care_challenge',
+        icon: '🧹',
+        title: 'Classroom Care Challenge',
+        description: 'Complete at least 10 attempts each on "Tidy Up the Keys" and "Stand Up (Put Your Chair Away Or There You\'ll Stay)".',
+        tier: 'Silver',
+        target: 20,
+        unit: 'attempts',
+        requiredAttemptsPerSong: 10,
+        songs: [
+            'Tidy Up the Keys',
+            "Stand Up (Put Your Chair Away Or There You'll Stay)"
+        ]
     }
 ];
 
@@ -1743,11 +1796,10 @@ function isSingleSongChallenge(ch) {
     return Boolean(ch && ch.song && !Array.isArray(ch.songs));
 }
 
-// Single-song challenges and Easy trophyOnly challenges are NOT labeled as Merit Awards in PianoPad
+// Challenges with `trophyOnly: true` are NOT labeled as Merit Awards in PianoPad
 function isMeritAwardChallenge(ch) {
     if (!ch) return false;
     if (ch.trophyOnly) return false;
-    if (isSingleSongChallenge(ch)) return false;
     return true;
 }
 
@@ -1865,6 +1917,7 @@ function awardPermanentBadge(challenge) {
             icon: challenge.icon || '🏅',
             tier: challenge.tier || 'Silver',
             description: challenge.description,
+            meritPoints: challenge.meritPoints || (isMeritAwardChallenge(challenge) ? 1 : 0),
             earnedDate: getTodayDateKey()
         });
         try {
@@ -2585,10 +2638,11 @@ function populateChallengeList() {
     const homeChallenges = DAILY_CHALLENGES.filter(c => c.id.startsWith('home_'));
     const improvementChallenges = DAILY_CHALLENGES.filter(c => c.id.startsWith('improve_'));
     const generalMerit = DAILY_CHALLENGES.filter(
-        c => isMeritAwardChallenge(c) && !Array.isArray(c.songs) && !c.id.startsWith('home_') && !c.id.startsWith('improve_')
+        c => isMeritAwardChallenge(c) && !Array.isArray(c.songs) && !isSingleSongChallenge(c) && !c.id.startsWith('home_') && !c.id.startsWith('improve_')
     );
     const setlistMerit = DAILY_CHALLENGES.filter(c => isMeritAwardChallenge(c) && Array.isArray(c.songs));
-    const singleTrophies = DAILY_CHALLENGES.filter(c => isSingleSongChallenge(c) && !c.id.startsWith('easy_song_'));
+    const singleTrophies = DAILY_CHALLENGES.filter(c => isSingleSongChallenge(c) && !c.id.startsWith('easy_song_') && c.trophyOnly);
+    const singleMerits = DAILY_CHALLENGES.filter(c => isSingleSongChallenge(c) && !c.trophyOnly);
 
     const addSection = (title, arr) => {
         if (arr.length === 0) return;
@@ -2609,10 +2663,13 @@ function populateChallengeList() {
             const earnedTag = isEarned
                 ? `<span style="color:#4ade80; font-size:0.72rem; font-weight:700; margin-left:6px;">✅ Earned</span>`
                 : '';
+            const doubleTag = ch.meritPoints === 2
+                ? `<span style="color:#facc15; font-size:0.72rem; font-weight:800; margin-left:6px;">2x MERITS</span>`
+                : '';
 
             item.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-                    <h4>${ch.icon || '🎯'} ${ch.title}${earnedTag}</h4>
+                    <h4>${ch.icon || '🎯'} ${ch.title}${doubleTag}${earnedTag}</h4>
                     <span class="dc-tier-badge dc-tier-${ch.tier || 'Silver'}" style="margin:0; font-size:0.6rem; padding:2px 8px; flex-shrink:0;">${ch.tier || 'Silver'}</span>
                 </div>
                 <p>${ch.description}</p>
@@ -2647,6 +2704,7 @@ function populateChallengeList() {
         });
     };
 
+    addSection('Single-Song Merit Challenges', singleMerits);
     addSection('Home Practice Challenges (Merit Awards)', homeChallenges);
     addSection('Improvement & Growth Challenges (Merit Awards)', improvementChallenges);
     addSection('Easy Single-Song Challenges (Trophy Cabinet)', easySingle);
@@ -2720,15 +2778,22 @@ export function openDailyChallengeModal(isManualView = false) {
 
     const tierPill = document.getElementById('dc-tier-pill');
     tierPill.className = `dc-tier-badge dc-tier-${ch.tier || 'Gold'}`;
-    tierPill.textContent = isMerit
-        ? `${ch.tier ? ch.tier + ' • ' : ''}Daily Merit Award Challenge`
-        : `${ch.tier ? ch.tier + ' • ' : ''}Trophy Challenge`;
+    if (isMerit) {
+        const meritLabel = ch.meritPoints === 2 ? 'Double Merit Award Challenge (2x)' : 'Daily Merit Award Challenge';
+        tierPill.textContent = `${ch.tier ? ch.tier + ' • ' : ''}${meritLabel}`;
+    } else {
+        tierPill.textContent = `${ch.tier ? ch.tier + ' • ' : ''}Trophy Challenge`;
+    }
 
     const rewardEl = document.getElementById('dc-reward-text');
     if (rewardEl) {
-        rewardEl.textContent = isMerit
-            ? '🎁 Reward: Permanent Merit Badge, 5 Bonus Instruments & Leaderboard Log!'
-            : '🏅 Reward: Permanent Trophy Cabinet Badge, 5 Bonus Instruments & Leaderboard Log!';
+        if (isMerit) {
+            rewardEl.textContent = ch.meritPoints === 2
+                ? '🎁 Reward: 2 Merit Awards, Permanent Merit Badge, 5 Bonus Instruments & Leaderboard Log!'
+                : '🎁 Reward: Permanent Merit Badge, 5 Bonus Instruments & Leaderboard Log!';
+        } else {
+            rewardEl.textContent = '🏅 Reward: Permanent Trophy Cabinet Badge, 5 Bonus Instruments & Leaderboard Log!';
+        }
     }
 
     document.getElementById('dc-title').textContent = ch.title;
@@ -2754,12 +2819,18 @@ export function openDailyChallengeModal(isManualView = false) {
         wrap.className = 'dc-song-pills-wrap';
 
         songOpts.forEach(songTitle => {
-            const isSongDone = dailyState.completed || completedNormSet.has(normalizeTitle(songTitle));
+            const perSongPlays = dailyState.meta?.songPlayCounts?.[normalizeTitle(songTitle)] || 0;
+            const isSongDone = dailyState.completed
+                || completedNormSet.has(normalizeTitle(songTitle))
+                || (ch.requiredAttemptsPerSong && perSongPlays >= ch.requiredAttemptsPerSong);
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = `dc-song-btn ${isSongDone ? 'song-done' : ''}`;
             btn.title = `Close popup and play "${songTitle}" in Game Mode`;
-            btn.textContent = `${isSongDone ? '✅' : '🎮'} ${songTitle}`;
+            const attemptSuffix = ch.requiredAttemptsPerSong
+                ? ` (${Math.min(ch.requiredAttemptsPerSong, perSongPlays)}/${ch.requiredAttemptsPerSong})`
+                : '';
+            btn.textContent = `${isSongDone ? '✅' : '🎮'} ${songTitle}${attemptSuffix}`;
             btn.addEventListener('click', () => {
                 launchSongInGameMode(songTitle);
             });
@@ -2810,13 +2881,17 @@ function updateDailyHudPill() {
 
     if (dailyState.completed) {
         pill.classList.add('dc-done');
-        pill.textContent = isMerit ? `✅ Merit Award Complete!` : `✅ Trophy Earned!`;
+        pill.textContent = isMerit
+            ? (ch.meritPoints === 2 ? `✅ 2x Merit Award Complete!` : `✅ Merit Award Complete!`)
+            : `✅ Trophy Earned!`;
     } else if (dailyState.accepted) {
         pill.classList.remove('dc-done');
         pill.textContent = `${ch.icon || '🎯'} ${ch.title}: ${dailyState.progress}/${ch.target}`;
     } else {
         pill.classList.remove('dc-done');
-        pill.textContent = isMerit ? `🎯 Daily Merit Award` : `🏅 Trophy Challenge`;
+        pill.textContent = isMerit
+            ? (ch.meritPoints === 2 ? `🎯 2x Merit Award` : `🎯 Daily Merit Award`)
+            : `🏅 Trophy Challenge`;
     }
 }
 
@@ -2869,7 +2944,9 @@ function checkAndTriggerCompletion(challenge) {
             }
             if (typeof bridge.showFlashingStatus === 'function') {
                 const msg = isMerit
-                    ? `🏆 DAILY MERIT AWARD CHALLENGE COMPLETE: "${challenge.title}"! Badge Earned, Logged to Leaderboard & 5 Bonus Instruments Unlocked!`
+                    ? (challenge.meritPoints === 2
+                        ? `🏆 DOUBLE MERIT AWARD COMPLETE (2x): "${challenge.title}"! 2 Merit Badges Earned, Logged to Leaderboard & 5 Bonus Instruments Unlocked!`
+                        : `🏆 DAILY MERIT AWARD CHALLENGE COMPLETE: "${challenge.title}"! Badge Earned, Logged to Leaderboard & 5 Bonus Instruments Unlocked!`)
                     : `🏅 TROPHY CHALLENGE COMPLETE: "${challenge.title}"! Added to Your Trophy Cabinet, Logged to Leaderboard & 5 Bonus Instruments Unlocked!`;
                 bridge.showFlashingStatus(msg, 7000);
             }
@@ -2880,7 +2957,9 @@ function checkAndTriggerCompletion(challenge) {
                 || 'Student';
             const studentClass = state.currentStudentClass || localStorage.getItem('pianopad_class') || state.currentRoom || '';
             const entryTitle = isMerit
-                ? `🎯 Merit Award: ${challenge.title}`
+                ? (challenge.meritPoints === 2
+                    ? `🎯 2x Merit Award: ${challenge.title}`
+                    : `🎯 Merit Award: ${challenge.title}`)
                 : `🏅 Trophy: ${challenge.title}`;
 
             if (APPS_SCRIPT_URL && typeof bridge.sendJSONP === 'function') {
@@ -2952,8 +3031,18 @@ export function notifyDailySongComplete({
 
     if (dailyState.completed) return;
 
-    // Handle Multi-Song Setlist Challenges (including Easy Setlists & boss_deceptively_hard)
-    if (Array.isArray(ch.songs) && ch.songs.length > 0) {
+    // Handle Classroom Care Challenge (requires >= 10 attempts on each listed song)
+    if (ch.id === 'classroom_care_challenge' && Array.isArray(ch.songs)) {
+        const reqPlays = ch.requiredAttemptsPerSong ?? 10;
+        let totalCappedPlays = 0;
+        ch.songs.forEach(s => {
+            const plays = dailyState.meta.songPlayCounts[normalizeTitle(s)] || 0;
+            totalCappedPlays += Math.min(reqPlays, plays);
+        });
+        dailyState.progress = totalCappedPlays;
+    }
+    // Handle Multi-Song Setlist Challenges (including Easy Setlists, Peter & the Wolf, & boss_deceptively_hard)
+    else if (Array.isArray(ch.songs) && ch.songs.length > 0) {
         const reqAcc = ch.minAccuracy ?? 85;
         const reqSpeed = ch.minSpeed ?? 100;
         const reqNoSheet = Boolean(ch.requireNoSheet);
@@ -2984,6 +3073,15 @@ export function notifyDailySongComplete({
         }
     } else {
         switch (ch.id) {
+            // --------------------------------------------------------
+            // NEW SPECIAL MERIT CHECKS
+            // --------------------------------------------------------
+            case 'son_of_poseidon':
+                if (normTitle === normalizeTitle('Percy Jackson Theme') && numAccuracy >= 80 && numSpeed >= 100) {
+                    dailyState.progress = 1;
+                }
+                break;
+
             // --------------------------------------------------------
             // HOME PRACTICE CHALLENGES
             // --------------------------------------------------------
