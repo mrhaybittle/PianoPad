@@ -100,7 +100,6 @@ export function startErcRugby(bridge, autoStart = false) {
   const defaultBinds = {
     moveLeft:  { midi: 'f#1', key: 'A', label: '🎹 F#1 / A' },
     moveRight: { midi: 'g#1', key: 'D', label: '🎹 G#1 / D' },
-    surge:     { midi: 'a1',  key: 'W', label: '🎹 A1 / W' },
     bomb:      { midi: 'b1',  key: 'B', label: '🎹 B1 / B' },
     grubber:   { midi: 'c2',  key: 'N', label: '🎹 C2 / N' }
   };
@@ -129,7 +128,6 @@ export function startErcRugby(bridge, autoStart = false) {
     awayPlayers: [],
     carrierIndex: 2,
     selectedDefenderIdx: 2,
-    surgeTimer: 0,
     aiPlayTimer: 0,
     aiPassCooldown: 1.55,
     aiLastPassFrom: -1,
@@ -369,7 +367,6 @@ export function startErcRugby(bridge, autoStart = false) {
 
     containerEl.querySelector('#erc-leg-left').textContent = state.actionBinds.moveLeft.label;
     containerEl.querySelector('#erc-leg-right').textContent = state.actionBinds.moveRight.label;
-    containerEl.querySelector('#erc-leg-surge').textContent = state.actionBinds.surge.label;
     containerEl.querySelector('#erc-leg-bomb').textContent = state.actionBinds.bomb.label;
     containerEl.querySelector('#erc-leg-grubber').textContent = state.actionBinds.grubber.label;
   }
@@ -438,7 +435,6 @@ export function startErcRugby(bridge, autoStart = false) {
     state.passState.active = false;
     state.kickBall.active = false;
     state.defSwitchChallenge.active = false;
-    state.surgeTimer = 0;
 
     state.tryCelebration.active = true;
     state.tryCelebration.timer = 0;
@@ -503,7 +499,6 @@ export function startErcRugby(bridge, autoStart = false) {
     state.carrierIndex = carrierIdx;
     state.selectedDefenderIdx = carrierIdx;
     state.tackleCount = 0;
-    state.surgeTimer = 0;
     state.passState.active = false;
     state.kickBall.active = false;
     state.kickBall.z = 0;
@@ -632,7 +627,6 @@ export function startErcRugby(bridge, autoStart = false) {
     const carrier = attackers[state.carrierIndex];
 
     state.tackleCount += 1;
-    state.surgeTimer = 0;
     state.defSwitchChallenge.active = false;
     state.defSwitchChallenge.failedBreak = false;
     carrier.vy = 0; carrier.vx = 0;
@@ -741,30 +735,6 @@ export function startErcRugby(bridge, autoStart = false) {
     state.passState.isForwardPass = thrownForward;
   }
 
-  function triggerSurgeOrTackleBurst() {
-    if (state.phase !== 'playing') return;
-    if (state.playState === 'conversionKick') { submitConversionStrike(); return; }
-    if (state.playState === 'tryCelebration') return;
-
-    if (state.possession === 'home') {
-      if (!releasePlayTheBall()) return;
-      state.surgeTimer = 0.85;
-      const c = state.homePlayers[state.carrierIndex];
-      c.vy = -0.38;
-      addCallout('⚡ TURBO SPRINT!', c.x, c.y - 0.04, '#6ee7b7');
-    } else {
-      if (state.playState !== 'running') {
-        const d = state.homePlayers[state.selectedDefenderIdx];
-        addCallout('STAY ONSIDE UNTIL PLAYED!', d.x, d.y + 0.05, '#fcd34d');
-        return;
-      }
-      state.surgeTimer = 0.65;
-      const d = state.homePlayers[state.selectedDefenderIdx];
-      d.pursuitTimer = Math.max(d.pursuitTimer, 0.75);
-      addCallout(`⚡ ${LANE_NOTES[state.selectedDefenderIdx]} SPRINT TACKLE!`, d.x, d.y - 0.03, '#6ee7b7');
-    }
-  }
-
   function launchKick(kind) {
     if (state.phase !== 'playing' || state.possession !== 'home') return;
     if (state.playState === 'conversionKick') { submitConversionStrike(); return; }
@@ -778,7 +748,6 @@ export function startErcRugby(bridge, autoStart = false) {
     state.kickBall.kind = kind;
     state.kickBall.x = kicker.x; state.kickBall.y = kicker.y - 0.03;
     state.kickBall.bounceCount = 0;
-    // Defenders naturally field most kicks (~78% defender-favored)
     state.kickBall.defenderFavored = Math.random() < 0.78;
 
     state.homePlayers.forEach((att, idx) => { att.offsideOnKick = idx !== state.carrierIndex && att.y < kicker.y; });
@@ -854,7 +823,6 @@ export function startErcRugby(bridge, autoStart = false) {
       state.moveInput.rightHeld = true; state.moveInput.rightTapTimer = 0.22; state.moveInput.leftTapTimer = 0;
       return;
     }
-    if (state.actionBinds.surge.midi === clean) { triggerSurgeOrTackleBurst(); return; }
     if (state.actionBinds.bomb.midi === clean) { launchKick('bomb'); return; }
     if (state.actionBinds.grubber.midi === clean) { launchKick('grubber'); return; }
 
@@ -933,7 +901,6 @@ export function startErcRugby(bridge, autoStart = false) {
     if (state.screenShake.timer > 0) state.screenShake.timer = Math.max(0, state.screenShake.timer - dt);
     if (state.moveInput.leftTapTimer > 0) state.moveInput.leftTapTimer = Math.max(0, state.moveInput.leftTapTimer - dt);
     if (state.moveInput.rightTapTimer > 0) state.moveInput.rightTapTimer = Math.max(0, state.moveInput.rightTapTimer - dt);
-    if (state.surgeTimer > 0) state.surgeTimer = Math.max(0, state.surgeTimer - dt);
 
     for (const hp of state.homePlayers) {
       if (hp.missedTackleTimer > 0) hp.missedTackleTimer = Math.max(0, hp.missedTackleTimer - dt);
@@ -1110,14 +1077,12 @@ export function startErcRugby(bridge, autoStart = false) {
     const activeCarrier = attackers[state.carrierIndex];
 
     if (state.possession === 'home') {
-      const isSurging = state.surgeTimer > 0;
-      const baseUpSpeed = state.passState.active ? -0.075 : isSurging ? -0.36 : -0.125;
+      const baseUpSpeed = state.passState.active ? -0.075 : -0.125;
       activeCarrier.vy += (baseUpSpeed - activeCarrier.vy) * Math.min(1, dt * 11);
       activeCarrier.y += activeCarrier.vy * dt;
 
       if (userSteerX !== 0) {
-        const lateralSpeed = isSurging ? 0.36 : 0.25;
-        activeCarrier.x = Math.min(0.91, Math.max(0.09, activeCarrier.x + userSteerX * lateralSpeed * dt));
+        activeCarrier.x = Math.min(0.91, Math.max(0.09, activeCarrier.x + userSteerX * 0.25 * dt));
       }
     } else {
       state.aiPassCooldown -= dt;
@@ -1189,7 +1154,7 @@ export function startErcRugby(bridge, autoStart = false) {
       }
     }
 
-    const supportCatchup = state.surgeTimer > 0 ? 5.8 : 4.0;
+    const supportCatchup = 4.0;
     for (let i = 0; i < 5; i++) {
       if (i === state.carrierIndex) continue;
       const att = attackers[i];
@@ -1198,7 +1163,6 @@ export function startErcRugby(bridge, autoStart = false) {
         rollSupportAlignment(att, i, state.carrierIndex, state.possession === 'home');
       }
       if (state.possession === 'home' && state.kickBall.active) {
-        // Natural chase speed without jumping or teleporting
         if (!att.offsideOnKick) {
           att.y = Math.max(0.13, att.y - 0.13 * dt);
         } else if (activeCarrier.y <= att.y) {
@@ -1246,7 +1210,6 @@ export function startErcRugby(bridge, autoStart = false) {
         state.kickBall.vy *= Math.pow(0.55, dt);
       }
 
-      // Defenders naturally run toward the kick landing area to field the ball
       for (let i = 0; i < state.awayPlayers.length; i++) {
         const def = state.awayPlayers[i];
         const laneTargetX = LANES[i];
@@ -1260,7 +1223,6 @@ export function startErcRugby(bridge, autoStart = false) {
         def.y = Math.min(0.88, Math.max(0.14, def.y + pullY * dt));
       }
 
-      // Onside attacking chasers can only regather if they naturally run close enough to the ball
       if (state.kickBall.z < 0.07) {
         for (let i = 0; i < 5; i++) {
           const att = state.homePlayers[i];
@@ -1275,7 +1237,6 @@ export function startErcRugby(bridge, autoStart = false) {
         }
       }
 
-      // When the kick settles or bounces twice, the defending team naturally fields it most of the time
       const kickSettled =
         state.kickBall.bounceCount >= 2 ||
         (state.kickBall.kind === 'grubber' && Math.abs(state.kickBall.vy) < 0.11) ||
@@ -1320,14 +1281,13 @@ export function startErcRugby(bridge, autoStart = false) {
         const toX = activeCarrier.x - d.x;
         const toY = activeCarrier.y - d.y;
         const dist = Math.max(0.001, Math.hypot(toX, toY));
-        const chargeSpeed = state.surgeTimer > 0 ? 0.34 : 0.24;
+        const chargeSpeed = 0.24;
         d.x = Math.min(0.92, Math.max(0.08, d.x + (toX / dist) * chargeSpeed * dt));
         d.y = Math.min(0.92, Math.max(0.12, d.y + (toY / dist) * chargeSpeed * dt));
       } else if (state.possession === 'away' && i === state.selectedDefenderIdx) {
-        const isDefSurging = state.surgeTimer > 0;
-        d.y = Math.max(0.12, d.y + (isDefSurging ? -0.32 : -0.095) * dt);
+        d.y = Math.max(0.12, d.y - 0.095 * dt);
         if (userSteerX !== 0) {
-          d.x = Math.min(0.92, Math.max(0.08, d.x + userSteerX * (isDefSurging ? 0.36 : 0.27) * dt));
+          d.x = Math.min(0.92, Math.max(0.08, d.x + userSteerX * 0.27 * dt));
         }
       } else if (d.role === 'chaser') {
         const toX = activeCarrier.x - d.x; const toY = activeCarrier.y - d.y;
@@ -1451,9 +1411,6 @@ export function startErcRugby(bridge, autoStart = false) {
 
     if (e.repeat) return;
 
-    if (keyUpper && keyUpper === (state.actionBinds.surge.key || '').toUpperCase()) {
-      e.preventDefault(); triggerSurgeOrTackleBurst(); return;
-    }
     if (keyUpper && keyUpper === (state.actionBinds.bomb.key || '').toUpperCase()) {
       e.preventDefault(); launchKick('bomb'); return;
     }
@@ -1509,4 +1466,3 @@ export function startErcRugby(bridge, autoStart = false) {
   }
   animFrameId = requestAnimationFrame(frame);
 }
-
