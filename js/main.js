@@ -2783,11 +2783,12 @@ async function postScoreToLeaderboard(accuracyNum) {
     ensureStudentName();
     const speedText = speedSlider.value + '%';
     const studentClass = currentStudentClass || localStorage.getItem('pianopad_class') || currentRoom || '';
+    const studentEmail = (window.pianoPadUser && window.pianoPadUser.email) || localStorage.getItem('pianopad_email') || '';
 
     try {
         document.getElementById('status').textContent = `Submitting score (${accuracyNum}) for ${sessionStudentName} (${studentClass || 'No Class'})...`;
 
-        const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&class=${encodeURIComponent(studentClass)}&studentClass=${encodeURIComponent(studentClass)}&t=${Date.now()}`;
+        const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(sessionStudentName)}&email=${encodeURIComponent(studentEmail)}&title=${encodeURIComponent(currentSongTitle)}&score=${encodeURIComponent(accuracyNum)}&tempo=${encodeURIComponent(speedText)}&class=${encodeURIComponent(studentClass)}&studentClass=${encodeURIComponent(studentClass)}&t=${Date.now()}`;
         const res = await sendJSONP(url);
         
         if (res && res.status === "SCORE_SUBMITTED") {
