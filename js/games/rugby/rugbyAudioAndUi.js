@@ -87,7 +87,6 @@ export function playConversionKickSound(madeGoal) {
   } catch (e) {}
 }
 
-// Authentic rugby league referee pea-whistle (high-frequency trill + air/resonator harmonics)
 export function playRefWhistle(style = 'short') {
   try {
     const c = getCtx();
@@ -106,7 +105,6 @@ export function playRefWhistle(style = 'short') {
     oscA.frequency.setValueAtTime(2840, now);
     oscB.frequency.setValueAtTime(2915, now);
 
-    // Pea-whistle rapid amplitude/pitch warble (~36 Hz)
     trillLfo.type = 'sine';
     trillLfo.frequency.setValueAtTime(36, now);
     trillDepth.gain.setValueAtTime(0.14, now);
@@ -266,6 +264,36 @@ export function buildRugbyMarkup() {
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 800; font-size: 10.5px;
       }
       .erc-key-btn.listening { outline: 2px solid #fcd34d; background: rgba(251, 191, 36, 0.28) !important; }
+      .wolfhound-squad-strip {
+        display: none;
+        margin-top: 7px;
+        padding: 6px 8px;
+        border-radius: 8px;
+        background: rgba(15, 118, 110, 0.18);
+        border: 1px solid rgba(45, 212, 191, 0.35);
+      }
+      .wolfhound-faces-row {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+        margin-top: 4px;
+      }
+      .wolfhound-face-card {
+        background: rgba(2, 6, 23, 0.78);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 6px;
+        padding: 4px 2px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+      .wolfhound-face-card canvas {
+        width: 36px;
+        height: 36px;
+        image-rendering: pixelated;
+        border-radius: 4px;
+      }
     </style>
 
     <canvas id="erc-game-canvas"></canvas>
@@ -323,7 +351,7 @@ export function buildRugbyMarkup() {
               ERC Sports Rugby — Team &amp; MIDI Setup
             </div>
             <div style="font-size:11px; color:#cbd5e1;">
-              <b>C, D, E, F, G</b> pass in Offense &amp; switch defenders in Defense (switch fast when ball shifts or they break through!).
+              <b>C, D, E, F, G</b> pass in Offense &amp; switch defenders in Defense. Hit the closest defender's note fast when the red-ring runner moves!
             </div>
           </div>
           <div class="erc-logo-badge">
@@ -347,6 +375,13 @@ export function buildRugbyMarkup() {
                 <div id="erc-player-title" class="font-sports" style="font-weight:800; font-size:12.5px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
                 <div id="erc-player-chant" style="font-size:10.5px; color:#cbd5e1;"></div>
               </div>
+            </div>
+
+            <div id="erc-wolfhound-squad" class="wolfhound-squad-strip">
+              <div class="font-sports" style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:#5eead4;">
+                🐺 ERC WolfHounds Pixel Squad (C–G)
+              </div>
+              <div id="erc-wolfhound-faces" class="wolfhound-faces-row"></div>
             </div>
           </div>
 
@@ -424,3 +459,6 @@ export function buildRugbyMarkup() {
     </div>
   `;
 }
+
+
+Type **next** for File 3 of 3: **`js/games/ercRugby.js`**[cite: 48].
