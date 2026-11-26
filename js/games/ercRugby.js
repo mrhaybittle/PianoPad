@@ -244,10 +244,10 @@ export function startErcRugby(bridge, autoStart = false) {
     carrierIndex: 2,
     selectedDefenderIdx: 2,
     aiPlayTimer: 0,
-    aiPassCooldown: 1.55,
+    aiPassCooldown: 1.95,
     aiLastPassFrom: -1,
     aiWeaveDir: 1,
-    aiWeaveTimer: 0.85,
+    aiWeaveTimer: 1.05,
     aiLastTrackedLane: 2,
 
     defSwitchChallenge: {
@@ -255,7 +255,7 @@ export function startErcRugby(bridge, autoStart = false) {
       targetLane: 2,
       requiredDefIdx: 2,
       timer: 0,
-      windowSec: 0.68,
+      windowSec: 0.98,
       failedBreak: false
     },
 
@@ -283,7 +283,7 @@ export function startErcRugby(bridge, autoStart = false) {
     },
 
     callouts: [],
-    tacklePause: { timer: 0, retreatDuration: 1.15, markY: 0.82, onsideY: 0.68 },
+    tacklePause: { timer: 0, retreatDuration: 1.3, markY: 0.82, onsideY: 0.68 },
     turnoverTimer: 0,
     nextPossession: 'home',
     nextStartY: 0.82,
@@ -1082,7 +1082,7 @@ export function startErcRugby(bridge, autoStart = false) {
     state.defSwitchChallenge.targetLane = laneIdx;
     state.defSwitchChallenge.requiredDefIdx = closestDef;
     state.defSwitchChallenge.timer = 0;
-    state.defSwitchChallenge.windowSec = laneIdx === 0 || laneIdx === 4 ? 0.62 : 0.74;
+    state.defSwitchChallenge.windowSec = laneIdx === 0 || laneIdx === 4 ? 0.92 : 1.12;
     state.defSwitchChallenge.failedBreak = false;
     state.aiLastTrackedLane = laneIdx;
 
@@ -1286,9 +1286,9 @@ export function startErcRugby(bridge, autoStart = false) {
       return;
     }
     const dist = Math.abs(idx - carrierIdx);
-    const willOverrun = allowOverrun && Math.random() < 0.10;
+    const willOverrun = allowOverrun && Math.random() < 0.05;
     playerObj.overrun = willOverrun;
-    playerObj.overrunLead = willOverrun ? 0.028 + Math.random() * 0.022 : 0;
+    playerObj.overrunLead = willOverrun ? 0.025 + Math.random() * 0.02 : 0;
     playerObj.depthJitter = (Math.random() - 0.35) * 0.016 * dist;
     playerObj.lateralJitter = (Math.random() - 0.5) * 0.018;
     playerObj.nextRollTimer = 1.6 + Math.random() * 1.8;
@@ -1297,7 +1297,7 @@ export function startErcRugby(bridge, autoStart = false) {
   function getDesiredSupportPos(playerObj, idx, carrier, attackDir) {
     if (idx === state.carrierIndex) return { x: playerObj.x, y: playerObj.y };
     const laneSteps = Math.abs(idx - state.carrierIndex);
-    const echelonDepth = laneSteps * 0.046 + playerObj.depthJitter;
+    const echelonDepth = laneSteps * 0.052 + playerObj.depthJitter;
     const desiredX = Math.min(0.91, Math.max(0.09, LANES[idx] + playerObj.lateralJitter));
 
     let desiredY = playerObj.overrun
@@ -1313,8 +1313,32 @@ export function startErcRugby(bridge, autoStart = false) {
       vx: 0, vy: 0, animSpeedX: 0, animSpeedY: 0,
       strideTimer: i * 0.18, overrun: false, overrunLead: 0,
       depthJitter: 0, lateralJitter: 0, nextRollTimer: 1.6 + Math.random() * 1.5,
-      role: 'line', isScorer: false, missedTackleTimer: 0, pursuitTimer: 0
+      role: 'line', speedFactor: 1, slideFactor: 0.22, linePaceMult: 1,
+      isScorer: false, missedTackleTimer: 0, pursuitTimer: 0
     };
+  }
+
+  function rollDefenderPhaseQuirks() {
+    const defenders = state.possession === 'home' ? state.awayPlayers : state.homePlayers;
+    defenders.forEach((d) => {
+      // Occasional slower step or softer lateral slide so players can spot and exploit gaps
+      const sluggishRoll = Math.random();
+      if (sluggishRoll < 0.25) {
+        d.speedFactor = 0.72 + Math.random() * 0.14;
+      } else if (sluggishRoll < 0.35) {
+        d.speedFactor = 1.08;
+      } else {
+        d.speedFactor = 1.0;
+      }
+
+      d.slideFactor = Math.random() < 0.32
+        ? 0.14 + Math.random() * 0.06
+        : 0.22 + Math.random() * 0.06;
+
+      d.linePaceMult = Math.random() < 0.34
+        ? 0.65 + Math.random() * 0.22
+        : 1.0;
+    });
   }
 
   function setupSetOfSix(possession, startY, carrierIdx = 2) {
@@ -1328,15 +1352,15 @@ export function startErcRugby(bridge, autoStart = false) {
     state.defSwitchChallenge.active = false;
     state.defSwitchChallenge.failedBreak = false;
     state.aiWeaveDir = Math.random() < 0.5 ? -1 : 1;
-    state.aiWeaveTimer = 0.8 + Math.random() * 0.6;
+    state.aiWeaveTimer = 1.0 + Math.random() * 0.8;
     state.aiLastTrackedLane = carrierIdx;
     state.playState = 'waitingForPlay';
-    state.aiPlayTimer = 0.70;
-    state.aiPassCooldown = 1.55 + Math.random() * 0.85;
+    state.aiPlayTimer = 0.75;
+    state.aiPassCooldown = 2.05 + Math.random() * 1.05;
     state.aiLastPassFrom = -1;
 
     const attackDir = possession === 'home' ? -1 : 1;
-    const onsideY = Math.min(0.86, Math.max(0.14, startY + attackDir * 0.145));
+    const onsideY = Math.min(0.86, Math.max(0.14, startY + attackDir * 0.16));
     state.tacklePause.markY = startY;
     state.tacklePause.onsideY = onsideY;
 
@@ -1357,6 +1381,8 @@ export function startErcRugby(bridge, autoStart = false) {
       }
     }
 
+    rollDefenderPhaseQuirks();
+
     const attackers = possession === 'home' ? state.homePlayers : state.awayPlayers;
     const carrier = attackers[carrierIdx];
     for (let i = 0; i < 5; i++) {
@@ -1372,8 +1398,10 @@ export function startErcRugby(bridge, autoStart = false) {
   function assignAiDefenderChasers() {
     const defenders = state.possession === 'home' ? state.awayPlayers : state.homePlayers;
     const chaserA = Math.floor(Math.random() * 5);
-    const chaserB = (chaserA + 2) % 5;
+    const useSecondChaser = Math.random() < 0.72;
+    const chaserB = useSecondChaser ? (chaserA + 2) % 5 : -1;
     defenders.forEach((d, idx) => { d.role = idx === chaserA || idx === chaserB ? 'chaser' : 'line'; });
+    rollDefenderPhaseQuirks();
   }
 
   function tryTriggerAiPass(forceDummyHalfPass = false) {
@@ -1474,7 +1502,7 @@ export function startErcRugby(bridge, autoStart = false) {
     state.playState = 'retreating';
     state.tacklePause.timer = 0;
     state.tacklePause.markY = carrier.y;
-    state.tacklePause.onsideY = Math.min(0.87, Math.max(0.13, carrier.y + attackDir * 0.14));
+    state.tacklePause.onsideY = Math.min(0.87, Math.max(0.13, carrier.y + attackDir * 0.16));
 
     attackers.forEach((att, idx) => rollSupportAlignment(att, idx, state.carrierIndex, state.possession === 'home'));
     syncHudAndLegend();
@@ -2036,7 +2064,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
       if (state.tacklePause.timer >= state.tacklePause.retreatDuration && allOnside) {
         for (let i = 0; i < 5; i++) { defenders[i].x = LANES[i]; defenders[i].y = targetOnsideY; }
-        state.playState = 'waitingForPlay'; state.aiPlayTimer = 0.65; state.aiPassCooldown = 1.5; state.aiLastPassFrom = -1;
+        state.playState = 'waitingForPlay'; state.aiPlayTimer = 0.65; state.aiPassCooldown = 1.95; state.aiLastPassFrom = -1;
         addCallout(
           state.possession === 'home' ? 'ONSIDE! PASS (C–G) OR RUN' : 'DEFENSE SET! SWITCH WITH C–G',
           carrier.x, Math.min(0.85, Math.max(0.16, carrier.y - 0.04)), '#fde047'
@@ -2064,11 +2092,11 @@ export function startErcRugby(bridge, autoStart = false) {
         state.aiPlayTimer -= dt;
         if (state.aiPlayTimer <= 0) {
           releasePlayTheBall();
-          if (Math.random() < 0.30) {
+          if (Math.random() < 0.25) {
             tryTriggerAiPass(true);
-            state.aiPassCooldown = 1.65 + Math.random() * 0.9;
+            state.aiPassCooldown = 2.05 + Math.random() * 1.05;
           } else {
-            state.aiPassCooldown = 1.45 + Math.random() * 0.85;
+            state.aiPassCooldown = 1.95 + Math.random() * 0.95;
           }
         }
       }
@@ -2121,12 +2149,12 @@ export function startErcRugby(bridge, autoStart = false) {
     const activeCarrier = attackers[state.carrierIndex];
 
     if (state.possession === 'home') {
-      const baseUpSpeed = state.passState.active ? -0.075 : -0.125;
+      const baseUpSpeed = state.passState.active ? -0.10 : -0.15;
       activeCarrier.vy += (baseUpSpeed - activeCarrier.vy) * Math.min(1, dt * 11);
       activeCarrier.y += activeCarrier.vy * dt;
 
       if (userSteerX !== 0) {
-        activeCarrier.x = Math.min(0.91, Math.max(0.09, activeCarrier.x + userSteerX * 0.25 * dt));
+        activeCarrier.x = Math.min(0.91, Math.max(0.09, activeCarrier.x + userSteerX * 0.30 * dt));
       }
     } else if (p2HumanActive) {
       const p2DownSpeed = state.passState.active ? 0.065 : 0.125;
@@ -2145,21 +2173,21 @@ export function startErcRugby(bridge, autoStart = false) {
         const underTacklePressure = nearestDefDist < 0.085 && state.aiPassCooldown <= 0.15;
         const scheduledShiftReady = state.aiPassCooldown <= 0;
 
-        if ((underTacklePressure && Math.random() < 0.45) || (scheduledShiftReady && Math.random() < 0.36)) {
+        if ((underTacklePressure && Math.random() < 0.4) || (scheduledShiftReady && Math.random() < 0.32)) {
           const passed = tryTriggerAiPass(false);
-          state.aiPassCooldown = passed ? (1.7 + Math.random() * 1.0) : (1.1 + Math.random() * 0.7);
+          state.aiPassCooldown = passed ? (2.1 + Math.random() * 1.1) : (1.5 + Math.random() * 0.8);
         } else if (scheduledShiftReady) {
-          state.aiPassCooldown = 1.2 + Math.random() * 0.8;
+          state.aiPassCooldown = 1.6 + Math.random() * 0.9;
         }
       }
 
-      const breakSpeedMult = state.defSwitchChallenge.failedBreak ? 1.6 : 1.0;
-      const aiDownSpeed = (state.passState.active ? 0.055 : 0.118) * breakSpeedMult;
+      const breakSpeedMult = state.defSwitchChallenge.failedBreak ? 1.25 : 1.0;
+      const aiDownSpeed = (state.passState.active ? 0.05 : 0.096) * breakSpeedMult;
       activeCarrier.y += aiDownSpeed * dt;
 
       state.aiWeaveTimer -= dt;
       if (state.aiWeaveTimer <= 0) {
-        state.aiWeaveTimer = 0.65 + Math.random() * 0.75;
+        state.aiWeaveTimer = 1.0 + Math.random() * 0.8;
         const selDef = state.homePlayers[state.selectedDefenderIdx];
         if (selDef && Math.abs(selDef.x - activeCarrier.x) < 0.16) {
           state.aiWeaveDir = activeCarrier.x < selDef.x ? -1 : 1;
@@ -2171,7 +2199,7 @@ export function startErcRugby(bridge, autoStart = false) {
       if (activeCarrier.x <= 0.10) state.aiWeaveDir = 1;
       else if (activeCarrier.x >= 0.90) state.aiWeaveDir = -1;
 
-      const weaveSpeed = state.defSwitchChallenge.failedBreak ? 0.19 : 0.135;
+      const weaveSpeed = state.defSwitchChallenge.failedBreak ? 0.155 : 0.108;
       activeCarrier.x = Math.min(0.90, Math.max(0.10, activeCarrier.x + state.aiWeaveDir * weaveSpeed * dt));
 
       const curLane = getNearestLaneToX(activeCarrier.x);
@@ -2191,8 +2219,8 @@ export function startErcRugby(bridge, autoStart = false) {
         state.defSwitchChallenge.failedBreak = true;
         const slowDef = state.homePlayers[state.selectedDefenderIdx];
         if (slowDef) {
-          slowDef.missedTackleTimer = 0.85;
-          slowDef.y = Math.min(0.92, activeCarrier.y + 0.055);
+          slowDef.missedTackleTimer = 0.45;
+          slowDef.y = Math.min(0.92, activeCarrier.y + 0.045);
         }
         playErrorClackSound();
         addCallout(
@@ -2204,7 +2232,7 @@ export function startErcRugby(bridge, autoStart = false) {
       }
     }
 
-    const supportCatchup = 4.0;
+    const supportCatchup = 4.8;
     for (let i = 0; i < 5; i++) {
       if (i === state.carrierIndex) continue;
       const att = attackers[i];
@@ -2226,7 +2254,7 @@ export function startErcRugby(bridge, autoStart = false) {
     }
 
     if (!state.passState.active && !state.kickBall.active) {
-      if (state.possession === 'home' && activeCarrier.y <= 0.12) {
+      if (state.possession === 'home' && activeCarrier.y <= 0.135) {
         state.homeScore += 4;
         if (bridgeRef && bridgeRef.getState().gameStats) bridgeRef.getState().gameStats.perfect += 4;
         if (bridgeRef && bridgeRef.spawnConfetti) {
@@ -2248,7 +2276,10 @@ export function startErcRugby(bridge, autoStart = false) {
       }
     }
 
-    state.tacklePause.onsideY += -attackDir * 0.055 * dt;
+    const paceMult = state.possession === 'home'
+      ? Math.min(...defenders.map((d) => d.linePaceMult || 1))
+      : 1;
+    state.tacklePause.onsideY += -attackDir * 0.055 * paceMult * dt;
 
     for (let i = 0; i < 5; i++) {
       const d = defenders[i];
@@ -2273,27 +2304,38 @@ export function startErcRugby(bridge, autoStart = false) {
       } else if (d.role === 'chaser') {
         const toX = activeCarrier.x - d.x; const toY = activeCarrier.y - d.y;
         const dist = Math.max(0.001, Math.hypot(toX, toY));
-        d.x += (toX / dist) * 0.175 * dt; d.y += (toY / dist) * 0.145 * dt;
+        const chaserMult = d.speedFactor || 1;
+        d.x += (toX / dist) * 0.14 * chaserMult * dt;
+        d.y += (toY / dist) * 0.118 * chaserMult * dt;
       } else {
-        const slideShift = (activeCarrier.x - 0.5) * 0.32;
+        const slideFactor = d.slideFactor || 0.22;
+        const slideShift = (activeCarrier.x - 0.5) * slideFactor;
         const targetX = Math.min(0.91, Math.max(0.09, LANES[i] + slideShift));
-        d.x += (targetX - d.x) * Math.min(1, dt * 6.0);
+        const lineLerp = (d.speedFactor || 1) < 0.9 ? 4.0 : 4.6;
+        d.x += (targetX - d.x) * Math.min(1, dt * lineLerp);
         d.y += (state.tacklePause.onsideY - d.y) * Math.min(1, dt * 5.0);
       }
 
       if (!state.passState.active && !state.kickBall.active) {
         const hitDist = Math.hypot(d.x - activeCarrier.x, d.y - activeCarrier.y);
-        const tackleRadius = state.possession === 'away' && d.pursuitTimer > 0 ? 0.046 : 0.038;
+        const tackleRadius = state.possession === 'away' && d.pursuitTimer > 0 ? 0.042 : 0.033;
         if (hitDist < tackleRadius) {
           if (state.possession === 'away' && !p2HumanActive && state.defSwitchChallenge.active) {
             const idealIdx = getClosestDefenderIdxToCarrier();
-            if (state.selectedDefenderIdx !== idealIdx) {
-              d.missedTackleTimer = 0.75;
-              d.y = Math.min(0.92, activeCarrier.y + 0.05);
+            if (state.selectedDefenderIdx !== idealDefIdx) {
+              d.missedTackleTimer = 0.45;
+              d.y = Math.min(0.92, activeCarrier.y + 0.045);
               playErrorClackSound();
               addCallout(`SLIPPED! PLAY ${LANE_NOTES[idealIdx]}!`, activeCarrier.x, activeCarrier.y - 0.03, '#fb7185');
               continue;
             }
+          }
+          if (state.possession === 'home' && Math.random() < 0.20) {
+            d.missedTackleTimer = 0.65;
+            d.y = Math.min(0.92, activeCarrier.y + 0.045);
+            playErrorClackSound();
+            addCallout('FENDED OFF! GAP OPEN!', activeCarrier.x, activeCarrier.y - 0.035, '#4ade80');
+            continue;
           }
           beginTackleAndRetreat();
           recordPlayerVelocities(dt);
