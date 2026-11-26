@@ -132,6 +132,7 @@ export function startErcRugby(bridge, autoStart = false) {
     kick3D: {
       active: false,
       aiming: false,
+      inFlight: false,
       kind: 'kickoff', // 'kickoff' | 'bomb' | 'grubber' | 'chip'
       kickingSide: 'home',
       receiverSide: 'away',
@@ -284,7 +285,6 @@ export function startErcRugby(bridge, autoStart = false) {
     state.coinToss.outcome = landed;
     state.coinToss.playerWon = won;
 
-    // NRL kickoff rule: toss winner chooses to receive (opponent kicks off to winner).
     if (won) {
       state.coinToss.kickoffBy = 'away';
       state.coinToss.receiverSide = 'home';
@@ -332,6 +332,7 @@ export function startErcRugby(bridge, autoStart = false) {
     const kickerObj = kickerSide === 'home' ? state.homePlayers[2] : state.awayPlayers[2];
     state.kick3D.active = true;
     state.kick3D.aiming = true;
+    state.kick3D.inFlight = false;
     state.kick3D.kind = 'kickoff';
     state.kick3D.kickingSide = kickerSide;
     state.kick3D.receiverSide = receiverSide;
@@ -369,7 +370,7 @@ export function startErcRugby(bridge, autoStart = false) {
     if (state.playState === 'tryCelebration' || state.playState === 'conversionKick' || state.playState === 'turnoverPause') return;
 
     if (state.playState === 'kickoff3D') {
-      if (!state.kick3D.active || state.kick3D.kickingSide !== 'home') return;
+      if (!state.kick3D.active || state.kick3D.kickingSide !== 'home' || state.kick3D.inFlight) return;
       state.kick3D.aiming = true;
       state.kick3D.holdMidi = midiKey;
       state.kick3D.power = 0.25;
@@ -383,6 +384,7 @@ export function startErcRugby(bridge, autoStart = false) {
     const kicker = state.homePlayers[state.carrierIndex];
     state.kick3D.active = true;
     state.kick3D.aiming = true;
+    state.kick3D.inFlight = false;
     state.kick3D.kind = kind; // 'bomb' | 'grubber' | 'chip'
     state.kick3D.kickingSide = 'home';
     state.kick3D.receiverSide = 'away';
@@ -412,6 +414,7 @@ export function startErcRugby(bridge, autoStart = false) {
     if (!k3.active || !k3.aiming) return;
     k3.aiming = false;
     k3.holdMidi = null;
+    k3.inFlight = true;
 
     const dirSign = k3.kickingSide === 'home' ? -1 : 1;
     const p = Math.max(0.15, Math.min(1.0, k3.power));
@@ -713,6 +716,7 @@ export function startErcRugby(bridge, autoStart = false) {
     state.kickBall.active = false;
     state.kick3D.active = false;
     state.kick3D.aiming = false;
+    state.kick3D.inFlight = false;
     state.defSwitchChallenge.active = false;
 
     state.tryCelebration.active = true;
@@ -783,6 +787,7 @@ export function startErcRugby(bridge, autoStart = false) {
     state.kickBall.z = 0;
     state.kick3D.active = false;
     state.kick3D.aiming = false;
+    state.kick3D.inFlight = false;
     state.kick3D.holdMidi = null;
     state.tryCelebration.active = false;
     state.conversion.active = false;
@@ -894,6 +899,7 @@ export function startErcRugby(bridge, autoStart = false) {
     state.kickBall.active = false;
     state.kick3D.active = false;
     state.kick3D.aiming = false;
+    state.kick3D.inFlight = false;
     state.defSwitchChallenge.active = false;
     state.playState = 'turnoverPause';
     state.turnoverTimer = 1.25;
@@ -1100,7 +1106,7 @@ export function startErcRugby(bridge, autoStart = false) {
     }
 
     if (state.playState === 'kickoff3D') {
-      if (state.kick3D.kickingSide === 'home' && !state.kick3D.aiming) {
+      if (state.kick3D.kickingSide === 'home' && !state.kick3D.aiming && !state.kick3D.inFlight) {
         start3DKickAimOrCharge('kickoff', clean);
       }
       return;
@@ -1121,12 +1127,11 @@ export function startErcRugby(bridge, autoStart = false) {
 
   function onPianoNoteUp(noteStr) {
     const clean = (noteStr || '').trim().toLowerCase();
-    if (!clean) return;
-    if (state.actionBinds.moveLeft.midi === clean) state.moveInput.leftHeld = false;
-    if (state.actionBinds.moveRight.midi === clean) state.moveInput.rightHeld = false;
+    if (state.actionBinds.moveLeft?.midi === clean) state.moveInput.leftHeld = false;
+    if (state.actionBinds.moveRight?.midi === clean) state.moveInput.rightHeld = false;
 
     if (state.kick3D.active && state.kick3D.aiming) {
-      if (!state.kick3D.holdMidi || state.kick3D.holdMidi === clean || isKickBindMidi(clean)) {
+      if (!clean || !state.kick3D.holdMidi || state.kick3D.holdMidi === clean || isKickBindMidi(clean)) {
         release3DKickStrike();
       }
     }
@@ -1205,7 +1210,6 @@ export function startErcRugby(bridge, autoStart = false) {
       return true;
     }
 
-    // Ball in 3D curved flight
     k3.flightProgress += dt / k3.flightDuration;
     const t = Math.min(1, k3.flightProgress);
 
@@ -1221,13 +1225,13 @@ export function startErcRugby(bridge, autoStart = false) {
       rec.y += (Math.min(0.84, Math.max(0.16, k3.y)) - rec.y) * Math.min(1, dt * 2.2);
     }
 
-    // Check low-ball regather by kicking team during in-play kicks
     if (k3.kind !== 'kickoff' && k3.z < 0.08 && k3.kickingSide === 'home') {
       for (let i = 0; i < state.homePlayers.length; i++) {
         const att = state.homePlayers[i];
         if (att.offsideOnKick) continue;
         if (Math.hypot(att.x - k3.x, att.y - k3.y) < 0.038) {
           k3.active = false;
+          k3.inFlight = false;
           state.carrierIndex = i;
           state.tackleCount = 0;
           state.playState = 'running';
@@ -1251,6 +1255,7 @@ export function startErcRugby(bridge, autoStart = false) {
       const nextPos = k3.receiverSide;
 
       k3.active = false;
+      k3.inFlight = false;
       setupSetOfSix(nextPos, catchY, bestIdx);
       state.playState = 'running';
       assignAiDefenderChasers();
@@ -1669,7 +1674,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
   containerEl.querySelector('#erc-start-match-btn').addEventListener('click', startMatch);
 
-  // QWERTY keyboard input is intentionally disabled; only Escape (cancel bind) and conversion strike keys are handled here
+  // QWERTY keyboard input is intentionally disabled except Escape (cancel bind), conversion strike keys, and Space release while aiming a 3D kick
   const onKeyDown = (e) => {
     if (state.listeningAction && e.key === 'Escape') {
       e.preventDefault();
@@ -1688,7 +1693,12 @@ export function startErcRugby(bridge, autoStart = false) {
     }
   };
 
-  const onKeyUp = () => {};
+  const onKeyUp = (e) => {
+    if (e.code === 'Space' && state.kick3D.active && state.kick3D.aiming) {
+      e.preventDefault();
+      release3DKickStrike();
+    }
+  };
 
   window.addEventListener('keydown', onKeyDown, { capture: true });
   window.addEventListener('keyup', onKeyUp, { capture: true });
