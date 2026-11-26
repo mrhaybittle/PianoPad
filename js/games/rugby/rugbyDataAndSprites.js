@@ -1,6 +1,14 @@
 // js/games/rugby/rugbyDataAndSprites.js
 
 export const TEAMS = [
+  {
+    id: 'erc-wolfhounds',
+    name: 'ERC WolfHounds',
+    primary: '#0f766e',
+    secondary: '#fbbf24',
+    chant: 'Howl with the ERC WolfHounds!',
+    isWolfHounds: true
+  },
   { id: 'canterbury-bulldogs', name: 'Canterbury-Bankstown Bulldogs', primary: '#1d4ed8', secondary: '#ffffff', chant: 'Fire up, Doggies!' },
   { id: 'brisbane-broncos', name: 'Brisbane Broncos', primary: '#6b1d2f', secondary: '#fbbf24', chant: 'Buck up, Broncos!' },
   { id: 'canberra-raiders', name: 'Canberra Raiders', primary: '#65a30d', secondary: '#1e3a8a', chant: 'We are the Raiders!' },
@@ -20,6 +28,101 @@ export const TEAMS = [
   { id: 'wests-tigers', name: 'Wests Tigers', primary: '#ea580c', secondary: '#ffffff', chant: 'Tigers charge!' },
   { id: 'perth-bears', name: 'Perth Bears', primary: '#dc2626', secondary: '#111827', chant: 'Bears on the prowl!' }
 ];
+
+// Heavily pixelated 12x12 face portraits for ERC WolfHounds squad (C, D, E + Mullet & Beard)
+// Legend: S=skin, s=shadow skin, B=bald dome shine, H=hair, E=eye, G=glasses, M=mouth/smile, J=collar/jacket, K=outline
+export const WOLFHUND_FACES = {
+  // Lane C: Bald smiling teacher
+  C: {
+    title: 'Coach C (Bald)',
+    grid: [
+      '..KKKKKKKK..',
+      '.KBBBBBBBBK.',
+      'KBBBSSSSSSBBK',
+      'KSSSSSSSSSSSK',
+      'KSKSEESSEESKS',
+      'KSSSSSSSSSSSK',
+      'KSSsSMMMMsSSK',
+      '.KSSSSSSSSSK.',
+      '..KKsSSSSsKK.',
+      '.KJJSSSSSSJJK',
+      'KJJJJJJJJJJJJ',
+      'KKKKKKKKKKKKK'
+    ]
+  },
+  // Lane D: Teacher with glasses
+  D: {
+    title: 'Coach D (Specs)',
+    grid: [
+      '...KKKKKKKK..',
+      '..KHHHHHHHHK.',
+      '.KHHSSSSSSHHK',
+      '.KSSSSSSSSSSK',
+      '.KSKGGGGGGKSK',
+      '.KSKGEGGEGKSK',
+      '.KSSsSSSSSsSK',
+      '..KSSSMMMSSK.',
+      '...KKsSSsKK..',
+      '..KJJWWWWJJK.',
+      '.KJJJJJJJJJJK',
+      'KKKKKKKKKKKKK'
+    ]
+  },
+  // Lane E: Spiky silver-grey haired teacher
+  E: {
+    title: 'Coach E (Spiky)',
+    grid: [
+      '.K.K.KKKK.K.K',
+      'KHHHHHHHHHHHHK',
+      'KHHSSSSSSSSHHK',
+      'KSSSSSSSSSSSK',
+      'KSKSEESSEESKS',
+      'KSSSSSSSSSSSK',
+      'KSSsSSSSSSsSK',
+      '.KSSSMMMMSSK.',
+      '..KKsSSSSsKK.',
+      '.KJJJJJJJJJJK',
+      'KJJJJJJJJJJJJ',
+      'KKKKKKKKKKKKK'
+    ]
+  },
+  // Lane F: Fictitious player with a MULLET haircut (short top/front, long flowing back/sides)
+  F: {
+    title: 'Fletcher (Mullet)',
+    grid: [
+      '...KKKKKKKK..',
+      '..KHHHHHHHHK.',
+      '.KHHSSSSSSHHK',
+      'KHHSSSSSSSSHHK',
+      'KHHKSEESSEEKK',
+      'KHHSSSSSSSSHK',
+      'KHHsSSSSSSsHK',
+      'KHHHSMMMMSSHK',
+      'KHHHHsSSsHHHK',
+      'KHHHHJJJJHHHK',
+      'KHHHHJJJJHHHK',
+      'KKKKKKKKKKKKK'
+    ]
+  },
+  // Lane G: Fictitious player with a full BEARD
+  G: {
+    title: 'Garrick (Beard)',
+    grid: [
+      '...KKKKKKKK..',
+      '..KHHHHHHHHK.',
+      '.KHHSSSSSSHHK',
+      '.KSSSSSSSSSSK',
+      '.KSKSEESSEESK',
+      '.KSSSSSSSSSSK',
+      '.KSSHHHHHHHHK',
+      '.KHHSMMMMSSHK',
+      '..KHHHHHHHHK.',
+      '...KHHHHHHK..',
+      '..KJJHHHHJJJK',
+      'KKKKKKKKKKKKK'
+    ]
+  }
+};
 
 export const PIANO_FREQS = { C: 261.63, D: 293.66, E: 329.63, F: 349.23, G: 392.00 };
 export const LANES = [0.16, 0.33, 0.5, 0.67, 0.84];
@@ -279,6 +382,7 @@ function buildDiveFrontRows() {
 }
 
 const spriteCache = new Map();
+const portraitCache = new Map();
 
 export function getPixelSprite(team, noteLetter, pose, hasBall, facing = 'back') {
   const key = `${team.id}|${noteLetter}|${pose}|${hasBall ? 1 : 0}|${facing}`;
@@ -363,5 +467,46 @@ export function getPixelSprite(team, noteLetter, pose, hasBall, facing = 'back')
   }
 
   spriteCache.set(key, off);
+  return off;
+}
+
+// Heavily pixelated 12x12 portrait canvas for ERC WolfHounds splash preview
+export function getWolfhoundFaceCanvas(noteLetter, team) {
+  const key = `wolfhound|${noteLetter}|${team.primary}|${team.secondary}`;
+  if (portraitCache.has(key)) return portraitCache.get(key);
+
+  const entry = WOLFHUND_FACES[noteLetter] || WOLFHUND_FACES.C;
+  const grid = entry.grid;
+  const h = grid.length;
+  const w = grid[0].length;
+
+  const palette = {
+    K: '#09090b',
+    B: '#fef3c7',
+    H: noteLetter === 'G' ? '#4b5563' : noteLetter === 'F' ? '#78350f' : '#9ca3af',
+    S: '#eba87c',
+    s: '#c47e52',
+    E: '#09090b',
+    G: '#111827',
+    M: '#be123c',
+    W: '#f8fafc',
+    J: team.primary
+  };
+
+  const off = document.createElement('canvas');
+  off.width = w;
+  off.height = h;
+  const octx = off.getContext('2d');
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const ch = grid[y][x];
+      if (ch === '.' || !palette[ch]) continue;
+      octx.fillStyle = palette[ch];
+      octx.fillRect(x, y, 1, 1);
+    }
+  }
+
+  portraitCache.set(key, off);
   return off;
 }
