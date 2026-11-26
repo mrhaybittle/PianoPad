@@ -118,7 +118,7 @@ function injectNewArcadeButtons() {
         rugbyBtn.id = 'btn-arcade-erc-rugby';
         rugbyBtn.className = 'arcade-card-btn';
         rugbyBtn.onclick = () => launchErcRugby();
-        rugbyBtn.innerHTML = `<span style="font-size:1.5rem;">🏉</span><strong>ERC Rugby</strong><small>C–G lanes, tries &amp; kicks</small>`;
+        rugbyBtn.innerHTML = `<span style="font-size:1.5rem;">🏉</span><strong>Scrum & Bass</strong><small>C–G lanes, tries &amp; kicks</small>`;
         btnContainer.appendChild(rugbyBtn);
     }
 
