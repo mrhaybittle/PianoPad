@@ -2205,7 +2205,7 @@ export function startErcRugby(bridge, autoStart = false) {
       }
     }
 
-    state.tacklePause.onsideY += -attackDir * 0.055 * dt;
+    state.tacklePause.onsideY += -attackDir * 0.095 * dt;
 
     for (let i = 0; i < 5; i++) {
       const d = defenders[i];
@@ -2219,7 +2219,7 @@ export function startErcRugby(bridge, autoStart = false) {
         const toX = activeCarrier.x - d.x;
         const toY = activeCarrier.y - d.y;
         const dist = Math.max(0.001, Math.hypot(toX, toY));
-        const chargeSpeed = 0.24;
+        const chargeSpeed = 0.26;
         d.x = Math.min(0.92, Math.max(0.08, d.x + (toX / dist) * chargeSpeed * dt));
         d.y = Math.min(0.92, Math.max(0.12, d.y + (toY / dist) * chargeSpeed * dt));
       } else if (state.possession === 'away' && i === state.selectedDefenderIdx) {
@@ -2230,17 +2230,17 @@ export function startErcRugby(bridge, autoStart = false) {
       } else if (d.role === 'chaser') {
         const toX = activeCarrier.x - d.x; const toY = activeCarrier.y - d.y;
         const dist = Math.max(0.001, Math.hypot(toX, toY));
-        d.x += (toX / dist) * 0.105 * dt; d.y += (toY / dist) * 0.108 * dt;
+        d.x += (toX / dist) * 0.175 * dt; d.y += (toY / dist) * 0.145 * dt;
       } else {
-        const slideShift = (activeCarrier.x - 0.5) * 0.14;
+        const slideShift = (activeCarrier.x - 0.5) * 0.32;
         const targetX = Math.min(0.91, Math.max(0.09, LANES[i] + slideShift));
-        d.x += (targetX - d.x) * Math.min(1, dt * 3.6);
-        d.y += (state.tacklePause.onsideY - d.y) * Math.min(1, dt * 3.4);
+        d.x += (targetX - d.x) * Math.min(1, dt * 6.0);
+        d.y += (state.tacklePause.onsideY - d.y) * Math.min(1, dt * 5.0);
       }
 
       if (!state.passState.active && !state.kickBall.active) {
         const hitDist = Math.hypot(d.x - activeCarrier.x, d.y - activeCarrier.y);
-        const tackleRadius = state.possession === 'away' && d.pursuitTimer > 0 ? 0.044 : 0.032;
+        const tackleRadius = state.possession === 'away' && d.pursuitTimer > 0 ? 0.046 : 0.038;
         if (hitDist < tackleRadius) {
           if (state.possession === 'away' && !p2HumanActive && state.defSwitchChallenge.active) {
             const idealIdx = getClosestDefenderIdxToCarrier();
@@ -2422,3 +2422,4 @@ export function startErcRugby(bridge, autoStart = false) {
   }
   animFrameId = requestAnimationFrame(frame);
 }
+```[cite: 1]
