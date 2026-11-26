@@ -280,6 +280,19 @@ export function buildRugbyMarkup() {
         width: 100%; max-width: 850px; max-height: 97%; overflow-y: auto; border-radius: 16px;
         background: rgba(15, 23, 42, 0.97); border: 1px solid rgba(255, 255, 255, 0.16); padding: 12px 16px;
       }
+      .erc-mp-bar {
+        margin-top: 8px; padding: 8px 11px; border-radius: 12px;
+        background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(56, 189, 248, 0.35);
+        display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+      }
+      .erc-mp-mode-btn {
+        border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 7px;
+        background: rgba(30, 41, 59, 0.9); color: #f8fafc;
+        font-weight: 800; font-size: 10.5px; padding: 5px 10px; text-transform: uppercase;
+      }
+      .erc-mp-mode-btn.active-mp {
+        background: #0284c7; color: #ffffff; border-color: #7dd3fc;
+      }
       .erc-setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
       .erc-bind-grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 6px; }
       @media (max-width: 720px) {
@@ -400,7 +413,7 @@ export function buildRugbyMarkup() {
               ERC Sports Rugby — Team &amp; MIDI Setup
             </div>
             <div style="font-size:11px; color:#cbd5e1;">
-              Coin toss before kickoff • Hold &amp; release kick keys to charge power + steer curved 3D flight (<b>Bomb</b>, <b>Grubber</b> &amp; <b>Chip</b>).
+              1P vs CPU or 2P Firebase Room Link • Each player sees their own forward perspective • Coin toss &amp; 3D kicks.
             </div>
           </div>
           <div class="erc-logo-badge">
@@ -411,10 +424,25 @@ export function buildRugbyMarkup() {
           </div>
         </div>
 
+        <!-- 1P vs 2P Firebase Room Link Bar on Splash Screen -->
+        <div class="erc-mp-bar">
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px;">
+            <span class="font-sports" style="font-size:11px; font-weight:800; color:#7dd3fc; text-transform:uppercase;">🌐 2P Room Link:</span>
+            <button type="button" id="erc-mp-solo-btn" class="sports-btn erc-mp-mode-btn active-mp">1P vs CPU</button>
+            <button type="button" id="erc-mp-host-btn" class="sports-btn erc-mp-mode-btn">Create Code (P1)</button>
+            <button type="button" id="erc-mp-join-btn" class="sports-btn erc-mp-mode-btn">Join Code (P2)</button>
+            <input type="text" id="erc-mp-code-input" placeholder="ROOM CODE" maxlength="6" style="width:94px; padding:5px 7px; border-radius:7px; border:1px solid rgba(125,211,252,0.45); background:#090d16; color:#fde047; font-weight:800; font-size:11px; text-transform:uppercase; letter-spacing:0.06em;">
+            <button type="button" id="erc-mp-connect-btn" class="sports-btn font-sports" style="border:none; border-radius:7px; background:#0ea5e9; color:#020617; font-weight:800; font-size:10.5px; text-transform:uppercase; padding:5px 10px;">Link</button>
+          </div>
+          <div id="erc-mp-status" style="font-size:10.5px; color:#cbd5e1; font-weight:600;">
+            Mode: 1P vs Computer
+          </div>
+        </div>
+
         <div class="erc-setup-grid">
           <div class="erc-panel">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <label for="erc-team-select" class="font-sports" style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#67e8f9;">Your Team (Home)</label>
+              <label for="erc-team-select" id="erc-team-select-label" class="font-sports" style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#67e8f9;">Your Team (Home)</label>
               <span style="font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; background:rgba(6,182,212,0.2); color:#a5f3fc; border:1px solid rgba(34,211,238,0.3);">C D E F G JERSEYS</span>
             </div>
             <select id="erc-team-select" style="width:100%; border-radius:8px; background:#1e293b; border:1px solid rgba(255,255,255,0.2); padding:6px 10px; font-size:13px; font-weight:700; color:#ffffff; cursor:pointer;"></select>
@@ -436,7 +464,7 @@ export function buildRugbyMarkup() {
 
           <div class="erc-panel" style="border-color:rgba(251,191,36,0.28);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <span class="font-sports" style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#fcd34d;">Computer Opponent (Pokie Reel)</span>
+              <span id="erc-opponent-panel-title" class="font-sports" style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#fcd34d;">Computer Opponent (Pokie Reel)</span>
               <span id="erc-reel-badge" style="font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; background:rgba(245,158,11,0.2); color:#fde68a; border:1px solid rgba(251,191,36,0.35);">LOCKED</span>
             </div>
             <div class="pokie-window">
@@ -445,7 +473,7 @@ export function buildRugbyMarkup() {
               <div id="erc-pokie-sub" style="position:relative; z-index:2; font-size:10.5px; color:#fde68a; margin-top:1px;">Randomising opponent...</div>
             </div>
             <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-size:10px; color:#94a3b8;">Spins when team changes</span>
+              <span id="erc-opponent-reel-hint" style="font-size:10px; color:#94a3b8;">Spins when team changes</span>
               <button type="button" id="erc-respin-btn" class="sports-btn font-sports" style="border:none; border-radius:7px; background:#f59e0b; color:#020617; font-weight:800; font-size:10.5px; text-transform:uppercase; padding:4px 10px;">Re-Spin Reel</button>
             </div>
           </div>
