@@ -309,7 +309,7 @@ export function startErcRugby(bridge, autoStart = false) {
     carrierIndex: 2,
     selectedDefenderIdx: 2,
     aiPlayTimer: 0,
-    aiPassCooldown: 1.95,
+    aiPassCooldown: 1.15,
     aiLastPassFrom: -1,
     aiWeaveDir: 1,
     aiWeaveTimer: 1.05,
@@ -351,6 +351,7 @@ export function startErcRugby(bridge, autoStart = false) {
     tacklePause: { timer: 0, retreatDuration: 1.3, markY: 0.82, onsideY: 0.68 },
     turnoverTimer: 0,
     nextPossession: 'home',
+    nextPossessionAfterConversion: 'away',
     nextStartY: 0.82,
     screenShake: { timer: 0, duration: 0.32, intensity: 13 }
   };
@@ -679,7 +680,7 @@ export function startErcRugby(bridge, autoStart = false) {
             state.passState.progress = 0;
             state.passState.elapsed = 0;
             state.passState.duration = 0.14 + Math.abs(targetIdx - state.carrierIndex) * 0.05;
-            state.passState.isForwardPass = receiver.y > passer.y + 0.006;
+            state.passState.isForwardPass = receiver.y < passer.y - 0.006;
           }
         }
       } else if (state.possession === 'home') {
@@ -1463,6 +1464,9 @@ export function startErcRugby(bridge, autoStart = false) {
     const roster = scoringSide === 'home' ? state.homePlayers : state.awayPlayers;
     roster.forEach((p, idx) => { p.isScorer = idx === scorerIdx; });
 
+    // Losing/conceding team in the try gains possession after the conversion
+    state.nextPossessionAfterConversion = scoringSide === 'home' ? 'away' : 'home';
+
     resetAllBallFlightFlags();
     state.playState = 'tryCelebration';
     state.defSwitchChallenge.active = false;
@@ -1562,8 +1566,8 @@ export function startErcRugby(bridge, autoStart = false) {
     state.aiWeaveTimer = 1.0 + Math.random() * 0.8;
     state.aiLastTrackedLane = carrierIdx;
     state.playState = 'waitingForPlay';
-    state.aiPlayTimer = 0.75;
-    state.aiPassCooldown = 2.05 + Math.random() * 1.05;
+    state.aiPlayTimer = 0.65;
+    state.aiPassCooldown = 1.15 + Math.random() * 0.65;
     state.aiLastPassFrom = -1;
 
     const attackDir = possession === 'home' ? -1 : 1;
@@ -1631,13 +1635,15 @@ export function startErcRugby(bridge, autoStart = false) {
     if (state.possession !== 'away' || state.passState.active || state.kickBall.active || state.kick3D.active) return false;
     const fromIdx = state.carrierIndex;
     const passer = state.awayPlayers[fromIdx];
+    if (!passer) return false;
 
+    // Away attacks downward (increasing y), so a pass to a teammate at y >= passer.y - 0.035 is valid/onside
     const candidates = [0, 1, 2, 3, 4].filter((idx) => {
       if (idx === fromIdx) return false;
       const laneDist = Math.abs(idx - fromIdx);
       if (laneDist > 2) return false;
-      if (!forceDummyHalfPass && idx === state.aiLastPassFrom && Math.random() < 0.8) return false;
-      return state.awayPlayers[idx].y <= passer.y + 0.004;
+      if (!forceDummyHalfPass && idx === state.aiLastPassFrom && Math.random() < 0.65) return false;
+      return state.awayPlayers[idx].y >= passer.y - 0.035;
     });
 
     if (candidates.length === 0) return false;
@@ -1651,7 +1657,7 @@ export function startErcRugby(bridge, autoStart = false) {
         const d = Math.hypot(def.x - rec.x, (def.y - rec.y) * 1.15);
         if (d < minDefDist) minDefDist = d;
       }
-      const score = minDefDist - (Math.abs(idx - fromIdx) === 2 ? 0.025 : 0) + (Math.random() - 0.5) * 0.04;
+      const score = minDefDist - (Math.abs(idx - fromIdx) === 2 ? 0.02 : 0) + (Math.random() - 0.5) * 0.05;
       if (score > bestScore) { bestScore = score; bestIdx = idx; }
     }
 
@@ -2211,7 +2217,6 @@ export function startErcRugby(bridge, autoStart = false) {
     const chaserRoster = k3.kickingSide === 'home' ? state.homePlayers : state.awayPlayers;
     const receiverRoster = k3.receiverSide === 'home' ? state.homePlayers : state.awayPlayers;
 
-    // Receivers run toward the ball's landing point so they catch at the true landing spot without jumping
     for (let i = 0; i < receiverRoster.length; i++) {
       const rec = receiverRoster[i];
       const targetX = k3.landed
@@ -2230,7 +2235,6 @@ export function startErcRugby(bridge, autoStart = false) {
       }
     }
 
-    // Onside chasers sprint toward the ball/landing spot
     if (k3.kind !== 'kickoff') {
       const chaseDir = k3.kickingSide === 'home' ? -1 : 1;
       for (let i = 0; i < chaserRoster.length; i++) {
@@ -2254,7 +2258,6 @@ export function startErcRugby(bridge, autoStart = false) {
       k3.landed = true;
     }
 
-    // Kicking-side regather check
     if (k3.kind !== 'kickoff' && (k3.landed || (t > 0.35 && k3.z < 0.09))) {
       for (let i = 0; i < chaserRoster.length; i++) {
         const att = chaserRoster[i];
@@ -2275,7 +2278,6 @@ export function startErcRugby(bridge, autoStart = false) {
       }
     }
 
-    // Receiving-side player reaches the ball at its actual landing coordinates
     if (k3.landed || (t > 0.65 && k3.z < 0.08)) {
       let bestIdx = -1;
       let bestDist = k3.landed ? 0.065 : 0.045;
@@ -2385,8 +2387,15 @@ export function startErcRugby(bridge, autoStart = false) {
 
         if (conv.kickTimer >= 1.35) {
           conv.active = false;
-          setupSetOfSix('home', 0.82, 2, true);
-          addCallout('DROP-OUT / NEW SET!', 0.5, 0.76, '#fde047');
+          const losingSide = state.nextPossessionAfterConversion === 'away' ? 'away' : 'home';
+          const restartY = losingSide === 'away' ? 0.24 : 0.76;
+          setupSetOfSix(losingSide, restartY, 2, true);
+          addCallout(
+            losingSide === 'away' ? `${state.awayTeam.name.toUpperCase()} BALL! RESTART!` : 'YOUR BALL! RESTART!',
+            0.5,
+            losingSide === 'away' ? 0.28 : 0.74,
+            '#fde047'
+          );
         }
       }
       pushHostSnapshot(false);
@@ -2458,7 +2467,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
       if (state.tacklePause.timer >= state.tacklePause.retreatDuration && allOnside) {
         for (let i = 0; i < 5; i++) { defenders[i].x = LANES[i]; defenders[i].y = targetOnsideY; }
-        state.playState = 'waitingForPlay'; state.aiPlayTimer = 0.65; state.aiPassCooldown = 1.95; state.aiLastPassFrom = -1;
+        state.playState = 'waitingForPlay'; state.aiPlayTimer = 0.65; state.aiPassCooldown = 1.15; state.aiLastPassFrom = -1;
         addCallout(
           state.possession === 'home' ? 'ONSIDE! PASS (C–G), KICK, OR RUN' : 'DEFENSE SET! SWITCH WITH C–G',
           carrier.x, Math.min(0.85, Math.max(0.16, carrier.y - 0.04)), '#fde047'
@@ -2491,11 +2500,11 @@ export function startErcRugby(bridge, autoStart = false) {
         state.aiPlayTimer -= dt;
         if (state.aiPlayTimer <= 0) {
           releasePlayTheBall();
-          if (Math.random() < 0.25) {
+          if (Math.random() < 0.45) {
             tryTriggerAiPass(true);
-            state.aiPassCooldown = 2.05 + Math.random() * 1.05;
+            state.aiPassCooldown = 1.15 + Math.random() * 0.65;
           } else {
-            state.aiPassCooldown = 1.95 + Math.random() * 0.95;
+            state.aiPassCooldown = 1.1 + Math.random() * 0.6;
           }
         }
       }
@@ -2569,14 +2578,14 @@ export function startErcRugby(bridge, autoStart = false) {
           const d = Math.hypot(def.x - activeCarrier.x, def.y - activeCarrier.y);
           if (d < nearestDefDist) nearestDefDist = d;
         }
-        const underTacklePressure = nearestDefDist < 0.085 && state.aiPassCooldown <= 0.15;
+        const underTacklePressure = nearestDefDist < 0.11;
         const scheduledShiftReady = state.aiPassCooldown <= 0;
 
-        if ((underTacklePressure && Math.random() < 0.4) || (scheduledShiftReady && Math.random() < 0.32)) {
+        if ((underTacklePressure && Math.random() < dt * 4.5) || (scheduledShiftReady && Math.random() < 0.72)) {
           const passed = tryTriggerAiPass(false);
-          state.aiPassCooldown = passed ? (2.1 + Math.random() * 1.1) : (1.5 + Math.random() * 0.8);
+          state.aiPassCooldown = passed ? (1.25 + Math.random() * 0.75) : (0.75 + Math.random() * 0.5);
         } else if (scheduledShiftReady) {
-          state.aiPassCooldown = 1.6 + Math.random() * 0.9;
+          state.aiPassCooldown = 0.85 + Math.random() * 0.55;
         }
       }
 
