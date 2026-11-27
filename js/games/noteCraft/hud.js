@@ -11,20 +11,25 @@ let mapImg = null;
 let mapImgLoaded = false;
 
 const BLOCK_META = {
-    [BLOCKS.DIRT]:       { label: 'Dirt',   swatch: '#7c4d2b', accent: '#5e381d', hotkey: '1' },
-    [BLOCKS.GRASS]:      { label: 'Grass',  swatch: '#22c55e', accent: '#7c4d2b', hotkey: '2' },
-    [BLOCKS.STONE]:      { label: 'Stone',  swatch: '#94a3b8', accent: '#475569', hotkey: '3' },
-    [BLOCKS.BRICK]:      { label: 'Brick',  swatch: '#b91c1c', accent: '#e2e8f0', hotkey: '4' },
-    [BLOCKS.WOOD]:       { label: 'Timber', swatch: '#d97706', accent: '#92400e', hotkey: '5' },
-    [BLOCKS.LEAVES]:     { label: 'Hedge',  swatch: '#15803d', accent: '#22c55e', hotkey: '6' },
-    [BLOCKS.GLASS]:      { label: 'Glass',  swatch: '#bae6fd', accent: '#ffffff', hotkey: '7' },
-    [BLOCKS.NOTE_BLOCK]: { label: 'Note♪',  swatch: '#581c87', accent: '#facc15', hotkey: '8' },
-    [BLOCKS.PATH]:       { label: 'Path',   swatch: '#5e381d', accent: '#451a03', hotkey: '!' },
-    [BLOCKS.WATER]:      { label: 'Water',  swatch: '#3b82f6', accent: '#2563eb', hotkey: '@' },
-    [BLOCKS.TREE]:       { label: 'Tree',   swatch: '#22c55e', accent: '#14532d', hotkey: '$' },
-    [BLOCKS.ROCK]:       { label: 'Rock',   swatch: '#64748b', accent: '#334155', hotkey: '%' },
-    [BLOCKS.DRAGON]:     { label: 'Dragon', swatch: '#d97706', accent: '#92400e', hotkey: '^' },
-    [BLOCKS.TNT]:        { label: 'TNT',    swatch: '#ef4444', accent: '#fef08a', hotkey: '9' }
+    [BLOCKS.DIRT]:         { label: 'Dirt',   swatch: '#7c4d2b', accent: '#5e381d', hotkey: '1' },
+    [BLOCKS.GRASS]:        { label: 'Grass',  swatch: '#22c55e', accent: '#7c4d2b', hotkey: '2' },
+    [BLOCKS.STONE]:        { label: 'Stone',  swatch: '#94a3b8', accent: '#475569', hotkey: '3' },
+    [BLOCKS.BRICK]:        { label: 'Brick',  swatch: '#b91c1c', accent: '#e2e8f0', hotkey: '4' },
+    [BLOCKS.WOOD]:         { label: 'Timber', swatch: '#d97706', accent: '#92400e', hotkey: '5' },
+    [BLOCKS.LEAVES]:       { label: 'Hedge',  swatch: '#15803d', accent: '#22c55e', hotkey: '6' },
+    [BLOCKS.GLASS]:        { label: 'Glass',  swatch: '#bae6fd', accent: '#ffffff', hotkey: '7' },
+    [BLOCKS.NOTE_BLOCK]:   { label: 'Note♪',  swatch: '#581c87', accent: '#facc15', hotkey: '8' },
+    [BLOCKS.PATH]:         { label: 'Path',   swatch: '#5e381d', accent: '#451a03', hotkey: '!' },
+    [BLOCKS.WATER]:        { label: 'Water',  swatch: '#3b82f6', accent: '#2563eb', hotkey: '@' },
+    [BLOCKS.TREE]:         { label: 'Tree',   swatch: '#22c55e', accent: '#14532d', hotkey: '$' },
+    [BLOCKS.ROCK]:         { label: 'Rock',   swatch: '#64748b', accent: '#334155', hotkey: '%' },
+    [BLOCKS.DRAGON]:       { label: 'Dragon', swatch: '#d97706', accent: '#92400e', hotkey: '^' },
+    [BLOCKS.TNT]:          { label: 'TNT',    swatch: '#ef4444', accent: '#fef08a', hotkey: '9' },
+    [BLOCKS.JUMP_PAD]:     { label: 'Jump',   swatch: '#22c55e', accent: '#fef08a', hotkey: '0' },
+    [BLOCKS.BOUNCE_BLOCK]: { label: 'Bounce', swatch: '#a855f7', accent: '#f0abfc', hotkey: '-' },
+    [BLOCKS.SPEED_STRIP]:  { label: 'Boost',  swatch: '#0ea5e9', accent: '#e0f2fe', hotkey: '=' },
+    [BLOCKS.SLIDE_BLOCK]:  { label: 'Slide',  swatch: '#bae6fd', accent: '#ffffff', hotkey: '[' },
+    [BLOCKS.FIRE]:         { label: 'Fire',   swatch: '#ea580c', accent: '#facc15', hotkey: ']' }
 };
 
 export function initHud(containerEl) {
@@ -182,7 +187,7 @@ function drawSatelliteMinimap(ctx, H) {
     ctx.fillStyle = '#facc15';
     ctx.font = '900 8px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`GPS [${zoom.toFixed(1)}x] Press -/+`, mx + mapW / 2, my + mapH - 5);
+    ctx.fillText(`GPS [${zoom.toFixed(1)}x] Numpad -/+`, mx + mapW / 2, my + mapH - 5);
 }
 
 function drawBuildModeToggleSwitch(ctx, W, H) {
@@ -222,11 +227,11 @@ function drawBuildModeToggleSwitch(ctx, W, H) {
 
     ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
     ctx.beginPath();
-    ctx.roundRect(W / 2 - 155, sy - 19, 310, 16, 6);
+    ctx.roundRect(W / 2 - 190, sy - 19, 380, 16, 6);
     ctx.fill();
     ctx.fillStyle = '#e2e8f0';
     ctx.font = 'bold 9px sans-serif';
-    ctx.fillText(`[T] Flat/Block • [B] Brush: ${brushMode}${anchorStr} • [L] Lock`, W / 2, sy - 8);
+    ctx.fillText(`[T] Flat/Block • [B] Brush: ${brushMode}${anchorStr} • [G] Grapple • [L] Lock`, W / 2, sy - 8);
 }
 
 export function renderHudFrame(now) {
@@ -243,8 +248,11 @@ export function renderHudFrame(now) {
     const target = ncState.targetBlock;
     const hasTarget = Boolean(target && target.hit);
     const targetLocked = hasTarget && isBlockLocked(target.x, target.y, target.z);
+    const grappleActive = Boolean(ncState.grapple && ncState.grapple.active);
 
-    ctx.strokeStyle = targetLocked ? '#f87171' : (hasTarget ? '#facc15' : 'rgba(255, 255, 255, 0.85)');
+    ctx.strokeStyle = targetLocked
+        ? '#f87171'
+        : (grappleActive ? '#38bdf8' : (hasTarget ? '#facc15' : 'rgba(255, 255, 255, 0.85)'));
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(cx - 9, cy); ctx.lineTo(cx + 9, cy);
@@ -256,6 +264,11 @@ export function renderHudFrame(now) {
         ctx.font = '900 10px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('🔒 LOCKED', cx, cy + 20);
+    } else if (grappleActive) {
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = '900 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🪝 ZIPLINING [Space: Jump Off]', cx, cy + 20);
     }
 
     const builderCount = Object.keys(ncState.remotePlayers).length + 1;
@@ -265,7 +278,7 @@ export function renderHudFrame(now) {
     ctx.strokeStyle = teacher ? '#4ade80' : '#facc15';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.roundRect(12, 10, 345, 66, 8);
+    ctx.roundRect(12, 10, 355, 66, 8);
     ctx.fill();
     ctx.stroke();
 
@@ -278,8 +291,9 @@ export function renderHudFrame(now) {
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 11px sans-serif';
     const flyText = lp.isFlying ? ` • 🪽 FLYING (${Math.ceil(lp.flightTimer)}s)` : '';
+    const boostText = lp.speedBoostTimer > 0 ? ` • ⚡ BOOST (${lp.speedBoostTimer.toFixed(1)}s)` : '';
     const clearHint = teacher && builderCount > 1 ? ' • [K] Clear Ghosts' : '';
-    ctx.fillText(`🏫 Builders Online: ${builderCount}${flyText}${clearHint}`, 22, 47);
+    ctx.fillText(`🏫 Builders: ${builderCount}${flyText}${boostText}${clearHint}`, 22, 47);
 
     ctx.fillStyle = zone.color;
     ctx.font = '900 11px sans-serif';
@@ -301,7 +315,7 @@ export function renderHudFrame(now) {
     const undoCount = Array.isArray(ncState.world.undoStack) ? ncState.world.undoStack.length : 0;
     ctx.fillStyle = undoCount > 0 ? '#facc15' : '#94a3b8';
     ctx.font = '900 11.5px sans-serif';
-    ctx.fillText(`↩️ [Z] Undo (${undoCount}) • 🔒 [L] Lock Build`, W - 22, 46);
+    ctx.fillText(`↩️ [Z] Undo (${undoCount}) • 🪝 [G] Grapple • 🔒 [L] Lock`, W - 22, 46);
 
     const dragonChallenge = CREATURE_CHALLENGES[BLOCKS.DRAGON];
     const dragonReady = isCreatureChallengeCompleted(BLOCKS.DRAGON) || teacher;
@@ -332,13 +346,14 @@ export function renderHudFrame(now) {
     drawSatelliteMinimap(ctx, H);
     drawBuildModeToggleSwitch(ctx, W, H);
 
-    // Hotbar slots
-    const slots = lp.inventory.length || 14;
-    const slotW = 46;
+    // Hotbar slots (auto-scaled so 19 slots + Undo fit cleanly on screen)
+    const slots = lp.inventory.length || 19;
+    const gap = 3;
+    const maxAvailW = Math.max(520, W - 310);
+    const slotW = Math.min(44, Math.max(30, Math.floor((maxAvailW - (slots * gap) - 48) / slots)));
     const slotH = 50;
-    const gap = 4;
     const totalW = slots * slotW + (slots - 1) * gap;
-    const startX = (W - totalW) / 2;
+    const startX = (W - totalW - 48) / 2;
     const startY = H - slotH - 12;
 
     for (let i = 0; i < slots; i++) {
@@ -360,18 +375,19 @@ export function renderHudFrame(now) {
             const challengeLocked = CREATURE_CHALLENGES[blockId] && !isCreatureChallengeCompleted(blockId) && !teacher;
 
             ctx.fillStyle = '#94a3b8';
-            ctx.font = 'bold 9px sans-serif';
+            ctx.font = 'bold 8.5px sans-serif';
             ctx.textAlign = 'left';
-            ctx.fillText(meta.hotkey, sx + 4, startY + 11);
+            ctx.fillText(meta.hotkey, sx + 3, startY + 10);
 
+            const swatchW = Math.min(16, slotW - 14);
             ctx.fillStyle = meta.swatch;
             ctx.strokeStyle = meta.accent;
             ctx.lineWidth = 1.2;
-            ctx.fillRect(sx + 14, startY + 12, 18, 16);
-            ctx.strokeRect(sx + 14, startY + 12, 18, 16);
+            ctx.fillRect(sx + (slotW - swatchW) / 2, startY + 12, swatchW, 15);
+            ctx.strokeRect(sx + (slotW - swatchW) / 2, startY + 12, swatchW, 15);
 
             ctx.fillStyle = challengeLocked ? '#fca5a5' : '#ffffff';
-            ctx.font = 'bold 8.5px sans-serif';
+            ctx.font = 'bold 8px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText(meta.label, sx + slotW / 2, startY + 37);
 
@@ -386,24 +402,24 @@ export function renderHudFrame(now) {
         }
     }
 
-    const undoX = startX + totalW + 8;
+    const undoX = startX + totalW + 6;
     ctx.fillStyle = undoCount > 0 ? 'rgba(15, 23, 42, 0.94)' : 'rgba(15, 23, 42, 0.65)';
     ctx.strokeStyle = undoCount > 0 ? '#facc15' : '#475569';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect(undoX, startY, 46, slotH, 6);
+    ctx.roundRect(undoX, startY, 42, slotH, 6);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = undoCount > 0 ? '#facc15' : '#64748b';
-    ctx.font = '900 11px sans-serif';
+    ctx.font = '900 10.5px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('[Z]', undoX + 23, startY + 22);
-    ctx.font = '900 8.5px sans-serif';
-    ctx.fillText('UNDO', undoX + 23, startY + 36);
+    ctx.fillText('[Z]', undoX + 21, startY + 22);
+    ctx.font = '900 8px sans-serif';
+    ctx.fillText('UNDO', undoX + 21, startY + 36);
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 7.5px sans-serif';
-    ctx.fillText(`(${undoCount})`, undoX + 23, startY + 45);
+    ctx.fillText(`(${undoCount})`, undoX + 21, startY + 45);
 }
 
 export function disposeHud() {
