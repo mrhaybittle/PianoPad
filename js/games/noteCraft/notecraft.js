@@ -9,7 +9,8 @@ import {
     updatePlayerPhysics,
     updateExplosions,
     updateCreatures,
-    toggleLockOnTargetOrLastBuild
+    toggleLockOnTargetOrLastBuild,
+    fireGrappleGun
 } from './engine.js';
 import {
     initRender3D,
@@ -263,6 +264,21 @@ function attachInputListeners(containerEl) {
             return;
         }
 
+        if (e.code === 'KeyG') {
+            e.preventDefault();
+            const gRes = fireGrappleGun(32.0);
+            if (gRes?.attached) {
+                showNoteCraftToast('🪝 Grapple attached! Sliding down flying fox ([Space] to jump off)', '#facc15', 2200);
+            } else if (gRes?.detached) {
+                showNoteCraftToast('🪝 Grapple detached', '#94a3b8', 1200);
+            } else if (gRes?.error === 'NO_TARGET') {
+                showNoteCraftToast('Aim at a block within 32m to fire grapple!', '#f87171', 1600);
+            } else if (gRes?.error === 'TOO_CLOSE') {
+                showNoteCraftToast('Target is too close to grapple!', '#94a3b8', 1400);
+            }
+            return;
+        }
+
         if (e.code === 'KeyL') {
             e.preventDefault();
             handleToggleLockAction();
@@ -276,6 +292,7 @@ function attachInputListeners(containerEl) {
             return;
         }
 
+        // Hotbar slots 1-19
         if (e.code === 'Digit1') { e.preventDefault(); ncState.localPlayer.selectedSlot = e.shiftKey ? 8 : 0; return; }
         if (e.code === 'Digit2') { e.preventDefault(); ncState.localPlayer.selectedSlot = e.shiftKey ? 9 : 1; return; }
         if (e.code === 'Digit3') { e.preventDefault(); ncState.localPlayer.selectedSlot = 2; return; }
@@ -285,17 +302,22 @@ function attachInputListeners(containerEl) {
         if (e.code === 'Digit7') { e.preventDefault(); ncState.localPlayer.selectedSlot = 6; return; }
         if (e.code === 'Digit8') { e.preventDefault(); ncState.localPlayer.selectedSlot = 7; return; }
         if (e.code === 'Digit9') { e.preventDefault(); ncState.localPlayer.selectedSlot = 13; return; }
+        if (e.code === 'Digit0') { e.preventDefault(); ncState.localPlayer.selectedSlot = 14; return; }
+        if (e.code === 'Minus')  { e.preventDefault(); ncState.localPlayer.selectedSlot = 15; return; }
+        if (e.code === 'Equal')  { e.preventDefault(); ncState.localPlayer.selectedSlot = 16; return; }
+        if (e.code === 'BracketLeft')  { e.preventDefault(); ncState.localPlayer.selectedSlot = 17; return; }
+        if (e.code === 'BracketRight') { e.preventDefault(); ncState.localPlayer.selectedSlot = 18; return; }
 
         if (e.code === 'KeyZ') { e.preventDefault(); handleUndoAction(); return; }
         if (e.code === 'KeyE') { e.preventDefault(); handlePlaceBlockAction(); return; }
         if (e.code === 'KeyQ') { e.preventDefault(); handleBreakBlockAction(); return; }
 
-        if (e.code === 'Equal' || e.code === 'NumpadAdd') {
+        if (e.code === 'NumpadAdd') {
             ncState.mapZoom = Math.min(8.0, (ncState.mapZoom || 1.0) + 0.5);
             showNoteCraftToast(`🔍 Map Zoom: ${ncState.mapZoom.toFixed(1)}x`, '#38bdf8', 1200);
             return;
         }
-        if (e.code === 'Minus' || e.code === 'NumpadSubtract') {
+        if (e.code === 'NumpadSubtract') {
             ncState.mapZoom = Math.max(1.0, (ncState.mapZoom || 1.0) - 0.5);
             showNoteCraftToast(`🔍 Map Zoom: ${ncState.mapZoom.toFixed(1)}x`, '#38bdf8', 1200);
             return;
@@ -497,6 +519,7 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
     ncState.flatMode = false;
     ncState.brushMode = 'single';
     ncState.brushAnchor = null;
+    ncState.grapple = { active: false, anchor: null, ropeLength: 0, ziplineSpeed: 14.5 };
     ncState.quitButtonRect = null;
 
     ncState.isTeacher = Boolean(
@@ -537,6 +560,8 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
     lp.name = playerName;
     lp.avatar = playerAvatar;
     lp.recentNotes = [];
+    lp.speedBoostTimer = 0;
+    lp.slideMomentum = { x: 0, z: 0 };
     lp.x = 12; lp.y = 3; lp.z = 2;
     lp.yaw = 0; lp.pitch = -0.15;
     lp.velocity = { x: 0, y: 0, z: 0 };
@@ -557,9 +582,9 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
         lp.isFlying = true;
         lp.flightTimer = 3600;
         updateInventory();
-        showNoteCraftToast('👑 Teacher Creative Mode: [B] Brush • [L] Lock • [X] Quit', '#4ade80', 4200);
+        showNoteCraftToast('👑 Teacher Creative Mode: [B] Brush • [G] Grapple • [L] Lock • [X] Quit', '#4ade80', 4200);
     } else {
-        showNoteCraftToast('Left-Click Build • [B] Brush Span • [L] Lock • [X] Quit', '#38bdf8', 3600);
+        showNoteCraftToast('Left-Click Build • [G] Grapple • [B] Brush • [L] Lock • [X] Quit', '#38bdf8', 3600);
     }
 
     ncState.lastFrameTime = performance.now();
@@ -572,6 +597,7 @@ export function stopNoteCraft(notifyBridge = true) {
     ncState.activeExplosions = [];
     ncState.creatures = [];
     ncState.brushAnchor = null;
+    ncState.grapple = { active: false, anchor: null, ropeLength: 0, ziplineSpeed: 14.5 };
     if (ncState.animFrameId !== null) { cancelAnimationFrame(ncState.animFrameId); ncState.animFrameId = null; }
     if (document.pointerLockElement) document.exitPointerLock?.();
     detachInputListeners();
