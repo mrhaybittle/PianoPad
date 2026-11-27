@@ -12,11 +12,57 @@ let voxelGroup = null;
 let highlightMesh = null;
 let campusBlueprintMesh = null;
 let cicOutlineMesh = null;
+let grappleLineMesh = null;
+
+let fireAnimCanvas = null;
+let fireAnimCtx = null;
+let fireAnimTexture = null;
+let lastFireFrameAt = 0;
 
 const sharedGeo = new THREE.BoxGeometry(1, 1, 1);
 const fuseGeo = new THREE.BoxGeometry(1.06, 1.06, 1.06);
 const materialCache = new Map();
 const fuseMeshMap = new Map();
+
+function createAnimatedFireTexture() {
+    fireAnimCanvas = document.createElement('canvas');
+    fireAnimCanvas.width = 32;
+    fireAnimCanvas.height = 32;
+    fireAnimCtx = fireAnimCanvas.getContext('2d');
+    updateAnimatedFireTexture(performance.now());
+
+    fireAnimTexture = new THREE.CanvasTexture(fireAnimCanvas);
+    fireAnimTexture.magFilter = THREE.NearestFilter;
+    fireAnimTexture.minFilter = THREE.NearestFilter;
+    fireAnimTexture.colorSpace = THREE.SRGBColorSpace;
+    return fireAnimTexture;
+}
+
+function updateAnimatedFireTexture(now) {
+    if (!fireAnimCtx || !fireAnimTexture) return;
+    if (now - lastFireFrameAt < 85) return;
+    lastFireFrameAt = now;
+
+    const ctx = fireAnimCtx;
+    ctx.clearRect(0, 0, 32, 32);
+
+    const t = Math.floor(now / 85);
+    for (let x = 0; x < 32; x += 2) {
+        const wave = Math.sin(x * 0.45 + t * 0.9) * 4 + Math.cos(x * 0.8 - t * 1.3) * 3;
+        const flameHeight = Math.max(8, Math.min(30, 20 + wave));
+        const topY = 32 - flameHeight;
+
+        ctx.fillStyle = '#ea580c';
+        ctx.fillRect(x, topY, 2, flameHeight);
+
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(x, topY + 5, 2, Math.max(2, flameHeight - 5));
+
+        ctx.fillStyle = '#fef9c3';
+        ctx.fillRect(x, 26, 2, 6);
+    }
+    fireAnimTexture.needsUpdate = true;
+}
 
 function createProceduralBlockTexture(type) {
     const canvas = document.createElement('canvas');
@@ -81,6 +127,38 @@ function createProceduralBlockTexture(type) {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('♪', 32, 34);
+    } else if (type === 'jump_pad') {
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(0, 0, 64, 64);
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(8, 8, 48, 48);
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath();
+        ctx.moveTo(32, 12); ctx.lineTo(50, 34); ctx.lineTo(38, 34);
+        ctx.lineTo(38, 52); ctx.lineTo(26, 52); ctx.lineTo(26, 34); ctx.lineTo(14, 34);
+        ctx.closePath();
+        ctx.fill();
+    } else if (type === 'bounce_block') {
+        ctx.fillStyle = '#a855f7';
+        ctx.fillRect(0, 0, 64, 64);
+        ctx.strokeStyle = '#f0abfc';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(6, 6, 52, 52);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(22, 22, 20, 20);
+    } else if (type === 'speed_strip') {
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, 64, 64);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(8, 6, 12, 52);
+        ctx.fillRect(26, 6, 12, 52);
+        ctx.fillRect(44, 6, 12, 52);
+    } else if (type === 'slide_block') {
+        ctx.fillStyle = '#bae6fd';
+        ctx.fillRect(0, 0, 64, 64);
+        ctx.fillStyle = '#e0f2fe';
+        ctx.fillRect(6, 10, 28, 6);
+        ctx.fillRect(26, 36, 30, 6);
     }
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -94,7 +172,14 @@ function getBlockMaterial(blockId) {
     if (materialCache.has(blockId)) return materialCache.get(blockId);
 
     let mat;
-    if (blockId === BLOCKS.GLASS) {
+    if (blockId === BLOCKS.FIRE) {
+        mat = new THREE.MeshBasicMaterial({
+            map: createAnimatedFireTexture(),
+            transparent: true,
+            alphaTest: 0.1,
+            side: THREE.DoubleSide
+        });
+    } else if (blockId === BLOCKS.GLASS) {
         mat = new THREE.MeshLambertMaterial({
             color: 0xbae6fd,
             transparent: true,
@@ -111,7 +196,11 @@ function getBlockMaterial(blockId) {
             [BLOCKS.BRICK]: 'brick',
             [BLOCKS.WOOD]: 'wood',
             [BLOCKS.LEAVES]: 'leaves',
-            [BLOCKS.NOTE_BLOCK]: 'note_block'
+            [BLOCKS.NOTE_BLOCK]: 'note_block',
+            [BLOCKS.JUMP_PAD]: 'jump_pad',
+            [BLOCKS.BOUNCE_BLOCK]: 'bounce_block',
+            [BLOCKS.SPEED_STRIP]: 'speed_strip',
+            [BLOCKS.SLIDE_BLOCK]: 'slide_block'
         };
         mat = new THREE.MeshLambertMaterial({
             map: createProceduralBlockTexture(keyMap[blockId] || 'stone')
@@ -162,6 +251,31 @@ function updateFuseAnimations(now = performance.now()) {
         const scale = 1.0 + wave * (0.08 + progress * 0.14);
         entry.mesh.scale.set(scale, scale, scale);
         entry.mat.color.setHex(wave > 0.55 ? 0xfef08a : 0xef4444);
+    }
+}
+
+function updateGrappleLineVisual() {
+    if (!scene) return;
+    const g = ncState.grapple;
+    if (!g || !g.active || !g.anchor) {
+        if (grappleLineMesh) grappleLineMesh.visible = false;
+        return;
+    }
+
+    const lp = ncState.localPlayer;
+    const points = [
+        new THREE.Vector3(lp.x, lp.y + PLAYER_EYE_HEIGHT - 0.25, lp.z),
+        new THREE.Vector3(g.anchor.x, g.anchor.y, g.anchor.z)
+    ];
+
+    if (!grappleLineMesh) {
+        const geo = new THREE.BufferGeometry().setFromPoints(points);
+        const mat = new THREE.LineBasicMaterial({ color: 0xfacc15, linewidth: 3 });
+        grappleLineMesh = new THREE.Line(geo, mat);
+        scene.add(grappleLineMesh);
+    } else {
+        grappleLineMesh.geometry.setFromPoints(points);
+        grappleLineMesh.visible = true;
     }
 }
 
@@ -251,7 +365,7 @@ export function rebuildWorldMeshes() {
                 ? ncState.world.deltas[key]
                 : getBaseTerrainBlock(x, 1, z);
 
-            if (isBlockSolid(blockId)) {
+            if (isBlockSolid(blockId) || blockId === BLOCKS.FIRE) {
                 if (!buckets.has(blockId)) buckets.set(blockId, []);
                 buckets.get(blockId).push({ x, y: 1, z });
             }
@@ -263,7 +377,7 @@ export function rebuildWorldMeshes() {
         const [px, py, pz] = key.split('_').map(Number);
         if (py <= 1) continue;
         if (Object.prototype.hasOwnProperty.call(ncState.world.deltas, key)) continue;
-        if (isBlockSolid(presetBlockId)) {
+        if (isBlockSolid(presetBlockId) || presetBlockId === BLOCKS.FIRE) {
             if (!buckets.has(presetBlockId)) buckets.set(presetBlockId, []);
             buckets.get(presetBlockId).push({ x: px, y: py, z: pz });
         }
@@ -271,7 +385,7 @@ export function rebuildWorldMeshes() {
 
     // All student-placed blocks (y >= 2)
     for (const [key, blockId] of Object.entries(ncState.world.deltas)) {
-        if (!isBlockSolid(blockId)) continue;
+        if (!isBlockSolid(blockId) && blockId !== BLOCKS.FIRE) continue;
         const [sx, sy, sz] = key.split('_').map(Number);
         if (sy === 1) continue;
         if (!buckets.has(blockId)) buckets.set(blockId, []);
@@ -322,7 +436,9 @@ export function render3DFrame(now = performance.now()) {
         rebuildWorldMeshes();
     }
 
+    updateAnimatedFireTexture(now);
     updateFuseAnimations(now);
+    updateGrappleLineVisual();
 
     const lp = ncState.localPlayer;
     camera.position.set(lp.x, lp.y + PLAYER_EYE_HEIGHT, lp.z);
@@ -355,6 +471,12 @@ export function getThreeScene() {
 
 export function disposeRender3D() {
     clearFuseMeshes();
+    if (grappleLineMesh) {
+        if (scene) scene.remove(grappleLineMesh);
+        grappleLineMesh.geometry?.dispose();
+        grappleLineMesh.material?.dispose();
+        grappleLineMesh = null;
+    }
     if (campusBlueprintMesh) {
         if (campusBlueprintMesh.material?.map) campusBlueprintMesh.material.map.dispose();
         campusBlueprintMesh.material?.dispose();
