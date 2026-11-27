@@ -11,9 +11,9 @@ export const ncState = {
     isPointerLocked: false,
     isTeacher: false,
     mapZoom: 1.0,
-    flatMode: false, // Toggle between 3D Block (false) and Flat Floor Paint (true)
-    brushMode: 'single', // 'single' | 'line' | 'wall' | 'fill'
-    brushAnchor: null, // { x, y, z } first anchor for span brushes
+    flatMode: false,
+    brushMode: 'single',
+    brushAnchor: null,
     quitButtonRect: null,
 
     localPlayer: {
@@ -32,12 +32,21 @@ export const ncState = {
         isGrounded: false,
         isFlying: false,
         flightTimer: 0,
+        speedBoostTimer: 0,
+        slideMomentum: { x: 0, z: 0 },
         noteCoins: 150,
         masteredSongs: [],
         unlockedCreatures: [],
         recentNotes: [],
         selectedSlot: 0,
-        inventory: [1, 2, 3, null, null, null, null, null, null, null, null, null, null, null]
+        inventory: [1, 2, 3, null, null, null, null, null, null, null, null, null, null, null, 15, 16, 17, 18, 19]
+    },
+
+    grapple: {
+        active: false,
+        anchor: null, // { x, y, z }
+        ropeLength: 0,
+        ziplineSpeed: 14.0
     },
 
     remotePlayers: {},
