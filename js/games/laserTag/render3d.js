@@ -7,7 +7,6 @@ import { renderBeamsAndBlaster } from './viewmodel.js';
 import { renderFirstPersonHud } from './hud.js';
 
 function renderArenaFloor(ctx, W, H, horizon, now, isLastLife) {
-    // Oscillates smoothly between 0 and 1 roughly twice per second when on last life
     const pulse = isLastLife ? (Math.sin(now * 0.012) + 1) * 0.5 : 0;
 
     const floorGrad = ctx.createLinearGradient(0, horizon, 0, H);
@@ -50,7 +49,6 @@ export function renderFirstPerson3D(ctx, W, H, dt, now) {
     const bobOffset = lp.isAlive ? Math.sin(lp.bobPhase) * bobAmp : 0;
     const horizon = H * 0.52 + bobOffset;
 
-    // 1. Sci-Fi Ceiling & Last-Life Warning Floor
     const ceilGrad = ctx.createLinearGradient(0, 0, 0, horizon);
     ceilGrad.addColorStop(0, '#020617');
     ceilGrad.addColorStop(1, '#0f172a');
@@ -60,7 +58,6 @@ export function renderFirstPerson3D(ctx, W, H, dt, now) {
     const isLastLife = lp.isAlive && lp.lives === 1;
     renderArenaFloor(ctx, W, H, horizon, now, isLastLife);
 
-    // 2. Raycast 3D Color-Coded & Geometrically Distinct Sector Walls
     const numRays = Math.min(340, Math.floor(W / 2.8));
     const stripW = W / numRays;
     gameState.zBuffer = new Array(numRays);
@@ -98,15 +95,12 @@ export function renderFirstPerson3D(ctx, W, H, dt, now) {
         }
     }
 
-    // 3. Depth-Sorted 3D Sprites
     const sprites = collectWorldSprites(dt, now);
     for (const sp of sprites) {
         drawWorldSprite(ctx, sp, gameState.zBuffer, numRays, stripW, horizon, W, H, now);
     }
 
-    // 4. First-Person Laser Beams & Blaster Viewmodel
     renderBeamsAndBlaster(ctx, W, H, dt, now, activelyMoving, gearMult);
 
-    // 5. Crosshair, Compass, Threat Radar, Banners & Cooldown Pill
-    renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoosted);
+    renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoosted, horizon);
 }
