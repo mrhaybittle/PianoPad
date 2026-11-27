@@ -6,7 +6,7 @@ function isAwayPerspective(state) {
 }
 
 function toViewCoords(state, nx, ny) {
-  const cx = Math.min(0.95, Math.max(0.05, nx));
+  const cx = Math.min(0.96, Math.max(0.04, nx));
   const cy = Math.min(0.95, Math.max(0.05, ny));
   if (isAwayPerspective(state)) {
     return { vx: 1 - cx, vy: 1 - cy };
@@ -555,7 +555,7 @@ function draw3DKickTrajectoryAndBall(ctx, state, padX, padY, fieldW, fieldH, pix
 
     const targetY = Math.min(0.89, Math.max(0.11, k3.startY + dirSign * distanceY));
     const curveLateral = k3.aimCurve * (0.14 + p * 0.18);
-    const targetX = Math.min(0.92, Math.max(0.08, k3.startX + curveLateral));
+    const targetX = Math.min(0.94, Math.max(0.06, k3.startX + curveLateral));
 
     const steps = 22;
     const groundPts = [];
@@ -568,7 +568,7 @@ function draw3DKickTrajectoryAndBall(ctx, state, padX, padY, fieldW, fieldH, pix
       const zLift = Math.sin(t * Math.PI) * peakZ * 120;
 
       const view = toViewCoords(state, gx, gy);
-      const sx = padX + fieldW * Math.min(0.93, Math.max(0.07, view.vx));
+      const sx = padX + fieldW * Math.min(0.95, Math.max(0.05, view.vx));
       const syGround = padY + fieldH * Math.min(0.92, Math.max(0.11, view.vy));
       groundPts.push({ x: sx, y: syGround });
       elevatedPts.push({ x: sx, y: syGround - zLift, zLift });
@@ -732,13 +732,14 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
 
   const awayView = isAwayPerspective(state);
 
-  ctx.fillStyle = '#091521';
+  ctx.fillStyle = '#0c3b22';
   ctx.fillRect(0, 0, w, h);
 
-  const padX = Math.max(20, w * 0.08);
-  const padY = Math.max(14, h * 0.03);
-  const fieldW = Math.max(100, w - padX * 2);
-  const fieldH = Math.max(100, h - padY * 2);
+  // Fill nearly the entire gameplay window width & height like the Coin Toss screen
+  const padX = 10;
+  const padY = 8;
+  const fieldW = Math.max(120, w - padX * 2);
+  const fieldH = Math.max(120, h - padY * 2);
 
   const stripes = 10;
   const stripeH = fieldH / stripes;
@@ -824,7 +825,7 @@ export function renderRugbyCanvas(canvas, containerEl, state, timeSec) {
     ctx.setLineDash([]);
 
     ctx.fillStyle = idx === activeRingIdx ? '#fde047' : 'rgba(255, 255, 255, 0.48)';
-    ctx.fillText(LANE_NOTES[idx], lx - 4, padY + fieldH * 0.95);
+    ctx.fillText(LANE_NOTES[idx], lx - 4, padY + fieldH * 0.94);
   });
 
   const pixelScale = Math.max(1.2, Math.min(1.65, h / 285));
