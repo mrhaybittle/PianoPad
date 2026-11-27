@@ -92,7 +92,7 @@ export function playRefWhistle(style = 'short') {
     const c = getCtx();
     if (!c) return;
     const now = c.currentTime;
-    const totalDur = style === 'long' ? 0.62 : 0.34;
+    const totalDur = style === 'long' ? 0.54 : 0.28;
 
     const oscA = c.createOscillator();
     const oscB = c.createOscillator();
@@ -102,16 +102,17 @@ export function playRefWhistle(style = 'short') {
 
     oscA.type = 'sine';
     oscB.type = 'triangle';
-    oscA.frequency.setValueAtTime(2840, now);
-    oscB.frequency.setValueAtTime(2915, now);
+    oscA.frequency.setValueAtTime(2760, now);
+    oscB.frequency.setValueAtTime(2830, now);
 
     trillLfo.type = 'sine';
-    trillLfo.frequency.setValueAtTime(36, now);
-    trillDepth.gain.setValueAtTime(0.14, now);
+    trillLfo.frequency.setValueAtTime(34, now);
+    trillDepth.gain.setValueAtTime(0.03, now);
 
+    // Turned down whistle volume so it sits comfortably beneath gameplay audio
     masterGain.gain.setValueAtTime(0.001, now);
-    masterGain.gain.linearRampToValueAtTime(0.34, now + 0.015);
-    masterGain.gain.setValueAtTime(0.32, now + totalDur - 0.08);
+    masterGain.gain.linearRampToValueAtTime(0.095, now + 0.018);
+    masterGain.gain.setValueAtTime(0.085, now + totalDur - 0.08);
     masterGain.gain.exponentialRampToValueAtTime(0.001, now + totalDur);
 
     trillLfo.connect(trillDepth);
@@ -217,7 +218,7 @@ export function buildRugbyMarkup() {
       }
       #erc-game-canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
       #erc-gameplay-hud {
-        position: absolute; top: 10px; right: 12px; z-index: 20;
+        position: absolute; top: 10px; right: 14px; z-index: 20;
         display: none; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: none;
       }
       #erc-scoreboard {
@@ -226,12 +227,12 @@ export function buildRugbyMarkup() {
         padding: 7px 12px; display: flex; align-items: center; gap: 12px;
       }
       #erc-key-legend {
-        position: absolute; bottom: 8px; left: 10px; z-index: 20; display: none; pointer-events: none;
+        position: absolute; bottom: 8px; left: 12px; z-index: 20; display: none; pointer-events: none;
         border-radius: 10px; background: rgba(2, 6, 23, 0.88); border: 1px solid rgba(255, 255, 255, 0.15);
-        padding: 6px 10px; font-size: 10.5px; max-width: calc(100% - 340px);
+        padding: 6px 10px; font-size: 10.5px; max-width: calc(100% - 360px);
       }
       #erc-piano-strip {
-        position: absolute; bottom: 8px; right: 10px; z-index: 20; display: none;
+        position: absolute; bottom: 8px; right: 12px; z-index: 20; display: none;
         border-radius: 10px; background: rgba(2, 6, 23, 0.9); border: 1px solid rgba(255, 255, 255, 0.15);
         padding: 5px; gap: 4px; align-items: center;
       }
@@ -242,12 +243,13 @@ export function buildRugbyMarkup() {
       }
       #erc-piano-strip .piano-key-btn.active-note { background: #fde047; transform: scale(0.94); }
       #erc-piano-strip .kick-strip-btn {
-        height: 38px; border-radius: 6px; padding: 0 7px;
-        border: 1px solid rgba(255,255,255,0.25); border-bottom: 3px solid rgba(2,6,23,0.7);
+        height: 38px; border-radius: 6px; padding: 0 8px;
+        border: 1px solid rgba(255,255,255,0.28); border-bottom: 3px solid rgba(2,6,23,0.75);
         font-weight: 800; font-size: 10px; text-transform: uppercase;
         display: flex; align-items: center; justify-content: center; cursor: pointer;
+        touch-action: none;
       }
-      #erc-piano-strip .kick-strip-btn.active-note { filter: brightness(1.25); transform: scale(0.94); }
+      #erc-piano-strip .kick-strip-btn.active-note { filter: brightness(1.3); transform: scale(0.94); outline: 2px solid #fde047; }
       #erc-coin-toss-bar {
         position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 25;
         display: none; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px;
@@ -410,9 +412,9 @@ export function buildRugbyMarkup() {
       <button type="button" data-note="E" class="piano-key-btn font-sports">E</button>
       <button type="button" data-note="F" class="piano-key-btn font-sports">F</button>
       <button type="button" data-note="G" class="piano-key-btn font-sports">G</button>
-      <button type="button" data-kick="bomb" class="kick-strip-btn font-sports" style="background:rgba(245,158,11,0.28); color:#fde68a;">🏉 Bomb</button>
-      <button type="button" data-kick="grubber" class="kick-strip-btn font-sports" style="background:rgba(14,165,233,0.28); color:#bae6fd;">💨 Grub</button>
-      <button type="button" data-kick="chip" class="kick-strip-btn font-sports" style="background:rgba(34,197,94,0.28); color:#bbf7d0;">🎯 Chip</button>
+      <button type="button" data-kick="bomb" class="kick-strip-btn font-sports" style="background:rgba(245,158,11,0.32); color:#fde68a;">🏉 Bomb</button>
+      <button type="button" data-kick="grubber" class="kick-strip-btn font-sports" style="background:rgba(14,165,233,0.32); color:#bae6fd;">💨 Grub</button>
+      <button type="button" data-kick="chip" class="kick-strip-btn font-sports" style="background:rgba(34,197,94,0.32); color:#bbf7d0;">🎯 Chip</button>
     </div>
 
     <div id="erc-start-modal">
