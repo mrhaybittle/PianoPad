@@ -25,7 +25,15 @@ export async function connectNoteCraftNetwork(worldId, localPlayerInfo) {
             ncState.world.dirty = true;
         });
 
-        // 2. Register local builder presence (auto-removed on tab close)
+        // 2. Load & listen to creation locks
+        const locksRef = window.firebaseRef(window.firebaseDb, `${basePath}/locks`);
+        const unsubLocks = onValue(locksRef, (snapshot) => {
+            if (!ncState.active) return;
+            ncState.world.locks = snapshot.val() || {};
+            ncState.world.dirty = true;
+        });
+
+        // 3. Register local builder presence (auto-removed on tab close)
         const myPlayerRef = window.firebaseRef(window.firebaseDb, `${basePath}/players/${localPlayerInfo.id}`);
         await set(myPlayerRef, {
             id: localPlayerInfo.id,
@@ -41,7 +49,7 @@ export async function connectNoteCraftNetwork(worldId, localPlayerInfo) {
             window.firebaseOnDisconnect(myPlayerRef).remove();
         }
 
-        // 3. Listen to classmate avatars (ignore stale/orphaned records older than 25s)
+        // 4. Listen to classmate avatars (ignore stale/orphaned records older than 25s)
         const playersRef = window.firebaseRef(window.firebaseDb, `${basePath}/players`);
         const unsubPlayers = onValue(playersRef, (snapshot) => {
             if (!ncState.active) return;
@@ -56,7 +64,7 @@ export async function connectNoteCraftNetwork(worldId, localPlayerInfo) {
             ncState.remotePlayers = filtered;
         });
 
-        // 4. Periodic position broadcast (8 Hz)
+        // 5. Periodic position broadcast (8 Hz)
         ncState.syncIntervalId = setInterval(() => {
             if (!ncState.active || !window.firebaseDb) return;
             const now = performance.now();
@@ -75,6 +83,7 @@ export async function connectNoteCraftNetwork(worldId, localPlayerInfo) {
 
         roomUnsubscribe = () => {
             unsubBlocks();
+            unsubLocks();
             unsubPlayers();
             if (window.firebaseDb && window.firebaseRef) {
                 set(myPlayerRef, null).catch(() => {});
@@ -93,7 +102,6 @@ export async function clearRemoteBuilders() {
         const basePath = getWorldBasePath(ncState.worldId);
         const playersRef = window.firebaseRef(window.firebaseDb, `${basePath}/players`);
         const lp = ncState.localPlayer;
-        // Overwrite players node so ONLY the active teacher remains
         await set(playersRef, {
             [lp.id]: {
                 id: lp.id,
@@ -123,6 +131,23 @@ export async function syncBlockChange(change) {
     }
 }
 
+export async function syncLockUpdates(updatedLocks) {
+    if (!Array.isArray(updatedLocks) || updatedLocks.length === 0) return;
+    if (!window.firebaseDb || !window.firebaseRef) return;
+    try {
+        const { update } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js");
+        const basePath = getWorldBasePath(ncState.worldId);
+        const locksRef = window.firebaseRef(window.firebaseDb, `${basePath}/locks`);
+        const payload = {};
+        for (const item of updatedLocks) {
+            payload[item.key] = item.lockData;
+        }
+        await update(locksRef, payload);
+    } catch (err) {
+        console.warn('Lock sync error:', err);
+    }
+}
+
 export async function saveStudentWallet(studentName) {
     if (!studentName || !window.firebaseDb || !window.firebaseRef) return;
     try {
@@ -132,6 +157,7 @@ export async function saveStudentWallet(studentName) {
         await update(walletRef, {
             noteCoins: ncState.localPlayer.noteCoins,
             masteredSongs: ncState.localPlayer.masteredSongs,
+            unlockedCreatures: ncState.localPlayer.unlockedCreatures || [],
             updatedAt: Date.now()
         });
     } catch (err) {}

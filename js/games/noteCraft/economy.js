@@ -1,7 +1,80 @@
 // js/games/noteCraft/economy.js
 import { BLOCKS, COIN_REWARDS, UNLOCK_THRESHOLDS } from './constants.js';
 import { ncState } from './state.js';
-import campusPreset from './campusPreset.js';
+
+export const CREATURE_CHALLENGES = {
+    [BLOCKS.DRAGON]: {
+        id: 'dragon',
+        name: 'Campus Dragon',
+        songTitle: 'Star Wars - Cantina Theme (Simplified)',
+        difficulty: 'Hard',
+        first8Notes: ['A2', 'D3', 'A2', 'D3', 'A2', 'D3', 'A2', 'G#2']
+    }
+};
+
+export function normalizeNoteToken(noteStr) {
+    const raw = String(noteStr || '').trim().toUpperCase();
+    if (!raw) return '';
+    const enharmonicMap = {
+        'DB': 'C#',
+        'EB': 'D#',
+        'GB': 'F#',
+        'AB': 'G#',
+        'BB': 'A#'
+    };
+    const match = raw.match(/^([A-G][#B]?)(-?\d+)$/);
+    if (!match) return raw;
+    let pitch = match[1];
+    const octave = match[2];
+    if (enharmonicMap[pitch]) pitch = enharmonicMap[pitch];
+    return `${pitch}${octave}`;
+}
+
+export function isCreatureChallengeCompleted(blockId) {
+    const challenge = CREATURE_CHALLENGES[blockId];
+    if (!challenge) return true;
+    const unlocked = Array.isArray(ncState.localPlayer.unlockedCreatures)
+        ? ncState.localPlayer.unlockedCreatures
+        : [];
+    return unlocked.includes(challenge.id);
+}
+
+export function recordChallengeNote(noteStr) {
+    const token = normalizeNoteToken(noteStr);
+    if (!token) return null;
+
+    if (!Array.isArray(ncState.localPlayer.recentNotes)) {
+        ncState.localPlayer.recentNotes = [];
+    }
+    ncState.localPlayer.recentNotes.push(token);
+    if (ncState.localPlayer.recentNotes.length > 16) {
+        ncState.localPlayer.recentNotes.shift();
+    }
+
+    if (!Array.isArray(ncState.localPlayer.unlockedCreatures)) {
+        ncState.localPlayer.unlockedCreatures = [];
+    }
+
+    for (const [blockIdStr, challenge] of Object.entries(CREATURE_CHALLENGES)) {
+        const blockId = Number(blockIdStr);
+        if (ncState.localPlayer.unlockedCreatures.includes(challenge.id)) continue;
+
+        const targetSeq = challenge.first8Notes.map(normalizeNoteToken);
+        const len = targetSeq.length;
+        const recent = ncState.localPlayer.recentNotes;
+        if (recent.length >= len) {
+            const slice = recent.slice(recent.length - len);
+            const matched = slice.every((n, idx) => n === targetSeq[idx]);
+            if (matched) {
+                ncState.localPlayer.unlockedCreatures.push(challenge.id);
+                updateInventory();
+                return { blockId, challenge };
+            }
+        }
+    }
+
+    return null;
+}
 
 export function isTeacherBuilder() {
     return Boolean(
@@ -47,7 +120,11 @@ export function updateInventory() {
     ncState.localPlayer.inventory = allBlocks.map(blockId => {
         if (teacher) return blockId;
         const req = UNLOCK_THRESHOLDS[blockId] ?? 0;
-        return masteredCount >= req ? blockId : null;
+        if (masteredCount < req) return null;
+        if (CREATURE_CHALLENGES[blockId] && !isCreatureChallengeCompleted(blockId)) {
+            return null;
+        }
+        return blockId;
     });
 
     if (!ncState.localPlayer.inventory[ncState.localPlayer.selectedSlot]) {
@@ -57,4 +134,3 @@ export function updateInventory() {
         }
     }
 }
-

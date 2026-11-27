@@ -1,11 +1,12 @@
 // js/games/noteCraft/engine.js
 import { BLOCKS, BLOCK_COSTS, GRAVITY, PLAYER_EYE_HEIGHT, PLAYER_RADIUS } from './constants.js';
 import { ncState } from './state.js';
-import { isTeacherBuilder } from './economy.js';
+import { isTeacherBuilder, isCreatureChallengeCompleted, CREATURE_CHALLENGES } from './economy.js';
 import campusPreset from './campusPreset.js';
 
 export const WORLD_HALF_X = 128;
 export const WORLD_HALF_Z = 96;
+export const MAX_BRUSH_SPAN = 512;
 
 const EXPLOSION_RADIUS = 3;
 const EXPLOSION_FUSE_MS = 5000;
@@ -19,6 +20,84 @@ export const CAMPUS_ZONES = [
     { name: 'E4 & Music Wing (G1–G3)',     minX: 60,  maxX: 96,  minZ: -56, maxZ: -20, color: '#c084fc' },
     { name: 'Southern Oval',               minX: 0,   maxX: 68,  minZ: 40,  maxZ: 88,  color: '#22c55e' }
 ];
+
+export function getCoordKey(x, y, z) {
+    return `${Math.floor(x)}_${Math.floor(y)}_${Math.floor(z)}`;
+}
+
+export function isBlockLocked(x, y, z) {
+    const locks = ncState.world && ncState.world.locks ? ncState.world.locks : {};
+    return Boolean(locks[getCoordKey(x, y, z)]);
+}
+
+export function toggleLockOnTargetOrLastBuild() {
+    if (!ncState.world.locks) ncState.world.locks = {};
+    const lp = ncState.localPlayer;
+    const teacher = isTeacherBuilder();
+    const target = ncState.targetBlock;
+    const updatedLocks = [];
+
+    if (target && target.hit && target.y > 1) {
+        const key = getCoordKey(target.x, target.y, target.z);
+        const existing = ncState.world.locks[key];
+        if (existing && existing.ownerId && existing.ownerId !== lp.id && !teacher) {
+            return { error: 'NOT_OWNER', ownerName: existing.ownerName || 'another builder' };
+        }
+        if (existing) {
+            delete ncState.world.locks[key];
+            updatedLocks.push({ key, lockData: null });
+            return { locked: false, count: 1, updatedLocks };
+        } else {
+            const lockData = {
+                ownerId: lp.id,
+                ownerName: lp.name || 'Builder',
+                lockedAt: Date.now()
+            };
+            ncState.world.locks[key] = lockData;
+            updatedLocks.push({ key, lockData });
+            return { locked: true, count: 1, updatedLocks };
+        }
+    }
+
+    const stack = ncState.world.undoStack || [];
+    const lastBatch = stack[stack.length - 1];
+    if (!Array.isArray(lastBatch) || lastBatch.length === 0) {
+        return { error: 'NO_TARGET_OR_BUILD' };
+    }
+
+    let anyUnlocked = false;
+    for (const item of lastBatch) {
+        if (item.y <= 1) continue;
+        const k = getCoordKey(item.x, item.y, item.z);
+        const ex = ncState.world.locks[k];
+        if (!ex) {
+            anyUnlocked = true;
+            break;
+        }
+    }
+
+    for (const item of lastBatch) {
+        if (item.y <= 1) continue;
+        const k = getCoordKey(item.x, item.y, item.z);
+        const ex = ncState.world.locks[k];
+        if (anyUnlocked) {
+            if (!ex) {
+                const lockData = {
+                    ownerId: lp.id,
+                    ownerName: lp.name || 'Builder',
+                    lockedAt: Date.now()
+                };
+                ncState.world.locks[k] = lockData;
+                updatedLocks.push({ key: k, lockData });
+            }
+        } else if (ex && (ex.ownerId === lp.id || teacher)) {
+            delete ncState.world.locks[k];
+            updatedLocks.push({ key: k, lockData: null });
+        }
+    }
+
+    return { locked: anyUnlocked, count: updatedLocks.length, updatedLocks };
+}
 
 export function getCurrentCampusZone(x, z) {
     for (const zone of CAMPUS_ZONES) {
@@ -47,22 +126,29 @@ export function getBlockAt(x, y, z) {
     const bz = Math.floor(z);
     if (by < 0 || by >= 24) return BLOCKS.AIR;
 
-    const key = `${bx}_${by}_${bz}`;
+    const key = getCoordKey(bx, by, bz);
     if (Object.prototype.hasOwnProperty.call(ncState.world.deltas, key)) {
         return ncState.world.deltas[key];
     }
     return getBaseTerrainBlock(bx, by, bz);
 }
 
-export function setBlockAt(x, y, z, blockId) {
+export function setBlockAt(x, y, z, blockId, options = {}) {
     const bx = Math.floor(x);
     const by = Math.floor(y);
     const bz = Math.floor(z);
     if (bx < -WORLD_HALF_X || bx >= WORLD_HALF_X || bz < -WORLD_HALF_Z || bz >= WORLD_HALF_Z) return null;
     if (by < 1 || by >= 23) return null;
 
-    const key = `${bx}_${by}_${bz}`;
+    const key = getCoordKey(bx, by, bz);
+    if (!options.ignoreLocks && isBlockLocked(bx, by, bz) && !isTeacherBuilder()) {
+        return null;
+    }
+
     ncState.world.deltas[key] = blockId;
+    if (!options.ignoreLocks && blockId === BLOCKS.AIR && ncState.world.locks && ncState.world.locks[key]) {
+        delete ncState.world.locks[key];
+    }
     ncState.world.dirty = true;
     return { key, x: bx, y: by, z: bz, blockId };
 }
@@ -137,15 +223,18 @@ export function pushUndoEntry(changesArray) {
 export function breakTargetBlock() {
     const target = ncState.targetBlock;
     if (!target || !target.hit || target.y <= 1) return null; // Protect y=1 floor
+    const teacher = isTeacherBuilder();
+    const lockInfo = ncState.world.locks ? ncState.world.locks[getCoordKey(target.x, target.y, target.z)] : null;
+    if (lockInfo && !teacher) {
+        return { error: 'LOCKED_BLOCK', ownerName: lockInfo.ownerName || 'a builder' };
+    }
     const prevBlockId = getBlockAt(target.x, target.y, target.z);
     const change = setBlockAt(target.x, target.y, target.z, BLOCKS.AIR);
-    if (change) {
-        pushUndoEntry([{ x: target.x, y: target.y, z: target.z, prevBlockId, refundedCost: 0, change }]);
-    }
+    if (!change) return null;
+    pushUndoEntry([{ x: target.x, y: target.y, z: target.z, prevBlockId, refundedCost: 0, change }]);
     return { changes: [change], cost: 0 };
 }
 
-// Resolve logical block ID to renderable material ID (Path -> Dirt, Water -> Glass, TNT -> Brick/Stone)
 function resolveTerrainBlockId(blockId) {
     if (blockId === BLOCKS.PATH) return BLOCKS.DIRT;
     if (blockId === BLOCKS.WATER) return BLOCKS.GLASS;
@@ -170,7 +259,6 @@ function detonateExplosion(exp) {
     const changes = [];
     const radiusSq = EXPLOSION_RADIUS * EXPLOSION_RADIUS;
 
-    // Clear TNT block itself if above floor
     if (exp.y > 1 && getBlockAt(exp.x, exp.y, exp.z) !== BLOCKS.AIR) {
         const selfClear = setBlockAt(exp.x, exp.y, exp.z, BLOCKS.AIR);
         if (selfClear) changes.push(selfClear);
@@ -185,7 +273,8 @@ function detonateExplosion(exp) {
                 const by = exp.y + dy;
                 const bz = exp.z + dz;
 
-                if (by <= 1) continue; // Keep campus ground intact
+                if (by <= 1) continue;
+                if (isBlockLocked(bx, by, bz) && !isTeacherBuilder()) continue;
                 if (getBlockAt(bx, by, bz) === BLOCKS.AIR) continue;
 
                 const cleared = setBlockAt(bx, by, bz, BLOCKS.AIR);
@@ -214,6 +303,105 @@ export function updateExplosions(now, onBlockChanged) {
     ncState.activeExplosions = remaining;
 }
 
+function computeLinePoints(a, b) {
+    const points = [];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const dz = b.z - a.z;
+    const steps = Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz), 1);
+    const seen = new Set();
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = Math.round(a.x + dx * t);
+        const y = Math.round(a.y + dy * t);
+        const z = Math.round(a.z + dz * t);
+        const k = `${x}_${y}_${z}`;
+        if (!seen.has(k)) {
+            seen.add(k);
+            points.push({ x, y, z });
+        }
+    }
+    return points;
+}
+
+function computeSpanCoords(mode, anchor, endPt, yaw, flatMode) {
+    const minX = Math.min(anchor.x, endPt.x);
+    const maxX = Math.max(anchor.x, endPt.x);
+    const minY = Math.max(2, Math.min(anchor.y, endPt.y));
+    const maxY = Math.max(minY, Math.max(anchor.y, endPt.y));
+    const minZ = Math.min(anchor.z, endPt.z);
+    const maxZ = Math.max(anchor.z, endPt.z);
+
+    if (mode === 'line') {
+        return computeLinePoints(
+            { x: anchor.x, y: Math.max(2, anchor.y), z: anchor.z },
+            { x: endPt.x, y: Math.max(2, endPt.y), z: endPt.z }
+        );
+    }
+
+    if (mode === 'wall') {
+        const coords = [];
+        const spanX = maxX - minX;
+        const spanZ = maxZ - minZ;
+        const alongX = spanX === spanZ ? Math.abs(Math.cos(yaw)) >= Math.abs(Math.sin(yaw)) : spanX >= spanZ;
+        for (let y = minY; y <= maxY; y++) {
+            if (alongX) {
+                for (let x = minX; x <= maxX; x++) coords.push({ x, y, z: anchor.z });
+            } else {
+                for (let z = minZ; z <= maxZ; z++) coords.push({ x: anchor.x, y, z });
+            }
+        }
+        return coords;
+    }
+
+    if (mode === 'fill') {
+        const coords = [];
+        const yStart = flatMode ? Math.max(2, endPt.y) : minY;
+        const yEnd = flatMode ? yStart : maxY;
+        for (let x = minX; x <= maxX; x++) {
+            for (let y = yStart; y <= yEnd; y++) {
+                for (let z = minZ; z <= maxZ; z++) {
+                    coords.push({ x, y, z });
+                }
+            }
+        }
+        return coords;
+    }
+
+    return [endPt];
+}
+
+function spawnCreatureEntity(blockId, x, y, z) {
+    if (!Array.isArray(ncState.creatures)) ncState.creatures = [];
+    const challenge = CREATURE_CHALLENGES[blockId];
+    ncState.creatures.push({
+        id: `creature_${blockId}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        blockId,
+        name: challenge ? challenge.name : 'Creature',
+        baseX: x + 0.5,
+        baseY: y + 1.2,
+        baseZ: z + 0.5,
+        x: x + 0.5,
+        y: y + 1.2,
+        z: z + 0.5,
+        yaw: 0,
+        phase: Math.random() * Math.PI * 2
+    });
+}
+
+export function updateCreatures(dt, now = performance.now()) {
+    if (!Array.isArray(ncState.creatures) || ncState.creatures.length === 0) return;
+    for (const c of ncState.creatures) {
+        c.phase += dt * 2.2;
+        const radius = 2.2;
+        c.x = c.baseX + Math.cos(c.phase * 0.65) * radius;
+        c.z = c.baseZ + Math.sin(c.phase * 0.65) * radius;
+        c.y = c.baseY + Math.sin(c.phase * 1.8) * 0.35;
+        c.yaw = -c.phase * 0.65 + Math.PI / 2;
+    }
+    void now;
+}
+
 export function placeSelectedBlock() {
     const target = ncState.targetBlock;
     const lp = ncState.localPlayer;
@@ -222,20 +410,78 @@ export function placeSelectedBlock() {
     const blockId = lp.inventory[lp.selectedSlot];
     if (!blockId) return null;
 
+    if (CREATURE_CHALLENGES[blockId] && !isCreatureChallengeCompleted(blockId) && !isTeacherBuilder()) {
+        return { error: 'CHALLENGE_LOCKED', challenge: CREATURE_CHALLENGES[blockId] };
+    }
+
     const teacher = isTeacherBuilder();
-    const cost = teacher ? 0 : (BLOCK_COSTS[blockId] || 0);
-    if (!teacher && lp.noteCoins < cost) return { error: 'INSUFFICIENT_COINS', cost };
+    const unitCost = teacher ? 0 : (BLOCK_COSTS[blockId] || 0);
 
     let px = target.x + target.normal.x;
     let py = target.y + target.normal.y;
     let pz = target.z + target.normal.z;
+
+    const brushMode = ncState.brushMode || 'single';
+    const isPrefab = (blockId === BLOCKS.TREE || blockId === BLOCKS.ROCK || blockId === BLOCKS.DRAGON);
+
+    if (!isPrefab && brushMode !== 'single') {
+        const endPt = ncState.flatMode ? { x: target.x, y: Math.max(2, target.y), z: target.z } : { x: px, y: Math.max(2, py), z: pz };
+        if (!ncState.brushAnchor) {
+            ncState.brushAnchor = endPt;
+            return { anchorSet: true, mode: brushMode, anchor: endPt };
+        }
+
+        const anchorPt = ncState.brushAnchor;
+        ncState.brushAnchor = null;
+        const spanCoords = computeSpanCoords(brushMode, anchorPt, endPt, lp.yaw, ncState.flatMode);
+        if (spanCoords.length > MAX_BRUSH_SPAN) {
+            return { error: 'BRUSH_TOO_LARGE', count: spanCoords.length, max: MAX_BRUSH_SPAN };
+        }
+
+        const renderId = resolveTerrainBlockId(blockId);
+        const candidates = [];
+        for (const pt of spanCoords) {
+            const prev = getBlockAt(pt.x, pt.y, pt.z);
+            if (prev === renderId) continue;
+            if (isBlockLocked(pt.x, pt.y, pt.z) && !teacher) continue;
+            candidates.push({ x: pt.x, y: pt.y, z: pt.z, prev });
+        }
+
+        const totalCost = teacher ? 0 : unitCost * candidates.length;
+        if (!teacher && lp.noteCoins < totalCost) {
+            return { error: 'INSUFFICIENT_COINS', cost: totalCost };
+        }
+
+        const generatedChanges = [];
+        const recordedUndo = [];
+        for (const item of candidates) {
+            const c = setBlockAt(item.x, item.y, item.z, renderId);
+            if (c) {
+                generatedChanges.push(c);
+                recordedUndo.push({ x: item.x, y: item.y, z: item.z, prevBlockId: item.prev, refundedCost: 0, change: c });
+                if (blockId === BLOCKS.TNT) scheduleTntFuse(item.x, item.y, item.z);
+            }
+        }
+
+        if (generatedChanges.length > 0) {
+            if (!teacher) lp.noteCoins -= totalCost;
+            if (recordedUndo.length > 0) {
+                recordedUndo[0].refundedCost = totalCost;
+                pushUndoEntry(recordedUndo);
+            }
+            return { changes: generatedChanges, cost: totalCost, brushMode };
+        }
+        return null;
+    }
+
+    if (!teacher && lp.noteCoins < unitCost) return { error: 'INSUFFICIENT_COINS', cost: unitCost };
 
     let generatedChanges = [];
     let recordedUndo = [];
 
     const addBlock = (bx, by, bz, id) => {
         const prev = getBlockAt(bx, by, bz);
-        if (prev === id) return; // Skip no-op overwrite
+        if (prev === id) return;
         const c = setBlockAt(bx, by, bz, id);
         if (c) {
             generatedChanges.push(c);
@@ -243,9 +489,6 @@ export function placeSelectedBlock() {
         }
     };
 
-    const isPrefab = (blockId === BLOCKS.TREE || blockId === BLOCKS.ROCK || blockId === BLOCKS.DRAGON);
-
-    // 1. VOXEL PREFABS (Tree, Rock, Dragon)
     if (isPrefab) {
         if (py < 2) py = 2;
 
@@ -281,15 +524,14 @@ export function placeSelectedBlock() {
             addBlock(px + 1, py, pz - 1, BLOCKS.DIRT);
             addBlock(px - 1, py, pz + 1, BLOCKS.DIRT);
             addBlock(px - 1, py, pz - 1, BLOCKS.DIRT);
+            spawnCreatureEntity(BLOCKS.DRAGON, px, py, pz);
         }
     }
-    // 2. FLAT FLOOR MODE (Applies to EVERY terrain type when ncState.flatMode is ON)
     else if (ncState.flatMode) {
         const renderId = resolveTerrainBlockId(blockId);
         addBlock(target.x, target.y, target.z, renderId);
         if (blockId === BLOCKS.TNT) scheduleTntFuse(target.x, target.y, target.z);
     }
-    // 3. STANDARD 3D BLOCK MODE (Applies to EVERY terrain type when ncState.flatMode is OFF)
     else {
         const playerMinY = Math.floor(lp.y);
         const playerMaxY = Math.floor(lp.y + PLAYER_EYE_HEIGHT);
@@ -301,12 +543,12 @@ export function placeSelectedBlock() {
     }
 
     if (generatedChanges.length > 0) {
-        if (!teacher) lp.noteCoins -= cost;
+        if (!teacher) lp.noteCoins -= unitCost;
         if (recordedUndo.length > 0) {
-            recordedUndo[0].refundedCost = cost;
+            recordedUndo[0].refundedCost = unitCost;
             pushUndoEntry(recordedUndo);
         }
-        return { changes: generatedChanges, cost };
+        return { changes: generatedChanges, cost: unitCost };
     }
     return null;
 }
@@ -316,16 +558,18 @@ export function undoLastAction() {
     if (!Array.isArray(stack) || stack.length === 0) return null;
 
     const actionSet = stack.pop();
+    const teacher = isTeacherBuilder();
     let syncedChanges = [];
     let totalRefund = 0;
 
     for (const action of actionSet) {
+        if (isBlockLocked(action.x, action.y, action.z) && !teacher) continue;
         const c = setBlockAt(action.x, action.y, action.z, action.prevBlockId);
         if (c) syncedChanges.push(c);
         if (action.refundedCost > 0) totalRefund += action.refundedCost;
     }
 
-    if (totalRefund > 0 && !isTeacherBuilder()) {
+    if (totalRefund > 0 && !teacher && syncedChanges.length > 0) {
         ncState.localPlayer.noteCoins += totalRefund;
     }
     return { changes: syncedChanges, refundedCost: totalRefund, remaining: stack.length };
@@ -393,4 +637,3 @@ export function updatePlayerPhysics(dt) {
 
     ncState.targetBlock = raycastVoxel(8.0);
 }
-

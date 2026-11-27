@@ -12,6 +12,8 @@ export const ncState = {
     isTeacher: false,
     mapZoom: 1.0,
     flatMode: false, // Toggle between 3D Block (false) and Flat Floor Paint (true)
+    brushMode: 'single', // 'single' | 'line' | 'wall' | 'fill'
+    brushAnchor: null, // { x, y, z } first anchor for span brushes
     quitButtonRect: null,
 
     localPlayer: {
@@ -32,15 +34,19 @@ export const ncState = {
         flightTimer: 0,
         noteCoins: 150,
         masteredSongs: [],
+        unlockedCreatures: [],
+        recentNotes: [],
         selectedSlot: 0,
         inventory: [1, 2, 3, null, null, null, null, null, null, null, null, null, null, null]
     },
 
     remotePlayers: {},
+    creatures: [],
 
     world: {
         preset: campusPreset,
         deltas: {},
+        locks: {},
         undoStack: [],
         dirty: true,
         height: CHUNK_HEIGHT
@@ -52,4 +58,3 @@ export const ncState = {
     toastMessage: null,
     bridge: null
 };
-

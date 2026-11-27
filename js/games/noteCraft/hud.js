@@ -1,8 +1,8 @@
 // js/games/noteCraft/hud.js
 import { BLOCKS, BLOCK_COSTS } from './constants.js';
 import { ncState } from './state.js';
-import { WORLD_HALF_X, WORLD_HALF_Z, getCurrentCampusZone } from './engine.js';
-import { isTeacherBuilder } from './economy.js';
+import { WORLD_HALF_X, WORLD_HALF_Z, getCurrentCampusZone, isBlockLocked } from './engine.js';
+import { isTeacherBuilder, CREATURE_CHALLENGES, isCreatureChallengeCompleted } from './economy.js';
 import campusPreset from './campusPreset.js';
 
 let hudCanvas = null;
@@ -187,6 +187,11 @@ function drawSatelliteMinimap(ctx, H) {
 
 function drawBuildModeToggleSwitch(ctx, W, H) {
     const isFlat = Boolean(ncState.flatMode);
+    const brushMode = String(ncState.brushMode || 'single').toUpperCase();
+    const anchorStr = ncState.brushAnchor
+        ? ` • Anchor (${ncState.brushAnchor.x},${ncState.brushAnchor.y},${ncState.brushAnchor.z})`
+        : '';
+
     const swW = 248;
     const swH = 34;
     const sx = (W - swW) / 2;
@@ -215,13 +220,13 @@ function drawBuildModeToggleSwitch(ctx, W, H) {
     ctx.fillStyle = isFlat ? '#ffffff' : '#94a3b8';
     ctx.fillText('🟫 FLAT FLOOR', sx + halfW + 4 + halfW / 2, sy + 20);
 
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
     ctx.beginPath();
-    ctx.roundRect(W / 2 - 96, sy - 18, 192, 15, 6);
+    ctx.roundRect(W / 2 - 155, sy - 19, 310, 16, 6);
     ctx.fill();
     ctx.fillStyle = '#e2e8f0';
     ctx.font = 'bold 9px sans-serif';
-    ctx.fillText('Press [T] or [Tab] to Toggle Mode', W / 2, sy - 7);
+    ctx.fillText(`[T] Flat/Block • [B] Brush: ${brushMode}${anchorStr} • [L] Lock`, W / 2, sy - 8);
 }
 
 export function renderHudFrame(now) {
@@ -235,13 +240,23 @@ export function renderHudFrame(now) {
     ctx.clearRect(0, 0, W, H);
 
     const cx = W / 2; const cy = H / 2;
-    const hasTarget = Boolean(ncState.targetBlock && ncState.targetBlock.hit);
-    ctx.strokeStyle = hasTarget ? '#facc15' : 'rgba(255, 255, 255, 0.85)';
+    const target = ncState.targetBlock;
+    const hasTarget = Boolean(target && target.hit);
+    const targetLocked = hasTarget && isBlockLocked(target.x, target.y, target.z);
+
+    ctx.strokeStyle = targetLocked ? '#f87171' : (hasTarget ? '#facc15' : 'rgba(255, 255, 255, 0.85)');
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(cx - 9, cy); ctx.lineTo(cx + 9, cy);
     ctx.moveTo(cx, cy - 9); ctx.lineTo(cx, cy + 9);
     ctx.stroke();
+
+    if (targetLocked) {
+        ctx.fillStyle = '#f87171';
+        ctx.font = '900 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🔒 LOCKED', cx, cy + 20);
+    }
 
     const builderCount = Object.keys(ncState.remotePlayers).length + 1;
     const zone = getCurrentBuildingOrZone(lp.x, lp.z);
@@ -286,11 +301,16 @@ export function renderHudFrame(now) {
     const undoCount = Array.isArray(ncState.world.undoStack) ? ncState.world.undoStack.length : 0;
     ctx.fillStyle = undoCount > 0 ? '#facc15' : '#94a3b8';
     ctx.font = '900 11.5px sans-serif';
-    ctx.fillText(`↩️ Press [Z] to Undo Last Build (${undoCount} saved)`, W - 22, 46);
+    ctx.fillText(`↩️ [Z] Undo (${undoCount}) • 🔒 [L] Lock Build`, W - 22, 46);
 
-    ctx.fillStyle = '#e2e8f0';
+    const dragonChallenge = CREATURE_CHALLENGES[BLOCKS.DRAGON];
+    const dragonReady = isCreatureChallengeCompleted(BLOCKS.DRAGON) || teacher;
+    ctx.fillStyle = dragonReady ? '#4ade80' : '#facc15';
     ctx.font = 'bold 10px sans-serif';
-    ctx.fillText('🔄 [T] Flat/Block Mode • 🚪 [X] Quit • 🔍 [-/+] Zoom', W - 22, 62);
+    const challengeStatus = dragonReady
+        ? '🐉 Dragon Unlocked! (Shift+6)'
+        : `🐉 Challenge: 1st 8 notes of ${dragonChallenge.songTitle}`;
+    ctx.fillText(challengeStatus, W - 22, 62);
 
     drawQuitButton(ctx, W);
 
@@ -300,7 +320,7 @@ export function renderHudFrame(now) {
         ctx.strokeStyle = msg.color;
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.roundRect(W / 2 - 220, 78, 440, 32, 8);
+        ctx.roundRect(W / 2 - 245, 78, 490, 32, 8);
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = msg.color;
@@ -337,6 +357,7 @@ export function renderHudFrame(now) {
         if (blockId && BLOCK_META[blockId]) {
             const meta = BLOCK_META[blockId];
             const cost = teacher ? 0 : (BLOCK_COSTS[blockId] || 0);
+            const challengeLocked = CREATURE_CHALLENGES[blockId] && !isCreatureChallengeCompleted(blockId) && !teacher;
 
             ctx.fillStyle = '#94a3b8';
             ctx.font = 'bold 9px sans-serif';
@@ -349,14 +370,14 @@ export function renderHudFrame(now) {
             ctx.fillRect(sx + 14, startY + 12, 18, 16);
             ctx.strokeRect(sx + 14, startY + 12, 18, 16);
 
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = challengeLocked ? '#fca5a5' : '#ffffff';
             ctx.font = 'bold 8.5px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText(meta.label, sx + slotW / 2, startY + 37);
 
-            ctx.fillStyle = cost === 0 ? '#4ade80' : '#facc15';
+            ctx.fillStyle = challengeLocked ? '#f87171' : (cost === 0 ? '#4ade80' : '#facc15');
             ctx.font = '900 7.5px sans-serif';
-            ctx.fillText(cost === 0 ? 'FREE' : `${cost}🎵`, sx + slotW / 2, startY + 46);
+            ctx.fillText(challengeLocked ? 'SONG♪' : (cost === 0 ? 'FREE' : `${cost}🎵`), sx + slotW / 2, startY + 46);
         } else {
             ctx.fillStyle = '#64748b';
             ctx.font = 'bold 11px sans-serif';
@@ -391,4 +412,3 @@ export function disposeHud() {
     hudCanvas = null;
     hudCtx = null;
 }
-
