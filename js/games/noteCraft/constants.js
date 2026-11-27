@@ -16,12 +16,17 @@ export const BLOCKS = {
     LEAVES: 6,
     GLASS: 7,
     NOTE_BLOCK: 8,
-    PATH: 9,      // Edits Floor
-    WATER: 10,    // Edits Floor
-    TREE: 11,     // Voxel Prefab
-    ROCK: 12,     // Voxel Prefab
-    DRAGON: 13,   // Voxel Prefab
-    TNT: 14       // 5s Fuse Exploding Block (Available to all students)
+    PATH: 9,         // Edits Floor
+    WATER: 10,       // Edits Floor
+    TREE: 11,        // Voxel Prefab
+    ROCK: 12,        // Voxel Prefab
+    DRAGON: 13,      // Voxel Prefab
+    TNT: 14,         // 5s Fuse Exploding Block
+    JUMP_PAD: 15,    // High vertical launch pad
+    BOUNCE_BLOCK: 16,// Elastic rebound block
+    SPEED_STRIP: 17, // 2.2x velocity boost strip
+    SLIDE_BLOCK: 18, // Low-friction ramp sliding block
+    FIRE: 19         // Animated Minecraft-style fire block
 };
 
 export const BLOCK_COSTS = {
@@ -38,7 +43,12 @@ export const BLOCK_COSTS = {
     [BLOCKS.TREE]: 25,
     [BLOCKS.ROCK]: 20,
     [BLOCKS.DRAGON]: 50,
-    [BLOCKS.TNT]: 15
+    [BLOCKS.TNT]: 15,
+    [BLOCKS.JUMP_PAD]: 15,
+    [BLOCKS.BOUNCE_BLOCK]: 15,
+    [BLOCKS.SPEED_STRIP]: 10,
+    [BLOCKS.SLIDE_BLOCK]: 10,
+    [BLOCKS.FIRE]: 10
 };
 
 export const COIN_REWARDS = {
@@ -62,5 +72,10 @@ export const UNLOCK_THRESHOLDS = {
     [BLOCKS.TREE]: 11,
     [BLOCKS.ROCK]: 12,
     [BLOCKS.DRAGON]: 13,
-    [BLOCKS.TNT]: 0
+    [BLOCKS.TNT]: 0,
+    [BLOCKS.JUMP_PAD]: 0,
+    [BLOCKS.BOUNCE_BLOCK]: 0,
+    [BLOCKS.SPEED_STRIP]: 0,
+    [BLOCKS.SLIDE_BLOCK]: 0,
+    [BLOCKS.FIRE]: 0
 };
