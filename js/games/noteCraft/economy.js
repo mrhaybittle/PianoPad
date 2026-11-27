@@ -110,11 +110,13 @@ export function updateInventory() {
         ? ncState.localPlayer.masteredSongs.length
         : 0;
 
+   // Inside updateInventory() in js/games/noteCraft/economy.js
     const allBlocks = [
         BLOCKS.DIRT, BLOCKS.GRASS, BLOCKS.STONE, BLOCKS.LEAVES,
         BLOCKS.WOOD, BLOCKS.BRICK, BLOCKS.GLASS, BLOCKS.NOTE_BLOCK,
         BLOCKS.PATH, BLOCKS.WATER, BLOCKS.TREE, BLOCKS.ROCK, BLOCKS.DRAGON,
-        BLOCKS.TNT
+        BLOCKS.TNT, BLOCKS.JUMP_PAD, BLOCKS.BOUNCE_BLOCK, BLOCKS.SPEED_STRIP,
+        BLOCKS.SLIDE_BLOCK, BLOCKS.FIRE
     ];
 
     ncState.localPlayer.inventory = allBlocks.map(blockId => {
