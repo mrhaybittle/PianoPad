@@ -28,6 +28,13 @@ export const DECOY_CHORDS = [
     { id: 'Em7', notes: ['E', 'G', 'B', 'D'], label: 'Em7 HOLO-DECOY' }
 ];
 
+// Manual Floor Mine Chord: G7 (G + B + D + F)
+export const MINE_CHORD = {
+    id: 'G7',
+    notes: ['G', 'B', 'D', 'F'],
+    label: 'G7 FLOOR MINE'
+};
+
 // Suspended 4th Chords (Temporary 2x Sniper Zoom Optic, 8s duration / 14s cooldown)
 export const SUS4_CHORDS = [
     { id: 'Csus4', notes: ['C', 'F', 'G'],  label: 'Csus4 SNIPER 2x' },
