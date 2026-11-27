@@ -50,13 +50,24 @@ export const gameState = {
         damageFlashColor: '#f97316',
         portalFlash: 0,
         jamFlash: 0,
-        gearBannerFlash: 0
+        gearBannerFlash: 0,
+
+        // New maze pickups & upgrades
+        minesCarried: 0,
+        lastMineDeployAt: 0,
+        weaponTier: 'standard', // 'standard' | 'spread'
+        weaponUpgradeUntil: 0,
+        radarArrowUntil: 0
     },
 
     // Arena Interactive Entities
     arenaPortals: [],
     speedBoostPads: [],
     medKitNodes: [],
+    minePickups: [],
+    weaponCrateNodes: [],
+    radarPickupNodes: [],
+    activeMines: [],
     challengeNodes: [],
     activeDecoys: [],
     empWaveRings: [],
@@ -76,7 +87,7 @@ export const gameState = {
     processedHitIds: new Set(),
     processedEmpIds: new Set(),
     recentNoteBuffer: [],
-    physicallyHeldNotes: new Set(), // Tracks keys currently pressed down (cleared immediately on release)
+    physicallyHeldNotes: new Map(), // Tracks keys currently pressed down (cleared immediately on release)
     heldMoveKeys: new Set(),        // Active steering/thrust pitch classes ('C', 'C#', 'D')
     pendingActionTimer: null,
     lastChordTriggerTime: 0,
