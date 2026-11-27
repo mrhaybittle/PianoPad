@@ -3,7 +3,8 @@ import {
     TILE_SIZE,
     MAP_COLS,
     MAP_ROWS,
-    WALL_THEMES
+    WALL_THEMES,
+    MINE_CHORD
 } from './constants.js';
 import { gameState } from './state.js';
 import {
@@ -184,7 +185,7 @@ export function renderFloorNearestPlayerArrow(ctx, W, H, horizon, now) {
 
     ctx.save();
     ctx.translate(arrowX, floorY);
-    ctx.scale(1.25, 0.55); // Perspective foreshortening onto the floor plane
+    ctx.scale(1.25, 0.55);
     ctx.rotate(relAngle);
     ctx.globalAlpha = pulse;
 
@@ -218,6 +219,37 @@ export function renderFloorNearestPlayerArrow(ctx, W, H, horizon, now) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(`🧭 NEAREST: ${meters}m (${secsLeft}s)`, arrowX, floorY + 24);
+    ctx.restore();
+}
+
+function renderMineChordPrompt(ctx, W, H, now) {
+    const lp = gameState.localPlayer;
+    if (!lp.isAlive || (lp.minesCarried || 0) <= 0) return;
+
+    const notesStr = MINE_CHORD.notes.join(' + ');
+    const cooldownSecs = now < (lp.lastMineDeployAt || 0)
+        ? Math.ceil(((lp.lastMineDeployAt || 0) - now) / 1000)
+        : 0;
+    const pulse = 0.85 + 0.15 * Math.sin(now * 0.012);
+
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    ctx.strokeStyle = '#fb923c';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(W / 2 - 185, H - 96, 370, 28, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#fed7aa';
+    ctx.font = '900 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const label = cooldownSecs > 0
+        ? `💣 MINE READY (x${lp.minesCarried}) — Wait ${cooldownSecs}s • Play ${MINE_CHORD.id} (${notesStr})`
+        : `💣 DROP MINE (x${lp.minesCarried}): Play ${MINE_CHORD.id} (${notesStr})`;
+    ctx.fillText(label, W / 2, H - 82);
     ctx.restore();
 }
 
@@ -322,6 +354,7 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
         }
 
         renderFloorNearestPlayerArrow(ctx, W, H, horizon, now);
+        renderMineChordPrompt(ctx, W, H, now);
 
         ctx.strokeStyle = lp.currentGear.color;
         ctx.lineWidth = 2;
@@ -506,14 +539,14 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
             ctx.strokeStyle = '#ef4444';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.roundRect(W / 2 - 155, H - 96, 310, 30, 8);
+            ctx.roundRect(W / 2 - 155, H - 128, 310, 26, 8);
             ctx.fill();
             ctx.stroke();
 
             ctx.fillStyle = '#ffffff';
-            ctx.font = '900 11.5px sans-serif';
+            ctx.font = '900 11px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('⚠️ BLASTER JAMMED! Play 1 Note or Valid Chord', W / 2, H - 77);
+            ctx.fillText('⚠️ BLASTER JAMMED! Play 1 Note or Valid Chord', W / 2, H - 115);
             ctx.restore();
         }
     }
