@@ -7,7 +7,9 @@ import {
     setBlockAt,
     undoLastAction,
     updatePlayerPhysics,
-    updateExplosions
+    updateExplosions,
+    updateCreatures,
+    toggleLockOnTargetOrLastBuild
 } from './engine.js';
 import {
     initRender3D,
@@ -31,11 +33,13 @@ import {
 import {
     calculateRoundReward,
     updateInventory,
-    isTeacherBuilder
+    isTeacherBuilder,
+    recordChallengeNote
 } from './economy.js';
 import {
     connectNoteCraftNetwork,
     syncBlockChange,
+    syncLockUpdates,
     saveStudentWallet,
     clearRemoteBuilders,
     disconnectNoteCraftNetwork
@@ -49,6 +53,8 @@ let pointerLockHandler = null;
 let contextMenuHandler = null;
 let resizeHandler = null;
 let activeSessionToken = 0;
+
+const BRUSH_MODES = ['single', 'line', 'wall', 'fill'];
 
 function isPointInsideRect(px, py, rect) {
     if (!rect) return false;
@@ -116,11 +122,67 @@ function toggleBuildFlatMode() {
     );
 }
 
+function cycleBrushMode() {
+    const idx = BRUSH_MODES.indexOf(ncState.brushMode || 'single');
+    ncState.brushMode = BRUSH_MODES[(idx + 1) % BRUSH_MODES.length];
+    ncState.brushAnchor = null;
+    const labels = {
+        single: 'Single Block',
+        line: 'Line Span (2 clicks)',
+        wall: 'Wall Span (2 clicks)',
+        fill: 'Fill Region (2 clicks)'
+    };
+    showNoteCraftToast(`🖌️ Brush Mode: ${labels[ncState.brushMode]}`, '#38bdf8', 2200);
+}
+
+function handleToggleLockAction() {
+    const res = toggleLockOnTargetOrLastBuild();
+    if (!res) return;
+    if (res.error === 'NOT_OWNER') {
+        showNoteCraftToast(`🔒 Only ${res.ownerName} or a teacher can modify this lock!`, '#f87171', 2400);
+        return;
+    }
+    if (res.error === 'NO_TARGET_OR_BUILD') {
+        showNoteCraftToast('Aim at a block or place a creation first to lock/unlock it.', '#94a3b8', 2000);
+        return;
+    }
+    if (res.updatedLocks && res.updatedLocks.length > 0) {
+        syncLockUpdates(res.updatedLocks);
+        showNoteCraftToast(
+            res.locked
+                ? `🔒 Locked ${res.count} block(s) — only teachers can destroy!`
+                : `🔓 Unlocked ${res.count} block(s).`,
+            res.locked ? '#4ade80' : '#facc15',
+            2200
+        );
+    }
+}
+
 function handlePlaceBlockAction() {
     const res = placeSelectedBlock();
     if (!res) return;
+    if (res.anchorSet) {
+        showNoteCraftToast(
+            `📍 ${res.mode.toUpperCase()} start set at (${res.anchor.x}, ${res.anchor.y}, ${res.anchor.z}) — click end point!`,
+            '#38bdf8',
+            2400
+        );
+        return;
+    }
     if (res.error === 'INSUFFICIENT_COINS') {
         showNoteCraftToast(`Need ${res.cost} NoteCoins! Play a song or chord to earn more.`, '#f87171');
+        return;
+    }
+    if (res.error === 'CHALLENGE_LOCKED') {
+        showNoteCraftToast(
+            `🐉 Play first 8 notes of "${res.challenge.songTitle}" (${res.challenge.first8Notes.join(' ')}) to unlock!`,
+            '#facc15',
+            4000
+        );
+        return;
+    }
+    if (res.error === 'BRUSH_TOO_LARGE') {
+        showNoteCraftToast(`Span too large (${res.count} > ${res.max} blocks). Choose a smaller area.`, '#f87171', 2600);
         return;
     }
     if (res.changes && res.changes.length > 0) {
@@ -139,7 +201,12 @@ function handlePlaceBlockAction() {
 
 function handleBreakBlockAction() {
     const res = breakTargetBlock();
-    if (res && res.changes) {
+    if (!res) return;
+    if (res.error === 'LOCKED_BLOCK') {
+        showNoteCraftToast(`🔒 Locked creation by ${res.ownerName} — only a teacher can delete it!`, '#f87171', 2600);
+        return;
+    }
+    if (res.changes) {
         res.changes.forEach(c => { if (c) syncBlockChange(c); });
     }
 }
@@ -147,14 +214,14 @@ function handleBreakBlockAction() {
 function handleUndoAction() {
     const undone = undoLastAction();
     if (!undone || !undone.changes || undone.changes.length === 0) {
-        showNoteCraftToast('Nothing left to undo!', '#94a3b8', 1600);
+        showNoteCraftToast('Nothing left to undo (or blocks are locked)!', '#94a3b8', 1800);
         return;
     }
     undone.changes.forEach(c => { if (c) syncBlockChange(c); });
 
     if (undone.refundedCost > 0 && !isTeacherBuilder()) {
         saveStudentWallet(ncState.localPlayer.name);
-        showNoteCraftToast(`↩️ Undid prefab (+${undone.refundedCost} NoteCoins refunded)`, '#facc15', 1800);
+        showNoteCraftToast(`↩️ Undid build (+${undone.refundedCost} NoteCoins refunded)`, '#facc15', 1800);
     } else {
         showNoteCraftToast(`↩️ Undid last build (${undone.remaining} left in undo history)`, '#facc15', 1800);
     }
@@ -166,14 +233,12 @@ function attachInputListeners(containerEl) {
     keyDownHandler = (e) => {
         if (!ncState.active) return;
 
-        // Quit NoteCraft via [X] or [Shift + Escape]
         if (e.code === 'KeyX' || (e.code === 'Escape' && e.shiftKey)) {
             e.preventDefault();
             quitNoteCraft();
             return;
         }
 
-        // Staff Override Shortcut (Ctrl/Cmd + Shift + U)
         if (e.code === 'KeyU' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
             e.preventDefault();
             localStorage.setItem('pianopad_is_teacher', 'true');
@@ -186,14 +251,24 @@ function attachInputListeners(containerEl) {
             return;
         }
 
-        // Toggle Flat Floor vs 3D Block Mode ([T] or [Tab])
         if (e.code === 'KeyT' || e.code === 'Tab') {
             e.preventDefault();
             toggleBuildFlatMode();
             return;
         }
 
-        // Teacher Purge of Stuck Ghost Builders ([K])
+        if (e.code === 'KeyB') {
+            e.preventDefault();
+            cycleBrushMode();
+            return;
+        }
+
+        if (e.code === 'KeyL') {
+            e.preventDefault();
+            handleToggleLockAction();
+            return;
+        }
+
         if (e.code === 'KeyK' && isTeacherBuilder()) {
             e.preventDefault();
             clearRemoteBuilders();
@@ -201,7 +276,6 @@ function attachInputListeners(containerEl) {
             return;
         }
 
-        // Keyboard Numbers + Shift overrides for special prefabs & TNT
         if (e.code === 'Digit1') { e.preventDefault(); ncState.localPlayer.selectedSlot = e.shiftKey ? 8 : 0; return; }
         if (e.code === 'Digit2') { e.preventDefault(); ncState.localPlayer.selectedSlot = e.shiftKey ? 9 : 1; return; }
         if (e.code === 'Digit3') { e.preventDefault(); ncState.localPlayer.selectedSlot = 2; return; }
@@ -247,7 +321,6 @@ function attachInputListeners(containerEl) {
         const canvas = document.getElementById('notecraft-canvas');
         if (!canvas || e.target !== canvas) return;
 
-        // Check if student clicked the HUD Quit button
         const rect = canvas.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0 && ncState.quitButtonRect) {
             const scaleX = canvas.width / rect.width;
@@ -263,7 +336,6 @@ function attachInputListeners(containerEl) {
         }
 
         if (document.pointerLockElement !== canvas) { canvas.requestPointerLock?.(); return; }
-        // Left-Click builds, Right-Click breaks
         if (e.button === 0) handlePlaceBlockAction();
         else if (e.button === 2) handleBreakBlockAction();
     };
@@ -317,7 +389,16 @@ export function handleNoteCraftInput(event) {
     if (!ncState.active || !event) return;
 
     if (event.type === 'note' || event.type === 'noteOn') {
-        const noteName = String(event.noteName || event.note || '').toUpperCase();
+        const rawNote = String(event.noteName || event.note || '').toUpperCase();
+        const unlocked = recordChallengeNote(rawNote);
+        if (unlocked) {
+            showNoteCraftToast(
+                `🐉 Challenge Complete! "${unlocked.challenge.songTitle}" — ${unlocked.challenge.name} unlocked!`,
+                '#4ade80',
+                4200
+            );
+            if (!isTeacherBuilder()) saveStudentWallet(ncState.localPlayer.name);
+        }
 
         const exactMap = {
             'C4': 0, 'C#4': 8, 'DB4': 8,
@@ -329,11 +410,11 @@ export function handleNoteCraftInput(event) {
             'B4': 6, 'C5': 7
         };
 
-        let slotIdx = exactMap[noteName];
+        let slotIdx = exactMap[rawNote];
 
         if (slotIdx === undefined) {
-            const letter = noteName.replace(/[^A-G#]/g, '');
-            const octave = noteName.match(/\d+/) ? parseInt(noteName.match(/\d+/)[0]) : 4;
+            const letter = rawNote.replace(/[^A-G#]/g, '');
+            const octave = rawNote.match(/\d+/) ? parseInt(rawNote.match(/\d+/)[0]) : 4;
 
             const baseMap = {
                 'C': 0, 'C#': 8, 'D': 1, 'D#': 9, 'E': 2,
@@ -395,6 +476,7 @@ function gameLoop(now, sessionToken) {
     updateExplosions(now, (change) => {
         if (change) syncBlockChange(change);
     });
+    updateCreatures(dt, now);
     updateAvatarSprites(getThreeScene(), dt);
     render3DFrame(now);
     renderHudFrame(now);
@@ -409,8 +491,12 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
     ncState.bridge = bridge || null;
     ncState.worldId = worldId;
     ncState.world.undoStack = [];
+    ncState.world.locks = {};
     ncState.activeExplosions = [];
+    ncState.creatures = [];
     ncState.flatMode = false;
+    ncState.brushMode = 'single';
+    ncState.brushAnchor = null;
     ncState.quitButtonRect = null;
 
     ncState.isTeacher = Boolean(
@@ -450,6 +536,7 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
     lp.id = playerId;
     lp.name = playerName;
     lp.avatar = playerAvatar;
+    lp.recentNotes = [];
     lp.x = 12; lp.y = 3; lp.z = 2;
     lp.yaw = 0; lp.pitch = -0.15;
     lp.velocity = { x: 0, y: 0, z: 0 };
@@ -470,9 +557,9 @@ export async function startNoteCraft(bridge, worldId = 'school_campus_main') {
         lp.isFlying = true;
         lp.flightTimer = 3600;
         updateInventory();
-        showNoteCraftToast('👑 Teacher Creative Mode: Left-Click Build • [T] Flat/Block • [X] Quit', '#4ade80', 4200);
+        showNoteCraftToast('👑 Teacher Creative Mode: [B] Brush • [L] Lock • [X] Quit', '#4ade80', 4200);
     } else {
-        showNoteCraftToast('Left-Click Build • Right-Click Break • [9] TNT • [X] or QUIT to Exit', '#38bdf8', 3600);
+        showNoteCraftToast('Left-Click Build • [B] Brush Span • [L] Lock • [X] Quit', '#38bdf8', 3600);
     }
 
     ncState.lastFrameTime = performance.now();
@@ -483,6 +570,8 @@ export function stopNoteCraft(notifyBridge = true) {
     activeSessionToken++;
     ncState.active = false;
     ncState.activeExplosions = [];
+    ncState.creatures = [];
+    ncState.brushAnchor = null;
     if (ncState.animFrameId !== null) { cancelAnimationFrame(ncState.animFrameId); ncState.animFrameId = null; }
     if (document.pointerLockElement) document.exitPointerLock?.();
     detachInputListeners();
