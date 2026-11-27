@@ -37,7 +37,6 @@ import { loadSongChallenges, getRandomChallenge } from './laserTag/songChallenge
 const MIDI_PITCH_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const activeComputerKeys = new Set();
 
-// Smooth velocity state for fluid turning & movement
 let currentTurnVel = 0;
 let currentMoveSpeed = 0;
 
@@ -95,7 +94,6 @@ function attachUniversalReleaseListeners() {
     if (gameState.autoReleaseListenersAttached) return;
     gameState.autoReleaseListenersAttached = true;
 
-    // 1. Computer Keyboard Release (stops movement only when that specific key is lifted)
     window.addEventListener('keydown', (e) => {
         if (gameState.gamePhase !== 'playing' && gameState.gamePhase !== 'spectating') return;
         if (!e.repeat && e.code) {
@@ -114,12 +112,10 @@ function attachUniversalReleaseListeners() {
         if (e.code) activeComputerKeys.delete(e.code);
         const k = (e.key || '').toLowerCase();
 
-        // Release C, C#, or D when its mapped computer key is lifted
         if (k === 'z' || k === 'q' || k === ',') handleLaserTagRelease('C');
         if (k === 's' || k === '2' || k === 'l') handleLaserTagRelease('C#');
         if (k === 'x' || k === 'w' || k === '.') handleLaserTagRelease('D');
 
-        // Only wipe everything if no computer keys AND no MIDI keys are held
         const map = ensureHeldNotesMap();
         let hasMidiHeld = false;
         for (const bucket of map.values()) {
@@ -132,7 +128,6 @@ function attachUniversalReleaseListeners() {
         }
     });
 
-    // 2. Mouse / Touchscreen Piano Key Release
     window.addEventListener('pointerup', () => {
         if (activeComputerKeys.size === 0) clearAllHeldMovement();
     });
@@ -148,12 +143,10 @@ function attachUniversalReleaseListeners() {
         }
     });
 
-    // 3. Window Focus Lost Safety Net
     window.addEventListener('blur', () => {
         clearAllHeldMovement();
     });
 
-    // 4. Physical MIDI Piano Note-On / Note-Off Listener
     if (navigator.requestMIDIAccess) {
         navigator.requestMIDIAccess().then((midiAccess) => {
             const bindMidiInput = (input) => {
@@ -793,6 +786,10 @@ export function stopLaserTag() {
     gameState.killFeedEntries = [];
     gameState.activeDecoys = [];
     gameState.empWaveRings = [];
+    gameState.activeMines = [];
+    gameState.minePickups = [];
+    gameState.weaponCrateNodes = [];
+    gameState.radarPickupNodes = [];
     gameState.simulatedBots = {};
     gameState.challengeNodes = [];
     gameState.spectatorSelectedTarget = null;
@@ -888,13 +885,17 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     lp.portalFlash = 0;
     lp.jamFlash = 0;
     lp.gearBannerFlash = 1.0;
+    lp.minesCarried = 0;
+    lp.lastMineDeployAt = 0;
+    lp.weaponTier = 'standard';
+    lp.weaponUpgradeUntil = 0;
+    lp.radarArrowUntil = 0;
 
     currentTurnVel = 0;
     currentMoveSpeed = 0;
 
     gameState.activeBeams = [];
 
-    // Spawn 3 random musical challenge nodes around the arena
     gameState.challengeNodes = [];
     for (let i = 0; i < 3; i++) {
         const cSpawn = getSafeSpawnPoint();
@@ -928,7 +929,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = `🛸 3D LASER TAG! Shield: [${lp.noteTag}] | Hold C#: Move • Hold C/D: Turn • sus4: Sniper 2x • Bdim7: EMP • Dm7/Em7: Decoy!`;
+        statusEl.textContent = `🛸 3D LASER TAG! Find 💣 Mines, 🔫 3X Laser & 🧭 Radar in the maze!`;
     }
 
     gameState.animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
@@ -983,7 +984,6 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
             const myServerRecord = gameState.remotePlayers[gameState.localId];
             if (!myServerRecord || !lp.isAlive) return;
 
-            // Check for incoming Bdim7 EMP Pulse
             const empEvt = myServerRecord.lastEmpEvent;
             if (empEvt && empEvt.id && !gameState.processedEmpIds.has(empEvt.id)) {
                 gameState.processedEmpIds.add(empEvt.id);
@@ -995,7 +995,6 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
                 }
             }
 
-            // Spectator Callout Alert
             const alertEvt = myServerRecord.spectatorAlert;
             if (alertEvt && alertEvt.id && !gameState.processedAlertIds.has(alertEvt.id)) {
                 gameState.processedAlertIds.add(alertEvt.id);
@@ -1007,7 +1006,6 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
                 playRadioAlertChime();
             }
 
-            // Incoming Laser Hit Event
             const hitEvt = myServerRecord.lastHitEvent;
             if (hitEvt && hitEvt.id && !gameState.processedHitIds.has(hitEvt.id)) {
                 gameState.processedHitIds.add(hitEvt.id);
@@ -1118,7 +1116,6 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
     }
 }
 
-// Diminished 7th EMP Shockwave (B + D + F + G#)
 async function triggerEmpShockwave(bridge) {
     const lp = gameState.localPlayer;
     const now = performance.now();
@@ -1158,7 +1155,6 @@ async function triggerEmpShockwave(bridge) {
     }
 }
 
-// Musical Echo Holo-Decoy (Dm7 or Em7)
 function spawnHoloDecoy(chordLabel, bridge) {
     const lp = gameState.localPlayer;
     const now = performance.now();
@@ -1198,8 +1194,9 @@ async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
     lp.muzzleFlash = 1.0;
 
     const isSniper = now < (lp.sniperUntil || 0);
+    const hasSpread = lp.weaponTier === 'spread' && now < (lp.weaponUpgradeUntil || 0);
     const FOV = isSniper ? (Math.PI / 6) : (Math.PI / 3);
-    const maxCone = isOvercharge ? FOV * 0.85 : FOV * 0.62;
+    const maxCone = isOvercharge ? FOV * 0.85 : (hasSpread ? FOV * 0.78 : FOV * 0.62);
     let bestTarget = null;
     let bestDist = isSniper ? 2600 : 1400;
 
@@ -1252,14 +1249,17 @@ async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
         lp.hitMarkerElim = eliminated;
         playHitMarkerTick();
 
-        gameState.activeBeams.push({
-            endX: targetScreenX,
-            endY: targetScreenY,
-            color: isCombo2x ? 'rainbow' : (isOvercharge ? '#facc15' : (eliminated ? '#ef4444' : '#f97316')),
-            glow: isOvercharge ? '#fef08a' : (eliminated ? '#dc2626' : '#fb923c'),
-            widthMult: (isOvercharge || isCombo2x) ? 2.2 : 1.0,
-            life: 1.0
-        });
+        const spreadOffsets = hasSpread ? [-70, 0, 70] : [0];
+        for (const offsetX of spreadOffsets) {
+            gameState.activeBeams.push({
+                endX: Math.max(0, Math.min(W, targetScreenX + offsetX)),
+                endY: targetScreenY,
+                color: isCombo2x ? 'rainbow' : (hasSpread ? '#38bdf8' : (isOvercharge ? '#facc15' : (eliminated ? '#ef4444' : '#f97316'))),
+                glow: hasSpread ? '#bae6fd' : (isOvercharge ? '#fef08a' : (eliminated ? '#dc2626' : '#fb923c')),
+                widthMult: (isOvercharge || isCombo2x || hasSpread) ? 1.8 : 1.0,
+                life: 1.0
+            });
+        }
 
         let basePts = eliminated ? 150 : 50;
         if (isCombo2x) basePts *= 2;
@@ -1313,12 +1313,11 @@ async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
     } else {
         lp.comboCount = 0;
 
-        // Ricochet Mirror Walls in the Cobalt SE Zone (wallType === 5 reflects once at 90°)
         const wallHit = castRay(lp.angle);
         const impactDist = Math.max(16, wallHit.dist - 8);
         const impactX = lp.x + Math.cos(lp.angle) * impactDist;
         const impactY = lp.y + Math.sin(lp.angle) * impactDist;
-        const sparkColor = isOvercharge ? '#facc15' : (lp.suitColor || '#38bdf8');
+        const sparkColor = isOvercharge ? '#facc15' : (hasSpread ? '#38bdf8' : (lp.suitColor || '#38bdf8'));
         spawn3DExplosion(impactX, impactY, sparkColor, isOvercharge ? 16 : 8);
 
         if (wallHit.wallType === 5) {
@@ -1349,14 +1348,17 @@ async function fireLaserAttack(pitchClass, bridge, isOvercharge = false) {
             }
         }
 
-        gameState.activeBeams.push({
-            endX: W * 0.5,
-            endY: H * 0.5,
-            color: sparkColor,
-            glow: isOvercharge ? '#f59e0b' : '#0284c7',
-            widthMult: isOvercharge ? 2.2 : 1.0,
-            life: 1.0
-        });
+        const beamOffsets = hasSpread ? [-75, 0, 75] : [0];
+        for (const offsetX of beamOffsets) {
+            gameState.activeBeams.push({
+                endX: Math.max(0, Math.min(W, W * 0.5 + offsetX)),
+                endY: H * 0.5,
+                color: sparkColor,
+                glow: isOvercharge ? '#f59e0b' : '#0284c7',
+                widthMult: (isOvercharge || hasSpread) ? 1.8 : 1.0,
+                life: 1.0
+            });
+        }
     }
 }
 
@@ -1404,7 +1406,6 @@ async function executeSingleNoteAction(pitchClass, bridge) {
         }
     }
 
-    // C, D, and C# engage immediately in handleLaserTagInput for zero-latency movement
     if (pitchClass === 'C' || pitchClass === 'D' || pitchClass === 'C#') {
         return;
     }
@@ -1416,7 +1417,6 @@ export function handleLaserTagRelease(noteStr) {
     const { pitchClass } = parseNoteDetails(noteStr);
     if (!pitchClass) return;
 
-    // Release all held instances of this pitch class when key is let go
     unmarkPitchHeld(pitchClass);
 
     if (pitchClass === 'C' || pitchClass === 'D') {
@@ -1447,11 +1447,8 @@ export async function handleLaserTagInput(noteStr, bridge) {
     if (!pitchClass) return;
 
     const alreadyHeld = isPitchStillPhysicallyHeld(pitchClass);
-
-    // Keep pitch marked as held until handleLaserTagRelease is called
     markPitchHeld(pitchClass, noteStr);
 
-    // Instant, continuous movement engagement for C (Turn Left), D (Turn Right), and C# (Move Forward)
     if (pitchClass === 'C#') {
         lp.isMovingForward = true;
         return;
@@ -1468,7 +1465,6 @@ export async function handleLaserTagInput(noteStr, bridge) {
         }
     }
 
-    // Ignore keyboard auto-repeat events while movement key is already held down
     if (alreadyHeld && (pitchClass === 'C' || pitchClass === 'D')) {
         return;
     }
@@ -1478,7 +1474,6 @@ export async function handleLaserTagInput(noteStr, bridge) {
 
     const distinctPitches = new Set(gameState.recentNoteBuffer.map(item => item.pitchClass));
 
-    // Quick-Turn 180° Snap (Octave C Jump: e.g. C2 + C4 played together)
     if (distinctPitches.size === 1 && distinctPitches.has('C') && gameState.recentNoteBuffer.length >= 2) {
         const distinctOctaves = new Set(gameState.recentNoteBuffer.map(item => item.octave));
         if (distinctOctaves.size >= 2) {
@@ -1504,7 +1499,6 @@ export async function handleLaserTagInput(noteStr, bridge) {
         }
     }
 
-    // Diminished 7th EMP Pulse (B + D + F + G#)
     if (matchEmpChord(distinctPitches)) {
         if (gameState.pendingActionTimer !== null) {
             clearTimeout(gameState.pendingActionTimer);
@@ -1525,7 +1519,6 @@ export async function handleLaserTagInput(noteStr, bridge) {
         return;
     }
 
-    // Musical Echo Holo-Decoys (Dm7 or Em7)
     const matchedDecoy = matchDecoyChord(distinctPitches);
     if (matchedDecoy) {
         if (gameState.pendingActionTimer !== null) {
@@ -1548,7 +1541,6 @@ export async function handleLaserTagInput(noteStr, bridge) {
         return;
     }
 
-    // 4-Note Overcharge Shockwave (Cmaj7 or Fmaj7)
     const matchedOvercharge = matchOverchargeChord(distinctPitches);
     if (matchedOvercharge) {
         if (gameState.pendingActionTimer !== null) {
@@ -1578,7 +1570,6 @@ export async function handleLaserTagInput(noteStr, bridge) {
         return;
     }
 
-    // Suspended 4th Chords -> Temporary 2x Sniper Scope (8s active, 14s cooldown)
     const matchedSus4 = matchSus4Chord(distinctPitches);
     if (matchedSus4) {
         if (gameState.pendingActionTimer !== null) clearTimeout(gameState.pendingActionTimer);
@@ -1620,7 +1611,6 @@ export async function handleLaserTagInput(noteStr, bridge) {
         return;
     }
 
-    // Check 3-note White-Key Diatonic Triads for Speed Gears
     const matchedGear = matchDiatonicTriad(distinctPitches);
     if (matchedGear) {
         if (gameState.pendingActionTimer !== null) clearTimeout(gameState.pendingActionTimer);
@@ -1649,7 +1639,6 @@ export async function handleLaserTagInput(noteStr, bridge) {
         return;
     }
 
-    // Anti-Spam Protection
     if (distinctPitches.size >= 2) {
         const CHORD_CANDIDATE_KEYS = new Set(['C', 'D', 'E', 'F', 'G', 'G#', 'A', 'B']);
         const allValid = Array.from(distinctPitches).every(n => CHORD_CANDIDATE_KEYS.has(n));
@@ -1678,7 +1667,6 @@ export async function handleLaserTagInput(noteStr, bridge) {
         return;
     }
 
-    // If C or D was pressed alone, movement is already active — no need to schedule a delayed shot
     if (pitchClass === 'C' || pitchClass === 'D') {
         return;
     }
@@ -1720,7 +1708,6 @@ function gameLoop(now, bridge) {
         updateSimulatedBots(dt);
     }
 
-    // Update running Holo-Decoys
     for (let i = gameState.activeDecoys.length - 1; i >= 0; i--) {
         const dec = gameState.activeDecoys[i];
         if (now >= dec.expiresAt) {
@@ -1746,7 +1733,10 @@ function gameLoop(now, bridge) {
 
     const lp = gameState.localPlayer;
     if (lp.isAlive) {
-        // Continuous Hold-to-Turn until key is released
+        if (now >= (lp.weaponUpgradeUntil || 0)) {
+            lp.weaponTier = 'standard';
+        }
+
         const leftHeld = isPitchStillPhysicallyHeld('C');
         const rightHeld = isPitchStillPhysicallyHeld('D');
 
@@ -1760,7 +1750,6 @@ function gameLoop(now, bridge) {
             currentTurnVel = 0;
         }
 
-        // King of the Emerald Hub (+5 points per second inside central hub)
         if (isInsideEmeraldHub(lp.x, lp.y)) {
             lp.hubScoreTimer += dt;
             if (lp.hubScoreTimer >= 1.0) {
@@ -1771,7 +1760,6 @@ function gameLoop(now, bridge) {
             lp.hubScoreTimer = 0;
         }
 
-        // Continuous Hold-to-Move until key is released
         const forwardHeld = isPitchStillPhysicallyHeld('C#');
         lp.isMovingForward = forwardHeld;
 
@@ -1800,11 +1788,98 @@ function gameLoop(now, bridge) {
             if (ARENA_MAP[rowY] && ARENA_MAP[rowY][curCol] === 0) {
                 lp.y += dy;
             }
+
+            // Auto-drop carried floor mines behind the player as they move
+            if ((lp.minesCarried || 0) > 0 && (now - (lp.lastMineDeployAt || 0)) > 1100) {
+                lp.minesCarried -= 1;
+                lp.lastMineDeployAt = now;
+                gameState.activeMines.push({
+                    id: `mine_${gameState.localId}_${now}`,
+                    ownerId: gameState.localId,
+                    x: lp.x - Math.cos(lp.angle) * 20,
+                    y: lp.y - Math.sin(lp.angle) * 20,
+                    armedAt: now + 600
+                });
+                playGearShiftSound(0.4);
+            }
         } else {
             currentMoveSpeed = 0;
         }
 
-        // Speed Boost Pads Pickup
+        // Collect Mine Pickups
+        for (const mp of gameState.minePickups) {
+            if (now >= mp.respawnAt && (lp.minesCarried || 0) < 3 && Math.hypot(lp.x - mp.x, lp.y - mp.y) < 34) {
+                mp.respawnAt = now + 16000;
+                lp.minesCarried = (lp.minesCarried || 0) + 2;
+                playGearShiftSound(1.2);
+                spawn3DExplosion(mp.x, mp.y, '#fb923c', 14);
+                const statusEl = document.getElementById('status');
+                if (statusEl) statusEl.textContent = `💣 PICKED UP +2 MINES (${lp.minesCarried} carried)! Move to drop them on the floor!`;
+            }
+        }
+
+        // Collect Upgraded 3X Laser Crates
+        for (const crate of gameState.weaponCrateNodes) {
+            if (now >= crate.respawnAt && Math.hypot(lp.x - crate.x, lp.y - crate.y) < 34) {
+                crate.respawnAt = now + 20000;
+                lp.weaponTier = 'spread';
+                lp.weaponUpgradeUntil = now + 10000;
+                playOverchargeBlastSound();
+                spawn3DExplosion(crate.x, crate.y, '#facc15', 18);
+                const statusEl = document.getElementById('status');
+                if (statusEl) statusEl.textContent = `🔫 3X TRIPLE LASER UNLOCKED for 10s!`;
+            }
+        }
+
+        // Collect Floor Radar Arrow Pickups
+        for (const rp of gameState.radarPickupNodes) {
+            if (now >= rp.respawnAt && Math.hypot(lp.x - rp.x, lp.y - rp.y) < 34) {
+                rp.respawnAt = now + 18000;
+                lp.radarArrowUntil = now + 12000;
+                playRadioAlertChime();
+                spawn3DExplosion(rp.x, rp.y, '#38bdf8', 16);
+                const statusEl = document.getElementById('status');
+                if (statusEl) statusEl.textContent = `🧭 FLOOR RADAR ACTIVE for 12s! Arrow points to nearest player!`;
+            }
+        }
+
+        // Check Armed Mine Detonation against opponents/bots
+        for (let i = gameState.activeMines.length - 1; i >= 0; i--) {
+            const mine = gameState.activeMines[i];
+            if (mine.ownerId !== gameState.localId || now < mine.armedAt) continue;
+
+            for (const [id, opp] of Object.entries(gameState.remotePlayers)) {
+                if (id === gameState.localId || !isPlayerActiveInRoom(opp) || opp.isInvulnerable) continue;
+                if (Math.hypot(opp.x - mine.x, opp.y - mine.y) < 42) {
+                    gameState.activeMines.splice(i, 1);
+                    lp.score += 100;
+                    lp.hitMarkerUntil = now + 280;
+                    playExplosionSound();
+                    spawn3DExplosion(mine.x, mine.y, '#ef4444', 30);
+
+                    const hitEventId = `mine_${gameState.localId}_${Date.now()}`;
+                    const state = bridge && bridge.getState ? bridge.getState() : {};
+                    import("https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js").then(({ update }) => {
+                        const basePath = `pianopad_tournaments/${gameState.activeRoomCode}/lasertag`;
+                        update(window.firebaseRef(window.firebaseDb, `${basePath}/${id}`), {
+                            lastHitEvent: {
+                                id: hitEventId,
+                                byId: gameState.localId,
+                                byName: state.sessionStudentName || 'Opponent',
+                                pitch: '💣MINE',
+                                eliminated: false,
+                                timestamp: Date.now()
+                            }
+                        }).catch(() => {});
+                    }).catch(() => {});
+
+                    const statusEl = document.getElementById('status');
+                    if (statusEl) statusEl.textContent = `💣 FLOOR MINE DETONATED ON ${opp.name || 'Opponent'}! (+100 pts)`;
+                    break;
+                }
+            }
+        }
+
         for (const pad of gameState.speedBoostPads) {
             if (Math.hypot(lp.x - pad.x, lp.y - pad.y) < 34 && now >= lp.boostUntil - 1200) {
                 lp.boostUntil = now + 2200;
@@ -1814,7 +1889,6 @@ function gameLoop(now, bridge) {
             }
         }
 
-        // Floating Med-Kit Pickup
         for (const med of gameState.medKitNodes) {
             if (now >= med.respawnAt && lp.lives < 3 && Math.hypot(lp.x - med.x, lp.y - med.y) < 34) {
                 med.respawnAt = now + 18000;
@@ -1827,7 +1901,6 @@ function gameLoop(now, bridge) {
             }
         }
 
-        // Musical Challenge Beacons & Proximity
         lp.nearChallengeNode = null;
         if (gameState.challengeNodes) {
             for (const node of gameState.challengeNodes) {
@@ -1854,7 +1927,6 @@ function gameLoop(now, bridge) {
             }
         }
 
-        // Quantum Portal Teleportation
         if (gameState.arenaPortals.length === 2 && now >= lp.portalCooldownUntil) {
             for (let pIdx = 0; pIdx < 2; pIdx++) {
                 const p = gameState.arenaPortals[pIdx];
