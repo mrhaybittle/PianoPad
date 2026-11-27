@@ -228,12 +228,12 @@ export function buildRugbyMarkup() {
       #erc-key-legend {
         position: absolute; bottom: 8px; left: 10px; z-index: 20; display: none; pointer-events: none;
         border-radius: 10px; background: rgba(2, 6, 23, 0.88); border: 1px solid rgba(255, 255, 255, 0.15);
-        padding: 6px 10px; font-size: 10.5px; max-width: calc(100% - 210px);
+        padding: 6px 10px; font-size: 10.5px; max-width: calc(100% - 340px);
       }
       #erc-piano-strip {
         position: absolute; bottom: 8px; right: 10px; z-index: 20; display: none;
         border-radius: 10px; background: rgba(2, 6, 23, 0.9); border: 1px solid rgba(255, 255, 255, 0.15);
-        padding: 5px; gap: 4px;
+        padding: 5px; gap: 4px; align-items: center;
       }
       #erc-piano-strip .piano-key-btn {
         width: 30px; height: 38px; border-radius: 6px; background: #ffffff; color: #020617;
@@ -241,6 +241,13 @@ export function buildRugbyMarkup() {
         display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; cursor: pointer;
       }
       #erc-piano-strip .piano-key-btn.active-note { background: #fde047; transform: scale(0.94); }
+      #erc-piano-strip .kick-strip-btn {
+        height: 38px; border-radius: 6px; padding: 0 7px;
+        border: 1px solid rgba(255,255,255,0.25); border-bottom: 3px solid rgba(2,6,23,0.7);
+        font-weight: 800; font-size: 10px; text-transform: uppercase;
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+      }
+      #erc-piano-strip .kick-strip-btn.active-note { filter: brightness(1.25); transform: scale(0.94); }
       #erc-coin-toss-bar {
         position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 25;
         display: none; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px;
@@ -403,6 +410,9 @@ export function buildRugbyMarkup() {
       <button type="button" data-note="E" class="piano-key-btn font-sports">E</button>
       <button type="button" data-note="F" class="piano-key-btn font-sports">F</button>
       <button type="button" data-note="G" class="piano-key-btn font-sports">G</button>
+      <button type="button" data-kick="bomb" class="kick-strip-btn font-sports" style="background:rgba(245,158,11,0.28); color:#fde68a;">🏉 Bomb</button>
+      <button type="button" data-kick="grubber" class="kick-strip-btn font-sports" style="background:rgba(14,165,233,0.28); color:#bae6fd;">💨 Grub</button>
+      <button type="button" data-kick="chip" class="kick-strip-btn font-sports" style="background:rgba(34,197,94,0.28); color:#bbf7d0;">🎯 Chip</button>
     </div>
 
     <div id="erc-start-modal">
