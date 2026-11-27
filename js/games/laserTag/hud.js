@@ -152,6 +152,75 @@ export function renderProximityThreatRadar(ctx, W, H, now) {
     ctx.restore();
 }
 
+export function renderFloorNearestPlayerArrow(ctx, W, H, horizon, now) {
+    const lp = gameState.localPlayer;
+    if (!lp.isAlive || now >= (lp.radarArrowUntil || 0)) return;
+
+    let nearestOpp = null;
+    let nearestDist = Infinity;
+
+    for (const [id, opp] of Object.entries(gameState.remotePlayers)) {
+        if (id === gameState.localId || !isPlayerActiveInRoom(opp) || opp.isInvulnerable) continue;
+        const d = Math.hypot(opp.x - lp.x, opp.y - lp.y);
+        if (d < nearestDist) {
+            nearestDist = d;
+            nearestOpp = opp;
+        }
+    }
+
+    if (!nearestOpp) return;
+
+    let relAngle = Math.atan2(nearestOpp.y - lp.y, nearestOpp.x - lp.x) - lp.angle;
+    while (relAngle > Math.PI) relAngle -= Math.PI * 2;
+    while (relAngle < -Math.PI) relAngle += Math.PI * 2;
+
+    const floorY = Math.min(H - 96, horizon + (H - horizon) * 0.56);
+    const cx = W / 2;
+    const maxSpread = Math.min(220, W * 0.34);
+    const arrowX = cx + Math.max(-maxSpread, Math.min(maxSpread, Math.sin(relAngle) * maxSpread));
+    const pulse = 0.75 + 0.25 * Math.sin(now * 0.014);
+    const secsLeft = Math.max(0, (lp.radarArrowUntil - now) / 1000).toFixed(1);
+    const meters = Math.max(1, Math.round(nearestDist / 8));
+
+    ctx.save();
+    ctx.translate(arrowX, floorY);
+    ctx.scale(1.25, 0.55); // Perspective foreshortening onto the floor plane
+    ctx.rotate(relAngle);
+    ctx.globalAlpha = pulse;
+
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = '#38bdf8';
+    ctx.strokeStyle = '#e0f2fe';
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.moveTo(28, 0);
+    ctx.lineTo(-14, -18);
+    ctx.lineTo(-6, 0);
+    ctx.lineTo(-14, 18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.82)';
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(arrowX - 78, floorY + 14, 156, 20, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#bae6fd';
+    ctx.font = '900 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`🧭 NEAREST: ${meters}m (${secsLeft}s)`, arrowX, floorY + 24);
+    ctx.restore();
+}
+
 function renderSniperScopeOverlay(ctx, W, H, now) {
     const lp = gameState.localPlayer;
     const cx = W / 2;
@@ -161,7 +230,6 @@ function renderSniperScopeOverlay(ctx, W, H, now) {
 
     ctx.save();
 
-    // 1. Darkened Vignette Outside Optic Lens
     const grad = ctx.createRadialGradient(cx, cy, scopeRadius * 0.78, cx, cy, Math.max(W, H) * 0.72);
     grad.addColorStop(0, 'rgba(2, 6, 23, 0)');
     grad.addColorStop(0.55, 'rgba(2, 6, 23, 0.72)');
@@ -169,7 +237,6 @@ function renderSniperScopeOverlay(ctx, W, H, now) {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
-    // 2. Outer Lens Ring & Rangefinder Hairlines
     ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
@@ -185,7 +252,6 @@ function renderSniperScopeOverlay(ctx, W, H, now) {
     ctx.lineTo(cx, cy + scopeRadius);
     ctx.stroke();
 
-    // Mil-Dot Range Ticks
     for (let step = 1; step <= 4; step++) {
         const offset = (scopeRadius / 5) * step;
         const tick = step % 2 === 0 ? 7 : 4;
@@ -197,7 +263,6 @@ function renderSniperScopeOverlay(ctx, W, H, now) {
         ctx.stroke();
     }
 
-    // Center Precision Diamond
     ctx.strokeStyle = '#facc15';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
@@ -208,7 +273,6 @@ function renderSniperScopeOverlay(ctx, W, H, now) {
     ctx.closePath();
     ctx.stroke();
 
-    // 3. Live Laser Rangefinder Distance & Target Lock Check
     const wallHit = castRay(lp.angle);
     let rangeMeters = Math.round(wallHit.dist / 8);
     let lockedTarget = null;
@@ -242,7 +306,7 @@ function renderSniperScopeOverlay(ctx, W, H, now) {
     ctx.restore();
 }
 
-export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoosted) {
+export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoosted, horizon = H * 0.52) {
     const lp = gameState.localPlayer;
 
     if (lp.isAlive) {
@@ -251,13 +315,14 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
 
         const localRespawning = now < lp.invulnerableUntil;
         const isEmpScrambled = now < lp.empScrambledUntil;
+        const hasSpread = lp.weaponTier === 'spread' && now < (lp.weaponUpgradeUntil || 0);
 
-        // 2x Sniper Scope Optic Overlay (when sus4 active)
         if (now < (lp.sniperUntil || 0)) {
             renderSniperScopeOverlay(ctx, W, H, now);
         }
 
-        // Center Reticle + Hit-Marker Crosshair Snap
+        renderFloorNearestPlayerArrow(ctx, W, H, horizon, now);
+
         ctx.strokeStyle = lp.currentGear.color;
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -283,7 +348,6 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
         renderCompassRibbon(ctx, W);
         renderProximityThreatRadar(ctx, W, H, now);
 
-        // Top-Left Current Sector Badge
         const inHub = isInsideEmeraldHub(lp.x, lp.y);
         const myZone = getZoneInfoForCoords(lp.x, lp.y);
         ctx.save();
@@ -301,7 +365,6 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
         ctx.fillText(inHub ? `👑 KING OF HUB (+5/s)` : `📍 ${myZone.label}`, 114, 30);
         ctx.restore();
 
-        // Kill Feed Ticker
         gameState.killFeedEntries = gameState.killFeedEntries.filter(k => now < k.expiresAt);
         if (gameState.killFeedEntries.length > 0) {
             ctx.save();
@@ -317,7 +380,6 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
             ctx.restore();
         }
 
-        // EMP Scramble Glitch Overlay
         if (isEmpScrambled) {
             ctx.save();
             ctx.fillStyle = 'rgba(168, 85, 247, 0.22)';
@@ -336,7 +398,6 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
             ctx.restore();
         }
 
-        // Incoming Spectator Alert Banner
         const alertBanner = gameState.incomingAlertBanner;
         if (alertBanner && now < alertBanner.until) {
             const pulse = 0.75 + 0.25 * Math.sin(now * 0.02);
@@ -379,7 +440,6 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
             ctx.restore();
         }
 
-        // Musical Challenge Pop-Up Prompt
         if (lp.nearChallengeNode && lp.nearChallengeNode.active) {
             const node = lp.nearChallengeNode;
             ctx.save();
@@ -406,11 +466,12 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
             ctx.restore();
         }
 
-        // Bottom-Center Chord Speed Gear & Ability Cooldowns HUD Pill
         const g = lp.currentGear;
         const boostTag = isBoosted ? ' • ⚡ 2.5x BOOST!' : '';
         const comboTag = (lp.comboCount >= 2 && now < lp.comboExpiresAt) ? ' • 🌈 2x COMBO!' : '';
-        const throttleText = activelyMoving ? ` • 🟢 C# THRUST${boostTag}${comboTag}` : ` • ⚪ HOLD C#${boostTag}${comboTag}`;
+        const wpnTag = hasSpread ? ` • 🔫 3X LASER (${Math.ceil((lp.weaponUpgradeUntil - now) / 1000)}s)` : '';
+        const mineTag = ` • 💣x${lp.minesCarried || 0}`;
+        const throttleText = activelyMoving ? ` • 🟢 C# THRUST${boostTag}${comboTag}${wpnTag}${mineTag}` : ` • ⚪ HOLD C#${boostTag}${comboTag}${wpnTag}${mineTag}`;
 
         const snpStr = now < (lp.sniperUntil || 0)
             ? `Sniper:${Math.ceil((lp.sniperUntil - now) / 1000)}s`
@@ -424,12 +485,12 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
         ctx.strokeStyle = isBoosted ? '#22c55e' : g.color;
         ctx.lineWidth = (lp.gearBannerFlash > 0 || isBoosted) ? 3 : 1.8;
         ctx.beginPath();
-        ctx.roundRect(W / 2 - 250, H - 56, 500, 38, 8);
+        ctx.roundRect(W / 2 - 260, H - 56, 520, 38, 8);
         ctx.fill();
         ctx.stroke();
 
         ctx.fillStyle = isBoosted ? '#22c55e' : g.color;
-        ctx.font = '900 11.5px sans-serif';
+        ctx.font = '900 11px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(`GEAR: ${g.label}${throttleText}`, W / 2, H - 40);
 
@@ -479,7 +540,6 @@ export function renderFirstPersonHud(ctx, W, H, dt, now, activelyMoving, isBoost
 export function renderMinimapAndTopHud(ctx, W, H, now, activePlayers) {
     const lp = gameState.localPlayer;
 
-    // Bottom-Left Color & Shape Coded Minimap Overlay
     if (lp.isAlive) {
         const mmSize = 162;
         const mmX = 12;
@@ -509,7 +569,6 @@ export function renderMinimapAndTopHud(ctx, W, H, now, activePlayers) {
             }
         }
 
-        // Boost Pads & Med-Kits on Minimap
         ctx.fillStyle = '#22c55e';
         for (const pad of gameState.speedBoostPads) {
             ctx.fillRect(mmX + pad.x * scaleX - 2, mmY + pad.y * scaleY - 2, 4, 4);
@@ -523,7 +582,29 @@ export function renderMinimapAndTopHud(ctx, W, H, now, activePlayers) {
             }
         }
 
-        // Challenge Nodes on Minimap
+        ctx.fillStyle = '#fb923c';
+        for (const mp of gameState.minePickups) {
+            if (now >= mp.respawnAt) {
+                ctx.fillRect(mmX + mp.x * scaleX - 2, mmY + mp.y * scaleY - 2, 4, 4);
+            }
+        }
+
+        ctx.fillStyle = '#facc15';
+        for (const crate of gameState.weaponCrateNodes) {
+            if (now >= crate.respawnAt) {
+                ctx.fillRect(mmX + crate.x * scaleX - 2.5, mmY + crate.y * scaleY - 2.5, 5, 5);
+            }
+        }
+
+        ctx.fillStyle = '#38bdf8';
+        for (const rp of gameState.radarPickupNodes) {
+            if (now >= rp.respawnAt) {
+                ctx.beginPath();
+                ctx.arc(mmX + rp.x * scaleX, mmY + rp.y * scaleY, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
         if (gameState.challengeNodes) {
             ctx.fillStyle = '#a855f7';
             ctx.textAlign = 'center';
@@ -536,7 +617,6 @@ export function renderMinimapAndTopHud(ctx, W, H, now, activePlayers) {
             }
         }
 
-        // Pulsing Portals on Minimap
         const pPulse = (Math.sin(now * 0.01) + 1) * 0.5;
         for (const portal of gameState.arenaPortals) {
             const px = mmX + portal.x * scaleX;
@@ -592,7 +672,6 @@ export function renderMinimapAndTopHud(ctx, W, H, now, activePlayers) {
             ctx.restore();
         }
 
-        // Pulsing Bright Yellow Radar Beacon for Local Player
         const lx = mmX + lp.x * scaleX;
         const ly = mmY + lp.y * scaleY;
         const pulseWave = (Math.sin(now * 0.008) + 1) * 0.5;
@@ -626,7 +705,6 @@ export function renderMinimapAndTopHud(ctx, W, H, now, activePlayers) {
         ctx.restore();
     }
 
-    // Top-Right HUD
     const aliveCount = Math.max(1, activePlayers.length);
     const heartsDisplay = '❤️'.repeat(lp.lives) + '🖤'.repeat(Math.max(0, 3 - lp.lives));
 
@@ -883,4 +961,3 @@ export function renderMvpPodiumOverlay(ctx, W, H) {
     ctx.fillText('Press "test" to spawn another 50-bot wave or Exit to return to menu', cx, cy + 104);
     ctx.restore();
 }
-
