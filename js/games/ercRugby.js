@@ -325,6 +325,20 @@ export function startErcRugby(bridge, autoStart = false) {
     return window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${roomCode}/rugby`);
   }
 
+  async function writeRoomPatch(roomCode, patch) {
+    const roomRef = getRugbyRoomRef(roomCode);
+    if (!roomRef) throw new Error('Invalid room ref');
+    if (window.firebaseUpdate) {
+      await window.firebaseUpdate(roomRef, patch);
+    } else if (window.firebaseGet && window.firebaseSet) {
+      const snap = await window.firebaseGet(roomRef);
+      const cur = (snap && snap.exists && snap.exists()) ? snap.val() : {};
+      await window.firebaseSet(roomRef, Object.assign({}, cur, patch));
+    } else {
+      throw new Error('window.firebaseUpdate is missing');
+    }
+  }
+
   function detachMultiplayerRoom() {
     if (state.multiplayer.unsubscribe) {
       try { state.multiplayer.unsubscribe(); } catch (e) {}
@@ -357,6 +371,30 @@ export function startErcRugby(bridge, autoStart = false) {
       codeInput.value = mp.roomCode;
     }
 
+    if (statusEl) {
+      if (mp.mode === 'solo') {
+        statusEl.style.background = 'rgba(15, 23, 42, 0.75)';
+        statusEl.style.border = '1px solid rgba(148, 163, 184, 0.35)';
+        statusEl.style.color = '#e2e8f0';
+        statusEl.style.fontWeight = '600';
+      } else if (mp.connected && (mp.mode === 'join' || mp.guestJoined)) {
+        statusEl.style.background = 'rgba(16, 185, 129, 0.24)';
+        statusEl.style.border = '1.5px solid #34d399';
+        statusEl.style.color = '#6ee7b7';
+        statusEl.style.fontWeight = '800';
+      } else if (mp.connected) {
+        statusEl.style.background = 'rgba(251, 191, 36, 0.18)';
+        statusEl.style.border = '1.5px solid #fbbf24';
+        statusEl.style.color = '#fde68a';
+        statusEl.style.fontWeight = '700';
+      } else {
+        statusEl.style.background = 'rgba(15, 23, 42, 0.75)';
+        statusEl.style.border = '1px solid rgba(148, 163, 184, 0.35)';
+        statusEl.style.color = '#cbd5e1';
+        statusEl.style.fontWeight = '600';
+      }
+    }
+
     if (mp.mode === 'solo') {
       if (teamLabel) teamLabel.textContent = 'Your Team (Home)';
       if (oppTitle) oppTitle.textContent = 'Computer Opponent (Pokie Reel)';
@@ -366,22 +404,24 @@ export function startErcRugby(bridge, autoStart = false) {
     } else if (mp.mode === 'host') {
       if (teamLabel) teamLabel.textContent = 'Player 1 Team (Home — You)';
       if (oppTitle) oppTitle.textContent = 'Player 2 Team (Away — Guest)';
-      if (oppHint) oppHint.textContent = mp.guestJoined ? 'Opposing team linked!' : 'Waiting for P2 to join...';
+      if (oppHint) oppHint.textContent = mp.guestJoined ? '🟢 P2 linked!' : 'Waiting for P2 to join...';
       if (respinBtn) respinBtn.style.display = 'none';
       if (statusEl) {
         statusEl.textContent = mp.connected
-          ? `Host Room ${mp.roomCode} • ${mp.guestJoined ? 'Opposing P2 Linked!' : 'Share code with P2'}`
+          ? (mp.guestJoined
+              ? `🟢 LINKED • Room ${mp.roomCode} (P1 Host + P2 Guest Connected!)`
+              : `🟡 HOST ACTIVE • Room ${mp.roomCode} (Waiting for P2 to join...)`)
           : `Ready to create Room ${mp.roomCode || '---'}`;
       }
     } else {
       if (teamLabel) teamLabel.textContent = 'Player 2 Team (Away — You)';
       if (oppTitle) oppTitle.textContent = 'Player 1 Team (Home — Host)';
-      if (oppHint) oppHint.textContent = 'Opposing team synced from Host';
+      if (oppHint) oppHint.textContent = mp.connected ? '🟢 Synced with Host!' : 'Opposing team synced from Host';
       if (respinBtn) respinBtn.style.display = 'none';
       if (statusEl) {
         statusEl.textContent = mp.connected
-          ? `Joined Room ${mp.roomCode} • Opposing Away View (Enters play with Host)`
-          : 'Enter Host code & click Link';
+          ? `🟢 LINKED • Room ${mp.roomCode} (Connected to Host • Controls Away Team Only)`
+          : 'Type Host Room Code to auto-link';
       }
     }
   }
@@ -438,25 +478,18 @@ export function startErcRugby(bridge, autoStart = false) {
   async function sendGuestInputToHost(inputPayload) {
     const mp = state.multiplayer;
     if (mp.mode !== 'join' || !mp.connected || !mp.roomCode) return;
-    const roomRef = getRugbyRoomRef(mp.roomCode);
-    if (!roomRef) return;
     const seq = Date.now() + Math.floor(Math.random() * 100);
     try {
-      if (window.firebaseUpdate) {
-        await window.firebaseUpdate(roomRef, {
-          guestInput: {
-            seq,
-            fromId: localPlayerId,
-            ...inputPayload
-          }
-        });
-      } else if (window.firebaseSet) {
-        await window.firebaseSet(
-          window.firebaseRef(window.firebaseDb, `pianopad_tournaments/${mp.roomCode}/rugby/guestInput`),
-          { seq, fromId: localPlayerId, ...inputPayload }
-        );
-      }
-    } catch (e) {}
+      await writeRoomPatch(mp.roomCode, {
+        guestInput: {
+          seq,
+          fromId: localPlayerId,
+          ...inputPayload
+        }
+      });
+    } catch (e) {
+      console.warn('[Scrum & Bass] Guest input send failed:', e);
+    }
   }
 
   function applyGuestInputOnHost(inp) {
@@ -505,6 +538,11 @@ export function startErcRugby(bridge, autoStart = false) {
     }
 
     if (inp.type === 'noteDown' && inp.note) {
+      if (state.playState === 'conversionKick' && !state.conversion.isHomeKick) {
+        submitConversionStrike();
+        return;
+      }
+
       const clean = normalizeMidiNote(inp.note);
       if (state.playState === 'kickoff3D' && state.kick3D.kickingSide === 'away' && !state.kick3D.aiming) {
         start3DKickAimOrCharge('kickoff', clean);
@@ -595,9 +633,6 @@ export function startErcRugby(bridge, autoStart = false) {
     if (!force && now - mp.lastSnapshotPush < 65) return;
     mp.lastSnapshotPush = now;
 
-    const roomRef = getRugbyRoomRef(mp.roomCode);
-    if (!roomRef) return;
-
     const snapshot = {
       phase: state.phase,
       playState: state.playState,
@@ -616,15 +651,20 @@ export function startErcRugby(bridge, autoStart = false) {
       kick3D: { ...state.kick3D, holdMidi: null },
       coinToss: { ...state.coinToss },
       tacklePause: { ...state.tacklePause },
+      tryCelebration: {
+        ...state.tryCelebration,
+        confetti: []
+      },
+      conversion: { ...state.conversion },
       callouts: state.callouts.slice(-4),
       updatedAt: Date.now()
     };
 
     try {
-      if (window.firebaseUpdate) {
-        await window.firebaseUpdate(roomRef, { snapshot });
-      }
-    } catch (e) {}
+      await writeRoomPatch(mp.roomCode, { snapshot });
+    } catch (e) {
+      console.warn('[Scrum & Bass] Snapshot push failed:', e);
+    }
   }
 
   function enterActiveGameplayChrome() {
@@ -665,6 +705,21 @@ export function startErcRugby(bridge, autoStart = false) {
     if (snap.kick3D) state.kick3D = Object.assign({}, state.kick3D, snap.kick3D);
     if (snap.coinToss) state.coinToss = Object.assign({}, state.coinToss, snap.coinToss);
     if (snap.tacklePause) state.tacklePause = Object.assign({}, state.tacklePause, snap.tacklePause);
+    if (snap.tryCelebration) {
+      const wasActive = state.tryCelebration.active;
+      state.tryCelebration = Object.assign({}, state.tryCelebration, snap.tryCelebration);
+      if (snap.tryCelebration.active && !wasActive) {
+        const team = snap.tryCelebration.scoringSide === 'home' ? state.homeTeam : state.awayTeam;
+        const colors = ['#ef4444', '#ffffff', '#facc15', team.primary, team.secondary, '#38bdf8'];
+        state.tryCelebration.confetti = Array.from({ length: 60 }, () => ({
+          x: Math.random(), y: -0.05 - Math.random() * 0.35,
+          vx: (Math.random() - 0.5) * 0.35, vy: 0.28 + Math.random() * 0.42,
+          size: 5 + Math.random() * 7, rot: Math.random() * Math.PI * 2,
+          vrot: (Math.random() - 0.5) * 10, color: colors[Math.floor(Math.random() * colors.length)]
+        }));
+      }
+    }
+    if (snap.conversion) state.conversion = Object.assign({}, state.conversion, snap.conversion);
     if (Array.isArray(snap.callouts)) state.callouts = snap.callouts;
 
     if (state.phase === 'coinToss' || state.phase === 'playing') {
@@ -677,9 +732,10 @@ export function startErcRugby(bridge, autoStart = false) {
   }
 
   async function linkMultiplayerRoom(mode) {
+    const statusEl = containerEl?.querySelector('#erc-mp-status');
     if (!window.firebaseDb || !window.firebaseRef || !window.firebaseSet) {
-      if (containerEl) {
-        containerEl.querySelector('#erc-mp-status').textContent = 'Firebase not ready yet — try again in a moment.';
+      if (statusEl) {
+        statusEl.textContent = 'Firebase not ready yet — check window.firebaseDb exports.';
       }
       return;
     }
@@ -699,104 +755,144 @@ export function startErcRugby(bridge, autoStart = false) {
 
     detachMultiplayerRoom();
 
-    if (mode === 'host') {
-      const code = rawCode || String(Math.floor(100 + Math.random() * 900));
-      if (state.awayTeam.id === state.homeTeam.id) {
-        state.awayTeam = TEAMS.find((t) => t.id !== state.homeTeam.id) || TEAMS[1];
-      }
-      state.multiplayer.mode = 'host';
-      state.multiplayer.role = 'home';
-      state.multiplayer.roomCode = code;
-      if (codeInput) codeInput.value = code;
-
-      const roomRef = getRugbyRoomRef(code);
-      await window.firebaseSet(roomRef, {
-        roomCode: code,
-        hostId: localPlayerId,
-        hostName: localPlayerName,
-        homeTeamId: state.homeTeam.id,
-        awayTeamId: state.awayTeam.id,
-        guestJoined: false,
-        started: false,
-        guestInput: null,
-        snapshot: null,
-        updatedAt: Date.now()
-      });
-      if (window.firebaseOnDisconnect) {
-        window.firebaseOnDisconnect(roomRef).remove();
-      }
-
-      if (window.firebaseOnValue) {
-        state.multiplayer.unsubscribe = window.firebaseOnValue(roomRef, (snap) => {
-          const val = snap.val();
-          if (!val) return;
-          state.multiplayer.connected = true;
-          state.multiplayer.guestJoined = Boolean(val.guestJoined);
-          if (val.awayTeamId) {
-            state.awayTeam = TEAMS.find((t) => t.id === val.awayTeamId) || state.awayTeam;
-          }
-          if (val.guestInput) {
-            applyGuestInputOnHost(val.guestInput);
-          }
-          updateMultiplayerUi();
-          syncTeamSelectionToUi();
-        });
-      }
-
-      state.multiplayer.connected = true;
-      updateMultiplayerUi();
-      syncTeamSelectionToUi();
-      return;
-    }
-
-    if (mode === 'join') {
-      if (!rawCode) {
-        if (containerEl) {
-          containerEl.querySelector('#erc-mp-status').textContent = 'Enter a 3–6 character Room Code first.';
+    try {
+      if (mode === 'host') {
+        const code = rawCode || String(Math.floor(100 + Math.random() * 900));
+        if (state.awayTeam.id === state.homeTeam.id) {
+          state.awayTeam = TEAMS.find((t) => t.id !== state.homeTeam.id) || TEAMS[1];
         }
+        state.multiplayer.mode = 'host';
+        state.multiplayer.role = 'home';
+        state.multiplayer.roomCode = code;
+        if (codeInput) codeInput.value = code;
+
+        const roomRef = getRugbyRoomRef(code);
+        await window.firebaseSet(roomRef, {
+          roomCode: code,
+          hostId: localPlayerId,
+          hostName: localPlayerName,
+          homeTeamId: state.homeTeam.id,
+          awayTeamId: state.awayTeam.id,
+          guestJoined: false,
+          started: false,
+          guestInput: null,
+          snapshot: null,
+          updatedAt: Date.now()
+        });
+        if (window.firebaseOnDisconnect) {
+          window.firebaseOnDisconnect(roomRef).remove();
+        }
+
+        if (window.firebaseOnValue) {
+          state.multiplayer.unsubscribe = window.firebaseOnValue(roomRef, (snap) => {
+            const val = snap.val();
+            if (!val) return;
+            const justLinked = !state.multiplayer.guestJoined && Boolean(val.guestJoined);
+            state.multiplayer.connected = true;
+            state.multiplayer.guestJoined = Boolean(val.guestJoined);
+            if (justLinked) {
+              const guestLabel = val.guestName ? val.guestName : 'Player 2';
+              addCallout(`🟢 LINKED WITH ${String(guestLabel).toUpperCase()}!`, 0.5, 0.35, '#34d399');
+            }
+            if (val.awayTeamId) {
+              state.awayTeam = TEAMS.find((t) => t.id === val.awayTeamId) || state.awayTeam;
+            }
+            if (val.guestInput) {
+              applyGuestInputOnHost(val.guestInput);
+            }
+            updateMultiplayerUi();
+            syncTeamSelectionToUi();
+          }, (err) => {
+            console.error('[Scrum & Bass] Host listener error:', err);
+            if (statusEl) statusEl.textContent = `Sync error: ${err.message || err.code}`;
+          });
+        }
+
+        state.multiplayer.connected = true;
+        updateMultiplayerUi();
+        syncTeamSelectionToUi();
         return;
       }
-      state.multiplayer.mode = 'join';
-      state.multiplayer.role = 'away';
-      state.multiplayer.roomCode = rawCode;
 
-      const roomRef = getRugbyRoomRef(rawCode);
-      if (window.firebaseUpdate) {
-        await window.firebaseUpdate(roomRef, {
-          guestJoined: true,
-          guestId: localPlayerId,
-          guestName: localPlayerName,
-          awayTeamId: state.awayTeam.id
-        });
-      }
+      if (mode === 'join') {
+        if (!rawCode) {
+          if (statusEl) {
+            statusEl.textContent = 'Enter a 3–6 character Room Code first.';
+          }
+          return;
+        }
 
-      if (window.firebaseOnValue) {
-        state.multiplayer.unsubscribe = window.firebaseOnValue(roomRef, (snap) => {
-          const val = snap.val();
-          if (!val) return;
-          state.multiplayer.connected = true;
-          state.multiplayer.hostStarted = Boolean(val.started);
-          if (val.homeTeamId) {
-            state.homeTeam = TEAMS.find((t) => t.id === val.homeTeamId) || state.homeTeam;
+        const roomRef = getRugbyRoomRef(rawCode);
+
+        if (window.firebaseGet) {
+          const checkSnap = await window.firebaseGet(roomRef);
+          const existing = checkSnap && checkSnap.val ? checkSnap.val() : null;
+          if (!existing || !existing.hostId) {
+            if (statusEl) {
+              statusEl.textContent = `Room ${rawCode} not found — make sure Host linked first.`;
+            }
+            return;
+          }
+          if (existing.homeTeamId) {
+            state.homeTeam = TEAMS.find((t) => t.id === existing.homeTeamId) || state.homeTeam;
             if (state.awayTeam.id === state.homeTeam.id) {
               state.awayTeam = TEAMS.find((t) => t.id !== state.homeTeam.id) || TEAMS[1];
             }
           }
-          if (val.snapshot) {
-            applyHostSnapshotOnGuest(val.snapshot);
-          } else if (val.started && state.phase === 'menu') {
-            state.phase = 'playing';
-            state.playState = 'waitingForPlay';
-            enterActiveGameplayChrome();
-          }
-          updateMultiplayerUi();
-          syncTeamSelectionToUi();
-        });
-      }
+        }
 
-      state.multiplayer.connected = true;
-      updateMultiplayerUi();
-      syncTeamSelectionToUi();
+        state.multiplayer.mode = 'join';
+        state.multiplayer.role = 'away';
+        state.multiplayer.roomCode = rawCode;
+
+        await writeRoomPatch(rawCode, {
+          guestJoined: true,
+          guestId: localPlayerId,
+          guestName: localPlayerName,
+          awayTeamId: state.awayTeam.id,
+          updatedAt: Date.now()
+        });
+
+        if (window.firebaseOnValue) {
+          state.multiplayer.unsubscribe = window.firebaseOnValue(roomRef, (snap) => {
+            const val = snap.val();
+            if (!val || !val.hostId) {
+              if (statusEl) statusEl.textContent = `Host closed Room ${rawCode}.`;
+              detachMultiplayerRoom();
+              return;
+            }
+            state.multiplayer.connected = true;
+            state.multiplayer.hostStarted = Boolean(val.started);
+            if (val.homeTeamId) {
+              state.homeTeam = TEAMS.find((t) => t.id === val.homeTeamId) || state.homeTeam;
+              if (state.awayTeam.id === state.homeTeam.id) {
+                state.awayTeam = TEAMS.find((t) => t.id !== state.homeTeam.id) || TEAMS[1];
+              }
+            }
+            if (val.snapshot) {
+              applyHostSnapshotOnGuest(val.snapshot);
+            } else if (val.started && state.phase === 'menu') {
+              state.phase = 'playing';
+              state.playState = 'waitingForPlay';
+              enterActiveGameplayChrome();
+            }
+            updateMultiplayerUi();
+            syncTeamSelectionToUi();
+          }, (err) => {
+            console.error('[Scrum & Bass] Guest listener error:', err);
+            if (statusEl) statusEl.textContent = `Sync error: ${err.message || err.code}`;
+          });
+        }
+
+        state.multiplayer.connected = true;
+        updateMultiplayerUi();
+        syncTeamSelectionToUi();
+      }
+    } catch (err) {
+      console.error('[Scrum & Bass] Multiplayer link failed:', err);
+      if (statusEl) {
+        statusEl.textContent = `Connection failed: ${err.message || 'Check Firebase rules/exports'}`;
+      }
     }
   }
 
@@ -1267,11 +1363,11 @@ export function startErcRugby(bridge, autoStart = false) {
     state.tryCelebration.teamName = team.name;
 
     const colors = ['#ef4444', '#ffffff', '#facc15', team.primary, team.secondary, '#38bdf8'];
-    state.tryCelebration.confetti = Array.from({ length: 95 }, (_, i) => ({
+    state.tryCelebration.confetti = Array.from({ length: 95 }, () => ({
       x: Math.random(), y: -0.05 - Math.random() * 0.35,
       vx: (Math.random() - 0.5) * 0.35, vy: 0.28 + Math.random() * 0.42,
       size: 5 + Math.random() * 7, rot: Math.random() * Math.PI * 2,
-      vrot: (Math.random() - 0.5) * 10, color: colors[i % colors.length]
+      vrot: (Math.random() - 0.5) * 10, color: colors[Math.floor(Math.random() * colors.length)]
     }));
 
     state.screenShake.timer = 0.38;
@@ -1321,7 +1417,6 @@ export function startErcRugby(bridge, autoStart = false) {
   function rollDefenderPhaseQuirks() {
     const defenders = state.possession === 'home' ? state.awayPlayers : state.homePlayers;
     defenders.forEach((d) => {
-      // Occasional slower step or softer lateral slide so players can spot and exploit gaps
       const sluggishRoll = Math.random();
       if (sluggishRoll < 0.25) {
         d.speedFactor = 0.72 + Math.random() * 0.14;
@@ -1782,14 +1877,16 @@ export function startErcRugby(bridge, autoStart = false) {
     state.awayScore = 0;
     state.matchTime = 120;
 
-    if (state.multiplayer.mode === 'host' && state.multiplayer.connected && state.multiplayer.roomCode && window.firebaseUpdate) {
+    if (state.multiplayer.mode === 'host' && state.multiplayer.connected && state.multiplayer.roomCode) {
       try {
-        await window.firebaseUpdate(getRugbyRoomRef(state.multiplayer.roomCode), {
+        await writeRoomPatch(state.multiplayer.roomCode, {
           started: true,
           homeTeamId: state.homeTeam.id,
           awayTeamId: state.awayTeam.id
         });
-      } catch (e) {}
+      } catch (e) {
+        console.warn('[Scrum & Bass] Failed to mark room started:', e);
+      }
     }
 
     triggerCoinFlip();
@@ -1979,6 +2076,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
     if (state.playState === 'conversionKick' && state.conversion.active) {
       const conv = state.conversion;
+      const p2HumanActive = state.multiplayer.mode === 'host' && state.multiplayer.guestJoined;
       let aimSteer = 0;
       if (state.moveInput.leftHeld || state.moveInput.leftTapTimer > 0) aimSteer -= 1;
       if (state.moveInput.rightHeld || state.moveInput.rightTapTimer > 0) aimSteer += 1;
@@ -1991,7 +2089,7 @@ export function startErcRugby(bridge, autoStart = false) {
         if (conv.sliderPos >= 1) { conv.sliderPos = 1; conv.sliderDir = -1; }
         else if (conv.sliderPos <= -1) { conv.sliderPos = -1; conv.sliderDir = 1; }
 
-        if (!conv.isHomeKick && Math.abs(conv.sliderPos) < 0.14 && Math.random() < dt * 9) {
+        if (!conv.isHomeKick && !p2HumanActive && Math.abs(conv.sliderPos) < 0.14 && Math.random() < dt * 9) {
           conv.aimOffset = -conv.teeX * 0.45;
           submitConversionStrike();
         }
@@ -2322,7 +2420,7 @@ export function startErcRugby(bridge, autoStart = false) {
         if (hitDist < tackleRadius) {
           if (state.possession === 'away' && !p2HumanActive && state.defSwitchChallenge.active) {
             const idealIdx = getClosestDefenderIdxToCarrier();
-            if (state.selectedDefenderIdx !== idealDefIdx) {
+            if (state.selectedDefenderIdx !== idealIdx) {
               d.missedTackleTimer = 0.45;
               d.y = Math.min(0.92, activeCarrier.y + 0.045);
               playErrorClackSound();
@@ -2357,10 +2455,12 @@ export function startErcRugby(bridge, autoStart = false) {
         : picked;
       syncTeamSelectionToUi();
       await sendGuestInputToHost({ type: 'teamSelect', teamId: state.awayTeam.id });
-      if (state.multiplayer.connected && state.multiplayer.roomCode && window.firebaseUpdate) {
+      if (state.multiplayer.connected && state.multiplayer.roomCode) {
         try {
-          await window.firebaseUpdate(getRugbyRoomRef(state.multiplayer.roomCode), { awayTeamId: state.awayTeam.id });
-        } catch (err) {}
+          await writeRoomPatch(state.multiplayer.roomCode, { awayTeamId: state.awayTeam.id });
+        } catch (err) {
+          console.warn('[Scrum & Bass] Away team sync failed:', err);
+        }
       }
       return;
     }
@@ -2370,13 +2470,15 @@ export function startErcRugby(bridge, autoStart = false) {
       state.awayTeam = TEAMS.find((t) => t.id !== state.homeTeam.id) || TEAMS[1];
     }
     syncTeamSelectionToUi();
-    if (state.multiplayer.mode === 'host' && state.multiplayer.connected && state.multiplayer.roomCode && window.firebaseUpdate) {
+    if (state.multiplayer.mode === 'host' && state.multiplayer.connected && state.multiplayer.roomCode) {
       try {
-        await window.firebaseUpdate(getRugbyRoomRef(state.multiplayer.roomCode), {
+        await writeRoomPatch(state.multiplayer.roomCode, {
           homeTeamId: state.homeTeam.id,
           awayTeamId: state.awayTeam.id
         });
-      } catch (err) {}
+      } catch (err) {
+        console.warn('[Scrum & Bass] Team sync failed:', err);
+      }
     } else {
       startPokieSpin();
     }
@@ -2388,18 +2490,44 @@ export function startErcRugby(bridge, autoStart = false) {
     if (codeInput && !codeInput.value.trim()) {
       codeInput.value = String(Math.floor(100 + Math.random() * 900));
     }
-    state.multiplayer.mode = 'host';
-    state.multiplayer.role = 'home';
-    updateMultiplayerUi();
-    syncTeamSelectionToUi();
+    linkMultiplayerRoom('host');
   });
+  let joinCodeDebounceTimer = null;
+
   containerEl.querySelector('#erc-mp-join-btn')?.addEventListener('click', () => {
     state.multiplayer.mode = 'join';
     state.multiplayer.role = 'away';
     updateMultiplayerUi();
     syncTeamSelectionToUi();
-    containerEl.querySelector('#erc-mp-code-input')?.focus();
+    const codeInput = containerEl.querySelector('#erc-mp-code-input');
+    codeInput?.focus();
+    const existingCode = (codeInput?.value || '').trim().toUpperCase();
+    if (existingCode.length >= 3) {
+      linkMultiplayerRoom('join');
+    }
   });
+
+  const mpCodeInput = containerEl.querySelector('#erc-mp-code-input');
+  mpCodeInput?.addEventListener('input', (e) => {
+    if (state.multiplayer.mode !== 'join') return;
+    const cleaned = (e.target.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    e.target.value = cleaned;
+    clearTimeout(joinCodeDebounceTimer);
+    if (cleaned.length >= 3) {
+      joinCodeDebounceTimer = setTimeout(() => {
+        linkMultiplayerRoom('join');
+      }, 300);
+    }
+  });
+
+  mpCodeInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && state.multiplayer.mode === 'join') {
+      e.preventDefault();
+      clearTimeout(joinCodeDebounceTimer);
+      linkMultiplayerRoom('join');
+    }
+  });
+
   containerEl.querySelector('#erc-mp-connect-btn')?.addEventListener('click', () => {
     const targetMode = state.multiplayer.mode === 'join' ? 'join' : 'host';
     linkMultiplayerRoom(targetMode);
