@@ -165,6 +165,48 @@ export function setupArenaFeatures() {
         y: (pt.r + 0.5) * TILE_SIZE,
         respawnAt: 0
     }));
+
+    // Maze Mine Pickups (students collect these and auto-drop armed floor mines as they move)
+    const mineCoords = [
+        { r: 12, c: 22 },
+        { r: 32, c: 12 },
+        { r: 32, c: 34 },
+        { r: 14, c: 34 }
+    ];
+    gameState.minePickups = mineCoords.map((pt, idx) => ({
+        id: `mine_pk_${idx}`,
+        x: (pt.c + 0.5) * TILE_SIZE,
+        y: (pt.r + 0.5) * TILE_SIZE,
+        respawnAt: 0
+    }));
+
+    // Upgraded Spread-Laser Weapon Crates
+    const weaponCoords = [
+        { r: 19, c: 22 },
+        { r: 26, c: 22 },
+        { r: 36, c: 35 }
+    ];
+    gameState.weaponCrateNodes = weaponCoords.map((pt, idx) => ({
+        id: `wpn_${idx}`,
+        x: (pt.c + 0.5) * TILE_SIZE,
+        y: (pt.r + 0.5) * TILE_SIZE,
+        respawnAt: 0
+    }));
+
+    // Nearest-Player Floor Radar Pickups
+    const radarCoords = [
+        { r: 22, c: 19 },
+        { r: 22, c: 26 },
+        { r: 15, c: 12 }
+    ];
+    gameState.radarPickupNodes = radarCoords.map((pt, idx) => ({
+        id: `radar_${idx}`,
+        x: (pt.c + 0.5) * TILE_SIZE,
+        y: (pt.r + 0.5) * TILE_SIZE,
+        respawnAt: 0
+    }));
+
+    gameState.activeMines = [];
 }
 
 export function generateSeededArena(roomCode) {
