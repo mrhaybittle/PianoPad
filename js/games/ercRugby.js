@@ -268,6 +268,7 @@ export function startErcRugby(bridge, autoStart = false) {
     kick3D: {
       active: false,
       aiming: false,
+      landed: false,
       kind: 'kickoff',
       kickingSide: 'home',
       receiverSide: 'away',
@@ -373,6 +374,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
     state.kick3D.active = false;
     state.kick3D.aiming = false;
+    state.kick3D.landed = false;
     state.kick3D.holdMidi = null;
     state.kick3D.aimStartedAt = 0;
     state.kick3D.aimElapsed = 0;
@@ -633,6 +635,7 @@ export function startErcRugby(bridge, autoStart = false) {
           if (kicker) {
             state.kick3D.active = true;
             state.kick3D.aiming = true;
+            state.kick3D.landed = false;
             state.kick3D.kind = inp.kickKind;
             state.kick3D.kickingSide = 'away';
             state.kick3D.receiverSide = 'home';
@@ -1092,6 +1095,7 @@ export function startErcRugby(bridge, autoStart = false) {
     const kickerObj = kickerSide === 'home' ? state.homePlayers[2] : state.awayPlayers[2];
     state.kick3D.active = true;
     state.kick3D.aiming = true;
+    state.kick3D.landed = false;
     state.kick3D.kind = 'kickoff';
     state.kick3D.kickingSide = kickerSide;
     state.kick3D.receiverSide = receiverSide;
@@ -1135,6 +1139,7 @@ export function startErcRugby(bridge, autoStart = false) {
     if (state.playState === 'kickoff3D') {
       if (!state.kick3D.active || state.kick3D.kickingSide !== 'home') return;
       state.kick3D.aiming = true;
+      state.kick3D.landed = false;
       state.kick3D.holdMidi = normalizeMidiNote(midiKey);
       state.kick3D.aimStartedAt = performance.now();
       state.kick3D.aimElapsed = 0;
@@ -1156,6 +1161,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
     state.kick3D.active = true;
     state.kick3D.aiming = true;
+    state.kick3D.landed = false;
     state.kick3D.kind = kind;
     state.kick3D.kickingSide = 'home';
     state.kick3D.receiverSide = 'away';
@@ -1187,6 +1193,7 @@ export function startErcRugby(bridge, autoStart = false) {
     const k3 = state.kick3D;
     if (!k3.active || !k3.aiming) return;
     k3.aiming = false;
+    k3.landed = false;
     k3.holdMidi = null;
     k3.aimStartedAt = 0;
     k3.aimElapsed = 0;
@@ -1541,7 +1548,7 @@ export function startErcRugby(bridge, autoStart = false) {
     });
   }
 
-  function setupSetOfSix(possession, startY, carrierIdx = 2) {
+  function setupSetOfSix(possession, startY, carrierIdx = 2, preservePositions = false) {
     resetAllBallFlightFlags();
     state.possession = possession;
     state.carrierIndex = carrierIdx;
@@ -1560,38 +1567,53 @@ export function startErcRugby(bridge, autoStart = false) {
     state.aiLastPassFrom = -1;
 
     const attackDir = possession === 'home' ? -1 : 1;
-    const onsideY = Math.min(0.86, Math.max(0.14, startY + attackDir * 0.16));
-    state.tacklePause.markY = startY;
+    const catcher = (possession === 'home' ? state.homePlayers : state.awayPlayers)[carrierIdx];
+    const anchorY = preservePositions && catcher ? catcher.y : startY;
+    const onsideY = Math.min(0.86, Math.max(0.14, anchorY + attackDir * 0.16));
+    state.tacklePause.markY = anchorY;
     state.tacklePause.onsideY = onsideY;
+
+    const prevHome = preservePositions && state.homePlayers.length === 5 ? state.homePlayers : null;
+    const prevAway = preservePositions && state.awayPlayers.length === 5 ? state.awayPlayers : null;
 
     state.homePlayers = [];
     state.awayPlayers = [];
 
     for (let i = 0; i < 5; i++) {
       if (possession === 'home') {
-        const hp = makePlayerEntity(i, LANES[i], startY);
+        const hx = prevHome ? prevHome[i].x : LANES[i];
+        const hy = prevHome ? (i === carrierIdx ? anchorY : prevHome[i].y) : startY;
+        const hp = makePlayerEntity(i, hx, hy);
+        hp.prevX = prevHome ? prevHome[i].prevX : hx;
+        hp.prevY = prevHome ? prevHome[i].prevY : hy;
         rollSupportAlignment(hp, i, carrierIdx, false);
         state.homePlayers.push(hp);
-        state.awayPlayers.push(makePlayerEntity(i, LANES[i], onsideY));
+
+        const ax = prevAway ? prevAway[i].x : LANES[i];
+        const ay = prevAway ? prevAway[i].y : onsideY;
+        const ap = makePlayerEntity(i, ax, ay);
+        ap.prevX = prevAway ? prevAway[i].prevX : ax;
+        ap.prevY = prevAway ? prevAway[i].prevY : ay;
+        state.awayPlayers.push(ap);
       } else {
-        const ap = makePlayerEntity(i, LANES[i], startY);
+        const ax = prevAway ? prevAway[i].x : LANES[i];
+        const ay = prevAway ? (i === carrierIdx ? anchorY : prevAway[i].y) : startY;
+        const ap = makePlayerEntity(i, ax, ay);
+        ap.prevX = prevAway ? prevAway[i].prevX : ax;
+        ap.prevY = prevAway ? prevAway[i].prevY : ay;
         rollSupportAlignment(ap, i, carrierIdx, false);
         state.awayPlayers.push(ap);
-        state.homePlayers.push(makePlayerEntity(i, LANES[i], onsideY));
+
+        const hx = prevHome ? prevHome[i].x : LANES[i];
+        const hy = prevHome ? prevHome[i].y : onsideY;
+        const hp = makePlayerEntity(i, hx, hy);
+        hp.prevX = prevHome ? prevHome[i].prevX : hx;
+        hp.prevY = prevHome ? prevHome[i].prevY : hy;
+        state.homePlayers.push(hp);
       }
     }
 
     rollDefenderPhaseQuirks();
-
-    const attackers = possession === 'home' ? state.homePlayers : state.awayPlayers;
-    const carrier = attackers[carrierIdx];
-    for (let i = 0; i < 5; i++) {
-      if (i !== carrierIdx) {
-        const pos = getDesiredSupportPos(attackers[i], i, carrier, attackDir);
-        attackers[i].x = pos.x; attackers[i].y = pos.y;
-        attackers[i].prevX = pos.x; attackers[i].prevY = pos.y;
-      }
-    }
     syncHudAndLegend();
   }
 
@@ -1949,8 +1971,6 @@ export function startErcRugby(bridge, autoStart = false) {
 
     if (state.playState === 'tryCelebration') return;
 
-    // Always prioritize bound steer & kick actions BEFORE checking C–G jersey notes
-    // (critical when a player binds Move Left / Move Right to natural notes like E2 / F2)
     if (boundAction === 'moveLeft') {
       if (state.possession === 'home' && state.playState !== 'kickoff3D') releasePlayTheBall();
       state.moveInput.leftHeld = true; state.moveInput.leftTapTimer = 0.22; state.moveInput.rightTapTimer = 0;
@@ -1978,7 +1998,6 @@ export function startErcRugby(bridge, autoStart = false) {
       return;
     }
 
-    // If currently aiming a 3D kick, any non-steer MIDI note strikes the ball immediately
     if (state.kick3D.active && state.kick3D.aiming && state.kick3D.kickingSide === 'home') {
       if (performance.now() - (state.kick3D.aimStartedAt || 0) > 85) {
         release3DKickStrike();
@@ -2030,8 +2049,6 @@ export function startErcRugby(bridge, autoStart = false) {
     }
   }
 
-  // Attach direct WebMIDI note-off listener so physical MIDI key releases ALWAYS fire onPianoNoteUp
-  // even when PianoPad's mini-game bridge only forwards note-on events
   const midiOffUnsubscribers = [];
   if (typeof navigator !== 'undefined' && navigator.requestMIDIAccess) {
     navigator.requestMIDIAccess().then((midiAccess) => {
@@ -2044,7 +2061,6 @@ export function startErcRugby(bridge, autoStart = false) {
           const vel = ev.data.length > 2 ? ev.data[2] : 0;
           if (cmd === 0x80 || (cmd === 0x90 && vel === 0)) {
             const names = midiNumberToNoteNames(noteNum);
-            // Match whichever octave convention the user's saved bind recorded
             if (names.c4) onPianoNoteUp(names.c4);
             if (names.c3 && names.c3 !== names.c4) onPianoNoteUp(names.c3);
           }
@@ -2135,7 +2151,6 @@ export function startErcRugby(bridge, autoStart = false) {
     if (k3.aiming) {
       k3.aimElapsed = (k3.aimElapsed || 0) + dt;
 
-      // Keep open-play trajectory anchored to the ball-carrier while charging
       if (k3.kind !== 'kickoff') {
         const roster = k3.kickingSide === 'home' ? state.homePlayers : state.awayPlayers;
         const kicker = roster[state.carrierIndex];
@@ -2155,7 +2170,6 @@ export function startErcRugby(bridge, autoStart = false) {
         if (k3.power >= 1) { k3.power = 1; k3.powerDir = -1; }
         else if (k3.power <= 0.15) { k3.power = 0.15; k3.powerDir = 1; }
 
-        // Safety auto-strike for open-play kicks if note-off was never emitted by the input device
         if (k3.kind !== 'kickoff' && !k3.hasReceivedNoteOff && k3.aimElapsed >= 0.55) {
           release3DKickStrike();
         }
@@ -2187,70 +2201,108 @@ export function startErcRugby(bridge, autoStart = false) {
     k3.flightProgress = Math.min(1, k3.flightElapsed / safeDur);
     const t = k3.flightProgress;
 
-    k3.vx += k3.curveAccelX * dt;
-    k3.x = Math.min(0.94, Math.max(0.06, k3.x + k3.vx * dt));
-    k3.y = Math.min(0.89, Math.max(0.11, k3.y + k3.vy * dt));
-    k3.z = Math.max(0, Math.sin(t * Math.PI) * (k3.kind === 'grubber' ? 0.07 : 0.48) * (0.45 + k3.power * 0.65));
+    if (!k3.landed) {
+      k3.vx += k3.curveAccelX * dt;
+      k3.x = Math.min(0.94, Math.max(0.06, k3.x + k3.vx * dt));
+      k3.y = Math.min(0.89, Math.max(0.11, k3.y + k3.vy * dt));
+      k3.z = Math.max(0, Math.sin(t * Math.PI) * (k3.kind === 'grubber' ? 0.07 : 0.48) * (0.45 + k3.power * 0.65));
+    }
 
-    // Advance onside chasers while ball is in 3D flight so players can regather chips & grubbers
+    const chaserRoster = k3.kickingSide === 'home' ? state.homePlayers : state.awayPlayers;
+    const receiverRoster = k3.receiverSide === 'home' ? state.homePlayers : state.awayPlayers;
+
+    // Receivers run toward the ball's landing point so they catch at the true landing spot without jumping
+    for (let i = 0; i < receiverRoster.length; i++) {
+      const rec = receiverRoster[i];
+      const targetX = k3.landed
+        ? Math.min(0.93, Math.max(0.07, k3.x + (i - 2) * 0.035))
+        : Math.min(0.93, Math.max(0.07, k3.x + (i - 2) * 0.065));
+      const targetY = k3.landed
+        ? Math.min(0.89, Math.max(0.11, k3.y + (i - 2) * 0.015))
+        : Math.min(0.89, Math.max(0.11, k3.y + (k3.receiverSide === 'home' ? 0.03 : -0.03)));
+      const dx = targetX - rec.x;
+      const dy = targetY - rec.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 0.002) {
+        const speed = k3.landed ? 0.25 : 0.22;
+        rec.x += (dx / dist) * Math.min(dist, speed * dt);
+        rec.y += (dy / dist) * Math.min(dist, speed * dt);
+      }
+    }
+
+    // Onside chasers sprint toward the ball/landing spot
     if (k3.kind !== 'kickoff') {
-      const chaserRoster = k3.kickingSide === 'home' ? state.homePlayers : state.awayPlayers;
       const chaseDir = k3.kickingSide === 'home' ? -1 : 1;
       for (let i = 0; i < chaserRoster.length; i++) {
         const ch = chaserRoster[i];
         if (ch.offsideOnKick) continue;
-        ch.y = Math.min(0.89, Math.max(0.11, ch.y + chaseDir * 0.17 * dt));
-        ch.x += (k3.x - ch.x) * Math.min(1, dt * 1.6);
+        const dx = k3.x - ch.x;
+        const dy = k3.y - ch.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 0.002) {
+          ch.x += (dx / dist) * Math.min(dist, 0.22 * dt);
+          ch.y = Math.min(0.89, Math.max(0.11, ch.y + (k3.landed ? (dy / dist) * 0.22 * dt : chaseDir * 0.17 * dt)));
+        }
       }
     }
 
-    const receiverRoster = k3.receiverSide === 'home' ? state.homePlayers : state.awayPlayers;
-    for (let i = 0; i < receiverRoster.length; i++) {
-      const rec = receiverRoster[i];
-      rec.x += (Math.min(0.93, Math.max(0.07, k3.x + (i - 2) * 0.08)) - rec.x) * Math.min(1, dt * 2.2);
-      rec.y += (Math.min(0.84, Math.max(0.16, k3.y)) - rec.y) * Math.min(1, dt * 2.0);
+    if (!k3.landed && (t >= 1 || k3.flightElapsed >= safeDur + 0.1)) {
+      k3.z = 0;
+      k3.vx = 0;
+      k3.vy = 0;
+      k3.vz = 0;
+      k3.landed = true;
     }
 
-    if (k3.kind !== 'kickoff' && t > 0.35 && k3.z < 0.09) {
-      const chaserRoster = k3.kickingSide === 'home' ? state.homePlayers : state.awayPlayers;
+    // Kicking-side regather check
+    if (k3.kind !== 'kickoff' && (k3.landed || (t > 0.35 && k3.z < 0.09))) {
       for (let i = 0; i < chaserRoster.length; i++) {
         const att = chaserRoster[i];
         if (att.offsideOnKick) continue;
-        if (Math.hypot(att.x - k3.x, att.y - k3.y) < 0.042) {
+        const pickupRadius = k3.landed ? 0.055 : 0.042;
+        if (Math.hypot(att.x - k3.x, att.y - k3.y) < pickupRadius) {
           const regatherSide = k3.kickingSide;
+          att.x = k3.x;
+          att.y = k3.y;
           resetAllBallFlightFlags();
-          state.possession = regatherSide;
-          state.carrierIndex = i;
-          state.tackleCount = 0;
+          setupSetOfSix(regatherSide, k3.y, i, true);
           state.playState = 'running';
           assignAiDefenderChasers();
-          addCallout(`${LANE_NOTES[i]} REGATHERS KICK! SIX AGAIN!`, att.x, att.y - 0.05, '#fde047');
+          addCallout(`${LANE_NOTES[i]} REGATHERS KICK! SIX AGAIN!`, att.x, Math.max(0.14, att.y - 0.05), '#fde047');
           recordPlayerVelocities(dt);
           return true;
         }
       }
     }
 
-    if (t >= 1 || k3.flightElapsed >= safeDur + 0.1) {
-      let bestIdx = 2;
-      let bestDist = Infinity;
+    // Receiving-side player reaches the ball at its actual landing coordinates
+    if (k3.landed || (t > 0.65 && k3.z < 0.08)) {
+      let bestIdx = -1;
+      let bestDist = k3.landed ? 0.065 : 0.045;
       for (let i = 0; i < receiverRoster.length; i++) {
         const d = Math.hypot(receiverRoster[i].x - k3.x, receiverRoster[i].y - k3.y);
-        if (d < bestDist) { bestDist = d; bestIdx = i; }
+        if (d < bestDist) {
+          bestDist = d;
+          bestIdx = i;
+        }
       }
-      const catchY = Math.min(0.78, Math.max(0.22, receiverRoster[bestIdx] ? receiverRoster[bestIdx].y : k3.y));
-      const wasKickoff = k3.kind === 'kickoff';
-      const nextPos = k3.receiverSide;
 
-      resetAllBallFlightFlags();
-      setupSetOfSix(nextPos, catchY, bestIdx);
-      state.playState = 'running';
-      assignAiDefenderChasers();
-      const p2HumanActive = state.multiplayer.mode === 'host' && state.multiplayer.guestJoined;
-      if (nextPos === 'away' && !p2HumanActive && state.awayPlayers[bestIdx]) {
-        armDefenderReactionWindow(state.awayPlayers[bestIdx], wasKickoff ? 'KICKOFF RETURN!' : 'FIELDED!');
-      } else {
-        addCallout(wasKickoff ? 'KICKOFF RECEIVED! RUN & PASS!' : 'KICK FIELDED! NEW SET!', 0.5, 0.72, '#4ade80');
+      if (bestIdx !== -1) {
+        const wasKickoff = k3.kind === 'kickoff';
+        const nextPos = k3.receiverSide;
+        receiverRoster[bestIdx].x = k3.x;
+        receiverRoster[bestIdx].y = k3.y;
+
+        resetAllBallFlightFlags();
+        setupSetOfSix(nextPos, k3.y, bestIdx, true);
+        state.playState = 'running';
+        assignAiDefenderChasers();
+        const p2HumanActive = state.multiplayer.mode === 'host' && state.multiplayer.guestJoined;
+        if (nextPos === 'away' && !p2HumanActive && state.awayPlayers[bestIdx]) {
+          armDefenderReactionWindow(state.awayPlayers[bestIdx], wasKickoff ? 'KICKOFF RETURN!' : 'FIELDED!');
+        } else {
+          addCallout(wasKickoff ? 'KICKOFF RECEIVED! RUN & PASS!' : 'KICK FIELDED! NEW SET!', k3.x, Math.max(0.16, k3.y - 0.05), '#4ade80');
+        }
       }
     }
 
@@ -2333,7 +2385,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
         if (conv.kickTimer >= 1.35) {
           conv.active = false;
-          setupSetOfSix('home', 0.82, 2);
+          setupSetOfSix('home', 0.82, 2, true);
           addCallout('DROP-OUT / NEW SET!', 0.5, 0.76, '#fde047');
         }
       }
@@ -2359,7 +2411,7 @@ export function startErcRugby(bridge, autoStart = false) {
 
     if (state.playState === 'turnoverPause') {
       state.turnoverTimer -= dt; recordPlayerVelocities(dt);
-      if (state.turnoverTimer <= 0) setupSetOfSix(state.nextPossession, state.nextStartY, 2);
+      if (state.turnoverTimer <= 0) setupSetOfSix(state.nextPossession, state.nextStartY, 2, true);
       pushHostSnapshot(false);
       return;
     }
@@ -2379,15 +2431,26 @@ export function startErcRugby(bridge, autoStart = false) {
         if (i === state.carrierIndex) continue;
         const att = attackers[i];
         const desired = getDesiredSupportPos(att, i, carrier, attackDir);
-        att.x += (desired.x - att.x) * Math.min(1, dt * 5.5);
-        att.y += (desired.y - att.y) * Math.min(1, dt * 5.5);
+        const dx = desired.x - att.x;
+        const dy = desired.y - att.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 0.002) {
+          att.x += (dx / dist) * Math.min(dist, 0.24 * dt);
+          att.y += (dy / dist) * Math.min(dist, 0.24 * dt);
+        }
       }
 
       let allOnside = true;
       for (let i = 0; i < 5; i++) {
         const d = defenders[i]; const laneX = LANES[i];
-        d.x += (laneX - d.x) * Math.min(1, dt * 6.5);
-        d.y += (targetOnsideY - d.y) * Math.min(1, dt * 7.0);
+        const dx = laneX - d.x;
+        const dy = targetOnsideY - d.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 0.002) {
+          const sprintSpeed = 0.26;
+          d.x += (dx / dist) * Math.min(dist, sprintSpeed * dt);
+          d.y += (dy / dist) * Math.min(dist, sprintSpeed * dt);
+        }
         if (Math.abs(d.y - targetOnsideY) > 0.010 || Math.abs(d.x - laneX) > 0.014) allOnside = false;
       }
 
@@ -2410,8 +2473,13 @@ export function startErcRugby(bridge, autoStart = false) {
         if (i === state.carrierIndex) continue;
         const att = attackers[i];
         const desired = getDesiredSupportPos(att, i, carrier, attackDir);
-        att.x += (desired.x - att.x) * Math.min(1, dt * 4.5);
-        att.y += (desired.y - att.y) * Math.min(1, dt * 4.5);
+        const dx = desired.x - att.x;
+        const dy = desired.y - att.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 0.002) {
+          att.x += (dx / dist) * Math.min(dist, 0.22 * dt);
+          att.y += (dy / dist) * Math.min(dist, 0.22 * dt);
+        }
       }
 
       if (state.possession === 'away' && userSteerX !== 0) {
@@ -2563,7 +2631,6 @@ export function startErcRugby(bridge, autoStart = false) {
       }
     }
 
-    const supportCatchup = 4.8;
     for (let i = 0; i < 5; i++) {
       if (i === state.carrierIndex) continue;
       const att = attackers[i];
@@ -2579,8 +2646,13 @@ export function startErcRugby(bridge, autoStart = false) {
         }
       } else {
         const desired = getDesiredSupportPos(att, i, activeCarrier, attackDir);
-        att.x += (desired.x - att.x) * Math.min(1, dt * supportCatchup);
-        att.y += (desired.y - att.y) * Math.min(1, dt * (supportCatchup + 0.6));
+        const dx = desired.x - att.x;
+        const dy = desired.y - att.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 0.002) {
+          att.x += (dx / dist) * Math.min(dist, 0.24 * dt);
+          att.y += (dy / dist) * Math.min(dist, 0.24 * dt);
+        }
       }
     }
 
@@ -2642,9 +2714,14 @@ export function startErcRugby(bridge, autoStart = false) {
         const slideFactor = d.slideFactor || 0.22;
         const slideShift = (activeCarrier.x - 0.5) * slideFactor;
         const targetX = Math.min(0.93, Math.max(0.07, LANES[i] + slideShift));
-        const lineLerp = (d.speedFactor || 1) < 0.9 ? 4.0 : 4.6;
-        d.x += (targetX - d.x) * Math.min(1, dt * lineLerp);
-        d.y += (state.tacklePause.onsideY - d.y) * Math.min(1, dt * 5.0);
+        const dx = targetX - d.x;
+        const dy = state.tacklePause.onsideY - d.y;
+        const dist = Math.hypot(dx, dy);
+        const runPace = 0.18 * (d.speedFactor || 1);
+        if (dist > 0.002) {
+          d.x += (dx / dist) * Math.min(dist, runPace * dt);
+          d.y += (dy / dist) * Math.min(dist, runPace * dt);
+        }
       }
 
       if (!state.passState.active && !state.kickBall.active) {
@@ -2801,7 +2878,6 @@ export function startErcRugby(bridge, autoStart = false) {
     });
   });
 
-  // Wire up on-screen Bomb, Grubber, and Chip strip buttons (hold to charge, release to kick!)
   containerEl.querySelectorAll('.kick-strip-btn').forEach((btn) => {
     const kind = btn.getAttribute('data-kick');
     if (!kind) return;
