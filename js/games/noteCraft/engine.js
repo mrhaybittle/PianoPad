@@ -154,7 +154,10 @@ export function setBlockAt(x, y, z, blockId, options = {}) {
 }
 
 export function isBlockSolid(blockId) {
-    return blockId !== BLOCKS.AIR && blockId !== undefined && blockId !== null;
+    return blockId !== BLOCKS.AIR &&
+           blockId !== BLOCKS.FIRE &&
+           blockId !== undefined &&
+           blockId !== null;
 }
 
 function collidesAt(px, py, pz) {
@@ -402,6 +405,46 @@ export function updateCreatures(dt, now = performance.now()) {
     void now;
 }
 
+export function fireGrappleGun(maxRange = 32.0) {
+    if (ncState.grapple && ncState.grapple.active) {
+        ncState.grapple.active = false;
+        ncState.grapple.anchor = null;
+        return { detached: true };
+    }
+
+    const hit = raycastVoxel(maxRange);
+    if (!hit || !hit.hit) {
+        return { error: 'NO_TARGET' };
+    }
+
+    const lp = ncState.localPlayer;
+    const anchor = {
+        x: hit.x + 0.5 + hit.normal.x * 0.45,
+        y: hit.y + 0.5 + hit.normal.y * 0.45,
+        z: hit.z + 0.5 + hit.normal.z * 0.45
+    };
+    const dist = Math.hypot(anchor.x - lp.x, anchor.y - (lp.y + PLAYER_EYE_HEIGHT), anchor.z - lp.z);
+    if (dist < 1.8) return { error: 'TOO_CLOSE' };
+
+    ncState.grapple = {
+        active: true,
+        anchor,
+        ropeLength: dist,
+        ziplineSpeed: 14.5
+    };
+    lp.isGrounded = false;
+    return { attached: true, anchor, dist };
+}
+
+export function detachGrappleGun(jumpBoost = false) {
+    if (!ncState.grapple || !ncState.grapple.active) return;
+    ncState.grapple.active = false;
+    ncState.grapple.anchor = null;
+    if (jumpBoost) {
+        ncState.localPlayer.velocity.y = 8.2;
+    }
+}
+
 export function placeSelectedBlock() {
     const target = ncState.targetBlock;
     const lp = ncState.localPlayer;
@@ -583,6 +626,51 @@ export function updatePlayerPhysics(dt) {
         lp.flightTimer = Math.max(0, lp.flightTimer - dt);
         if (lp.flightTimer <= 0) lp.isFlying = false;
     }
+    if (lp.speedBoostTimer > 0) {
+        lp.speedBoostTimer = Math.max(0, lp.speedBoostTimer - dt);
+    }
+
+    // 1. Grapple Gun / Flying Fox Zipline Movement
+    if (ncState.grapple && ncState.grapple.active && ncState.grapple.anchor) {
+        const a = ncState.grapple.anchor;
+        const dx = a.x - lp.x;
+        const dy = (a.y - 1.1) - lp.y;
+        const dz = a.z - lp.z;
+        const dist = Math.hypot(dx, dy, dz);
+
+        if (keys.has('Space')) {
+            detachGrappleGun(true);
+        } else if (dist <= 1.45) {
+            detachGrappleGun(false);
+            lp.velocity.y = 3.0;
+        } else {
+            const speed = ncState.grapple.ziplineSpeed || 14.5;
+            const stepX = (dx / dist) * speed * dt;
+            const stepY = (dy / dist) * speed * dt;
+            const stepZ = (dz / dist) * speed * dt;
+
+            if (!collidesAt(lp.x + stepX, lp.y + 0.05, lp.z)) {
+                lp.x = Math.max(-WORLD_HALF_X + 1, Math.min(WORLD_HALF_X - 1, lp.x + stepX));
+            }
+            if (!collidesAt(lp.x, lp.y + 0.05, lp.z + stepZ)) {
+                lp.z = Math.max(-WORLD_HALF_Z + 1, Math.min(WORLD_HALF_Z - 1, lp.z + stepZ));
+            }
+            if (!collidesAt(lp.x, lp.y + stepY, lp.z)) {
+                lp.y += stepY;
+            } else {
+                detachGrappleGun(false);
+            }
+            lp.velocity.y = 0;
+            ncState.targetBlock = raycastVoxel(8.0);
+            return;
+        }
+    }
+
+    // 2. Check block directly beneath player's feet
+    const footBlock = getBlockAt(Math.floor(lp.x), Math.floor(lp.y - 0.12), Math.floor(lp.z));
+    if (footBlock === BLOCKS.SPEED_STRIP) {
+        lp.speedBoostTimer = 1.5;
+    }
 
     let forward = 0;
     let strafe = 0;
@@ -594,12 +682,36 @@ export function updatePlayerPhysics(dt) {
     const len = Math.hypot(forward, strafe);
     if (len > 0) { forward /= len; strafe /= len; }
 
-    const speed = lp.isFlying ? 9.5 : 6.0;
+    let speed = lp.isFlying ? 9.5 : 6.0;
+    if (lp.speedBoostTimer > 0) speed *= 2.15;
+
     const sinY = Math.sin(lp.yaw);
     const cosY = Math.cos(lp.yaw);
 
-    const moveX = (-sinY * forward + cosY * strafe) * speed;
-    const moveZ = (-cosY * forward - sinY * strafe) * speed;
+    let moveX = (-sinY * forward + cosY * strafe) * speed;
+    let moveZ = (-cosY * forward - sinY * strafe) * speed;
+
+    // 3. Sliding Ramp Block Mechanics (ice momentum + downhill slope acceleration)
+    if (!lp.slideMomentum) lp.slideMomentum = { x: 0, z: 0 };
+    if (footBlock === BLOCKS.SLIDE_BLOCK && lp.isGrounded) {
+        lp.slideMomentum.x = lp.slideMomentum.x * 0.92 + moveX * 0.14;
+        lp.slideMomentum.z = lp.slideMomentum.z * 0.92 + moveZ * 0.14;
+
+        const bx = Math.floor(lp.x);
+        const by = Math.floor(lp.y - 0.12);
+        const bz = Math.floor(lp.z);
+        const slopeAccel = 18.0 * dt;
+        if (getBlockAt(bx + 1, by - 1, bz) === BLOCKS.SLIDE_BLOCK) lp.slideMomentum.x += slopeAccel;
+        if (getBlockAt(bx - 1, by - 1, bz) === BLOCKS.SLIDE_BLOCK) lp.slideMomentum.x -= slopeAccel;
+        if (getBlockAt(bx, by - 1, bz + 1) === BLOCKS.SLIDE_BLOCK) lp.slideMomentum.z += slopeAccel;
+        if (getBlockAt(bx, by - 1, bz - 1) === BLOCKS.SLIDE_BLOCK) lp.slideMomentum.z -= slopeAccel;
+
+        moveX = lp.slideMomentum.x;
+        moveZ = lp.slideMomentum.z;
+    } else {
+        lp.slideMomentum.x *= 0.75;
+        lp.slideMomentum.z *= 0.75;
+    }
 
     if (lp.isFlying) {
         let vy = 0;
@@ -617,23 +729,46 @@ export function updatePlayerPhysics(dt) {
     const nextX = lp.x + moveX * dt;
     if (!collidesAt(nextX, lp.y + 0.05, lp.z)) {
         lp.x = Math.max(-WORLD_HALF_X + 1, Math.min(WORLD_HALF_X - 1, nextX));
+    } else {
+        lp.slideMomentum.x = 0;
     }
 
     const nextZ = lp.z + moveZ * dt;
     if (!collidesAt(lp.x, lp.y + 0.05, nextZ)) {
         lp.z = Math.max(-WORLD_HALF_Z + 1, Math.min(WORLD_HALF_Z - 1, nextZ));
+    } else {
+        lp.slideMomentum.z = 0;
     }
 
+    const preImpactVy = lp.velocity.y;
     const nextY = lp.y + lp.velocity.y * dt;
     if (collidesAt(lp.x, nextY, lp.z)) {
-        if (lp.velocity.y < 0) lp.isGrounded = true;
-        lp.velocity.y = 0;
+        if (preImpactVy < 0) {
+            const landedBlock = getBlockAt(Math.floor(lp.x), Math.floor(nextY), Math.floor(lp.z));
+            if (landedBlock === BLOCKS.JUMP_PAD) {
+                lp.velocity.y = 16.5;
+                lp.isGrounded = false;
+            } else if (landedBlock === BLOCKS.BOUNCE_BLOCK) {
+                const rebound = Math.min(18.0, Math.max(9.5, Math.abs(preImpactVy) * 0.92));
+                lp.velocity.y = rebound;
+                lp.isGrounded = false;
+            } else {
+                lp.isGrounded = true;
+                lp.velocity.y = 0;
+            }
+        } else {
+            lp.velocity.y = 0;
+        }
     } else {
         lp.y = nextY;
         lp.isGrounded = false;
     }
 
-    if (lp.y < -5) { lp.x = 12; lp.y = 3; lp.z = 2; lp.velocity.y = 0; }
+    if (lp.y < -5) {
+        lp.x = 12; lp.y = 3; lp.z = 2;
+        lp.velocity.y = 0;
+        detachGrappleGun(false);
+    }
 
     ncState.targetBlock = raycastVoxel(8.0);
 }
