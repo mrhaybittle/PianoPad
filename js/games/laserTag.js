@@ -5,6 +5,7 @@ import {
     OVERCHARGE_CHORDS,
     EMP_CHORD_NOTES,
     DECOY_CHORDS,
+    MINE_CHORD,
     SUS4_CHORDS,
     DEFAULT_GEAR,
     TILE_SIZE,
@@ -221,6 +222,11 @@ function matchDecoyChord(pitchSet) {
         if (dc.notes.every(n => pitchSet.has(n))) return dc;
     }
     return null;
+}
+
+function matchMineChord(pitchSet) {
+    if (pitchSet.size !== MINE_CHORD.notes.length) return false;
+    return MINE_CHORD.notes.every(n => pitchSet.has(n));
 }
 
 function matchSus4Chord(pitchSet) {
@@ -929,7 +935,7 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
 
     const statusEl = document.getElementById('status');
     if (statusEl) {
-        statusEl.textContent = `🛸 3D LASER TAG! Find 💣 Mines, 🔫 3X Laser & 🧭 Radar in the maze!`;
+        statusEl.textContent = `🛸 3D LASER TAG! Find 💣 Mines (play ${MINE_CHORD.id}: ${MINE_CHORD.notes.join(' + ')} to drop), 🔫 3X Laser & 🧭 Radar!`;
     }
 
     gameState.animFrameId = requestAnimationFrame((now) => gameLoop(now, bridge));
@@ -1113,6 +1119,46 @@ export async function startLaserTag(bridge, autoRoomCode = null, isHost = false)
         }, 120);
     } catch (err) {
         console.error("Laser Tag Firebase sync error:", err);
+    }
+}
+
+function deployFloorMine(now) {
+    const lp = gameState.localPlayer;
+    const notesStr = MINE_CHORD.notes.join(' + ');
+    const statusEl = document.getElementById('status');
+
+    if ((lp.minesCarried || 0) <= 0) {
+        playJamBuzzSound();
+        if (statusEl) {
+            statusEl.textContent = `💣 NO MINES CARRIED! Find a 💣 pickup in the maze first, then play ${MINE_CHORD.id} (${notesStr}).`;
+        }
+        return;
+    }
+
+    if (now < (lp.lastMineDeployAt || 0)) {
+        const secsLeft = Math.ceil(((lp.lastMineDeployAt || 0) - now) / 1000);
+        playJamBuzzSound();
+        if (statusEl) {
+            statusEl.textContent = `⏳ MINE RELOADING (${secsLeft}s) — Play ${MINE_CHORD.id} (${notesStr}) to drop!`;
+        }
+        return;
+    }
+
+    lp.minesCarried -= 1;
+    lp.lastMineDeployAt = now + 1100;
+    gameState.activeMines.push({
+        id: `mine_${gameState.localId}_${now}`,
+        ownerId: gameState.localId,
+        x: lp.x - Math.cos(lp.angle) * 20,
+        y: lp.y - Math.sin(lp.angle) * 20,
+        armedAt: now + 600
+    });
+
+    playGearShiftSound(0.4);
+    spawn3DExplosion(lp.x - Math.cos(lp.angle) * 20, lp.y - Math.sin(lp.angle) * 20, '#fb923c', 10);
+
+    if (statusEl) {
+        statusEl.textContent = `💣 MINE DROPPED via ${MINE_CHORD.id} (${notesStr})! ${lp.minesCarried} remaining.`;
     }
 }
 
@@ -1499,6 +1545,20 @@ export async function handleLaserTagInput(noteStr, bridge) {
         }
     }
 
+    // Manual Floor Mine Chord: G7 (G + B + D + F)
+    if (matchMineChord(distinctPitches)) {
+        if (gameState.pendingActionTimer !== null) {
+            clearTimeout(gameState.pendingActionTimer);
+            gameState.pendingActionTimer = null;
+        }
+        gameState.recentNoteBuffer = [];
+        unmarkPitchHeld('D');
+        lp.turnDir = 0;
+        currentTurnVel = 0;
+        deployFloorMine(now);
+        return;
+    }
+
     if (matchEmpChord(distinctPitches)) {
         if (gameState.pendingActionTimer !== null) {
             clearTimeout(gameState.pendingActionTimer);
@@ -1788,33 +1848,22 @@ function gameLoop(now, bridge) {
             if (ARENA_MAP[rowY] && ARENA_MAP[rowY][curCol] === 0) {
                 lp.y += dy;
             }
-
-            // Auto-drop carried floor mines behind the player as they move
-            if ((lp.minesCarried || 0) > 0 && (now - (lp.lastMineDeployAt || 0)) > 1100) {
-                lp.minesCarried -= 1;
-                lp.lastMineDeployAt = now;
-                gameState.activeMines.push({
-                    id: `mine_${gameState.localId}_${now}`,
-                    ownerId: gameState.localId,
-                    x: lp.x - Math.cos(lp.angle) * 20,
-                    y: lp.y - Math.sin(lp.angle) * 20,
-                    armedAt: now + 600
-                });
-                playGearShiftSound(0.4);
-            }
         } else {
             currentMoveSpeed = 0;
         }
 
-        // Collect Mine Pickups
+        // Collect Mine Pickups (manual trigger via G7 chord)
         for (const mp of gameState.minePickups) {
             if (now >= mp.respawnAt && (lp.minesCarried || 0) < 3 && Math.hypot(lp.x - mp.x, lp.y - mp.y) < 34) {
                 mp.respawnAt = now + 16000;
                 lp.minesCarried = (lp.minesCarried || 0) + 2;
                 playGearShiftSound(1.2);
                 spawn3DExplosion(mp.x, mp.y, '#fb923c', 14);
+                const notesStr = MINE_CHORD.notes.join(' + ');
                 const statusEl = document.getElementById('status');
-                if (statusEl) statusEl.textContent = `💣 PICKED UP +2 MINES (${lp.minesCarried} carried)! Move to drop them on the floor!`;
+                if (statusEl) {
+                    statusEl.textContent = `💣 PICKED UP +2 MINES (${lp.minesCarried} carried)! Play ${MINE_CHORD.id} (${notesStr}) to drop a mine!`;
+                }
             }
         }
 
