@@ -59,6 +59,88 @@ function drawMedKitSprite(ctx, sp, screenX, horizon, W, H, now) {
     ctx.restore();
 }
 
+function drawMinePickupSprite(ctx, sp, screenX, horizon, W, H, now) {
+    const scale = (TILE_SIZE * H) / sp.dist;
+    const floatY = horizon + scale * 0.22 + Math.sin(now * 0.007) * (scale * 0.05);
+    const size = Math.max(18, Math.min(64, Math.floor(scale * 0.32)));
+
+    ctx.save();
+    ctx.shadowColor = '#fb923c';
+    ctx.shadowBlur = 14;
+    ctx.font = `${size}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('💣', screenX, floatY);
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fed7aa';
+    ctx.font = `900 ${Math.max(9, Math.floor(size * 0.28))}px sans-serif`;
+    ctx.fillText('+MINE', screenX, floatY - size * 0.65);
+    ctx.restore();
+}
+
+function drawArmedMineSprite(ctx, sp, screenX, horizon, W, H, now) {
+    const scale = (TILE_SIZE * H) / sp.dist;
+    const floorY = horizon + scale * 0.42;
+    const blink = (Math.sin(now * 0.025) + 1) * 0.5;
+    const r = Math.max(5, Math.min(28, scale * 0.14));
+
+    ctx.save();
+    ctx.fillStyle = blink > 0.5 ? '#ef4444' : '#7f1d1d';
+    ctx.strokeStyle = '#fca5a5';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(screenX, floorY, r * 1.3, r * 0.65, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#fecaca';
+    ctx.font = `900 ${Math.max(8, Math.floor(scale * 0.11))}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('MINE', screenX, floorY - r * 1.1);
+    ctx.restore();
+}
+
+function drawWeaponCrateSprite(ctx, sp, screenX, horizon, W, H, now) {
+    const scale = (TILE_SIZE * H) / sp.dist;
+    const floatY = horizon + scale * 0.15 + Math.sin(now * 0.006) * (scale * 0.06);
+    const size = Math.max(20, Math.min(72, Math.floor(scale * 0.36)));
+
+    ctx.save();
+    ctx.shadowColor = '#facc15';
+    ctx.shadowBlur = 18;
+    ctx.font = `${size}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🔫', screenX, floatY);
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fef08a';
+    ctx.font = `900 ${Math.max(9, Math.floor(size * 0.26))}px sans-serif`;
+    ctx.fillText('3X LASER', screenX, floatY - size * 0.66);
+    ctx.restore();
+}
+
+function drawRadarPickupSprite(ctx, sp, screenX, horizon, W, H, now) {
+    const scale = (TILE_SIZE * H) / sp.dist;
+    const floatY = horizon + scale * 0.16 + Math.sin(now * 0.006 + 1.2) * (scale * 0.06);
+    const size = Math.max(20, Math.min(72, Math.floor(scale * 0.36)));
+
+    ctx.save();
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 18;
+    ctx.font = `${size}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🧭', screenX, floatY);
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#bae6fd';
+    ctx.font = `900 ${Math.max(9, Math.floor(size * 0.26))}px sans-serif`;
+    ctx.fillText('RADAR', screenX, floatY - size * 0.66);
+    ctx.restore();
+}
+
 function drawPortalSprite(ctx, sp, screenX, horizon, W, H, now) {
     const portalH = Math.min(H * 1.15, Math.max(48, (TILE_SIZE * 0.95 * H) / sp.dist));
     const portalW = portalH * 0.62;
@@ -134,7 +216,6 @@ function drawPlayerSprite(ctx, sp, screenX, horizon, W, H, now) {
         ctx.globalAlpha = 0.48;
     }
 
-    // Large full-body emoji character with suit/status glow aura
     const bodyCenterY = topY + spriteH * 0.56;
     const auraColor = isGhostRespawning
         ? '#ffffff'
@@ -202,11 +283,11 @@ function drawPlayerSprite(ctx, sp, screenX, horizon, W, H, now) {
 
 function drawChallengeNodeSprite(ctx, sp, screenX, horizon, W, H, now) {
     const scale = (TILE_SIZE * H) / sp.dist;
-    const floatY = horizon + Math.sin(now * 0.005) * (scale * 0.08); 
+    const floatY = horizon + Math.sin(now * 0.005) * (scale * 0.08);
     const size = Math.max(24, Math.min(90, Math.floor(scale * 0.5)));
 
     ctx.save();
-    ctx.shadowColor = '#a855f7'; 
+    ctx.shadowColor = '#a855f7';
     ctx.shadowBlur = 18;
     ctx.fillStyle = '#facc15';
     ctx.font = `900 ${size}px sans-serif`;
@@ -225,6 +306,10 @@ export const SPRITE_DRAWERS = {
     hub_beacon: drawHubBeaconSprite,
     boostpad:   drawBoostPadSprite,
     medkit:     drawMedKitSprite,
+    mine_pk:    drawMinePickupSprite,
+    armed_mine: drawArmedMineSprite,
+    weapon_crate: drawWeaponCrateSprite,
+    radar_pk:   drawRadarPickupSprite,
     portal:     drawPortalSprite,
     particle:   drawParticleSprite,
     player:     drawPlayerSprite,
@@ -256,6 +341,34 @@ export function collectWorldSprites(dt, now) {
         const dx = med.x - lp.x;
         const dy = med.y - lp.y;
         sprites.push({ type: 'medkit', med, dx, dy, dist: Math.hypot(dx, dy) });
+    }
+
+    for (const mp of gameState.minePickups) {
+        if (now < mp.respawnAt) continue;
+        const dx = mp.x - lp.x;
+        const dy = mp.y - lp.y;
+        sprites.push({ type: 'mine_pk', minePk: mp, dx, dy, dist: Math.hypot(dx, dy) });
+    }
+
+    for (const mine of gameState.activeMines) {
+        if (mine.ownerId === gameState.localId) continue;
+        const dx = mine.x - lp.x;
+        const dy = mine.y - lp.y;
+        sprites.push({ type: 'armed_mine', mine, dx, dy, dist: Math.hypot(dx, dy) });
+    }
+
+    for (const crate of gameState.weaponCrateNodes) {
+        if (now < crate.respawnAt) continue;
+        const dx = crate.x - lp.x;
+        const dy = crate.y - lp.y;
+        sprites.push({ type: 'weapon_crate', crate, dx, dy, dist: Math.hypot(dx, dy) });
+    }
+
+    for (const rp of gameState.radarPickupNodes) {
+        if (now < rp.respawnAt) continue;
+        const dx = rp.x - lp.x;
+        const dy = rp.y - lp.y;
+        sprites.push({ type: 'radar_pk', radarPk: rp, dx, dy, dist: Math.hypot(dx, dy) });
     }
 
     for (const decoy of gameState.activeDecoys) {
@@ -312,9 +425,19 @@ export function drawWorldSprite(ctx, sp, zBuffer, numRays, stripW, horizon, W, H
 
     const screenX = (0.5 + relAngle / FOV) * W;
 
-    if (sp.type === 'player' || sp.type === 'portal' || sp.type === 'medkit' || sp.type === 'boostpad' || sp.type === 'challenge_node') {
-        const tx = sp.type === 'player' ? sp.opp.x : (sp.type === 'portal' ? sp.portal.x : (sp.type === 'medkit' ? sp.med.x : (sp.type === 'challenge_node' ? sp.node.x : sp.pad.x)));
-        const ty = sp.type === 'player' ? sp.opp.y : (sp.type === 'portal' ? sp.portal.y : (sp.type === 'medkit' ? sp.med.y : (sp.type === 'challenge_node' ? sp.node.y : sp.pad.y)));
+    const entityCoords =
+        sp.type === 'player' ? [sp.opp.x, sp.opp.y] :
+        sp.type === 'portal' ? [sp.portal.x, sp.portal.y] :
+        sp.type === 'medkit' ? [sp.med.x, sp.med.y] :
+        sp.type === 'mine_pk' ? [sp.minePk.x, sp.minePk.y] :
+        sp.type === 'armed_mine' ? [sp.mine.x, sp.mine.y] :
+        sp.type === 'weapon_crate' ? [sp.crate.x, sp.crate.y] :
+        sp.type === 'radar_pk' ? [sp.radarPk.x, sp.radarPk.y] :
+        sp.type === 'boostpad' ? [sp.pad.x, sp.pad.y] :
+        sp.type === 'challenge_node' ? [sp.node.x, sp.node.y] : null;
+
+    if (entityCoords) {
+        const [tx, ty] = entityCoords;
         if (!hasLineOfSight(lp.x, lp.y, tx, ty)) {
             const centerRay = Math.floor(screenX / stripW);
             const leftRay = Math.max(0, centerRay - 5);
