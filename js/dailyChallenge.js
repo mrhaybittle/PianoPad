@@ -1816,6 +1816,24 @@ function isOutsideSchoolHours() {
 // ============================================================================
 let bridge = null;
 let dailyState = null;
+let surpriseQueue = [];
+let showingSurpriseModal = false;
+let activeSurpriseChallenge = null;
+
+const normalizedTitleCache = new Map();
+
+function normalizeTitle(str) {
+    const raw = String(str || '');
+    const cached = normalizedTitleCache.get(raw);
+    if (cached !== undefined) return cached;
+    const norm = raw.trim().toLowerCase().replace(/\s+/g, ' ');
+    normalizedTitleCache.set(raw, norm);
+    return norm;
+}
+
+function stripLeadingSymbols(str) {
+    return normalizeTitle(str).replace(/^[^a-z0-9]+/i, '');
+}
 
 export function initDailyChallengeBridge(deps) {
     bridge = deps;
@@ -1907,8 +1925,12 @@ export function getEarnedBadges() {
     }
 }
 
+function hasAlreadyEarnedBadge(challengeId) {
+    return getEarnedBadges().some(b => b.id === challengeId);
+}
+
 function awardPermanentBadge(challenge) {
-    if (!challenge) return;
+    if (!challenge) return false;
     const badges = getEarnedBadges();
     if (!badges.some(b => b.id === challenge.id)) {
         badges.push({
@@ -1925,8 +1947,11 @@ function awardPermanentBadge(challenge) {
         } catch (e) {
             console.warn('Could not save permanent badge:', e);
         }
+        renderBadgeTray();
+        return true;
     }
     renderBadgeTray();
+    return false;
 }
 
 // Default daily rotation picks only from Merit Award challenges
@@ -1950,6 +1975,49 @@ function getTodaysChallenge() {
     return getDefaultDailyChallenge();
 }
 
+function createFreshChallengeProgress() {
+    return {
+        progress: 0,
+        completed: false,
+        masteredSongs: [],
+        mediumMasteredSongs: [],
+        hardMasteredSongs: [],
+        lastSongTitle: '',
+        consecutive85: 0,
+        startedSlowLoop: false
+    };
+}
+
+function ensureChallengeEntry(challengeId) {
+    if (!dailyState.meta.challengesById || typeof dailyState.meta.challengesById !== 'object') {
+        dailyState.meta.challengesById = {};
+    }
+    if (!dailyState.meta.challengesById[challengeId]) {
+        dailyState.meta.challengesById[challengeId] = createFreshChallengeProgress();
+    } else {
+        const fresh = createFreshChallengeProgress();
+        const entry = dailyState.meta.challengesById[challengeId];
+        Object.keys(fresh).forEach(k => {
+            if (entry[k] === undefined || entry[k] === null) {
+                entry[k] = fresh[k];
+            }
+        });
+    }
+    return dailyState.meta.challengesById[challengeId];
+}
+
+function syncActiveTopLevelFields(activeChallengeId) {
+    const entry = ensureChallengeEntry(activeChallengeId);
+    dailyState.progress = entry.progress;
+    dailyState.completed = entry.completed;
+    dailyState.meta.masteredSongs = entry.masteredSongs;
+    dailyState.meta.mediumMasteredSongs = entry.mediumMasteredSongs;
+    dailyState.meta.hardMasteredSongs = entry.hardMasteredSongs;
+    dailyState.meta.lastSongTitle = entry.lastSongTitle;
+    dailyState.meta.consecutive85 = entry.consecutive85;
+    dailyState.meta.startedSlowLoop = entry.startedSlowLoop;
+}
+
 function createFreshMeta() {
     return {
         masteredSongs: [],
@@ -1964,14 +2032,14 @@ function createFreshMeta() {
         songPlayCounts: {},
         songFirstAccuracy: {},
         songLastAccuracy: {},
-        songImproveStreak: {}
+        songImproveStreak: {},
+        challengesById: {}
     };
 }
 
 function ensureDailyMetaShape() {
     if (!dailyState.meta || typeof dailyState.meta !== 'object') {
         dailyState.meta = createFreshMeta();
-        return;
     }
     const defaults = createFreshMeta();
     Object.keys(defaults).forEach(k => {
@@ -1979,6 +2047,27 @@ function ensureDailyMetaShape() {
             dailyState.meta[k] = defaults[k];
         }
     });
+
+    const activeId = dailyState.challengeId || getDefaultDailyChallenge().id;
+    const activeEntry = ensureChallengeEntry(activeId);
+    if (dailyState.progress > activeEntry.progress) activeEntry.progress = dailyState.progress;
+    if (dailyState.completed) activeEntry.completed = true;
+    if (Array.isArray(dailyState.meta.masteredSongs) && dailyState.meta.masteredSongs.length > activeEntry.masteredSongs.length) {
+        activeEntry.masteredSongs = [...dailyState.meta.masteredSongs];
+    }
+    if (Array.isArray(dailyState.meta.mediumMasteredSongs) && dailyState.meta.mediumMasteredSongs.length > activeEntry.mediumMasteredSongs.length) {
+        activeEntry.mediumMasteredSongs = [...dailyState.meta.mediumMasteredSongs];
+    }
+    if (Array.isArray(dailyState.meta.hardMasteredSongs) && dailyState.meta.hardMasteredSongs.length > activeEntry.hardMasteredSongs.length) {
+        activeEntry.hardMasteredSongs = [...dailyState.meta.hardMasteredSongs];
+    }
+    if (dailyState.meta.consecutive85 > activeEntry.consecutive85) {
+        activeEntry.consecutive85 = dailyState.meta.consecutive85;
+        activeEntry.lastSongTitle = dailyState.meta.lastSongTitle;
+    }
+    if (dailyState.meta.startedSlowLoop) activeEntry.startedSlowLoop = true;
+
+    syncActiveTopLevelFields(activeId);
 }
 
 function refreshDailyState() {
@@ -2012,12 +2101,15 @@ function refreshDailyState() {
         completed: false,
         meta: createFreshMeta()
     };
+    ensureChallengeEntry(defaultChallenge.id);
     saveDailyState();
     return dailyState;
 }
 
 function saveDailyState() {
     if (!dailyState) return;
+    const activeId = dailyState.challengeId || getDefaultDailyChallenge().id;
+    syncActiveTopLevelFields(activeId);
     try {
         localStorage.setItem(getStorageKey(), JSON.stringify(dailyState));
     } catch (e) {
@@ -2028,14 +2120,6 @@ function saveDailyState() {
 // ============================================================================
 // SONG LAUNCHER (CLOSES MODAL, SELECTS SONG, ENABLES GAME MODE & PLAYS)
 // ============================================================================
-function normalizeTitle(str) {
-    return String(str || '').trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
-function stripLeadingSymbols(str) {
-    return normalizeTitle(str).replace(/^[^a-z0-9]+/i, '');
-}
-
 function doesOptionMatchSong(opt, targetNorm) {
     const cleanText = stripLeadingSymbols(opt.textContent);
     const cleanVal = stripLeadingSymbols(opt.value);
@@ -2098,6 +2182,8 @@ export function launchSongInGameMode(songTitle) {
     if (modal) {
         modal.classList.remove('open');
     }
+    showingSurpriseModal = false;
+    activeSurpriseChallenge = null;
     updateDailyHudPill();
 
     if (bridge) {
@@ -2158,6 +2244,24 @@ function ensureDailyChallengeUI() {
                 padding: 26px;
                 text-align: center;
                 color: #f8fafc;
+            }
+            .dc-card.dc-surprise-card {
+                border-color: #38bdf8;
+                box-shadow: 0 20px 55px rgba(0, 0, 0, 0.85), 0 0 36px rgba(56, 189, 248, 0.35);
+            }
+            .dc-surprise-banner {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                background: linear-gradient(90deg, #0284c7, #8b5cf6, #ec4899);
+                color: #ffffff;
+                padding: 4px 14px;
+                border-radius: 999px;
+                font-size: 0.72rem;
+                font-weight: 900;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                margin-bottom: 8px;
             }
             .dc-tier-badge {
                 display: inline-block;
@@ -2415,8 +2519,11 @@ function ensureDailyChallengeUI() {
         modal.id = 'daily-challenge-modal';
         modal.className = 'modal-overlay';
         modal.innerHTML = `
-            <div class="dc-card">
+            <div class="dc-card" id="dc-modal-card">
                 <div id="dc-main-view">
+                    <div id="dc-surprise-banner" class="dc-surprise-banner" style="display: none;">
+                        ✨ Surprise Achievement Unlocked!
+                    </div>
                     <div style="font-size: 2.6rem; margin-bottom: 4px;" id="dc-icon">🎯</div>
                     <div id="dc-tier-pill" class="dc-tier-badge dc-tier-Gold">DAILY MERIT AWARD CHALLENGE</div>
                     <h2 id="dc-title" style="margin: 0 0 8px 0; font-size: 1.45rem; color: #ffffff;">Today's Challenge</h2>
@@ -2474,26 +2581,40 @@ function ensureDailyChallengeUI() {
 
         document.getElementById('btn-dc-skip').addEventListener('click', () => {
             modal.classList.remove('open');
+            showingSurpriseModal = false;
+            activeSurpriseChallenge = null;
             updateDailyHudPill();
+            flushSurpriseQueue();
         });
 
         document.getElementById('btn-dc-accept').addEventListener('click', () => {
             refreshDailyState();
-            dailyState.accepted = true;
-            saveDailyState();
-            modal.classList.remove('open');
-            updateDailyHudPill();
-            const statusEl = document.getElementById('status');
-            if (statusEl) {
-                const ch = getTodaysChallenge();
-                const prefix = isMeritAwardChallenge(ch)
-                    ? '🎯 Daily Merit Award Challenge Accepted'
-                    : '🏅 Trophy Challenge Accepted';
-                statusEl.textContent = `${prefix}: ${ch.title} (${dailyState.progress}/${ch.target} ${ch.unit})`;
+            const wasSurprise = showingSurpriseModal;
+            if (!wasSurprise && !dailyState.accepted) {
+                dailyState.accepted = true;
+                saveDailyState();
             }
+            modal.classList.remove('open');
+            showingSurpriseModal = false;
+            activeSurpriseChallenge = null;
+            updateDailyHudPill();
+
+            if (!wasSurprise) {
+                const statusEl = document.getElementById('status');
+                if (statusEl) {
+                    const ch = getTodaysChallenge();
+                    const prefix = isMeritAwardChallenge(ch)
+                        ? '🎯 Daily Merit Award Challenge Accepted'
+                        : '🏅 Trophy Challenge Accepted';
+                    statusEl.textContent = `${prefix}: ${ch.title} (${dailyState.progress}/${ch.target} ${ch.unit})`;
+                }
+            }
+            flushSurpriseQueue();
         });
 
         document.getElementById('btn-dc-choose').addEventListener('click', () => {
+            showingSurpriseModal = false;
+            activeSurpriseChallenge = null;
             document.getElementById('dc-main-view').style.display = 'none';
             document.getElementById('dc-trophy-view').style.display = 'none';
             document.getElementById('dc-selection-list').style.display = 'flex';
@@ -2581,6 +2702,8 @@ function renderBadgeTray() {
 export function openTrophyCaseModal() {
     ensureDailyChallengeUI();
     refreshDailyState();
+    showingSurpriseModal = false;
+    activeSurpriseChallenge = null;
 
     document.getElementById('dc-main-view').style.display = 'none';
     document.getElementById('dc-selection-list').style.display = 'none';
@@ -2717,19 +2840,16 @@ function populateChallengeList() {
 // Handles switching the active challenge to a user-selected one
 function selectNewChallenge(challengeId, reopenModal = true) {
     const chosen = DAILY_CHALLENGES.find(c => c.id === challengeId);
+    const existingEntry = ensureChallengeEntry(challengeId);
     const initialProgress =
         (challengeId === 'home_streak_3' || challengeId === 'home_streak_5')
-            ? Math.min(chosen ? chosen.target : 0, getHomeStreakData().streak)
-            : 0;
+            ? Math.max(existingEntry.progress, Math.min(chosen ? chosen.target : 0, getHomeStreakData().streak))
+            : existingEntry.progress;
 
-    dailyState = {
-        dateKey: getTodayDateKey(),
-        challengeId: challengeId,
-        accepted: true,
-        progress: initialProgress,
-        completed: false,
-        meta: createFreshMeta()
-    };
+    existingEntry.progress = Math.min(chosen ? chosen.target : initialProgress, initialProgress);
+    dailyState.challengeId = challengeId;
+    dailyState.accepted = true;
+    syncActiveTopLevelFields(challengeId);
     saveDailyState();
 
     document.getElementById('dc-selection-list').style.display = 'none';
@@ -2762,19 +2882,24 @@ export function promptDailyChallenge() {
     }
 }
 
-export function openDailyChallengeModal(isManualView = false) {
-    ensureDailyChallengeUI();
-    refreshDailyState();
-
-    document.getElementById('dc-main-view').style.display = 'block';
-    document.getElementById('dc-selection-list').style.display = 'none';
-    document.getElementById('dc-trophy-view').style.display = 'none';
-
-    const ch = getTodaysChallenge();
+function renderChallengeIntoModal(ch, { isManualView = false, isSurprise = false, entryOverride = null } = {}) {
+    const entry = entryOverride || ensureChallengeEntry(ch.id);
+    const isCompleted = Boolean(entry.completed || hasAlreadyEarnedBadge(ch.id));
+    const currentProgress = isCompleted ? ch.target : (entry.progress || 0);
     const isMerit = isMeritAwardChallenge(ch);
-    const pct = Math.min(100, Math.round((dailyState.progress / Math.max(1, ch.target)) * 100));
+    const pct = Math.min(100, Math.round((currentProgress / Math.max(1, ch.target)) * 100));
 
-    document.getElementById('dc-icon').textContent = dailyState.completed ? '🏆' : (ch.icon || '🎯');
+    const cardEl = document.getElementById('dc-modal-card');
+    if (cardEl) {
+        cardEl.classList.toggle('dc-surprise-card', Boolean(isSurprise));
+    }
+
+    const surpriseBanner = document.getElementById('dc-surprise-banner');
+    if (surpriseBanner) {
+        surpriseBanner.style.display = isSurprise ? 'inline-flex' : 'none';
+    }
+
+    document.getElementById('dc-icon').textContent = isCompleted ? (ch.icon || '🏆') : (ch.icon || '🎯');
 
     const tierPill = document.getElementById('dc-tier-pill');
     tierPill.className = `dc-tier-badge dc-tier-${ch.tier || 'Gold'}`;
@@ -2805,7 +2930,7 @@ export function openDailyChallengeModal(isManualView = false) {
 
     if (songOpts.length > 0) {
         const completedNormSet = new Set(
-            (dailyState.meta?.masteredSongs || []).map(s => normalizeTitle(s))
+            (entry.masteredSongs || []).map(s => normalizeTitle(s))
         );
 
         const label = document.createElement('div');
@@ -2820,7 +2945,7 @@ export function openDailyChallengeModal(isManualView = false) {
 
         songOpts.forEach(songTitle => {
             const perSongPlays = dailyState.meta?.songPlayCounts?.[normalizeTitle(songTitle)] || 0;
-            const isSongDone = dailyState.completed
+            const isSongDone = isCompleted
                 || completedNormSet.has(normalizeTitle(songTitle))
                 || (ch.requiredAttemptsPerSong && perSongPlays >= ch.requiredAttemptsPerSong);
             const btn = document.createElement('button');
@@ -2843,9 +2968,9 @@ export function openDailyChallengeModal(isManualView = false) {
         reqSongsEl.style.display = 'none';
     }
 
-    document.getElementById('dc-progress-label').textContent = dailyState.completed
+    document.getElementById('dc-progress-label').textContent = isCompleted
         ? `COMPLETED! (${ch.target}/${ch.target} ${ch.unit})`
-        : `${dailyState.progress} / ${ch.target} ${ch.unit}`;
+        : `${currentProgress} / ${ch.target} ${ch.unit}`;
     document.getElementById('dc-progress-fill').style.width = `${pct}%`;
 
     const acceptBtn = document.getElementById('btn-dc-accept');
@@ -2857,7 +2982,10 @@ export function openDailyChallengeModal(isManualView = false) {
     trophyBtn.textContent = `🏅 Trophy Case (${earnedCount}/${DAILY_CHALLENGES.length})`;
     chooseBtn.style.display = 'inline-flex';
 
-    if (dailyState.completed) {
+    if (isSurprise) {
+        acceptBtn.textContent = 'Awesome!';
+        skipBtn.style.display = 'none';
+    } else if (isCompleted) {
         acceptBtn.textContent = 'Awesome!';
         skipBtn.style.display = 'none';
     } else if (dailyState.accepted || isManualView) {
@@ -2871,22 +2999,76 @@ export function openDailyChallengeModal(isManualView = false) {
     document.getElementById('daily-challenge-modal').classList.add('open');
 }
 
+export function openDailyChallengeModal(isManualView = false) {
+    ensureDailyChallengeUI();
+    refreshDailyState();
+    showingSurpriseModal = false;
+    activeSurpriseChallenge = null;
+
+    document.getElementById('dc-main-view').style.display = 'block';
+    document.getElementById('dc-selection-list').style.display = 'none';
+    document.getElementById('dc-trophy-view').style.display = 'none';
+
+    const ch = getTodaysChallenge();
+    renderChallengeIntoModal(ch, { isManualView, isSurprise: false });
+}
+
+function enqueueSurpriseModal(challenge) {
+    if (!challenge) return;
+    if (showingSurpriseModal && activeSurpriseChallenge && activeSurpriseChallenge.id === challenge.id) {
+        return;
+    }
+    if (surpriseQueue.some(c => c.id === challenge.id)) {
+        return;
+    }
+    surpriseQueue.push(challenge);
+    flushSurpriseQueue();
+}
+
+function flushSurpriseQueue() {
+    if (showingSurpriseModal || surpriseQueue.length === 0) return;
+
+    const modal = document.getElementById('daily-challenge-modal');
+    if (modal && modal.classList.contains('open')) {
+        return;
+    }
+
+    const nextCh = surpriseQueue.shift();
+    if (!nextCh) return;
+
+    ensureDailyChallengeUI();
+    showingSurpriseModal = true;
+    activeSurpriseChallenge = nextCh;
+
+    document.getElementById('dc-main-view').style.display = 'block';
+    document.getElementById('dc-selection-list').style.display = 'none';
+    document.getElementById('dc-trophy-view').style.display = 'none';
+
+    const entry = ensureChallengeEntry(nextCh.id);
+    renderChallengeIntoModal(nextCh, {
+        isManualView: true,
+        isSurprise: true,
+        entryOverride: { ...entry, progress: nextCh.target, completed: true }
+    });
+}
+
 function updateDailyHudPill() {
     const pill = document.getElementById('daily-challenge-hud-pill');
     if (!pill) return;
 
     refreshDailyState();
     const ch = getTodaysChallenge();
+    const entry = ensureChallengeEntry(ch.id);
     const isMerit = isMeritAwardChallenge(ch);
 
-    if (dailyState.completed) {
+    if (entry.completed || dailyState.completed) {
         pill.classList.add('dc-done');
         pill.textContent = isMerit
             ? (ch.meritPoints === 2 ? `✅ 2x Merit Award Complete!` : `✅ Merit Award Complete!`)
             : `✅ Trophy Earned!`;
     } else if (dailyState.accepted) {
         pill.classList.remove('dc-done');
-        pill.textContent = `${ch.icon || '🎯'} ${ch.title}: ${dailyState.progress}/${ch.target}`;
+        pill.textContent = `${ch.icon || '🎯'} ${ch.title}: ${entry.progress}/${ch.target}`;
     } else {
         pill.classList.remove('dc-done');
         pill.textContent = isMerit
@@ -2915,65 +3097,431 @@ function playChallengeFanfare() {
     } catch (e) {}
 }
 
-function checkAndTriggerCompletion(challenge) {
-    if (!dailyState || dailyState.completed) return;
+function triggerChallengeCompletionSideEffects(challenge, isSurprise = false) {
+    awardPermanentBadge(challenge);
+    updateDailyHudPill();
+    playChallengeFanfare();
 
-    if (dailyState.progress > 0 && !dailyState.accepted) {
-        dailyState.accepted = true;
-    }
+    const isMerit = isMeritAwardChallenge(challenge);
 
-    if (dailyState.progress >= challenge.target) {
-        dailyState.progress = challenge.target;
-        dailyState.completed = true;
-        saveDailyState();
-        awardPermanentBadge(challenge);
-        updateDailyHudPill();
-        playChallengeFanfare();
-
-        const isMerit = isMeritAwardChallenge(challenge);
-
-        if (bridge) {
-            if (typeof bridge.unlockBonusSounds === 'function') {
-                bridge.unlockBonusSounds(`Challenge "${challenge.title}" completed!`);
-            }
-            if (typeof bridge.spawnConfetti === 'function') {
-                const canvas = document.getElementById('waterfall-canvas');
-                const cx = canvas ? canvas.width / 2 : 400;
-                const cy = canvas ? canvas.height / 2 : 200;
-                bridge.spawnConfetti(cx, cy, '#facc15');
-            }
-            if (typeof bridge.showFlashingStatus === 'function') {
-                const msg = isMerit
+    if (bridge) {
+        if (typeof bridge.unlockBonusSounds === 'function') {
+            bridge.unlockBonusSounds(`Challenge "${challenge.title}" completed!`);
+        }
+        if (typeof bridge.spawnConfetti === 'function') {
+            const canvas = document.getElementById('waterfall-canvas');
+            const cx = canvas ? canvas.width / 2 : 400;
+            const cy = canvas ? canvas.height / 2 : 200;
+            bridge.spawnConfetti(cx, cy, isSurprise ? '#38bdf8' : '#facc15');
+        }
+        if (typeof bridge.showFlashingStatus === 'function') {
+            const msg = isSurprise
+                ? (isMerit
+                    ? `✨ SURPRISE MERIT AWARD: "${challenge.title}"! Badge Earned, Logged to Leaderboard & 5 Bonus Instruments Unlocked!`
+                    : `✨ SURPRISE TROPHY UNLOCKED: "${challenge.title}"! Added to Your Trophy Cabinet, Logged to Leaderboard & 5 Bonus Instruments Unlocked!`)
+                : (isMerit
                     ? (challenge.meritPoints === 2
                         ? `🏆 DOUBLE MERIT AWARD COMPLETE (2x): "${challenge.title}"! 2 Merit Badges Earned, Logged to Leaderboard & 5 Bonus Instruments Unlocked!`
                         : `🏆 DAILY MERIT AWARD CHALLENGE COMPLETE: "${challenge.title}"! Badge Earned, Logged to Leaderboard & 5 Bonus Instruments Unlocked!`)
-                    : `🏅 TROPHY CHALLENGE COMPLETE: "${challenge.title}"! Added to Your Trophy Cabinet, Logged to Leaderboard & 5 Bonus Instruments Unlocked!`;
-                bridge.showFlashingStatus(msg, 7000);
-            }
+                    : `🏅 TROPHY CHALLENGE COMPLETE: "${challenge.title}"! Added to Your Trophy Cabinet, Logged to Leaderboard & 5 Bonus Instruments Unlocked!`);
+            bridge.showFlashingStatus(msg, 7000);
+        }
 
-            const state = bridge.getState ? bridge.getState() : {};
-            const studentName = (typeof bridge.ensureStudentName === 'function' ? bridge.ensureStudentName() : state.sessionStudentName)
-                || localStorage.getItem('pianopad_name')
-                || 'Student';
-            const studentClass = state.currentStudentClass || localStorage.getItem('pianopad_class') || state.currentRoom || '';
-            const entryTitle = isMerit
+        const state = bridge.getState ? bridge.getState() : {};
+        const studentName = (typeof bridge.ensureStudentName === 'function' ? bridge.ensureStudentName() : state.sessionStudentName)
+            || localStorage.getItem('pianopad_name')
+            || 'Student';
+        const studentClass = state.currentStudentClass || localStorage.getItem('pianopad_class') || state.currentRoom || '';
+        const entryTitle = isSurprise
+            ? (isMerit
+                ? `✨ Surprise Merit Award: ${challenge.title}`
+                : `✨ Surprise Trophy: ${challenge.title}`)
+            : (isMerit
                 ? (challenge.meritPoints === 2
                     ? `🎯 2x Merit Award: ${challenge.title}`
                     : `🎯 Merit Award: ${challenge.title}`)
-                : `🏅 Trophy: ${challenge.title}`;
+                : `🏅 Trophy: ${challenge.title}`);
 
-            if (APPS_SCRIPT_URL && typeof bridge.sendJSONP === 'function') {
-                const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(studentName)}&title=${encodeURIComponent(entryTitle)}&score=100&tempo=${encodeURIComponent('100%')}&class=${encodeURIComponent(studentClass)}&studentClass=${encodeURIComponent(studentClass)}&t=${Date.now()}`;
-                bridge.sendJSONP(url);
-            }
-
-            setTimeout(() => {
-                openDailyChallengeModal(true);
-            }, 1500);
+        if (APPS_SCRIPT_URL && typeof bridge.sendJSONP === 'function') {
+            const url = `${APPS_SCRIPT_URL}?action=SCORE_SUBMIT&name=${encodeURIComponent(studentName)}&title=${encodeURIComponent(entryTitle)}&score=100&tempo=${encodeURIComponent('100%')}&class=${encodeURIComponent(studentClass)}&studentClass=${encodeURIComponent(studentClass)}&t=${Date.now()}`;
+            bridge.sendJSONP(url);
         }
+    }
+
+    if (isSurprise) {
+        setTimeout(() => {
+            enqueueSurpriseModal(challenge);
+        }, 1500);
     } else {
-        saveDailyState();
-        updateDailyHudPill();
+        setTimeout(() => {
+            openDailyChallengeModal(true);
+        }, 1500);
+    }
+}
+
+function finalizeChallengeEntryIfReached(challenge, entry, { isSelected = false, persist = true } = {}) {
+    if (!dailyState || !challenge || !entry || entry.completed) return false;
+
+    if (entry.progress >= challenge.target) {
+        entry.progress = challenge.target;
+        entry.completed = true;
+        if (isSelected) {
+            dailyState.progress = challenge.target;
+            dailyState.completed = true;
+        }
+        if (persist) {
+            saveDailyState();
+        }
+        triggerChallengeCompletionSideEffects(challenge, !isSelected);
+        return true;
+    }
+
+    return false;
+}
+
+// ============================================================================
+// PASSIVE CHALLENGE EVALUATORS (ACTIVE + SURPRISE ACHIEVEMENTS)
+// ============================================================================
+function evaluateSongForChallenge(ch, entry, ctx) {
+    const {
+        cleanTitle,
+        normTitle,
+        diffLower,
+        numAccuracy,
+        numSpeed,
+        numMiss,
+        perfect,
+        theme,
+        instrument,
+        showSheetMusic,
+        atHomeNow,
+        currentHomeStreak,
+        songPlayCounts,
+        songFirstAccuracy,
+        songImproveStreak
+    } = ctx;
+
+    // Handle Classroom Care Challenge (requires >= 10 attempts on each listed song)
+    if (ch.id === 'classroom_care_challenge' && Array.isArray(ch.songs)) {
+        const reqPlays = ch.requiredAttemptsPerSong ?? 10;
+        let totalCappedPlays = 0;
+        ch.songs.forEach(s => {
+            const plays = songPlayCounts[normalizeTitle(s)] || 0;
+            totalCappedPlays += Math.min(reqPlays, plays);
+        });
+        entry.progress = totalCappedPlays;
+        return;
+    }
+
+    // Handle Multi-Song Setlist Challenges (including Easy Setlists, Peter & the Wolf, & boss_deceptively_hard)
+    if (Array.isArray(ch.songs) && ch.songs.length > 0) {
+        const reqAcc = ch.minAccuracy ?? 85;
+        const reqSpeed = ch.minSpeed ?? 100;
+        const reqNoSheet = Boolean(ch.requireNoSheet);
+
+        const matchedSong = ch.songs.find(s => normalizeTitle(s) === normTitle);
+
+        if (
+            matchedSong &&
+            numAccuracy >= reqAcc &&
+            numSpeed >= reqSpeed &&
+            (!reqNoSheet || !showSheetMusic)
+        ) {
+            const alreadyCounted = entry.masteredSongs.some(
+                s => normalizeTitle(s) === normTitle
+            );
+            if (!alreadyCounted) {
+                entry.masteredSongs.push(matchedSong);
+            }
+            entry.progress = entry.masteredSongs.length;
+        }
+        return;
+    }
+
+    // Handle Easy Single-Song Trophy Challenges (driven by ch.song + minAccuracy + minSpeed)
+    if (ch.id.startsWith('easy_song_') && ch.song) {
+        const reqAcc = ch.minAccuracy ?? 85;
+        const reqSpeed = ch.minSpeed ?? 100;
+        if (normTitle === normalizeTitle(ch.song) && numAccuracy >= reqAcc && numSpeed >= reqSpeed) {
+            entry.progress = 1;
+        }
+        return;
+    }
+
+    switch (ch.id) {
+        // --------------------------------------------------------
+        // NEW SPECIAL MERIT CHECKS
+        // --------------------------------------------------------
+        case 'son_of_poseidon':
+            if (normTitle === normalizeTitle('Percy Jackson Theme') && numAccuracy >= 80 && numSpeed >= 100) {
+                entry.progress = 1;
+            }
+            break;
+
+        // --------------------------------------------------------
+        // HOME PRACTICE CHALLENGES
+        // --------------------------------------------------------
+        case 'home_song_85':
+            if (atHomeNow && numAccuracy >= 85 && numSpeed >= 100) {
+                entry.progress = 1;
+            }
+            break;
+
+        case 'home_trio_85':
+            if (atHomeNow && numAccuracy >= 85 && numSpeed >= 100 && cleanTitle) {
+                if (!entry.masteredSongs.some(s => normalizeTitle(s) === normTitle)) {
+                    entry.masteredSongs.push(cleanTitle);
+                }
+                entry.progress = entry.masteredSongs.length;
+            }
+            break;
+
+        case 'home_streak_3':
+        case 'home_streak_5':
+            if (atHomeNow && currentHomeStreak > entry.progress) {
+                entry.progress = currentHomeStreak;
+            }
+            break;
+
+        // --------------------------------------------------------
+        // IMPROVEMENT & GROWTH CHALLENGES
+        // --------------------------------------------------------
+        case 'improve_20_one_song':
+            if (normTitle) {
+                const countForSong = songPlayCounts[normTitle] || 0;
+                entry.progress = Math.max(entry.progress, countForSong);
+            }
+            break;
+
+        case 'improve_gain_15':
+        case 'improve_gain_25':
+            if (normTitle && songFirstAccuracy[normTitle] !== undefined) {
+                const gain = Math.floor(numAccuracy - songFirstAccuracy[normTitle]);
+                if (gain > entry.progress) {
+                    entry.progress = gain;
+                }
+            }
+            break;
+
+        case 'improve_climb_3':
+            if (normTitle) {
+                const streak = songImproveStreak[normTitle] || 0;
+                if (streak > entry.progress) {
+                    entry.progress = streak;
+                }
+            }
+            break;
+
+        // --------------------------------------------------------
+        // GENERAL SKILL & MULTI-SONG HARD CHECKS
+        // --------------------------------------------------------
+        case 'setlist_triple_threat_hard':
+            if (diffLower === 'hard' && numAccuracy >= (ch.minAccuracy ?? 80) && numSpeed >= (ch.minSpeed ?? 100) && cleanTitle) {
+                if (!entry.hardMasteredSongs.some(s => normalizeTitle(s) === normTitle)) {
+                    entry.hardMasteredSongs.push(cleanTitle);
+                }
+                entry.progress = entry.hardMasteredSongs.length;
+            }
+            break;
+        case 'play_game_20':
+            entry.progress += 1;
+            break;
+        case 'master_5_90':
+            if (numAccuracy >= 90 && numSpeed >= 100 && cleanTitle) {
+                if (!entry.masteredSongs.some(s => normalizeTitle(s) === normTitle)) {
+                    entry.masteredSongs.push(cleanTitle);
+                }
+                entry.progress = entry.masteredSongs.length;
+            }
+            break;
+        case 'perfect_100':
+            if (numAccuracy >= 100 && numSpeed >= 100) {
+                entry.progress = 1;
+            }
+            break;
+        case 'zero_misses_med_hard':
+            if ((diffLower === 'medium' || diffLower === 'hard') && numMiss === 0 && numSpeed >= 100) {
+                entry.progress = 1;
+            }
+            break;
+        case 'hard_song_85':
+            if (diffLower === 'hard' && numAccuracy >= 85 && numSpeed >= 100) {
+                entry.progress = 1;
+            }
+            break;
+        case 'turbo_130':
+            if (numSpeed >= 130 && numAccuracy >= 85) {
+                entry.progress = 1;
+            }
+            break;
+        case 'hyper_easy_160':
+            if (diffLower === 'easy' && numSpeed >= 160 && numAccuracy >= 80) {
+                entry.progress = 1;
+            }
+            break;
+        case 'hat_trick_85':
+            if (numAccuracy >= 85 && numSpeed >= 100 && cleanTitle) {
+                if (normalizeTitle(entry.lastSongTitle) === normTitle) {
+                    entry.consecutive85 += 1;
+                } else {
+                    entry.lastSongTitle = cleanTitle;
+                    entry.consecutive85 = 1;
+                }
+                entry.progress = Math.max(entry.progress, entry.consecutive85);
+            } else {
+                entry.consecutive85 = 0;
+            }
+            break;
+        case 'total_perfect_300':
+        case 'total_perfect_600':
+            entry.progress += Number(perfect || 0);
+            break;
+        case 'waterfall_only_90':
+            if (!showSheetMusic && (diffLower === 'medium' || diffLower === 'hard') && numAccuracy >= 90 && numSpeed >= 100) {
+                entry.progress = 1;
+            }
+            break;
+        case 'theme_explorer_3':
+            if (theme && !dailyState.meta.themesUsed.includes(theme)) {
+                dailyState.meta.themesUsed.push(theme);
+            }
+            entry.progress = dailyState.meta.themesUsed.length;
+            break;
+        case 'instrument_explorer_3':
+            if (instrument && !dailyState.meta.instrumentsUsed.includes(instrument)) {
+                dailyState.meta.instrumentsUsed.push(instrument);
+            }
+            entry.progress = dailyState.meta.instrumentsUsed.length;
+            break;
+        case 'step_to_game_80':
+            if (
+                dailyState.meta.stepCompletedSong &&
+                normalizeTitle(dailyState.meta.stepCompletedSong) === normTitle &&
+                numAccuracy >= 80 &&
+                numSpeed >= 100
+            ) {
+                entry.progress = 1;
+            }
+            break;
+        case 'master_3_medium':
+            if (diffLower === 'medium' && numAccuracy >= 85 && numSpeed >= 100 && cleanTitle) {
+                if (!entry.mediumMasteredSongs.some(s => normalizeTitle(s) === normTitle)) {
+                    entry.mediumMasteredSongs.push(cleanTitle);
+                }
+                entry.progress = entry.mediumMasteredSongs.length;
+            }
+            break;
+
+        // --------------------------------------------------------
+        // NEW SINGLE-SONG TROPHY CHECKS (76 - 90)
+        // --------------------------------------------------------
+        case 'song_pirates_caribbean':
+            if (normTitle === normalizeTitle('Pirates of the Caribbean') && numAccuracy >= 85 && numSpeed >= 110) entry.progress = 1;
+            break;
+        case 'song_star_wars':
+            if (normTitle === normalizeTitle('Star Wars') && numAccuracy >= 90 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'song_imperial_march':
+            if (normTitle === normalizeTitle('Imperial March Theme') && numMiss === 0 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'song_harry_potter':
+            if (normTitle === normalizeTitle('Harry Potter Theme') && !showSheetMusic && numAccuracy >= 85 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'song_fur_elise':
+            if (normTitle === normalizeTitle('Fur Elise') && numAccuracy >= 90 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'song_hungarian_dance_5':
+            if (normTitle === normalizeTitle('Hungarian Dance No. 5') && numAccuracy >= 85 && numSpeed >= 120) entry.progress = 1;
+            break;
+        case 'song_sweet_child':
+            if (normTitle === normalizeTitle('Sweet Child Of Mine') && numAccuracy >= 85 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'song_crazy_train':
+            if (normTitle === normalizeTitle('Crazy Train') && numAccuracy >= 85 && numSpeed >= 105) entry.progress = 1;
+            break;
+        case 'song_pink_panther':
+            if (normTitle === normalizeTitle('Pink Panther Theme') && !showSheetMusic && numMiss === 0 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'song_bluey_theme':
+            if (normTitle === normalizeTitle('Bluey Theme') && numAccuracy >= 95 && numSpeed >= 120) entry.progress = 1;
+            break;
+        case 'song_minecraft_sweden':
+            if (normTitle === normalizeTitle('Minecraft - Sweden') && numAccuracy >= 90 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'song_lava_chicken':
+            if (normTitle === normalizeTitle("Steve's Lava Chicken - from Minecraft") && numAccuracy >= 85 && numSpeed >= 125) entry.progress = 1;
+            break;
+        case 'song_tetris_at':
+            if (normTitle === normalizeTitle('Tetris - by (AT)') && numAccuracy >= 85 && numSpeed >= 115) entry.progress = 1;
+            break;
+        case 'song_super_mario':
+            if (normTitle === normalizeTitle('Super Mario Theme') && numAccuracy >= 90 && numMiss === 0 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'song_take_on_me':
+            if (normTitle === normalizeTitle('Take On Me') && numAccuracy >= 85 && numSpeed >= 110) entry.progress = 1;
+            break;
+
+        // --------------------------------------------------------
+        // EXISTING SINGLE-SONG BOSS CHECKS
+        // --------------------------------------------------------
+        case 'boss_fire_flames':
+            if (normTitle === normalizeTitle('Through the Fire & Flames - Piano Intro') && numAccuracy >= 80 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'boss_bumblebee':
+            if (normTitle === normalizeTitle('Flight of the Bumblebee') && numAccuracy >= 85 && numSpeed >= 110) entry.progress = 1;
+            break;
+        case 'boss_mission_impossible':
+            if (normTitle === normalizeTitle('Mission: Impossible Theme') && !showSheetMusic && numAccuracy >= 85 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'boss_master_puppets':
+            if (normTitle === normalizeTitle('Master of Puppets (recorded by JC)') && numAccuracy >= 90 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'boss_megalovania':
+            if (normTitle === normalizeTitle('Megalovania (from Undertale)') && numMiss === 0 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'boss_sandstorm':
+            if (normTitle === normalizeTitle('Sandstorm - by Darude') && numAccuracy >= 85 && numSpeed >= 115) entry.progress = 1;
+            break;
+        case 'boss_moonlight':
+            if (normTitle === normalizeTitle('Moonlight Sonata') && numAccuracy >= 85 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'boss_thunderstruck':
+            if (normTitle === normalizeTitle('Thunderstruck Guitar Intro') && numAccuracy >= 85 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'boss_river_flows':
+            if (normTitle === normalizeTitle('River Flows in You - Yiruma') && numAccuracy >= 80 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'boss_sorcerer':
+            if (normTitle === normalizeTitle("The Sorcerer's Apprentice") && !showSheetMusic && numAccuracy >= 85 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'boss_toccata':
+            if (normTitle === normalizeTitle('Toccata and Fugue in D minor, BWV 565') && numMiss === 0 && numSpeed >= 100) entry.progress = 1;
+            break;
+        case 'boss_thousand_miles':
+            if (normTitle === normalizeTitle('Thousand Miles - by Vanessa Carlton') && numAccuracy >= 85 && numSpeed >= 110) entry.progress = 1;
+            break;
+        case 'boss_wipeout':
+            if (normTitle === normalizeTitle('Wipeout') && numAccuracy >= 80 && numSpeed >= 115) entry.progress = 1;
+            break;
+        case 'boss_rickroll':
+            if (normTitle === normalizeTitle('Never Gonna Give You Up') && numAccuracy >= 90 && numSpeed >= 100) {
+                if (normalizeTitle(entry.lastSongTitle) === normTitle) {
+                    entry.consecutive85 += 1;
+                } else {
+                    entry.lastSongTitle = cleanTitle;
+                    entry.consecutive85 = 1;
+                }
+                entry.progress = Math.max(entry.progress, entry.consecutive85);
+            } else {
+                entry.consecutive85 = 0;
+            }
+            break;
+        case 'boss_espresso':
+            if (normTitle === normalizeTitle('Espresso') && numAccuracy >= 90 && numSpeed >= 140) entry.progress = 1;
+            break;
+        case 'boss_stand_up':
+            if (normTitle === normalizeTitle("Stand Up (Put Your Chair Away Or There You'll Stay)") && numAccuracy >= 95 && numSpeed >= 100) entry.progress = 1;
+            break;
     }
 }
 
@@ -2995,7 +3543,7 @@ export function notifyDailySongComplete({
 }) {
     refreshDailyState();
 
-    const ch = getTodaysChallenge();
+    const activeCh = getTodaysChallenge();
     const cleanTitle = (songTitle || '').trim();
     const normTitle = normalizeTitle(cleanTitle);
     const diffLower = (difficulty || '').toLowerCase().trim();
@@ -3026,343 +3574,93 @@ export function notifyDailySongComplete({
             }
             dailyState.meta.songLastAccuracy[normTitle] = numAccuracy;
         }
-        saveDailyState();
     }
 
-    if (dailyState.completed) return;
+    const ctx = {
+        cleanTitle,
+        normTitle,
+        diffLower,
+        numAccuracy,
+        numSpeed,
+        numMiss,
+        perfect,
+        theme,
+        instrument,
+        showSheetMusic,
+        atHomeNow,
+        currentHomeStreak,
+        songPlayCounts: dailyState.meta.songPlayCounts,
+        songFirstAccuracy: dailyState.meta.songFirstAccuracy,
+        songImproveStreak: dailyState.meta.songImproveStreak
+    };
 
-    // Handle Classroom Care Challenge (requires >= 10 attempts on each listed song)
-    if (ch.id === 'classroom_care_challenge' && Array.isArray(ch.songs)) {
-        const reqPlays = ch.requiredAttemptsPerSong ?? 10;
-        let totalCappedPlays = 0;
-        ch.songs.forEach(s => {
-            const plays = dailyState.meta.songPlayCounts[normalizeTitle(s)] || 0;
-            totalCappedPlays += Math.min(reqPlays, plays);
+    const earnedIds = new Set(getEarnedBadges().map(b => b.id));
+    let anyCompleted = false;
+
+    for (const ch of DAILY_CHALLENGES) {
+        const entry = ensureChallengeEntry(ch.id);
+        if (entry.completed || earnedIds.has(ch.id)) {
+            if (earnedIds.has(ch.id)) entry.completed = true;
+            continue;
+        }
+
+        const prevProgress = entry.progress;
+        evaluateSongForChallenge(ch, entry, ctx);
+
+        const isSelected = ch.id === activeCh.id;
+        if (isSelected && entry.progress > prevProgress && !dailyState.accepted) {
+            dailyState.accepted = true;
+        }
+
+        const completedNow = finalizeChallengeEntryIfReached(ch, entry, {
+            isSelected,
+            persist: false
         });
-        dailyState.progress = totalCappedPlays;
-    }
-    // Handle Multi-Song Setlist Challenges (including Easy Setlists, Peter & the Wolf, & boss_deceptively_hard)
-    else if (Array.isArray(ch.songs) && ch.songs.length > 0) {
-        const reqAcc = ch.minAccuracy ?? 85;
-        const reqSpeed = ch.minSpeed ?? 100;
-        const reqNoSheet = Boolean(ch.requireNoSheet);
-
-        const matchedSong = ch.songs.find(s => normalizeTitle(s) === normTitle);
-
-        if (
-            matchedSong &&
-            numAccuracy >= reqAcc &&
-            numSpeed >= reqSpeed &&
-            (!reqNoSheet || !showSheetMusic)
-        ) {
-            const alreadyCounted = dailyState.meta.masteredSongs.some(
-                s => normalizeTitle(s) === normTitle
-            );
-            if (!alreadyCounted) {
-                dailyState.meta.masteredSongs.push(matchedSong);
-            }
-            dailyState.progress = dailyState.meta.masteredSongs.length;
-        }
-    }
-    // Handle Easy Single-Song Trophy Challenges (driven by ch.song + minAccuracy + minSpeed)
-    else if (ch.id.startsWith('easy_song_') && ch.song) {
-        const reqAcc = ch.minAccuracy ?? 85;
-        const reqSpeed = ch.minSpeed ?? 100;
-        if (normTitle === normalizeTitle(ch.song) && numAccuracy >= reqAcc && numSpeed >= reqSpeed) {
-            dailyState.progress = 1;
-        }
-    } else {
-        switch (ch.id) {
-            // --------------------------------------------------------
-            // NEW SPECIAL MERIT CHECKS
-            // --------------------------------------------------------
-            case 'son_of_poseidon':
-                if (normTitle === normalizeTitle('Percy Jackson Theme') && numAccuracy >= 80 && numSpeed >= 100) {
-                    dailyState.progress = 1;
-                }
-                break;
-
-            // --------------------------------------------------------
-            // HOME PRACTICE CHALLENGES
-            // --------------------------------------------------------
-            case 'home_song_85':
-                if (atHomeNow && numAccuracy >= 85 && numSpeed >= 100) {
-                    dailyState.progress = 1;
-                }
-                break;
-
-            case 'home_trio_85':
-                if (atHomeNow && numAccuracy >= 85 && numSpeed >= 100 && cleanTitle) {
-                    if (!dailyState.meta.masteredSongs.some(s => normalizeTitle(s) === normTitle)) {
-                        dailyState.meta.masteredSongs.push(cleanTitle);
-                    }
-                    dailyState.progress = dailyState.meta.masteredSongs.length;
-                }
-                break;
-
-            case 'home_streak_3':
-            case 'home_streak_5':
-                if (atHomeNow && currentHomeStreak > dailyState.progress) {
-                    dailyState.progress = currentHomeStreak;
-                }
-                break;
-
-            // --------------------------------------------------------
-            // IMPROVEMENT & GROWTH CHALLENGES
-            // --------------------------------------------------------
-            case 'improve_20_one_song':
-                if (normTitle) {
-                    const countForSong = dailyState.meta.songPlayCounts[normTitle] || 0;
-                    dailyState.progress = Math.max(dailyState.progress, countForSong);
-                }
-                break;
-
-            case 'improve_gain_15':
-            case 'improve_gain_25':
-                if (normTitle && dailyState.meta.songFirstAccuracy[normTitle] !== undefined) {
-                    const gain = Math.floor(numAccuracy - dailyState.meta.songFirstAccuracy[normTitle]);
-                    if (gain > dailyState.progress) {
-                        dailyState.progress = gain;
-                    }
-                }
-                break;
-
-            case 'improve_climb_3':
-                if (normTitle) {
-                    const streak = dailyState.meta.songImproveStreak[normTitle] || 0;
-                    if (streak > dailyState.progress) {
-                        dailyState.progress = streak;
-                    }
-                }
-                break;
-
-            // --------------------------------------------------------
-            // GENERAL SKILL & MULTI-SONG HARD CHECKS
-            // --------------------------------------------------------
-            case 'setlist_triple_threat_hard':
-                if (diffLower === 'hard' && numAccuracy >= (ch.minAccuracy ?? 80) && numSpeed >= (ch.minSpeed ?? 100) && cleanTitle) {
-                    if (!dailyState.meta.hardMasteredSongs.some(s => normalizeTitle(s) === normTitle)) {
-                        dailyState.meta.hardMasteredSongs.push(cleanTitle);
-                    }
-                    dailyState.progress = dailyState.meta.hardMasteredSongs.length;
-                }
-                break;
-            case 'play_game_20':
-                dailyState.progress += 1;
-                break;
-            case 'master_5_90':
-                if (numAccuracy >= 90 && numSpeed >= 100 && cleanTitle) {
-                    if (!dailyState.meta.masteredSongs.some(s => normalizeTitle(s) === normTitle)) {
-                        dailyState.meta.masteredSongs.push(cleanTitle);
-                    }
-                    dailyState.progress = dailyState.meta.masteredSongs.length;
-                }
-                break;
-            case 'perfect_100':
-                if (numAccuracy >= 100 && numSpeed >= 100) {
-                    dailyState.progress = 1;
-                }
-                break;
-            case 'zero_misses_med_hard':
-                if ((diffLower === 'medium' || diffLower === 'hard') && numMiss === 0 && numSpeed >= 100) {
-                    dailyState.progress = 1;
-                }
-                break;
-            case 'hard_song_85':
-                if (diffLower === 'hard' && numAccuracy >= 85 && numSpeed >= 100) {
-                    dailyState.progress = 1;
-                }
-                break;
-            case 'turbo_130':
-                if (numSpeed >= 130 && numAccuracy >= 85) {
-                    dailyState.progress = 1;
-                }
-                break;
-            case 'hyper_easy_160':
-                if (diffLower === 'easy' && numSpeed >= 160 && numAccuracy >= 80) {
-                    dailyState.progress = 1;
-                }
-                break;
-            case 'hat_trick_85':
-                if (numAccuracy >= 85 && numSpeed >= 100 && cleanTitle) {
-                    if (normalizeTitle(dailyState.meta.lastSongTitle) === normTitle) {
-                        dailyState.meta.consecutive85 += 1;
-                    } else {
-                        dailyState.meta.lastSongTitle = cleanTitle;
-                        dailyState.meta.consecutive85 = 1;
-                    }
-                    dailyState.progress = Math.max(dailyState.progress, dailyState.meta.consecutive85);
-                } else {
-                    dailyState.meta.consecutive85 = 0;
-                }
-                break;
-            case 'total_perfect_300':
-            case 'total_perfect_600':
-                dailyState.progress += Number(perfect || 0);
-                break;
-            case 'waterfall_only_90':
-                if (!showSheetMusic && (diffLower === 'medium' || diffLower === 'hard') && numAccuracy >= 90 && numSpeed >= 100) {
-                    dailyState.progress = 1;
-                }
-                break;
-            case 'theme_explorer_3':
-                if (theme && !dailyState.meta.themesUsed.includes(theme)) {
-                    dailyState.meta.themesUsed.push(theme);
-                }
-                dailyState.progress = dailyState.meta.themesUsed.length;
-                break;
-            case 'instrument_explorer_3':
-                if (instrument && !dailyState.meta.instrumentsUsed.includes(instrument)) {
-                    dailyState.meta.instrumentsUsed.push(instrument);
-                }
-                dailyState.progress = dailyState.meta.instrumentsUsed.length;
-                break;
-            case 'step_to_game_80':
-                if (
-                    dailyState.meta.stepCompletedSong &&
-                    normalizeTitle(dailyState.meta.stepCompletedSong) === normTitle &&
-                    numAccuracy >= 80 &&
-                    numSpeed >= 100
-                ) {
-                    dailyState.progress = 1;
-                }
-                break;
-            case 'master_3_medium':
-                if (diffLower === 'medium' && numAccuracy >= 85 && numSpeed >= 100 && cleanTitle) {
-                    if (!dailyState.meta.mediumMasteredSongs.some(s => normalizeTitle(s) === normTitle)) {
-                        dailyState.meta.mediumMasteredSongs.push(cleanTitle);
-                    }
-                    dailyState.progress = dailyState.meta.mediumMasteredSongs.length;
-                }
-                break;
-
-            // --------------------------------------------------------
-            // NEW SINGLE-SONG TROPHY CHECKS (76 - 90)
-            // --------------------------------------------------------
-            case 'song_pirates_caribbean':
-                if (normTitle === normalizeTitle('Pirates of the Caribbean') && numAccuracy >= 85 && numSpeed >= 110) dailyState.progress = 1;
-                break;
-            case 'song_star_wars':
-                if (normTitle === normalizeTitle('Star Wars') && numAccuracy >= 90 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'song_imperial_march':
-                if (normTitle === normalizeTitle('Imperial March Theme') && numMiss === 0 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'song_harry_potter':
-                if (normTitle === normalizeTitle('Harry Potter Theme') && !showSheetMusic && numAccuracy >= 85 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'song_fur_elise':
-                if (normTitle === normalizeTitle('Fur Elise') && numAccuracy >= 90 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'song_hungarian_dance_5':
-                if (normTitle === normalizeTitle('Hungarian Dance No. 5') && numAccuracy >= 85 && numSpeed >= 120) dailyState.progress = 1;
-                break;
-            case 'song_sweet_child':
-                if (normTitle === normalizeTitle('Sweet Child Of Mine') && numAccuracy >= 85 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'song_crazy_train':
-                if (normTitle === normalizeTitle('Crazy Train') && numAccuracy >= 85 && numSpeed >= 105) dailyState.progress = 1;
-                break;
-            case 'song_pink_panther':
-                if (normTitle === normalizeTitle('Pink Panther Theme') && !showSheetMusic && numMiss === 0 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'song_bluey_theme':
-                if (normTitle === normalizeTitle('Bluey Theme') && numAccuracy >= 95 && numSpeed >= 120) dailyState.progress = 1;
-                break;
-            case 'song_minecraft_sweden':
-                if (normTitle === normalizeTitle('Minecraft - Sweden') && numAccuracy >= 90 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'song_lava_chicken':
-                if (normTitle === normalizeTitle("Steve's Lava Chicken - from Minecraft") && numAccuracy >= 85 && numSpeed >= 125) dailyState.progress = 1;
-                break;
-            case 'song_tetris_at':
-                if (normTitle === normalizeTitle('Tetris - by (AT)') && numAccuracy >= 85 && numSpeed >= 115) dailyState.progress = 1;
-                break;
-            case 'song_super_mario':
-                if (normTitle === normalizeTitle('Super Mario Theme') && numAccuracy >= 90 && numMiss === 0 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'song_take_on_me':
-                if (normTitle === normalizeTitle('Take On Me') && numAccuracy >= 85 && numSpeed >= 110) dailyState.progress = 1;
-                break;
-
-            // --------------------------------------------------------
-            // EXISTING SINGLE-SONG BOSS CHECKS
-            // --------------------------------------------------------
-            case 'boss_fire_flames':
-                if (normTitle === normalizeTitle('Through the Fire & Flames - Piano Intro') && numAccuracy >= 80 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'boss_bumblebee':
-                if (normTitle === normalizeTitle('Flight of the Bumblebee') && numAccuracy >= 85 && numSpeed >= 110) dailyState.progress = 1;
-                break;
-            case 'boss_mission_impossible':
-                if (normTitle === normalizeTitle('Mission: Impossible Theme') && !showSheetMusic && numAccuracy >= 85 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'boss_master_puppets':
-                if (normTitle === normalizeTitle('Master of Puppets (recorded by JC)') && numAccuracy >= 90 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'boss_megalovania':
-                if (normTitle === normalizeTitle('Megalovania (from Undertale)') && numMiss === 0 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'boss_sandstorm':
-                if (normTitle === normalizeTitle('Sandstorm - by Darude') && numAccuracy >= 85 && numSpeed >= 115) dailyState.progress = 1;
-                break;
-            case 'boss_moonlight':
-                if (normTitle === normalizeTitle('Moonlight Sonata') && numAccuracy >= 85 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'boss_thunderstruck':
-                if (normTitle === normalizeTitle('Thunderstruck Guitar Intro') && numAccuracy >= 85 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'boss_river_flows':
-                if (normTitle === normalizeTitle('River Flows in You - Yiruma') && numAccuracy >= 80 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'boss_sorcerer':
-                if (normTitle === normalizeTitle("The Sorcerer's Apprentice") && !showSheetMusic && numAccuracy >= 85 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'boss_toccata':
-                if (normTitle === normalizeTitle('Toccata and Fugue in D minor, BWV 565') && numMiss === 0 && numSpeed >= 100) dailyState.progress = 1;
-                break;
-            case 'boss_thousand_miles':
-                if (normTitle === normalizeTitle('Thousand Miles - by Vanessa Carlton') && numAccuracy >= 85 && numSpeed >= 110) dailyState.progress = 1;
-                break;
-            case 'boss_wipeout':
-                if (normTitle === normalizeTitle('Wipeout') && numAccuracy >= 80 && numSpeed >= 115) dailyState.progress = 1;
-                break;
-            case 'boss_rickroll':
-                if (normTitle === normalizeTitle('Never Gonna Give You Up') && numAccuracy >= 90 && numSpeed >= 100) {
-                    if (normalizeTitle(dailyState.meta.lastSongTitle) === normTitle) {
-                        dailyState.meta.consecutive85 += 1;
-                    } else {
-                        dailyState.meta.lastSongTitle = cleanTitle;
-                        dailyState.meta.consecutive85 = 1;
-                    }
-                    dailyState.progress = Math.max(dailyState.progress, dailyState.meta.consecutive85);
-                } else {
-                    dailyState.meta.consecutive85 = 0;
-                }
-                break;
-            case 'boss_espresso':
-                if (normTitle === normalizeTitle('Espresso') && numAccuracy >= 90 && numSpeed >= 140) dailyState.progress = 1;
-                break;
-            case 'boss_stand_up':
-                if (normTitle === normalizeTitle("Stand Up (Put Your Chair Away Or There You'll Stay)") && numAccuracy >= 95 && numSpeed >= 100) dailyState.progress = 1;
-                break;
+        if (completedNow) {
+            earnedIds.add(ch.id);
+            anyCompleted = true;
         }
     }
 
-    checkAndTriggerCompletion(ch);
+    saveDailyState();
+    if (!anyCompleted) {
+        updateDailyHudPill();
+    }
 }
 
 // Hook 2: Called inside playManualNote() when currentPerfectStreak updates
 export function notifyDailyStreak(streak) {
     refreshDailyState();
-    if (dailyState.completed) return;
 
-    const ch = getTodaysChallenge();
-    if (ch.id === 'streak_35' || ch.id === 'streak_60') {
-        if (streak > dailyState.progress) {
-            dailyState.progress = streak;
-            checkAndTriggerCompletion(ch);
+    const activeCh = getTodaysChallenge();
+    const earnedIds = new Set(getEarnedBadges().map(b => b.id));
+    let anyCompleted = false;
+
+    for (const ch of DAILY_CHALLENGES) {
+        if (ch.id !== 'streak_35' && ch.id !== 'streak_60') continue;
+        const entry = ensureChallengeEntry(ch.id);
+        if (entry.completed || earnedIds.has(ch.id)) continue;
+
+        if (streak > entry.progress) {
+            entry.progress = streak;
+            const isSelected = ch.id === activeCh.id;
+            if (isSelected && !dailyState.accepted) {
+                dailyState.accepted = true;
+            }
+            const completedNow = finalizeChallengeEntryIfReached(ch, entry, {
+                isSelected,
+                persist: false
+            });
+            if (completedNow) {
+                earnedIds.add(ch.id);
+                anyCompleted = true;
+            }
         }
+    }
+
+    saveDailyState();
+    if (!anyCompleted) {
+        updateDailyHudPill();
     }
 }
 
@@ -3378,36 +3676,85 @@ export function notifyDailyTick({
     speed
 }) {
     refreshDailyState();
-    if (dailyState.completed) return;
 
-    const ch = getTodaysChallenge();
+    const activeCh = getTodaysChallenge();
+    const earnedIds = new Set(getEarnedBadges().map(b => b.id));
+    let stateChanged = false;
+    let anyCompleted = false;
 
-    if (ch.id === 'no_tabs_20m' || ch.id === 'no_tabs_35m') {
-        if (tabSwitches === 0) {
-            const mins = Math.floor(elapsedMs / 60000);
-            if (mins > dailyState.progress) {
-                dailyState.progress = mins;
-                checkAndTriggerCompletion(ch);
+    if (isStepMode && stepFinished && currentSongTitle) {
+        const trimmed = currentSongTitle.trim();
+        if (dailyState.meta.stepCompletedSong !== trimmed) {
+            dailyState.meta.stepCompletedSong = trimmed;
+            stateChanged = true;
+        }
+    }
+
+    for (const ch of DAILY_CHALLENGES) {
+        if (
+            ch.id !== 'no_tabs_20m' &&
+            ch.id !== 'no_tabs_35m' &&
+            ch.id !== 'loop_climber'
+        ) {
+            continue;
+        }
+
+        const entry = ensureChallengeEntry(ch.id);
+        if (entry.completed || earnedIds.has(ch.id)) continue;
+
+        const isSelected = ch.id === activeCh.id;
+
+        if (ch.id === 'no_tabs_20m' || ch.id === 'no_tabs_35m') {
+            if (tabSwitches === 0) {
+                const mins = Math.floor(elapsedMs / 60000);
+                if (mins > entry.progress) {
+                    entry.progress = mins;
+                    stateChanged = true;
+                    if (isSelected && !dailyState.accepted) {
+                        dailyState.accepted = true;
+                    }
+                    const completedNow = finalizeChallengeEntryIfReached(ch, entry, {
+                        isSelected,
+                        persist: false
+                    });
+                    if (completedNow) {
+                        earnedIds.add(ch.id);
+                        anyCompleted = true;
+                    }
+                }
+            }
+        } else if (ch.id === 'loop_climber') {
+            if (isPlaying && isLooping) {
+                if (speed <= 80 && !entry.startedSlowLoop) {
+                    entry.startedSlowLoop = true;
+                    stateChanged = true;
+                }
+                if (entry.startedSlowLoop && speed >= 100) {
+                    entry.progress = 1;
+                    stateChanged = true;
+                    if (isSelected && !dailyState.accepted) {
+                        dailyState.accepted = true;
+                    }
+                    const completedNow = finalizeChallengeEntryIfReached(ch, entry, {
+                        isSelected,
+                        persist: false
+                    });
+                    if (completedNow) {
+                        earnedIds.add(ch.id);
+                        anyCompleted = true;
+                    }
+                }
+            } else if (entry.startedSlowLoop) {
+                entry.startedSlowLoop = false;
+                stateChanged = true;
             }
         }
-    } else if (ch.id === 'loop_climber') {
-        if (isPlaying && isLooping) {
-            if (speed <= 80) {
-                dailyState.meta.startedSlowLoop = true;
-            }
-            if (dailyState.meta.startedSlowLoop && speed >= 100) {
-                dailyState.progress = 1;
-                checkAndTriggerCompletion(ch);
-            }
-        } else {
-            dailyState.meta.startedSlowLoop = false;
-        }
-    } else if (ch.id === 'step_to_game_80') {
-        if (isStepMode && stepFinished && currentSongTitle) {
-            if (dailyState.meta.stepCompletedSong !== currentSongTitle.trim()) {
-                dailyState.meta.stepCompletedSong = currentSongTitle.trim();
-                saveDailyState();
-            }
+    }
+
+    if (stateChanged || anyCompleted) {
+        saveDailyState();
+        if (!anyCompleted) {
+            updateDailyHudPill();
         }
     }
 }
@@ -3415,12 +3762,36 @@ export function notifyDailyTick({
 // Hook 4: Called inside toggleRecording() when a recording stops
 export function notifyDailyRecording(noteCount) {
     refreshDailyState();
-    if (dailyState.completed) return;
 
-    const ch = getTodaysChallenge();
-    if (ch.id === 'composer_16_notes' && noteCount >= 16) {
-        dailyState.progress = 1;
-        checkAndTriggerCompletion(ch);
+    const activeCh = getTodaysChallenge();
+    const earnedIds = new Set(getEarnedBadges().map(b => b.id));
+    let anyCompleted = false;
+
+    for (const ch of DAILY_CHALLENGES) {
+        if (ch.id !== 'composer_16_notes') continue;
+        const entry = ensureChallengeEntry(ch.id);
+        if (entry.completed || earnedIds.has(ch.id)) continue;
+
+        if (noteCount >= 16) {
+            entry.progress = 1;
+            const isSelected = ch.id === activeCh.id;
+            if (isSelected && !dailyState.accepted) {
+                dailyState.accepted = true;
+            }
+            const completedNow = finalizeChallengeEntryIfReached(ch, entry, {
+                isSelected,
+                persist: false
+            });
+            if (completedNow) {
+                earnedIds.add(ch.id);
+                anyCompleted = true;
+            }
+        }
+    }
+
+    saveDailyState();
+    if (!anyCompleted) {
+        updateDailyHudPill();
     }
 }
 
